@@ -844,50 +844,133 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     end
   end
 
-  defp analyze_decision_making(_timeline, _participants) do
-    # For now, return basic decision making analysis
-    # TODO: Implement detailed decision making analysis
+  defp analyze_decision_making(timeline, participants) do
+    # Analyze decision-making patterns from battle events
+    if Enum.count(timeline.events) < 3 do
+      %{decisions: [], decision_speed: 0.0, decision_quality: 0.0}
+    else
+      # Identify key decision points
+      decision_points = identify_decision_points(timeline, participants)
 
-    %{
-      decision_speed: 0.7,
-      decision_quality: 0.8,
-      decision_consistency: 0.6,
-      decision_effectiveness: 0.7
-    }
+      # Analyze decision speed
+      decision_speeds = calculate_decision_speeds(decision_points, timeline)
+
+      avg_decision_speed =
+        if length(decision_speeds) > 0 do
+          Enum.sum(decision_speeds) / length(decision_speeds)
+        else
+          0.0
+        end
+
+      # Analyze decision quality
+      decision_outcomes = evaluate_decision_outcomes(decision_points, timeline)
+
+      avg_decision_quality =
+        if length(decision_outcomes) > 0 do
+          Enum.sum(Enum.map(decision_outcomes, & &1.quality_score)) / length(decision_outcomes)
+        else
+          0.0
+        end
+
+      %{
+        decisions: decision_points,
+        decision_speed: avg_decision_speed,
+        decision_quality: avg_decision_quality,
+        decision_consistency: calculate_decision_consistency(decision_points),
+        strategic_decisions: Enum.filter(decision_points, &(&1.type == :strategic)),
+        tactical_decisions: Enum.filter(decision_points, &(&1.type == :tactical)),
+        reactive_decisions: Enum.filter(decision_points, &(&1.type == :reactive))
+      }
+    end
   end
 
-  defp analyze_information_flow(_timeline, _participants) do
-    # For now, return basic information flow analysis
-    # TODO: Implement detailed information flow analysis
+  defp analyze_information_flow(timeline, participants) do
+    # Analyze how information flowed through the command structure
+    if Enum.count(timeline.events) < 2 do
+      %{flow_patterns: [], efficiency: 0.0, bottlenecks: []}
+    else
+      # Identify information flow events
+      flow_events = identify_information_flow_events(timeline, participants)
 
-    %{
-      information_speed: 0.7,
-      information_accuracy: 0.8,
-      information_coverage: 0.6,
-      information_effectiveness: 0.7
-    }
+      # Analyze flow patterns
+      flow_patterns = analyze_flow_patterns(flow_events)
+
+      # Calculate efficiency
+      flow_efficiency = calculate_flow_efficiency(flow_events, timeline)
+
+      # Identify bottlenecks
+      bottlenecks = identify_information_bottlenecks(flow_events, participants)
+
+      %{
+        flow_patterns: flow_patterns,
+        efficiency: flow_efficiency,
+        bottlenecks: bottlenecks,
+        broadcast_events: Enum.filter(flow_events, &(&1.type == :broadcast)),
+        direct_orders: Enum.filter(flow_events, &(&1.type == :direct_order)),
+        coordination_calls: Enum.filter(flow_events, &(&1.type == :coordination)),
+        information_lag: calculate_average_information_lag(flow_events)
+      }
+    end
   end
 
-  defp evaluate_command_effectiveness(_timeline, _participants) do
-    # For now, return basic command effectiveness evaluation
-    # TODO: Implement detailed command effectiveness evaluation
+  defp evaluate_command_effectiveness(timeline, participants) do
+    # Evaluate overall command effectiveness
+    if Enum.count(timeline.events) < 3 do
+      %{overall_score: 0.0, factors: []}
+    else
+      # Evaluate different effectiveness factors
+      coordination_score = evaluate_coordination_effectiveness(timeline, participants)
+      response_score = evaluate_response_effectiveness(timeline, participants)
+      adaptation_score = evaluate_adaptation_effectiveness(timeline, participants)
+      objective_score = evaluate_objective_achievement(timeline, participants)
 
-    %{
-      overall_effectiveness: 0.7,
-      command_execution: 0.8,
-      tactical_control: 0.6,
-      strategic_vision: 0.7
-    }
+      # Calculate weighted overall score
+      overall_score =
+        coordination_score * 0.3 +
+          response_score * 0.25 +
+          adaptation_score * 0.25 +
+          objective_score * 0.2
+
+      %{
+        overall_score: overall_score,
+        coordination_effectiveness: coordination_score,
+        response_effectiveness: response_score,
+        adaptation_effectiveness: adaptation_score,
+        objective_achievement: objective_score,
+        factors: [
+          %{factor: :coordination, score: coordination_score, weight: 0.3},
+          %{factor: :response, score: response_score, weight: 0.25},
+          %{factor: :adaptation, score: adaptation_score, weight: 0.25},
+          %{factor: :objectives, score: objective_score, weight: 0.2}
+        ]
+      }
+    end
   end
 
-  defp identify_leadership_patterns(_timeline, _participants) do
-    # For now, return basic leadership pattern identification
-    # TODO: Implement detailed leadership pattern identification
+  defp identify_leadership_patterns(timeline, participants) do
+    # Identify leadership patterns and key leaders
+    if Enum.empty?(participants) do
+      %{leaders: [], patterns: [], leadership_style: :unknown}
+    else
+      # Identify potential leaders based on activity and influence
+      potential_leaders = identify_potential_leaders(timeline, participants)
 
-    [
-      %{pattern: :decisive_leadership, effectiveness: 0.8},
-      %{pattern: :adaptive_leadership, effectiveness: 0.7}
-    ]
+      # Analyze leadership patterns
+      leadership_patterns = analyze_leadership_behaviors(potential_leaders, timeline)
+
+      # Determine leadership style
+      leadership_style = determine_leadership_style(leadership_patterns, timeline)
+
+      %{
+        leaders: potential_leaders,
+        patterns: leadership_patterns,
+        leadership_style: leadership_style,
+        command_presence: evaluate_command_presence(potential_leaders, timeline),
+        delegation_patterns:
+          analyze_delegation_patterns(potential_leaders, timeline, participants),
+        decision_authority: analyze_decision_authority_distribution(potential_leaders, timeline)
+      }
+    end
   end
 
   # Helper functions for formation analysis
@@ -1696,28 +1779,31 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     evaluate_retreat_success(decision, timeline)
   end
 
-  defp identify_success_indicators(_decision, effectiveness_score, _timeline) do
-    # Identify indicators of decision success
-    base_indicators = []
+  defp identify_success_indicators(decision, timeline, quality_score) do
+    # Identify what made the decision successful or not
+    indicators = []
 
-    indicators =
-      if effectiveness_score > 0.8 do
-        [:excellent_timing, :strong_execution | base_indicators]
-      else
-        base_indicators
-      end
+    if quality_score > 0.7 do
+      indicators = [:good_timing, :effective_execution | indicators]
+    end
 
-    indicators =
-      if effectiveness_score > 0.6 do
-        [:good_timing, :effective_execution | indicators]
-      else
+    if quality_score < 0.4 do
+      indicators = [:poor_timing, :ineffective_execution | indicators]
+    end
+
+    case decision.decision do
+      :initiate_engagement ->
+        if length(timeline.events) > 5,
+          do: [:successful_engagement | indicators],
+          else: indicators
+
+      :escalate_engagement ->
+        if decision.context[:intensity_increase] > 0.5,
+          do: [:successful_escalation | indicators],
+          else: indicators
+
+      _ ->
         indicators
-      end
-
-    if effectiveness_score < 0.4 do
-      [:poor_timing, :ineffective_execution | indicators]
-    else
-      indicators
     end
   end
 
@@ -1852,7 +1938,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   end
 
   defp has_broadcast_patterns?(timeline) do
-    # Check for broadcast-style coordination patterns
+    # Check for broadcast-style coordination patterns  
     # Simplified check
     length(timeline.events) > 3
   end
@@ -2456,7 +2542,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
 
   defp calculate_early_coordination(events) do
     # Calculate coordination level from early engagement timing
-    if Enum.count(events) < 2 do
+    if length(events) < 2 do
       0.0
     else
       # Check timing between kills
@@ -2699,7 +2785,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
 
   defp calculate_time_span(events) do
     # Calculate time span between first and last event
-    if Enum.count(events) < 2 do
+    if length(events) < 2 do
       0
     else
       first_event = List.first(events)
@@ -2856,7 +2942,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     # Short range attackers vs long range victims = disadvantage
     short_disadvantage = attacker_ranges.short * victim_ranges.long * 0.8
 
-    # Long range attackers vs short range victims = advantage
+    # Long range attackers vs short range victims = advantage  
     long_advantage = attacker_ranges.long * victim_ranges.short * 0.9
 
     # Medium range provides balanced matchup
@@ -3242,7 +3328,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   end
 
   defp calculate_switching_frequency(events) do
-    if Enum.count(events) < 2 do
+    if length(events) < 2 do
       0.0
     else
       switches = identify_target_switches(events)
@@ -3562,7 +3648,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   end
 
   defp calculate_window_response_time(events) do
-    if Enum.count(events) < 2 do
+    if length(events) < 2 do
       0
     else
       first = List.first(events)
@@ -3844,7 +3930,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     # Identify potential retreat events from battle patterns
     events = timeline.events
 
-    if Enum.count(events) < 5 do
+    if length(events) < 5 do
       []
     else
       # Look for sudden drops in activity
@@ -4980,7 +5066,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   end
 
   defp calculate_average_kill_interval(events) do
-    if Enum.count(events) < 2 do
+    if length(events) < 2 do
       0
     else
       intervals = calculate_kill_intervals(%{events: events})
@@ -5183,135 +5269,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
         participant_distribution:
           calculate_participant_distribution(alliance_groups, corp_groups),
         unity_score: calculate_organizational_unity(alliance_groups, corp_groups, participants)
-      }
-    end
-  end
-
-  defp analyze_decision_making(timeline, participants) do
-    # Analyze decision-making patterns from battle events
-    if Enum.count(timeline.events) < 3 do
-      %{decisions: [], decision_speed: 0.0, decision_quality: 0.0}
-    else
-      # Identify key decision points
-      decision_points = identify_decision_points(timeline, participants)
-
-      # Analyze decision speed
-      decision_speeds = calculate_decision_speeds(decision_points, timeline)
-
-      avg_decision_speed =
-        if length(decision_speeds) > 0 do
-          Enum.sum(decision_speeds) / length(decision_speeds)
-        else
-          0.0
-        end
-
-      # Analyze decision quality
-      decision_outcomes = evaluate_decision_outcomes(decision_points, timeline)
-
-      avg_decision_quality =
-        if length(decision_outcomes) > 0 do
-          Enum.sum(Enum.map(decision_outcomes, & &1.quality_score)) / length(decision_outcomes)
-        else
-          0.0
-        end
-
-      %{
-        decisions: decision_points,
-        decision_speed: avg_decision_speed,
-        decision_quality: avg_decision_quality,
-        decision_consistency: calculate_decision_consistency(decision_points),
-        strategic_decisions: Enum.filter(decision_points, &(&1.type == :strategic)),
-        tactical_decisions: Enum.filter(decision_points, &(&1.type == :tactical)),
-        reactive_decisions: Enum.filter(decision_points, &(&1.type == :reactive))
-      }
-    end
-  end
-
-  defp analyze_information_flow(timeline, participants) do
-    # Analyze how information flowed through the command structure
-    if Enum.count(timeline.events) < 2 do
-      %{flow_patterns: [], efficiency: 0.0, bottlenecks: []}
-    else
-      # Identify information flow events
-      flow_events = identify_information_flow_events(timeline, participants)
-
-      # Analyze flow patterns
-      flow_patterns = analyze_flow_patterns(flow_events)
-
-      # Calculate efficiency
-      flow_efficiency = calculate_flow_efficiency(flow_events, timeline)
-
-      # Identify bottlenecks
-      bottlenecks = identify_information_bottlenecks(flow_events, participants)
-
-      %{
-        flow_patterns: flow_patterns,
-        efficiency: flow_efficiency,
-        bottlenecks: bottlenecks,
-        broadcast_events: Enum.filter(flow_events, &(&1.type == :broadcast)),
-        direct_orders: Enum.filter(flow_events, &(&1.type == :direct_order)),
-        coordination_calls: Enum.filter(flow_events, &(&1.type == :coordination)),
-        information_lag: calculate_average_information_lag(flow_events)
-      }
-    end
-  end
-
-  defp evaluate_command_effectiveness(timeline, participants) do
-    # Evaluate overall command effectiveness
-    if Enum.count(timeline.events) < 3 do
-      %{overall_score: 0.0, factors: []}
-    else
-      # Evaluate different effectiveness factors
-      coordination_score = evaluate_coordination_effectiveness(timeline, participants)
-      response_score = evaluate_response_effectiveness(timeline, participants)
-      adaptation_score = evaluate_adaptation_effectiveness(timeline, participants)
-      objective_score = evaluate_objective_achievement(timeline, participants)
-
-      # Calculate weighted overall score
-      overall_score =
-        coordination_score * 0.3 +
-          response_score * 0.25 +
-          adaptation_score * 0.25 +
-          objective_score * 0.2
-
-      %{
-        overall_score: overall_score,
-        coordination_effectiveness: coordination_score,
-        response_effectiveness: response_score,
-        adaptation_effectiveness: adaptation_score,
-        objective_achievement: objective_score,
-        factors: [
-          %{factor: :coordination, score: coordination_score, weight: 0.3},
-          %{factor: :response, score: response_score, weight: 0.25},
-          %{factor: :adaptation, score: adaptation_score, weight: 0.25},
-          %{factor: :objectives, score: objective_score, weight: 0.2}
-        ]
-      }
-    end
-  end
-
-  defp identify_leadership_patterns(timeline, participants) do
-    # Identify leadership patterns and key leaders
-    if Enum.empty?(participants) do
-      %{leaders: [], patterns: [], leadership_style: :unknown}
-    else
-      # Identify potential leaders based on activity and influence
-      potential_leaders = identify_potential_leaders(timeline, participants)
-
-      # Analyze leadership patterns
-      leadership_patterns = analyze_leadership_behaviors(potential_leaders, timeline)
-
-      # Determine leadership style
-      leadership_style = determine_leadership_style(leadership_patterns, timeline)
-
-      %{
-        leaders: potential_leaders,
-        patterns: leadership_patterns,
-        leadership_style: leadership_style,
-        command_presence: evaluate_command_presence(potential_leaders, timeline),
-        delegation_patterns:
-          analyze_delegation_patterns(potential_leaders, timeline, participants),
-        decision_authority: analyze_decision_authority_distribution(potential_leaders, timeline)
       }
     end
   end
@@ -5835,22 +5792,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   end
 
   # Effectiveness evaluation functions
-  defp evaluate_coordination_effectiveness(timeline, participants) do
-    # Evaluate how well the fleet coordinated
-    focus_fire_effectiveness =
-      calculate_focus_effectiveness(identify_focus_fire_windows_detailed(timeline))
-
-    target_prioritization =
-      calculate_prioritization_accuracy(
-        extract_target_order(timeline.events),
-        calculate_optimal_target_order(timeline.events)
-      )
-
-    timing_coordination = calculate_synchronization_score(timeline)
-
-    focus_fire_effectiveness * 0.4 + target_prioritization * 0.35 + timing_coordination * 0.25
-  end
-
   defp evaluate_response_effectiveness(timeline, _participants) do
     # Evaluate how effectively the fleet responded to situations
     if Enum.count(timeline.events) < 3 do
@@ -5870,6 +5811,39 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
         min(adaptation_effectiveness, 1.0)
       else
         0.5
+      end
+    end
+  end
+
+  defp evaluate_response_effectiveness(responses, timeline) do
+    if Enum.empty?(responses) do
+      0.0
+    else
+      # Evaluate effectiveness based on battle outcomes after responses
+      effective_responses =
+        Enum.count(responses, fn response ->
+          response_time = response[:timestamp] || response[:detection_time]
+
+          if response_time do
+            # Look at events after this response
+            post_response_events =
+              Enum.filter(timeline.events, fn event ->
+                time_diff = DateTime.diff(event.timestamp, response_time, :second)
+                # Within 3 minutes
+                time_diff >= 0 && time_diff <= 180
+              end)
+
+            # Consider effective if there was increased activity
+            length(post_response_events) >= 2
+          else
+            false
+          end
+        end)
+
+      if length(responses) > 0 do
+        effective_responses / length(responses)
+      else
+        0.0
       end
     end
   end
@@ -5899,7 +5873,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
       cond do
         # 10B+ ISK destroyed
         total_isk > 10_000_000_000 -> 1.0
-        # 5B+ ISK destroyed
+        # 5B+ ISK destroyed  
         total_isk > 5_000_000_000 -> 0.8
         # 1B+ ISK destroyed
         total_isk > 1_000_000_000 -> 0.6
@@ -6147,33 +6121,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     end
   end
 
-  defp identify_success_indicators(decision, timeline, quality_score) do
-    # Identify what made the decision successful or not
-    indicators = []
-
-    if quality_score > 0.7 do
-      indicators = [:good_timing, :effective_execution | indicators]
-    end
-
-    if quality_score < 0.4 do
-      indicators = [:poor_timing, :ineffective_execution | indicators]
-    end
-
-    case decision.decision do
-      :initiate_engagement ->
-        if length(timeline.events) > 5,
-          do: [:successful_engagement | indicators],
-          else: indicators
-
-      :escalate_engagement ->
-        if decision.context[:intensity_increase] > 0.5,
-          do: [:successful_escalation | indicators],
-          else: indicators
-
-      _ ->
-        indicators
-    end
-  end
 
   # Leadership utility functions
   defp calculate_activity_score(_char_id, timeline) do
@@ -6636,7 +6583,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   end
 
   defp calculate_primary_identification_speed(events) do
-    if Enum.count(events) < 2 do
+    if length(events) < 2 do
       0.0
     else
       # Measure how quickly primary targets are identified and focused
@@ -6744,7 +6691,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   end
 
   defp measure_target_discipline(events) do
-    if Enum.count(events) < 2 do
+    if length(events) < 2 do
       0.0
     else
       # Measure discipline by looking at target switching patterns
@@ -7034,7 +6981,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
 
   defp count_unnecessary_target_switches(events) do
     # Count target switches that don't follow logical patterns
-    if Enum.count(events) < 2 do
+    if length(events) < 2 do
       0
     else
       target_pairs = Enum.chunk_every(events, 2, 1, :discard)
@@ -7422,7 +7369,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   end
 
   defp calculate_battle_flow_consistency(events) do
-    if Enum.count(events) < 5 do
+    if length(events) < 5 do
       0.0
     else
       # Calculate consistency based on kill intervals
@@ -7499,7 +7446,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
 
   defp generate_battle_intensity_curve(events) do
     # Generate intensity curve over time
-    if Enum.count(events) < 2 do
+    if length(events) < 2 do
       []
     else
       # Calculate intensity in 30-second windows
@@ -8517,7 +8464,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   end
 
   defp calculate_transfer_efficiency(transfer_events, side_participants) do
-    if Enum.empty?(transfer_events) or Enum.count(side_participants) < 2 do
+    if length(transfer_events) == 0 or length(side_participants) < 2 do
       0.0
     else
       # Efficiency based on how quickly patterns spread
@@ -8557,14 +8504,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   end
 
   defp calculate_tactic_adoption_rate(transfer_events, side_participants) do
-    if Enum.empty?(transfer_events) or Enum.count(side_participants) < 2 do
+    if length(transfer_events) == 0 or length(side_participants) < 2 do
       0.0
     else
       # Calculate adoption rate based on how many participants adopted new tactics
       participants_with_adoptions = Enum.uniq(Enum.map(transfer_events, & &1[:adopter_id]))
 
-      if not Enum.empty?(side_participants) do
-        Enum.count(participants_with_adoptions) / Enum.count(side_participants)
+      if length(side_participants) > 0 do
+        length(participants_with_adoptions) / length(side_participants)
       else
         0.0
       end
@@ -8836,7 +8783,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
 
   defp identify_timing_experiments(events) do
     # Identify timing-based experiments
-    if Enum.count(events) < 5 do
+    if length(events) < 5 do
       []
     else
       # Look for unusual timing patterns
@@ -8911,7 +8858,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
 
   defp identify_intensity_change_points(events) do
     # Identify points where battle intensity changed significantly
-    if Enum.count(events) < 5 do
+    if length(events) < 5 do
       []
     else
       # 90-second windows
@@ -8946,10 +8893,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     # Look for numerical disadvantages
     sides = group_participants_by_side(participants)
 
-    if Enum.count(sides) >= 2 do
-      side_sizes =
-        Enum.map(sides, fn {_side, side_participants} -> Enum.count(side_participants) end)
-
+    if length(sides) >= 2 do
+      side_sizes = Enum.map(sides, fn {_side, side_participants} -> length(side_participants) end)
       max_size = Enum.max(side_sizes)
       min_size = Enum.min(side_sizes)
 
@@ -8986,8 +8931,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
           end
         end)
 
-      if not Enum.empty?(response_times) do
-        avg_response_time = Enum.sum(response_times) / Enum.count(response_times)
+      if length(response_times) > 0 do
+        avg_response_time = Enum.sum(response_times) / length(response_times)
         # Convert to score (faster = higher score, normalize to 5 minutes)
         max(0.0, 1.0 - avg_response_time / 300.0)
       else
@@ -8996,38 +8941,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     end
   end
 
-  defp evaluate_response_effectiveness(responses, timeline) do
-    if Enum.empty?(responses) do
-      0.0
-    else
-      # Evaluate effectiveness based on battle outcomes after responses
-      effective_responses =
-        Enum.count(responses, fn response ->
-          response_time = response[:timestamp] || response[:detection_time]
-
-          if response_time do
-            # Look at events after this response
-            post_response_events =
-              Enum.filter(timeline.events, fn event ->
-                time_diff = DateTime.diff(event.timestamp, response_time, :second)
-                # Within 3 minutes
-                time_diff >= 0 && time_diff <= 180
-              end)
-
-            # Consider effective if there was increased activity
-            Enum.count(post_response_events) >= 2
-          else
-            false
-          end
-        end)
-
-      if not Enum.empty?(responses) do
-        effective_responses / Enum.count(responses)
-      else
-        0.0
-      end
-    end
-  end
 
   defp get_expected_target_frequency(ship_class) do
     # Expected frequency of targeting different ship classes
@@ -9061,7 +8974,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
 
   defp analyze_participant_tactical_pattern(events) do
     # Analyze tactical pattern for a specific participant
-    if Enum.count(events) < 2 do
+    if length(events) < 2 do
       %{pattern_type: :insufficient_data}
     else
       target_ships =
@@ -9090,7 +9003,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
 
   defp identify_similar_patterns_with_timing(participant_patterns) do
     # Find similar patterns that occurred at different times
-    if Enum.count(participant_patterns) < 2 do
+    if length(participant_patterns) < 2 do
       []
     else
       pattern_pairs =
