@@ -18,6 +18,7 @@ defmodule EveDmv.Security.AuditLogger do
         [:eve_dmv, :auth, :login],
         [:eve_dmv, :auth, :logout],
         [:eve_dmv, :auth, :failed_login],
+        [:eve_dmv, :auth, :character_switch],
         [:eve_dmv, :api, :key_created],
         [:eve_dmv, :api, :key_revoked],
         [:eve_dmv, :security, :config_change]
@@ -41,6 +42,26 @@ defmodule EveDmv.Security.AuditLogger do
 
     Logger.warning(
       "Session timeout for character #{character_id} after #{timeout_seconds} seconds"
+    )
+  end
+
+  @doc """
+  Log a character switch event for multi-character support.
+  """
+  def log_character_switch(from_character_id, to_character_id, client_ip) do
+    :telemetry.execute(
+      [:eve_dmv, :auth, :character_switch],
+      %{},
+      %{
+        from_character_id: from_character_id,
+        to_character_id: to_character_id,
+        client_ip: client_ip,
+        timestamp: DateTime.utc_now()
+      }
+    )
+
+    Logger.info(
+      "Character switch from #{from_character_id} to #{to_character_id} from IP #{client_ip}"
     )
   end
 

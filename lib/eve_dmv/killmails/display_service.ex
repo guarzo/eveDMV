@@ -13,19 +13,46 @@ defmodule EveDmv.Killmails.DisplayService do
 
   @feed_limit 50
 
-  def load_recent_killmails(limit \\ @feed_limit) do
+  def load_recent_killmails(limit \\ @feed_limit, filters \\ %{}, offset \\ 0) do
     # Always load from raw killmails since enriched data isn't actually enriched
     # This gives us access to character/corp names from wanderer-kills
-    raw =
-      Ash.Query.new(KillmailRaw)
+    query =
+      KillmailRaw
+      |> Ash.Query.new()
+      |> Ash.Query.sort(killmail_time: :desc)
+      |> Ash.Query.limit(limit)
+      |> Ash.Query.offset(offset)
 
-    Ash.Query.sort(killmail_time: :desc)
-    Ash.Query.limit(limit)
-    Ash.read!(domain: Api)
+    # Apply filters if provided
+    query = apply_filters(query, filters)
+
+    raw = Ash.read!(query, domain: Api)
 
     # Preload names for raw killmails
     preload_raw_killmail_names(raw)
-    Enum.map(raw, &build_killmail_from_raw/1)
+
+    # Map to display format
+    killmails = Enum.map(raw, &build_killmail_from_raw/1)
+
+    # Apply post-load filters (for fields not in the raw table)
+    apply_post_load_filters(killmails, filters)
+  end
+
+  @doc """
+  Load killmails for pagination with metadata about whether more exist.
+  """
+  def load_killmails_page(limit \\ @feed_limit, filters \\ %{}, offset \\ 0) do
+    # Load one extra to check if there are more
+    killmails = load_recent_killmails(limit + 1, filters, offset)
+
+    has_more = length(killmails) > limit
+    page_killmails = if has_more, do: Enum.take(killmails, limit), else: killmails
+
+    %{
+      killmails: page_killmails,
+      has_more: has_more,
+      next_offset: offset + length(page_killmails)
+    }
   end
 
   def preload_killmail_names(killmails) do
@@ -294,5 +321,116 @@ defmodule EveDmv.Killmails.DisplayService do
     else
       name
     end
+  end
+
+  # Filter functions
+  defp apply_filters(query, filters) do
+    query
+    |> maybe_filter_by_system(filters[:system_id])
+    |> maybe_filter_by_ship_type(filters[:ship_type_id])
+    |> maybe_filter_by_value_range(filters[:min_value], filters[:max_value])
+  end
+
+  defp maybe_filter_by_system(query, nil), do: query
+
+  defp maybe_filter_by_system(query, system_id) do
+    Ash.Query.filter(query, solar_system_id == ^system_id)
+  end
+
+  defp maybe_filter_by_ship_type(query, nil), do: query
+
+  defp maybe_filter_by_ship_type(query, ship_type_id) do
+    Ash.Query.filter(query, victim_ship_type_id == ^ship_type_id)
+  end
+
+  defp maybe_filter_by_value_range(query, nil, nil), do: query
+
+  defp maybe_filter_by_value_range(query, min_value, nil) do
+    Ash.Query.filter(query, total_value >= ^min_value)
+  end
+
+  defp maybe_filter_by_value_range(query, nil, max_value) do
+    Ash.Query.filter(query, total_value <= ^max_value)
+  end
+
+  defp maybe_filter_by_value_range(query, min_value, max_value) do
+    query
+    |> Ash.Query.filter(total_value >= ^min_value)
+    |> Ash.Query.filter(total_value <= ^max_value)
+  end
+
+  # Post-load filters for fields not in the raw table
+  defp apply_post_load_filters(killmails, filters) do
+    killmails
+    |> maybe_filter_by_alliance(filters[:alliance_name])
+    |> maybe_filter_by_corporation(filters[:corporation_name])
+    |> maybe_filter_by_character(filters[:character_name])
+    |> maybe_filter_by_ship_class(filters[:ship_class])
+  end
+
+  defp maybe_filter_by_alliance(killmails, nil), do: killmails
+
+  defp maybe_filter_by_alliance(killmails, alliance_name) do
+    Enum.filter(killmails, fn km ->
+      km.victim_alliance_name &&
+        String.downcase(km.victim_alliance_name) == String.downcase(alliance_name)
+    end)
+  end
+
+  defp maybe_filter_by_corporation(killmails, nil), do: killmails
+
+  defp maybe_filter_by_corporation(killmails, corporation_name) do
+    Enum.filter(killmails, fn km ->
+      km.victim_corporation_name &&
+        String.downcase(km.victim_corporation_name) == String.downcase(corporation_name)
+    end)
+  end
+
+  defp maybe_filter_by_character(killmails, nil), do: killmails
+
+  defp maybe_filter_by_character(killmails, character_name) do
+    Enum.filter(killmails, fn km ->
+      (km.victim_character_name &&
+         String.downcase(km.victim_character_name) == String.downcase(character_name)) ||
+        (km.final_blow_character_name &&
+           String.downcase(km.final_blow_character_name) == String.downcase(character_name))
+    end)
+  end
+
+  defp maybe_filter_by_ship_class(killmails, nil), do: killmails
+
+  defp maybe_filter_by_ship_class(killmails, ship_class) do
+    # This would require ship classification logic
+    # For now, we'll do simple name matching
+    Enum.filter(killmails, fn km ->
+      km.victim_ship_name &&
+        String.contains?(String.downcase(km.victim_ship_name), String.downcase(ship_class))
+    end)
+  end
+
+  # Helper function to get available alliances from recent kills
+  def get_recent_alliances(limit \\ 100) do
+    killmails = load_recent_killmails(limit)
+
+    killmails
+    |> Enum.map(& &1.victim_alliance_name)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.frequencies()
+    |> Enum.sort_by(fn {_alliance, count} -> count end, :desc)
+    |> Enum.take(20)
+    |> Enum.map(fn {alliance, count} -> %{name: alliance, count: count} end)
+  end
+
+  # Helper function to get available ship types from recent kills
+  def get_recent_ship_types(limit \\ 100) do
+    killmails = load_recent_killmails(limit)
+
+    killmails
+    |> Enum.map(& &1.victim_ship_name)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.frequencies()
+    |> Enum.sort_by(fn {_ship, count} -> count end, :desc)
+    |> Enum.take(20)
+    |> Enum.map(fn {ship, count} -> %{name: ship, count: count} end)
   end
 end

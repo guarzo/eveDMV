@@ -1,0 +1,51 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+/* Infinite scroll loading state */
+.infinite-scroll-loading {
+  @apply opacity-50 pointer-events-none;
+}
+
+/* Kill card animations */
+.kill-card {
+  animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Smooth scrolling for better UX */
+#main-feed-container {
+  scroll-behavior: smooth;
+}
+
+/* Loading spinner */
+.loading-spinner {
+  @apply animate-spin rounded-full border-b-2 border-blue-500;
+}
+
+/* Custom scrollbar for webkit browsers */
+#main-feed-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+#main-feed-container::-webkit-scrollbar-track {
+  @apply bg-gray-800;
+}
+
+#main-feed-container::-webkit-scrollbar-thumb {
+  @apply bg-gray-600 rounded;
+}
+
+#main-feed-container::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-500;
+}

@@ -500,10 +500,8 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
       end)
 
     # Group by killer ship types and count
-    killer_ship_counts =
-      loss_patterns
-
-    Enum.flat_map(& &1.killer_ships)
+    loss_patterns
+    |> Enum.flat_map(& &1.killer_ships)
     |> Enum.frequencies()
     |> Enum.sort_by(fn {_ship, count} -> count end, :desc)
     |> Enum.take(5)

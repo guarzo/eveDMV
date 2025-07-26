@@ -263,13 +263,13 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
     case safe_call(fn -> AlertService.get_alert(alert_id) end) do
       {:ok, alert} ->
         socket
-        assign(:selected_alert, alert)
-        assign(:show_alert_details, true)
+        |> assign(:selected_alert, alert)
+        |> assign(:show_alert_details, true)
 
       _ ->
         socket
-        put_flash(:error, "Alert not found")
-        assign(:show_alert_details, false)
+        |> put_flash(:error, "Alert not found")
+        |> assign(:show_alert_details, false)
     end
   end
 
@@ -382,7 +382,6 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
   end
 
   def format_confidence_score(_), do: "N/A"
-
 
   # Safe call helper for surveillance services
   defp safe_call(fun) when is_function(fun, 0) do

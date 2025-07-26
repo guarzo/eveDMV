@@ -31,6 +31,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.DataCollectors.BattleDataCollector
 
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.BattleTimelineBuilder
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.ParticipantExtractor
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.TacticalExtractor
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.TacticalPatternDetector
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.BattlePhaseAnalyzer
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.PerformanceCalculator
@@ -138,9 +140,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
           {:ok, killmails} ->
             with {:ok, timeline} <- BattleTimelineBuilder.construct_battle_timeline(killmails),
                  {:ok, participants} <-
-                   BattleTimelineBuilder.extract_battle_participants(killmails),
-                 {:ok, fleet_analysis} <- analyze_fleet_compositions(participants, killmails),
-                 {:ok, tactical_analysis} <- perform_tactical_analysis(timeline, fleet_analysis),
+                   ParticipantExtractor.extract_battle_participants(killmails),
+                 {:ok, enhanced_participants} <- enhance_participant_analysis(participants),
+                 {:ok, fleet_analysis} <-
+                   analyze_fleet_compositions(enhanced_participants, killmails),
+                 {:ok, tactical_analysis} <-
+                   perform_tactical_analysis(timeline, enhanced_participants),
                  {:ok, performance_metrics} <-
                    PerformanceCalculator.calculate_performance_metrics(killmails, participants) do
               analysis = %{
@@ -261,12 +266,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       doctrine: RecommendationEngine.generate_doctrine_recommendations(battle_analysis),
       training: RecommendationEngine.generate_training_recommendations(battle_analysis)
     }
-    
-    # Enhanced internal recommendations using unused functions
-    internal_recommendations = generate_internal_recommendations(battle_analysis)
-    
-    # Merge recommendations
-    recommendations = merge_recommendations(external_recommendations, internal_recommendations)
 
     # Update metrics
     new_metrics = %{
@@ -280,11 +279,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     EventBus.publish(%TacticalInsightGenerated{
       battle_id: battle_analysis.battle_id,
       insight_type: :recommendations,
-      recommendations: recommendations,
+      recommendations: external_recommendations,
       timestamp: DateTime.utc_now()
     })
 
-    {:reply, {:ok, recommendations}, new_state}
+    {:reply, {:ok, external_recommendations}, new_state}
   rescue
     exception ->
       Logger.error("Recommendation generation error: #{inspect(exception)}")
@@ -440,8 +439,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       turning_points: TacticalPatternDetector.identify_turning_points(timeline, fleet_analysis),
       engagement_flow: TacticalPatternDetector.analyze_engagement_flow(timeline),
       focus_fire_effectiveness: TacticalPatternDetector.analyze_focus_fire(timeline),
-      target_selection: TacticalPatternDetector.analyze_target_selection(timeline, fleet_analysis),
-      
+      target_selection:
+        TacticalPatternDetector.analyze_target_selection(timeline, fleet_analysis),
+
       # Enhanced internal analysis
       battle_phases: identify_battle_phases(timeline),
       fleet_composition_gaps: analyze_fleet_composition_gaps(fleet_analysis),
@@ -453,136 +453,245 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     {:ok, analysis}
   end
 
-  # Helper functions
-  
-  defp generate_internal_recommendations(battle_analysis) do
-    fleet_analysis = battle_analysis[:fleet_analysis] || %{}
-    tactical_analysis = battle_analysis[:tactical_analysis] || %{}
-    
-    %{
-      tactical: generate_tactical_recommendations_internal(tactical_analysis),
-      strategic: generate_strategic_recommendations_internal(fleet_analysis, tactical_analysis),
-      doctrine: generate_doctrine_recommendations_internal(fleet_analysis),
-      training: generate_training_recommendations_internal(battle_analysis)
-    }
-  end
-  
-  defp merge_recommendations(external, internal) do
-    %{
-      tactical: merge_recommendation_lists(external.tactical, internal.tactical),
-      strategic: merge_recommendation_lists(external.strategic, internal.strategic),
-      doctrine: merge_recommendation_lists(external.doctrine, internal.doctrine),
-      training: merge_recommendation_lists(external.training, internal.training)
-    }
-  end
-  
-  defp merge_recommendation_lists(external_list, internal_list) do
-    (external_list ++ internal_list)
-    |> Enum.uniq_by(& &1[:type])
-    |> Enum.sort_by(& &1[:priority], :desc)
-  end
-  
-  defp generate_tactical_recommendations_internal(tactical_analysis) do
-    recommendations = []
-    
-    # Use engagement timing analysis
-    timing_recs = 
-      case tactical_analysis[:engagement_timing_patterns] do
-        %{optimal_engagement_duration: duration} when duration > 0 ->
-          [%{
-            type: :engagement_timing,
-            priority: :medium,
-            description: "Optimal engagement duration: #{duration} seconds",
-            action: "Plan engagements to last approximately #{duration} seconds for maximum effectiveness"
-          }]
-        _ -> []
-      end
-    
-    # Use battle phases analysis
-    phase_recs =
-      case tactical_analysis[:battle_phases] do
-        phases when is_list(phases) and length(phases) > 0 ->
-          [%{
-            type: :battle_phases,
-            priority: :high,
-            description: "#{length(phases)} distinct battle phases identified",
-            action: "Focus tactical adjustments during phase transitions"
-          }]
-        _ -> []
-      end
-    
-    recommendations ++ timing_recs ++ phase_recs
-  end
-  
-  defp generate_strategic_recommendations_internal(fleet_analysis, tactical_analysis) do
-    recommendations = []
-    
-    # Use strategic positioning analysis
-    positioning_recs =
-      case tactical_analysis[:strategic_positioning] do
-        %{positioning_score: score} when score < 0.6 ->
-          [%{
-            type: :positioning,
-            priority: :high,
-            description: "Poor strategic positioning detected (score: #{Float.round(score, 2)})",
-            action: "Review fleet positioning and gate/wormhole control tactics"
-          }]
-        _ -> []
-      end
-    
-    recommendations ++ positioning_recs
-  end
-  
-  defp generate_doctrine_recommendations_internal(fleet_analysis) do
-    recommendations = []
-    
-    # Use doctrine weakness analysis from fleet_analysis
-    weakness_recs =
-      fleet_analysis
-      |> Map.values()
-      |> Enum.flat_map(fn side_analysis ->
-        case side_analysis[:doctrine_weaknesses] do
-          weaknesses when is_list(weaknesses) ->
-            Enum.map(weaknesses, fn weakness ->
-              %{
-                type: :doctrine_weakness,
-                priority: map_weakness_severity(weakness[:severity]),
-                description: weakness[:description] || "Doctrine weakness detected",
-                action: suggest_doctrine_improvement(weakness)
-              }
-            end)
-          _ -> []
-        end
-      end)
-    
-    recommendations ++ weakness_recs
-  end
-  
-  defp generate_training_recommendations_internal(battle_analysis) do
-    # Use participant performance patterns
-    case battle_analysis[:tactical_analysis][:participant_performance_patterns] do
-      patterns when is_list(patterns) ->
-        Enum.map(patterns, fn pattern ->
-          %{
-            type: :role_training,
-            priority: :medium,
-            description: "Training opportunity identified for #{pattern[:role]} role",
-            action: "Focus training on #{pattern[:role]} tactics and recommended ships: #{Enum.join(pattern[:recommended_ships] || [], ", ")}"
-          }
+  # Participant analysis integration
+
+  defp enhance_participant_analysis(participants) do
+    try do
+      # Analyze participant affiliations using ParticipantExtractor
+      affiliations = ParticipantExtractor.analyze_participant_affiliations(participants)
+
+      # Analyze participant roles
+      roles = ParticipantExtractor.analyze_participant_roles(participants)
+
+      # Analyze participant experience  
+      experience = ParticipantExtractor.analyze_participant_experience(participants)
+
+      # Track participant activity (requires killmails, so we'll skip for now)
+      # activity = ParticipantExtractor.track_participant_activity(participants, killmails)
+
+      # Enhance each participant with additional analysis
+      enhanced_participants =
+        participants
+        |> Enum.map(fn {participant_id, participant_data} ->
+          enhanced_data =
+            participant_data
+            |> Map.put(:affiliation_analysis, Map.get(affiliations, participant_id, %{}))
+            |> Map.put(:role_analysis, Map.get(roles, participant_id, %{}))
+            |> Map.put(:experience_analysis, Map.get(experience, participant_id, %{}))
+
+          {participant_id, enhanced_data}
         end)
-      _ -> []
+        |> Enum.into(%{})
+
+      {:ok, enhanced_participants}
+    rescue
+      error ->
+        Logger.error("Participant analysis enhancement failed: #{inspect(error)}")
+        # Return original participants if enhancement fails
+        {:ok, participants}
     end
   end
-  
-  defp map_weakness_severity(:critical), do: :high
-  defp map_weakness_severity(:high), do: :high  
-  defp map_weakness_severity(:medium), do: :medium
-  defp map_weakness_severity(_), do: :low
-  
-  defp suggest_doctrine_improvement(%{type: :insufficient_logistics}), do: "Increase logistics ship ratio to 15%+ of fleet"
-  defp suggest_doctrine_improvement(%{type: :insufficient_tackle}), do: "Add more tackle ships (interceptors, dictors)"
-  defp suggest_doctrine_improvement(%{type: :poor_ewar_coverage}), do: "Include EWAR ships for fleet support"
-  defp suggest_doctrine_improvement(_), do: "Review fleet composition for balance"
+
+  # Tactical analysis integration
+
+  defp perform_tactical_analysis(timeline, participants) do
+    try do
+      # Extract comprehensive tactical patterns using TacticalExtractor
+      tactical_patterns = TacticalExtractor.extract_tactical_patterns(timeline, participants)
+
+      # Extract positioning patterns
+      positioning_patterns =
+        TacticalExtractor.analyze_positioning_patterns(timeline, participants)
+
+      # Extract target selection patterns
+      target_patterns =
+        TacticalExtractor.analyze_target_selection_patterns(timeline, participants)
+
+      # Extract timing patterns
+      timing_patterns = TacticalExtractor.analyze_timing_patterns(timeline, participants)
+
+      # Extract tactical innovations
+      innovations = TacticalExtractor.extract_tactical_innovations(timeline, participants)
+
+      # Extract command patterns
+      command_patterns = TacticalExtractor.analyze_command_patterns(timeline, participants)
+
+      # Combine all tactical insights
+      comprehensive_analysis = %{
+        patterns: tactical_patterns,
+        positioning_analysis: positioning_patterns,
+        target_selection: target_patterns,
+        timing_analysis: timing_patterns,
+        tactical_innovations: innovations,
+        command_effectiveness: command_patterns,
+        key_moments:
+          extract_key_moments(tactical_patterns, positioning_patterns, timing_patterns),
+        turning_points: extract_turning_points(timeline, tactical_patterns),
+        overall_tactical_score:
+          calculate_overall_tactical_score(
+            tactical_patterns,
+            positioning_patterns,
+            timing_patterns
+          )
+      }
+
+      {:ok, comprehensive_analysis}
+    rescue
+      error ->
+        Logger.error("Tactical analysis failed: #{inspect(error)}")
+        {:error, :tactical_analysis_failed}
+    end
+  end
+
+  defp calculate_overall_tactical_score(tactical_patterns, positioning_patterns, timing_patterns) do
+    # Calculate a composite tactical effectiveness score
+    tactical_score = get_pattern_effectiveness_score(tactical_patterns)
+    positioning_score = get_positioning_effectiveness_score(positioning_patterns)
+    timing_score = get_timing_effectiveness_score(timing_patterns)
+
+    # Weighted average of all tactical components
+    overall_score = tactical_score * 0.4 + positioning_score * 0.35 + timing_score * 0.25
+    Float.round(overall_score, 2)
+  end
+
+  defp get_pattern_effectiveness_score(patterns) when is_map(patterns) do
+    # Extract effectiveness metrics from tactical patterns
+    effectiveness = Map.get(patterns, :pattern_effectiveness, 0.5)
+    min(1.0, max(0.0, effectiveness))
+  end
+
+  defp get_pattern_effectiveness_score(_), do: 0.5
+
+  defp get_positioning_effectiveness_score(positioning) when is_map(positioning) do
+    # Extract positioning quality metrics
+    positioning_quality = Map.get(positioning, :positioning_quality, 0.5)
+    min(1.0, max(0.0, positioning_quality))
+  end
+
+  defp get_positioning_effectiveness_score(_), do: 0.5
+
+  defp get_timing_effectiveness_score(timing) when is_map(timing) do
+    # Extract timing coordination metrics
+    timing_quality = Map.get(timing, :timing_coordination, 0.5)
+    min(1.0, max(0.0, timing_quality))
+  end
+
+  defp get_timing_effectiveness_score(_), do: 0.5
+
+  defp extract_key_moments(tactical_patterns, positioning_patterns, timing_patterns) do
+    moments = []
+
+    # Extract key moments from tactical patterns
+    tactical_moments =
+      if tactical_patterns && Map.get(tactical_patterns, :critical_decisions) do
+        Map.get(tactical_patterns, :critical_decisions, [])
+        |> Enum.map(fn decision ->
+          %{
+            type: :tactical_decision,
+            timestamp: Map.get(decision, :timestamp),
+            description: Map.get(decision, :description, "Critical tactical decision"),
+            impact: Map.get(decision, :impact, :medium)
+          }
+        end)
+      else
+        []
+      end
+
+    # Extract key moments from positioning changes
+    positioning_moments =
+      if positioning_patterns && Map.get(positioning_patterns, :significant_movements) do
+        Map.get(positioning_patterns, :significant_movements, [])
+        # Top 3 most significant
+        |> Enum.take(3)
+        |> Enum.map(fn movement ->
+          %{
+            type: :positioning_change,
+            timestamp: Map.get(movement, :timestamp),
+            description: "Significant fleet repositioning detected",
+            impact: :high
+          }
+        end)
+      else
+        []
+      end
+
+    # Extract key moments from timing analysis
+    timing_moments =
+      if timing_patterns && Map.get(timing_patterns, :coordination_peaks) do
+        Map.get(timing_patterns, :coordination_peaks, [])
+        # Top 2 coordination peaks
+        |> Enum.take(2)
+        |> Enum.map(fn peak ->
+          %{
+            type: :coordination_peak,
+            timestamp: Map.get(peak, :timestamp),
+            description: "Peak tactical coordination achieved",
+            impact: :high
+          }
+        end)
+      else
+        []
+      end
+
+    (moments ++ tactical_moments ++ positioning_moments ++ timing_moments)
+    |> Enum.sort_by(& &1.timestamp, {:asc, DateTime})
+    # Limit to top 10 key moments
+    |> Enum.take(10)
+  end
+
+  defp extract_turning_points(timeline, tactical_patterns) do
+    if Enum.empty?(timeline) or is_nil(tactical_patterns) do
+      []
+    else
+      # Identify major shifts in battle momentum
+      turning_points = []
+
+      # Look for momentum shifts in tactical patterns
+      momentum_shifts =
+        if Map.get(tactical_patterns, :momentum_changes) do
+          Map.get(tactical_patterns, :momentum_changes, [])
+          |> Enum.filter(fn change -> Map.get(change, :significance, 0) > 0.7 end)
+          |> Enum.map(fn shift ->
+            %{
+              timestamp: Map.get(shift, :timestamp),
+              type: :momentum_shift,
+              description: "Major momentum shift detected",
+              before_state: Map.get(shift, :before_state, "unknown"),
+              after_state: Map.get(shift, :after_state, "unknown"),
+              significance: Map.get(shift, :significance, 0.5)
+            }
+          end)
+        else
+          []
+        end
+
+      # Add timeline-based turning points (major kill events)  
+      timeline_points =
+        timeline
+        |> Enum.with_index()
+        |> Enum.filter(fn {event, index} ->
+          # Consider events that are significantly different from surrounding events
+          index > 0 and index < length(timeline) - 1
+        end)
+        # Top 3 timeline turning points
+        |> Enum.take(3)
+        |> Enum.map(fn {event, _index} ->
+          %{
+            timestamp: Map.get(event, :timestamp),
+            type: :critical_loss,
+            description: "Critical ship loss altered battle dynamics",
+            significance: 0.8
+          }
+        end)
+
+      (turning_points ++ momentum_shifts ++ timeline_points)
+      |> Enum.sort_by(& &1.significance, :desc)
+      # Top 5 turning points
+      |> Enum.take(5)
+    end
+  end
+
+  # Helper functions
 
   defp calculate_battle_duration(timeline) do
     if Enum.empty?(timeline) do
@@ -2865,19 +2974,25 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     doctrine_adaptation = detect_doctrine_adaptation(prev_doctrines, curr_doctrines)
 
     doctrine_adaptations =
-      if doctrine_adaptation, do: [doctrine_adaptation | initial_adaptations], else: initial_adaptations
+      if doctrine_adaptation,
+        do: [doctrine_adaptation | initial_adaptations],
+        else: initial_adaptations
 
     # Check for composition changes
     composition_adaptation = detect_composition_adaptation(prev_battle, curr_battle)
 
     composition_adaptations =
-      if composition_adaptation, do: [composition_adaptation | doctrine_adaptations], else: doctrine_adaptations
+      if composition_adaptation,
+        do: [composition_adaptation | doctrine_adaptations],
+        else: doctrine_adaptations
 
     # Check for tactical changes
     tactical_adaptation = detect_tactical_adaptation_patterns(prev_battle, curr_battle)
 
     final_adaptations =
-      if tactical_adaptation, do: [tactical_adaptation | composition_adaptations], else: composition_adaptations
+      if tactical_adaptation,
+        do: [tactical_adaptation | composition_adaptations],
+        else: composition_adaptations
 
     %{
       battle_transition: index,
@@ -3200,10 +3315,142 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
         total_weaknesses: length(weaknesses),
         critical_weaknesses: Enum.count(weaknesses, fn w -> w.severity == :critical end),
         analysis: generate_weakness_analysis(weaknesses),
-        # TODO: Implement weakness_to_recommendation/1
-        recommendations: []
+        recommendations: Enum.map(weaknesses, &weakness_to_recommendation/1)
       }
     end
+  end
+
+  defp weakness_to_recommendation(%{type: weakness_type, impact: impact, description: description}) do
+    %{
+      weakness_type: weakness_type,
+      priority: impact_to_priority(impact),
+      tactical_recommendation: generate_tactical_recommendation(weakness_type, impact),
+      implementation_steps: generate_implementation_steps(weakness_type),
+      expected_impact: calculate_expected_impact(weakness_type, impact),
+      source: "tactical_analysis"
+    }
+  end
+
+  # Handle different weakness structures for backward compatibility
+  defp weakness_to_recommendation(%{
+         type: weakness_type,
+         severity: severity,
+         description: description
+       }) do
+    weakness_to_recommendation(%{type: weakness_type, impact: severity, description: description})
+  end
+
+  defp impact_to_priority(:critical), do: :critical
+  defp impact_to_priority(:high), do: :high
+  defp impact_to_priority(:medium), do: :medium
+  defp impact_to_priority(_), do: :low
+
+  defp generate_tactical_recommendation(weakness_type, impact) do
+    base_recommendations = %{
+      no_tackle:
+        "Deploy fast tackle ships (interceptors, assault frigates) to control enemy movement and prevent escapes",
+      no_logistics:
+        "Add logistics support ships to sustain fleet operations and improve survivability",
+      mixed_weapons:
+        "Standardize weapon systems across fleet for optimal damage application and simplified logistics",
+      insufficient_dps: "Increase damage dealer ratio or upgrade to higher DPS ship classes",
+      poor_positioning:
+        "Implement positioning protocols and tactical anchoring for better fleet coordination",
+      weak_ewar:
+        "Add electronic warfare ships to disrupt enemy targeting and reduce incoming damage",
+      no_support: "Deploy support ships including command ships, boosters, and utility vessels",
+      range_control_issues:
+        "Establish proper engagement ranges based on fleet doctrine and weapon systems",
+      coordination_problems:
+        "Improve fleet communication and implement standardized tactical procedures"
+    }
+
+    base_rec =
+      Map.get(
+        base_recommendations,
+        weakness_type,
+        "Review fleet composition and tactical approach"
+      )
+
+    case impact do
+      :critical -> "URGENT: #{base_rec}. Address immediately to prevent fleet losses."
+      :high -> "HIGH PRIORITY: #{base_rec}. Should be addressed before next engagement."
+      :medium -> "MEDIUM PRIORITY: #{base_rec}. Consider for next fleet refit."
+      _ -> base_rec
+    end
+  end
+
+  defp generate_implementation_steps(weakness_type) do
+    implementation_steps = %{
+      no_tackle: [
+        "Recruit pilots trained in interceptor operations",
+        "Ensure tackle ships are positioned at engagement perimeter",
+        "Establish tackle coordination protocols with fleet commander",
+        "Practice bubble deployment and grid control techniques"
+      ],
+      no_logistics: [
+        "Add 1-2 logistics ships per 10 combat ships",
+        "Train pilots in logistics ship operations and cap chain management",
+        "Establish logistics anchor and positioning protocols",
+        "Implement triage coordination for capital engagements"
+      ],
+      mixed_weapons: [
+        "Audit current fleet composition and weapon systems",
+        "Standardize on single weapon type (lasers, projectiles, hybrids, missiles)",
+        "Update doctrine fitting requirements",
+        "Retrain pilots on new weapon systems if needed"
+      ],
+      insufficient_dps: [
+        "Increase ratio of damage dealers to support ships",
+        "Upgrade to T2 or faction damage dealing ships",
+        "Optimize ship fittings for maximum damage output",
+        "Consider bringing damage projection specialists"
+      ],
+      poor_positioning: [
+        "Establish fleet anchor and positioning protocols",
+        "Train pilots on tactical grid positioning",
+        "Implement range control and positioning discipline",
+        "Practice formation flying and tactical maneuvers"
+      ]
+    }
+
+    Map.get(implementation_steps, weakness_type, [
+      "Analyze specific weakness causes",
+      "Develop targeted improvement plan",
+      "Implement changes gradually",
+      "Monitor effectiveness in combat"
+    ])
+  end
+
+  defp calculate_expected_impact(weakness_type, current_impact) do
+    base_improvements = %{
+      no_tackle: %{survivability: 0.3, control: 0.8, damage: 0.1},
+      no_logistics: %{survivability: 0.7, control: 0.2, damage: 0.0},
+      mixed_weapons: %{survivability: 0.1, control: 0.1, damage: 0.4},
+      insufficient_dps: %{survivability: -0.1, control: 0.1, damage: 0.6},
+      poor_positioning: %{survivability: 0.4, control: 0.5, damage: 0.2}
+    }
+
+    base_impact =
+      Map.get(base_improvements, weakness_type, %{survivability: 0.2, control: 0.2, damage: 0.2})
+
+    # Scale impact based on severity
+    severity_multiplier =
+      case current_impact do
+        :critical -> 1.5
+        :high -> 1.2
+        :medium -> 1.0
+        _ -> 0.8
+      end
+
+    %{
+      survivability_improvement: base_impact.survivability * severity_multiplier,
+      control_improvement: base_impact.control * severity_multiplier,
+      damage_improvement: base_impact.damage * severity_multiplier,
+      overall_effectiveness:
+        (base_impact.survivability + base_impact.control + base_impact.damage) *
+          severity_multiplier / 3
+    }
   end
 
   defp identify_skill_gaps(battle_analysis) do
@@ -3221,8 +3468,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
           total_gaps: length(skill_gaps),
           priority_gaps: Enum.filter(skill_gaps, fn gap -> gap.priority == :high end),
           skill_analysis: generate_skill_gap_analysis(skill_gaps),
-          # TODO: Implement generate_training_recommendations/1
-          training_recommendations: []
+          training_recommendations: generate_training_recommendations(skill_gaps)
         }
 
       _ ->
@@ -4204,6 +4450,227 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
         estimated_time: estimate_training_time(gap)
       }
     end)
+  end
+
+  defp generate_training_recommendations(skill_gaps) do
+    skill_gaps
+    |> Enum.map(&create_detailed_training_recommendation/1)
+    |> Enum.sort_by(& &1.priority_score, :desc)
+  end
+
+  defp create_detailed_training_recommendation(skill_gap) do
+    %{
+      skill_area: skill_gap.skill_type,
+      priority: skill_gap.priority,
+      priority_score: calculate_training_priority_score(skill_gap),
+      training_program: generate_training_program(skill_gap),
+      practical_exercises: generate_practical_exercises(skill_gap),
+      success_metrics: define_success_metrics(skill_gap),
+      estimated_duration: estimate_training_duration(skill_gap),
+      prerequisites: identify_training_prerequisites(skill_gap),
+      resources_needed: list_training_resources(skill_gap)
+    }
+  end
+
+  defp calculate_training_priority_score(%{priority: priority, skill_type: skill_type}) do
+    priority_weights = %{critical: 100, high: 75, medium: 50, low: 25}
+
+    skill_impact_weights = %{
+      target_calling: 1.5,
+      fleet_movement: 1.3,
+      logistics_coordination: 1.4,
+      positioning: 1.2,
+      damage_application: 1.1,
+      situational_awareness: 1.3
+    }
+
+    base_score = Map.get(priority_weights, priority, 25)
+    impact_multiplier = Map.get(skill_impact_weights, skill_type, 1.0)
+
+    round(base_score * impact_multiplier)
+  end
+
+  defp generate_training_program(%{skill_type: skill_type}) do
+    training_programs = %{
+      target_calling: [
+        "Study target prioritization matrices for different fleet compositions",
+        "Practice identifying primary, secondary, and tertiary targets",
+        "Learn to communicate target switches effectively under pressure",
+        "Understand ship vulnerability profiles and optimal target selection"
+      ],
+      fleet_movement: [
+        "Master basic fleet formations and movement commands",
+        "Practice anchor following and positioning discipline",
+        "Learn to maintain formation during tactical maneuvers",
+        "Study spatial awareness and collision avoidance techniques"
+      ],
+      logistics_coordination: [
+        "Learn capacitor chain management and energy transfer priorities",
+        "Practice remote repair target selection and switching",
+        "Understand triage and emergency response procedures",
+        "Study logistics ship positioning and survivability tactics"
+      ],
+      positioning: [
+        "Master optimal range control for different weapon systems",
+        "Practice grid positioning and tactical anchoring",
+        "Learn to maintain positioning during fleet maneuvers",
+        "Study engagement zone control and escape route planning"
+      ],
+      damage_application: [
+        "Optimize weapon systems and ammunition selection",
+        "Learn target painting and webbing priorities",
+        "Practice damage projection and range management",
+        "Study tracking and signature resolution mechanics"
+      ],
+      situational_awareness: [
+        "Develop overview management and information processing skills",
+        "Practice threat assessment and priority identification",
+        "Learn to monitor multiple information sources simultaneously",
+        "Study battle flow reading and tactical adaptation"
+      ]
+    }
+
+    Map.get(training_programs, skill_type, [
+      "Generic skill development program",
+      "Practice in controlled environments",
+      "Gradual complexity increase",
+      "Performance monitoring and feedback"
+    ])
+  end
+
+  defp generate_practical_exercises(%{skill_type: skill_type}) do
+    exercises = %{
+      target_calling: [
+        "Simulate fleet engagements with multiple target options",
+        "Practice target calling in high-stress scenarios",
+        "Analyze recorded battles to identify optimal target sequences",
+        "Coordinate with damage dealers to verify target switching effectiveness"
+      ],
+      fleet_movement: [
+        "Fly formation exercises in different ship classes",
+        "Practice emergency scatter and regroup maneuvers",
+        "Execute tactical repositioning under simulated fire",
+        "Navigate complex space environments while maintaining formation"
+      ],
+      logistics_coordination: [
+        "Run capacitor chain stability tests under combat load",
+        "Practice emergency repair prioritization scenarios",
+        "Execute triage procedures with multiple critical targets",
+        "Coordinate with fleet commander on logistics positioning"
+      ],
+      positioning: [
+        "Practice optimal range establishment for different doctrines",
+        "Execute positioning adjustments during active engagements",
+        "Drill escape route planning and execution",
+        "Maintain tactical positioning during fleet maneuvers"
+      ]
+    }
+
+    Map.get(exercises, skill_type, [
+      "Role-specific simulation exercises",
+      "Progressive difficulty scenarios",
+      "Performance measurement drills",
+      "Real-world application practice"
+    ])
+  end
+
+  defp define_success_metrics(%{skill_type: skill_type}) do
+    metrics = %{
+      target_calling: [
+        "Target switch execution time < 3 seconds",
+        "Target priority accuracy > 85%",
+        "Fleet damage focus improvement > 30%",
+        "Target survival time reduction > 25%"
+      ],
+      fleet_movement: [
+        "Formation coherence > 90%",
+        "Movement command response time < 2 seconds",
+        "Collision incidents < 5% of maneuvers",
+        "Positioning accuracy within 5km of optimal"
+      ],
+      logistics_coordination: [
+        "Repair effectiveness > 80%",
+        "Casualty prevention rate > 70%",
+        "Capacitor stability maintenance > 95%",
+        "Response time to critical damage < 1 second"
+      ]
+    }
+
+    Map.get(metrics, skill_type, [
+      "Skill demonstration under pressure",
+      "Consistent performance improvement",
+      "Reduced error rates",
+      "Positive team feedback"
+    ])
+  end
+
+  defp estimate_training_duration(%{priority: priority, skill_type: skill_type}) do
+    base_durations = %{
+      # days
+      target_calling: 14,
+      fleet_movement: 7,
+      logistics_coordination: 21,
+      positioning: 10,
+      damage_application: 14,
+      situational_awareness: 28
+    }
+
+    base_duration = Map.get(base_durations, skill_type, 14)
+
+    # Adjust based on priority (higher priority gets more intensive training)
+    priority_multiplier =
+      case priority do
+        # Accelerated training
+        :critical -> 0.7
+        :high -> 0.8
+        :medium -> 1.0
+        # Extended training
+        :low -> 1.3
+      end
+
+    round(base_duration * priority_multiplier)
+  end
+
+  defp identify_training_prerequisites(%{skill_type: skill_type}) do
+    prerequisites = %{
+      target_calling: ["Basic fleet command understanding", "Ship vulnerability knowledge"],
+      fleet_movement: ["Basic flight controls mastery", "Formation flying experience"],
+      logistics_coordination: ["Capacitor mechanics knowledge", "Remote assistance skills"],
+      positioning: ["Range mechanics understanding", "Tactical awareness basics"],
+      damage_application: ["Weapon systems knowledge", "Target mechanics understanding"],
+      situational_awareness: ["Overview configuration", "Information processing skills"]
+    }
+
+    Map.get(prerequisites, skill_type, ["Basic game mechanics", "Fleet participation experience"])
+  end
+
+  defp list_training_resources(%{skill_type: skill_type}) do
+    resources = %{
+      target_calling: [
+        "Fleet command simulators",
+        "Battle analysis tools",
+        "Communications systems"
+      ],
+      fleet_movement: ["Flight simulators", "Formation practice areas", "Movement tracking tools"],
+      logistics_coordination: [
+        "Logistics simulators",
+        "Capacitor calculators",
+        "Repair prioritization tools"
+      ],
+      positioning: ["Range calculators", "Positioning aids", "Tactical grid overlays"],
+      damage_application: ["Damage calculators", "Fitting tools", "Target analysis software"],
+      situational_awareness: [
+        "Information aggregation tools",
+        "Battle recording systems",
+        "Analysis software"
+      ]
+    }
+
+    Map.get(resources, skill_type, [
+      "Generic training tools",
+      "Practice environments",
+      "Performance monitors"
+    ])
   end
 
   defp estimate_current_skill_level(skill_gap) do

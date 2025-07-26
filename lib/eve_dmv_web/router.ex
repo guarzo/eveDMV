@@ -87,6 +87,12 @@ defmodule EveDmvWeb.Router do
     live("/battle/:battle_id", BattleAnalysisLive)
     live("/fleet", FleetOperationsLive)
 
+    # System activity analytics
+    live("/system-activity", SystemActivityLive)
+
+    # Character comparison tools
+    live("/character-comparison", CharacterComparisonLive)
+
     # System monitoring (admin only in production)
     live("/monitoring", MonitoringDashboardLive)
 
@@ -102,6 +108,10 @@ defmodule EveDmvWeb.Router do
     sign_in_route()
     sign_out_route(AuthController)
     reset_route([])
+
+    # Character switching routes
+    get("/switch/:character_id", CharacterSwitchController, :switch)
+    post("/set_primary/:character_id", CharacterSwitchController, :set_primary)
   end
 
   # Login page with rate limiting

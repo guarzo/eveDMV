@@ -391,9 +391,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
           # Fleet = 5+ members
           |> Enum.filter(fn killmail ->
             killmail.attacker_count >= 5 &&
-            Enum.any?(killmail.participants || [], fn p ->
-              p.character_id == character_id && !p.is_victim
-            end)
+              Enum.any?(killmail.participants || [], fn p ->
+                p.character_id == character_id && !p.is_victim
+              end)
           end)
 
         fleet_count = length(fleet_participations)
@@ -505,9 +505,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
         solo_kills =
           Enum.filter(killmails, fn killmail ->
             killmail.attacker_count == 1 &&
-            Enum.any?(killmail.participants || [], fn p ->
-              p.character_id == character_id && !p.is_victim
-            end)
+              Enum.any?(killmail.participants || [], fn p ->
+                p.character_id == character_id && !p.is_victim
+              end)
           end)
 
         # Get solo losses

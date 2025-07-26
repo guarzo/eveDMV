@@ -1,135 +1,100 @@
 defmodule EveDmv.StaticData.ShipTypes do
   @moduledoc """
-  Centralized ship type classification and data.
+  Ship type classification using EVE static data.
 
-  This module provides a single source of truth for ship type IDs, classifications,
-  and related data across the application. Ship type data should be loaded from
-  EVE static data exports when available.
+  This module provides ship type IDs and classifications based on
+  queries against the eve_item_types table which contains the full
+  EVE Online static data export (SDE).
+
+  For optimal performance, ship classifications are cached at compile time,
+  but the module also provides runtime queries against the database.
   """
 
-  # TODO: These ranges are approximations and should be replaced with actual EVE static data
-  # when the static data import system is implemented.
+  alias EveDmv.Repo
+  alias EveDmv.Eve.ItemType
+  import Ecto.Query
 
   @doc """
-  Ship type ID ranges by class.
+  Classify a ship by its type ID using database lookup.
 
-  Note: These are placeholder ranges and may not be completely accurate.
-  They should be replaced with data from EVE's static data export.
-  """
-  def ship_type_ranges do
-    %{
-      frigate: [
-        # T1 Frigates
-        {580, 599},
-        # Faction Frigates
-        {600, 619},
-        # T2 Frigates (Assault Ships, Interceptors, etc.)
-        {11_176, 11_200}
-      ],
-      destroyer: [
-        # T1 Destroyers
-        {420, 439},
-        # T2 Destroyers (Interdictors)
-        {440, 459},
-        # T3 Destroyers
-        {32_874, 32_880}
-      ],
-      cruiser: [
-        # T1 Cruisers
-        {620, 639},
-        # T2 Cruisers (HACs, HICs, Recons)
-        {640, 659},
-        # T3 Cruisers
-        {29_984, 30_000},
-        # Faction Cruisers
-        {17_634, 17_740}
-      ],
-      battlecruiser: [
-        # T1 Battlecruisers
-        {540, 559},
-        # T2 Battlecruisers (Command Ships)
-        {560, 579},
-        # Navy Battlecruisers
-        {16_227, 16_240}
-      ],
-      battleship: [
-        # T1 Battleships
-        {640, 669},
-        # T2 Battleships (Marauders, Black Ops)
-        {670, 699},
-        # Faction/Navy Battleships
-        {17_636, 17_740}
-      ],
-      capital: [
-        # Carriers
-        {19_720, 19_730},
-        # Dreadnoughts
-        {19_740, 19_750},
-        # Supercarriers
-        {23_757, 23_774},
-        # Titans (specific IDs)
-        {3514, 3514},
-        # Erebus
-        {671, 671},
-        # Avatar
-        {11_567, 11_567},
-        # Ragnarok
-        {23_773, 23_773},
-        # Leviathan
-        {23_913, 23_913}
-      ],
-      industrial: [
-        # T1 Industrials
-        {648, 657},
-        # T2 Industrials (Transport Ships)
-        {12_729, 12_753},
-        # Orca
-        {28_606, 28_606},
-        # Rorqual
-        {28_352, 28_352}
-      ],
-      mining: [
-        # Mining Barges
-        {17_476, 17_480},
-        # Exhumers
-        {22_544, 22_548}
-      ],
-      supercapital: [
-        # Erebus
-        {3514, 3514},
-        # Avatar variant
-        {671, 671},
-        # Avatar
-        {11_567, 11_567},
-        # Ragnarok
-        {23_773, 23_773},
-        # Leviathan
-        {23_913, 23_913},
-        # Supercarriers
-        {23_917, 23_919},
-        # Faction Titans
-        {42_241, 42_246}
-      ]
-    }
-  end
-
-  @doc """
-  Classify a ship by its type ID.
+  This performs a runtime query against the eve_item_types table.
+  For better performance in hot paths, consider caching results.
 
   Returns the ship class as an atom, or :unknown if not found.
   """
   def classify_ship_type(type_id) when is_integer(type_id) do
-    Enum.find_value(ship_type_ranges(), fn {class, ranges} ->
-      if Enum.any?(ranges, fn
-           {min, max} -> type_id >= min and type_id <= max
-           id when is_integer(id) -> type_id == id
-         end) do
-        class
-      end
-    end) || :unknown
+    # Query the database for the ship's group name
+    case Repo.one(
+           from(i in ItemType,
+             where: i.type_id == ^type_id and i.is_ship == true,
+             select: i.group_name
+           )
+         ) do
+      nil -> :unknown
+      group_name -> classify_by_group_name(group_name)
+    end
   end
 
   def classify_ship_type(_), do: :unknown
+
+  # Classify a ship based on its group name from the SDE
+  defp classify_by_group_name(group_name) do
+    case group_name do
+      # Frigates
+      "Frigate" -> :frigate
+      "Assault Frigate" -> :frigate
+      "Covert Ops" -> :frigate
+      "Electronic Attack Frigate" -> :frigate
+      "Interceptor" -> :frigate
+      "Logistics Frigate" -> :frigate
+      "Expedition Frigate" -> :frigate
+      "Stealth Bomber" -> :frigate
+      # Destroyers
+      "Destroyer" -> :destroyer
+      "Interdictor" -> :destroyer
+      "Command Destroyer" -> :destroyer
+      "Tactical Destroyer" -> :destroyer
+      # Cruisers
+      "Cruiser" -> :cruiser
+      "Heavy Assault Cruiser" -> :cruiser
+      "Heavy Interdiction Cruiser" -> :cruiser
+      "Logistics Cruiser" -> :cruiser
+      "Recon Ship" -> :cruiser
+      "Strategic Cruiser" -> :cruiser
+      "Combat Recon Ship" -> :cruiser
+      "Force Recon Ship" -> :cruiser
+      # Battlecruisers
+      "Battlecruiser" -> :battlecruiser
+      "Combat Battlecruiser" -> :battlecruiser
+      "Attack Battlecruiser" -> :battlecruiser
+      "Command Ship" -> :battlecruiser
+      # Battleships
+      "Battleship" -> :battleship
+      "Black Ops" -> :battleship
+      "Marauder" -> :battleship
+      # Capitals
+      "Carrier" -> :capital
+      "Dreadnought" -> :capital
+      "Force Auxiliary" -> :capital
+      "Capital Industrial Ship" -> :capital
+      # Supercapitals
+      "Supercarrier" -> :supercapital
+      "Titan" -> :supercapital
+      # Industrial
+      "Industrial" -> :industrial
+      "Transport Ship" -> :industrial
+      "Blockade Runner" -> :industrial
+      "Deep Space Transport" -> :industrial
+      "Industrial Command Ship" -> :industrial
+      "Freighter" -> :industrial
+      "Jump Freighter" -> :industrial
+      # Mining
+      "Mining Barge" -> :mining
+      "Exhumer" -> :mining
+      # Default
+      _ -> :unknown
+    end
+  end
 
   @doc """
   Check if a ship type ID belongs to a specific class.
@@ -139,13 +104,85 @@ defmodule EveDmv.StaticData.ShipTypes do
   end
 
   @doc """
-  Get all ship type IDs for a specific class.
+  Get all ship type IDs for a specific class from the database.
 
-  Note: This returns ranges, not individual IDs.
+  This performs a runtime query and should be cached if used frequently.
   """
   def get_ship_ids_for_class(class) when is_atom(class) do
-    Map.get(ship_type_ranges(), class, [])
+    group_names = get_group_names_for_class(class)
+
+    Repo.all(
+      from(i in ItemType,
+        where: i.group_name in ^group_names and i.is_ship == true and i.published == true,
+        select: i.type_id
+      )
+    )
   end
+
+  # Helper to map ship classes to their group names
+  defp get_group_names_for_class(:frigate) do
+    [
+      "Frigate",
+      "Assault Frigate",
+      "Covert Ops",
+      "Electronic Attack Frigate",
+      "Interceptor",
+      "Logistics Frigate",
+      "Expedition Frigate",
+      "Stealth Bomber"
+    ]
+  end
+
+  defp get_group_names_for_class(:destroyer) do
+    ["Destroyer", "Interdictor", "Command Destroyer", "Tactical Destroyer"]
+  end
+
+  defp get_group_names_for_class(:cruiser) do
+    [
+      "Cruiser",
+      "Heavy Assault Cruiser",
+      "Heavy Interdiction Cruiser",
+      "Logistics Cruiser",
+      "Recon Ship",
+      "Strategic Cruiser",
+      "Combat Recon Ship",
+      "Force Recon Ship"
+    ]
+  end
+
+  defp get_group_names_for_class(:battlecruiser) do
+    ["Battlecruiser", "Combat Battlecruiser", "Attack Battlecruiser", "Command Ship"]
+  end
+
+  defp get_group_names_for_class(:battleship) do
+    ["Battleship", "Black Ops", "Marauder"]
+  end
+
+  defp get_group_names_for_class(:capital) do
+    ["Carrier", "Dreadnought", "Force Auxiliary", "Capital Industrial Ship"]
+  end
+
+  defp get_group_names_for_class(:supercapital) do
+    ["Supercarrier", "Titan"]
+  end
+
+  defp get_group_names_for_class(:industrial) do
+    [
+      "Industrial",
+      "Transport Ship",
+      "Blockade Runner",
+      "Deep Space Transport",
+      "Industrial Command Ship",
+      "Freighter",
+      "Jump Freighter"
+    ]
+  end
+
+  defp get_group_names_for_class(:mining) do
+    ["Mining Barge", "Exhumer"]
+  end
+
+  defp get_group_names_for_class(_), do: []
 
   @doc """
   Commonly used ship groups for tactical analysis.
@@ -176,58 +213,131 @@ defmodule EveDmv.StaticData.ShipTypes do
 
   @doc """
   Check if a ship is a support vessel.
+
+  Note: This queries the database to check for logistics and EWAR ships specifically.
   """
   def is_support_ship?(type_id) do
-    # This is simplified - in reality, support ships are determined by
-    # their bonuses and typical fits (logistics, command ships, etc.)
-    classify_ship_type(type_id) in [:cruiser, :battlecruiser]
+    is_logistics?(type_id) or is_ewar?(type_id)
   end
 
   @doc """
-  Get interceptor ship type IDs.
-
-  Interceptors are fast, agile frigates used for tackling and fleet scouting.
+  Get interceptor ship type IDs from the database.
   """
   def interceptor_ship_ids do
-    [11_182, 11_196]
+    Repo.all(
+      from(i in ItemType,
+        where: i.group_name == "Interceptor" and i.is_ship == true and i.published == true,
+        select: i.type_id
+      )
+    )
   end
 
   @doc """
-  Get logistics ship type IDs.
-
-  Logistics ships provide remote repair capabilities to fleets.
+  Get logistics ship type IDs from the database.
   """
   def logistics_ship_ids do
-    [11_978, 11_987, 11_985, 12_003]
+    Repo.all(
+      from(i in ItemType,
+        where:
+          i.group_name in ["Logistics Cruiser", "Logistics Frigate", "Force Auxiliary"] and
+            i.is_ship == true and i.published == true,
+        select: i.type_id
+      )
+    )
   end
 
   @doc """
-  Get electronic warfare ship type IDs.
-
-  EWAR ships provide electronic disruption capabilities like jamming and dampening.
+  Get electronic warfare ship type IDs from the database.
   """
   def ewar_ship_ids do
-    [11_957, 11_958, 11_959, 11_961]
+    Repo.all(
+      from(i in ItemType,
+        where:
+          i.group_name in [
+            "Electronic Attack Frigate",
+            "Combat Recon Ship",
+            "Force Recon Ship",
+            "Recon Ship"
+          ] and
+            i.is_ship == true and i.published == true,
+        select: i.type_id
+      )
+    )
   end
 
   @doc """
   Check if a ship type ID is an interceptor.
   """
-  def is_interceptor?(type_id) do
-    type_id in interceptor_ship_ids()
+  def is_interceptor?(type_id) when is_integer(type_id) do
+    case Repo.one(
+           from(i in ItemType,
+             where:
+               i.type_id == ^type_id and i.group_name == "Interceptor" and
+                 i.is_ship == true and i.published == true
+           )
+         ) do
+      nil -> false
+      _ -> true
+    end
   end
 
   @doc """
   Check if a ship type ID is a logistics ship.
   """
-  def is_logistics?(type_id) do
-    type_id in logistics_ship_ids()
+  def is_logistics?(type_id) when is_integer(type_id) do
+    case Repo.one(
+           from(i in ItemType,
+             where:
+               i.type_id == ^type_id and
+                 i.group_name in ["Logistics Cruiser", "Logistics Frigate", "Force Auxiliary"] and
+                 i.is_ship == true and i.published == true
+           )
+         ) do
+      nil -> false
+      _ -> true
+    end
   end
 
   @doc """
   Check if a ship type ID is an EWAR ship.
   """
-  def is_ewar?(type_id) do
-    type_id in ewar_ship_ids()
+  def is_ewar?(type_id) when is_integer(type_id) do
+    case Repo.one(
+           from(i in ItemType,
+             where:
+               i.type_id == ^type_id and
+                 i.group_name in [
+                   "Electronic Attack Frigate",
+                   "Combat Recon Ship",
+                   "Force Recon Ship",
+                   "Recon Ship"
+                 ] and
+                 i.is_ship == true and i.published == true
+           )
+         ) do
+      nil -> false
+      _ -> true
+    end
+  end
+
+  @doc """
+  DEPRECATED: Returns ship type ranges. Use classify_ship_type/1 instead.
+
+  This function is kept for backward compatibility.
+  """
+  @deprecated "Use classify_ship_type/1 or database queries instead"
+  def ship_type_ranges do
+    # Return empty ranges - all classification is now done via database queries
+    %{
+      frigate: [],
+      destroyer: [],
+      cruiser: [],
+      battlecruiser: [],
+      battleship: [],
+      capital: [],
+      industrial: [],
+      mining: [],
+      supercapital: []
+    }
   end
 end

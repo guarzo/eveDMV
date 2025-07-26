@@ -153,9 +153,10 @@ defmodule EveDmv.Monitoring.MissingDataTracker do
 
   @impl GenServer
   def handle_call(:get_missing_ship_types, _from, state) do
-    missing_types = :ets.tab2list(@table_name)
-    |> Enum.map(fn {_id, data} -> data end)
-    |> Enum.sort_by(& &1.occurrence_count, :desc)
+    missing_types =
+      :ets.tab2list(@table_name)
+      |> Enum.map(fn {_id, data} -> data end)
+      |> Enum.sort_by(& &1.occurrence_count, :desc)
 
     {:reply, missing_types, state}
   end
@@ -168,12 +169,10 @@ defmodule EveDmv.Monitoring.MissingDataTracker do
   @impl GenServer
   def handle_call({:get_top_missing_ship_types, limit}, _from, state) do
     top_types =
-      @table_name
-
-    top_types = :ets.tab2list()
-    |> Enum.map(fn {_id, data} -> data end)
-    |> Enum.sort_by(& &1.occurrence_count, :desc)
-    |> Enum.take(limit)
+      :ets.tab2list(@table_name)
+      |> Enum.map(fn {_id, data} -> data end)
+      |> Enum.sort_by(& &1.occurrence_count, :desc)
+      |> Enum.take(limit)
 
     {:reply, top_types, state}
   end

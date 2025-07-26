@@ -21,7 +21,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     cutoff_time = DateTime.add(DateTime.utc_now(), -time_window * 3600, :second)
 
     # Get system info
-    system_query = Ash.Query.limit(SolarSystem, 1)
+    system_query =
+      SolarSystem
+      |> Ash.Query.filter(system_id == ^system_id)
+      |> Ash.Query.limit(1)
 
     case Ash.read_one(system_query, domain: Api) do
       {:ok, system} when system != nil ->
@@ -49,14 +52,13 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     end
   end
 
-  defp analyze_activity_level(_system_id, _cutoff_time) do
+  defp analyze_activity_level(system_id, cutoff_time) do
     # Query recent killmail activity in the system
-    # TODO: Filter by system_id and cutoff_time when system filtering is implemented
     activity_query =
       KillmailRaw
-
-    Ash.Query.filter(true)
-    Ash.Query.select([:killmail_id])
+      |> Ash.Query.filter(solar_system_id == ^system_id)
+      |> Ash.Query.filter(killmail_time >= ^cutoff_time)
+      |> Ash.Query.select([:killmail_id])
 
     case Ash.read(activity_query, domain: Api) do
       {:ok, killmails} ->
@@ -76,14 +78,15 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     end
   end
 
-  defp analyze_threat_level(_system_id, _cutoff_time) do
+  defp analyze_threat_level(system_id, cutoff_time) do
     # Query high-value losses as threat indicator
-    # TODO: Filter by system_id and cutoff_time when system filtering is implemented
     threat_query =
       KillmailRaw
-
-    Ash.Query.filter(true)
-    Ash.Query.select([:killmail_id, :total_value])
+      |> Ash.Query.filter(solar_system_id == ^system_id)
+      |> Ash.Query.filter(killmail_time >= ^cutoff_time)
+      # Only consider losses over 100M ISK
+      |> Ash.Query.filter(total_value >= 100_000_000)
+      |> Ash.Query.select([:killmail_id, :total_value])
 
     case Ash.read(threat_query, domain: Api) do
       {:ok, high_value_kills} ->
@@ -151,7 +154,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     # Get neighboring systems in the same constellation
     neighbors_query =
       SolarSystem
-      |> Ash.Query.filter(constellation_id == system.constellation_id)
+      |> Ash.Query.filter(constellation_id == ^system.constellation_id)
+      # Exclude the system itself
+      |> Ash.Query.filter(system_id != ^system.system_id)
       |> Ash.Query.select([:system_id, :system_name, :security_class])
 
     case Ash.read(neighbors_query, domain: Api) do
@@ -199,18 +204,16 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     end
   end
 
-  defp calculate_influence_radius(_system_id, _cutoff_time) do
+  defp calculate_influence_radius(system_id, cutoff_time) do
     # Calculate influence based on activity spreading to nearby systems
     # This would ideally use gate connection data
 
     # Query killmails with participants from this system
-    # TODO: Filter by system_id and cutoff_time when system filtering is implemented
     influence_query =
       KillmailRaw
-
-    Ash.Query.filter(true)
-    Ash.Query.load([:participants])
-    Ash.Query.limit(100)
+      |> Ash.Query.filter(killmail_time >= ^cutoff_time)
+      |> Ash.Query.load([:participants])
+      |> Ash.Query.limit(100)
 
     case Ash.read(influence_query, domain: Api) do
       {:ok, killmails} ->
@@ -222,7 +225,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
             # This is simplified - would need historical data
             Enum.any?(km.participants || [], fn p ->
               # Simplified check - in reality would check historical activity
-              p.character_id && rem(p.character_id, 10) == rem(1, 10)
+              p.character_id && rem(p.character_id, 10) == rem(system_id, 10)
             end)
           end)
           |> Enum.map(& &1.solar_system_id)

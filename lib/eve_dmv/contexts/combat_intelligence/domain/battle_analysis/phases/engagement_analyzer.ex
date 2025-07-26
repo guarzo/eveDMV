@@ -8,6 +8,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Engage
 
   require Logger
 
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Services.SideDeterminationService
+
   @doc """
   Analyze individual engagement mechanics.
   """
@@ -255,13 +257,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Engage
   end
 
   defp classify_participants_by_side(participants) do
-    # Basic side classification using simple participant split
-    # Future enhancement: classify sides based on corporation/alliance relationships
-
-    %{
-      side_a: Enum.take(participants, div(length(participants), 2)),
-      side_b: Enum.drop(participants, div(length(participants), 2))
-    }
+    # Use empty killmails list since we're analyzing participants only
+    # In a real scenario, we'd pass the actual killmails from the engagement
+    SideDeterminationService.classify_participants(participants, [])
   end
 
   defp determine_victory_side(killmails, sides) do
@@ -371,16 +369,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Engage
             attacker.character_id in side_character_ids
           end)
       end)
+      |> Enum.map(&(&1.total_value || 0))
+      |> Enum.sum()
 
-    Enum.map(&(&1.total_value || 0)) |> Enum.sum()
     # Calculate ISK lost by this side
     isk_lost =
       killmails
       |> Enum.filter(fn killmail ->
         killmail.victim_character_id in side_character_ids
       end)
-
-    Enum.map(&(&1.total_value || 0)) |> Enum.sum()
+      |> Enum.map(&(&1.total_value || 0))
+      |> Enum.sum()
 
     if isk_lost > 0 do
       Float.round(isk_destroyed / isk_lost, 2)

@@ -408,17 +408,14 @@ defmodule EveDmv.Intelligence.WandererClient do
   end
 
   defp extract_systems_from_connections(connections) when is_list(connections) do
-    systems = connections
+    connections
     |> Enum.flat_map(fn conn ->
       [
         Map.get(conn, "solar_system_source"),
         Map.get(conn, "solar_system_target")
       ]
     end)
-
-    systems
-
-    Enum.reject(&is_nil/1)
+    |> Enum.reject(&is_nil/1)
     |> Enum.uniq()
     |> Enum.map(fn system_id ->
       %{

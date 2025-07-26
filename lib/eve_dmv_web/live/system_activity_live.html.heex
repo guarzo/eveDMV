@@ -1,0 +1,352 @@
+<div class="min-h-screen bg-gray-900 text-gray-100">
+  <!-- Header -->
+  <.page_header 
+    title="System Activity Analytics" 
+    subtitle="Solar system activity patterns and metrics"
+    current_user={assigns[:current_user]}
+  >
+    <:action>
+      <div class="flex items-center gap-2">
+        <!-- View Mode Selector -->
+        <div class="flex bg-gray-800 rounded-lg p-1">
+          <button
+            phx-click="change_view"
+            phx-value-view="overview"
+            class={["px-3 py-1 text-sm rounded transition-colors", if(@view_mode == :overview, do: "bg-blue-600 text-white", else: "text-gray-400 hover:text-white")]}
+          >
+            Overview
+          </button>
+          <button
+            phx-click="change_view"
+            phx-value-view="regional"
+            class={["px-3 py-1 text-sm rounded transition-colors", if(@view_mode == :regional, do: "bg-blue-600 text-white", else: "text-gray-400 hover:text-white")]}
+          >
+            Regional
+          </button>
+          <button
+            phx-click="change_view"
+            phx-value-view="trends"
+            class={["px-3 py-1 text-sm rounded transition-colors", if(@view_mode == :trends, do: "bg-blue-600 text-white", else: "text-gray-400 hover:text-white")]}
+          >
+            Trends
+          </button>
+          <button
+            phx-click="change_view"
+            phx-value-view="heatmap"
+            class={["px-3 py-1 text-sm rounded transition-colors", if(@view_mode == :heatmap, do: "bg-blue-600 text-white", else: "text-gray-400 hover:text-white")]}
+          >
+            Heatmap
+          </button>
+        </div>
+        
+        <!-- Timeframe Selector -->
+        <select 
+          phx-change="change_timeframe"
+          class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200"
+        >
+          <option value="last_24_hours" selected={@selected_timeframe == :last_24_hours}>Last 24 Hours</option>
+          <option value="last_7_days" selected={@selected_timeframe == :last_7_days}>Last 7 Days</option>
+          <option value="last_30_days" selected={@selected_timeframe == :last_30_days}>Last 30 Days</option>
+          <option value="last_90_days" selected={@selected_timeframe == :last_90_days}>Last 90 Days</option>
+        </select>
+        
+        <button
+          phx-click="refresh_data"
+          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors"
+        >
+          <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0V9a8 8 0 1115.356 2M15 15v5h-.582m0 0a8.001 8.001 0 01-15.356-2m15.356 2V15a8 8 0 00-15.356 2" />
+          </svg>
+          Refresh
+        </button>
+      </div>
+    </:action>
+    <:info>
+      <div class="text-sm text-gray-400">
+        Analyzing activity for <span class="text-blue-400"><%= format_timeframe(@selected_timeframe) %></span>
+        <%= if @loading do %>
+          <span class="text-yellow-400">(Loading...)</span>
+        <% end %>
+      </div>
+    </:info>
+  </.page_header>
+
+  <!-- Main Content -->
+  <div class="p-6">
+    <%= if @loading do %>
+      <div class="flex justify-center py-12">
+        <div class="flex items-center space-x-2 text-gray-400">
+          <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+          <span>Loading activity metrics...</span>
+        </div>
+      </div>
+    <% else %>
+      <%= case @view_mode do %>
+        <% :overview -> %>
+          <%= if @activity_trends do %>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              <!-- Overview Stats -->
+              <div class="bg-gray-800 rounded-lg p-6">
+                <h3 class="text-lg font-semibold text-gray-200 mb-4">Activity Overview</h3>
+                <.stats_grid columns={2}>
+                  <:stat label="Total Kills" value={@activity_trends.total_kills_analyzed} color="blue" />
+                  <:stat label="Growth Rate" value={@activity_trends.activity_growth.growth_rate} format="percentage" color="green" />
+                </.stats_grid>
+              </div>
+              
+              <!-- Top Hotspots -->
+              <%= if @regional_metrics && @regional_metrics.hotspots do %>
+                <div class="bg-gray-800 rounded-lg p-6">
+                  <h3 class="text-lg font-semibold text-gray-200 mb-4">Current Hotspots</h3>
+                  <div class="space-y-2">
+                    <%= for hotspot <- Enum.take(@regional_metrics.hotspots, 5) do %>
+                      <div class="flex items-center justify-between p-2 bg-gray-700 rounded">
+                        <button
+                          phx-click="select_system"
+                          phx-value-system_id={hotspot.system_id}
+                          class="text-blue-400 hover:text-blue-300 transition-colors text-left"
+                        >
+                          <%= hotspot.system_name %>
+                        </button>
+                        <div class="text-right text-sm">
+                          <div class="text-gray-300"><%= hotspot.kill_count %> kills</div>
+                          <div class="text-gray-500">Score: <%= Float.round(hotspot.activity_score, 1) %></div>
+                        </div>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+          
+        <% :system_detail -> %>
+          <%= if @system_metrics do %>
+            <div class="max-w-7xl mx-auto">
+              <!-- System Header -->
+              <div class="bg-gray-800 rounded-lg p-6 mb-6">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h2 class="text-2xl font-bold text-gray-200"><%= @system_metrics.system_name %></h2>
+                    <div class="flex items-center space-x-4 mt-2">
+                      <span class={["text-sm", security_class_color(@system_metrics.security_info.class)]}>
+                        <%= String.capitalize(to_string(@system_metrics.security_info.class)) %>
+                      </span>
+                      <span class="text-sm text-gray-400">
+                        Security: <%= Float.round(@system_metrics.security_info.status, 1) %>
+                      </span>
+                      <%= case format_danger_rating(@system_metrics.danger_rating.rating) do %>
+                        <% {label, color_class} -> %>
+                          <span class={["text-sm font-medium", color_class]}>
+                            <%= label %> (<%= @system_metrics.danger_rating.score %>)
+                          </span>
+                      <% end %>
+                    </div>
+                  </div>
+                  <button
+                    phx-click="change_view"
+                    phx-value-view="overview"
+                    class="text-gray-400 hover:text-white text-sm"
+                  >
+                    ← Back to Overview
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Key Metrics -->
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-gray-800 rounded-lg p-6">
+                  <div class="text-2xl font-bold text-blue-400"><%= @system_metrics.total_kills %></div>
+                  <div class="text-sm text-gray-400">Total Kills</div>
+                  <%= case format_activity_trend(@system_metrics.activity_trends.trend) do %>
+                    <% {trend_label, trend_color} -> %>
+                      <div class={["text-xs mt-1", trend_color]}><%= trend_label %></div>
+                  <% end %>
+                </div>
+                
+                <div class="bg-gray-800 rounded-lg p-6">
+                  <div class="text-2xl font-bold text-red-400"><%= format_isk(@system_metrics.total_isk_destroyed) %></div>
+                  <div class="text-sm text-gray-400">ISK Destroyed</div>
+                  <div class="text-xs text-gray-500 mt-1">
+                    Avg: <%= format_isk(Decimal.div(@system_metrics.total_isk_destroyed, max(@system_metrics.total_kills, 1))) %>
+                  </div>
+                </div>
+                
+                <div class="bg-gray-800 rounded-lg p-6">
+                  <div class="text-2xl font-bold text-green-400"><%= @system_metrics.unique_characters %></div>
+                  <div class="text-sm text-gray-400">Unique Pilots</div>
+                  <div class="text-xs text-gray-500 mt-1">
+                    <%= @system_metrics.unique_corporations %> Corps, <%= @system_metrics.unique_alliances %> Alliances
+                  </div>
+                </div>
+                
+                <div class="bg-gray-800 rounded-lg p-6">
+                  <div class="text-2xl font-bold text-purple-400"><%= Float.round(@system_metrics.activity_intensity, 1) %></div>
+                  <div class="text-sm text-gray-400">Activity Intensity</div>
+                  <div class="text-xs text-gray-500 mt-1">
+                    PvP Quality: <%= Float.round(@system_metrics.pvp_quality_score, 1) %>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Ship Classes -->
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="bg-gray-800 rounded-lg p-6">
+                  <h3 class="text-lg font-semibold text-gray-200 mb-4">Ship Class Distribution</h3>
+                  <div class="space-y-2">
+                    <%= for ship_class <- @system_metrics.ship_class_distribution do %>
+                      <div class="flex items-center justify-between">
+                        <span class="text-gray-300 capitalize"><%= ship_class.ship_class %></span>
+                        <div class="flex items-center space-x-2">
+                          <div class="w-24 bg-gray-700 rounded-full h-2">
+                            <div 
+                              class="bg-blue-500 h-2 rounded-full" 
+                              style={"width: #{min(ship_class.kill_count / @system_metrics.total_kills * 100, 100)}%"}
+                            ></div>
+                          </div>
+                          <span class="text-sm text-gray-400 w-8 text-right"><%= ship_class.kill_count %></span>
+                        </div>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+                
+                <!-- Top Alliances -->
+                <div class="bg-gray-800 rounded-lg p-6">
+                  <h3 class="text-lg font-semibold text-gray-200 mb-4">Most Active Alliances</h3>
+                  <div class="space-y-2">
+                    <%= for alliance <- Enum.take(@system_metrics.top_alliances, 5) do %>
+                      <div class="flex items-center justify-between p-2 bg-gray-700 rounded">
+                        <span class="text-gray-300 truncate"><%= alliance.alliance_name %></span>
+                        <div class="text-right text-sm">
+                          <div class="text-red-400"><%= alliance.kill_count %> losses</div>
+                          <div class="text-gray-500"><%= format_isk(alliance.isk_lost) %></div>
+                        </div>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Recent Escalations -->
+              <%= if length(@system_metrics.recent_escalations) > 0 do %>
+                <div class="bg-red-900/20 border border-red-700 rounded-lg p-6 mb-8">
+                  <h3 class="text-lg font-semibold text-red-400 mb-4">⚠️ Recent Escalations</h3>
+                  <div class="space-y-2">
+                    <%= for escalation <- @system_metrics.recent_escalations do %>
+                      <div class="flex items-center space-x-3">
+                        <span class={["px-2 py-1 rounded text-xs font-medium", 
+                          if(escalation.severity == :high, do: "bg-red-600 text-white", else: "bg-yellow-600 text-white")]}
+                        >
+                          <%= String.upcase(to_string(escalation.severity)) %>
+                        </span>
+                        <span class="text-gray-300"><%= escalation.description %></span>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+          
+        <% :regional -> %>
+          <%= if @regional_metrics do %>
+            <div class="bg-gray-800 rounded-lg p-6">
+              <h3 class="text-lg font-semibold text-gray-200 mb-6">Regional Activity Analysis</h3>
+              
+              <!-- Regional Overview Stats -->
+              <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <div class="text-center">
+                  <div class="text-2xl font-bold text-blue-400"><%= @regional_metrics.systems_analyzed %></div>
+                  <div class="text-sm text-gray-400">Systems Analyzed</div>
+                </div>
+                <div class="text-center">
+                  <div class="text-2xl font-bold text-red-400"><%= @regional_metrics.total_kills %></div>
+                  <div class="text-sm text-gray-400">Total Kills</div>
+                </div>
+                <div class="text-center">
+                  <div class="text-2xl font-bold text-green-400"><%= format_isk(@regional_metrics.total_isk_destroyed) %></div>
+                  <div class="text-sm text-gray-400">ISK Destroyed</div>
+                </div>
+                <div class="text-center">
+                  <div class="text-2xl font-bold text-purple-400"><%= length(@regional_metrics.hotspots) %></div>
+                  <div class="text-sm text-gray-400">Active Hotspots</div>
+                </div>
+              </div>
+              
+              <!-- System List -->
+              <div class="overflow-x-auto">
+                <table class="w-full">
+                  <thead>
+                    <tr class="border-b border-gray-700">
+                      <th class="text-left py-3 px-4 text-gray-400">System</th>
+                      <th class="text-left py-3 px-4 text-gray-400">Kills</th>
+                      <th class="text-left py-3 px-4 text-gray-400">ISK Destroyed</th>
+                      <th class="text-left py-3 px-4 text-gray-400">Danger</th>
+                      <th class="text-left py-3 px-4 text-gray-400">Activity Score</th>
+                      <th class="text-left py-3 px-4 text-gray-400">Last Activity</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <%= for system <- @regional_metrics.system_metrics do %>
+                      <tr class="border-b border-gray-800 hover:bg-gray-700/50">
+                        <td class="py-3 px-4">
+                          <button
+                            phx-click="select_system"
+                            phx-value-system_id={system.system_id}
+                            class="text-blue-400 hover:text-blue-300 transition-colors"
+                          >
+                            <%= system.system_name %>
+                          </button>
+                        </td>
+                        <td class="py-3 px-4 text-gray-300"><%= system.kill_count %></td>
+                        <td class="py-3 px-4 text-gray-300"><%= format_isk(system.isk_destroyed) %></td>
+                        <td class="py-3 px-4">
+                          <%= case format_danger_rating(system.danger_rating.rating) do %>
+                            <% {label, color_class} -> %>
+                              <span class={["text-xs font-medium", color_class]}><%= label %></span>
+                          <% end %>
+                        </td>
+                        <td class="py-3 px-4 text-gray-300"><%= Float.round(system.activity_score, 1) %></td>
+                        <td class="py-3 px-4 text-xs text-gray-500">
+                          <%= if system.last_activity do %>
+                            <%= format_datetime_ago(system.last_activity) %>
+                          <% else %>
+                            No recent activity
+                          <% end %>
+                        </td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          <% end %>
+          
+        <% :trends -> %>
+          <%= if @activity_trends do %>
+            <div class="space-y-6">
+              <div class="bg-gray-800 rounded-lg p-6">
+                <h3 class="text-lg font-semibold text-gray-200 mb-4">Activity Trends</h3>
+                <p class="text-gray-400">
+                  Analyzed <%= @activity_trends.total_kills_analyzed %> kills over the selected timeframe.
+                  Trend analysis and emerging hotspot detection coming soon.
+                </p>
+              </div>
+            </div>
+          <% end %>
+          
+        <% :heatmap -> %>
+          <%= if @activity_heatmap do %>
+            <div class="bg-gray-800 rounded-lg p-6">
+              <h3 class="text-lg font-semibold text-gray-200 mb-4">Activity Heatmap</h3>
+              <p class="text-gray-400">
+                Activity heatmap visualization for <%= @activity_heatmap.systems_count %> systems.
+                Visual heatmap interface coming soon.
+              </p>
+            </div>
+          <% end %>
+      <% end %>
+    <% end %>
+  </div>
+</div>

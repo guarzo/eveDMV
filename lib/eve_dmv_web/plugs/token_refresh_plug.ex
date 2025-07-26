@@ -32,8 +32,8 @@ defmodule EveDmvWeb.TokenRefreshPlug do
 
               # Update the session with the refreshed user data
               conn
-              put_session(:current_user_id, updated_user.id)
-              assign(:current_user, updated_user)
+              |> put_session(:current_user_id, updated_user.id)
+              |> assign(:current_user, updated_user)
 
             {:error, reason} ->
               Logger.warning(

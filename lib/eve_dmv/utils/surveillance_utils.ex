@@ -48,9 +48,11 @@ defmodule EveDmv.Utils.SurveillanceUtils do
     # Count dangerous ship types
     dangerous_ships =
       Enum.count(ships, fn ship ->
-        ship_name = ship
-        |> Map.get("name", "")
-        |> String.downcase()
+        ship_name =
+          ship
+          |> Map.get("name", "")
+          |> String.downcase()
+
         ship_name =~ ~r/(dread|carrier|super|titan|recon|interceptor|dictor)/
       end)
 
@@ -105,13 +107,14 @@ defmodule EveDmv.Utils.SurveillanceUtils do
     Enum.filter(inhabitants, fn inhabitant ->
       name =
         inhabitant
+        |> Map.get("name", "")
+        |> String.downcase()
 
-      |> Map.get("name", "")
-      |> String.downcase()
+      corp =
+        inhabitant
+        |> Map.get("corporation", "")
+        |> String.downcase()
 
-      corp = inhabitant
-      |> Map.get("corporation", "")
-      |> String.downcase()
       # Check for known hostile patterns (simplified)
       name =~ ~r/(hostile|enemy|pirate)/ or corp =~ ~r/(pirate|hostile)/
     end)

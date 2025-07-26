@@ -1,6 +1,5 @@
 defmodule EveDmvWeb.SurveillanceLive do
   import EveDmvWeb.LiveHelpers.ApiErrorHelper
-  alias EveDmv.Surveillance.MatchingEngine
   alias EveDmvWeb.SurveillanceLive.BatchOperationService
   alias EveDmvWeb.SurveillanceLive.Components
   alias EveDmvWeb.SurveillanceLive.ExportImportService
@@ -50,10 +49,10 @@ defmodule EveDmvWeb.SurveillanceLive do
         |> assign(:batch_mode, false)
         |> assign(:loading_data, true)
         |> assign(:new_profile_form, %{
-        "name" => "",
-        "description" => "",
-        "filter_tree" => Components.sample_filter_tree()
-      })
+          "name" => "",
+          "description" => "",
+          "filter_tree" => Components.sample_filter_tree()
+        })
 
       # Load remaining data asynchronously
       if connected?(socket) do
@@ -264,7 +263,7 @@ defmodule EveDmvWeb.SurveillanceLive do
           |> assign(:show_create_modal, false)
           |> put_flash(:info, "Surveillance profile '#{profile.name}' created successfully!")
 
-        then(fn socket ->
+        socket =
           if has_json_error do
             put_flash(
               socket,
@@ -274,7 +273,6 @@ defmodule EveDmvWeb.SurveillanceLive do
           else
             socket
           end
-        end)
 
         {:noreply, socket}
 
@@ -367,6 +365,7 @@ defmodule EveDmvWeb.SurveillanceLive do
       socket.assigns.profiles
       |> Enum.map(& &1.id)
       |> MapSet.new()
+
     socket = assign(socket, :selected_profiles, all_profile_ids)
     {:noreply, socket}
   end

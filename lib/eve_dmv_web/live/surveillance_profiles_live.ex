@@ -186,6 +186,90 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   end
 
   @impl Phoenix.LiveView
+  def handle_event("add_nested_group", %{"parent_index" => parent_index}, socket) do
+    editing_profile = socket.assigns.editing_profile
+
+    if editing_profile do
+      {index, _} = Integer.parse(parent_index)
+      nested_group = create_nested_group()
+
+      updated_criteria =
+        add_nested_group_to_criteria(editing_profile.criteria, index, nested_group)
+
+      updated_profile = %{editing_profile | criteria: updated_criteria}
+
+      socket =
+        socket
+        |> assign(:editing_profile, updated_profile)
+        |> update_filter_preview(updated_profile)
+
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl Phoenix.LiveView
+  def handle_event("update_range_filter", params, socket) do
+    editing_profile = socket.assigns.editing_profile
+
+    if editing_profile do
+      index = String.to_integer(params["index"])
+      field = params["field"]
+      value = params["value"]
+
+      updated_criteria =
+        update_range_filter_in_criteria(
+          editing_profile.criteria,
+          index,
+          field,
+          value
+        )
+
+      updated_profile = %{editing_profile | criteria: updated_criteria}
+
+      socket =
+        socket
+        |> assign(:editing_profile, updated_profile)
+        |> update_filter_preview(updated_profile)
+
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl Phoenix.LiveView
+  def handle_event("update_temporal_filter", params, socket) do
+    editing_profile = socket.assigns.editing_profile
+
+    if editing_profile do
+      index = String.to_integer(params["index"])
+      field = params["field"]
+      value = params["value"]
+
+      updated_criteria =
+        update_temporal_filter_in_criteria(
+          editing_profile.criteria,
+          index,
+          field,
+          value
+        )
+
+      updated_profile = %{editing_profile | criteria: updated_criteria}
+
+      socket =
+        socket
+        |> assign(:editing_profile, updated_profile)
+        |> update_filter_preview(updated_profile)
+
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl Phoenix.LiveView
   def handle_event("remove_filter", %{"index" => index}, socket) do
     editing_profile = socket.assigns.editing_profile
 
@@ -394,8 +478,8 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
       _ ->
         socket
-        put_flash(:error, "Failed to load profiles")
-        assign(:profiles, [])
+        |> put_flash(:error, "Failed to load profiles")
+        |> assign(:profiles, [])
     end
   end
 
@@ -444,41 +528,168 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   defp create_default_filter(filter_type) do
     case filter_type do
       "character" ->
-        %{type: :character_watch, character_ids: []}
+        %{type: :simple, field: "character_ids", operator: :in, value: []}
 
       "corporation" ->
-        %{type: :corporation_watch, corporation_ids: []}
+        %{type: :simple, field: "corporation_ids", operator: :in, value: []}
 
       "system" ->
-        %{type: :system_watch, system_ids: []}
+        %{type: :simple, field: "system_ids", operator: :in, value: []}
 
       "ship_type" ->
-        %{type: :ship_type_watch, ship_type_ids: []}
+        %{type: :simple, field: "ship_type_ids", operator: :in, value: []}
 
       "alliance" ->
-        %{type: :alliance_watch, alliance_ids: []}
+        %{type: :simple, field: "alliance_ids", operator: :in, value: []}
 
       "chain" ->
         %{
-          type: :chain_watch,
-          map_id: get_default_map_slug(),
-          chain_filter_type: :in_chain
+          type: :proximity,
+          field: "chain_proximity",
+          operator: :within,
+          value: %{max_jumps_from_home: 5}
         }
 
-      "isk_value" ->
-        %{type: :isk_value, operator: :greater_than, value: 1_000_000_000}
+      "isk_range" ->
+        %{
+          type: :range,
+          field: "isk_value",
+          operator: :between,
+          value: {10_000_000, 1_000_000_000}
+        }
+
+      "time_range" ->
+        %{type: :temporal, field: "time_of_day", operator: :between, value: {20, 23}}
+
+      "system_distance" ->
+        %{
+          type: :proximity,
+          field: "system_distance",
+          operator: :within,
+          value: %{systems: [], max_jumps: 3}
+        }
+
+      "nested_group" ->
+        %{type: :nested, logic_operator: :and, nested_conditions: []}
 
       "participant_count" ->
-        %{type: :participant_count, operator: :greater_than, value: 5}
+        %{type: :range, field: "participant_count", operator: :greater_than, value: 5}
 
       _ ->
-        %{type: :character_watch, character_ids: []}
+        %{type: :simple, field: "generic", operator: :equals, value: ""}
     end
   end
 
   defp add_filter_to_criteria(criteria, new_filter) do
     conditions = Map.get(criteria, :conditions, [])
     Map.put(criteria, :conditions, [new_filter | conditions] |> Enum.reverse())
+  end
+
+  defp create_nested_group do
+    %{
+      type: :nested,
+      logic_operator: :and,
+      nested_conditions: [
+        %{type: :simple, field: "character_ids", operator: :in, value: []}
+      ]
+    }
+  end
+
+  defp add_nested_group_to_criteria(criteria, parent_index, nested_group) do
+    conditions = Map.get(criteria, :conditions, [])
+
+    if parent_index < length(conditions) do
+      parent_condition = Enum.at(conditions, parent_index)
+
+      if parent_condition.type == :nested do
+        updated_nested_conditions = [nested_group | parent_condition.nested_conditions]
+        updated_parent = %{parent_condition | nested_conditions: updated_nested_conditions}
+        updated_conditions = List.replace_at(conditions, parent_index, updated_parent)
+        Map.put(criteria, :conditions, updated_conditions)
+      else
+        criteria
+      end
+    else
+      criteria
+    end
+  end
+
+  defp update_range_filter_in_criteria(criteria, index, field, value) do
+    conditions = Map.get(criteria, :conditions, [])
+
+    if index < length(conditions) do
+      condition = Enum.at(conditions, index)
+
+      if condition.type == :range do
+        updated_condition =
+          case field do
+            "min_value" ->
+              {_old_min, max} = condition.value
+              %{condition | value: {String.to_integer(value), max}}
+
+            "max_value" ->
+              {min, _old_max} = condition.value
+              %{condition | value: {min, String.to_integer(value)}}
+
+            "operator" ->
+              %{condition | operator: String.to_existing_atom(value)}
+
+            "single_value" ->
+              %{condition | value: String.to_integer(value)}
+
+            _ ->
+              condition
+          end
+
+        updated_conditions = List.replace_at(conditions, index, updated_condition)
+        Map.put(criteria, :conditions, updated_conditions)
+      else
+        criteria
+      end
+    else
+      criteria
+    end
+  end
+
+  defp update_temporal_filter_in_criteria(criteria, index, field, value) do
+    conditions = Map.get(criteria, :conditions, [])
+
+    if index < length(conditions) do
+      condition = Enum.at(conditions, index)
+
+      if condition.type == :temporal do
+        updated_condition =
+          case field do
+            "start_hour" ->
+              {_old_start, end_hour} = condition.value
+              %{condition | value: {String.to_integer(value), end_hour}}
+
+            "end_hour" ->
+              {start_hour, _old_end} = condition.value
+              %{condition | value: {start_hour, String.to_integer(value)}}
+
+            "days_of_week" ->
+              days = String.split(value, ",") |> Enum.map(&String.to_integer/1)
+              %{condition | value: days}
+
+            "time_unit" ->
+              %{condition | operator: String.to_existing_atom(value)}
+
+            "time_value" ->
+              %{condition | value: String.to_integer(value)}
+
+            _ ->
+              condition
+          end
+
+        updated_conditions = List.replace_at(conditions, index, updated_condition)
+        Map.put(criteria, :conditions, updated_conditions)
+      else
+        criteria
+      end
+    else
+      criteria
+    end
   end
 
   defp remove_filter_from_criteria(criteria, index) do
@@ -547,8 +758,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
   defp parse_id_list(value) when is_binary(value) do
     value
-
-    String.split(",")
+    |> String.split(",")
     |> Enum.map(&String.trim/1)
     |> Enum.reject(&(&1 == ""))
     |> Enum.map(fn id_str ->
@@ -576,23 +786,64 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
     try do
       # Get recent killmails for testing (simplified - would normally query database)
       test_killmails = get_recent_killmails_for_testing(@preview_killmail_limit)
+
+      # Use the advanced filter engine for enhanced matching
+      alias EveDmv.Contexts.Surveillance.Domain.AdvancedFilterEngine
+
       # Test criteria against killmails
       matches =
         test_killmails
         |> Enum.map(fn killmail ->
-          case MatchingEngine.test_criteria(profile.criteria, killmail) do
-            {:ok, result} ->
-              if result.matches do
-                %{
-                  killmail_id: killmail.killmail_id,
-                  victim_name: killmail.victim_character_name,
-                  victim_ship: killmail.victim_ship_name,
-                  isk_value: killmail.zkb_total_value,
-                  timestamp: killmail.killmail_time
-                }
-              else
-                nil
+          # Convert killmail to format expected by advanced engine
+          killmail_data = format_killmail_for_engine(killmail)
+
+          # Try advanced filter engine first if criteria structure supports it
+          match_result =
+            if has_advanced_criteria?(profile.criteria) do
+              case AdvancedFilterEngine.evaluate_complex_criteria(profile.criteria, killmail_data) do
+                %{matches: true} = result -> {:advanced, result}
+                %{matches: false} -> {:no_match, nil}
+                _ -> {:fallback, nil}
               end
+            else
+              {:fallback, nil}
+            end
+
+          # Use result or fallback to original matching engine
+          case match_result do
+            {:advanced, _result} ->
+              %{
+                killmail_id: killmail.killmail_id,
+                victim_name: killmail.victim_character_name,
+                victim_ship: killmail.victim_ship_name,
+                isk_value: killmail.zkb_total_value,
+                timestamp: killmail.killmail_time,
+                filter_type: "Advanced"
+              }
+
+            {:fallback, _} ->
+              # Fallback to original matching engine
+              case MatchingEngine.test_criteria(profile.criteria, killmail) do
+                {:ok, result} ->
+                  if result.matches do
+                    %{
+                      killmail_id: killmail.killmail_id,
+                      victim_name: killmail.victim_character_name,
+                      victim_ship: killmail.victim_ship_name,
+                      isk_value: killmail.zkb_total_value,
+                      timestamp: killmail.killmail_time,
+                      filter_type: "Legacy"
+                    }
+                  else
+                    nil
+                  end
+
+                _ ->
+                  nil
+              end
+
+            {:no_match, _} ->
+              nil
           end
         end)
         |> Enum.reject(&is_nil/1)
@@ -801,5 +1052,336 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
         Logger.error("Service process not available: #{inspect(reason)}")
         {:error, :service_unavailable}
     end
+  end
+
+  # Helper functions for template rendering
+  def format_filter_summary(criteria) when is_map(criteria) do
+    conditions = Map.get(criteria, :conditions, [])
+
+    if Enum.empty?(conditions) do
+      "No filters configured"
+    else
+      count = length(conditions)
+      "#{count} filter#{if count == 1, do: "", else: "s"} configured"
+    end
+  end
+
+  def format_filter_summary(_), do: "No filters configured"
+
+  def format_timestamp(timestamp) when is_binary(timestamp) do
+    case DateTime.from_iso8601(timestamp) do
+      {:ok, dt, _} -> format_datetime(dt)
+      _ -> timestamp
+    end
+  end
+
+  def format_timestamp(%DateTime{} = dt), do: format_datetime(dt)
+
+  def format_timestamp(%NaiveDateTime{} = ndt) do
+    case DateTime.from_naive(ndt, "Etc/UTC") do
+      {:ok, dt} -> format_datetime(dt)
+      _ -> "Unknown"
+    end
+  end
+
+  def format_timestamp(_), do: "Unknown"
+
+  defp format_datetime(dt) do
+    Calendar.strftime(dt, "%Y-%m-%d %H:%M:%S UTC")
+  end
+
+  def format_isk(value) when is_number(value) do
+    # Format with thousand separators
+    formatted =
+      value
+      |> round()
+      |> Integer.to_string()
+      |> String.graphemes()
+      |> Enum.reverse()
+      |> Enum.chunk_every(3)
+      |> Enum.join(",")
+      |> String.reverse()
+
+    formatted
+  end
+
+  def format_isk(_), do: "0"
+
+  def render_filter_inputs(assigns) do
+    ~H"""
+    <%= case @condition.type do %>
+      <% :simple when @condition.field in ["character_ids", "corporation_ids", "alliance_ids", "system_ids", "ship_type_ids"] -> %>
+        <div class="space-y-2">
+          <input type="text" 
+                 phx-change="update_filter_field"
+                 phx-value-field="value"
+                 phx-value-index={@index}
+                 value={format_list_value(@condition.value)}
+                 placeholder={get_placeholder_for_field(@condition.field)}
+                 class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+          <div class="text-xs text-gray-400">Enter comma-separated values or names</div>
+        </div>
+      
+      <% :range -> %>
+        <div class="space-y-3">
+          <div class="flex items-center space-x-2">
+            <label class="text-sm text-gray-300">Operator:</label>
+            <select
+              phx-change="update_range_filter"
+              phx-value-field="operator"
+              phx-value-index={@index}
+              class="px-2 py-1 bg-gray-700 border-gray-600 rounded text-sm text-gray-100"
+            >
+              <option value="between" selected={@condition.operator == :between}>Between</option>
+              <option value="greater_than" selected={@condition.operator == :greater_than}>Greater Than</option>
+              <option value="less_than" selected={@condition.operator == :less_than}>Less Than</option>
+              <option value="greater_equal" selected={@condition.operator == :greater_equal}>Greater or Equal</option>
+              <option value="less_equal" selected={@condition.operator == :less_equal}>Less or Equal</option>
+            </select>
+          </div>
+          
+          <%= if @condition.operator == :between do %>
+            <div class="grid grid-cols-2 gap-2">
+              <input type="number" 
+                     phx-change="update_range_filter"
+                     phx-value-field="min_value"
+                     phx-value-index={@index}
+                     value={get_range_min(@condition.value)}
+                     placeholder="Min value"
+                     class="block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+              <input type="number" 
+                     phx-change="update_range_filter"
+                     phx-value-field="max_value"
+                     phx-value-index={@index}
+                     value={get_range_max(@condition.value)}
+                     placeholder="Max value"
+                     class="block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+            </div>
+          <% else %>
+            <input type="number" 
+                   phx-change="update_range_filter"
+                   phx-value-field="single_value"
+                   phx-value-index={@index}
+                   value={@condition.value}
+                   placeholder="Value"
+                   class="block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+          <% end %>
+        </div>
+      
+      <% :temporal -> %>
+        <div class="space-y-3">
+          <%= case @condition.field do %>
+            <% "time_of_day" -> %>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-xs text-gray-400 mb-1">Start Hour (0-23)</label>
+                  <input type="number" 
+                         min="0" max="23"
+                         phx-change="update_temporal_filter"
+                         phx-value-field="start_hour"
+                         phx-value-index={@index}
+                         value={get_range_min(@condition.value)}
+                         class="block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                </div>
+                <div>
+                  <label class="block text-xs text-gray-400 mb-1">End Hour (0-23)</label>
+                  <input type="number" 
+                         min="0" max="23"
+                         phx-change="update_temporal_filter"
+                         phx-value-field="end_hour"
+                         phx-value-index={@index}
+                         value={get_range_max(@condition.value)}
+                         class="block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                </div>
+              </div>
+            
+            <% "time_since" -> %>
+              <div class="grid grid-cols-2 gap-2">
+                <input type="number" 
+                       phx-change="update_temporal_filter"
+                       phx-value-field="time_value"
+                       phx-value-index={@index}
+                       value={@condition.value}
+                       placeholder="Time value"
+                       class="block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                <select
+                  phx-change="update_temporal_filter"
+                  phx-value-field="time_unit"
+                  phx-value-index={@index}
+                  class="block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                >
+                  <option value="within_minutes" selected={@condition.operator == :within_minutes}>Minutes</option>
+                  <option value="within_hours" selected={@condition.operator == :within_hours}>Hours</option>
+                  <option value="within_days" selected={@condition.operator == :within_days}>Days</option>
+                </select>
+              </div>
+          <% end %>
+        </div>
+      
+      <% :proximity -> %>
+        <div class="space-y-3">
+          <%= case @condition.field do %>
+            <% "chain_proximity" -> %>
+              <div>
+                <label class="block text-xs text-gray-400 mb-1">Max jumps from home system</label>
+                <input type="number" 
+                       min="1" max="20"
+                       phx-change="update_filter_field"
+                       phx-value-field="max_jumps"
+                       phx-value-index={@index}
+                       value={get_in(@condition.value, [:max_jumps_from_home]) || 5}
+                       class="block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+              </div>
+            
+            <% "system_distance" -> %>
+              <div class="space-y-2">
+                <div>
+                  <label class="block text-xs text-gray-400 mb-1">Target systems (comma-separated)</label>
+                  <input type="text" 
+                         phx-change="update_filter_field"
+                         phx-value-field="target_systems"
+                         phx-value-index={@index}
+                         value={format_list_value(get_in(@condition.value, [:systems]) || [])}
+                         placeholder="System names or IDs"
+                         class="block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                </div>
+                <div>
+                  <label class="block text-xs text-gray-400 mb-1">Max jumps</label>
+                  <input type="number" 
+                         min="1" max="10"
+                         phx-change="update_filter_field"
+                         phx-value-field="max_jumps"
+                         phx-value-index={@index}
+                         value={get_in(@condition.value, [:max_jumps]) || 3}
+                         class="block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                </div>
+              </div>
+          <% end %>
+        </div>
+      
+      <% :nested -> %>
+        <div class="space-y-3 border-l-4 border-blue-500 pl-4">
+          <div class="flex items-center space-x-2">
+            <label class="text-sm text-gray-300">Group Logic:</label>
+            <select
+              phx-change="update_filter_field"
+              phx-value-field="logic_operator"
+              phx-value-index={@index}
+              class="px-2 py-1 bg-gray-700 border-gray-600 rounded text-sm text-gray-100"
+            >
+              <option value="and" selected={@condition.logic_operator == :and}>ALL (AND)</option>
+              <option value="or" selected={@condition.logic_operator == :or}>ANY (OR)</option>
+            </select>
+            <button
+              type="button"
+              phx-click="add_nested_group"
+              phx-value-parent_index={@index}
+              class="px-2 py-1 bg-green-600 hover:bg-green-700 rounded text-xs text-white"
+            >
+              + Add Condition
+            </button>
+          </div>
+          
+          <div class="text-sm text-gray-400">
+            Nested conditions: <%= length(@condition.nested_conditions || []) %>
+          </div>
+          
+          <!-- Nested conditions would be rendered recursively here -->
+          <div class="ml-4 space-y-2 text-sm text-gray-500">
+            <%= for {nested_condition, nested_index} <- Enum.with_index(@condition.nested_conditions || []) do %>
+              <div class="p-2 bg-gray-800 rounded border border-gray-600">
+                <%= format_filter_type(nested_condition.type) %> - <%= nested_condition.field || "No field" %>
+                <button
+                  type="button"
+                  phx-click="remove_nested_condition"
+                  phx-value-parent_index={@index}
+                  phx-value-nested_index={nested_index}
+                  class="ml-2 text-red-400 hover:text-red-300"
+                >
+                  ×
+                </button>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      
+      <% _ -> %>
+        <div class="text-red-400">
+          Unknown filter type: <%= @condition.type %>
+          <div class="text-xs text-gray-500 mt-1">
+            Field: <%= @condition.field || "N/A" %> | Operator: <%= @condition.operator || "N/A" %>
+          </div>
+        </div>
+    <% end %>
+    """
+  end
+
+  def format_filter_type(type) do
+    case type do
+      :simple -> "Simple Filter"
+      :range -> "Range Filter"
+      :temporal -> "Time-based Filter"
+      :proximity -> "Proximity Filter"
+      :nested -> "Nested Group"
+      :character -> "Character"
+      :corporation -> "Corporation"
+      :alliance -> "Alliance"
+      :system -> "System"
+      :ship_type -> "Ship Type"
+      :isk_value -> "ISK Value"
+      _ -> "Unknown"
+    end
+  end
+
+  defp format_list_value(value) when is_list(value) do
+    Enum.join(value, ", ")
+  end
+
+  defp format_list_value(value), do: to_string(value)
+
+  defp get_placeholder_for_field(field) do
+    case field do
+      "character_ids" -> "Character names or IDs (comma-separated)"
+      "corporation_ids" -> "Corporation names or IDs (comma-separated)"
+      "alliance_ids" -> "Alliance names or IDs (comma-separated)"
+      "system_ids" -> "System names or IDs (comma-separated)"
+      "ship_type_ids" -> "Ship type names or IDs (comma-separated)"
+      _ -> "Enter values (comma-separated)"
+    end
+  end
+
+  defp get_range_min(value) when is_tuple(value), do: elem(value, 0)
+  defp get_range_min(_), do: ""
+
+  defp get_range_max(value) when is_tuple(value), do: elem(value, 1)
+  defp get_range_max(_), do: ""
+
+  defp has_advanced_criteria?(criteria) do
+    conditions = Map.get(criteria, :conditions, [])
+
+    Enum.any?(conditions, fn condition ->
+      condition.type in [:range, :temporal, :proximity, :nested]
+    end)
+  end
+
+  defp format_killmail_for_engine(killmail) do
+    %{
+      "killmail_id" => killmail.killmail_id,
+      "solar_system_id" => killmail.solar_system_id,
+      "killmail_time" => DateTime.to_iso8601(killmail.killmail_time),
+      "total_value" => killmail.zkb_total_value || 0,
+      "victim" => %{
+        "character_id" => killmail.victim_character_id,
+        "corporation_id" => killmail.victim_corporation_id,
+        "alliance_id" => killmail.victim_alliance_id,
+        "ship_type_id" => killmail.victim_ship_type_id
+      },
+      # Simplified for preview
+      "attackers" => [],
+      "zkb" => %{
+        "totalValue" => killmail.zkb_total_value || 0,
+        "points" => killmail.zkb_points || 0
+      }
+    }
   end
 end

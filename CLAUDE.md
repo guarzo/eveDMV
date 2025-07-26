@@ -228,23 +228,30 @@ Better to have fewer features that work perfectly than many features that lie to
 - **API Authentication** - Separate API key system for programmatic access
 - **Admin Features** - Performance dashboard, user management
 
-### 🔴 What Contains Placeholders (Sprint 19-20 Cleanup)
-- **Fleet Analysis** - Hardcoded DPS values (200/600/1000), modulo-based ship classification
-- **Wormhole Operations** - Random data generation, C-class detection bug (all show C6)
-- **Character Preferences** - `get_ship_preferences()` returns `[]` (Sprint 19)
-- **Weapon Preferences** - `get_weapon_preferences()` returns `[]` (Sprint 19)
-- **Gang Size Patterns** - `get_gang_size_patterns()` returns `%{}` (Sprint 19)
-- **Activity Statistics** - `calculate_activity_stats()` returns zeros (Sprint 19)
-- **Battle Phases** - `identify_battle_phases()` returns `[]` (Sprint 20)
+### 🔴 What Contains Placeholders (Current Cleanup Priority)
+- **Fleet Analysis** - Hardcoded DPS values (200/600/800/1000), EHP values (15K/50K/80K/100K)
+- **Wormhole Operations** - Random data generation, extensive modulo-based classifications
+- **Battle Phase Analysis** - Minimal implementation (single phase, modulo-based side assignment)
+- **Ship Classification** - Arbitrary mass thresholds (10M), modulo-based logic
+- **Surveillance Dashboard** - Random alert counts and confidence scores
+- **Battle Sharing System** - Complete random data generation for statistics
+- **Corporation Analysis** - Random threat score generation
 - **Market Pricing** - Stub client returns `{:ok, %{price: 0.0}}` (deferred)
+
+### ✅ What Actually Works with Real Data (Updated)
+- **Character Intelligence** - All preference functions work with real database queries:
+  - `get_ship_preferences()` - lib/eve_dmv_web/live/character_analysis/helpers/character_data_loader.ex:115
+  - `get_weapon_preferences()` - lib/eve_dmv_web/live/character_analysis/helpers/character_data_loader.ex:181
+  - `get_gang_size_patterns()` - lib/eve_dmv_web/live/character_analysis/helpers/character_data_loader.ex:721
+  - `calculate_activity_stats()` - lib/eve_dmv_web/live/character_analysis/helpers/character_data_loader.ex:908
 
 ### 📋 Key Documentation
 - **Architecture**: `/workspace/ARCHITECTURE.md` - System design and patterns
+- **Requirements**: `/workspace/docs/REVISED_REQUIREMENTS.md` - Updated to reflect current implementation
+- **Implementation Gaps**: `/workspace/docs/IMPLEMENTATION_GAPS.md` - Missing or incomplete features
+- **Placeholder Audit**: `/workspace/docs/PLACEHOLDER_IMPLEMENTATIONS.md` - Hardcoded values and fake data to remove
 - **Implementation Status**: `/workspace/docs/IMPLEMENTATION_STATUS_COMBINED.md`
-- **Current Sprint**: `/workspace/docs/sprints/current/SPRINT_19_CHARACTER_INTELLIGENCE.md`
-- **Cleanup Plan**: `/workspace/docs/PLACEHOLDER_CLEANUP_PLAN.md`
 - **Clean Vision**: `/workspace/docs/CLEAN_CODEBASE_VISION.md`
-- **Revised Requirements**: `/workspace/docs/REVISED_REQUIREMENTS.md`
 
 ## Environment Configuration
 

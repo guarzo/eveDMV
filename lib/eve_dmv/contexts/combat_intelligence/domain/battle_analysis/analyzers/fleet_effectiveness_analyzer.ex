@@ -235,14 +235,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Fle
           else: ["Missing logistics support" | issues]
 
       issues =
-        if (Map.has_key?(role_distribution, :battleship) or
-              Map.has_key?(role_distribution, :cruiser)),
+        if Map.has_key?(role_distribution, :battleship) or
+             Map.has_key?(role_distribution, :cruiser),
            do: issues,
            else: ["Missing primary DPS ships" | issues]
 
       issues =
-        if (Map.has_key?(role_distribution, :frigate) or
-              Map.has_key?(role_distribution, :destroyer)),
+        if Map.has_key?(role_distribution, :frigate) or
+             Map.has_key?(role_distribution, :destroyer),
            do: issues,
            else: ["Missing tackle ships" | issues]
 

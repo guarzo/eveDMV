@@ -256,9 +256,9 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Formatters.MemberActivityDisplayFo
     if length(member_analyses) > 0 do
       avg_trend =
         member_analyses
-
-      Enum.map(&(&1.activity_decline || 0)) |> Enum.sum()
-      Kernel./(length(member_analyses))
+        |> Enum.map(&(&1.activity_decline || 0))
+        |> Enum.sum()
+        |> Kernel./(length(member_analyses))
 
       cond do
         avg_trend < -0.1 -> :improving

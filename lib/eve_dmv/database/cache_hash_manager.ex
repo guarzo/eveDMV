@@ -68,7 +68,7 @@ defmodule EveDmv.Database.CacheHashManager do
     Process.send_after(self(), :cleanup_expired, :timer.minutes(30))
 
     # Subscribe to cache invalidation
-    CacheInvalidator.subscribe_to_invalidations([:cache_updated])
+    CacheInvalidator.subscribe_to_invalidations()
 
     state = %{
       stats: %{

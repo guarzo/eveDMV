@@ -1247,7 +1247,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
   # Helper functions for killmail analysis
   defp extract_fitting_data(rows) do
     rows
-    |> Enum.map(fn [raw_data] -> 
+    |> Enum.map(fn [raw_data] ->
       raw_data
       |> extract_fitting_from_killmail()
     end)

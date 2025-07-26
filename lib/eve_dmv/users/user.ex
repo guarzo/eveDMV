@@ -132,8 +132,24 @@ defmodule EveDmv.Users.User do
       description("Whether this user has admin privileges")
     end
 
+    # Account reference for multi-character support
+    attribute :account_id, :uuid do
+      allow_nil?(true)
+      description("Account this character belongs to (for multi-character support)")
+    end
+
     # Automatic timestamps
     timestamps()
+  end
+
+  # Relationships
+  relationships do
+    # Many users can belong to one account (multi-character support)
+    belongs_to :account, EveDmv.Users.Account do
+      source_attribute(:account_id)
+      destination_attribute(:id)
+      description("Account this character belongs to")
+    end
   end
 
   # Identities for authentication

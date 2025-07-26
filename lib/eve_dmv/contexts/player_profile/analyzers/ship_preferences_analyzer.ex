@@ -314,7 +314,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
       %{highsec: 0, lowsec: 0, nullsec: 0, wspace: 0}
     else
       total_activity = calculate_total_activity(active_systems)
-      
+
       if total_activity == 0 do
         %{highsec: 0, lowsec: 0, nullsec: 0, wspace: 0}
       else
@@ -334,7 +334,8 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
 
   defp aggregate_security_activity(active_systems) do
     active_systems
-    |> Enum.reduce(%{highsec: 0, lowsec: 0, nullsec: 0, wspace: 0}, fn {_system_id, system_data}, acc ->
+    |> Enum.reduce(%{highsec: 0, lowsec: 0, nullsec: 0, wspace: 0}, fn {_system_id, system_data},
+                                                                       acc ->
       security = Map.get(system_data, "security", 0.0)
       activity = Map.get(system_data, "kills", 0) + Map.get(system_data, "losses", 0)
       security_type = classify_security_type(security)

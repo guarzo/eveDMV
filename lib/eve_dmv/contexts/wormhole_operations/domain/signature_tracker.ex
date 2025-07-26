@@ -352,7 +352,10 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
     # K162 recommendations
     k162_recommendations =
       if length(new_k162s) > 0 do
-        ["#{length(new_k162s)} new K162(s) detected - check for hostiles" | initial_recommendations]
+        [
+          "#{length(new_k162s)} new K162(s) detected - check for hostiles"
+          | initial_recommendations
+        ]
       else
         initial_recommendations
       end

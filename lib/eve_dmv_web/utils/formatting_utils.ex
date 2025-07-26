@@ -5,7 +5,7 @@ defmodule EveDmvWeb.Utils.FormattingUtils do
 
   @doc """
   Formats ISK values in short form (K, M, B).
-  
+
   Examples:
       iex> EveDmvWeb.Utils.FormattingUtils.format_isk_short(1_500_000)
       "1.5M"
@@ -27,7 +27,7 @@ defmodule EveDmvWeb.Utils.FormattingUtils do
 
   @doc """
   Formats numeric values with commas as thousands separators.
-  
+
   Examples:
       iex> EveDmvWeb.Utils.FormattingUtils.format_number_with_commas(1234567)
       "1,234,567"

@@ -380,9 +380,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
       end)
 
     # Calculate migration speed
-    system_changes = migration_patterns
-    |> Enum.map(&(length(&1.new_threat_systems) + length(&1.cleared_systems)))
-    |> Enum.sum()
+    system_changes =
+      migration_patterns
+      |> Enum.map(&(length(&1.new_threat_systems) + length(&1.cleared_systems)))
+      |> Enum.sum()
 
     avg_changes =
       if length(migration_patterns) > 0 do

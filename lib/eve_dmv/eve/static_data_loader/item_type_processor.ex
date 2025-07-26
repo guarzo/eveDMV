@@ -282,8 +282,13 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessor do
     name_words = String.split(String.downcase(name || ""), ~r/\s+/)
 
     # Add group and category if present
-    keywords_with_group = if group_name, do: [String.downcase(group_name) | name_words], else: name_words
-    keywords_with_category = if category_name, do: [String.downcase(category_name) | keywords_with_group], else: keywords_with_group
+    keywords_with_group =
+      if group_name, do: [String.downcase(group_name) | name_words], else: name_words
+
+    keywords_with_category =
+      if category_name,
+        do: [String.downcase(category_name) | keywords_with_group],
+        else: keywords_with_group
 
     # Remove duplicates and empty strings
     keywords_with_category

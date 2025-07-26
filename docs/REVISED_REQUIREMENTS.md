@@ -27,10 +27,10 @@ This document outlines the revised scope for EVE DMV, focusing on core PvP intel
 ### 3. Character Intelligence
 - ✅ **Basic Statistics** - Already working
 - ✅ **Threat Scoring** - Already working
-- 🔧 **Ship Preferences** - TO IMPLEMENT (using static data)
-- 🔧 **Weapon Preferences** - TO IMPLEMENT
-- 🔧 **Gang Size Patterns** - TO IMPLEMENT
-- 🔧 **Activity Patterns** - TO IMPLEMENT
+- ✅ **Ship Preferences** - Already working (lib/eve_dmv_web/live/character_analysis/helpers/character_data_loader.ex:115)
+- ✅ **Weapon Preferences** - Already working (lib/eve_dmv_web/live/character_analysis/helpers/character_data_loader.ex:181)
+- ✅ **Gang Size Patterns** - Already working (lib/eve_dmv_web/live/character_analysis/helpers/character_data_loader.ex:721)
+- ✅ **Activity Patterns** - Already working (lib/eve_dmv_web/live/character_analysis/helpers/character_data_loader.ex:908)
 - 🔧 **Comparison Tools** - TO IMPLEMENT
 - ❌ ~~Data Export~~ - DROPPED (keep shareable links)
 
@@ -87,10 +87,10 @@ This document outlines the revised scope for EVE DMV, focusing on core PvP intel
 4. **Ship Role Detection** - Based on ship bonuses from static data
 
 ### Phase 2: Core Analytics
-1. **Character Ship/Weapon Preferences** - Query from killmail data
-2. **Gang Size Patterns** - Analyze participant counts
-3. **Activity Statistics** - Calculate from timestamps
-4. **Battle Phase Detection** - Implement timeline analysis
+1. ~~**Character Ship/Weapon Preferences**~~ - ✅ ALREADY IMPLEMENTED
+2. ~~**Gang Size Patterns**~~ - ✅ ALREADY IMPLEMENTED  
+3. ~~**Activity Statistics**~~ - ✅ ALREADY IMPLEMENTED
+4. **Battle Phase Detection** - Enhance beyond single-phase implementation
 5. **Doctrine Detection** - Pattern matching on ship compositions
 
 ### Phase 3: Advanced Features

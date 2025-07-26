@@ -19,6 +19,7 @@ defmodule EveDmv.Api do
   # Core application resources only
   resources do
     # Essential user and authentication
+    resource(EveDmv.Users.Account)
     resource(EveDmv.Users.User)
     resource(EveDmv.Users.Token)
     resource(EveDmv.Security.ApiAuthentication)

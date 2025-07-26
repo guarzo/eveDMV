@@ -63,11 +63,10 @@ defmodule EveDmvWeb.Plugs.AuthRateLimiter do
         })
 
         conn
-        put_status(:too_many_requests)
-        put_resp_header("retry-after", to_string(remaining_time))
-        put_resp_content_type("application/json")
-
-        send_resp(
+        |> put_status(:too_many_requests)
+        |> put_resp_header("retry-after", to_string(remaining_time))
+        |> put_resp_content_type("application/json")
+        |> send_resp(
           429,
           Jason.encode!(%{
             error: "Too many authentication attempts",
@@ -75,8 +74,7 @@ defmodule EveDmvWeb.Plugs.AuthRateLimiter do
             message: "Please wait #{remaining_time} seconds before trying again"
           })
         )
-
-        halt()
+        |> halt()
     end
   end
 
@@ -86,14 +84,15 @@ defmodule EveDmvWeb.Plugs.AuthRateLimiter do
       [forwarded_ips] ->
         # Take the first IP from the forwarded chain
         forwarded_ips
-        String.split(",") |> List.first() |> String.trim()
+        |> String.split(",")
+        |> List.first()
+        |> String.trim()
 
       [] ->
         # Fallback to direct connection IP
         conn.remote_ip
-        :inet.ntoa()
-
-        to_string()
+        |> :inet.ntoa()
+        |> to_string()
     end
   end
 
@@ -142,9 +141,8 @@ defmodule EveDmvWeb.Plugs.AuthRateLimiter do
   defp count_recent_attempts(client_ip, window_start) do
     attempts_key = "auth_attempts:#{client_ip}"
 
-    attempts =
-      get_attempts(attempts_key)
-      |> Enum.count(attempts, &(&1 > window_start))
+    get_attempts(attempts_key)
+    |> Enum.count(&(&1 > window_start))
   end
 
   defp get_block_status(client_ip, current_time) do

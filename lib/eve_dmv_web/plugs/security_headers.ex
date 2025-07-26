@@ -12,8 +12,8 @@ defmodule EveDmvWeb.Plugs.SecurityHeaders do
 
   def call(conn, _opts) do
     conn
-    Plug.Conn.put_resp_header("content-security-policy", csp_header())
-    Plug.Conn.put_resp_header("permissions-policy", permissions_policy())
+    |> Plug.Conn.put_resp_header("content-security-policy", csp_header())
+    |> Plug.Conn.put_resp_header("permissions-policy", permissions_policy())
   end
 
   defp csp_header do

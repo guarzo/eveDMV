@@ -1523,8 +1523,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
   defp calculate_engagement_intensity(avg_participation, sides) do
     total_pilots =
       Map.values(sides)
+      |> Enum.map(&Map.get(&1, :total_pilots, 0))
+      |> Enum.sum()
 
-    Enum.map(&Map.get(&1, :total_pilots, 0)) |> Enum.sum()
     # Scale intensity by participation and fleet size
     base_intensity = avg_participation
     size_multiplier = min(2.0, total_pilots / 50.0)

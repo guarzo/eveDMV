@@ -30,18 +30,16 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
 
     socket =
       socket
-
-    assign(:page_title, "Surveillance Dashboard")
-    assign(:time_range, :last_24h)
-    assign(:selected_profile, nil)
-    assign(:profiles, [])
-    assign(:profile_metrics, %{})
-    assign(:system_metrics, %{})
-    assign(:alert_trends, [])
-    assign(:top_performing_profiles, [])
-    assign(:performance_recommendations, [])
-
-    load_dashboard_data()
+      |> assign(:page_title, "Surveillance Dashboard")
+      |> assign(:time_range, :last_24h)
+      |> assign(:selected_profile, nil)
+      |> assign(:profiles, [])
+      |> assign(:profile_metrics, %{})
+      |> assign(:system_metrics, %{})
+      |> assign(:alert_trends, [])
+      |> assign(:top_performing_profiles, [])
+      |> assign(:performance_recommendations, [])
+      |> load_dashboard_data()
 
     {:ok, socket}
   end
@@ -59,10 +57,8 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
 
     socket =
       socket
-
-    assign(:time_range, time_range)
-
-    load_dashboard_data()
+      |> assign(:time_range, time_range)
+      |> load_dashboard_data()
 
     {:noreply, socket}
   end
@@ -78,9 +74,8 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
   def handle_event("select_profile", %{"profile_id" => profile_id}, socket) do
     socket =
       socket
-
-    assign(:selected_profile, profile_id)
-    load_profile_details(profile_id)
+      |> assign(:selected_profile, profile_id)
+      |> load_profile_details(profile_id)
 
     {:noreply, socket}
   end
@@ -128,14 +123,12 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
     time_range = socket.assigns.time_range
 
     socket
-
-    load_profiles()
-    load_system_metrics(time_range)
-    load_profile_metrics(time_range)
-    load_alert_trends(time_range)
-    load_top_performing_profiles(time_range)
-
-    load_performance_recommendations()
+    |> load_profiles()
+    |> load_system_metrics(time_range)
+    |> load_profile_metrics(time_range)
+    |> load_alert_trends(time_range)
+    |> load_top_performing_profiles(time_range)
+    |> load_performance_recommendations()
   end
 
   defp load_profiles(socket) do
@@ -298,11 +291,11 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
   defp get_profile_alert_count(profile_id, time_range) do
     case safe_call(fn -> AlertService.get_recent_alerts(profile_id: profile_id, limit: 1000) end) do
       {:ok, alerts} ->
-        cutoff_time =
-          get_cutoff_time(time_range)
-          |> Enum.count(alerts, fn alert ->
-            DateTime.compare(alert.created_at, cutoff_time) == :gt
-          end)
+        cutoff_time = get_cutoff_time(time_range)
+
+        Enum.count(alerts, fn alert ->
+          DateTime.compare(alert.created_at, cutoff_time) == :gt
+        end)
 
       _ ->
         0
@@ -449,19 +442,18 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
 
     current_time = DateTime.utc_now()
 
-    hourly_activity =
-      Enum.map(0..min(hours - 1, 23), fn hour_offset ->
-        timestamp = DateTime.add(current_time, -hour_offset * 3600, :second)
-        # Simulate varying alert counts
-        alert_count = :rand.uniform(10)
+    Enum.map(0..min(hours - 1, 23), fn hour_offset ->
+      timestamp = DateTime.add(current_time, -hour_offset * 3600, :second)
+      # Simulate varying alert counts
+      alert_count = :rand.uniform(10)
 
-        %{
-          timestamp: timestamp,
-          alert_count: alert_count,
-          hour_label: String.slice(Time.to_string(DateTime.to_time(timestamp)), 0, 5)
-        }
-      end)
-      |> Enum.reverse(hourly_activity)
+      %{
+        timestamp: timestamp,
+        alert_count: alert_count,
+        hour_label: String.slice(Time.to_string(DateTime.to_time(timestamp)), 0, 5)
+      }
+    end)
+    |> Enum.reverse()
   end
 
   defp generate_system_recommendations(profiles, profile_metrics) do

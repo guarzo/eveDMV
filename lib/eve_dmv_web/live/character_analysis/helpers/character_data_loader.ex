@@ -1454,7 +1454,12 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
     end
   end
 
-  defp process_gang_size_row([category, count, avg_size, isk_destroyed, avg_value, systems], acc, total_kills, total_isk) do
+  defp process_gang_size_row(
+         [category, count, avg_size, isk_destroyed, avg_value, systems],
+         acc,
+         total_kills,
+         total_isk
+       ) do
     percentage =
       if total_kills > 0, do: Float.round(count / total_kills * 100, 1), else: 0.0
 

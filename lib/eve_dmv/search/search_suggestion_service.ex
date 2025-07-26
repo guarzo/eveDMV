@@ -11,8 +11,6 @@ defmodule EveDmv.Search.SearchSuggestionService do
   alias EveDmv.Static.EveSolarSystem
   alias EveDmv.Static.EveItemType
 
-  import AshPostgres.Expr, only: [fragment: 2]
-
   require Logger
 
   @doc """
@@ -57,21 +55,27 @@ defmodule EveDmv.Search.SearchSuggestionService do
     else
       try do
         # Query unique corporations from participants
-        query_pattern = "%#{String.downcase(query)}%"
 
         corporation_query =
           Participant
           |> Ash.Query.new()
-          |> Ash.Query.filter(not is_nil(corporation_name))
-          |> Ash.Query.filter(fragment("LOWER(corporation_name) LIKE ?", ^query_pattern))
           |> Ash.Query.select([:corporation_id, :corporation_name])
           |> Ash.Query.distinct([:corporation_id])
-          |> Ash.Query.limit(limit)
+          |> Ash.Query.limit(100)
 
         case Ash.read(corporation_query, domain: Api) do
           {:ok, corporations} ->
+            # Filter in Elixir
+            filtered_corps =
+              corporations
+              |> Enum.filter(fn corp ->
+                corp.corporation_name &&
+                  String.contains?(String.downcase(corp.corporation_name), String.downcase(query))
+              end)
+              |> Enum.take(limit)
+
             suggestions =
-              Enum.map(corporations, fn corp ->
+              Enum.map(filtered_corps, fn corp ->
                 %{
                   id: corp.corporation_id,
                   name: corp.corporation_name,
@@ -105,21 +109,29 @@ defmodule EveDmv.Search.SearchSuggestionService do
       {:ok, []}
     else
       try do
-        query_pattern = "%#{String.downcase(query)}%"
-
         alliance_query =
           Participant
           |> Ash.Query.new()
-          |> Ash.Query.filter(not is_nil(alliance_name))
-          |> Ash.Query.filter(fragment("LOWER(alliance_name) LIKE ?", ^query_pattern))
           |> Ash.Query.select([:alliance_id, :alliance_name])
           |> Ash.Query.distinct([:alliance_id])
-          |> Ash.Query.limit(limit)
+          |> Ash.Query.limit(100)
 
         case Ash.read(alliance_query, domain: Api) do
           {:ok, alliances} ->
+            # Filter in Elixir
+            filtered_alliances =
+              alliances
+              |> Enum.filter(fn alliance ->
+                alliance.alliance_name &&
+                  String.contains?(
+                    String.downcase(alliance.alliance_name),
+                    String.downcase(query)
+                  )
+              end)
+              |> Enum.take(limit)
+
             suggestions =
-              Enum.map(alliances, fn alliance ->
+              Enum.map(filtered_alliances, fn alliance ->
                 %{
                   id: alliance.alliance_id,
                   name: alliance.alliance_name,
@@ -153,19 +165,24 @@ defmodule EveDmv.Search.SearchSuggestionService do
       {:ok, []}
     else
       try do
-        query_pattern = "%#{String.downcase(query)}%"
-
         system_query =
           EveSolarSystem
           |> Ash.Query.new()
-          |> Ash.Query.filter(fragment("LOWER(system_name) LIKE ?", ^query_pattern))
           |> Ash.Query.select([:system_id, :system_name, :region_name, :security_status])
-          |> Ash.Query.limit(limit)
+          |> Ash.Query.limit(500)
 
         case Ash.read(system_query, domain: Api) do
           {:ok, systems} ->
+            # Filter in Elixir
+            filtered_systems =
+              systems
+              |> Enum.filter(fn system ->
+                String.contains?(String.downcase(system.system_name), String.downcase(query))
+              end)
+              |> Enum.take(limit)
+
             suggestions =
-              Enum.map(systems, fn system ->
+              Enum.map(filtered_systems, fn system ->
                 security_class = format_security_status(system.security_status)
 
                 %{
@@ -201,21 +218,26 @@ defmodule EveDmv.Search.SearchSuggestionService do
       {:ok, []}
     else
       try do
-        query_pattern = "%#{String.downcase(query)}%"
-
         ship_query =
           EveItemType
           |> Ash.Query.new()
           |> Ash.Query.filter(is_ship: true)
           |> Ash.Query.filter(published: true)
-          |> Ash.Query.filter(fragment("LOWER(type_name) LIKE ?", ^query_pattern))
           |> Ash.Query.select([:type_id, :type_name, :group_name, :category_name])
-          |> Ash.Query.limit(limit)
+          |> Ash.Query.limit(500)
 
         case Ash.read(ship_query, domain: Api) do
           {:ok, ships} ->
+            # Filter in Elixir
+            filtered_ships =
+              ships
+              |> Enum.filter(fn ship ->
+                String.contains?(String.downcase(ship.type_name), String.downcase(query))
+              end)
+              |> Enum.take(limit)
+
             suggestions =
-              Enum.map(ships, fn ship ->
+              Enum.map(filtered_ships, fn ship ->
                 %{
                   id: ship.type_id,
                   name: ship.type_name,

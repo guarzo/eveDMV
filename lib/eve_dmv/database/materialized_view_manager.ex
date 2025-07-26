@@ -64,8 +64,10 @@ defmodule EveDmv.Database.MaterializedViewManager do
 
       # Schedule initial setup
       Process.send_after(self(), :initialize_views, :timer.seconds(30))
-      |> ViewRefreshScheduler.schedule_refresh()
-      |> ViewRefreshScheduler.schedule_incremental_refresh()
+
+      # Schedule regular refreshes
+      ViewRefreshScheduler.schedule_refresh()
+      ViewRefreshScheduler.schedule_incremental_refresh()
     end
 
     {:ok, state}
