@@ -6,11 +6,11 @@ defmodule EveDmv.Contexts.WormholeOperations.Infrastructure.WormholeEventProcess
   analysis including character vetting, threat assessment, and fleet optimization.
   """
 
-  require Logger
-
   alias EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer
   alias EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer
   alias EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter
+
+  require Logger
 
   # Ship type IDs for role detection (more reliable than string matching)
   @logistics_ship_ids [

@@ -643,7 +643,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
         initial_insights
       end
 
-    # Movement-activity correlation insights  
+    # Movement-activity correlation insights
     movement_activity_insights =
       if map_size(movement_patterns) > 0 and map_size(activity_patterns) > 0 do
         ["Movement patterns correlate with activity spikes" | activity_threat_insights]

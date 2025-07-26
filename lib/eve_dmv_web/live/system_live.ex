@@ -8,11 +8,11 @@ defmodule EveDmvWeb.SystemLive do
 
   use EveDmvWeb, :live_view
 
+  import EveDmvWeb.FormatHelpers
+
+  alias EveDmv.Analytics.BattleDetector
   alias EveDmv.Cache.AnalysisCache
   alias EveDmv.Eve.SolarSystem
-  alias EveDmv.Analytics.BattleDetector
-
-  import EveDmvWeb.FormatHelpers
 
   @impl Phoenix.LiveView
   def mount(%{"system_id" => system_id}, _session, socket) do

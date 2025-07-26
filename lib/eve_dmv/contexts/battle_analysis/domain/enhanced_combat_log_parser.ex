@@ -26,7 +26,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
 
   ## Options
   - `:start_time` - Filter events after this time
-  - `:end_time` - Filter events before this time  
+  - `:end_time` - Filter events before this time
   - `:pilot_name` - Filter events involving this pilot
 
   ## Returns

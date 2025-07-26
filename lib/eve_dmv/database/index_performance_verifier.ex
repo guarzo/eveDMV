@@ -6,8 +6,9 @@ defmodule EveDmv.Database.IndexPerformanceVerifier do
   are being utilized correctly by PostgreSQL query planner.
   """
 
-  require Logger
   alias EveDmv.Repo
+
+  require Logger
 
   @doc """
   Runs EXPLAIN ANALYZE on common battle detection queries to verify index usage.

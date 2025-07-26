@@ -16,13 +16,13 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceService do
   use GenServer
   use EveDmv.ErrorHandler
 
-  require Logger
-
   alias EveDmv.Contexts.Surveillance.Domain.ChainActivityTracker
   alias EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper
   alias EveDmv.Contexts.Surveillance.Domain.ChainStatusService
   alias EveDmv.Contexts.Surveillance.Domain.ChainThreatAnalyzer
   alias EveDmv.Intelligence.ChainAnalysis.ChainMonitor
+
+  require Logger
 
   # Chain monitoring intervals
   # 30 seconds

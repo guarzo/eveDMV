@@ -275,7 +275,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AdvancedFilterEngine do
             diff_seconds <= condition.value * 3600
 
           :within_days ->
-            diff_seconds <= condition.value * 86400
+            diff_seconds <= condition.value * 86_400
 
           _ ->
             false

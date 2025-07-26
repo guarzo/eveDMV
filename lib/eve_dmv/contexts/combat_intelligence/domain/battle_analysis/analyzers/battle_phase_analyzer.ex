@@ -185,7 +185,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
           phase.intensity > 2.0 ->
             if phase.duration_seconds < 120, do: :escalation, else: :sustained_combat
 
-          # Medium intensity 
+          # Medium intensity
           phase.intensity > 1.0 ->
             :sustained_combat
 

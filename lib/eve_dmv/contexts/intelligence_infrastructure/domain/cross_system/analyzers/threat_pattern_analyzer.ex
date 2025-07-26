@@ -17,10 +17,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
       # Analyze threat correlations
       correlations = ThreatPatternAnalyzer.calculate_threat_correlations(system_ids, killmails)
-      
+
       # Assess escalation risk
       risk = ThreatPatternAnalyzer.calculate_escalation_risk(threat_data)
-      
+
       # Detect coordinated threats
       coordinated = ThreatPatternAnalyzer.identify_coordinated_threats(threat_data)
   """

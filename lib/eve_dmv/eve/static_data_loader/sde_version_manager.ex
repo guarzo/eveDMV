@@ -14,15 +14,15 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManager do
   require Logger
   require Ash.Query
 
-  @fuzzwork_base_url "https://www.fuzzwork.co.uk"
-  @wormhole_classes_url "#{@fuzzwork_base_url}/dump/latest/mapLocationWormholeClasses.csv"
-
   defstruct [
     :current_version,
     :latest_version,
     :last_check,
     :needs_update
   ]
+
+  @fuzzwork_base_url "https://www.fuzzwork.co.uk"
+  @wormhole_classes_url "#{@fuzzwork_base_url}/dump/latest/mapLocationWormholeClasses.csv"
 
   def check_for_updates do
     Logger.info("Checking for SDE updates...")

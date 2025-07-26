@@ -1852,7 +1852,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   end
 
   defp has_broadcast_patterns?(timeline) do
-    # Check for broadcast-style coordination patterns  
+    # Check for broadcast-style coordination patterns
     # Simplified check
     length(timeline.events) > 3
   end
@@ -2456,7 +2456,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
 
   defp calculate_early_coordination(events) do
     # Calculate coordination level from early engagement timing
-    if length(events) < 2 do
+    if Enum.count(events) < 2 do
       0.0
     else
       # Check timing between kills
@@ -2699,7 +2699,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
 
   defp calculate_time_span(events) do
     # Calculate time span between first and last event
-    if length(events) < 2 do
+    if Enum.count(events) < 2 do
       0
     else
       first_event = List.first(events)
@@ -2856,7 +2856,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     # Short range attackers vs long range victims = disadvantage
     short_disadvantage = attacker_ranges.short * victim_ranges.long * 0.8
 
-    # Long range attackers vs short range victims = advantage  
+    # Long range attackers vs short range victims = advantage
     long_advantage = attacker_ranges.long * victim_ranges.short * 0.9
 
     # Medium range provides balanced matchup
@@ -3242,7 +3242,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   end
 
   defp calculate_switching_frequency(events) do
-    if length(events) < 2 do
+    if Enum.count(events) < 2 do
       0.0
     else
       switches = identify_target_switches(events)
@@ -3562,7 +3562,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   end
 
   defp calculate_window_response_time(events) do
-    if length(events) < 2 do
+    if Enum.count(events) < 2 do
       0
     else
       first = List.first(events)
@@ -3844,7 +3844,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     # Identify potential retreat events from battle patterns
     events = timeline.events
 
-    if length(events) < 5 do
+    if Enum.count(events) < 5 do
       []
     else
       # Look for sudden drops in activity
@@ -4980,7 +4980,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   end
 
   defp calculate_average_kill_interval(events) do
-    if length(events) < 2 do
+    if Enum.count(events) < 2 do
       0
     else
       intervals = calculate_kill_intervals(%{events: events})
@@ -5899,7 +5899,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
       cond do
         # 10B+ ISK destroyed
         total_isk > 10_000_000_000 -> 1.0
-        # 5B+ ISK destroyed  
+        # 5B+ ISK destroyed
         total_isk > 5_000_000_000 -> 0.8
         # 1B+ ISK destroyed
         total_isk > 1_000_000_000 -> 0.6
@@ -6636,7 +6636,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   end
 
   defp calculate_primary_identification_speed(events) do
-    if length(events) < 2 do
+    if Enum.count(events) < 2 do
       0.0
     else
       # Measure how quickly primary targets are identified and focused
@@ -6744,7 +6744,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   end
 
   defp measure_target_discipline(events) do
-    if length(events) < 2 do
+    if Enum.count(events) < 2 do
       0.0
     else
       # Measure discipline by looking at target switching patterns
@@ -7034,7 +7034,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
 
   defp count_unnecessary_target_switches(events) do
     # Count target switches that don't follow logical patterns
-    if length(events) < 2 do
+    if Enum.count(events) < 2 do
       0
     else
       target_pairs = Enum.chunk_every(events, 2, 1, :discard)
@@ -7422,7 +7422,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   end
 
   defp calculate_battle_flow_consistency(events) do
-    if length(events) < 5 do
+    if Enum.count(events) < 5 do
       0.0
     else
       # Calculate consistency based on kill intervals
@@ -7499,7 +7499,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
 
   defp generate_battle_intensity_curve(events) do
     # Generate intensity curve over time
-    if length(events) < 2 do
+    if Enum.count(events) < 2 do
       []
     else
       # Calculate intensity in 30-second windows
@@ -8517,7 +8517,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   end
 
   defp calculate_transfer_efficiency(transfer_events, side_participants) do
-    if length(transfer_events) == 0 or length(side_participants) < 2 do
+    if Enum.empty?(transfer_events) or Enum.count(side_participants) < 2 do
       0.0
     else
       # Efficiency based on how quickly patterns spread
@@ -8557,14 +8557,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   end
 
   defp calculate_tactic_adoption_rate(transfer_events, side_participants) do
-    if length(transfer_events) == 0 or length(side_participants) < 2 do
+    if Enum.empty?(transfer_events) or Enum.count(side_participants) < 2 do
       0.0
     else
       # Calculate adoption rate based on how many participants adopted new tactics
       participants_with_adoptions = Enum.uniq(Enum.map(transfer_events, & &1[:adopter_id]))
 
-      if length(side_participants) > 0 do
-        length(participants_with_adoptions) / length(side_participants)
+      if not Enum.empty?(side_participants) do
+        Enum.count(participants_with_adoptions) / Enum.count(side_participants)
       else
         0.0
       end
@@ -8836,7 +8836,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
 
   defp identify_timing_experiments(events) do
     # Identify timing-based experiments
-    if length(events) < 5 do
+    if Enum.count(events) < 5 do
       []
     else
       # Look for unusual timing patterns
@@ -8911,7 +8911,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
 
   defp identify_intensity_change_points(events) do
     # Identify points where battle intensity changed significantly
-    if length(events) < 5 do
+    if Enum.count(events) < 5 do
       []
     else
       # 90-second windows
@@ -8946,8 +8946,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     # Look for numerical disadvantages
     sides = group_participants_by_side(participants)
 
-    if length(sides) >= 2 do
-      side_sizes = Enum.map(sides, fn {_side, side_participants} -> length(side_participants) end)
+    if Enum.count(sides) >= 2 do
+      side_sizes =
+        Enum.map(sides, fn {_side, side_participants} -> Enum.count(side_participants) end)
+
       max_size = Enum.max(side_sizes)
       min_size = Enum.min(side_sizes)
 
@@ -8984,8 +8986,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
           end
         end)
 
-      if length(response_times) > 0 do
-        avg_response_time = Enum.sum(response_times) / length(response_times)
+      if not Enum.empty?(response_times) do
+        avg_response_time = Enum.sum(response_times) / Enum.count(response_times)
         # Convert to score (faster = higher score, normalize to 5 minutes)
         max(0.0, 1.0 - avg_response_time / 300.0)
       else
@@ -9013,14 +9015,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
               end)
 
             # Consider effective if there was increased activity
-            length(post_response_events) >= 2
+            Enum.count(post_response_events) >= 2
           else
             false
           end
         end)
 
-      if length(responses) > 0 do
-        effective_responses / length(responses)
+      if not Enum.empty?(responses) do
+        effective_responses / Enum.count(responses)
       else
         0.0
       end
@@ -9059,7 +9061,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
 
   defp analyze_participant_tactical_pattern(events) do
     # Analyze tactical pattern for a specific participant
-    if length(events) < 2 do
+    if Enum.count(events) < 2 do
       %{pattern_type: :insufficient_data}
     else
       target_ships =
@@ -9088,7 +9090,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
 
   defp identify_similar_patterns_with_timing(participant_patterns) do
     # Find similar patterns that occurred at different times
-    if length(participant_patterns) < 2 do
+    if Enum.count(participant_patterns) < 2 do
       []
     else
       pattern_pairs =

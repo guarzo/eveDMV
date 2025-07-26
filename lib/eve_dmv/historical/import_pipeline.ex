@@ -7,12 +7,13 @@ defmodule EveDmv.Historical.ImportPipeline do
   """
 
   use GenServer
-  require Logger
-  require Ash.Query
 
   alias EveDmv.Killmails.KillmailRaw
-  alias Phoenix.PubSub
   alias EveDmv.PubSub, as: AppPubSub
+  alias Phoenix.PubSub
+
+  require Ash.Query
+  require Logger
 
   @batch_size 1000
   @max_concurrent_batches 4

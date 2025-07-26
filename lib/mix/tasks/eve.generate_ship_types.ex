@@ -141,41 +141,41 @@ defmodule Mix.Tasks.Eve.GenerateShipTypes do
     defmodule EveDmv.StaticData.ShipTypes do
       @moduledoc \"\"\"
       Ship type classification using real EVE static data.
-      
+
       This module provides ship type IDs and classifications based on
       actual EVE Online static data export (SDE).
-      
+
       Last generated: #{DateTime.utc_now() |> DateTime.to_string()}
       \"\"\"
 
       # Ship type IDs by classification
       # Generated from EVE SDE data
-      
+
       @frigate_ids #{inspect(Enum.sort(classifications[:frigate] || []))}
-      
+
       @destroyer_ids #{inspect(Enum.sort(classifications[:destroyer] || []))}
-      
+
       @cruiser_ids #{inspect(Enum.sort(classifications[:cruiser] || []))}
-      
+
       @battlecruiser_ids #{inspect(Enum.sort(classifications[:battlecruiser] || []))}
-      
+
       @battleship_ids #{inspect(Enum.sort(classifications[:battleship] || []))}
-      
+
       @capital_ids #{inspect(Enum.sort(classifications[:capital] || []))}
-      
+
       @supercapital_ids #{inspect(Enum.sort(classifications[:supercapital] || []))}
-      
+
       @industrial_ids #{inspect(Enum.sort(classifications[:industrial] || []))}
-      
+
       @mining_ids #{inspect(Enum.sort(classifications[:mining] || []))}
-      
+
       # Specific role ships
       @interceptor_ids #{inspect(Enum.sort(interceptor_ids))}
-      
+
       @logistics_ids #{inspect(Enum.sort(logistics_ids))}
-      
+
       @ewar_ids #{inspect(Enum.sort(ewar_ids))}
-      
+
       @doc \"\"\"
       Get all ship type IDs by class.
       \"\"\"
@@ -192,10 +192,10 @@ defmodule Mix.Tasks.Eve.GenerateShipTypes do
           mining: @mining_ids
         }
       end
-      
+
       @doc \"\"\"
       Classify a ship by its type ID.
-      
+
       Returns the ship class as an atom, or :unknown if not found.
       \"\"\"
       def classify_ship_type(type_id) when is_integer(type_id) do
@@ -272,7 +272,7 @@ defmodule Mix.Tasks.Eve.GenerateShipTypes do
 
       @doc \"\"\"
       Check if a ship is a support vessel.
-      
+
       Note: This includes both logistics and EWAR ships based on actual type IDs.
       \"\"\"
       def is_support_ship?(type_id) do
@@ -281,21 +281,21 @@ defmodule Mix.Tasks.Eve.GenerateShipTypes do
 
       @doc \"\"\"
       Get interceptor ship type IDs.
-      
+
       Interceptors are fast, agile frigates used for tackling and fleet scouting.
       \"\"\"
       def interceptor_ship_ids, do: @interceptor_ids
 
       @doc \"\"\"
       Get logistics ship type IDs.
-      
+
       Logistics ships provide remote repair capabilities to fleets.
       \"\"\"
       def logistics_ship_ids, do: @logistics_ids
 
       @doc \"\"\"
       Get electronic warfare ship type IDs.
-      
+
       EWAR ships provide electronic disruption capabilities.
       \"\"\"
       def ewar_ship_ids, do: @ewar_ids
@@ -314,10 +314,10 @@ defmodule Mix.Tasks.Eve.GenerateShipTypes do
       Check if a ship type ID is an EWAR ship.
       \"\"\"
       def is_ewar?(type_id), do: type_id in @ewar_ids
-      
+
       @doc \"\"\"
       DEPRECATED: Returns ship type ranges. Use classify_ship_type/1 instead.
-      
+
       This function is kept for backward compatibility but returns empty ranges.
       \"\"\"
       @deprecated "Use classify_ship_type/1 or get_ship_ids_for_class/1 instead"

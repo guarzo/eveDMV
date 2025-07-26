@@ -167,7 +167,7 @@ defmodule EveDmv.Users.Account do
     end
   end
 
-  # Aggregates  
+  # Aggregates
   aggregates do
     count :total_characters, :characters do
       description("Total number of characters in this account")

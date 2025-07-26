@@ -31,7 +31,7 @@ defmodule EveDmvWeb.Components.CharacterSwitcher do
         class="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white transition-colors"
         phx-click={toggle_dropdown(@id)}
       >
-        <img 
+        <img
           src={"https://images.evetech.net/characters/#{@current_user.eve_character_id}/portrait?size=32"}
           alt={@current_user.eve_character_name}
           class="w-6 h-6 rounded-full"
@@ -41,7 +41,7 @@ defmodule EveDmvWeb.Components.CharacterSwitcher do
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
-      
+
       <div
         id={"#{@id}-dropdown"}
         class="hidden absolute right-0 mt-2 w-72 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50"
@@ -60,14 +60,14 @@ defmodule EveDmvWeb.Components.CharacterSwitcher do
               </svg>
             </button>
           </div>
-          
+
           <div class="space-y-1 max-h-64 overflow-y-auto">
             <%= for character <- get_account_characters(@current_account) do %>
               <a
                 href={"/auth/switch/#{character.id}"}
                 class={"flex items-center gap-3 p-2 rounded hover:bg-gray-700 transition-colors #{if character.id == @current_user.id, do: "bg-gray-700 ring-1 ring-gray-600"}"}
               >
-                <img 
+                <img
                   src={"https://images.evetech.net/characters/#{character.eve_character_id}/portrait?size=32"}
                   alt={character.eve_character_name}
                   class="w-8 h-8 rounded-full"
@@ -89,7 +89,7 @@ defmodule EveDmvWeb.Components.CharacterSwitcher do
               </a>
             <% end %>
           </div>
-          
+
           <div class="mt-4 pt-4 border-t border-gray-700 space-y-3">
             <a
               href="/auth/eve_sso?link_to_account=true"
@@ -100,7 +100,7 @@ defmodule EveDmvWeb.Components.CharacterSwitcher do
               </svg>
               Add Another Character
             </a>
-            
+
             <a
               href="/account/settings"
               class="flex items-center justify-center gap-2 w-full px-3 py-2 text-sm bg-gray-700 text-gray-300 rounded hover:bg-gray-600 transition-colors"
@@ -112,7 +112,7 @@ defmodule EveDmvWeb.Components.CharacterSwitcher do
               Account Settings
             </a>
           </div>
-          
+
           <div class="mt-3 text-xs text-center text-gray-500">
             <%= character_count(@current_account) %> of <%= max_characters() %> characters
           </div>

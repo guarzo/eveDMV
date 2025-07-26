@@ -7,9 +7,10 @@ defmodule EveDmv.Database.MaterializedViewRefresher do
   """
 
   use GenServer
-  require Logger
 
   alias EveDmv.Repo
+
+  require Logger
 
   # Refresh interval - 15 minutes by default
   @refresh_interval :timer.minutes(15)

@@ -210,7 +210,7 @@ defmodule EveDmv.Analytics.SystemActivityMetrics do
     |> Ash.Query.filter(killmail_time >= ^start_time and killmail_time <= ^end_time)
     |> Ash.Query.sort(killmail_time: :desc)
     # Large limit for trend analysis
-    |> Ash.Query.limit(10000)
+    |> Ash.Query.limit(10_000)
     |> Ash.read!(domain: Api)
   end
 
@@ -329,7 +329,7 @@ defmodule EveDmv.Analytics.SystemActivityMetrics do
       ship_type_id in 582..600 -> :frigate
       ship_type_id in 620..640 -> :cruiser
       ship_type_id in 638..658 -> :battleship
-      ship_type_id > 20000 -> :capital
+      ship_type_id > 20_000 -> :capital
       true -> :other
     end
   end
@@ -409,7 +409,7 @@ defmodule EveDmv.Analytics.SystemActivityMetrics do
       # Calculate danger score (0-100)
       # max 40 points
       frequency_score = min(kill_frequency * 10, 40)
-      # max 30 points  
+      # max 30 points
       value_score = min(avg_ship_value / 100_000_000 * 20, 30)
       # max 30 points
       capital_score = min(capital_kills * 5, 30)
@@ -565,7 +565,7 @@ defmodule EveDmv.Analytics.SystemActivityMetrics do
 
   defp is_capital_ship?(ship_type_id) when is_integer(ship_type_id) do
     # Simplified check
-    ship_type_id > 20000
+    ship_type_id > 20_000
   end
 
   defp is_capital_ship?(_), do: false

@@ -43,7 +43,7 @@ defmodule EveDmvWeb.CharacterSwitcherLive do
           phx-click="toggle_character_list"
           class="flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700"
         >
-          <img 
+          <img
             src={"https://images.evetech.net/characters/#{@current_user.eve_character_id}/portrait?size=32"}
             alt={@current_user.eve_character_name}
             class="w-8 h-8 rounded-full"
@@ -54,12 +54,12 @@ defmodule EveDmvWeb.CharacterSwitcherLive do
           </svg>
         </button>
       </div>
-      
+
       <%= if @show_character_list do %>
         <div class="absolute mt-2 w-64 bg-gray-800 rounded-lg shadow-lg z-50">
           <div class="p-4">
             <h3 class="text-sm font-semibold text-gray-400 mb-2">Your Characters</h3>
-            
+
             <div class="space-y-2">
               <%= for character <- @characters do %>
                 <div
@@ -67,7 +67,7 @@ defmodule EveDmvWeb.CharacterSwitcherLive do
                   phx-value-character-id={character.id}
                   class={"flex items-center gap-3 p-2 rounded cursor-pointer hover:bg-gray-700 #{if character.id == @current_user.id, do: "bg-gray-700"}"}
                 >
-                  <img 
+                  <img
                     src={"https://images.evetech.net/characters/#{character.eve_character_id}/portrait?size=32"}
                     alt={character.eve_character_name}
                     class="w-8 h-8 rounded-full"
@@ -86,7 +86,7 @@ defmodule EveDmvWeb.CharacterSwitcherLive do
                 </div>
               <% end %>
             </div>
-            
+
             <div class="mt-4 pt-4 border-t border-gray-700">
               <button
                 phx-click="toggle_link_character"
@@ -95,24 +95,24 @@ defmodule EveDmvWeb.CharacterSwitcherLive do
                 + Add Another Character
               </button>
             </div>
-            
+
             <div class="mt-2 text-xs text-gray-500">
               <%= length(@characters) %> of <%= max_characters_per_account() %> characters
             </div>
           </div>
         </div>
       <% end %>
-      
+
       <%= if @linking_new_character do %>
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div class="bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
             <h2 class="text-xl font-bold mb-4">Link Another Character</h2>
-            
+
             <p class="text-gray-400 mb-6">
               To link another EVE character to your account, you'll need to authenticate
               with EVE SSO using that character.
             </p>
-            
+
             <div class="bg-gray-900 p-4 rounded mb-6">
               <h3 class="font-semibold mb-2">Important:</h3>
               <ul class="text-sm text-gray-400 space-y-1">
@@ -121,7 +121,7 @@ defmodule EveDmvWeb.CharacterSwitcherLive do
                 <li>• You can switch between characters without logging out</li>
               </ul>
             </div>
-            
+
             <div class="flex gap-4">
               <a
                 href="/auth/eve_sso?link_to_account=true"

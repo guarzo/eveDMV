@@ -145,26 +145,26 @@ defmodule EveDmv.Pagination.CursorPaginator do
   # Private functions
 
   defp build_paginated_query(%__MODULE__{} = paginator) do
-    query = paginator.query
+    base_query = paginator.query
 
     # Add cursor conditions
     query =
       case {paginator.after_cursor, paginator.before_cursor} do
         {nil, nil} ->
           # First page
-          query
+          base_query
 
         {after_cursor, nil} ->
           # Forward pagination
-          add_after_condition(query, paginator.cursor_fields, after_cursor)
+          add_after_condition(base_query, paginator.cursor_fields, after_cursor)
 
         {nil, before_cursor} ->
           # Backward pagination
-          add_before_condition(query, paginator.cursor_fields, before_cursor)
+          add_before_condition(base_query, paginator.cursor_fields, before_cursor)
 
         {after_cursor, before_cursor} ->
           # Range query (between cursors)
-          query
+          base_query
           |> add_after_condition(paginator.cursor_fields, after_cursor)
           |> add_before_condition(paginator.cursor_fields, before_cursor)
       end

@@ -1,10 +1,4 @@
 defmodule EveDmvWeb.SurveillanceProfilesLive do
-  # import EveDmvWeb.SurveillanceProfilesLive.Helpers
-  alias EveDmv.Contexts.Surveillance
-  alias EveDmv.Contexts.Surveillance.Domain.MatchingEngine
-  alias EveDmv.Intelligence.WandererClient
-  require Logger
-
   @moduledoc """
   LiveView for managing surveillance profiles.
 
@@ -1112,7 +1106,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
     <%= case @condition.type do %>
       <% :simple when @condition.field in ["character_ids", "corporation_ids", "alliance_ids", "system_ids", "ship_type_ids"] -> %>
         <div class="space-y-2">
-          <input type="text" 
+          <input type="text"
                  phx-change="update_filter_field"
                  phx-value-field="value"
                  phx-value-index={@index}
@@ -1121,7 +1115,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
                  class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
           <div class="text-xs text-gray-400">Enter comma-separated values or names</div>
         </div>
-      
+
       <% :range -> %>
         <div class="space-y-3">
           <div class="flex items-center space-x-2">
@@ -1139,17 +1133,17 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
               <option value="less_equal" selected={@condition.operator == :less_equal}>Less or Equal</option>
             </select>
           </div>
-          
+
           <%= if @condition.operator == :between do %>
             <div class="grid grid-cols-2 gap-2">
-              <input type="number" 
+              <input type="number"
                      phx-change="update_range_filter"
                      phx-value-field="min_value"
                      phx-value-index={@index}
                      value={get_range_min(@condition.value)}
                      placeholder="Min value"
                      class="block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
-              <input type="number" 
+              <input type="number"
                      phx-change="update_range_filter"
                      phx-value-field="max_value"
                      phx-value-index={@index}
@@ -1158,7 +1152,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
                      class="block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
             </div>
           <% else %>
-            <input type="number" 
+            <input type="number"
                    phx-change="update_range_filter"
                    phx-value-field="single_value"
                    phx-value-index={@index}
@@ -1167,7 +1161,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
                    class="block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
           <% end %>
         </div>
-      
+
       <% :temporal -> %>
         <div class="space-y-3">
           <%= case @condition.field do %>
@@ -1175,7 +1169,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
               <div class="grid grid-cols-2 gap-2">
                 <div>
                   <label class="block text-xs text-gray-400 mb-1">Start Hour (0-23)</label>
-                  <input type="number" 
+                  <input type="number"
                          min="0" max="23"
                          phx-change="update_temporal_filter"
                          phx-value-field="start_hour"
@@ -1185,7 +1179,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
                 </div>
                 <div>
                   <label class="block text-xs text-gray-400 mb-1">End Hour (0-23)</label>
-                  <input type="number" 
+                  <input type="number"
                          min="0" max="23"
                          phx-change="update_temporal_filter"
                          phx-value-field="end_hour"
@@ -1194,10 +1188,10 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
                          class="block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
                 </div>
               </div>
-            
+
             <% "time_since" -> %>
               <div class="grid grid-cols-2 gap-2">
-                <input type="number" 
+                <input type="number"
                        phx-change="update_temporal_filter"
                        phx-value-field="time_value"
                        phx-value-index={@index}
@@ -1217,14 +1211,14 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
               </div>
           <% end %>
         </div>
-      
+
       <% :proximity -> %>
         <div class="space-y-3">
           <%= case @condition.field do %>
             <% "chain_proximity" -> %>
               <div>
                 <label class="block text-xs text-gray-400 mb-1">Max jumps from home system</label>
-                <input type="number" 
+                <input type="number"
                        min="1" max="20"
                        phx-change="update_filter_field"
                        phx-value-field="max_jumps"
@@ -1232,12 +1226,12 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
                        value={get_in(@condition.value, [:max_jumps_from_home]) || 5}
                        class="block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
               </div>
-            
+
             <% "system_distance" -> %>
               <div class="space-y-2">
                 <div>
                   <label class="block text-xs text-gray-400 mb-1">Target systems (comma-separated)</label>
-                  <input type="text" 
+                  <input type="text"
                          phx-change="update_filter_field"
                          phx-value-field="target_systems"
                          phx-value-index={@index}
@@ -1247,7 +1241,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
                 </div>
                 <div>
                   <label class="block text-xs text-gray-400 mb-1">Max jumps</label>
-                  <input type="number" 
+                  <input type="number"
                          min="1" max="10"
                          phx-change="update_filter_field"
                          phx-value-field="max_jumps"
@@ -1258,7 +1252,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
               </div>
           <% end %>
         </div>
-      
+
       <% :nested -> %>
         <div class="space-y-3 border-l-4 border-blue-500 pl-4">
           <div class="flex items-center space-x-2">
@@ -1281,11 +1275,11 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
               + Add Condition
             </button>
           </div>
-          
+
           <div class="text-sm text-gray-400">
             Nested conditions: <%= length(@condition.nested_conditions || []) %>
           </div>
-          
+
           <!-- Nested conditions would be rendered recursively here -->
           <div class="ml-4 space-y-2 text-sm text-gray-500">
             <%= for {nested_condition, nested_index} <- Enum.with_index(@condition.nested_conditions || []) do %>
@@ -1304,7 +1298,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
             <% end %>
           </div>
         </div>
-      
+
       <% _ -> %>
         <div class="text-red-400">
           Unknown filter type: <%= @condition.type %>

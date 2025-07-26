@@ -7,8 +7,10 @@ defmodule EveDmv.Database.QueryPerformance do
   """
 
   alias EveDmv.Monitoring.PerformanceTracker
-  import PerformanceTracker, only: [time_query: 3]
-  require PerformanceTracker
+
+  import EveDmv.Monitoring.PerformanceTracker, only: [time_query: 3]
+
+  require EveDmv.Monitoring.PerformanceTracker
 
   @doc """
   Execute a query with performance tracking.

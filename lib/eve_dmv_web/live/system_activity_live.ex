@@ -1,11 +1,11 @@
 defmodule EveDmvWeb.SystemActivityLive do
   use EveDmvWeb, :live_view
 
+  import EveDmvWeb.Components.PageHeaderComponent
+  import EveDmvWeb.Components.StatsGridComponent
+
   alias EveDmv.Analytics.SystemActivityMetrics
   alias EveDmv.Presentation.Formatters
-
-  import EveDmvWeb.Components.StatsGridComponent
-  import EveDmvWeb.Components.PageHeaderComponent
 
   @topic "system_activity"
 
@@ -246,8 +246,8 @@ defmodule EveDmvWeb.SystemActivityLive do
     cond do
       diff_seconds < 60 -> "#{diff_seconds}s ago"
       diff_seconds < 3600 -> "#{div(diff_seconds, 60)}m ago"
-      diff_seconds < 86400 -> "#{div(diff_seconds, 3600)}h ago"
-      true -> "#{div(diff_seconds, 86400)}d ago"
+      diff_seconds < 86_400 -> "#{div(diff_seconds, 3600)}h ago"
+      true -> "#{div(diff_seconds, 86_400)}d ago"
     end
   end
 end

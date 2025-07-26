@@ -1,5 +1,5 @@
 defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzers.SingleSystemAnalyzerTest do
-  use EveDmv.DataCase
+  use EveDmv.DataCase, async: true
 
   alias EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzers.SingleSystemAnalyzer
   alias EveDmv.Eve.SolarSystem

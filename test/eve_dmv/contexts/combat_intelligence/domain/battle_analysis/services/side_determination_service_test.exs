@@ -1,5 +1,5 @@
 defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Services.SideDeterminationServiceTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Services.SideDeterminationService
 
   describe "classify_participants/2" do
@@ -153,8 +153,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Services.Side
       assert Enum.count(Map.get(graph.kills, 2, [])) == 1
 
       # Character 3 should have 0 deaths and 1 kill
-      assert length(Map.get(graph.deaths, 3, [])) == 0
-      assert length(Map.get(graph.kills, 3, [])) == 1
+      assert Enum.empty?(Map.get(graph.deaths, 3, []))
+      assert Enum.count(Map.get(graph.kills, 3, [])) == 1
     end
   end
 

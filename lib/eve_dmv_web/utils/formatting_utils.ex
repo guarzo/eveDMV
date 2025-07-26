@@ -9,7 +9,7 @@ defmodule EveDmvWeb.Utils.FormattingUtils do
   Examples:
       iex> EveDmvWeb.Utils.FormattingUtils.format_isk_short(1_500_000)
       "1.5M"
-      
+
       iex> EveDmvWeb.Utils.FormattingUtils.format_isk_short(2_300_000_000)
       "2.3B"
   """

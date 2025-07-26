@@ -341,7 +341,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
       11_959,
       11_961,
       11_963,
-      # ECM ships  
+      # ECM ships
       11_965,
       11_969,
       11_971,

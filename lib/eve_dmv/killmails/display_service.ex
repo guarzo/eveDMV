@@ -16,7 +16,7 @@ defmodule EveDmv.Killmails.DisplayService do
   def load_recent_killmails(limit \\ @feed_limit, filters \\ %{}, offset \\ 0) do
     # Always load from raw killmails since enriched data isn't actually enriched
     # This gives us access to character/corp names from wanderer-kills
-    query =
+    base_query =
       KillmailRaw
       |> Ash.Query.new()
       |> Ash.Query.sort(killmail_time: :desc)
@@ -24,7 +24,7 @@ defmodule EveDmv.Killmails.DisplayService do
       |> Ash.Query.offset(offset)
 
     # Apply filters if provided
-    query = apply_filters(query, filters)
+    query = apply_filters(base_query, filters)
 
     raw = Ash.read!(query, domain: Api)
 

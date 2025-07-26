@@ -105,25 +105,27 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
 
   # Compile human-readable insights from assessment and patterns
   defp compile_insights(assessment, patterns) do
-    insights = []
+    try do
+      insights = []
 
-    # Threat level insights
-    insights = add_threat_level_insights(insights, assessment.threat_score)
+      # Threat level insights
+      insights = add_threat_level_insights(insights, assessment.threat_score)
 
-    # Activity pattern insights
-    insights = add_activity_insights(insights, patterns)
+      # Activity pattern insights
+      insights = add_activity_insights(insights, patterns)
 
-    # Combat behavior insights
-    insights = add_combat_insights(insights, patterns)
+      # Combat behavior insights
+      insights = add_combat_insights(insights, patterns)
 
-    # Temporal pattern insights
-    insights = add_temporal_insights(insights, patterns)
+      # Temporal pattern insights
+      insights = add_temporal_insights(insights, patterns)
 
-    {:ok, Enum.reverse(insights)}
-  rescue
-    error ->
-      Logger.error("Error compiling insights: #{inspect(error)}")
-      {:error, "Insight compilation failed"}
+      {:ok, Enum.reverse(insights)}
+    rescue
+      error ->
+        Logger.error("Error compiling insights: #{inspect(error)}")
+        {:error, "Insight compilation failed"}
+    end
   end
 
   # Calculate frequency of aggressive actions (as attacker)

@@ -61,7 +61,7 @@ defmodule EveDmv.Users.AccountManager do
     character = get_user_by_id!(character_id)
 
     # Verify the character belongs to this account
-    unless character.account_id == account.id do
+    if character.account_id != account.id do
       {:error, :character_not_in_account}
     else
       update_params = %{last_character_switch_at: DateTime.utc_now()}

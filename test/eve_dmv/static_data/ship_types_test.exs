@@ -1,5 +1,5 @@
 defmodule EveDmv.StaticData.ShipTypesTest do
-  use EveDmv.DataCase
+  use EveDmv.DataCase, async: true
   alias EveDmv.StaticData.ShipTypes
   alias EveDmv.Eve.ItemType
 
@@ -35,7 +35,7 @@ defmodule EveDmv.StaticData.ShipTypesTest do
 
       {:ok, _venture} =
         ItemType.create(%{
-          type_id: 32880,
+          type_id: 32_880,
           type_name: "Venture",
           group_name: "Mining Barge",
           is_ship: true,

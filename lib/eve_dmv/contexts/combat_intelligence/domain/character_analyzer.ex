@@ -185,85 +185,83 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   end
 
   defp search_characters_by_criteria(criteria) do
-    try do
-      # Extract search parameters
-      threat_level_min = Map.get(criteria, :threat_level_min, 0.0)
-      threat_level_max = Map.get(criteria, :threat_level_max, 10.0)
-      activity_days = Map.get(criteria, :activity_days, 30)
-      limit = Map.get(criteria, :limit, 100)
+    # Extract search parameters
+    threat_level_min = Map.get(criteria, :threat_level_min, 0.0)
+    threat_level_max = Map.get(criteria, :threat_level_max, 10.0)
+    activity_days = Map.get(criteria, :activity_days, 30)
+    limit = Map.get(criteria, :limit, 100)
 
-      # Search for characters with recent activity
-      cutoff_date = DateTime.add(DateTime.utc_now(), -activity_days, :day)
+    # Search for characters with recent activity
+    cutoff_date = DateTime.add(DateTime.utc_now(), -activity_days, :day)
 
-      # Query for characters with killmail activity in the specified timeframe
-      query =
-        from(k in "killmails_raw",
-          where: k.killmail_time >= ^cutoff_date and not is_nil(k.victim_character_id),
-          select: %{
-            victim_character_id: k.victim_character_id,
-            killmail_time: k.killmail_time
-          },
-          limit: ^(limit * 5)
-        )
+    # Query for characters with killmail activity in the specified timeframe
+    query =
+      from(k in "killmails_raw",
+        where: k.killmail_time >= ^cutoff_date and not is_nil(k.victim_character_id),
+        select: %{
+          victim_character_id: k.victim_character_id,
+          killmail_time: k.killmail_time
+        },
+        limit: ^(limit * 5)
+      )
 
-      case Repo.all(query) do
-        killmails ->
-          # Extract unique character IDs
-          character_ids =
-            killmails
-            |> Enum.map(& &1.victim_character_id)
-            |> Enum.uniq()
-            |> Enum.take(limit)
+    case Repo.all(query) do
+      killmails ->
+        # Extract unique character IDs
+        character_ids =
+          killmails
+          |> Enum.map(& &1.victim_character_id)
+          |> Enum.uniq()
+          |> Enum.take(limit)
 
-          # Calculate threat scores for each character
-          search_results =
-            character_ids
-            |> Enum.map(fn character_id ->
-              case ThreatScoringCoordinator.calculate_threat_score(character_id) do
-                {:ok, threat_data} ->
-                  threat_score = threat_data.composite_score || 0.0
+        # Calculate threat scores for each character
+        search_results =
+          character_ids
+          |> Enum.map(fn character_id ->
+            case ThreatScoringCoordinator.calculate_threat_score(character_id) do
+              {:ok, threat_data} ->
+                threat_score = threat_data.composite_score || 0.0
 
-                  # Filter by threat level range
-                  if threat_score >= threat_level_min and threat_score <= threat_level_max do
-                    %{
-                      character_id: character_id,
-                      threat_score: threat_score,
-                      threat_level: threat_data.threat_level,
-                      last_seen: get_last_activity_date(character_id, cutoff_date),
-                      combat_effectiveness: threat_data.combat_effectiveness || 0.0,
-                      matches_criteria: true
-                    }
-                  else
-                    nil
-                  end
+                # Filter by threat level range
+                if threat_score >= threat_level_min and threat_score <= threat_level_max do
+                  %{
+                    character_id: character_id,
+                    threat_score: threat_score,
+                    threat_level: threat_data.threat_level,
+                    last_seen: get_last_activity_date(character_id, cutoff_date),
+                    combat_effectiveness: threat_data.combat_effectiveness || 0.0,
+                    matches_criteria: true
+                  }
+                else
+                  nil
+                end
 
-                {:error, _} ->
-                  # Include characters without threat data if no threat filter
-                  if threat_level_min == 0.0 and threat_level_max == 10.0 do
-                    %{
-                      character_id: character_id,
-                      threat_score: 0.0,
-                      threat_level: :unknown,
-                      last_seen: get_last_activity_date(character_id, cutoff_date),
-                      combat_effectiveness: 0.0,
-                      matches_criteria: true
-                    }
-                  else
-                    nil
-                  end
-              end
-            end)
-            |> Enum.filter(&(&1 != nil))
-            |> Enum.sort_by(& &1.threat_score, :desc)
-            |> Enum.take(limit)
+              {:error, _} ->
+                # Include characters without threat data if no threat filter
+                if threat_level_min == 0.0 and threat_level_max == 10.0 do
+                  %{
+                    character_id: character_id,
+                    threat_score: 0.0,
+                    threat_level: :unknown,
+                    last_seen: get_last_activity_date(character_id, cutoff_date),
+                    combat_effectiveness: 0.0,
+                    matches_criteria: true
+                  }
+                else
+                  nil
+                end
+            end
+          end)
+          |> Enum.filter(&(&1 != nil))
+          |> Enum.sort_by(& &1.threat_score, :desc)
+          |> Enum.take(limit)
 
-          {:ok, search_results}
-      end
-    rescue
-      error ->
-        Logger.error("Character search error: #{inspect(error)}")
-        {:error, :search_error}
+        {:ok, search_results}
     end
+  rescue
+    error ->
+      Logger.error("Character search error: #{inspect(error)}")
+      {:error, :search_error}
   end
 
   defp get_last_activity_date(character_id, cutoff_date) do
@@ -283,44 +281,42 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   end
 
   defp analyze_character_activity_patterns(character_id, opts) do
-    try do
-      # Extract options
-      days_back = Keyword.get(opts, :days_back, 90)
-      include_losses = Keyword.get(opts, :include_losses, true)
-      include_kills = Keyword.get(opts, :include_kills, true)
+    # Extract options
+    days_back = Keyword.get(opts, :days_back, 90)
+    include_losses = Keyword.get(opts, :include_losses, true)
+    include_kills = Keyword.get(opts, :include_kills, true)
 
-      # Date range for analysis
-      cutoff_date = DateTime.add(DateTime.utc_now(), -days_back, :day)
+    # Date range for analysis
+    cutoff_date = DateTime.add(DateTime.utc_now(), -days_back, :day)
 
-      # Get character's killmail activity
-      activity_data =
-        get_character_activity_data(character_id, cutoff_date, include_losses, include_kills)
+    # Get character's killmail activity
+    activity_data =
+      get_character_activity_data(character_id, cutoff_date, include_losses, include_kills)
 
-      # Analyze patterns
-      patterns = %{
-        character_id: character_id,
-        analysis_period: %{
-          start_date: cutoff_date,
-          end_date: DateTime.utc_now(),
-          days_analyzed: days_back
-        },
-        activity_summary: calculate_activity_summary(activity_data),
-        temporal_patterns: analyze_temporal_patterns(activity_data),
-        engagement_patterns: analyze_engagement_patterns(activity_data),
-        ship_usage_patterns: analyze_ship_usage_patterns(activity_data),
-        system_preferences: analyze_system_preferences(activity_data),
-        threat_level_trends: analyze_threat_level_trends(character_id, cutoff_date)
-      }
+    # Analyze patterns
+    patterns = %{
+      character_id: character_id,
+      analysis_period: %{
+        start_date: cutoff_date,
+        end_date: DateTime.utc_now(),
+        days_analyzed: days_back
+      },
+      activity_summary: calculate_activity_summary(activity_data),
+      temporal_patterns: analyze_temporal_patterns(activity_data),
+      engagement_patterns: analyze_engagement_patterns(activity_data),
+      ship_usage_patterns: analyze_ship_usage_patterns(activity_data),
+      system_preferences: analyze_system_preferences(activity_data),
+      threat_level_trends: analyze_threat_level_trends(character_id, cutoff_date)
+    }
 
-      {:ok, patterns}
-    rescue
-      error ->
-        Logger.error(
-          "Activity pattern analysis failed for character #{character_id}: #{inspect(error)}"
-        )
+    {:ok, patterns}
+  rescue
+    error ->
+      Logger.error(
+        "Activity pattern analysis failed for character #{character_id}: #{inspect(error)}"
+      )
 
-        {:error, :analysis_failed}
-    end
+      {:error, :analysis_failed}
   end
 
   defp get_character_activity_data(character_id, cutoff_date, include_losses, include_kills) do

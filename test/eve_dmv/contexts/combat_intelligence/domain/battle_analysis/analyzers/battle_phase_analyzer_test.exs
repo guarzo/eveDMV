@@ -1,5 +1,5 @@
 defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.BattlePhaseAnalyzerTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.BattlePhaseAnalyzer
 
   describe "identify_battle_phases/1" do

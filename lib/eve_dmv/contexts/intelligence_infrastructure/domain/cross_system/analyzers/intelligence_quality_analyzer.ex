@@ -17,10 +17,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
       # Calculate coverage percentage
       coverage = IntelligenceQualityAnalyzer.calculate_coverage_percentage(system_ids, intel_data)
-      
+
       # Assess intelligence quality
       quality = IntelligenceQualityAnalyzer.assess_intelligence_quality(intel_data)
-      
+
       # Identify intelligence gaps
       gaps = IntelligenceQualityAnalyzer.identify_intelligence_gaps(system_ids, killmails)
   """

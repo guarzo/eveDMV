@@ -1,12 +1,12 @@
 defmodule EveDmvWeb.LiveHelpers.ApiErrorHelper do
-  import Phoenix.Component
-  alias EveDmvWeb.Components.ApiErrorHandler
-
   @moduledoc """
   Helper functions for handling API errors in LiveViews.
 
   Import this module in LiveViews to get convenient error handling functions.
   """
+
+  import Phoenix.Component
+  alias EveDmvWeb.Components.ApiErrorHandler
 
   # import Phoenix.LiveView
   @doc """

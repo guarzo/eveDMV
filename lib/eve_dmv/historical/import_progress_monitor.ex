@@ -6,9 +6,10 @@ defmodule EveDmv.Historical.ImportProgressMonitor do
   """
 
   use GenServer
-  require Logger
 
   alias Phoenix.PubSub
+
+  require Logger
 
   defstruct [
     :current_import,

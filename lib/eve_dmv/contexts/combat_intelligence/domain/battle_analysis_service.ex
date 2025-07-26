@@ -463,7 +463,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
       # Analyze participant roles
       roles = ParticipantExtractor.analyze_participant_roles(participants)
 
-      # Analyze participant experience  
+      # Analyze participant experience
       experience = ParticipantExtractor.analyze_participant_experience(participants)
 
       # Track participant activity (requires killmails, so we'll skip for now)
@@ -665,7 +665,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
           []
         end
 
-      # Add timeline-based turning points (major kill events)  
+      # Add timeline-based turning points (major kill events)
       timeline_points =
         timeline
         |> Enum.with_index()
@@ -2892,14 +2892,15 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp analyze_duration_trends(engagement_timeline) do
     durations =
       engagement_timeline
-      |> Enum.map(& &1.duration_category)
-      |> Enum.map(fn
-        :instant -> 1
-        :brief -> 2
-        :standard -> 3
-        :prolonged -> 4
-        :extended -> 5
-        _ -> 0
+      |> Enum.map(fn event ->
+        case event.duration_category do
+          :instant -> 1
+          :brief -> 2
+          :standard -> 3
+          :prolonged -> 4
+          :extended -> 5
+          _ -> 0
+        end
       end)
 
     %{
@@ -2911,14 +2912,15 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   defp analyze_intensity_trends(engagement_timeline) do
     intensities =
       engagement_timeline
-      |> Enum.map(& &1.intensity_level)
-      |> Enum.map(fn
-        :very_low -> 1
-        :low -> 2
-        :medium -> 3
-        :high -> 4
-        :very_high -> 5
-        _ -> 0
+      |> Enum.map(fn event ->
+        case event.intensity_level do
+          :very_low -> 1
+          :low -> 2
+          :medium -> 3
+          :high -> 4
+          :very_high -> 5
+          _ -> 0
+        end
       end)
 
     %{
@@ -5181,8 +5183,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   defp find_dominant_doctrine(effectiveness_analysis) do
     case effectiveness_analysis
-         |> Enum.filter(&(&1.effectiveness_score >= 60))
-         |> Enum.filter(&(&1.battle_count >= 3))
+         |> Enum.filter(&(&1.effectiveness_score >= 60 and &1.battle_count >= 3))
          |> List.first() do
       nil -> nil
       doctrine -> doctrine.doctrine

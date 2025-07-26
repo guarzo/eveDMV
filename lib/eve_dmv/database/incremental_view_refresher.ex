@@ -7,8 +7,10 @@ defmodule EveDmv.Database.IncrementalViewRefresher do
   """
 
   use GenServer
-  require Logger
+
   alias Ecto.Adapters.SQL
+
+  require Logger
 
   @refresh_interval :timer.minutes(5)
   @incremental_views %{

@@ -1,5 +1,5 @@
 defmodule EveDmv.StaticData.ShipTypesPerformanceTest do
-  use EveDmv.DataCase
+  use EveDmv.DataCase, async: false
   alias EveDmv.StaticData.ShipTypes
   alias EveDmv.Eve.ItemType
 
