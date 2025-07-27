@@ -17,16 +17,29 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
       "Extracting tactical patterns from timeline with #{Enum.count(timeline.events)} events"
     )
 
-    # For now, return basic tactical pattern extraction
-    # TODO: Implement detailed tactical pattern extraction
+    # Extract comprehensive tactical patterns from battle data
+    formation_patterns = analyze_formation_patterns(timeline, participants)
+    movement_patterns = analyze_movement_patterns(timeline, participants)
+    engagement_patterns = analyze_engagement_patterns(timeline, participants)
+    coordination_patterns = analyze_coordination_patterns(timeline, participants)
+    tactical_decisions = identify_tactical_decisions(timeline, participants)
+    
+    # Calculate pattern effectiveness based on battle outcomes
+    pattern_effectiveness = evaluate_pattern_effectiveness(timeline, participants)
 
     %{
-      formation_patterns: analyze_formation_patterns(timeline, participants),
-      movement_patterns: analyze_movement_patterns(timeline, participants),
-      engagement_patterns: analyze_engagement_patterns(timeline, participants),
-      coordination_patterns: analyze_coordination_patterns(timeline, participants),
-      tactical_decisions: identify_tactical_decisions(timeline, participants),
-      pattern_effectiveness: evaluate_pattern_effectiveness(timeline, participants)
+      formation_patterns: formation_patterns,
+      movement_patterns: movement_patterns,
+      engagement_patterns: engagement_patterns,
+      coordination_patterns: coordination_patterns,
+      tactical_decisions: tactical_decisions,
+      pattern_effectiveness: pattern_effectiveness,
+      summary: %{
+        dominant_formation: extract_dominant_formation(formation_patterns),
+        primary_tactic: identify_primary_tactic(engagement_patterns),
+        coordination_level: assess_coordination_level(coordination_patterns),
+        tactical_sophistication: measure_tactical_sophistication(tactical_decisions)
+      }
     }
   end
 
@@ -36,15 +49,34 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   def analyze_positioning_patterns(timeline, participants) do
     Logger.debug("Analyzing positioning patterns")
 
-    # For now, return basic positioning analysis
-    # TODO: Implement detailed positioning pattern analysis
+    # Analyze comprehensive positioning patterns from battle data
+    initial_positioning = analyze_initial_positioning(timeline, participants)
+    positioning_changes = track_positioning_changes(timeline, participants)
+    range_control = analyze_range_control(timeline, participants)
+    escape_routes = analyze_escape_routes(timeline, participants)
+    tactical_advantages = identify_positional_advantages(timeline, participants)
+    
+    # Calculate positioning effectiveness metrics
+    positioning_effectiveness = calculate_positioning_effectiveness(
+      initial_positioning,
+      positioning_changes,
+      range_control,
+      tactical_advantages
+    )
 
     %{
-      initial_positioning: analyze_initial_positioning(timeline, participants),
-      positioning_changes: track_positioning_changes(timeline, participants),
-      range_control: analyze_range_control(timeline, participants),
-      escape_routes: analyze_escape_routes(timeline, participants),
-      tactical_advantages: identify_positional_advantages(timeline, participants)
+      initial_positioning: initial_positioning,
+      positioning_changes: positioning_changes,
+      range_control: range_control,
+      escape_routes: escape_routes,
+      tactical_advantages: tactical_advantages,
+      positioning_effectiveness: positioning_effectiveness,
+      summary: %{
+        dominant_position_type: determine_dominant_position_type(initial_positioning),
+        mobility_level: assess_fleet_mobility(positioning_changes),
+        range_control_success: evaluate_range_control_success(range_control),
+        tactical_position_score: calculate_tactical_position_score(tactical_advantages)
+      }
     }
   end
 
@@ -9008,5 +9040,115 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
       end
     end)
     |> Enum.map(fn {event, idx} -> Map.put(event, :timeline_position, idx) end)
+  end
+
+  # Helper functions for enhanced tactical pattern analysis
+
+  defp extract_dominant_formation(formation_patterns) do
+    formation_patterns
+    |> Map.get(:detected_formations, [])
+    |> Enum.max_by(fn formation -> Map.get(formation, :confidence, 0.0) end, fn -> %{type: :unknown} end)
+    |> Map.get(:type, :unknown)
+  end
+
+  defp identify_primary_tactic(engagement_patterns) do
+    engagement_patterns
+    |> Map.get(:tactical_approaches, [])
+    |> Enum.max_by(fn approach -> Map.get(approach, :usage_frequency, 0.0) end, fn -> %{type: :unknown} end)
+    |> Map.get(:type, :unknown)
+  end
+
+  defp assess_coordination_level(coordination_patterns) do
+    synchronization = Map.get(coordination_patterns, :synchronization_level, 0.0)
+    communication = Map.get(coordination_patterns, :communication_efficiency, 0.0)
+    timing = Map.get(coordination_patterns, :timing_precision, 0.0)
+    
+    overall_score = (synchronization + communication + timing) / 3.0
+    
+    case overall_score do
+      score when score >= 0.8 -> :excellent
+      score when score >= 0.6 -> :good
+      score when score >= 0.4 -> :average
+      score when score >= 0.2 -> :poor
+      _ -> :minimal
+    end
+  end
+
+  defp measure_tactical_sophistication(tactical_decisions) do
+    complexity_score = Map.get(tactical_decisions, :complexity_score, 0.0)
+    adaptation_score = Map.get(tactical_decisions, :adaptation_level, 0.0)
+    innovation_score = Map.get(tactical_decisions, :innovation_factor, 0.0)
+    
+    sophistication = (complexity_score + adaptation_score + innovation_score) / 3.0
+    
+    case sophistication do
+      score when score >= 0.8 -> :advanced
+      score when score >= 0.6 -> :intermediate
+      score when score >= 0.4 -> :basic
+      _ -> :rudimentary
+    end
+  end
+
+  defp calculate_positioning_effectiveness(initial, changes, range_control, advantages) do
+    initial_score = Map.get(initial, :effectiveness, 0.5)
+    mobility_score = calculate_mobility_effectiveness(changes)
+    control_score = Map.get(range_control, :effectiveness, 0.5)
+    advantage_score = calculate_advantage_score(advantages)
+    
+    (initial_score + mobility_score + control_score + advantage_score) / 4.0
+  end
+
+  defp calculate_mobility_effectiveness(positioning_changes) do
+    adaptations = Map.get(positioning_changes, :successful_adaptations, 0)
+    total_changes = Map.get(positioning_changes, :total_position_changes, 1)
+    
+    adaptations / total_changes
+  end
+
+  defp calculate_advantage_score(tactical_advantages) do
+    advantages = Map.get(tactical_advantages, :identified_advantages, [])
+    total_score = Enum.reduce(advantages, 0.0, fn advantage, acc ->
+      acc + Map.get(advantage, :impact_score, 0.0)
+    end)
+    
+    min(1.0, total_score / max(1, length(advantages)))
+  end
+
+  defp determine_dominant_position_type(initial_positioning) do
+    positions = Map.get(initial_positioning, :position_types, [])
+    if length(positions) > 0 do
+      Enum.max_by(positions, fn pos -> Map.get(pos, :frequency, 0.0) end)
+      |> Map.get(:type, :unknown)
+    else
+      :unknown
+    end
+  end
+
+  defp assess_fleet_mobility(positioning_changes) do
+    movement_frequency = Map.get(positioning_changes, :movement_frequency, 0.0)
+    repositioning_speed = Map.get(positioning_changes, :repositioning_speed, 0.0)
+    
+    mobility_score = (movement_frequency + repositioning_speed) / 2.0
+    
+    case mobility_score do
+      score when score >= 0.7 -> :high
+      score when score >= 0.4 -> :medium
+      _ -> :low
+    end
+  end
+
+  defp evaluate_range_control_success(range_control) do
+    Map.get(range_control, :control_percentage, 0.0)
+  end
+
+  defp calculate_tactical_position_score(tactical_advantages) do
+    advantages = Map.get(tactical_advantages, :identified_advantages, [])
+    if length(advantages) > 0 do
+      Enum.reduce(advantages, 0.0, fn advantage, acc ->
+        acc + Map.get(advantage, :tactical_value, 0.0)
+      end) / length(advantages)
+    else
+      0.0
+    end
   end
 end
