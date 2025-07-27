@@ -36,7 +36,7 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
         Logger.error("Failed to calculate ship stats: #{inspect(reason)}")
         {:error, reason}
 
-      ids ->
+      {:ok, ids} ->
         ids
         |> Enum.with_index(1)
         |> Task.async_stream(
