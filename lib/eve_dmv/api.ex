@@ -53,4 +53,28 @@ defmodule EveDmv.Api do
       {EveDmv.Ash.Preparations.QuerySafety, [limit: 1000]}
     ]
   end
+
+  @doc """
+  Executes a read query against this domain and returns the result or raises an error.
+
+  This function provides a convenient wrapper around Ash.read!/2 that automatically
+  passes this domain as the target.
+
+  ## Parameters
+  - `query` - An Ash query struct or queryable resource
+
+  ## Returns
+  - The query results on success
+  - Raises an error on failure
+
+  ## Examples
+      iex> KillmailRaw |> Ash.Query.limit(10) |> Api.read!()
+      [%KillmailRaw{}, ...]
+
+      iex> Api.read!(KillmailRaw)
+      [%KillmailRaw{}, ...]
+  """
+  def read!(query) do
+    Ash.read!(query, domain: __MODULE__)
+  end
 end
