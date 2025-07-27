@@ -142,9 +142,9 @@ defmodule EveDmv.Release do
         if killmail_id && killmail_time do
           # Generate deterministic hash from ID and time
           "#{killmail_id}:#{killmail_time}"
-          (&:crypto.hash(:sha256, &1)).()
-          Base.encode16(case: :lower)
-          String.slice(0..39)
+          |> (&:crypto.hash(:sha256, &1)).()
+          |> Base.encode16(case: :lower)
+          |> String.slice(0..39)
         else
           # Last resort: generate from entire killmail data
           killmail
