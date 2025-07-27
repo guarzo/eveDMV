@@ -310,22 +310,20 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
 
     total_kills =
       Map.values(security_stats)
+      |> Enum.map(& &1.kills)
+      |> Enum.sum()
 
-    Enum.map(& &1.kills)
-    |> Enum.sum()
-    |> Enum.into(
-      Enum.map(security_stats, fn {sec_type, stats} ->
-        percentage =
-          if total_kills > 0 do
-            Float.round(stats.kills / total_kills * 100, 1)
-          else
-            0.0
-          end
+    Enum.map(security_stats, fn {sec_type, stats} ->
+      percentage =
+        if total_kills > 0 do
+          Float.round(stats.kills / total_kills * 100, 1)
+        else
+          0.0
+        end
 
-        {sec_type, Map.put(stats, :percentage, percentage)}
-      end),
-      %{}
-    )
+      {sec_type, Map.put(stats, :percentage, percentage)}
+    end)
+    |> Enum.into(%{})
   end
 
   defp analyze_engagement_timing(character_stats) do
