@@ -939,15 +939,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
     end
   end
 
-  defp calculate_role_effectiveness(_role_participants) do
-    # Basic effectiveness calculation
-    0.7
-  end
-
-  defp identify_key_players(role_participants) do
-    # Basic key player identification - top 3 by damage or experience
-    Enum.take(role_participants, 3)
-  end
 
   defp calculate_role_survival_rate(role_participants) do
     if length(role_participants) > 0 do
