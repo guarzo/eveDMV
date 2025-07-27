@@ -265,7 +265,7 @@ defmodule EveDmv.Monitoring.ErrorRecoveryWorker do
     # Identify if errors are from external services
     external_errors =
       Enum.filter(details.top_errors, fn error ->
-        ErrorCodes.category(error.code) == :external_service
+        EveDmv.ErrorCodes.category(error.code) == :external_service
       end)
 
     if length(external_errors) > 0 do
@@ -300,7 +300,7 @@ defmodule EveDmv.Monitoring.ErrorRecoveryWorker do
     Logger.warning("Handling error spike for #{error_code}: #{inspect(details)}")
 
     # Take action based on error code
-    case ErrorCodes.category(error_code) do
+    case EveDmv.ErrorCodes.category(error_code) do
       :external_service ->
         Logger.warning("External service errors spiking, activating circuit breaker")
 

@@ -1,293 +1,342 @@
 defmodule EveDmv.ErrorCodes do
   @moduledoc """
-  Centralized error codes for consistent error handling across EVE DMV.
+  Error code categorization service for monitoring and error recovery.
 
-  Organizes error codes into categories for consistent handling and user experience.
-
-  ## Categories
-
-  - **Validation**: Input validation errors (4xx equivalent)
-  - **Not Found**: Resource not found errors (404 equivalent)
-  - **External Service**: External API/service errors
-  - **System**: Internal system errors (5xx equivalent)
-  - **Business Logic**: Domain-specific business rule violations
-  - **Security**: Authentication and authorization errors
-
-  ## Usage
-
-      EveDmv.ErrorCodes.validation_error?(:invalid_input)  # => true
-      EveDmv.ErrorCodes.category(:character_not_found)     # => :not_found
+  This module provides categorization of error codes to help the monitoring
+  system identify the type of service causing issues and take appropriate
+  recovery actions.
   """
-
-  # Validation Errors (4xx equivalent)
-  @validation_errors ~w[
-    invalid_input
-    missing_required_field
-    invalid_entity_id
-    invalid_character_id
-    invalid_corporation_id
-    invalid_alliance_id
-    invalid_date_range
-    invalid_filter_tree
-    invalid_pagination
-    invalid_search_params
-    invalid_configuration
-    malformed_request
-    invalid_file_format
-    invalid_json
-    validation_failed
-  ]a
-
-  # Resource Errors (404 equivalent)
-  @resource_errors ~w[
-    character_not_found
-    corporation_not_found
-    alliance_not_found
-    killmail_not_found
-    profile_not_found
-    user_not_found
-    analysis_not_found
-    resource_not_found
-    map_not_found
-    system_not_found
-    item_not_found
-    ship_not_found
-  ]a
-
-  # External Service Errors
-  @external_errors ~w[
-    esi_api_error
-    esi_timeout
-    esi_rate_limited
-    esi_unavailable
-    janice_api_error
-    janice_timeout
-    mutamarket_api_error
-    mutamarket_timeout
-    wanderer_connection_error
-    wanderer_auth_error
-    sse_stream_error
-    sse_connection_failed
-    external_service_unavailable
-    api_key_invalid
-    api_response_malformed
-  ]a
-
-  # System Errors (5xx equivalent)
-  @system_errors ~w[
-    database_error
-    database_connection_error
-    cache_error
-    cache_unavailable
-    timeout
-    rate_limit_exceeded
-    circuit_breaker_open
-    memory_limit_exceeded
-    disk_space_error
-    configuration_error
-    startup_error
-    shutdown_error
-    process_exit
-    runtime_error
-    unknown_error
-    generic_error
-  ]a
-
-  # Business Logic Errors
-  @business_errors ~w[
-    analysis_failed
-    analysis_incomplete
-    insufficient_data
-    stale_data
-    duplicate_entry
-    profile_limit_exceeded
-    analysis_timeout
-    batch_processing_failed
-    pipeline_error
-    intelligence_engine_error
-    correlation_failed
-    scoring_failed
-    aggregation_failed
-    filtering_failed
-    transformation_failed
-  ]a
-
-  # Security Errors
-  @security_errors ~w[
-    authentication_required
-    authentication_failed
-    authorization_failed
-    permission_denied
-    token_expired
-    token_invalid
-    session_expired
-    access_denied
-    security_violation
-    rate_limit_exceeded
-    suspicious_activity
-    account_locked
-    ip_blocked
-  ]a
 
   @doc """
-  Check if error code is a validation error.
-  """
-  @spec validation_error?(atom()) :: boolean()
-  def validation_error?(code), do: code in @validation_errors
+  Categorizes an error code based on its pattern or source.
 
-  @doc """
-  Check if error code is a resource not found error.
-  """
-  @spec resource_error?(atom()) :: boolean()
-  def resource_error?(code), do: code in @resource_errors
+  Returns an atom indicating the category of service that generated the error.
+  This helps the error recovery system take appropriate action.
 
-  @doc """
-  Check if error code is an external service error.
-  """
-  @spec external_error?(atom()) :: boolean()
-  def external_error?(code), do: code in @external_errors
+  ## Parameters
+  - `error_code` - The error code string or atom to categorize
 
-  @doc """
-  Check if error code is a system error.
-  """
-  @spec system_error?(atom()) :: boolean()
-  def system_error?(code), do: code in @system_errors
+  ## Returns
+  - `:external_service` - Errors from external APIs (ESI, wanderer-kills, etc.)
+  - `:database` - Database connection, query, or transaction errors
+  - `:application` - Internal application logic errors
+  - `:unknown` - Unrecognized error codes
 
-  @doc """
-  Check if error code is a business logic error.
-  """
-  @spec business_error?(atom()) :: boolean()
-  def business_error?(code), do: code in @business_errors
+  ## Examples
+      iex> ErrorCodes.category("esi_timeout")
+      :external_service
 
-  @doc """
-  Check if error code is a security error.
-  """
-  @spec security_error?(atom()) :: boolean()
-  def security_error?(code), do: code in @security_errors
+      iex> ErrorCodes.category("db_connection_failed")
+      :database
 
-  @doc """
-  Get the category for an error code.
+      iex> ErrorCodes.category(:postgrex_error)
+      :database
+
+      iex> ErrorCodes.category("unknown_error")
+      :unknown
   """
-  @spec category(atom()) ::
-          :validation
-          | :not_found
-          | :external_service
-          | :system
-          | :business_logic
-          | :security
-          | :unknown
-  def category(code) do
+  def category(error_code) when is_binary(error_code) do
+    error_code_lower = String.downcase(error_code)
+
     cond do
-      validation_error?(code) -> :validation
-      resource_error?(code) -> :not_found
-      external_error?(code) -> :external_service
-      system_error?(code) -> :system
-      business_error?(code) -> :business_logic
-      security_error?(code) -> :security
+      # External service errors - EVE ESI, wanderer-kills, etc.
+      String.contains?(error_code_lower, "esi") -> :external_service
+      String.contains?(error_code_lower, "wanderer") -> :external_service
+      String.contains?(error_code_lower, "api_timeout") -> :external_service
+      String.contains?(error_code_lower, "http_") -> :external_service
+      String.contains?(error_code_lower, "request_timeout") -> :external_service
+      String.contains?(error_code_lower, "service_unavailable") -> :external_service
+      String.contains?(error_code_lower, "rate_limit") -> :external_service
+      String.contains?(error_code_lower, "oauth") -> :external_service
+      String.contains?(error_code_lower, "sso") -> :external_service
+
+      # Database errors
+      String.contains?(error_code_lower, "db_") -> :database
+      String.contains?(error_code_lower, "database") -> :database
+      String.contains?(error_code_lower, "postgres") -> :database
+      String.contains?(error_code_lower, "postgrex") -> :database
+      String.contains?(error_code_lower, "ecto") -> :database
+      String.contains?(error_code_lower, "connection") -> :database
+      String.contains?(error_code_lower, "query") -> :database
+      String.contains?(error_code_lower, "transaction") -> :database
+      String.contains?(error_code_lower, "constraint") -> :database
+      String.contains?(error_code_lower, "migration") -> :database
+
+      # Application logic errors
+      String.contains?(error_code_lower, "validation") -> :application
+      String.contains?(error_code_lower, "auth") -> :application
+      String.contains?(error_code_lower, "permission") -> :application
+      String.contains?(error_code_lower, "not_found") -> :application
+      String.contains?(error_code_lower, "invalid") -> :application
+
+      # Default to unknown
       true -> :unknown
     end
   end
 
-  @doc """
-  Get HTTP status code equivalent for error category.
-  """
-  @spec http_status(atom()) :: integer()
-  def http_status(code) do
-    case category(code) do
-      :validation -> 400
-      :not_found -> 404
-      :external_service -> 502
-      :system -> 500
-      :business_logic -> 422
-      :security -> 401
-      :unknown -> 500
-    end
+  def category(error_code) when is_atom(error_code) do
+    error_code
+    |> Atom.to_string()
+    |> category()
+  end
+
+  def category(_error_code) do
+    :unknown
   end
 
   @doc """
-  Check if error should be retried automatically.
+  Returns a list of all supported error categories.
+
+  ## Returns
+  - List of atoms representing all possible error categories
+
+  ## Examples
+      iex> ErrorCodes.all_categories()
+      [:external_service, :database, :application, :unknown]
   """
-  @spec retryable?(atom()) :: boolean()
-  def retryable?(code) do
-    case code do
-      :timeout -> true
-      :rate_limit_exceeded -> true
-      :circuit_breaker_open -> true
-      :database_connection_error -> true
-      :sse_stream_error -> true
-      :sse_connection_failed -> true
-      :esi_timeout -> true
-      :janice_timeout -> true
-      :mutamarket_timeout -> true
-      :wanderer_connection_error -> true
-      :external_service_unavailable -> true
-      :cache_unavailable -> true
-      _ -> false
-    end
+  def all_categories do
+    [:external_service, :database, :application, :unknown]
   end
 
   @doc """
-  Get retry delay in milliseconds for retryable errors.
+  Checks if an error category requires immediate attention.
+
+  Some error categories like database errors typically require more urgent
+  response than others.
+
+  ## Parameters
+  - `category` - The error category atom
+
+  ## Returns
+  - `true` if the category requires immediate attention
+  - `false` otherwise
+
+  ## Examples
+      iex> ErrorCodes.critical_category?(:database)
+      true
+
+      iex> ErrorCodes.critical_category?(:external_service)
+      false
   """
-  @spec retry_delay(atom()) :: integer()
-  def retry_delay(code) do
-    case code do
-      :rate_limit_exceeded -> 5_000
-      :esi_rate_limited -> 10_000
-      :circuit_breaker_open -> 30_000
-      :database_connection_error -> 1_000
-      :sse_connection_failed -> 5_000
-      :timeout -> 1_000
-      _ -> 1_000
-    end
-  end
+  def critical_category?(:database), do: true
+  def critical_category?(:application), do: true
+  def critical_category?(_), do: false
 
   @doc """
-  Get all error codes in a category.
+  Returns a human-readable description of an error category.
+
+  ## Parameters
+  - `category` - The error category atom
+
+  ## Returns
+  - String description of the category
+
+  ## Examples
+      iex> ErrorCodes.category_description(:external_service)
+      "External API or service errors"
+
+      iex> ErrorCodes.category_description(:database)
+      "Database connection and query errors"
   """
-  @spec codes_in_category(
-          :validation
-          | :not_found
-          | :external_service
-          | :system
-          | :business_logic
-          | :security
-        ) :: [atom()]
-  def codes_in_category(category) do
+  def category_description(:external_service), do: "External API or service errors"
+  def category_description(:database), do: "Database connection and query errors"
+  def category_description(:application), do: "Internal application logic errors"
+  def category_description(:unknown), do: "Unrecognized error category"
+  def category_description(_), do: "Invalid error category"
+
+  @doc """
+  Determines if an error code represents a retryable error.
+
+  Some errors are transient and worth retrying, while others are permanent
+  failures that should not be retried.
+
+  ## Parameters
+  - `error_code` - The error code string or atom
+
+  ## Returns
+  - `true` if the error should be retried
+  - `false` if the error is permanent
+
+  ## Examples
+      iex> ErrorCodes.retryable?("timeout")
+      true
+
+      iex> ErrorCodes.retryable?("invalid_credentials")
+      false
+  """
+  def retryable?(error_code) do
+    category = category(error_code)
+    error_string = to_string(error_code) |> String.downcase()
+
     case category do
-      :validation -> @validation_errors
-      :not_found -> @resource_errors
-      :external_service -> @external_errors
-      :system -> @system_errors
-      :business_logic -> @business_errors
-      :security -> @security_errors
+      :external_service ->
+        # Most external service errors are retryable except auth failures
+        not String.contains?(error_string, "unauthorized") and
+        not String.contains?(error_string, "forbidden") and
+        not String.contains?(error_string, "invalid_token")
+
+      :database ->
+        # Database connection issues are retryable, but constraint violations are not
+        String.contains?(error_string, "timeout") or
+        String.contains?(error_string, "connection") or
+        String.contains?(error_string, "pool")
+
+      :application ->
+        # Most application errors are not retryable
+        false
+
+      :unknown ->
+        # Unknown errors get one retry attempt
+        true
     end
   end
 
   @doc """
-  Get all error codes.
+  Returns the appropriate retry delay in milliseconds for an error code.
+
+  Different types of errors should have different retry delays to avoid
+  overwhelming failing services.
+
+  ## Parameters
+  - `error_code` - The error code string or atom
+
+  ## Returns
+  - Integer delay in milliseconds
+
+  ## Examples
+      iex> ErrorCodes.retry_delay("esi_timeout")
+      5000
+
+      iex> ErrorCodes.retry_delay("db_connection_failed")
+      1000
   """
-  @spec all_codes() :: [atom()]
-  def all_codes do
-    @validation_errors ++
-      @resource_errors ++
-      @external_errors ++
-      @system_errors ++ @business_errors ++ @security_errors
+  def retry_delay(error_code) do
+    case category(error_code) do
+      :external_service -> 5000  # 5 seconds for external services
+      :database -> 1000          # 1 second for database issues
+      :application -> 2000       # 2 seconds for application errors
+      :unknown -> 3000           # 3 seconds for unknown errors
+    end
   end
 
   @doc """
-  Get error severity level.
+  Returns the severity level of an error code.
+
+  Used for logging and alerting to prioritize error handling.
+
+  ## Parameters
+  - `error_code` - The error code string or atom
+
+  ## Returns
+  - `:critical` - Requires immediate attention
+  - `:warning` - Should be monitored
+  - `:info` - Informational only
+
+  ## Examples
+      iex> ErrorCodes.severity("db_connection_failed")
+      :critical
+
+      iex> ErrorCodes.severity("esi_rate_limit")
+      :warning
   """
-  @spec severity(atom()) :: :low | :medium | :high | :critical
-  def severity(code) do
-    case category(code) do
-      :validation -> :low
-      :not_found -> :low
-      :external_service -> :medium
-      :business_logic -> :medium
-      :security -> :high
-      :system -> :critical
-      :unknown -> :critical
+  def severity(error_code) do
+    category = category(error_code)
+    error_string = to_string(error_code) |> String.downcase()
+
+    case category do
+      :database ->
+        if String.contains?(error_string, "connection") or
+           String.contains?(error_string, "pool") do
+          :critical
+        else
+          :warning
+        end
+
+      :external_service ->
+        if String.contains?(error_string, "rate_limit") do
+          :info
+        else
+          :warning
+        end
+
+      :application ->
+        if String.contains?(error_string, "auth") or
+           String.contains?(error_string, "permission") do
+          :warning
+        else
+          :info
+        end
+
+      :unknown ->
+        :warning
     end
   end
+
+  @doc """
+  Returns a list of common error codes for a given category.
+
+  This is useful for monitoring and analysis to understand what types
+  of errors are occurring in each category.
+
+  ## Parameters
+  - `category` - The error category atom
+
+  ## Returns
+  - List of common error code strings for that category
+
+  ## Examples
+      iex> EveDmv.ErrorCodes.codes_in_category(:external_service)
+      ["esi_timeout", "api_rate_limit", "service_unavailable"]
+  """
+  def codes_in_category(:external_service) do
+    [
+      "esi_timeout",
+      "esi_rate_limit", 
+      "wanderer_connection_failed",
+      "api_timeout",
+      "http_502",
+      "http_503",
+      "request_timeout",
+      "service_unavailable",
+      "oauth_expired",
+      "sso_error"
+    ]
+  end
+
+  def codes_in_category(:database) do
+    [
+      "db_connection_failed",
+      "db_timeout",
+      "postgres_error",
+      "postgrex_error",
+      "ecto_query_error",
+      "connection_pool_full",
+      "query_timeout",
+      "transaction_failed",
+      "constraint_violation",
+      "migration_error"
+    ]
+  end
+
+  def codes_in_category(:application) do
+    [
+      "validation_error",
+      "auth_failed",
+      "permission_denied", 
+      "not_found",
+      "invalid_input",
+      "business_logic_error",
+      "configuration_error"
+    ]
+  end
+
+  def codes_in_category(:unknown) do
+    [
+      "unknown_error",
+      "unhandled_exception",
+      "generic_error"
+    ]
+  end
+
+  def codes_in_category(_), do: []
 end
