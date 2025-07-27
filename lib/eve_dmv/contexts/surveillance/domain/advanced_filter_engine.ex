@@ -10,7 +10,6 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AdvancedFilterEngine do
   - Performance-optimized evaluation
   """
 
-  alias EveDmv.Eve.NameResolver
   alias EveDmv.Intelligence.WandererClient
 
   @doc """

@@ -276,9 +276,9 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.FleetScoring do
 
     coverage_ratio =
       required_set
-
-    MapSet.intersection(covered_set) |> MapSet.size()
-    Kernel./(length(required_roles))
+      |> MapSet.intersection(covered_set)
+      |> MapSet.size()
+      |> Kernel./(length(required_roles))
 
     min(coverage_ratio, 1.0)
   end
@@ -515,10 +515,9 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.FleetScoring do
     # More than 1/3 of fleet in same role
     threshold = max(1, div(fleet_size, 3))
 
-    Enum.map(Enum.filter(role_counts, fn {_role, count} -> count > threshold end), fn {role,
-                                                                                       _count} ->
-      role
-    end)
+    role_counts
+    |> Enum.filter(fn {_role, count} -> count > threshold end)
+    |> Enum.map(fn {role, _count} -> role end)
   end
 
   defp calculate_quartiles(sorted_scores) do

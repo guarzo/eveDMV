@@ -7,7 +7,6 @@ defmodule EveDmvWeb.Components.CharacterSwitcher do
   """
 
   use Phoenix.Component
-  import EveDmvWeb.CoreComponents
 
   alias EveDmv.Users.AccountManager
   alias Phoenix.LiveView.JS

@@ -296,10 +296,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
         # Round to nearest hour for alignment
         rounded_time =
           item.killmail_time
-
-        DateTime.truncate(:second)
-        Map.put(:minute, 0)
-        Map.put(:second, 0)
+          |> DateTime.truncate(:second)
+          |> Map.put(:minute, 0)
+          |> Map.put(:second, 0)
 
         {rounded_time, item}
       end)
@@ -308,10 +307,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       Enum.into(data2, %{}, fn item ->
         rounded_time =
           item.killmail_time
-
-        DateTime.truncate(:second)
-        Map.put(:minute, 0)
-        Map.put(:second, 0)
+          |> DateTime.truncate(:second)
+          |> Map.put(:minute, 0)
+          |> Map.put(:second, 0)
 
         {rounded_time, item}
       end)
@@ -769,8 +767,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
         [{s1, s2}, {s2, s1}]
       end)
       |> Enum.group_by(&elem(&1, 0))
+      |> Enum.map(fn {s, pairs} -> {s, Enum.map(pairs, &elem(&1, 1))} end)
+      |> Map.new()
 
-    Enum.map(fn {s, pairs} -> {s, Enum.map(pairs, &elem(&1, 1))} end) |> Map.new()
     # Find clusters using simple traversal
     visited = MapSet.new()
     clusters = []

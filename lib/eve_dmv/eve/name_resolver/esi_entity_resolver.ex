@@ -127,8 +127,9 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
     # Skip ESI calls for corporation names - they should be in killmail data
     results =
       corporation_ids
+      |> Enum.map(fn id -> {id, "Corporation #{id}"} end)
+      |> Map.new()
 
-    Enum.map(fn id -> {id, "Corporation #{id}"} end) |> Map.new()
     {:ok, results}
   rescue
     error in [FunctionClauseError, ArgumentError, RuntimeError] ->
@@ -144,8 +145,9 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
     # Skip ESI calls for alliance names - they should be in killmail data
     results =
       alliance_ids
+      |> Enum.map(fn id -> {id, "Alliance #{id}"} end)
+      |> Map.new()
 
-    Enum.map(fn id -> {id, "Alliance #{id}"} end) |> Map.new()
     {:ok, results}
   rescue
     error in [FunctionClauseError, ArgumentError, RuntimeError] ->

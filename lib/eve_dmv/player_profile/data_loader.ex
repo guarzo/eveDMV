@@ -32,11 +32,10 @@ defmodule EveDmv.PlayerProfile.DataLoader do
         # Enrich character info
         enriched_info =
           character_info
-
-        Map.put(:corporation_name, corp_info.name)
-        Map.put(:corporation_ticker, corp_info.ticker)
-        Map.put(:alliance_name, alliance_info[:name])
-        Map.put(:alliance_ticker, alliance_info[:ticker])
+          |> Map.put(:corporation_name, corp_info.name)
+          |> Map.put(:corporation_ticker, corp_info.ticker)
+          |> Map.put(:alliance_name, alliance_info[:name])
+          |> Map.put(:alliance_ticker, alliance_info[:ticker])
 
         # Fetch historical killmails
         Logger.info("Fetching historical killmails for character #{character_id}")

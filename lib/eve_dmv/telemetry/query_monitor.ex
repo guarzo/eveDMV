@@ -325,7 +325,7 @@ defmodule EveDmv.Telemetry.QueryMonitor do
         )
 
         # Keep last 20 alerts
-        |> Enum.take([alert | current_alerts], 20)
+        [alert | current_alerts] |> Enum.take(20)
       else
         current_alerts
       end

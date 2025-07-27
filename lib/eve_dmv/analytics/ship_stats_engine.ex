@@ -10,6 +10,7 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
   alias EveDmv.Killmails.Participant
 
   require Logger
+  require Ash.Query
 
   @default_days 90
   @default_min_usage 10
@@ -79,14 +80,13 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
          %{ship_name: _} <- metrics do
       attrs =
         metrics
-
-      Map.put(:ship_type_id, ship_type_id)
-      Map.put(:ship_category, determine_ship_category(ship_type))
-      Map.put(:tech_level, ship_type.tech_level || 1)
-      Map.put(:meta_level, ship_type.meta_level || 0)
-      Map.put(:is_capital, ship_type.is_capital_ship == true)
-      Map.put(:stats_period_start, start_date)
-      Map.put(:stats_period_end, end_date)
+        |> Map.put(:ship_type_id, ship_type_id)
+        |> Map.put(:ship_category, determine_ship_category(ship_type))
+        |> Map.put(:tech_level, ship_type.tech_level || 1)
+        |> Map.put(:meta_level, ship_type.meta_level || 0)
+        |> Map.put(:is_capital, ship_type.is_capital_ship == true)
+        |> Map.put(:stats_period_start, start_date)
+        |> Map.put(:stats_period_end, end_date)
 
       upsert(ShipStats, [ship_type_id: ship_type_id], attrs)
     else

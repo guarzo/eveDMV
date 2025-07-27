@@ -11,6 +11,8 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
   use EveDmvWeb, :live_view
 
+  require Logger
+
   @preview_killmail_limit 1000
   # LiveView lifecycle
   @impl Phoenix.LiveView
@@ -861,10 +863,10 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
     # Query recent killmails from the database for testing
     try do
       query =
-        EveDmv.Killmails.Ash.Query.new(KillmailRaw)
-
-      Ash.Query.limit(limit)
-      Ash.Query.sort(killmail_time: :desc)
+        EveDmv.Killmails.KillmailRaw
+        |> Ash.Query.new()
+        |> Ash.Query.limit(limit)
+        |> Ash.Query.sort(killmail_time: :desc)
 
       case Ash.read(query) do
         {:ok, killmails} ->

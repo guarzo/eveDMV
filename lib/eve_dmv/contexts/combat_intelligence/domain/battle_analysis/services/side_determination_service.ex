@@ -315,7 +315,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Services.Side
   defp determine_by_character_relationships(character_id, battle_context) do
     # Look at who this character killed and who killed them
     kills = Map.get(battle_context.relationship_graph.kills, character_id, [])
-    deaths = Map.get(battle_context.relationship_graph.deaths, character_id, [])
+    _deaths = Map.get(battle_context.relationship_graph.deaths, character_id, [])
 
     # Count kills against each side
     side_a_kills =

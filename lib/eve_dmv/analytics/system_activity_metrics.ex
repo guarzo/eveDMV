@@ -455,22 +455,32 @@ defmodule EveDmv.Analytics.SystemActivityMetrics do
       escalations = []
 
       # Check for kill frequency escalation
-      if recent_rate > older_rate * 2 do
-        escalations = [
-          %{type: :kill_frequency, severity: :high, description: "Kill rate doubled in last 24h"}
-          | escalations
-        ]
-      end
+      escalations =
+        if recent_rate > older_rate * 2 do
+          [
+            %{
+              type: :kill_frequency,
+              severity: :high,
+              description: "Kill rate doubled in last 24h"
+            }
+            | escalations
+          ]
+        else
+          escalations
+        end
 
       # Check for capital escalation
       recent_capitals = Enum.count(recent_kills, &is_capital_ship?(&1.victim_ship_type_id))
 
-      if recent_capitals > 0 and not Enum.empty?(recent_kills) do
-        escalations = [
-          %{type: :capital_activity, severity: :high, description: "Capital ships engaged"}
-          | escalations
-        ]
-      end
+      escalations =
+        if recent_capitals > 0 and not Enum.empty?(recent_kills) do
+          [
+            %{type: :capital_activity, severity: :high, description: "Capital ships engaged"}
+            | escalations
+          ]
+        else
+          escalations
+        end
 
       escalations
     end

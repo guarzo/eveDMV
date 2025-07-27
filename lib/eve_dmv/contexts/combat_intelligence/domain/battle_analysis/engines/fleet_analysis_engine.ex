@@ -118,7 +118,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
       end)
       |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
 
-    Enum.map(fn {class, counts} -> {class, Enum.sum(counts)} end) |> Map.new()
+    ship_classes =
+      ship_classes
+      |> Enum.map(fn {class, counts} -> {class, Enum.sum(counts)} end)
+      |> Map.new()
+
     # Find dominant ship classes (>20% of fleet)
     dominant_classes =
       ship_classes
@@ -186,8 +190,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
 
     breakdown =
       ewar_ships
-
-    Enum.map(&classify_ewar_type/1) |> Enum.frequencies()
+      |> Enum.map(&classify_ewar_type/1)
+      |> Enum.frequencies()
 
     %{
       ewar_ships: ewar_ships,

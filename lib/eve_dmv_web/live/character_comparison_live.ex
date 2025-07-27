@@ -3,9 +3,7 @@ defmodule EveDmvWeb.CharacterComparisonLive do
 
   alias EveDmv.Analytics.CharacterComparisonService
   alias EveDmv.Presentation.Formatters
-  alias EveDmv.Eve.NameResolver
 
-  import EveDmvWeb.Components.StatsGridComponent
   import EveDmvWeb.Components.PageHeaderComponent
 
   # Load current user from session (require auth for this analytical feature)
@@ -255,7 +253,7 @@ defmodule EveDmvWeb.CharacterComparisonLive do
     end
   end
 
-  defp search_character_suggestions(input) do
+  defp search_character_suggestions(_input) do
     # This would normally search character names from database or API
     # For now, return empty list - would need character name search implementation
     []

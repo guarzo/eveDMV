@@ -48,19 +48,18 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
   def parse_ship_data(content) do
     # Parse different ship sections
     ships =
-      []
-
-    Kernel.++(parse_battleships(content))
-    Kernel.++(parse_battlecruisers(content))
-    Kernel.++(parse_command_ships(content))
-    Kernel.++(parse_heavy_assault_cruisers(content))
-    Kernel.++(parse_strategic_cruisers(content))
-    Kernel.++(parse_logistics_ships(content))
-    Kernel.++(parse_interdictors(content))
-    Kernel.++(parse_heavy_interdictors(content))
-    Kernel.++(parse_recon_ships(content))
-    Kernel.++(parse_interceptors(content))
-    Kernel.++(parse_command_destroyers(content))
+      [] ++
+        parse_battleships(content) ++
+        parse_battlecruisers(content) ++
+        parse_command_ships(content) ++
+        parse_heavy_assault_cruisers(content) ++
+        parse_strategic_cruisers(content) ++
+        parse_logistics_ships(content) ++
+        parse_interdictors(content) ++
+        parse_heavy_interdictors(content) ++
+        parse_recon_ships(content) ++
+        parse_interceptors(content) ++
+        parse_command_destroyers(content)
 
     {:ok, ships}
   end

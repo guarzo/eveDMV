@@ -13,6 +13,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   alias EveDmv.Integrations.ShipIntelligenceBridge
   alias EveDmv.Killmails.KillmailRaw
   require Logger
+  require Ash.Query
 
   @doc """
   Analyzes a character's threat level based on their combat history.

@@ -41,9 +41,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
         # Query recent killmail activity - simplified for now
         killmail_query =
           KillmailRaw
-
-        Ash.Query.limit(100)
-        Ash.Query.select([:killmail_id, :solar_system_id, :total_value])
+          |> Ash.Query.limit(100)
+          |> Ash.Query.select([:killmail_id, :solar_system_id, :total_value])
 
         case Ash.read(killmail_query, domain: Api) do
           {:ok, killmails} ->
@@ -125,10 +124,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
         # Get killmails with participants to analyze control - simplified for now
         control_query =
           KillmailRaw
-
-        Ash.Query.limit(100)
-        Ash.Query.load([:participants])
-        Ash.Query.select([:killmail_id, :participants])
+          |> Ash.Query.limit(100)
+          |> Ash.Query.load([:participants])
+          |> Ash.Query.select([:killmail_id, :participants])
 
         case Ash.read(control_query, domain: Api) do
           {:ok, killmails} ->
@@ -268,11 +266,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
         # Query high-value losses as threat indicators - simplified for now
         threat_query =
           KillmailRaw
-
-        Ash.Query.limit(50)
-        Ash.Query.load([:participants])
-        Ash.Query.sort(desc: :killmail_time)
-        Ash.Query.limit(50)
+          |> Ash.Query.limit(50)
+          |> Ash.Query.load([:participants])
+          |> Ash.Query.sort(desc: :killmail_time)
 
         case Ash.read(threat_query, domain: Api) do
           {:ok, threat_kills} ->

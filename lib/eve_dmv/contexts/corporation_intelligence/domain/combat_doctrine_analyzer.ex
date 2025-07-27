@@ -17,6 +17,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
   alias EveDmv.Api
   alias EveDmv.Killmails.KillmailRaw
 
+  require Ash.Query
   require Logger
 
   # Doctrine analysis parameters

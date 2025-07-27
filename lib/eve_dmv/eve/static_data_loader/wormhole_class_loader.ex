@@ -49,9 +49,10 @@ defmodule EveDmv.Eve.StaticDataLoader.WormholeClassLoader do
     try do
       wormhole_data =
         csv_data
+        |> CsvParser.parse_csv_content(&parse_wormhole_row/1)
+        |> Enum.filter(& &1)
+        |> Map.new()
 
-      CsvParser.parse_csv_content(&parse_wormhole_row/1)
-      Enum.filter(& &1) |> Map.new()
       Logger.info("Parsed #{map_size(wormhole_data)} wormhole class mappings")
       {:ok, wormhole_data}
     rescue

@@ -12,6 +12,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
   alias EveDmv.Api
   alias EveDmv.Killmails.KillmailRaw
 
+  require Ash.Query
   require Logger
 
   @analysis_window_days 90

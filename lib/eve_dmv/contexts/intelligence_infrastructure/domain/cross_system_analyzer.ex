@@ -3611,8 +3611,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
     # Analyze corporation's territorial focus
     systems =
       killmails
-
-    Enum.map(& &1.solar_system_id) |> Enum.frequencies()
+      |> Enum.map(& &1.solar_system_id)
+      |> Enum.frequencies()
 
     if map_size(systems) > 0 do
       max_system_activity = Map.values(systems) |> Enum.max()

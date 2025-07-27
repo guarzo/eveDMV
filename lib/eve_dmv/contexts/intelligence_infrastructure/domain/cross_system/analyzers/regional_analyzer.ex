@@ -40,9 +40,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
         # Query killmails in these systems - simplified
         killmail_query =
           KillmailRaw
-
-        Ash.Query.limit(1000)
-        Ash.Query.select([:solar_system_id, :killmail_time, :total_value])
+          |> Ash.Query.limit(1000)
+          |> Ash.Query.select([:solar_system_id, :killmail_time, :total_value])
 
         case Ash.read(killmail_query, domain: Api) do
           {:ok, killmails} ->
@@ -136,10 +135,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
         # Get killmails with high-value losses - simplified
         threat_query =
           KillmailRaw
-
-        Ash.Query.load([:participants])
-        Ash.Query.limit(100)
-        Ash.Query.sort(desc: :total_value)
+          |> Ash.Query.load([:participants])
+          |> Ash.Query.limit(100)
+          |> Ash.Query.sort(desc: :total_value)
 
         case Ash.read(threat_query, domain: Api) do
           {:ok, high_value_kills} ->
@@ -209,10 +207,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
         # Get killmail data to assess control
         control_query =
           KillmailRaw
-
-        Ash.Query.load([:participants])
-        Ash.Query.select([:killmail_id, :solar_system_id, :participants])
-        Ash.Query.limit(500)
+          |> Ash.Query.load([:participants])
+          |> Ash.Query.select([:killmail_id, :solar_system_id, :participants])
+          |> Ash.Query.limit(500)
 
         case Ash.read(control_query, domain: Api) do
           {:ok, killmails} ->
@@ -226,8 +223,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
                   |> Enum.map(&{km.solar_system_id, &1.alliance_id, &1.alliance_name})
               end)
               |> Enum.group_by(fn {system_id, _, _} -> system_id end)
+              |> Enum.map(&calculate_system_alliance_counts/1)
+              |> Map.new()
 
-            Enum.map(&calculate_system_alliance_counts/1) |> Map.new()
             # Determine control status
             dominant_alliances =
               alliance_presence
@@ -296,16 +294,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
         # Get recent kills - simplified
         recent_query =
           KillmailRaw
-
-        Ash.Query.select([:killmail_id])
-        Ash.Query.limit(100)
+          |> Ash.Query.select([:killmail_id])
+          |> Ash.Query.limit(100)
 
         # Get historical kills - simplified
         historical_query =
           KillmailRaw
-
-        Ash.Query.select([:killmail_id])
-        Ash.Query.limit(100)
+          |> Ash.Query.select([:killmail_id])
+          |> Ash.Query.limit(100)
 
         with {:ok, recent_kills} <- Ash.read(recent_query, domain: Api),
              {:ok, historical_kills} <- Ash.read(historical_query, domain: Api) do
@@ -424,8 +420,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     alliance_counts =
       entries
       |> Enum.group_by(fn {_, alliance_id, _} -> alliance_id end)
+      |> Enum.map(&calculate_alliance_count/1)
+      |> Map.new()
 
-    Enum.map(&calculate_alliance_count/1) |> Map.new()
     {system_id, alliance_counts}
   end
 

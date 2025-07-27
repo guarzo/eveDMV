@@ -36,8 +36,8 @@ defmodule EveDmv.Database.QueryPerformance do
       tracked_ash_query("recent_killmails",
         fn ->
           KillmailRaw
-    Ash.Query.filter(killmail_time > ^since)
-    Api.read!()
+          |> Ash.Query.filter(killmail_time > ^since)
+          |> Api.read!()
         end
       )
   """

@@ -112,11 +112,10 @@ defmodule EveDmv.Intelligence.Analyzers.FleetPilotAnalyzer do
   defp get_corporation_members(corporation_id) do
     members =
       CharacterStats
-
-    Ash.Query.filter(corporation_id: corporation_id)
-    # Reasonable limit for corporation size
-    Ash.Query.limit(500)
-    Ash.read!(domain: Api)
+      |> Ash.Query.filter(corporation_id: corporation_id)
+      # Reasonable limit for corporation size
+      |> Ash.Query.limit(500)
+      |> Ash.read!(domain: Api)
 
     {:ok, members}
   rescue

@@ -11,6 +11,7 @@ defmodule EveDmv.Search.SearchSuggestionService do
   alias EveDmv.Static.EveSolarSystem
   alias EveDmv.Static.EveItemType
 
+  require Ash.Query
   require Logger
 
   @doc """

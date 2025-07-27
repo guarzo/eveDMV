@@ -16,6 +16,8 @@ defmodule EveDmv.Users.User do
   alias Ash.Changeset
   alias EveDmv.Eve.EsiRequestClient
 
+  require Logger
+
   authentication do
     # EVE SSO OAuth2 authentication strategy
     strategies do

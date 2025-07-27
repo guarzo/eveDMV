@@ -18,6 +18,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   alias EveDmv.Killmails.KillmailRaw
 
+  require Ash.Query
   require Logger
 
   # Threat scoring parameters optimized for EVE PvP

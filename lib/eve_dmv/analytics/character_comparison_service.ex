@@ -14,7 +14,6 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
 
   alias EveDmv.Api
   alias EveDmv.Killmails.KillmailRaw
-  alias EveDmv.Contexts.CharacterIntelligence
   alias EveDmv.Eve.NameResolver
 
   require Ash.Query
@@ -331,7 +330,7 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
 
   defp analyze_character_relationships(character_analyses) do
     # Analyze potential relationships between characters
-    relationships = []
+    _relationships = []
 
     # Check for same corporation/alliance
     corp_groups = Enum.group_by(character_analyses, & &1.corporation_info.corporation_id)
@@ -376,7 +375,7 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
     |> Ash.read!(domain: Api)
   end
 
-  defp get_character_attacker_killmails(character_id, start_time, end_time) do
+  defp get_character_attacker_killmails(_character_id, _start_time, _end_time) do
     # This would require a more complex query to find killmails where character was an attacker
     # For now, we'll return empty list - this would need to be implemented with proper attacker indexing
     []
@@ -515,7 +514,7 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
     end
   end
 
-  defp analyze_engagement_preference(attacker_killmails) do
+  defp analyze_engagement_preference(_attacker_killmails) do
     # This would analyze the attackers list to determine gang size preferences
     # For now, return placeholder
     %{preference: :unknown, avg_gang_size: 0}
@@ -534,7 +533,7 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
     end
   end
 
-  defp analyze_target_preference(attacker_killmails) do
+  defp analyze_target_preference(_attacker_killmails) do
     # Analyze what types of targets this character prefers
     # This would analyze victim ship types, values, etc.
     %{preference: :mixed}

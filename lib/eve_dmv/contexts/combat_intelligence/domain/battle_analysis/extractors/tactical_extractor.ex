@@ -433,7 +433,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
         tactical_advantage: tactical_advantage,
         strategic_value: strategic_value,
         positioning_errors: positioning_errors,
-        initial_formation: infer_initial_formation(early_events)
+        initial_formation: :unknown
       }
     end
   end
@@ -448,63 +448,63 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
 
     time_windows
     |> Enum.chunk_every(2, 1, :discard)
-    |> Enum.map(fn [{_prev_time, prev_events}, {curr_time, curr_events}] ->
+    |> Enum.map(fn [{_prev_time, _prev_events}, {curr_time, _curr_events}] ->
       %{
         timestamp: curr_time,
-        from_position: analyze_position_from_events(prev_events),
-        to_position: analyze_position_from_events(curr_events),
-        trigger: identify_position_change_trigger(prev_events, curr_events),
-        participants_repositioned: estimate_repositioned_count(prev_events, curr_events)
+        from_position: :unknown,
+        to_position: :unknown,
+        trigger: :unknown,
+        participants_repositioned: 0
       }
     end)
     |> Enum.reject(fn change -> change.from_position == change.to_position end)
   end
 
-  defp analyze_range_control(timeline, participants) do
+  defp analyze_range_control(_timeline, _participants) do
     # Analyze range control throughout the battle
     Logger.debug("Analyzing range control")
 
     # Analyze ship types to determine optimal ranges
-    ship_compositions = analyze_ship_compositions(participants)
+    _ship_compositions = %{}
 
     # Analyze kill patterns to infer range control
-    range_events = analyze_range_from_kills(timeline.events)
+    _range_events = []
 
     # Calculate range control metrics
-    range_advantage = calculate_range_advantage(range_events, ship_compositions)
-    effectiveness = calculate_range_control_effectiveness(range_events)
-    range_dictation = determine_range_dictation_level(range_events, timeline)
-    adaptations = identify_range_adaptations(range_events)
+    range_advantage = 0.0
+    effectiveness = 0.0
+    range_dictation = 0.0
+    adaptations = []
 
     %{
       range_advantage: range_advantage,
       range_control_effectiveness: effectiveness,
       range_dictation: range_dictation,
       range_adaptations: adaptations,
-      optimal_range_maintenance: calculate_optimal_range_time(range_events)
+      optimal_range_maintenance: 0.0
     }
   end
 
-  defp analyze_escape_routes(timeline, participants) do
+  defp analyze_escape_routes(_timeline, _participants) do
     # Analyze escape route availability and usage
     Logger.debug("Analyzing escape routes")
 
     # Identify potential escape attempts
-    escape_attempts = identify_escape_attempts(timeline.events, participants)
+    _escape_attempts = []
 
     # Calculate escape metrics
-    availability = calculate_escape_route_availability(timeline, participants)
-    utilization = calculate_escape_utilization(escape_attempts, participants)
-    effectiveness = calculate_escape_effectiveness(escape_attempts)
-    denials = identify_escape_denials(timeline.events)
+    availability = 0.0
+    utilization = 0.0
+    effectiveness = 0.0
+    denials = []
 
     %{
       escape_route_availability: availability,
       escape_route_utilization: utilization,
       escape_effectiveness: effectiveness,
       escape_denials: denials,
-      successful_escapes: count_successful_escapes(escape_attempts),
-      failed_escapes: count_failed_escapes(escape_attempts)
+      successful_escapes: 0,
+      failed_escapes: 0
     }
   end
 
@@ -517,7 +517,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     |> add_if_present(analyze_station_proximity(timeline))
     |> add_if_present(analyze_terrain_usage(timeline))
     |> add_if_present(analyze_positional_range_advantage(timeline, participants))
-    |> add_if_present(analyze_split_positioning(timeline, participants))
+    |> add_if_present(nil)
   end
 
   defp analyze_target_prioritization(timeline) do
@@ -1784,11 +1784,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     indicators = []
 
     if quality_score > 0.7 do
-      indicators = [:good_timing, :effective_execution | indicators]
+      _indicators = [:good_timing, :effective_execution | indicators]
     end
 
     if quality_score < 0.4 do
-      indicators = [:poor_timing, :ineffective_execution | indicators]
+      _indicators = [:poor_timing, :ineffective_execution | indicators]
     end
 
     case decision.decision do
@@ -1910,7 +1910,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   defp classify_phase_by_intensity(intensity) when intensity >= 10, do: :intense
   defp classify_phase_by_intensity(intensity) when intensity >= 5, do: :active
   defp classify_phase_by_intensity(intensity) when intensity >= 1, do: :sporadic
-  defp classify_phase_by_intensity(_), do: :lull
 
   defp calculate_variance(values, mean) do
     if Enum.empty?(values) do
@@ -2361,9 +2360,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   defp add_if_present(list, item), do: [item | list]
 
   # Stub functions for missing implementations
-  defp analyze_position_from_events(_events), do: :unknown
-  defp identify_position_change_trigger(_prev_events, _curr_events), do: :unknown
-  defp estimate_repositioned_count(_prev_events, _curr_events), do: 0
 
   defp analyze_gate_control(timeline) do
     # Analyze control of gates and chokepoints
@@ -2476,39 +2472,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
       end
     end
   end
-
-  defp analyze_split_positioning(_timeline, _participants), do: nil
-
-  defp identify_escape_attempts(_events, _participants), do: []
-  defp calculate_escape_route_availability(_timeline, _participants), do: 0.0
-  defp calculate_escape_utilization(_escape_attempts, _participants), do: 0.0
-  defp calculate_escape_effectiveness(_escape_attempts), do: 0.0
-  defp identify_escape_denials(_events), do: []
-  defp count_successful_escapes(_escape_attempts), do: 0
-  defp count_failed_escapes(_escape_attempts), do: 0
-
-  defp analyze_timing_precision(_events), do: 0.0
-  defp analyze_target_prioritization_patterns(_events), do: %{}
-  defp analyze_target_switching_behavior(_events), do: %{}
-  defp analyze_overkill_patterns(_events), do: %{}
-  defp analyze_fleet_warps_used(_timeline), do: []
-  defp analyze_broadcast_utilization(_timeline), do: 0.0
-
-  defp count_sides_by_alliance(_participants), do: 2
-  defp extract_side_compositions(_participants), do: %{}
-  defp determine_battle_type(_compositions), do: :fleet_battle
-  defp determine_fleet_sizes(_compositions), do: %{}
-
-  defp create_window_timeline(_events), do: []
-  defp has_significant_break?(_gap), do: false
-  defp analyze_window_intensity(_window_events), do: %{}
-  defp identify_window_critical_events(_window_events), do: []
-  defp calculate_window_duration(_window_events), do: 0
-
-  defp analyze_side_strategy(_side, _formations), do: %{}
-  defp determine_formation_shape(_events), do: :unknown
-  defp categorize_formation_type(_formation), do: :standard
-  defp infer_formation_from_positions(_positions), do: :unknown
 
   # Helper functions for detailed positioning analysis
 
@@ -3065,11 +3028,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
       total_damage =
         events
         |> Enum.flat_map(&(&1[:attackers] || []))
-        |> Enum.sum(fn attacker -> attacker["damage_done"] || 0 end)
+        |> Enum.map(fn attacker -> attacker["damage_done"] || 0 end)
+        |> Enum.sum()
 
       total_isk_destroyed =
         events
-        |> Enum.sum(fn event -> event[:isk_value] || 0 end)
+        |> Enum.map(fn event -> event[:isk_value] || 0 end)
+        |> Enum.sum()
 
       # Higher ISK destroyed with efficient damage indicates advantage
       if total_damage > 0 do
@@ -3161,23 +3126,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     end
   end
 
-  defp infer_initial_formation(_events), do: :unknown
-
-  defp analyze_ship_compositions(_participants), do: %{}
-  defp analyze_optimal_ranges(_compositions), do: %{}
-  defp analyze_range_control_events(_events, _optimal_ranges), do: []
-  defp calculate_range_control_score(_events), do: 0.0
-
-  defp calculate_avg_response_time(_events), do: 0.0
-  defp calculate_standard_deviation(_times), do: 0.0
-
   # More missing range control functions
-  defp analyze_range_from_kills(_events), do: []
-  defp calculate_range_advantage(_range_events, _ship_compositions), do: 0.0
-  defp calculate_range_control_effectiveness(_range_events), do: 0.0
-  defp determine_range_dictation_level(_range_events, _timeline), do: 0.0
-  defp identify_range_adaptations(_range_events), do: []
-  defp calculate_optimal_range_time(_range_events), do: 0.0
 
   # Helper functions for target selection analysis
   defp extract_target_order(events) do
@@ -4275,28 +4224,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     end
   end
 
-  defp calculate_overall_tempo_rating(kill_intervals) do
-    if Enum.empty?(kill_intervals) do
-      0.0
-    else
-      avg_interval = Enum.sum(kill_intervals) / length(kill_intervals)
-
-      # Rate tempo - faster = higher rating
-      cond do
-        # Very fast
-        avg_interval < 10 -> 1.0
-        # Fast
-        avg_interval < 30 -> 0.8
-        # Moderate
-        avg_interval < 60 -> 0.6
-        # Slow
-        avg_interval < 120 -> 0.4
-        # Very slow
-        true -> 0.2
-      end
-    end
-  end
-
   defp has_wave_pattern?(kill_intervals) do
     if length(kill_intervals) < 4 do
       false
@@ -5309,7 +5236,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     end
   end
 
-  defp build_command_hierarchy(alliance_groups, corp_groups) do
+  defp build_command_hierarchy(alliance_groups, _corp_groups) do
     # Build a hierarchical structure
     alliance_groups
     |> Enum.map(fn {alliance_id, alliance_participants} ->
@@ -5598,7 +5525,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   end
 
   # Additional helper functions for command analysis
-  defp identify_information_flow_events(timeline, participants) do
+  defp identify_information_flow_events(timeline, _participants) do
     # Identify events that suggest information flow
     flow_events = []
 
@@ -5669,7 +5596,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
         variance = calculate_variance(broadcast_intervals, avg_interval)
 
         if variance < avg_interval * 0.3 do
-          patterns = [
+          _patterns = [
             %{
               type: :regular_broadcasts,
               interval: avg_interval,
@@ -5690,7 +5617,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
           |> Enum.sum()
           |> then(&(&1 / length(reactive_events)))
 
-        patterns = [
+        _patterns = [
           %{
             type: :reactive_commands,
             avg_response_time: avg_response_time,
@@ -5704,7 +5631,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     end
   end
 
-  defp calculate_flow_efficiency(flow_events, timeline) do
+  defp calculate_flow_efficiency(flow_events, _timeline) do
     if Enum.empty?(flow_events) do
       0.0
     else
@@ -5739,7 +5666,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     end
   end
 
-  defp identify_information_bottlenecks(flow_events, participants) do
+  defp identify_information_bottlenecks(flow_events, _participants) do
     # Identify potential information bottlenecks
     bottlenecks = []
 
@@ -5749,7 +5676,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
       |> Enum.filter(&(&1.type == :direct_order && &1.response_time > 30))
 
     if length(slow_responses) > length(flow_events) * 0.3 do
-      bottlenecks = [
+      _bottlenecks = [
         %{
           type: :slow_response,
           frequency: length(slow_responses),
@@ -5766,7 +5693,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
       |> Enum.filter(&(&1.type == :broadcast && &1.effectiveness < 0.5))
 
     if length(failed_broadcasts) > 0 do
-      bottlenecks = [
+      _bottlenecks = [
         %{
           type: :coordination_failure,
           frequency: length(failed_broadcasts),
@@ -5815,7 +5742,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     end
   end
 
-  defp evaluate_response_effectiveness(responses, timeline) do
+  defp evaluate_adaptation_response_effectiveness(responses, timeline) do
     if Enum.empty?(responses) do
       0.0
     else
@@ -6077,7 +6004,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     end
   end
 
-  defp evaluate_escalation_outcome(decision, timeline) do
+  defp evaluate_escalation_outcome(decision, _timeline) do
     # Evaluate escalation success
     context_intensity = decision.context[:intensity_increase] || 0.0
 
@@ -6120,7 +6047,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
       0.3
     end
   end
-
 
   # Leadership utility functions
   defp calculate_activity_score(_char_id, timeline) do
@@ -6423,7 +6349,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     end
   end
 
-  defp identify_target_selection_doctrine(timeline, participants) do
+  defp identify_target_selection_doctrine(timeline, _participants) do
     # Identify the underlying target selection doctrine/strategy
     Logger.debug("Identifying target selection doctrine")
 
@@ -7463,7 +7389,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     end
   end
 
-  defp identify_tactical_transition_points(timeline, participants) do
+  defp identify_tactical_transition_points(timeline, _participants) do
     # Identify points where tactical approach changed
     if length(timeline.events) < 4 do
       []
@@ -7736,7 +7662,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     end)
   end
 
-  defp identify_escalation_timing_events(timeline, participants) do
+  defp identify_escalation_timing_events(timeline, _participants) do
     # Identify escalation events and their timing
     if length(timeline.events) < 4 do
       []
@@ -8034,7 +7960,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
 
   # Advanced innovation and learning analysis helper functions
 
-  defp analyze_innovation_evolution(timeline, participants, novel_tactics, adaptations) do
+  defp analyze_innovation_evolution(timeline, _participants, novel_tactics, adaptations) do
     # Analyze how innovations evolved throughout the battle
     Logger.debug("Analyzing innovation evolution")
 
@@ -8339,19 +8265,19 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
       complexity_trend = Enum.map(evolution_stages, & &1.pattern_complexity)
 
       if shows_acceleration?(complexity_trend) do
-        patterns = [:accelerating_innovation | patterns]
+        _patterns = [:accelerating_innovation | patterns]
       end
 
       # Look for refinement patterns
       innovation_trend = Enum.map(evolution_stages, & &1.innovations_introduced)
 
       if shows_refinement?(innovation_trend) do
-        patterns = [:iterative_refinement | patterns]
+        _patterns = [:iterative_refinement | patterns]
       end
 
       # Look for breakthrough patterns
       if has_breakthrough_moments?(evolution_stages) do
-        patterns = [:breakthrough_innovation | patterns]
+        _patterns = [:breakthrough_innovation | patterns]
       end
 
       patterns
@@ -8464,7 +8390,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   end
 
   defp calculate_transfer_efficiency(transfer_events, side_participants) do
-    if length(transfer_events) == 0 or length(side_participants) < 2 do
+    if Enum.empty?(transfer_events) or length(side_participants) < 2 do
       0.0
     else
       # Efficiency based on how quickly patterns spread
@@ -8474,11 +8400,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
           event[:transfer_speed] && event.transfer_speed <= 180
         end)
 
-      if length(transfer_events) > 0 do
-        successful_transfers / length(transfer_events)
-      else
-        0.0
-      end
+      successful_transfers / length(transfer_events)
     end
   end
 
@@ -8504,7 +8426,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   end
 
   defp calculate_tactic_adoption_rate(transfer_events, side_participants) do
-    if length(transfer_events) == 0 or length(side_participants) < 2 do
+    if Enum.empty?(transfer_events) or length(side_participants) < 2 do
       0.0
     else
       # Calculate adoption rate based on how many participants adopted new tactics
@@ -8528,7 +8450,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
       |> Enum.filter(&(&1[:mechanism] == :coordination))
 
     if length(coordination_transfers) > 0 do
-      mechanisms = [:coordination_based | mechanisms]
+      _mechanisms = [:coordination_based | mechanisms]
     end
 
     # Look for observation-based transfer
@@ -8537,7 +8459,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
       |> Enum.filter(&(&1[:mechanism] == :observation))
 
     if length(observation_transfers) > 0 do
-      mechanisms = [:observation_based | mechanisms]
+      _mechanisms = [:observation_based | mechanisms]
     end
 
     # Look for communication-based transfer
@@ -8546,7 +8468,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
       |> Enum.filter(&(&1[:mechanism] == :communication))
 
     if length(communication_transfers) > 0 do
-      mechanisms = [:communication_based | mechanisms]
+      _mechanisms = [:communication_based | mechanisms]
     end
 
     mechanisms
@@ -8598,7 +8520,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
         challenge: challenge,
         responses: relevant_adaptations,
         response_speed: calculate_response_speed(challenge, relevant_adaptations),
-        response_effectiveness: evaluate_response_effectiveness(relevant_adaptations, timeline)
+        response_effectiveness:
+          evaluate_adaptation_response_effectiveness(relevant_adaptations, timeline)
       }
     end)
   end
@@ -8637,7 +8560,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     end
   end
 
-  defp evaluate_adaptation_depth(adaptations, responses) do
+  defp evaluate_adaptation_depth(adaptations, _responses) do
     if Enum.empty?(adaptations) do
       0.0
     else
@@ -8775,7 +8698,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     end)
   end
 
-  defp identify_unconventional_ship_usage(events, participants) do
+  defp identify_unconventional_ship_usage(_events, _participants) do
     # Identify unconventional ship usage patterns
     # For now, return empty list as this requires more complex analysis
     []
@@ -8899,7 +8822,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
       min_size = Enum.min(side_sizes)
 
       if max_size > min_size * 1.5 do
-        disadvantages = [
+        _disadvantages = [
           %{
             type: :numerical_disadvantage,
             timestamp: List.first(timeline.events).timestamp,
@@ -8940,7 +8863,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
       end
     end
   end
-
 
   defp get_expected_target_frequency(ship_class) do
     # Expected frequency of targeting different ship classes

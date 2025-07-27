@@ -401,9 +401,8 @@ defmodule EveDmv.Database.PerformanceOptimizer do
 
     result =
       stats
-
-    Map.put(:checked_at, DateTime.utc_now())
-    Map.put(:errors, errors)
+      |> Map.put(:checked_at, DateTime.utc_now())
+      |> Map.put(:errors, errors)
 
     if Enum.empty?(errors) do
       {:ok, result}

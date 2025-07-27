@@ -9,6 +9,7 @@ defmodule EveDmv.Users.AccountManager do
   alias EveDmv.Users.{Account, User}
   alias EveDmv.Api
   require Logger
+  require Ash.Query
 
   @doc """
   Creates or finds an account for a user during authentication.

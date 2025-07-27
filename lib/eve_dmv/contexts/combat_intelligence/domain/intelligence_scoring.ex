@@ -173,10 +173,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
     thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30 * 24 * 60 * 60, :second)
 
     query =
-      EveDmv.Killmails.Ash.Query.new(KillmailRaw)
-
-    Ash.Query.filter(expr(killmail_time >= ^thirty_days_ago))
-    Ash.Query.load([:participants])
+      EveDmv.Killmails.KillmailRaw
+      |> Ash.Query.new()
+      |> Ash.Query.filter(expr(killmail_time >= ^thirty_days_ago))
+      |> Ash.Query.load([:participants])
 
     case Ash.read(query, domain: EveDmv.Api) do
       {:ok, killmails} ->
@@ -279,10 +279,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
     ninety_days_ago = DateTime.utc_now() |> DateTime.add(-90 * 24 * 60 * 60, :second)
 
     query =
-      EveDmv.Killmails.Ash.Query.new(KillmailRaw)
-
-    Ash.Query.filter(expr(killmail_time >= ^ninety_days_ago))
-    Ash.Query.load([:participants])
+      EveDmv.Killmails.KillmailRaw
+      |> Ash.Query.new()
+      |> Ash.Query.filter(expr(killmail_time >= ^ninety_days_ago))
+      |> Ash.Query.load([:participants])
 
     case Ash.read(query, domain: EveDmv.Api) do
       {:ok, killmails} ->
@@ -377,10 +377,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
     ninety_days_ago = DateTime.utc_now() |> DateTime.add(-90 * 24 * 60 * 60, :second)
 
     query =
-      EveDmv.Killmails.Ash.Query.new(KillmailRaw)
-
-    Ash.Query.filter(expr(killmail_time >= ^ninety_days_ago))
-    Ash.Query.load([:participants])
+      EveDmv.Killmails.KillmailRaw
+      |> Ash.Query.new()
+      |> Ash.Query.filter(expr(killmail_time >= ^ninety_days_ago))
+      |> Ash.Query.load([:participants])
 
     case Ash.read(query, domain: EveDmv.Api) do
       {:ok, killmails} ->
@@ -494,10 +494,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
     ninety_days_ago = DateTime.utc_now() |> DateTime.add(-90 * 24 * 60 * 60, :second)
 
     query =
-      EveDmv.Killmails.Ash.Query.new(KillmailRaw)
-
-    Ash.Query.filter(expr(killmail_time >= ^ninety_days_ago))
-    Ash.Query.load([:participants])
+      EveDmv.Killmails.KillmailRaw
+      |> Ash.Query.new()
+      |> Ash.Query.filter(expr(killmail_time >= ^ninety_days_ago))
+      |> Ash.Query.load([:participants])
 
     case Ash.read(query, domain: EveDmv.Api) do
       {:ok, killmails} ->
@@ -615,9 +615,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
     # Analyze betrayal risk factors: corp history, blue-on-blue incidents
     # Get all killmails involving this character
     query =
-      EveDmv.Killmails.Ash.Query.new(KillmailRaw)
-
-    Ash.Query.load([:participants])
+      EveDmv.Killmails.KillmailRaw
+      |> Ash.Query.new()
+      |> Ash.Query.load([:participants])
 
     case Ash.read(query, domain: EveDmv.Api) do
       {:ok, killmails} ->

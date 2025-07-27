@@ -85,8 +85,8 @@ defmodule EveDmv.Eve.TypeResolver do
   defp get_existing_types(type_ids) do
     # Use bulk query with filtering instead of N+1 individual queries
     ItemType
-    Ash.Query.filter(expr(type_id in ^type_ids))
-    Ash.read!(domain: Api, authorize?: false)
+    |> Ash.Query.filter(expr(type_id in ^type_ids))
+    |> Ash.read!(domain: Api, authorize?: false)
   rescue
     error ->
       Logger.error("Failed to bulk query item types: #{inspect(error)}")
