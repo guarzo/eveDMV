@@ -11,6 +11,10 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
   use EveDmvWeb, :live_view
 
+  alias EveDmv.Contexts.Surveillance.Domain.AdvancedFilterEngine
+  alias KillmailRaw
+  alias SearchSuggestionService
+
   require Logger
 
   @preview_killmail_limit 1000
@@ -863,7 +867,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
     # Query recent killmails from the database for testing
     try do
       query =
-        EveDmv.Killmails.KillmailRaw
+        KillmailRaw
         |> Ash.Query.new()
         |> Ash.Query.limit(limit)
         |> Ash.Query.sort(killmail_time: :desc)
@@ -976,7 +980,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   end
 
   defp get_character_suggestions(query) do
-    case EveDmv.Search.SearchSuggestionService.get_character_suggestions(query, limit: 5) do
+    case SearchSuggestionService.get_character_suggestions(query, limit: 5) do
       {:ok, suggestions} ->
         Enum.map(suggestions, fn suggestion ->
           %{id: suggestion.id, name: suggestion.name}
@@ -988,7 +992,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   end
 
   defp get_corporation_suggestions(query) do
-    case EveDmv.Search.SearchSuggestionService.get_corporation_suggestions(query, limit: 5) do
+    case SearchSuggestionService.get_corporation_suggestions(query, limit: 5) do
       {:ok, suggestions} ->
         Enum.map(suggestions, fn suggestion ->
           %{id: suggestion.id, name: suggestion.name}
@@ -1000,7 +1004,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   end
 
   defp get_alliance_suggestions(query) do
-    case EveDmv.Search.SearchSuggestionService.get_alliance_suggestions(query, limit: 5) do
+    case SearchSuggestionService.get_alliance_suggestions(query, limit: 5) do
       {:ok, suggestions} ->
         Enum.map(suggestions, fn suggestion ->
           %{id: suggestion.id, name: suggestion.name}
@@ -1012,7 +1016,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   end
 
   defp get_system_suggestions(query) do
-    case EveDmv.Search.SearchSuggestionService.get_system_suggestions(query, limit: 5) do
+    case SearchSuggestionService.get_system_suggestions(query, limit: 5) do
       {:ok, suggestions} ->
         Enum.map(suggestions, fn suggestion ->
           %{id: suggestion.id, name: suggestion.name}
@@ -1024,7 +1028,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   end
 
   defp get_ship_suggestions(query) do
-    case EveDmv.Search.SearchSuggestionService.get_ship_suggestions(query, limit: 5) do
+    case SearchSuggestionService.get_ship_suggestions(query, limit: 5) do
       {:ok, suggestions} ->
         Enum.map(suggestions, fn suggestion ->
           %{id: suggestion.id, name: suggestion.name}
