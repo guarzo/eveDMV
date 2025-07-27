@@ -50,9 +50,9 @@ defmodule EveDmv.Market.MutamarketClient do
       iex> attributes = %{
       ...>   20 => 15.5,     # CPU usage
       ...>   30 => 220,      # Power grid usage
-      ...>   554 => 12500    # Damage multiplier
+      ...>   554 => 12_500    # Damage multiplier
       ...> }
-      iex> MutamarketClient.estimate_abyssal_price(47820, attributes)
+      iex> MutamarketClient.estimate_abyssal_price(47_820, attributes)
       {:ok, %{
         estimated_price: 125_000_000,
         confidence: 0.85,
@@ -88,9 +88,9 @@ defmodule EveDmv.Market.MutamarketClient do
 
   ## Examples
 
-      iex> MutamarketClient.get_type_statistics(47820)
+      iex> MutamarketClient.get_type_statistics(47_820)
       {:ok, %{
-        type_id: 47820,
+        type_id: 47_820,
         type_name: "Large Ancillary Shield Booster",
         total_listed: 245,
         average_price: 85_000_000,
@@ -126,11 +126,11 @@ defmodule EveDmv.Market.MutamarketClient do
 
   ## Examples
 
-      iex> MutamarketClient.search_similar(47820, attributes, limit: 10)
+      iex> MutamarketClient.search_similar(47_820, attributes, limit: 10)
       {:ok, [
         %{
           item_id: "abc123",
-          type_id: 47820,
+          type_id: 47_820,
           price: 120_000_000,
           attributes: %{...},
           similarity_score: 0.95
