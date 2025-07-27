@@ -29,7 +29,7 @@ defmodule EveDmvWeb.Utils.FormattingUtils do
   Formats numeric values with commas as thousands separators.
 
   Examples:
-      iex> EveDmvWeb.Utils.FormattingUtils.format_number_with_commas(1234567)
+      iex> EveDmvWeb.Utils.FormattingUtils.format_number_with_commas(1_234_567)
       "1,234,567"
   """
   def format_number_with_commas(value) when is_number(value) do
