@@ -6,6 +6,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   from battle timelines and participant data.
   """
 
+  alias EveDmv.StaticData.ShipTypes
   require Logger
 
   @doc """
@@ -983,7 +984,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   defp analyze_side_formation(timeline, side_participants) do
     # Analyze formation based on ship types and roles
     ship_types = Enum.map(side_participants, & &1[:ship_type_id])
-    ship_classes = Enum.map(ship_types, &EveDmv.StaticData.ShipTypes.classify_ship_type/1)
+    ship_classes = Enum.map(ship_types, &ShipTypes.classify_ship_type/1)
 
     formation_type = determine_formation_type(ship_classes)
     cohesion = calculate_formation_cohesion(timeline, side_participants)
@@ -1004,7 +1005,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     else
       # Analyze victim ship types to infer formation
       victim_types = Enum.map(early_events, & &1.victim[:ship_type_id])
-      victim_classes = Enum.map(victim_types, &EveDmv.StaticData.ShipTypes.classify_ship_type/1)
+      victim_classes = Enum.map(victim_types, &ShipTypes.classify_ship_type/1)
 
       cond do
         Enum.all?(victim_classes, &(&1 in [:frigate, :destroyer])) -> :skirmish
@@ -1727,7 +1728,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   defp evaluate_target_selection_outcome(decision, timeline) do
     # Evaluate target selection effectiveness
     target_ship_id = decision[:target]
-    target_class = EveDmv.StaticData.ShipTypes.classify_ship_type(target_ship_id)
+    target_class = ShipTypes.classify_ship_type(target_ship_id)
 
     # Strategic targets (capitals, logistics) score higher
     base_score =
@@ -2345,7 +2346,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
 
   defp analyze_target_priority(event) do
     ship_type_id = event.victim[:ship_type_id]
-    ship_class = EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
+    ship_class = ShipTypes.classify_ship_type(ship_type_id)
 
     case ship_class do
       :frigate -> :tackle_threat
@@ -2427,7 +2428,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
       ship_classes =
         timeline.events
         |> Enum.map(fn event ->
-          EveDmv.StaticData.ShipTypes.classify_ship_type(event.victim[:ship_type_id])
+          ShipTypes.classify_ship_type(event.victim[:ship_type_id])
         end)
         |> Enum.frequencies()
 
@@ -2664,7 +2665,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     events
     |> Enum.filter(fn event ->
       ship_type_id = event.victim[:ship_type_id]
-      ship_class = EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
+      ship_class = ShipTypes.classify_ship_type(ship_type_id)
 
       # Check if ship died to wrong weapon types (indicates range error)
       attackers = event[:attackers] || []
@@ -2830,7 +2831,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     |> Enum.flat_map(&(&1[:attackers] || []))
     |> Enum.map(fn attacker ->
       ship_type_id = attacker["ship_type_id"]
-      EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
+      ShipTypes.classify_ship_type(ship_type_id)
     end)
     |> Enum.frequencies()
   end
@@ -2840,7 +2841,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     events
     |> Enum.map(fn event ->
       ship_type_id = event.victim[:ship_type_id]
-      EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
+      ShipTypes.classify_ship_type(ship_type_id)
     end)
     |> Enum.frequencies()
   end
@@ -2954,7 +2955,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
 
         %{
           ship_type_id: ship_type_id,
-          ship_class: EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id),
+          ship_class: ShipTypes.classify_ship_type(ship_type_id),
           isk_value: event[:isk_value] || 0,
           timestamp: event.timestamp
         }
@@ -2990,7 +2991,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
         %{
           character_id: attacker["character_id"],
           ship_type_id: ship_type_id,
-          ship_class: EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id),
+          ship_class: ShipTypes.classify_ship_type(ship_type_id),
           damage_done: attacker["damage_done"] || 0
         }
       end)
@@ -3134,7 +3135,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     |> Enum.map(fn event ->
       %{
         ship_type_id: event.victim[:ship_type_id],
-        ship_class: EveDmv.StaticData.ShipTypes.classify_ship_type(event.victim[:ship_type_id]),
+        ship_class: ShipTypes.classify_ship_type(event.victim[:ship_type_id]),
         value: event[:isk_value] || 0,
         timestamp: event.timestamp
       }
@@ -3145,7 +3146,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     # Calculate optimal kill order based on threat and value
     events
     |> Enum.map(fn event ->
-      ship_class = EveDmv.StaticData.ShipTypes.classify_ship_type(event.victim[:ship_type_id])
+      ship_class = ShipTypes.classify_ship_type(event.victim[:ship_type_id])
 
       threat_score =
         case ship_class do
@@ -3214,7 +3215,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     high_priority_kills =
       events
       |> Enum.filter(fn event ->
-        ship_class = EveDmv.StaticData.ShipTypes.classify_ship_type(event.victim[:ship_type_id])
+        ship_class = ShipTypes.classify_ship_type(event.victim[:ship_type_id])
         # High priority targets
         ship_class in [:frigate, :cruiser]
       end)
@@ -3460,7 +3461,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     events
     |> Enum.map(fn event ->
       ship_type_id = event.victim[:ship_type_id]
-      ship_class = EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
+      ship_class = ShipTypes.classify_ship_type(ship_type_id)
 
       %{
         ship_type_id: ship_type_id,
@@ -3527,22 +3528,22 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
 
   # Utility functions for target analysis
   defp get_target_priority(event) do
-    ship_class = EveDmv.StaticData.ShipTypes.classify_ship_type(event.victim[:ship_type_id])
+    ship_class = ShipTypes.classify_ship_type(event.victim[:ship_type_id])
     get_threat_value_by_class(ship_class)
   end
 
   defp get_target_priority_by_id(ship_type_id) do
-    ship_class = EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
+    ship_class = ShipTypes.classify_ship_type(ship_type_id)
     get_threat_value_by_class(ship_class)
   end
 
   defp get_threat_value(event) do
-    ship_class = EveDmv.StaticData.ShipTypes.classify_ship_type(event.victim[:ship_type_id])
+    ship_class = ShipTypes.classify_ship_type(event.victim[:ship_type_id])
     get_threat_value_by_class(ship_class)
   end
 
   defp get_threat_value_by_id(ship_type_id) do
-    ship_class = EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
+    ship_class = ShipTypes.classify_ship_type(ship_type_id)
     get_threat_value_by_class(ship_class)
   end
 
@@ -4540,7 +4541,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     |> Enum.map(fn {events, index} ->
       priorities =
         Enum.map(events, fn event ->
-          ship_class = EveDmv.StaticData.ShipTypes.classify_ship_type(event.victim[:ship_type_id])
+          ship_class = ShipTypes.classify_ship_type(event.victim[:ship_type_id])
           get_threat_value_by_class(ship_class)
         end)
 
@@ -5071,7 +5072,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   defp identify_tactical_changes_after_loss(events_after) do
     # Simplified tactical change identification
     ship_types = Enum.map(events_after, & &1.victim[:ship_type_id])
-    ship_classes = Enum.map(ship_types, &EveDmv.StaticData.ShipTypes.classify_ship_type/1)
+    ship_classes = Enum.map(ship_types, &ShipTypes.classify_ship_type/1)
 
     if :frigate in ship_classes && :cruiser in ship_classes do
       [:target_prioritization_change]
@@ -6597,7 +6598,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
 
       # Look for patterns in target types
       ship_classes =
-        Enum.map(chronological_targets, &EveDmv.StaticData.ShipTypes.classify_ship_type/1)
+        Enum.map(chronological_targets, &ShipTypes.classify_ship_type/1)
 
       # Calculate coherence based on class consistency
       class_transitions = Enum.chunk_every(ship_classes, 2, 1, :discard)
@@ -6644,7 +6645,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
           event[:victim][:ship_type_id]
         end)
 
-      ship_classes = Enum.map(target_types, &EveDmv.StaticData.ShipTypes.classify_ship_type/1)
+      ship_classes = Enum.map(target_types, &ShipTypes.classify_ship_type/1)
       class_frequencies = Enum.frequencies(ship_classes)
 
       %{
@@ -6663,7 +6664,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
         event[:victim][:ship_type_id]
       end)
 
-    ship_classes = Enum.map(target_ships, &EveDmv.StaticData.ShipTypes.classify_ship_type/1)
+    ship_classes = Enum.map(target_ships, &ShipTypes.classify_ship_type/1)
     class_frequencies = Enum.frequencies(ship_classes)
 
     total_kills = length(events)
@@ -6692,7 +6693,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
         %{
           isk_value: event[:isk_value] || 0,
           ship_class:
-            EveDmv.StaticData.ShipTypes.classify_ship_type(event[:victim][:ship_type_id]),
+            ShipTypes.classify_ship_type(event[:victim][:ship_type_id]),
           timestamp: event.timestamp
         }
       end)
@@ -6760,7 +6761,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
       :tackle_focused ->
         tackle_kills =
           Enum.count(events, fn event ->
-            class = EveDmv.StaticData.ShipTypes.classify_ship_type(event[:victim][:ship_type_id])
+            class = ShipTypes.classify_ship_type(event[:victim][:ship_type_id])
             class in [:frigate, :destroyer]
           end)
 
@@ -6769,7 +6770,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
       :dps_focused ->
         dps_kills =
           Enum.count(events, fn event ->
-            class = EveDmv.StaticData.ShipTypes.classify_ship_type(event[:victim][:ship_type_id])
+            class = ShipTypes.classify_ship_type(event[:victim][:ship_type_id])
             class in [:cruiser, :battlecruiser, :battleship]
           end)
 
@@ -6778,7 +6779,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
       :capital_warfare ->
         capital_kills =
           Enum.count(events, fn event ->
-            class = EveDmv.StaticData.ShipTypes.classify_ship_type(event[:victim][:ship_type_id])
+            class = ShipTypes.classify_ship_type(event[:victim][:ship_type_id])
             class in [:capital, :supercapital]
           end)
 
@@ -6913,8 +6914,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
       target_pairs = Enum.chunk_every(events, 2, 1, :discard)
 
       Enum.count(target_pairs, fn [event_a, event_b] ->
-        class_a = EveDmv.StaticData.ShipTypes.classify_ship_type(event_a[:victim][:ship_type_id])
-        class_b = EveDmv.StaticData.ShipTypes.classify_ship_type(event_b[:victim][:ship_type_id])
+        class_a = ShipTypes.classify_ship_type(event_a[:victim][:ship_type_id])
+        class_b = ShipTypes.classify_ship_type(event_b[:victim][:ship_type_id])
 
         # Consider it unnecessary if it's not logical progression and no significant time gap
         time_diff = DateTime.diff(event_b.timestamp, event_a.timestamp, :second)
@@ -7233,38 +7234,38 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
       intensity_windows = calculate_intensity_windows(timeline.events, 60)
 
       # Identify phase transitions based on intensity changes
-      phases = []
-      current_phase = nil
+      {phases, _} =
+        Enum.reduce(intensity_windows, {[], nil}, fn {window_start, window_intensity},
+                                                     {acc, current_phase} ->
+          cond do
+            current_phase == nil ->
+              new_phase = %{
+                start_time: window_start,
+                phase_type: determine_phase_type_by_intensity(window_intensity),
+                intensity: window_intensity
+              }
 
-      Enum.reduce(intensity_windows, phases, fn {window_start, window_intensity}, acc ->
-        cond do
-          current_phase == nil ->
-            new_phase = %{
-              start_time: window_start,
-              phase_type: determine_phase_type_by_intensity(window_intensity),
-              intensity: window_intensity
-            }
+              {acc, new_phase}
 
-            [new_phase | acc]
+            intensity_change_significant?(current_phase.intensity, window_intensity) ->
+              # End current phase and start new one
+              updated_current = Map.put(current_phase, :end_time, window_start)
 
-          intensity_change_significant?(current_phase.intensity, window_intensity) ->
-            # End current phase and start new one
-            updated_current = Map.put(current_phase, :end_time, window_start)
+              new_phase = %{
+                start_time: window_start,
+                phase_type: determine_phase_type_by_intensity(window_intensity),
+                intensity: window_intensity
+              }
 
-            new_phase = %{
-              start_time: window_start,
-              phase_type: determine_phase_type_by_intensity(window_intensity),
-              intensity: window_intensity
-            }
+              {[updated_current | acc], new_phase}
 
-            [new_phase, updated_current | acc]
+            true ->
+              # Continue current phase
+              {acc, current_phase}
+          end
+        end)
 
-          true ->
-            # Continue current phase
-            acc
-        end
-      end)
-      |> Enum.reverse()
+      phases |> Enum.reverse()
     end
   end
 
@@ -7529,31 +7530,31 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
       pressure_windows = calculate_pressure_intensity_windows(timeline.events, participants, 45)
 
       # Identify sustained pressure periods (3+ consecutive high-intensity windows)
-      pressure_phases = []
-      current_phase = nil
+      {phases, _} =
+        Enum.reduce(pressure_windows, {[], nil}, fn {window_start, pressure_intensity},
+                                                    {acc, current_phase} ->
+          high_pressure = pressure_intensity >= 0.6
 
-      Enum.reduce(pressure_windows, pressure_phases, fn {window_start, pressure_intensity}, acc ->
-        high_pressure = pressure_intensity >= 0.6
+          cond do
+            high_pressure && current_phase == nil ->
+              new_phase = %{start_time: window_start, intensity: pressure_intensity, events: []}
+              {acc, new_phase}
 
-        cond do
-          high_pressure && current_phase == nil ->
-            new_phase = %{start_time: window_start, intensity: pressure_intensity, events: []}
-            [new_phase | acc]
+            high_pressure && current_phase ->
+              # Continue current phase
+              {acc, current_phase}
 
-          high_pressure && current_phase ->
-            # Continue current phase
-            acc
+            not high_pressure && current_phase ->
+              # End current phase
+              updated_phase = Map.put(current_phase, :end_time, window_start)
+              {[updated_phase | acc], nil}
 
-          not high_pressure && current_phase ->
-            # End current phase
-            updated_phase = Map.put(current_phase, :end_time, window_start)
-            [updated_phase | acc]
+            true ->
+              {acc, current_phase}
+          end
+        end)
 
-          true ->
-            acc
-        end
-      end)
-      |> Enum.reverse()
+      phases |> Enum.reverse()
     end
   end
 
@@ -7850,7 +7851,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
         end)
 
       ship_classes =
-        Enum.map(target_ship_types, &EveDmv.StaticData.ShipTypes.classify_ship_type/1)
+        Enum.map(target_ship_types, &ShipTypes.classify_ship_type/1)
 
       class_frequencies = Enum.frequencies(ship_classes)
 
@@ -8671,7 +8672,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
         event[:victim][:ship_type_id]
       end)
 
-    ship_classes = Enum.map(target_types, &EveDmv.StaticData.ShipTypes.classify_ship_type/1)
+    ship_classes = Enum.map(target_types, &ShipTypes.classify_ship_type/1)
     class_frequencies = Enum.frequencies(ship_classes)
 
     # Find classes that are targeted unusually often or rarely
@@ -8904,7 +8905,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
           event[:victim][:ship_type_id]
         end)
 
-      ship_classes = Enum.map(target_ships, &EveDmv.StaticData.ShipTypes.classify_ship_type/1)
+      ship_classes = Enum.map(target_ships, &ShipTypes.classify_ship_type/1)
       class_frequencies = Enum.frequencies(ship_classes)
 
       primary_target =
@@ -8963,5 +8964,49 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     # Check if two tactical patterns are similar
     pattern_a[:pattern_type] == pattern_b[:pattern_type] and
       pattern_a[:primary_target] == pattern_b[:primary_target]
+  end
+
+  def generate_tactical_insights(timeline, participants, _battle_data) do
+    positioning_patterns = analyze_positioning_patterns(timeline, participants)
+    target_patterns = analyze_target_selection_patterns(timeline, participants)
+    timing_patterns = analyze_timing_patterns(timeline, participants)
+    command_patterns = analyze_command_patterns(timeline, participants)
+    innovations = extract_tactical_innovations(timeline, participants)
+
+    insights = %{
+      positioning: positioning_patterns,
+      targeting: target_patterns,
+      timing: timing_patterns,
+      command_structure: command_patterns,
+      innovations: innovations,
+      battle_summary: %{
+        total_participants: length(participants),
+        timeline_duration: calculate_battle_duration(timeline),
+        key_moments: extract_key_moments(timeline)
+      }
+    }
+
+    {:ok, insights}
+  end
+
+  defp calculate_battle_duration(timeline) when is_list(timeline) do
+    case {List.first(timeline), List.last(timeline)} do
+      {%{timestamp: start_time}, %{timestamp: end_time}} ->
+        DateTime.diff(end_time, start_time, :second)
+      _ ->
+        0
+    end
+  end
+
+  defp extract_key_moments(timeline) when is_list(timeline) do
+    timeline
+    |> Enum.with_index()
+    |> Enum.filter(fn {event, _idx} ->
+      case event do
+        %{event_type: type} when type in [:first_blood, :major_escalation, :retreat] -> true
+        _ -> false
+      end
+    end)
+    |> Enum.map(fn {event, idx} -> Map.put(event, :timeline_position, idx) end)
   end
 end
