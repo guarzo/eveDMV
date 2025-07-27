@@ -491,13 +491,17 @@ defmodule EveDmv.Analytics.ModuleClassifier do
         # Interceptors get tackle boost
         update_role_confidence(classification, :tackle, 0.4)
 
-      {_, "Capital"} ->
+      {_, :capital} ->
         # Capitals are usually DPS or logistics
         classification
         |> update_role_confidence(:dps, 0.2)
         |> update_role_confidence(:logistics, 0.1)
 
-      {_, "Frigate"} ->
+      {_, :supercapital} ->
+        # Supercapitals are usually DPS
+        update_role_confidence(classification, :dps, 0.3)
+
+      {:frigate, _} ->
         # Frigates often tackle or support
         classification
         |> update_role_confidence(:tackle, 0.2)
