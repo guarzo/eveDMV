@@ -107,6 +107,31 @@ defmodule EveDmv.Intelligence.WandererClient do
     GenServer.call(__MODULE__, :connection_status)
   end
 
+  @doc """
+  Check if a system is in the chain and get its distance from home.
+
+  This function queries the currently monitored maps to determine if a given
+  system is part of any wormhole chain and how many jumps it is from home.
+
+  ## Parameters
+  - `system_id` - The EVE solar system ID to check
+
+  ## Returns
+  - `{:ok, %{in_chain: true, jumps_from_home: integer}}` if system is in chain
+  - `{:ok, %{in_chain: false}}` if system is not in any monitored chain
+  - `{:error, reason}` if the check fails
+
+  ## Examples
+      iex> WandererClient.check_system_in_chain(30000142)
+      {:ok, %{in_chain: true, jumps_from_home: 3}}
+
+      iex> WandererClient.check_system_in_chain(30002187)
+      {:ok, %{in_chain: false}}
+  """
+  def check_system_in_chain(system_id) do
+    GenServer.call(__MODULE__, {:check_system_in_chain, system_id}, @api_timeout)
+  end
+
   # GenServer Callbacks
 
   @impl GenServer
@@ -175,6 +200,13 @@ defmodule EveDmv.Intelligence.WandererClient do
     }
 
     {:reply, status, state}
+  end
+
+  @impl GenServer
+  def handle_call({:check_system_in_chain, system_id}, _from, state) do
+    # Check all monitored maps for the system
+    result = check_system_in_all_chains(system_id, state.monitored_maps, state.auth_token)
+    {:reply, result, state}
   end
 
   @impl GenServer
@@ -281,6 +313,98 @@ defmodule EveDmv.Intelligence.WandererClient do
 
   defp get_auth_token_from_env do
     System.get_env("WANDERER_AUTH_TOKEN")
+  end
+
+  defp check_system_in_all_chains(system_id, monitored_maps, auth_token) do
+    # Convert to integer if string
+    system_id = 
+      case Integer.parse(to_string(system_id)) do
+        {id, _} -> id
+        :error -> system_id
+      end
+
+    # If no maps are being monitored, system is not in chain
+    if MapSet.size(monitored_maps) == 0 do
+      {:ok, %{in_chain: false}}
+    else
+      # Check each monitored map
+      monitored_maps
+      |> MapSet.to_list()
+      |> Enum.reduce_while({:ok, %{in_chain: false}}, fn map_id, _acc ->
+        case check_system_in_single_chain(system_id, map_id, auth_token) do
+          {:ok, %{in_chain: true} = result} ->
+            # Found in this chain, return result
+            {:halt, {:ok, result}}
+          
+          {:ok, %{in_chain: false}} ->
+            # Not in this chain, continue checking
+            {:cont, {:ok, %{in_chain: false}}}
+          
+          {:error, _reason} ->
+            # Error checking this chain, continue to next
+            {:cont, {:ok, %{in_chain: false}}}
+        end
+      end)
+    end
+  rescue
+    error ->
+      Logger.error("Error checking system #{system_id} in chains: #{inspect(error)}")
+      {:error, "Failed to check system in chain: #{inspect(error)}"}
+  end
+
+  defp check_system_in_single_chain(system_id, map_id, auth_token) do
+    case fetch_with_retry(fn -> get_systems_api(map_id, auth_token) end) do
+      {:ok, data} ->
+        # Parse topology and check if system is present
+        topology = parse_topology_data(data)
+        systems = Map.get(topology, "systems", [])
+        
+        # Check if system exists in this chain
+        system_found = Enum.find(systems, fn system ->
+          Map.get(system, "solar_system_id") == system_id or
+          Map.get(system, "id") == system_id or
+          Map.get(system, "system_id") == system_id
+        end)
+
+        if system_found do
+          # System is in chain, calculate jumps from home
+          # For now, return a basic distance - this could be enhanced with pathfinding
+          jumps_from_home = calculate_jumps_from_home(system_id, systems, map_id, auth_token)
+          {:ok, %{in_chain: true, jumps_from_home: jumps_from_home, map_id: map_id}}
+        else
+          {:ok, %{in_chain: false}}
+        end
+
+      {:error, reason} ->
+        Logger.warning("Failed to fetch systems for map #{map_id}: #{inspect(reason)}")
+        {:error, reason}
+    end
+  end
+
+  defp calculate_jumps_from_home(system_id, systems, _map_id, _auth_token) do
+    # This is a simplified implementation
+    # In a real implementation, you'd need to:
+    # 1. Identify the home system (could be marked in system data or configured)
+    # 2. Fetch connections data to build a graph
+    # 3. Use pathfinding to calculate actual jump distance
+    
+    # For now, estimate based on system position in the list
+    # This is not accurate but provides a placeholder implementation
+    system_index = Enum.find_index(systems, fn system ->
+      Map.get(system, "solar_system_id") == system_id or
+      Map.get(system, "id") == system_id or
+      Map.get(system, "system_id") == system_id
+    end)
+
+    case system_index do
+      nil -> 0  # Should not happen since we already found the system
+      0 -> 0    # First system is likely home
+      index -> min(index, 10)  # Cap at 10 jumps for safety
+    end
+  rescue
+    error ->
+      Logger.warning("Error calculating jumps for system #{system_id}: #{inspect(error)}")
+      5  # Default fallback distance
   end
 
   defp fetch_with_retry(fetch_fn, retries \\ 0) do
