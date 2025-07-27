@@ -18,7 +18,7 @@ defmodule EveDmv.Config.Http do
   @doc """
   Get HTTP request timeout in milliseconds.
 
-  Environment: EVE_DMV_HTTP_TIMEOUT_MS (default: 30000)
+  Environment: EVE_DMV_HTTP_TIMEOUT_MS (default: 30_000)
   """
   @spec timeout() :: pos_integer()
   def timeout do
@@ -28,7 +28,7 @@ defmodule EveDmv.Config.Http do
   @doc """
   Get HTTP connection timeout in milliseconds.
 
-  Environment: EVE_DMV_HTTP_CONNECT_TIMEOUT_MS (default: 30000)
+  Environment: EVE_DMV_HTTP_CONNECT_TIMEOUT_MS (default: 30_000)
   """
   @spec connect_timeout() :: pos_integer()
   def connect_timeout do
@@ -58,7 +58,7 @@ defmodule EveDmv.Config.Http do
   @doc """
   Get maximum retry delay in milliseconds.
 
-  Environment: EVE_DMV_HTTP_MAX_RETRY_DELAY_MS (default: 30000)
+  Environment: EVE_DMV_HTTP_MAX_RETRY_DELAY_MS (default: 30_000)
   """
   @spec max_retry_delay() :: pos_integer()
   def max_retry_delay do

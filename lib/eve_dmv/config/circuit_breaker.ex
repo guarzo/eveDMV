@@ -27,7 +27,7 @@ defmodule EveDmv.Config.CircuitBreaker do
   @doc """
   Get recovery timeout in milliseconds (how long circuit stays open).
 
-  Environment: EVE_DMV_CIRCUIT_BREAKER_RECOVERY_TIMEOUT_MS (default: 30000)
+  Environment: EVE_DMV_CIRCUIT_BREAKER_RECOVERY_TIMEOUT_MS (default: 30_000)
   """
   @spec recovery_timeout() :: pos_integer()
   def recovery_timeout do
