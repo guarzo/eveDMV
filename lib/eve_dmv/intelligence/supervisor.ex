@@ -153,7 +153,8 @@ defmodule EveDmv.Intelligence.Supervisor do
     Logger.warning("Restarting Intelligence system - ongoing analyses will be interrupted")
 
     # Stop all analyzer processes
-    |> Enum.each(DynamicSupervisor.which_children(AnalyzerSupervisor), fn {_, pid, _, _} ->
+    DynamicSupervisor.which_children(AnalyzerSupervisor)
+    |> Enum.each(fn {_, pid, _, _} ->
       DynamicSupervisor.terminate_child(AnalyzerSupervisor, pid)
     end)
 
