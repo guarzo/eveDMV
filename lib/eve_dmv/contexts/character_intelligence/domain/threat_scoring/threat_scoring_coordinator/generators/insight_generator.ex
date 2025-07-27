@@ -8,7 +8,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
   All insights are based on real data analysis and statistical patterns.
   """
 
-  alias EveDmv.Api
   alias EveDmv.Killmails.KillmailRaw
 
   require Logger
@@ -49,30 +48,32 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
   # Fetch killmail activity from the last 30 days
   defp fetch_recent_activity(character_id) do
     try do
-      thirty_days_ago = DateTime.add(DateTime.utc_now(), -30, :day)
-
-      # Query killmails where character was involved as victim or attacker
-      victim_killmails =
+      # Fetch recent killmails and filter for character involvement
+      recent_killmails =
         KillmailRaw
-        |> Api.read!()
-        |> Enum.filter(fn km ->
-          km.victim_character_id == character_id and
-            km.killmail_time >= thirty_days_ago
+        |> Ash.Query.limit(1000)
+        |> Ash.read!(domain: EveDmv.Api)
+
+      # Filter for character involvement in memory
+      relevant_killmails = 
+        Enum.filter(recent_killmails, fn km ->
+          # Check if character was victim
+          victim_match = Map.get(km, :victim_character_id) == character_id
+          
+          # Check if character was attacker
+          attacker_match = case Map.get(km, :raw_data) do
+            %{"attackers" => attackers} when is_list(attackers) ->
+              Enum.any?(attackers, fn attacker ->
+                Map.get(attacker, "character_id") == character_id
+              end)
+            _ -> false
+          end
+          
+          victim_match or attacker_match
         end)
+        |> Enum.sort_by(&Map.get(&1, :killmail_time), {:desc, DateTime})
 
-      attacker_killmails =
-        KillmailRaw
-        |> Api.read!()
-        |> Enum.filter(fn km ->
-          km.killmail_time >= thirty_days_ago and
-            Enum.any?(km.attackers || [], fn attacker ->
-              attacker.character_id == character_id
-            end)
-        end)
-
-      all_killmails = Enum.uniq_by(victim_killmails ++ attacker_killmails, & &1.killmail_id)
-
-      {:ok, all_killmails}
+      {:ok, relevant_killmails}
     rescue
       error ->
         Logger.error(
