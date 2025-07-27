@@ -7,6 +7,9 @@ defmodule EveDmvWeb.AuthLive do
   import Phoenix.Component
 
   alias EveDmv.Security.AuditLogger
+  alias EveDmv.Users.User
+  alias EveDmv.Users.Account
+  alias EveDmv.Api
 
   def on_mount(:load_from_session, _params, session, socket) do
     socket = assign_current_user(socket, session)
@@ -39,13 +42,13 @@ defmodule EveDmvWeb.AuthLive do
           {user_id, account_id} ->
             Logger.debug("Loading user from database: #{user_id}")
             # Load user by ID from database
-            case Ash.get(EveDmv.Users.User, user_id, domain: EveDmv.Api) do
+            case Ash.get(User, user_id, domain: Api) do
               {:ok, user} ->
                 Logger.debug("User loaded successfully: #{user.eve_character_name}")
                 # Also load account if present
                 account =
                   if account_id do
-                    case Ash.get(EveDmv.Users.Account, account_id, domain: EveDmv.Api) do
+                    case Ash.get(Account, account_id, domain: Api) do
                       {:ok, acc} -> acc
                       _ -> nil
                     end
@@ -98,13 +101,13 @@ defmodule EveDmvWeb.AuthLive do
           {user_id, account_id} ->
             Logger.debug("Loading user from database (optional): #{user_id}")
             # Load user by ID from database
-            case Ash.get(EveDmv.Users.User, user_id, domain: EveDmv.Api) do
+            case Ash.get(User, user_id, domain: Api) do
               {:ok, user} ->
                 Logger.debug("User loaded successfully (optional): #{user.eve_character_name}")
                 # Also load account if present
                 account =
                   if account_id do
-                    case Ash.get(EveDmv.Users.Account, account_id, domain: EveDmv.Api) do
+                    case Ash.get(Account, account_id, domain: Api) do
                       {:ok, acc} -> acc
                       _ -> nil
                     end
