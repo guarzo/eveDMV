@@ -787,8 +787,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     tank_types =
       ship_analyses
       |> Enum.map(fn ship -> ship.stats && ship.stats.meta_info.tank_type end)
-
-    Enum.reject(&is_nil/1) |> Enum.frequencies()
+      |> Enum.reject(&is_nil/1) |> Enum.frequencies()
     # Homogeneous tank is more efficient
     dominant_tank_percentage =
       if map_size(tank_types) > 0 do
