@@ -65,12 +65,13 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
 
   # Split a list into batches and run `fun` on each batch in parallel
   defp chunk_and_process(items, batch_size, fun, type) do
-    stream =
+    batches =
       items
       |> Enum.chunk_every(batch_size)
       |> Enum.with_index(1)
 
-    Task.async_stream(
+    result_stream = Task.async_stream(
+      batches,
       fn {batch, idx} ->
         Logger.debug("Processing #{type} batch #{idx}")
         Enum.each(batch, fun)
@@ -79,7 +80,7 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
       ordered: false
     )
 
-    Stream.run(stream)
+    Stream.run(result_stream)
   end
 
   # Process one character's metrics and upsert into Ash
