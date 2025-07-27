@@ -97,7 +97,7 @@ defmodule EveDmv.Database.PartitionAutomation do
       schemaname,
       tablename,
       pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size,
-      (SELECT count(*) FROM (SELECT 1 FROM pg_class WHERE relname = tablename LIMIT 1000000) x) as approx_row_count
+      (SELECT count(*) FROM (SELECT 1 FROM pg_class WHERE relname = tablename LIMIT 1_000_000) x) as approx_row_count
     FROM pg_tables
     WHERE tablename ~ '^killmails_raw_y[0-9]{4}m[0-9]{2}$'
     ORDER BY tablename;
