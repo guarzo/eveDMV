@@ -252,7 +252,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
       ewar_analysis = %{
         ewar_ships: [],
         ewar_types: [],
-        total_ewar_ships: 0
+        total_ewar_ships: 0,
+        breakdown: %{}
       }
 
       # Calculate EWAR intensity based on ship count and types
@@ -291,34 +292,34 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
       cond do
         # Frigates (type IDs typically in ranges)
         ship_type_id >= 582 and ship_type_id <= 671 -> :frigate
-        ship_type_id >= 11176 and ship_type_id <= 11194 -> :assault_frigate
-        ship_type_id >= 11380 and ship_type_id <= 11393 -> :interceptor
-        ship_type_id >= 11999 and ship_type_id <= 12003 -> :covops
-        ship_type_id >= 12016 and ship_type_id <= 12020 -> :eaf
+        ship_type_id >= 11_176 and ship_type_id <= 11_194 -> :assault_frigate
+        ship_type_id >= 11_380 and ship_type_id <= 11_393 -> :interceptor
+        ship_type_id >= 11_999 and ship_type_id <= 12_003 -> :covops
+        ship_type_id >= 12_016 and ship_type_id <= 12_020 -> :eaf
         # Destroyers
         ship_type_id >= 420 and ship_type_id <= 447 -> :destroyer
-        ship_type_id >= 22442 and ship_type_id <= 22456 -> :interdictor
-        # Cruisers  
+        ship_type_id >= 22_442 and ship_type_id <= 22_456 -> :interdictor
+        # Cruisers
         ship_type_id >= 622 and ship_type_id <= 633 -> :cruiser
-        ship_type_id >= 11172 and ship_type_id <= 11178 -> :hac
-        ship_type_id >= 11942 and ship_type_id <= 11957 -> :recon
-        ship_type_id >= 12003 and ship_type_id <= 12016 -> :logistics
+        ship_type_id >= 11_172 and ship_type_id <= 11_178 -> :hac
+        ship_type_id >= 11_942 and ship_type_id <= 11_957 -> :recon
+        ship_type_id >= 12_003 and ship_type_id <= 12_016 -> :logistics
         ship_type_id >= 4302 and ship_type_id <= 4310 -> :t3c
         # Battlecruisers
         ship_type_id >= 419 and ship_type_id <= 426 -> :battlecruiser
-        ship_type_id >= 28659 and ship_type_id <= 28665 -> :command_ship
+        ship_type_id >= 28_659 and ship_type_id <= 28_665 -> :command_ship
         # Battleships
         ship_type_id >= 547 and ship_type_id <= 556 -> :battleship
-        ship_type_id >= 22428 and ship_type_id <= 22436 -> :black_ops
-        ship_type_id >= 28844 and ship_type_id <= 28850 -> :marauder
+        ship_type_id >= 22_428 and ship_type_id <= 22_436 -> :black_ops
+        ship_type_id >= 28_844 and ship_type_id <= 28_850 -> :marauder
         # Capitals
-        ship_type_id >= 19720 and ship_type_id <= 19726 -> :carrier
-        ship_type_id >= 19724 and ship_type_id <= 19726 -> :dreadnought
-        ship_type_id >= 28352 and ship_type_id <= 28356 -> :supercarrier
-        ship_type_id == 11567 or ship_type_id == 23773 -> :titan
+        ship_type_id >= 19_720 and ship_type_id <= 19_726 -> :carrier
+        ship_type_id >= 19_724 and ship_type_id <= 19_726 -> :dreadnought
+        ship_type_id >= 28_352 and ship_type_id <= 28_356 -> :supercarrier
+        ship_type_id == 11_567 or ship_type_id == 23_773 -> :titan
         # Industrial
         ship_type_id >= 648 and ship_type_id <= 656 -> :industrial
-        ship_type_id >= 28850 and ship_type_id <= 28856 -> :transport
+        ship_type_id >= 28_850 and ship_type_id <= 28_856 -> :transport
         true -> :unknown
       end
   end
@@ -334,7 +335,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
     case ship_type_id do
       # Force Recon Ships (T2 Recon)
       # Falcon
-      11957 ->
+      11_957 ->
         %{
           has_ewar: true,
           ewar_types: [:sensor_dampening, :ecm],
@@ -343,7 +344,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
         }
 
       # Rook
-      11956 ->
+      11_956 ->
         %{
           has_ewar: true,
           ewar_types: [:tracking_disruption, :weapon_disruption],
@@ -352,7 +353,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
         }
 
       # Huginn
-      11955 ->
+      11_955 ->
         %{
           has_ewar: true,
           ewar_types: [:target_painting, :tracking_disruption],
@@ -361,7 +362,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
         }
 
       # Arazu
-      11954 ->
+      11_954 ->
         %{
           has_ewar: true,
           ewar_types: [:ecm, :ecm_burst],
@@ -371,7 +372,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
 
       # Combat Recon Ships (T2 Recon)
       # Lachesis
-      11953 ->
+      11_953 ->
         %{
           has_ewar: true,
           ewar_types: [:sensor_dampening, :tracking_disruption],
@@ -380,7 +381,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
         }
 
       # Rapier
-      11952 ->
+      11_952 ->
         %{
           has_ewar: true,
           ewar_types: [:tracking_disruption, :weapon_disruption],
@@ -389,7 +390,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
         }
 
       # Curse
-      11951 ->
+      11_951 ->
         %{
           has_ewar: true,
           ewar_types: [:target_painting, :sensor_dampening],
@@ -398,7 +399,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
         }
 
       # Pilgrim
-      11950 ->
+      11_950 ->
         %{
           has_ewar: true,
           ewar_types: [:ecm, :sensor_dampening],
@@ -408,7 +409,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
 
       # Electronic Attack Frigates (EAFs)
       # Kitsune
-      12019 ->
+      12_019 ->
         %{
           has_ewar: true,
           ewar_types: [:sensor_dampening],
@@ -417,7 +418,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
         }
 
       # Sentinel
-      12018 ->
+      12_018 ->
         %{
           has_ewar: true,
           ewar_types: [:tracking_disruption],
@@ -426,7 +427,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
         }
 
       # Hyena
-      12017 ->
+      12_017 ->
         %{
           has_ewar: true,
           ewar_types: [:target_painting],
@@ -435,12 +436,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
         }
 
       # Griffin
-      12016 ->
+      12_016 ->
         %{has_ewar: true, ewar_types: [:ecm], ewar_strength: :high, ship_class: :eaf}
 
       # Heavy Interdictors (Tackle + EWAR)
       # Onyx
-      22444 ->
+      22_444 ->
         %{
           has_ewar: true,
           ewar_types: [:warp_disruption, :sensor_dampening],
@@ -449,7 +450,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
         }
 
       # Broadsword
-      22443 ->
+      22_443 ->
         %{
           has_ewar: true,
           ewar_types: [:warp_disruption, :tracking_disruption],
@@ -458,7 +459,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
         }
 
       # Phobos
-      22442 ->
+      22_442 ->
         %{
           has_ewar: true,
           ewar_types: [:warp_disruption, :target_painting],
@@ -467,7 +468,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
         }
 
       # Devoter
-      22456 ->
+      22_456 ->
         %{
           has_ewar: true,
           ewar_types: [:warp_disruption, :ecm],
@@ -477,7 +478,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
 
       # Command Ships (Fleet Bonuses + Some EWAR)
       # Claymore
-      28665 ->
+      28_665 ->
         %{
           has_ewar: true,
           ewar_types: [:command_bonuses, :sensor_dampening],
@@ -486,7 +487,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
         }
 
       # Sleipnir
-      28664 ->
+      28_664 ->
         %{
           has_ewar: true,
           ewar_types: [:command_bonuses, :tracking_disruption],
@@ -495,7 +496,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
         }
 
       # Vulture
-      28663 ->
+      28_663 ->
         %{
           has_ewar: true,
           ewar_types: [:command_bonuses, :target_painting],
@@ -504,7 +505,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
         }
 
       # Damnation
-      28659 ->
+      28_659 ->
         %{
           has_ewar: true,
           ewar_types: [:command_bonuses, :ecm],
@@ -522,7 +523,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
           ship_class: :cruiser
         }
 
-      # Bellicose  
+      # Bellicose
       629 ->
         %{
           has_ewar: true,
@@ -546,7 +547,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
 
       # Interdictors (Tackle focused)
       # Sabre
-      22456 ->
+      22_457 ->
         %{
           has_ewar: true,
           ewar_types: [:warp_disruption],
@@ -555,7 +556,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
         }
 
       # Heretic
-      22452 ->
+      22_453 ->
         %{
           has_ewar: true,
           ewar_types: [:warp_disruption],
@@ -564,7 +565,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
         }
 
       # Eris
-      22448 ->
+      22_449 ->
         %{
           has_ewar: true,
           ewar_types: [:warp_disruption],
@@ -573,7 +574,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
         }
 
       # Flycatcher
-      22444 ->
+      22_460 ->
         %{
           has_ewar: true,
           ewar_types: [:warp_disruption],
@@ -583,7 +584,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
 
       # Some faction ships with EWAR bonuses
       # Stratios
-      17715 ->
+      17_715 ->
         %{
           has_ewar: true,
           ewar_types: [:sensor_dampening, :tracking_disruption],
@@ -592,7 +593,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
         }
 
       # Gila
-      17709 ->
+      17_709 ->
         %{
           has_ewar: true,
           ewar_types: [:ecm, :sensor_dampening],
