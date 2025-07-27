@@ -720,8 +720,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
         inhabitant_character_ids =
           inhabitants
           |> Enum.map(&Map.get(&1, "character_id"))
-
-        Enum.filter(&(&1 != nil)) |> MapSet.new()
+          |> Enum.filter(&(&1 != nil)) |> MapSet.new()
         # Check victim
         victim_match = MapSet.member?(inhabitant_character_ids, killmail_data.victim.character_id)
 
