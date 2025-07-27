@@ -29,7 +29,7 @@ defmodule EveDmv.Database.IndexPerformanceVerifier do
           SELECT killmail_id, killmail_time, solar_system_id
           FROM killmails_raw
           WHERE killmail_time BETWEEN '2024-01-01 00:00:00' AND '2024-01-01 01:00:00'
-            AND solar_system_id = 30002765
+            AND solar_system_id = 30_002_765
           ORDER BY killmail_time
           """,
           "killmails_raw_time_system_idx"
@@ -42,7 +42,7 @@ defmodule EveDmv.Database.IndexPerformanceVerifier do
           EXPLAIN (ANALYZE, BUFFERS)
           SELECT killmail_id, killmail_time, victim_character_id
           FROM killmails_raw
-          WHERE victim_character_id = 12345
+          WHERE victim_character_id = 12_345
             AND killmail_time >= '2024-01-01 00:00:00'
           ORDER BY killmail_time DESC
           LIMIT 100
@@ -57,8 +57,8 @@ defmodule EveDmv.Database.IndexPerformanceVerifier do
           EXPLAIN (ANALYZE, BUFFERS)
           SELECT COUNT(*) as kill_count
           FROM killmails_raw
-          WHERE victim_corporation_id = 98765
-            AND victim_alliance_id = 99999
+          WHERE victim_corporation_id = 98_765
+            AND victim_alliance_id = 99_999
           """,
           "killmails_raw_corp_alliance_idx"
         },
@@ -70,8 +70,8 @@ defmodule EveDmv.Database.IndexPerformanceVerifier do
           EXPLAIN (ANALYZE, BUFFERS)
           SELECT DATE_TRUNC('hour', killmail_time) as hour, COUNT(*) as kills
           FROM killmails_raw
-          WHERE victim_corporation_id = 98765
-            AND victim_alliance_id = 99999
+          WHERE victim_corporation_id = 98_765
+            AND victim_alliance_id = 99_999
             AND killmail_time BETWEEN '2024-01-01 00:00:00' AND '2024-01-02 00:00:00'
           GROUP BY hour
           ORDER BY hour
@@ -86,7 +86,7 @@ defmodule EveDmv.Database.IndexPerformanceVerifier do
           EXPLAIN (ANALYZE, BUFFERS)
           SELECT killmail_id, character_id, killmail_time
           FROM participants
-          WHERE character_id = 12345
+          WHERE character_id = 12_345
             AND killmail_time >= '2024-01-01 00:00:00'
           ORDER BY killmail_time DESC
           """,
@@ -100,7 +100,7 @@ defmodule EveDmv.Database.IndexPerformanceVerifier do
           EXPLAIN (ANALYZE, BUFFERS)
           SELECT battle_id, system_id, start_time
           FROM battles
-          WHERE system_id = 30002765
+          WHERE system_id = 30_002_765
             AND start_time >= '2024-01-01 00:00:00'
             AND deleted_at IS NULL
           ORDER BY start_time
