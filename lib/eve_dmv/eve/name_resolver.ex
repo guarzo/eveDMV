@@ -47,8 +47,8 @@ defmodule EveDmv.Eve.NameResolver do
       iex> NameResolver.ship_name(587)
       "Rifter"
 
-      iex> NameResolver.ship_name(999999)
-      "Unknown Ship (999999)"
+      iex> NameResolver.ship_name(999_999)
+      "Unknown Ship (999_999)"
   """
   defdelegate ship_name(type_id), to: StaticDataResolver
 
@@ -58,11 +58,11 @@ defmodule EveDmv.Eve.NameResolver do
 
   ## Examples
 
-      iex> NameResolver.item_name(12058)
+      iex> NameResolver.item_name(12_058)
       "Medium Shield Extender II"
 
-      iex> NameResolver.item_name(999999)
-      "Unknown Item (999999)"
+      iex> NameResolver.item_name(999_999)
+      "Unknown Item (999_999)"
   """
   defdelegate item_name(type_id), to: StaticDataResolver
 
@@ -71,11 +71,11 @@ defmodule EveDmv.Eve.NameResolver do
 
   ## Examples
 
-      iex> NameResolver.system_name(30000142)
+      iex> NameResolver.system_name(30_000_142)
       "Jita"
 
-      iex> NameResolver.system_name(999999)
-      "Unknown System (999999)"
+      iex> NameResolver.system_name(999_999)
+      "Unknown System (999_999)"
   """
   defdelegate system_name(system_id), to: StaticDataResolver
 
@@ -104,7 +104,7 @@ defmodule EveDmv.Eve.NameResolver do
 
   ## Examples
 
-      iex> NameResolver.system_security(30000142)
+      iex> NameResolver.system_security(30_000_142)
       %{class: "highsec", color: "text-green-400", status: 0.946}
   """
   defdelegate system_security(system_id), to: StaticDataResolver
@@ -118,11 +118,11 @@ defmodule EveDmv.Eve.NameResolver do
 
   ## Examples
 
-      iex> NameResolver.character_name(95465499)
+      iex> NameResolver.character_name(95_465_499)
       "CCP Falcon"
 
-      iex> NameResolver.character_name(999999999)
-      "Unknown Character (999999999)"
+      iex> NameResolver.character_name(999_999999)
+      "Unknown Character (999_999999)"
   """
   defdelegate character_name(character_id), to: EsiEntityResolver
 
@@ -131,11 +131,11 @@ defmodule EveDmv.Eve.NameResolver do
 
   ## Examples
 
-      iex> NameResolver.corporation_name(98388312)
+      iex> NameResolver.corporation_name(98_388_312)
       "CCP Games"
 
-      iex> NameResolver.corporation_name(999999999)
-      "Unknown Corporation (999999999)"
+      iex> NameResolver.corporation_name(999_999999)
+      "Unknown Corporation (999_999999)"
   """
   defdelegate corporation_name(corporation_id), to: EsiEntityResolver
 
@@ -144,11 +144,11 @@ defmodule EveDmv.Eve.NameResolver do
 
   ## Examples
 
-      iex> NameResolver.alliance_name(99005338)
+      iex> NameResolver.alliance_name(99_005_338)
       "Pandemic Horde"
 
-      iex> NameResolver.alliance_name(999999999)
-      "Unknown Alliance (999999999)"
+      iex> NameResolver.alliance_name(999_999999)
+      "Unknown Alliance (999_999999)"
   """
   defdelegate alliance_name(alliance_id), to: EsiEntityResolver
 
