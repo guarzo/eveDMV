@@ -10,7 +10,10 @@ defmodule EveDmv.Monitoring.ErrorRecoveryWorker do
   """
 
   use GenServer
-  alias EveDmv.Monitoring.{ErrorTracker, PipelineMonitor}
+  alias EveDmv.Monitoring.ErrorTracker
+  alias EveDmv.Monitoring.PipelineMonitor
+  alias KillmailPipeline
+  alias ErrorCodes
 
   require Logger
 
@@ -242,7 +245,7 @@ defmodule EveDmv.Monitoring.ErrorRecoveryWorker do
     Logger.warning("Attempting to restart killmail pipeline")
 
     # First, try a gentle restart by clearing any backlog
-    case Process.whereis(EveDmv.Killmails.KillmailPipeline) do
+    case Process.whereis(KillmailPipeline) do
       nil ->
         Logger.error("Pipeline process not found")
 
@@ -262,7 +265,7 @@ defmodule EveDmv.Monitoring.ErrorRecoveryWorker do
     # Identify if errors are from external services
     external_errors =
       Enum.filter(details.top_errors, fn error ->
-        EveDmv.ErrorCodes.category(error.code) == :external_service
+        ErrorCodes.category(error.code) == :external_service
       end)
 
     if length(external_errors) > 0 do
@@ -276,7 +279,7 @@ defmodule EveDmv.Monitoring.ErrorRecoveryWorker do
     Logger.warning("Handling pipeline health issues: #{inspect(details.issues)}")
 
     # Take specific actions based on health issues
-    |> Enum.each(details.issues, fn issue ->
+    Enum.each(details.issues, fn issue ->
       case issue do
         "No successful processing in last" <> _ ->
           restart_pipeline()
@@ -297,7 +300,7 @@ defmodule EveDmv.Monitoring.ErrorRecoveryWorker do
     Logger.warning("Handling error spike for #{error_code}: #{inspect(details)}")
 
     # Take action based on error code
-    case EveDmv.ErrorCodes.category(error_code) do
+    case ErrorCodes.category(error_code) do
       :external_service ->
         Logger.warning("External service errors spiking, activating circuit breaker")
 
