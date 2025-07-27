@@ -69,7 +69,7 @@ defmodule EveDmv.Contexts.BoundedContext do
   @doc false
   def build_api_module(module) do
     Module.split(module)
-    List.replace_at(-1, "Api") |> Module.safe_concat()
+    |> List.replace_at(-1, "Api") |> Module.safe_concat()
   end
 
   @doc false
