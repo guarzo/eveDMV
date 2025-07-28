@@ -8,16 +8,13 @@ defmodule EveDmv.Contexts.WormholeOperations.Api do
   """
 
   use EveDmv.ErrorHandler
-  alias EveDmv.Utils.ValidationUtils
-
-  alias EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter
-
-  # Chain intelligence now uses unified module
-  alias EveDmv.Shared.ChainIntelligence
   alias EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer
   alias EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer
-
+  alias EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter
   alias EveDmv.Contexts.WormholeOperations.Infrastructure.VettingRepository
+  # Chain intelligence now uses unified module
+  alias EveDmv.Shared.ChainIntelligence
+  alias EveDmv.Utils.ValidationUtils
 
   require Logger
 
