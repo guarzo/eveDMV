@@ -6,7 +6,10 @@ defmodule EveDmv.Shared.Intelligence.Facade do
   modular intelligence components.
   """
 
-  alias EveDmv.Shared.Intelligence.{Collector, Processor, FusionEngine, ReportBuilder}
+  alias EveDmv.Shared.Intelligence.Collector
+  alias EveDmv.Shared.Intelligence.FusionEngine
+  alias EveDmv.Shared.Intelligence.Processor
+  alias EveDmv.Shared.Intelligence.ReportBuilder
 
   require Logger
 

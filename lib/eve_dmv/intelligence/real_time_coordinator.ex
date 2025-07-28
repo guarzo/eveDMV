@@ -15,9 +15,9 @@ defmodule EveDmv.Intelligence.RealTimeCoordinator do
   """
 
   use GenServer
-  alias EveDmv.Intelligence.EventPublisher
-  alias EveDmv.Infrastructure.EventBus
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator
+  alias EveDmv.Infrastructure.EventBus
+  alias EveDmv.Intelligence.EventPublisher
   require Logger
 
   # Update thresholds for determining when to publish events

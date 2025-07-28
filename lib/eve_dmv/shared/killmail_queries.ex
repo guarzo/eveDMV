@@ -6,8 +6,8 @@ defmodule EveDmv.Shared.KillmailQueries do
   both character analysis and corporation intelligence features.
   """
 
-  alias EveDmv.Repo
   alias Ecto.Adapters.SQL
+  alias EveDmv.Repo
 
   @doc """
   Get kills and losses for a single character.

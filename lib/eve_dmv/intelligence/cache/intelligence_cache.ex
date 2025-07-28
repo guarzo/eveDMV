@@ -7,10 +7,10 @@ defmodule EveDmv.Intelligence.Cache.IntelligenceCache do
   """
 
   alias EveDmv.Cache
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator
   alias EveDmv.Intelligence.Analyzers.CharacterAnalyzer
   alias EveDmv.Intelligence.Analyzers.WHVettingAnalyzer
   alias EveDmv.Intelligence.Core.CorrelationEngine
-  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator
   require Logger
 
   @doc """

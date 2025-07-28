@@ -8,8 +8,8 @@ defmodule EveDmv.Search.SearchSuggestionService do
 
   alias EveDmv.Api
   alias EveDmv.Killmails.Participant
-  alias EveDmv.Static.EveSolarSystem
   alias EveDmv.Static.EveItemType
+  alias EveDmv.Static.EveSolarSystem
 
   require Ash.Query
   require Logger

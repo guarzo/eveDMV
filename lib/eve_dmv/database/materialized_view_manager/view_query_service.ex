@@ -6,8 +6,8 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewQueryService do
   pagination, and specialized queries for different view types.
   """
 
-  alias EveDmv.Repo
   alias Ecto.Adapters.SQL
+  alias EveDmv.Repo
 
   @doc """
   Queries data from a materialized view with optional limit.
