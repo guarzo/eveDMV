@@ -10,11 +10,11 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
   use GenServer
   use EveDmv.ErrorHandler
-  alias EveDmv.Shared.Infrastructure.UnifiedCache
   alias EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository
   alias EveDmv.DomainEvents.SurveillanceMatch
   alias EveDmv.Infrastructure.EventBus
   alias EveDmv.Intelligence.WandererClient
+  alias EveDmv.Shared.Infrastructure.UnifiedCache
 
   require Logger
 
@@ -44,8 +44,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
   Get recent matches across all profiles.
   """
   def get_recent_matches(opts \\ []) do
-    limit = Keyword.get(opts, :limit, 50)
-    since = Keyword.get(opts, :since)
+    _limit = Keyword.get(opts, :limit, 50)
+    _since = Keyword.get(opts, :since)
     profile_id = Keyword.get(opts, :profile_id)
 
     UnifiedCache.get_surveillance_matches(profile_id)
@@ -56,7 +56,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
   """
   def get_matches_for_profile(profile_id, opts \\ []) do
     limit = Keyword.get(opts, :limit, 50)
-    since = Keyword.get(opts, :since)
+    _since = Keyword.get(opts, :since)
 
     case UnifiedCache.get_surveillance_matches(profile_id) do
       {:ok, matches} -> {:ok, Enum.take(matches, limit)}
