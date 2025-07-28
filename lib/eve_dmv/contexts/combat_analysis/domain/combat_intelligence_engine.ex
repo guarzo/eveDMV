@@ -7,10 +7,10 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CombatIntelligenceEngine do
   """
 
   use GenServer
-  
+
   alias EveDmv.DomainEvents.KillmailEnriched
   alias EveDmv.Shared.Infrastructure.UnifiedCache
-  
+
   require Logger
 
   # Public API
@@ -367,7 +367,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CombatIntelligenceEngine do
 
   defp invalidate_related_cache(killmail) do
     # Invalidate caches that might be affected by this killmail
-    victim_ids = 
+    victim_ids =
       case get_in(killmail.victim, [:character_id]) do
         nil -> []
         victim_id -> [victim_id]
