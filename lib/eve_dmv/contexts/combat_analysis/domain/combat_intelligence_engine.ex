@@ -7,10 +7,11 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CombatIntelligenceEngine do
   """
 
   use GenServer
-  require Logger
-
-  alias EveDmv.Shared.Infrastructure.UnifiedCache
+  
   alias EveDmv.DomainEvents.KillmailEnriched
+  alias EveDmv.Shared.Infrastructure.UnifiedCache
+  
+  require Logger
 
   # Public API
 
@@ -139,17 +140,15 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CombatIntelligenceEngine do
   @impl GenServer
   def handle_cast({:process_killmail, killmail}, state) do
     # Update intelligence data based on killmail
-    try do
-      update_character_intelligence(killmail)
-      update_corporation_intelligence(killmail)
-      invalidate_related_cache(killmail)
+    update_character_intelligence(killmail)
+    update_corporation_intelligence(killmail)
+    invalidate_related_cache(killmail)
 
-      {:noreply, %{state | processed_killmails: state.processed_killmails + 1}}
-    rescue
-      error ->
-        Logger.error("Failed to process killmail for intelligence: #{inspect(error)}")
-        {:noreply, state}
-    end
+    {:noreply, %{state | processed_killmails: state.processed_killmails + 1}}
+  rescue
+    error ->
+      Logger.error("Failed to process killmail for intelligence: #{inspect(error)}")
+      {:noreply, state}
   end
 
   @impl GenServer
@@ -167,25 +166,23 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CombatIntelligenceEngine do
   # Private functions
 
   defp generate_intelligence_summary(entity_id, entity_type, options) do
-    try do
-      summary = %{
-        entity_id: entity_id,
-        entity_type: entity_type,
-        generated_at: DateTime.utc_now(),
-        threat_level: calculate_threat_level(entity_id, entity_type),
-        combat_effectiveness: calculate_combat_effectiveness(entity_id, entity_type),
-        activity_metrics: get_activity_metrics(entity_id, entity_type, options),
-        ship_preferences: get_ship_preferences(entity_id, entity_type),
-        tactical_patterns: analyze_tactical_patterns(entity_id, entity_type),
-        recommendations: generate_recommendations(entity_id, entity_type)
-      }
+    summary = %{
+      entity_id: entity_id,
+      entity_type: entity_type,
+      generated_at: DateTime.utc_now(),
+      threat_level: calculate_threat_level(entity_id, entity_type),
+      combat_effectiveness: calculate_combat_effectiveness(entity_id, entity_type),
+      activity_metrics: get_activity_metrics(entity_id, entity_type, options),
+      ship_preferences: get_ship_preferences(entity_id, entity_type),
+      tactical_patterns: analyze_tactical_patterns(entity_id, entity_type),
+      recommendations: generate_recommendations(entity_id, entity_type)
+    }
 
-      {:ok, summary}
-    rescue
-      error ->
-        Logger.error("Failed to generate intelligence summary: #{inspect(error)}")
-        {:error, :generation_failed}
-    end
+    {:ok, summary}
+  rescue
+    error ->
+      Logger.error("Failed to generate intelligence summary: #{inspect(error)}")
+      {:error, :generation_failed}
   end
 
   defp perform_character_combat_analysis(character_id, options) do
@@ -370,16 +367,16 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CombatIntelligenceEngine do
 
   defp invalidate_related_cache(killmail) do
     # Invalidate caches that might be affected by this killmail
-    affected_entities = []
-
-    if victim_id = get_in(killmail.victim, [:character_id]) do
-      affected_entities = [victim_id | affected_entities]
-    end
+    victim_ids = 
+      case get_in(killmail.victim, [:character_id]) do
+        nil -> []
+        victim_id -> [victim_id]
+      end
 
     attacker_ids = Enum.map(killmail.attackers, & &1[:character_id]) |> Enum.filter(& &1)
-    affected_entities = affected_entities ++ attacker_ids
+    all_affected_entities = victim_ids ++ attacker_ids
 
-    Enum.each(affected_entities, fn entity_id ->
+    Enum.each(all_affected_entities, fn entity_id ->
       UnifiedCache.delete(:combat, {:intelligence_summary, entity_id, :character})
       UnifiedCache.delete(:combat, {:character_combat_analysis, entity_id})
       UnifiedCache.delete(:combat, {:threat_assessment, entity_id, :character})
