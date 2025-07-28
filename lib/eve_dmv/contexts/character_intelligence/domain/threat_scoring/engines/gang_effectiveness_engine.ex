@@ -563,10 +563,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
       essential_roles
       |> Enum.count(&(Map.get(ship_roles, &1, 0) > 0))
 
-    if not Enum.empty?(essential_roles) do
-      covered_roles / length(essential_roles)
-    else
+    if Enum.empty?(essential_roles) do
       0.0
+    else
+      covered_roles / length(essential_roles)
     end
   end
 
@@ -627,10 +627,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
         end
       end)
 
-    if not Enum.empty?(killmails) do
-      multi_kills / length(killmails)
-    else
+    if Enum.empty?(killmails) do
       0.5
+    else
+      multi_kills / length(killmails)
     end
   end
 
