@@ -242,10 +242,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
   defp calculate_overall_focus_score(focus_fire_windows) do
     scores = Enum.map(focus_fire_windows, & &1.focus_score)
 
-    if not Enum.empty?(scores) do
-      Float.round(Enum.sum(scores) / length(scores), 2)
-    else
+    if Enum.empty?(scores) do
       0.0
+    else
+      Float.round(Enum.sum(scores) / length(scores), 2)
     end
   end
 
@@ -550,7 +550,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
   end
 
   defp calculate_switch_frequency(switches) do
-    if not Enum.empty?(switches) do
+    if Enum.empty?(switches) do
+      0.0
+    else
       # Calculate average time between switches
       times = Enum.map(switches, & &1.switch_time)
 
@@ -567,18 +569,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
       else
         0.0
       end
-    else
-      0.0
     end
   end
 
   defp calculate_avg_engagement_duration(switches) do
     durations = Enum.map(switches, & &1.time_on_prev_target)
 
-    if not Enum.empty?(durations) do
-      Float.round(Enum.sum(durations) / length(durations), 2)
-    else
+    if Enum.empty?(durations) do
       0.0
+    else
+      Float.round(Enum.sum(durations) / length(durations), 2)
     end
   end
 
@@ -852,10 +852,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
   defp calculate_average_coordination(coordination_windows) do
     scores = Enum.map(coordination_windows, & &1.coordination_score)
 
-    if not Enum.empty?(scores) do
-      Float.round(Enum.sum(scores) / length(scores), 2)
-    else
+    if Enum.empty?(scores) do
       0.0
+    else
+      Float.round(Enum.sum(scores) / length(scores), 2)
     end
   end
 
@@ -908,13 +908,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
   end
 
   defp calculate_phase_duration(phase_killmails) do
-    if not Enum.empty?(phase_killmails) do
+    if Enum.empty?(phase_killmails) do
+      0
+    else
       times = Enum.map(phase_killmails, & &1.killmail_time)
       first = Enum.min(times)
       last = Enum.max(times)
       DateTime.diff(last, first)
-    else
-      0
     end
   end
 
