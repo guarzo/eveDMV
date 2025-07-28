@@ -11,48 +11,46 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
   """
   @spec optimize_fleet_composition(map(), atom()) :: {:ok, map()} | {:error, term()}
   def optimize_fleet_composition(fleet_composition, wormhole_class) do
-    try do
-      # Extract ships from fleet composition
-      ships = Map.get(fleet_composition, :ships, [])
+    # Extract ships from fleet composition
+    ships = Map.get(fleet_composition, :ships, [])
 
-      # Calculate current fleet mass
-      current_mass = calculate_fleet_mass(ships)
-      available_mass = get_wormhole_mass_limit(wormhole_class)
+    # Calculate current fleet mass
+    current_mass = calculate_fleet_mass(ships)
+    available_mass = get_wormhole_mass_limit(wormhole_class)
 
-      # Check if fleet exceeds mass limits
+    # Check if fleet exceeds mass limits
 
-      # Generate optimization recommendations
-      {optimized_fleet, recommendations, warnings} =
-        if current_mass > available_mass do
-          optimize_overweight_fleet(ships, available_mass, wormhole_class)
-        else
-          {ships, generate_general_recommendations(ships, wormhole_class), []}
-        end
+    # Generate optimization recommendations
+    {optimized_fleet, recommendations, warnings} =
+      if current_mass > available_mass do
+        optimize_overweight_fleet(ships, available_mass, wormhole_class)
+      else
+        {ships, generate_general_recommendations(ships, wormhole_class), []}
+      end
 
-      # Calculate optimized mass
-      optimized_mass = calculate_fleet_mass(optimized_fleet)
-      optimized_efficiency = calculate_mass_efficiency_percentage(optimized_mass, available_mass)
+    # Calculate optimized mass
+    optimized_mass = calculate_fleet_mass(optimized_fleet)
+    optimized_efficiency = calculate_mass_efficiency_percentage(optimized_mass, available_mass)
 
-      {:ok,
-       %{
-         original_fleet: fleet_composition,
-         optimized_fleet: %{fleet_composition | ships: optimized_fleet},
-         wormhole_class: wormhole_class,
-         mass_efficiency: optimized_efficiency,
-         mass_usage: %{
-           original_mass: current_mass,
-           optimized_mass: optimized_mass,
-           available_mass: available_mass,
-           efficiency_percentage: optimized_efficiency,
-           mass_saved: current_mass - optimized_mass
-         },
-         recommendations: recommendations,
-         warnings: warnings
-       }}
-    rescue
-      error ->
-        {:error, "Fleet optimization failed: #{inspect(error)}"}
-    end
+    {:ok,
+     %{
+       original_fleet: fleet_composition,
+       optimized_fleet: %{fleet_composition | ships: optimized_fleet},
+       wormhole_class: wormhole_class,
+       mass_efficiency: optimized_efficiency,
+       mass_usage: %{
+         original_mass: current_mass,
+         optimized_mass: optimized_mass,
+         available_mass: available_mass,
+         efficiency_percentage: optimized_efficiency,
+         mass_saved: current_mass - optimized_mass
+       },
+       recommendations: recommendations,
+       warnings: warnings
+     }}
+  rescue
+    error ->
+      {:error, "Fleet optimization failed: #{inspect(error)}"}
   end
 
   @doc """
@@ -280,30 +278,28 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
   @spec get_metrics() :: map()
   def get_metrics do
     # Real metrics tracking with database queries
-    try do
-      # Get metrics from cache or calculate
-      cached_metrics = get_cached_metrics()
+    # Get metrics from cache or calculate
+    cached_metrics = get_cached_metrics()
 
-      if cached_metrics do
-        cached_metrics
-      else
-        # Calculate fresh metrics
-        metrics = calculate_fresh_metrics()
-        cache_metrics(metrics)
-        metrics
-      end
-    rescue
-      error ->
-        # Fallback metrics on error
-        %{
-          optimizations_run: 0,
-          fleets_optimized: 0,
-          mass_saved: 0,
-          success_rate: 0.0,
-          error: "Failed to fetch metrics: #{inspect(error)}",
-          last_updated: DateTime.utc_now()
-        }
+    if cached_metrics do
+      cached_metrics
+    else
+      # Calculate fresh metrics
+      metrics = calculate_fresh_metrics()
+      cache_metrics(metrics)
+      metrics
     end
+  rescue
+    error ->
+      # Fallback metrics on error
+      %{
+        optimizations_run: 0,
+        fleets_optimized: 0,
+        mass_saved: 0,
+        success_rate: 0.0,
+        error: "Failed to fetch metrics: #{inspect(error)}",
+        last_updated: DateTime.utc_now()
+      }
   end
 
   # Private helper functions
