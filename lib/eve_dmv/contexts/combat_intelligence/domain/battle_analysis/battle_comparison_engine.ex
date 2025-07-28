@@ -335,7 +335,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleCompari
     %{
       battle_transition: "Battle #{index} → Battle #{index + 1}",
       timestamp: get_battle_timestamp(curr_battle),
-      adaptations_detected: length(final_adaptations) > 0,
+      adaptations_detected: not Enum.empty?(final_adaptations),
       specific_adaptations: final_adaptations
     }
   end
@@ -750,7 +750,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleCompari
     significant_changes =
       identify_significant_composition_changes(prev_comp, curr_comp)
 
-    if length(significant_changes) > 0 do
+    if not Enum.empty?(significant_changes) do
       %{
         type: :composition_adaptation,
         description: "Significant fleet composition changes",

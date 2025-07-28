@@ -890,14 +890,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
       |> Enum.chunk_every(2, 1, :discard)
       |> Enum.filter(fn [prev, curr] -> curr > prev * 1.5 end)
 
-    if length(escalations) > 0, do: [:escalation], else: []
+    if not Enum.empty?(escalations), do: [:escalation], else: []
   end
 
   defp detect_main_engagement(kill_rates, _value_rates, _events) do
     avg_rate = if Enum.empty?(kill_rates), do: 0, else: Enum.sum(kill_rates) / length(kill_rates)
     high_activity = Enum.filter(kill_rates, &(&1 > avg_rate * 1.2))
 
-    if length(high_activity) > 0, do: [:main_engagement], else: []
+    if not Enum.empty?(high_activity), do: [:main_engagement], else: []
   end
 
   defp detect_decisive_phase(_kill_rates, value_rates, _killmails) do

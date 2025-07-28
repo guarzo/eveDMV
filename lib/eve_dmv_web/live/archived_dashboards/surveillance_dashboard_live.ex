@@ -348,7 +348,7 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
             DateTime.compare(alert.created_at, cutoff_time) == :gt
           end)
 
-        if length(recent_alerts) > 0 do
+        if not Enum.empty?(recent_alerts) do
           total_confidence = Enum.sum(Enum.map(recent_alerts, & &1.confidence_score))
           Float.round(total_confidence / length(recent_alerts), 3)
         else
@@ -435,7 +435,7 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
   end
 
   defp generate_alert_trends(time_range) do
-    # Generate sample trend data (in real system, query from database)
+    # Generate real alert trends from surveillance data
     hours =
       case time_range do
         :last_hour -> 1
@@ -445,11 +445,34 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
       end
 
     current_time = DateTime.utc_now()
+    start_time = DateTime.add(current_time, -hours * 3600, :second)
 
-    # Return empty data instead of fake random data
-    # Real implementation would query surveillance matches by hour
-    []
-    |> Enum.reverse()
+    # Get actual alert data and group by hour
+    case safe_call(fn -> ThreatSurveillance.get_recent_alerts(limit: 10000) end) do
+      {:ok, alerts} ->
+        alerts
+        |> Enum.filter(fn alert ->
+          DateTime.compare(alert.created_at, start_time) == :gt
+        end)
+        |> Enum.group_by(fn alert ->
+          # Group by hour
+          alert.created_at
+          |> DateTime.truncate(:hour)
+        end)
+        |> Enum.map(fn {hour_timestamp, hour_alerts} ->
+          %{
+            timestamp: hour_timestamp,
+            alert_count: length(hour_alerts),
+            avg_confidence: calculate_avg_confidence(hour_alerts),
+            profiles_active: count_unique_profiles(hour_alerts)
+          }
+        end)
+        |> Enum.sort_by(& &1.timestamp)
+
+      _ ->
+        # If surveillance service is unavailable, return empty trends
+        []
+    end
   end
 
   defp generate_system_recommendations(profiles, profile_metrics) do
@@ -457,7 +480,7 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
     inactive_profiles = Enum.filter(profiles, &(!&1.enabled))
 
     inactive_rec =
-      if length(inactive_profiles) > 0 do
+      if not Enum.empty?(inactive_profiles) do
         [
           %{
             type: :inactive_profiles,
@@ -476,7 +499,7 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
     low_performers = Enum.filter(profile_metrics, &(&1.performance_score < 30))
 
     low_perf_rec =
-      if length(low_performers) > 0 do
+      if not Enum.empty?(low_performers) do
         [
           %{
             type: :low_performance,
@@ -494,7 +517,7 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
     high_fp_profiles = Enum.filter(profile_metrics, &(&1.false_positive_rate > 15))
 
     high_fp_rec =
-      if length(high_fp_profiles) > 0 do
+      if not Enum.empty?(high_fp_profiles) do
         [
           %{
             type: :high_false_positives,
@@ -592,9 +615,29 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
     end
   end
 
-  defp get_profile_hourly_breakdown(_profile_id) do
-    # Return empty data - real implementation would query surveillance matches by hour
-    []
+  defp get_profile_hourly_breakdown(profile_id) do
+    # Get hourly breakdown of alerts for a specific profile
+    case safe_call(fn ->
+           ThreatSurveillance.get_recent_alerts(profile_id: profile_id, limit: 1000)
+         end) do
+      {:ok, alerts} ->
+        alerts
+        |> Enum.group_by(fn alert ->
+          alert.created_at
+          |> DateTime.truncate(:hour)
+        end)
+        |> Enum.map(fn {hour_timestamp, hour_alerts} ->
+          %{
+            hour: hour_timestamp,
+            alert_count: length(hour_alerts),
+            avg_confidence: calculate_avg_confidence(hour_alerts)
+          }
+        end)
+        |> Enum.sort_by(& &1.hour)
+
+      _ ->
+        []
+    end
   end
 
   defp get_criteria_performance_breakdown(_profile_id) do
@@ -606,9 +649,26 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
     ]
   end
 
-  defp get_recent_profile_matches(_profile_id, _limit) do
-    # Return empty data - real implementation would query actual surveillance matches
-    []
+  defp get_recent_profile_matches(profile_id, limit) do
+    # Get recent surveillance matches for a specific profile
+    case safe_call(fn ->
+           ThreatSurveillance.get_recent_alerts(profile_id: profile_id, limit: limit)
+         end) do
+      {:ok, alerts} ->
+        Enum.map(alerts, fn alert ->
+          %{
+            alert_id: alert.id,
+            timestamp: alert.created_at,
+            confidence_score: alert.confidence_score,
+            character_id: Map.get(alert.metadata, :character_id),
+            system_id: Map.get(alert.metadata, :solar_system_id),
+            match_reasons: Map.get(alert.metadata, :match_reasons, [])
+          }
+        end)
+
+      _ ->
+        []
+    end
   end
 
   defp generate_profile_optimization_suggestions(_profile_id) do
@@ -668,4 +728,22 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
   end
 
   def format_memory_usage(_), do: "N/A"
+
+  # Helper functions for alert trend analysis
+
+  defp calculate_avg_confidence(alerts) do
+    if Enum.empty?(alerts) do
+      0.0
+    else
+      total_confidence = Enum.sum(Enum.map(alerts, & &1.confidence_score))
+      Float.round(total_confidence / length(alerts), 3)
+    end
+  end
+
+  defp count_unique_profiles(alerts) do
+    alerts
+    |> Enum.map(& &1.profile_id)
+    |> Enum.uniq()
+    |> length()
+  end
 end

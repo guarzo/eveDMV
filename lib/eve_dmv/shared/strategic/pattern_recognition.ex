@@ -78,7 +78,7 @@ defmodule EveDmv.Shared.Strategic.PatternRecognition do
   Assesses confidence in pattern identification.
   """
   def assess_pattern_confidence(patterns, strategic_data) do
-    if length(patterns) == 0 do
+    if Enum.empty?(patterns) do
       0.0
     else
       individual_confidences = Enum.map(patterns, & &1.confidence)
@@ -326,7 +326,7 @@ defmodule EveDmv.Shared.Strategic.PatternRecognition do
         :multi_system -> Enum.flat_map(strategic_data.killmail_data, & &1.killmails)
       end
 
-    if length(killmails) == 0 || total_hours == 0 do
+    if Enum.empty?(killmails) || total_hours == 0 do
       0.0
     else
       hours_with_activity =
@@ -378,7 +378,7 @@ defmodule EveDmv.Shared.Strategic.PatternRecognition do
   end
 
   defp identify_dominant_pattern(patterns) do
-    if length(patterns) == 0 do
+    if Enum.empty?(patterns) do
       nil
     else
       patterns
@@ -401,7 +401,7 @@ defmodule EveDmv.Shared.Strategic.PatternRecognition do
   end
 
   defp calculate_average_confidence(patterns) do
-    if length(patterns) == 0 do
+    if Enum.empty?(patterns) do
       0.0
     else
       total = Enum.sum(Enum.map(patterns, & &1.confidence))
@@ -482,7 +482,7 @@ defmodule EveDmv.Shared.Strategic.PatternRecognition do
   defp phase_to_value(:dormant), do: 0
 
   defp average(list) do
-    if length(list) == 0 do
+    if Enum.empty?(list) do
       0.0
     else
       Enum.sum(list) / length(list)

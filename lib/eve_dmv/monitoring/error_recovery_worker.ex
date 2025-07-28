@@ -268,7 +268,7 @@ defmodule EveDmv.Monitoring.ErrorRecoveryWorker do
         EveDmv.ErrorCodes.category(error.code) == :external_service
       end)
 
-    if length(external_errors) > 0 do
+    if not Enum.empty?(external_errors) do
       # Could implement dynamic rate limiting here
       # For now, just log the recommendation
       Logger.warning("Recommend reducing external API call rate")

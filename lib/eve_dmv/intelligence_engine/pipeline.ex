@@ -20,7 +20,8 @@ defmodule EveDmv.IntelligenceEngine.Pipeline do
   def validate_entity_id(entity_id) when is_integer(entity_id) and entity_id > 0, do: :ok
 
   def validate_entity_id(entity_ids) when is_list(entity_ids) do
-    if Enum.all?(entity_ids, fn id -> is_integer(id) and id > 0 end) and length(entity_ids) > 0 do
+    if Enum.all?(entity_ids, fn id -> is_integer(id) and id > 0 end) and
+         not Enum.empty?(entity_ids) do
       :ok
     else
       {:error, :invalid_entity_id}

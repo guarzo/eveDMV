@@ -22,6 +22,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   alias EveDmv.Api
   alias EveDmv.Shared.Infrastructure.UnifiedCache
   require Logger
+  import Ecto.Query
 
   @type domain :: :threat | :fleet | :corporation | :surveillance | :player | :wormhole
   @type resource :: module()
@@ -565,6 +566,147 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   def pagination_filter(limit, offset) do
     [limit: limit, offset: offset]
   end
+
+  ## Character and Alliance Queries
+
+  @doc """
+  Get character alliance information.
+  """
+  @spec get_character_alliance_info(integer()) :: {:ok, map()} | {:error, term()}
+  def get_character_alliance_info(character_id) do
+    # Query character stats for alliance information
+    case Api.get(EveDmv.Intelligence.CharacterStats, character_id) do
+      {:ok, stats} ->
+        {:ok,
+         %{
+           alliance_id: stats.alliance_id,
+           corporation_id: stats.corporation_id,
+           alliance_name: stats.alliance_name,
+           corporation_name: stats.corporation_name
+         }}
+
+      {:error, _} ->
+        # Try to get from Users table as fallback
+        query =
+          from(u in EveDmv.Users.User,
+            where: u.character_id == ^character_id,
+            select: %{
+              alliance_id: u.alliance_id,
+              corporation_id: u.corporation_id,
+              alliance_name: u.alliance_name,
+              corporation_name: u.corporation_name
+            }
+          )
+
+        case EveDmv.Repo.one(query) do
+          nil -> {:error, :not_found}
+          result -> {:ok, result}
+        end
+    end
+  end
+
+  @doc """
+  Get alliance activity metrics.
+  """
+  @spec get_alliance_activity(integer(), integer()) :: {:ok, map()} | {:error, term()}
+  def get_alliance_activity(alliance_id, days_back) do
+    since = DateTime.add(DateTime.utc_now(), -days_back * 24, :hour)
+
+    query =
+      from(k in EveDmv.Killmails.KillmailRaw,
+        where:
+          fragment("?->>'alliance_id' = ?", k.victim, ^to_string(alliance_id)) or
+            fragment(
+              "EXISTS (SELECT 1 FROM jsonb_array_elements(?) AS a WHERE a->>'alliance_id' = ?)",
+              k.attackers,
+              ^to_string(alliance_id)
+            ),
+        where: k.killmail_time > ^since,
+        select: %{
+          killmail_count: count(k.id),
+          total_value: sum(k.zkb_total_value)
+        }
+      )
+
+    case EveDmv.Repo.one(query) do
+      %{killmail_count: count} = result when not is_nil(count) ->
+        {:ok, Map.put(result, :days_analyzed, days_back)}
+
+      _ ->
+        {:ok, %{killmail_count: 0, total_value: 0, days_analyzed: days_back}}
+    end
+  end
+
+  @doc """
+  List surveillance profiles with filters.
+  """
+  @spec list_surveillance_profiles(keyword()) :: {:ok, list()} | {:error, term()}
+  def list_surveillance_profiles(filters \\ []) do
+    # This would query surveillance profiles from the database
+    # For now, return empty list as surveillance profiles aren't fully implemented
+    limit = Keyword.get(filters, :limit, 50)
+    active_only = Keyword.get(filters, :active_only, false)
+    user_id = Keyword.get(filters, :user_id, nil)
+
+    # Build query based on filters
+    query = build_surveillance_profile_query(filters)
+
+    # Execute query (simplified for now)
+    case execute_surveillance_query(query, limit) do
+      {:ok, profiles} ->
+        filtered_profiles =
+          profiles
+          |> filter_by_active_status(active_only)
+          |> filter_by_user(user_id)
+
+        {:ok, filtered_profiles}
+
+      error ->
+        error
+    end
+  end
+
+  # Helper functions for surveillance profiles
+
+  defp build_surveillance_profile_query(filters) do
+    # Build query based on provided filters
+    base_query = %{
+      table: :surveillance_profiles,
+      conditions: [],
+      order_by: :created_at
+    }
+
+    Enum.reduce(filters, base_query, fn {key, value}, query ->
+      add_query_condition(query, key, value)
+    end)
+  end
+
+  defp execute_surveillance_query(_query, _limit) do
+    # For now, return empty list since surveillance profiles aren't fully implemented
+    {:ok, []}
+  end
+
+  defp filter_by_active_status(profiles, false), do: profiles
+
+  defp filter_by_active_status(profiles, true) do
+    Enum.filter(profiles, &(&1[:active] == true))
+  end
+
+  defp filter_by_user(profiles, nil), do: profiles
+
+  defp filter_by_user(profiles, user_id) do
+    Enum.filter(profiles, &(&1[:user_id] == user_id))
+  end
+
+  defp add_query_condition(query, :active_only, true) do
+    %{query | conditions: [{:active, true} | query.conditions]}
+  end
+
+  defp add_query_condition(query, :user_id, user_id) when not is_nil(user_id) do
+    %{query | conditions: [{:user_id, user_id} | query.conditions]}
+  end
+
+  defp add_query_condition(query, _key, _value), do: query
 
   ## Health Check and Validation
 

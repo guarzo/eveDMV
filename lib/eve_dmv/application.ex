@@ -80,7 +80,7 @@ defmodule EveDmv.Application do
       EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient,
       # Start the unified threat surveillance context
       maybe_start_threat_surveillance_context(),
-      # Start the unified combat analysis context  
+      # Start the unified combat analysis context
       maybe_start_combat_analysis_context(),
       # Conditionally start database-dependent processes
       maybe_start_database_processes(),

@@ -119,7 +119,7 @@ defmodule EveDmv.Utils.FleetUtils do
   """
   def calculate_average_ship_value(participants) do
     total_value = Enum.sum(Enum.map(participants, &Map.get(&1, :ship_value, 0)))
-    if length(participants) > 0, do: round(total_value / length(participants)), else: 0
+    if not Enum.empty?(participants), do: round(total_value / length(participants)), else: 0
   end
 
   @doc """
@@ -159,7 +159,7 @@ defmodule EveDmv.Utils.FleetUtils do
     total_value = Enum.sum(Enum.map(participants, &Map.get(&1, :ship_value, 0)))
     victims = Enum.count(participants, &Map.get(&1, :is_victim, false))
 
-    if length(participants) > 0 do
+    if not Enum.empty?(participants) do
       risk_factor = victims / length(participants)
       # Normalize to 1B ISK
       value_factor = min(1.0, total_value / 1_000_000_000)

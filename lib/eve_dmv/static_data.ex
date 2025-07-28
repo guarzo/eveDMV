@@ -220,6 +220,24 @@ defmodule EveDmv.StaticData do
   end
 
   @doc """
+  Get system security status. Returns security status as float or -1.0 for wormholes.
+  """
+  def get_system_security(system_id) when is_integer(system_id) do
+    case get_system(system_id) do
+      %SolarSystem{security_status: sec_status} when is_float(sec_status) ->
+        sec_status
+
+      %SolarSystem{security_status: nil} ->
+        # Wormhole systems have nil security
+        -1.0
+
+      _ ->
+        # Unknown system, assume wormhole
+        -1.0
+    end
+  end
+
+  @doc """
   Classify a system based on security status and class.
   Returns :highsec, :lowsec, :nullsec, or wormhole classes.
   """

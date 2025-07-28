@@ -5,7 +5,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.
   This module has been refactored to use a modular monitoring system.
   All functionality is now delegated to specialized modules:
   - BaselineManager: Baseline establishment and validation
-  - StreamManager: Real-time streaming and processing  
+  - StreamManager: Real-time streaming and processing
   - AnomalyDetector: Anomaly detection and classification
   - AlertManager: Alert generation and delivery
 

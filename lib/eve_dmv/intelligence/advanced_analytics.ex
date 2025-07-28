@@ -698,7 +698,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
         cond do
           "coordinated" in shared_tactics and "fleet" in shared_tactics -> "high"
           "small_gang" in shared_tactics or "coordinated" in shared_tactics -> "medium"
-          length(shared_tactics) > 0 -> "low"
+          not Enum.empty?(shared_tactics) -> "low"
           true -> "none"
         end
 

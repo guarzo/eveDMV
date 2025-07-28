@@ -561,35 +561,34 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
 
   defp identify_contextual_factors(timestamp, battle_data) do
     # Identify contextual factors that make this moment significant
-    factors = []
-
-    # Check if near beginning or end of battle
+    base_factors = []
     battle_duration = Map.get(battle_data, :duration_seconds, 0)
 
-    factors =
+    # Check if near beginning or end of battle
+    timing_factors =
       cond do
-        timestamp < 120 -> [:battle_opening | factors]
-        timestamp > battle_duration - 120 -> [:battle_conclusion | factors]
-        true -> factors
+        timestamp < 120 -> [:battle_opening | base_factors]
+        timestamp > battle_duration - 120 -> [:battle_conclusion | base_factors]
+        true -> base_factors
       end
 
     # Check for intensity changes
-    factors =
+    intensity_factors =
       if intensity_change_moment?(timestamp, battle_data) do
-        [:intensity_change | factors]
+        [:intensity_change | timing_factors]
       else
-        factors
+        timing_factors
       end
 
     # Check for phase transitions
-    factors =
+    final_factors =
       if phase_transition_moment?(timestamp, battle_data) do
-        [:phase_transition | factors]
+        [:phase_transition | intensity_factors]
       else
-        factors
+        intensity_factors
       end
 
-    {:ok, factors}
+    {:ok, final_factors}
   end
 
   defp intensity_change_moment?(_timestamp, _battle_data) do
@@ -777,24 +776,23 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
   defp identify_related_concepts(highlight) do
     # Identify related tactical concepts
     learning_categories = highlight.learning_integration.related_categories
+    base_concepts = []
 
-    concepts = []
-
-    concepts =
+    fleet_concepts =
       if :fleet_command in learning_categories do
-        ["Fleet FC responsibilities", "Target calling", "Fleet positioning" | concepts]
+        ["Fleet FC responsibilities", "Target calling", "Fleet positioning" | base_concepts]
       else
-        concepts
+        base_concepts
       end
 
-    concepts =
+    all_concepts =
       if :individual_skill in learning_categories do
-        ["Ship handling", "Situational awareness", "Combat mechanics" | concepts]
+        ["Ship handling", "Situational awareness", "Combat mechanics" | fleet_concepts]
       else
-        concepts
+        fleet_concepts
       end
 
-    concepts |> Enum.take(5)
+    all_concepts |> Enum.take(5)
   end
 
   defp assess_difficulty_level(highlight) do

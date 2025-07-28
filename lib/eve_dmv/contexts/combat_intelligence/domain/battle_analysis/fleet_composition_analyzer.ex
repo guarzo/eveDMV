@@ -129,7 +129,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
       confidence = calculate_doctrine_confidence(doctrine_matches, ship_analysis)
 
       %{
-        doctrine_detected: length(doctrine_matches) > 0,
+        doctrine_detected: not Enum.empty?(doctrine_matches),
         detected_doctrines: doctrine_matches,
         confidence: confidence,
         ship_analysis: ship_analysis
@@ -260,7 +260,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
       ewar_intensity = calculate_ewar_intensity(ewar_analysis, length(all_ships))
 
       %{
-        ewar_detected: length(ewar_analysis.ewar_ships) > 0,
+        ewar_detected: not Enum.empty?(ewar_analysis.ewar_ships),
         ewar_ships: ewar_analysis.ewar_ships,
         ewar_types: ewar_analysis.ewar_types,
         ewar_intensity: ewar_intensity,

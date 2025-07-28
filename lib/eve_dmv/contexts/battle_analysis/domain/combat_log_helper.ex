@@ -108,7 +108,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogHelper do
 
   defp calculate_match_quality(correlations) do
     # Calculate how well the combat log matches the battle
-    matched_kills = Enum.count(correlations, fn c -> length(c.combat_events) > 0 end)
+    matched_kills = Enum.count(correlations, fn c -> not Enum.empty?(c.combat_events) end)
     total_kills = length(correlations)
 
     if total_kills > 0 do

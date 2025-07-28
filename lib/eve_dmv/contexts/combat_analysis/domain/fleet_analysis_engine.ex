@@ -9,7 +9,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.FleetAnalysisEngine do
   use GenServer
   require Logger
 
-  alias EveDmv.Shared.Infrastructure.{UnifiedCache, UnifiedRepository}
+  alias EveDmv.Shared.Infrastructure.UnifiedCache
 
   # Ship class categories for analysis
   @ship_classes %{
@@ -42,6 +42,20 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.FleetAnalysisEngine do
   """
   def analyze_composition(participants, options \\ []) do
     GenServer.call(__MODULE__, {:analyze_composition, participants, options})
+  end
+
+  @doc """
+  Get ship class information.
+  """
+  def get_ship_classes() do
+    @ship_classes
+  end
+
+  @doc """
+  Get doctrine type information.
+  """
+  def get_doctrine_types() do
+    @doctrine_types
   end
 
   @doc """

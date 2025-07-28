@@ -172,10 +172,11 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityHelpers d
     first_half = Enum.take(activity_series, mid_point)
     second_half = Enum.drop(activity_series, mid_point)
 
-    first_avg = if length(first_half) > 0, do: Enum.sum(first_half) / length(first_half), else: 0
+    first_avg =
+      if not Enum.empty?(first_half), do: Enum.sum(first_half) / length(first_half), else: 0
 
     second_avg =
-      if length(second_half) > 0, do: Enum.sum(second_half) / length(second_half), else: 0
+      if not Enum.empty?(second_half), do: Enum.sum(second_half) / length(second_half), else: 0
 
     growth_rate = if first_avg > 0, do: (second_avg - first_avg) / first_avg * 100, else: 0
 

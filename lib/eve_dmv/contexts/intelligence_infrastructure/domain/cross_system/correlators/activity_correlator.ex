@@ -595,7 +595,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
           |> Enum.max()
         end)
 
-      if length(max_correlations) > 0 do
+      if not Enum.empty?(max_correlations) do
         avg_max = Enum.sum(max_correlations) / length(max_correlations)
         Float.round(avg_max, 2)
       else
@@ -809,7 +809,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       |> Enum.filter(fn {{s1, s2}, _} -> {s1, s2} in pairs end)
       |> Enum.map(&elem(&1, 1))
 
-    if length(cluster_correlations) > 0 do
+    if not Enum.empty?(cluster_correlations) do
       Float.round(Enum.sum(cluster_correlations) / length(cluster_correlations), 2)
     else
       0.0

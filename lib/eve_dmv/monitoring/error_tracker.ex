@@ -366,7 +366,7 @@ defmodule EveDmv.Monitoring.ErrorTracker do
       :ets.delete(@table_name, id)
     end)
 
-    if length(old_records) > 0 do
+    if not Enum.empty?(old_records) do
       Logger.info("Error tracker: Cleaned up #{length(old_records)} old error records")
     end
   end

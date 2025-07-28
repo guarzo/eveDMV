@@ -197,7 +197,7 @@ defmodule EveDmv.Intelligence.AnalysisScheduler do
       |> Map.values()
       |> Enum.filter(&should_run_task?(&1, now))
 
-    if length(tasks_to_run) > 0 do
+    if not Enum.empty?(tasks_to_run) do
       Logger.debug("Executing #{length(tasks_to_run)} scheduled analysis tasks")
 
       # Execute tasks with concurrency control

@@ -346,7 +346,7 @@ defmodule EveDmv.Shared.Correlation.Facade do
 
   defp identify_potential_conflicts(corp_summaries) do
     # Look for overlapping territories that might indicate conflicts
-    territorial_overlaps = []
+    _territorial_overlaps = []
 
     # Compare each pair of corporations
     corp_pairs =

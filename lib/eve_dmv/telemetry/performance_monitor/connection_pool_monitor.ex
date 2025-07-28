@@ -201,7 +201,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.ConnectionPoolMonitor do
         %{
           count: length(idle_transactions),
           transactions: idle_transactions,
-          has_issues: length(idle_transactions) > 0,
+          has_issues: not Enum.empty?(idle_transactions),
           recommendations: generate_idle_recommendations(idle_transactions)
         }
 
@@ -249,7 +249,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.ConnectionPoolMonitor do
       longest_query_seconds: longest_query,
       pool_size: pool_size,
       utilization_percent: Float.round((total || 0) / pool_size * 100, 2),
-      has_issues: length(issues) > 0,
+      has_issues: not Enum.empty?(issues),
       issues: issues
     }
   end

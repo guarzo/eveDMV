@@ -13,9 +13,8 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
   require Logger
   require Ash.Query
 
-  alias EveDmv.Api
   alias EveDmv.Eve.ItemType
-  alias EveDmv.StaticData.{ShipAttributes, ShipTypes}
+  alias EveDmv.StaticData.ShipAttributes
 
   import Ash.Expr
 
@@ -206,18 +205,14 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
 
   defp import_single_ship(target_type_id) when is_integer(target_type_id) do
     # Get ship basic info
-    case ItemType.get_by_id(target_type_id) do
+    case Ash.get(ItemType, target_type_id, domain: EveDmv.Api) do
       {:ok, ship} ->
         attributes = calculate_ship_attributes(ship)
         create_or_update_attributes(attributes)
 
-      {:error, :not_found} ->
+      {:error, _} ->
         Logger.warning("Ship type #{target_type_id} not found")
         {:error, :not_found}
-
-      {:error, error} ->
-        Logger.error("Failed to query ship #{target_type_id}: #{inspect(error)}")
-        {:error, :query_failed}
     end
   end
 
@@ -226,23 +221,151 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
   end
 
   defp calculate_ship_attributes(ship) do
-    # Phase 1: Basic attribute calculation using available data
-    # TODO: Replace with full dogma calculation when SDE import is complete
-
+    # Use real SDE data when available, calculate estimates for missing ships
     size_class = determine_size_class(ship.group_name)
     role_classification = determine_role_classification(ship.group_name, ship.type_name)
     tactical_category = determine_tactical_category(ship.group_name, role_classification)
 
-    # Estimate base stats from ship class and mass
-    estimated_stats = estimate_ship_stats(ship, size_class, role_classification)
+    # Try to get real SDE data first, fallback to estimates
+    case get_sde_ship_data(ship.type_id) do
+      {:ok, sde_data} ->
+        # Use real SDE data with calculated tactical properties
+        merge_sde_with_tactical_data(
+          sde_data,
+          ship,
+          size_class,
+          role_classification,
+          tactical_category
+        )
 
+      {:error, :not_found} ->
+        # Calculate estimates for ships not in SDE
+        estimated_stats = estimate_ship_stats(ship, size_class, role_classification)
+
+        build_estimated_attributes(
+          ship,
+          estimated_stats,
+          size_class,
+          role_classification,
+          tactical_category
+        )
+    end
+  end
+
+  defp get_sde_ship_data(type_id) do
+    case EveDmv.Repo.query(
+           """
+             SELECT shield_hp, armor_hp, structure_hp,
+                    shield_em_resist, shield_thermal_resist, shield_kinetic_resist, shield_explosive_resist,
+                    armor_em_resist, armor_thermal_resist, armor_kinetic_resist, armor_explosive_resist
+             FROM ship_attributes 
+             WHERE type_id = $1 AND data_source = 'sde_import'
+           """,
+           [type_id]
+         ) do
+      {:ok, %{rows: [[shield_hp, armor_hp, structure_hp | resistances]]}} ->
+        [
+          shield_em,
+          shield_thermal,
+          shield_kinetic,
+          shield_explosive,
+          armor_em,
+          armor_thermal,
+          armor_kinetic,
+          armor_explosive
+        ] = resistances
+
+        {:ok,
+         %{
+           shield_hp: shield_hp,
+           armor_hp: armor_hp,
+           structure_hp: structure_hp,
+           shield_resists: %{
+             em: shield_em,
+             thermal: shield_thermal,
+             kinetic: shield_kinetic,
+             explosive: shield_explosive
+           },
+           armor_resists: %{
+             em: armor_em,
+             thermal: armor_thermal,
+             kinetic: armor_kinetic,
+             explosive: armor_explosive
+           }
+         }}
+
+      _ ->
+        {:error, :not_found}
+    end
+  end
+
+  defp merge_sde_with_tactical_data(
+         sde_data,
+         ship,
+         size_class,
+         role_classification,
+         tactical_category
+       ) do
+    # Calculate DPS estimate based on ship class and role
+    estimated_dps = estimate_dps_for_ship(size_class, role_classification)
+
+    # Calculate EHP using real HP and resistance data
+    total_hp = sde_data.shield_hp + sde_data.armor_hp + sde_data.structure_hp
+
+    ehp =
+      calculate_ehp(sde_data.shield_hp, sde_data.armor_hp, sde_data.structure_hp, %{
+        shield: sde_data.shield_resists,
+        armor: sde_data.armor_resists
+      })
+
+    ehp_uniform =
+      calculate_ehp_uniform(total_hp, %{
+        shield: sde_data.shield_resists,
+        armor: sde_data.armor_resists
+      })
+
+    %{
+      type_id: ship.type_id,
+      shield_hp: sde_data.shield_hp,
+      armor_hp: sde_data.armor_hp,
+      structure_hp: sde_data.structure_hp,
+      shield_em_resist: sde_data.shield_resists.em,
+      shield_thermal_resist: sde_data.shield_resists.thermal,
+      shield_kinetic_resist: sde_data.shield_resists.kinetic,
+      shield_explosive_resist: sde_data.shield_resists.explosive,
+      armor_em_resist: sde_data.armor_resists.em,
+      armor_thermal_resist: sde_data.armor_resists.thermal,
+      armor_kinetic_resist: sde_data.armor_resists.kinetic,
+      armor_explosive_resist: sde_data.armor_resists.explosive,
+      calculated_dps: Float.round(estimated_dps, 1),
+      calculated_ehp: Float.round(ehp, 0),
+      calculated_ehp_uniform: Float.round(ehp_uniform, 0),
+      role_classification: role_classification,
+      size_class: size_class,
+      tactical_category: tactical_category,
+      damage_rating: calculate_damage_rating(estimated_dps, size_class),
+      tank_rating: calculate_tank_rating(ehp, size_class),
+      speed_rating: estimate_speed_rating(size_class, ship.mass),
+      utility_rating: get_role_multipliers(role_classification).utility,
+      data_source: "sde_with_estimates",
+      # High confidence since HP data is real
+      confidence_score: 0.9,
+      last_updated: DateTime.utc_now()
+    }
+  end
+
+  defp build_estimated_attributes(
+         ship,
+         estimated_stats,
+         size_class,
+         role_classification,
+         tactical_category
+       ) do
     %{
       type_id: ship.type_id,
       shield_hp: estimated_stats.shield_hp,
       armor_hp: estimated_stats.armor_hp,
       structure_hp: estimated_stats.structure_hp,
-
-      # Basic resistance estimates by ship type
       shield_em_resist: estimated_stats.shield_resists.em,
       shield_thermal_resist: estimated_stats.shield_resists.thermal,
       shield_kinetic_resist: estimated_stats.shield_resists.kinetic,
@@ -251,9 +374,9 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
       armor_thermal_resist: estimated_stats.armor_resists.thermal,
       armor_kinetic_resist: estimated_stats.armor_resists.kinetic,
       armor_explosive_resist: estimated_stats.armor_resists.explosive,
-      calculated_dps: estimated_stats.dps,
-      calculated_ehp: estimated_stats.ehp,
-      calculated_ehp_uniform: estimated_stats.ehp_uniform,
+      calculated_dps: Float.round(estimated_stats.dps, 1),
+      calculated_ehp: Float.round(estimated_stats.ehp, 0),
+      calculated_ehp_uniform: Float.round(estimated_stats.ehp_uniform, 0),
       role_classification: role_classification,
       size_class: size_class,
       tactical_category: tactical_category,
@@ -265,6 +388,33 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
       confidence_score: estimated_stats.confidence,
       last_updated: DateTime.utc_now()
     }
+  end
+
+  defp estimate_dps_for_ship(size_class, role_classification) do
+    base_dps =
+      case size_class do
+        "frigate" -> 150
+        "destroyer" -> 250
+        "cruiser" -> 400
+        "battlecruiser" -> 600
+        "battleship" -> 800
+        "capital" -> 2000
+        "supercapital" -> 5000
+        _ -> 200
+      end
+
+    role_multiplier =
+      case role_classification do
+        "dps" -> 1.2
+        "tank" -> 0.7
+        "logistics" -> 0.3
+        "ewar" -> 0.5
+        "tackle" -> 0.8
+        "support" -> 0.9
+        _ -> 1.0
+      end
+
+    base_dps * role_multiplier
   end
 
   defp determine_size_class(group_name) do
@@ -378,8 +528,8 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
   end
 
   defp estimate_ship_stats(ship, size_class, role) do
-    # Phase 1: Basic estimates based on ship class and role
-    # TODO: Replace with real dogma calculations
+    # Calculate ship stats using SDE data or estimates based on ship class and role
+    # Uses database averages when available, falls back to hardcoded estimates
 
     base_stats = get_base_stats_by_size(size_class)
     role_multipliers = get_role_multipliers(role)
@@ -428,6 +578,53 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
   end
 
   defp get_base_stats_by_size(size_class) do
+    # Use actual ship data from SDE if available, fallback to reasonable estimates
+    get_sde_stats_by_size(size_class) || get_estimated_stats_by_size(size_class)
+  end
+
+  defp get_sde_stats_by_size(size_class) do
+    # Query actual ship attributes from SDE data if available
+    case query_sde_ship_attributes(size_class) do
+      {:ok, stats} when stats != %{} -> stats
+      _ -> nil
+    end
+  end
+
+  defp query_sde_ship_attributes(size_class) do
+    # Try to get actual ship stats from database if we have SDE data
+    case EveDmv.Repo.query(
+           """
+             SELECT 
+               AVG(shield_hp) as avg_shield_hp,
+               AVG(armor_hp) as avg_armor_hp, 
+               AVG(structure_hp) as avg_structure_hp,
+               AVG(calculated_dps) as avg_dps
+             FROM ship_attributes sa
+             JOIN eve_item_types eit ON sa.type_id = eit.type_id
+             WHERE sa.size_class = $1 
+             AND sa.shield_hp > 0 
+             AND sa.armor_hp > 0 
+             AND sa.structure_hp > 0
+             GROUP BY sa.size_class
+           """,
+           [size_class]
+         ) do
+      {:ok, %{rows: [[shield_hp, armor_hp, structure_hp, dps]]}} when not is_nil(shield_hp) ->
+        {:ok,
+         %{
+           shield_hp: Float.round(shield_hp, 0) |> trunc(),
+           armor_hp: Float.round(armor_hp, 0) |> trunc(),
+           structure_hp: Float.round(structure_hp, 0) |> trunc(),
+           dps: Float.round(dps || 0, 0) |> trunc()
+         }}
+
+      _ ->
+        {:error, :no_data}
+    end
+  end
+
+  defp get_estimated_stats_by_size(size_class) do
+    # Use estimates based on typical EVE ship statistics
     case size_class do
       "frigate" -> %{shield_hp: 800, armor_hp: 600, structure_hp: 400, dps: 150}
       "destroyer" -> %{shield_hp: 1200, armor_hp: 900, structure_hp: 600, dps: 250}
@@ -474,8 +671,7 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
   defp calculate_mass_multiplier(_, _), do: 1.0
 
   defp get_resistance_estimates(group_name) do
-    # Basic resistance estimates by group
-    # TODO: Replace with real dogma resistances
+    # Resistance estimates by ship group - used when SDE data unavailable
     case group_name do
       name when name in ["Assault Frigate", "Heavy Assault Cruiser"] ->
         # Assault ships have better resistances

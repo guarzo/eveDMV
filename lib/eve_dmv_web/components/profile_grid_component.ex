@@ -24,7 +24,7 @@ defmodule EveDmvWeb.ProfileGridComponent do
         </div>
 
         <!-- Profiles Grid -->
-        <%= if length(@profiles) > 0 do %>
+        <%= if not Enum.empty?(@profiles) do %>
           <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             <%= for profile <- @profiles do %>
               <div class={"bg-gray-800 border rounded-lg p-6 transition-all " <>

@@ -407,7 +407,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
     connections = Map.get(topology, "connections", [])
 
     # This is a simplified analysis - in reality would need proper graph analysis
-    if length(systems) > 0 and length(connections) < length(systems) do
+    if not Enum.empty?(systems) and length(connections) < length(systems) do
       [
         %{
           type: :topology_vulnerability,
@@ -462,7 +462,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
       if(Map.get(chain_data, :recent_activity, []) != [], do: 0.3, else: 0.0),
       if(Map.get(chain_data, :inhabitants, []) != [], do: 0.2, else: 0.0),
       if(Map.get(chain_data, :topology, %{}) != %{}, do: 0.2, else: 0.0),
-      if(length(threats) > 0, do: 0.3, else: 0.1)
+      if(not Enum.empty?(threats), do: 0.3, else: 0.1)
     ]
 
     min(Enum.sum(data_factors), 1.0)

@@ -256,50 +256,154 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
   # Private functions
 
   defp determine_tactical_role_from_ship_and_weapon(ship_type_id, weapon_type_id) do
-    # Simplified role determination based on ship type ID ranges
-    ship_class = classify_by_ship_type(ship_type_id)
+    # Use actual EVE ship type data for classification
+    ship_class = EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
 
     case ship_class do
-      :frigate -> classify_frigate_role(ship_type_id, weapon_type_id)
-      :cruiser -> classify_cruiser_role(ship_type_id, weapon_type_id)
-      :capital -> classify_capital_role(ship_type_id)
-      _ -> classify_by_ship_and_weapon(ship_type_id, weapon_type_id)
+      :frigate -> classify_frigate_role_by_attributes(ship_type_id, weapon_type_id)
+      :destroyer -> classify_destroyer_role_by_attributes(ship_type_id, weapon_type_id)
+      :cruiser -> classify_cruiser_role_by_attributes(ship_type_id, weapon_type_id)
+      :battlecruiser -> classify_battlecruiser_role_by_attributes(ship_type_id, weapon_type_id)
+      :battleship -> classify_battleship_role_by_attributes(ship_type_id, weapon_type_id)
+      :capital -> classify_capital_role_by_attributes(ship_type_id)
+      :supercapital -> classify_supercapital_role_by_attributes(ship_type_id)
+      # Default for unknown ship types
+      _ -> :dps
     end
   end
 
-  defp classify_by_ship_type(ship_type_id) when ship_type_id < 1000, do: :frigate
-  defp classify_by_ship_type(ship_type_id) when ship_type_id < 2000, do: :cruiser
-  defp classify_by_ship_type(_ship_type_id), do: :dps
+  defp classify_frigate_role_by_attributes(ship_type_id, _weapon_type_id) do
+    # Get ship attributes to determine frigate role
+    case EveDmv.StaticData.ShipTypes.get_ship_attributes(ship_type_id) do
+      {:ok, attributes} ->
+        # Use actual ship attributes for classification
+        cond do
+          # High scan res = tackle
+          Map.get(attributes, :scan_resolution, 0) > 800 -> :tackle
+          # Small sig = ewar/recon
+          Map.get(attributes, :signature_radius, 50) < 30 -> :ewar
+          # Fast = tackle
+          Map.get(attributes, :max_velocity, 0) > 500 -> :tackle
+          # Default frigate role
+          true -> :dps
+        end
 
-  defp classify_frigate_role(_ship_type_id, weapon_type_id) do
-    # Frigates are often tackle or ewar
-    if weapon_type_id && rem(weapon_type_id || 0, 5) == 0 do
-      :ewar
-    else
-      :tackle
+      _ ->
+        # Fallback if attributes unavailable
+        :dps
     end
   end
 
-  defp classify_cruiser_role(_ship_type_id, weapon_type_id) do
-    # Cruisers can be logistics, dps, or ewar
-    if weapon_type_id && rem(weapon_type_id || 0, 7) == 0 do
-      :logistics
-    else
-      :dps
+  defp classify_destroyer_role_by_attributes(ship_type_id, _weapon_type_id) do
+    case EveDmv.StaticData.ShipTypes.get_ship_attributes(ship_type_id) do
+      {:ok, attributes} ->
+        # Destroyers are typically DPS or specialized tackle (interdictors)
+        if Map.get(attributes, :warp_disrupt_field_range, 0) > 0 do
+          # Interdictor
+          :tackle
+        else
+          # Standard destroyer
+          :dps
+        end
+
+      _ ->
+        :dps
     end
   end
 
-  defp classify_capital_role(ship_type_id) do
-    # Capitals based on type ID ranges
-    cond do
-      rem(ship_type_id || 0, 10) == 0 -> :dreadnought
-      rem(ship_type_id || 0, 10) == 1 -> :carrier
-      rem(ship_type_id || 0, 10) == 2 -> :fax
-      true -> :titan
+  defp classify_cruiser_role_by_attributes(ship_type_id, _weapon_type_id) do
+    case EveDmv.StaticData.ShipTypes.get_ship_attributes(ship_type_id) do
+      {:ok, attributes} ->
+        cond do
+          # Remote reps = logi
+          Map.get(attributes, :remote_repair_amount, 0) > 0 -> :logistics
+          # High scan = recon
+          Map.get(attributes, :scan_strength, 0) > 25 -> :ewar
+          # Command bursts = command ship
+          Map.get(attributes, :command_burst_range, 0) > 0 -> :command
+          # HAC = DPS
+          Map.get(attributes, :heavy_assault_damage, 0) > 0 -> :dps
+          # Default cruiser role
+          true -> :dps
+        end
+
+      _ ->
+        :dps
     end
   end
 
-  defp classify_by_ship_and_weapon(_ship_type_id, _weapon_type_id), do: :dps
+  defp classify_battlecruiser_role_by_attributes(ship_type_id, _weapon_type_id) do
+    case EveDmv.StaticData.ShipTypes.get_ship_attributes(ship_type_id) do
+      {:ok, attributes} ->
+        if Map.get(attributes, :command_burst_range, 0) > 0 do
+          # Command battlecruiser
+          :command
+        else
+          # Standard battlecruiser
+          :dps
+        end
+
+      _ ->
+        :dps
+    end
+  end
+
+  defp classify_battleship_role_by_attributes(ship_type_id, _weapon_type_id) do
+    case EveDmv.StaticData.ShipTypes.get_ship_attributes(ship_type_id) do
+      {:ok, attributes} ->
+        cond do
+          # Logistics battleship
+          Map.get(attributes, :remote_repair_amount, 0) > 500 -> :logistics
+          # Marauder
+          Map.get(attributes, :marauder_bastion_mode, false) -> :dps
+          # Standard battleship
+          true -> :dps
+        end
+
+      _ ->
+        :dps
+    end
+  end
+
+  defp classify_capital_role_by_attributes(ship_type_id) do
+    case EveDmv.StaticData.ShipTypes.get_ship_attributes(ship_type_id) do
+      {:ok, attributes} ->
+        cond do
+          # Force Auxiliary
+          Map.get(attributes, :capital_remote_repair, 0) > 0 -> :fax
+          # Carrier
+          Map.get(attributes, :fighter_capacity, 0) > 0 -> :carrier
+          # Dreadnought
+          Map.get(attributes, :doomsday_weapon, false) -> :dreadnought
+          # Jump Freighter
+          Map.get(attributes, :jump_drive_range, 0) > 0 -> :jump_freighter
+          # Generic capital
+          true -> :capital
+        end
+
+      _ ->
+        :capital
+    end
+  end
+
+  defp classify_supercapital_role_by_attributes(ship_type_id) do
+    case EveDmv.StaticData.ShipTypes.get_ship_attributes(ship_type_id) do
+      {:ok, attributes} ->
+        cond do
+          # Supercarrier
+          Map.get(attributes, :supercarrier_fighters, 0) > 0 -> :supercarrier
+          # Titan
+          Map.get(attributes, :titan_doomsday, false) -> :titan
+          # Mothership
+          Map.get(attributes, :mothership_role, false) -> :mothership
+          # Generic supercapital
+          true -> :supercapital
+        end
+
+      _ ->
+        :supercapital
+    end
+  end
 
   defp calculate_damage_efficiency(participants) do
     total_damage =
@@ -556,7 +660,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
     end
   end
 
-  defp generate_role_recommendations(missing_roles, fleet_size) do
+  defp generate_role_recommendations(missing_roles, _fleet_size) do
     missing_roles
     |> Enum.filter(fn %{importance: imp} -> imp in [:critical, :high] end)
     |> Enum.map(fn %{role: role, reason: reason} ->
@@ -805,7 +909,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
       end)
 
     completeness_score =
-      if existing_count + length(missing_roles.missing_roles) > 0 do
+      if existing_count + not Enum.empty?(missing_roles.missing_roles) do
         existing_count / (existing_count + missing_critical)
       else
         0.0

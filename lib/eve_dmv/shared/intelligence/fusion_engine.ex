@@ -21,7 +21,7 @@ defmodule EveDmv.Shared.Intelligence.FusionEngine do
   into a unified intelligence picture.
   """
   def perform_intelligence_fusion(processed_intelligence, fusion_options \\ []) do
-    confidence_threshold =
+    _confidence_threshold =
       Keyword.get(fusion_options, :confidence_threshold, @fusion_confidence_threshold)
 
     min_sources =
@@ -308,7 +308,7 @@ defmodule EveDmv.Shared.Intelligence.FusionEngine do
     # Aggregate activity levels from multiple sources
     levels = data_points |> Enum.map(& &1[:activity_level]) |> Enum.reject(&is_nil/1)
 
-    if length(levels) > 0 do
+    if not Enum.empty?(levels) do
       # Use highest reported level
       Enum.max_by(levels, &activity_level_to_number/1)
     else
@@ -327,7 +327,7 @@ defmodule EveDmv.Shared.Intelligence.FusionEngine do
     events = extract_all_timestamped_events(sources)
 
     events
-    |> Enum.combination(2)
+    |> combinations(2)
     |> Enum.filter(fn [event1, event2] ->
       time_diff = abs(DateTime.diff(event1.timestamp, event2.timestamp))
       time_diff <= @correlation_time_window && event1.source != event2.source
@@ -359,7 +359,7 @@ defmodule EveDmv.Shared.Intelligence.FusionEngine do
     Enum.map(items, &Map.put(&1, :source, :player_reports))
   end
 
-  defp extract_events_from_source(:scanning_data, data) do
+  defp extract_events_from_source(:scanning_data, _data) do
     # Convert scans to events
     []
   end
@@ -379,7 +379,7 @@ defmodule EveDmv.Shared.Intelligence.FusionEngine do
   end
 
   defp assess_correlation_strength(correlations) do
-    if length(correlations) == 0 do
+    if Enum.empty?(correlations) do
       0.0
     else
       avg_strength =
@@ -461,11 +461,26 @@ defmodule EveDmv.Shared.Intelligence.FusionEngine do
   defp extract_key_findings(_sources), do: []
   defp detect_anomalies(_sources), do: []
 
-  defp calculate_processing_time(_processed_intelligence), do: :rand.uniform(100)
+  defp calculate_processing_time(_processed_intelligence) do
+    # Return a fixed placeholder time until actual processing time tracking is implemented
+    # This should be replaced with actual timing measurements
+    0
+  end
+
   defp calculate_data_quality_score(_sources), do: 0.85
 
   defp assess_source_agreement(_fused_intelligence), do: 0.8
   defp assess_temporal_consistency(_timeline), do: 0.9
   defp assess_data_completeness(_fused_intelligence), do: 0.75
   defp identify_reliability_factors(_fused_intelligence), do: []
+
+  # Helper function to generate combinations of a list
+  defp combinations([], _), do: [[]]
+  defp combinations(_, 0), do: [[]]
+
+  defp combinations([head | tail], n) when n > 0 do
+    with_head = Enum.map(combinations(tail, n - 1), &[head | &1])
+    without_head = combinations(tail, n)
+    with_head ++ without_head
+  end
 end

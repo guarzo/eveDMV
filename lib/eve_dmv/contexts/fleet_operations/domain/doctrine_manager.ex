@@ -21,80 +21,182 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
   @doc """
   Create a new fleet doctrine.
 
-  In a real implementation, this would persist to database.
-  Currently returns a mock doctrine for development.
+  Persists the doctrine to the database using the Ash resource.
   """
   def create_doctrine(doctrine_data) do
-    doctrine_id = generate_doctrine_id()
-
-    doctrine = %{
-      id: doctrine_id,
+    # Prepare attributes for Ash resource
+    attributes = %{
       name: doctrine_data.name,
-      description: doctrine_data[:description] || "",
+      description: doctrine_data[:description],
       doctrine_type: doctrine_data[:doctrine_type] || :roam,
-      ship_requirements: doctrine_data.ship_requirements,
-      role_requirements: doctrine_data.role_requirements,
+      ship_requirements: normalize_requirements(doctrine_data.ship_requirements),
+      role_requirements: normalize_requirements(doctrine_data.role_requirements),
       optional_ships: doctrine_data[:optional_ships] || [],
       mass_limits: doctrine_data[:mass_limits] || %{},
-      mass_category: determine_mass_category(doctrine_data),
+      minimum_pilots: doctrine_data[:minimum_pilots] || calculate_minimum_pilots(doctrine_data),
+      optimal_pilots: doctrine_data[:optimal_pilots],
       corporation_id: doctrine_data[:corporation_id],
-      is_active: doctrine_data[:is_active] || true,
-      created_at: DateTime.utc_now(),
-      updated_at: DateTime.utc_now(),
-      created_by: doctrine_data[:created_by],
-      usage_count: 0,
-      last_used_at: nil
+      is_active: Map.get(doctrine_data, :is_active, true),
+      is_public: Map.get(doctrine_data, :is_public, false),
+      created_by: doctrine_data[:created_by] || doctrine_data[:creator_id],
+      tags: doctrine_data[:tags] || [],
+      fitting_notes: doctrine_data[:fitting_notes]
     }
 
-    Logger.info("Created doctrine: #{doctrine.name} (#{doctrine_id})")
+    case Ash.create(
+           EveDmv.Contexts.FleetOperations.Resources.FleetDoctrine,
+           attributes,
+           domain: EveDmv.Contexts.FleetOperations.Domain
+         ) do
+      {:ok, doctrine} ->
+        Logger.info("Created doctrine: #{doctrine.name} (#{doctrine.id})")
+        {:ok, doctrine}
 
-    # TODO: Persist to database
-    {:ok, doctrine}
+      {:error, changeset} ->
+        Logger.error("Failed to create doctrine: #{inspect(changeset.errors)}")
+        {:error, changeset}
+    end
   end
 
   @doc """
   Update an existing fleet doctrine.
 
-  In a real implementation, this would update the database.
+  Updates the doctrine in the database using the Ash resource.
   """
   def update_doctrine(doctrine_id, updates) do
-    # TODO: Load from database
-    # For now, return error as we don't have persistence
-    Logger.info("Attempted to update doctrine: #{doctrine_id}")
-    {:error, :not_implemented}
+    case Ash.get(EveDmv.Contexts.FleetOperations.Resources.FleetDoctrine, doctrine_id,
+           domain: EveDmv.Contexts.FleetOperations.Domain
+         ) do
+      {:ok, doctrine} ->
+        # Normalize requirement maps if being updated
+        normalized_updates =
+          updates
+          |> Map.update(:ship_requirements, nil, &normalize_requirements/1)
+          |> Map.update(:role_requirements, nil, &normalize_requirements/1)
+          |> Enum.filter(fn {_, v} -> v != nil end)
+          |> Map.new()
+
+        case Ash.update(doctrine, normalized_updates,
+               domain: EveDmv.Contexts.FleetOperations.Domain
+             ) do
+          {:ok, updated_doctrine} ->
+            Logger.info("Updated doctrine: #{updated_doctrine.name}")
+            {:ok, updated_doctrine}
+
+          {:error, changeset} ->
+            Logger.error("Failed to update doctrine: #{inspect(changeset.errors)}")
+            {:error, changeset}
+        end
+
+      {:error, _} ->
+        {:error, :not_found}
+    end
   end
 
   @doc """
   Get a doctrine by ID.
 
-  In a real implementation, this would query the database.
+  Queries the database for the specific doctrine.
   """
   def get_doctrine(doctrine_id) do
-    # TODO: Load from database
-    Logger.info("Attempted to get doctrine: #{doctrine_id}")
-    {:error, :not_implemented}
+    case Ash.get(EveDmv.Contexts.FleetOperations.Resources.FleetDoctrine, doctrine_id,
+           domain: EveDmv.Contexts.FleetOperations.Domain
+         ) do
+      {:ok, doctrine} -> {:ok, doctrine}
+      {:error, _} -> {:error, :not_found}
+    end
   end
 
   @doc """
   Get a doctrine by name.
 
-  In a real implementation, this would query the database.
+  Queries the database for a doctrine with the given name.
   """
-  def get_doctrine_by_name(doctrine_name) do
-    # TODO: Load from database
-    Logger.info("Attempted to get doctrine by name: #{doctrine_name}")
-    {:error, :not_implemented}
+  def get_doctrine_by_name(name, corporation_id \\ nil) do
+    import Ash.Query
+
+    query =
+      EveDmv.Contexts.FleetOperations.Resources.FleetDoctrine
+      |> filter(name == ^name)
+
+    query =
+      if corporation_id do
+        filter(query, corporation_id == ^corporation_id or is_public == true)
+      else
+        query
+      end
+
+    case Ash.read_one(query, domain: EveDmv.Contexts.FleetOperations.Domain) do
+      {:ok, doctrine} -> {:ok, doctrine}
+      {:error, _} -> {:error, :not_found}
+    end
   end
 
   @doc """
   List doctrines with filtering options.
 
-  In a real implementation, this would query the database.
+  Options:
+  - corporation_id: Filter by corporation (includes public doctrines)
+  - doctrine_type: Filter by doctrine type
+  - is_active: Filter by active status (default: true)
+  - search: Search in name, description, and tags
   """
   def list_doctrines(opts \\ []) do
-    # TODO: Query database with filters
-    Logger.info("Attempted to list doctrines with opts: #{inspect(opts)}")
-    {:ok, []}
+    import Ash.Query
+
+    query = EveDmv.Contexts.FleetOperations.Resources.FleetDoctrine
+
+    # Apply filters
+    query =
+      if corporation_id = opts[:corporation_id] do
+        # Use the custom action
+        args = %{corporation_id: corporation_id}
+
+        EveDmv.Contexts.FleetOperations.Resources.FleetDoctrine
+        |> Ash.Query.for_read(:by_corporation, args)
+      else
+        query
+      end
+
+    query =
+      if type = opts[:doctrine_type] do
+        filter(query, doctrine_type == ^type)
+      else
+        query
+      end
+
+    query =
+      if Keyword.get(opts, :is_active, true) do
+        filter(query, is_active == true)
+      else
+        query
+      end
+
+    query =
+      if search_term = opts[:search] do
+        # Use the custom search action
+        args = %{query: search_term}
+
+        EveDmv.Contexts.FleetOperations.Resources.FleetDoctrine
+        |> Ash.Query.for_read(:search, args)
+      else
+        query
+      end
+
+    # Sort by usage and name
+    query =
+      query
+      |> sort(usage_count: :desc, name: :asc)
+      |> load([:total_minimum_pilots, :completeness_score])
+
+    case Ash.read(query, domain: EveDmv.Contexts.FleetOperations.Domain) do
+      {:ok, doctrines} ->
+        {:ok, doctrines}
+
+      {:error, error} ->
+        Logger.error("Failed to list doctrines: #{inspect(error)}")
+        {:error, error}
+    end
   end
 
   @doc """
@@ -114,43 +216,161 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
   @doc """
   Get doctrine statistics and usage metrics.
 
-  In a real implementation, this would query aggregated data from the database.
+  Returns usage statistics and performance metrics for a doctrine.
   """
   def get_doctrine_statistics(doctrine_id) do
-    # TODO: Query statistics from database
-    Logger.info("Attempted to get doctrine statistics: #{doctrine_id}")
-    {:error, :not_implemented}
+    case get_doctrine(doctrine_id) do
+      {:ok, doctrine} ->
+        # In a full implementation, we'd query fleet history
+        # For now, return basic statistics from the doctrine itself
+        stats = %{
+          doctrine_id: doctrine.id,
+          doctrine_name: doctrine.name,
+          usage_count: doctrine.usage_count,
+          last_used_at: doctrine.last_used_at,
+          effectiveness_rating: doctrine.effectiveness_rating || 0.0,
+          completeness_score: calculate_completeness_score(doctrine),
+          total_minimum_pilots: calculate_total_minimum_pilots(doctrine),
+          created_at: doctrine.created_at,
+          updated_at: doctrine.updated_at
+        }
+
+        {:ok, stats}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Delete a doctrine.
+  """
+  def delete_doctrine(doctrine_id) do
+    case get_doctrine(doctrine_id) do
+      {:ok, doctrine} ->
+        case Ash.destroy(doctrine, domain: EveDmv.Contexts.FleetOperations.Domain) do
+          :ok ->
+            Logger.info("Deleted doctrine: #{doctrine.name}")
+            :ok
+
+          {:error, error} ->
+            Logger.error("Failed to delete doctrine: #{inspect(error)}")
+            {:error, error}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Record doctrine usage in a fleet.
+  """
+  def record_doctrine_usage(doctrine_id) do
+    case get_doctrine(doctrine_id) do
+      {:ok, doctrine} ->
+        Ash.update(doctrine, %{},
+          domain: EveDmv.Contexts.FleetOperations.Domain,
+          action: :increment_usage
+        )
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Update doctrine effectiveness rating based on fleet performance.
+  """
+  def update_doctrine_effectiveness(doctrine_id, rating) when rating >= 0.0 and rating <= 1.0 do
+    case get_doctrine(doctrine_id) do
+      {:ok, doctrine} ->
+        Ash.update(doctrine, %{},
+          domain: EveDmv.Contexts.FleetOperations.Domain,
+          action: :update_effectiveness,
+          arguments: %{rating: rating}
+        )
+
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   # Private functions
 
-  defp generate_doctrine_id do
-    "doctrine_#{System.unique_integer([:positive])}_#{:os.system_time(:millisecond)}"
+  defp normalize_requirements(requirements) when is_map(requirements) do
+    # Ensure all values are properly formatted maps with string keys
+    requirements
+    |> Enum.map(fn {k, v} ->
+      key = to_string(k)
+
+      value =
+        case v do
+          %{} = map ->
+            map
+            |> Enum.map(fn {mk, mv} -> {to_string(mk), mv} end)
+            |> Map.new()
+
+          _ ->
+            %{"min_count" => 1}
+        end
+
+      {key, value}
+    end)
+    |> Map.new()
   end
 
-  defp determine_mass_category(doctrine_data) do
-    ship_requirements = doctrine_data[:ship_requirements] || %{}
+  defp normalize_requirements(_), do: %{}
 
-    # Calculate estimated mass for typical doctrine composition
-    estimated_mass =
-      Enum.sum(
-        Enum.map(ship_requirements, fn {ship_type_id, requirement} ->
-          ship_mass = get_ship_mass(ship_type_id)
-          ship_mass * requirement[:min_count]
-        end)
-      )
+  defp calculate_minimum_pilots(doctrine_data) do
+    ship_mins =
+      doctrine_data[:ship_requirements]
+      |> normalize_requirements()
+      |> Map.values()
+      |> Enum.map(&Map.get(&1, "min_count", 0))
+      |> Enum.sum()
 
-    cond do
-      # < 100M kg
-      estimated_mass < 100_000_000 -> :light
-      # < 500M kg
-      estimated_mass < 500_000_000 -> :medium
-      # < 1.5B kg
-      estimated_mass < 1_500_000_000 -> :heavy
-      # >= 1.5B kg
-      true -> :capital
-    end
+    role_mins =
+      doctrine_data[:role_requirements]
+      |> normalize_requirements()
+      |> Map.values()
+      |> Enum.map(&Map.get(&1, "min_count", 0))
+      |> Enum.sum()
+
+    max(ship_mins, role_mins)
   end
+
+  defp calculate_total_minimum_pilots(doctrine) do
+    ship_mins =
+      doctrine.ship_requirements
+      |> Map.values()
+      |> Enum.map(&Map.get(&1, "min_count", 0))
+      |> Enum.sum()
+
+    role_mins =
+      doctrine.role_requirements
+      |> Map.values()
+      |> Enum.map(&Map.get(&1, "min_count", 0))
+      |> Enum.sum()
+
+    max(ship_mins, role_mins)
+  end
+
+  defp calculate_completeness_score(doctrine) do
+    ship_score = if map_size(doctrine.ship_requirements) > 0, do: 0.25, else: 0
+    role_score = if map_size(doctrine.role_requirements) > 0, do: 0.25, else: 0
+
+    desc_score =
+      if doctrine.description && String.length(doctrine.description) > 50, do: 0.2, else: 0
+
+    fitting_score =
+      if doctrine.fitting_notes && String.length(doctrine.fitting_notes) > 100, do: 0.2, else: 0
+
+    effectiveness_score = if doctrine.effectiveness_rating, do: 0.1, else: 0
+
+    ship_score + role_score + desc_score + fitting_score + effectiveness_score
+  end
+
 
   defp get_ship_class_for_type(ship_type_id) do
     # Real ship class determination using static data
@@ -293,7 +513,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
 
     # Calculate average ship compliance
     ship_score =
-      if length(compliance_scores) > 0 do
+      if not Enum.empty?(compliance_scores) do
         Enum.sum(compliance_scores) / length(compliance_scores)
       else
         1.0
@@ -342,7 +562,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
 
     # Calculate average role compliance
     role_score =
-      if length(compliance_scores) > 0 do
+      if not Enum.empty?(compliance_scores) do
         Enum.sum(compliance_scores) / length(compliance_scores)
       else
         1.0

@@ -90,7 +90,7 @@ defmodule EveDmv.Database.QueryOptimizer do
   def batch_load_participants(killmail_ids) when is_list(killmail_ids) do
     # Use a single query to get all participants
     query = """
-    SELECT 
+    SELECT
       killmail_id,
       jsonb_array_elements(raw_data->'attackers') as attacker
     FROM killmails_raw
@@ -140,7 +140,7 @@ defmodule EveDmv.Database.QueryOptimizer do
     # First try to get from recent killmails (most likely to have current names)
     query = """
     WITH recent_names AS (
-      SELECT DISTINCT 
+      SELECT DISTINCT
         victim_character_id as character_id,
         victim_character_name as character_name,
         killmail_time,
@@ -170,7 +170,7 @@ defmodule EveDmv.Database.QueryOptimizer do
   def batch_load_corporation_names(corporation_ids) when is_list(corporation_ids) do
     query = """
     WITH recent_names AS (
-      SELECT DISTINCT 
+      SELECT DISTINCT
         victim_corporation_id as corporation_id,
         victim_corporation_name as corporation_name,
         killmail_time,
@@ -212,13 +212,13 @@ defmodule EveDmv.Database.QueryOptimizer do
   """
   def analyze_module_for_n_plus_one(module) do
     # Get all functions in the module
-    {:ok, functions} = Code.fetch_docs(module)
+    {:ok, _functions} = Code.fetch_docs(module)
 
     potential_issues = []
 
     # Look for common N+1 patterns
     # This is a simplified detection - in practice would need AST analysis
-    patterns = [
+    _patterns = [
       ~r/Enum\.map.*Repo\./,
       ~r/for.*<-.*do.*Repo\./,
       ~r/Enum\.each.*Repo\./,

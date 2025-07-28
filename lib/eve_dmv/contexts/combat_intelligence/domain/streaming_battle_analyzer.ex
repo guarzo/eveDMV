@@ -451,7 +451,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
       total_killmails: length(killmails),
       total_isk_destroyed: total_value,
       unique_attackers: unique_attackers,
-      average_value: if(length(killmails) > 0, do: div(total_value, length(killmails)), else: 0),
+      average_value:
+        if(not Enum.empty?(killmails), do: div(total_value, length(killmails)), else: 0),
       time_span: calculate_time_span(killmails)
     }
   end
@@ -516,7 +517,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
     |> Enum.take(10)
   end
 
-  defp calculate_time_span(killmails) when length(killmails) > 0 do
+  defp calculate_time_span(killmails) when killmails != [] do
     times = Enum.map(killmails, & &1.killmail_time)
     min_time = Enum.min(times, DateTime)
     max_time = Enum.max(times, DateTime)
@@ -525,7 +526,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
 
   defp calculate_time_span(_), do: 0
 
-  defp calculate_event_time_span(events) when length(events) > 0 do
+  defp calculate_event_time_span(events) when events != [] do
     timestamps = Enum.map(events, & &1.timestamp)
     min_time = Enum.min(timestamps, DateTime)
     max_time = Enum.max(timestamps, DateTime)
@@ -550,6 +551,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
       |> Enum.map(& &1.attacker_count)
       |> Enum.sum()
 
-    if length(events) > 0, do: div(total_participants, length(events)), else: 0
+    if not Enum.empty?(events), do: div(total_participants, length(events)), else: 0
   end
 end

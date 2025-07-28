@@ -83,23 +83,104 @@ defmodule EveDmv.Shared.Intelligence.Collector do
   end
 
   defp collect_from_source(:player_reports, analysis_area, time_window_hours) do
-    # In production, would query actual player reports
-    simulate_player_reports(analysis_area, time_window_hours)
+    # Generate intelligence reports from killmail analysis patterns
+    # This analyzes killmail data to infer player activity reports
+    system_ids = extract_system_ids(analysis_area)
+    since = DateTime.add(DateTime.utc_now(), -time_window_hours * 3600, :second)
+
+    case collect_killmail_data(system_ids, since) do
+      {:ok, killmail_data} ->
+        reports = analyze_killmails_for_intelligence_reports(killmail_data.killmails, system_ids)
+
+        {:ok,
+         %{
+           reports: reports,
+           count: length(reports),
+           average_reliability: calculate_report_reliability(reports),
+           time_window_hours: time_window_hours
+         }}
+
+      {:error, _} ->
+        {:ok,
+         %{
+           reports: [],
+           count: 0,
+           average_reliability: 0.0,
+           time_window_hours: time_window_hours
+         }}
+    end
   end
 
   defp collect_from_source(:scanning_data, analysis_area, time_window_hours) do
-    # In production, would query actual scan data
-    simulate_scanning_data(analysis_area, time_window_hours)
+    # Generate scanning data from killmail participant analysis
+    # This analyzes ship presence patterns from killmail data
+    system_ids = extract_system_ids(analysis_area)
+    since = DateTime.add(DateTime.utc_now(), -time_window_hours * 3600, :second)
+
+    case collect_killmail_data(system_ids, since) do
+      {:ok, killmail_data} ->
+        scans = analyze_ship_presence_from_killmails(killmail_data.killmails, system_ids, since)
+        total_ships = Enum.sum(Enum.map(scans, & &1.ship_count))
+
+        {:ok,
+         %{
+           scans: scans,
+           total_ships_detected: total_ships,
+           coverage: calculate_scan_coverage(scans, system_ids),
+           temporal_distribution: analyze_temporal_distribution(scans)
+         }}
+
+      {:error, _} ->
+        {:ok,
+         %{
+           scans: [],
+           total_ships_detected: 0,
+           coverage: 0.0,
+           temporal_distribution: %{}
+         }}
+    end
   end
 
   defp collect_from_source(:market_activity, analysis_area, time_window_hours) do
-    # In production, would query market data
-    simulate_market_activity(analysis_area, time_window_hours)
+    # Market activity tracking is not yet implemented
+    # Return empty data structure instead of random data
+    {:ok,
+     %{
+       trade_volume: 0,
+       active_orders: 0,
+       price_changes: [],
+       activity_level: :unknown
+     }}
   end
 
   defp collect_from_source(:jump_logs, analysis_area, time_window_hours) do
-    # In production, would query jump statistics
-    simulate_jump_logs(analysis_area, time_window_hours)
+    # Generate jump activity from killmail participant movements
+    # This analyzes character movement patterns from killmail data
+    system_ids = extract_system_ids(analysis_area)
+    since = DateTime.add(DateTime.utc_now(), -time_window_hours * 3600, :second)
+
+    case collect_killmail_data(system_ids, since) do
+      {:ok, killmail_data} ->
+        jumps = analyze_character_movements_from_killmails(killmail_data.killmails, system_ids)
+        unique_pilots = jumps |> Enum.map(& &1.character_id) |> Enum.uniq() |> length()
+
+        {:ok,
+         %{
+           jumps: jumps,
+           total_jumps: length(jumps),
+           unique_pilots: unique_pilots,
+           traffic_density: calculate_traffic_density_by_system(jumps, system_ids)
+         }}
+
+      {:error, _} ->
+        {:ok,
+         %{
+           jumps: [],
+           total_jumps: 0,
+           unique_pilots: 0,
+           traffic_density: Map.new(system_ids, fn id -> {id, 0.0} end)
+         }}
+    end
   end
 
   defp collect_killmail_data(system_ids, since) do
@@ -134,191 +215,11 @@ defmodule EveDmv.Shared.Intelligence.Collector do
     end
   end
 
-  # Simulation functions for other sources (to be replaced with real implementations)
-
-  defp simulate_player_reports(analysis_area, time_window_hours) do
-    report_count = :rand.uniform(10)
-
-    reports =
-      Enum.map(1..report_count, fn i ->
-        %{
-          id: "report_#{:os.system_time()}_#{i}",
-          timestamp:
-            DateTime.add(DateTime.utc_now(), -:rand.uniform(time_window_hours * 3600), :second),
-          reporter: "pilot_#{:rand.uniform(1000)}",
-          content: generate_mock_report_content(),
-          reliability: 0.5 + :rand.uniform() * 0.5,
-          system_id: extract_random_system_id(analysis_area)
-        }
-      end)
-
-    {:ok,
-     %{
-       reports: reports,
-       count: report_count,
-       average_reliability: calculate_average_reliability(reports),
-       time_window_hours: time_window_hours
-     }}
-  end
-
-  defp simulate_scanning_data(analysis_area, _time_window_hours) do
-    scan_count = :rand.uniform(20)
-
-    scans =
-      Enum.map(1..scan_count, fn i ->
-        %{
-          id: "scan_#{:os.system_time()}_#{i}",
-          timestamp: DateTime.utc_now(),
-          scanner: "scout_#{:rand.uniform(100)}",
-          system_id: extract_random_system_id(analysis_area),
-          ship_count: :rand.uniform(30),
-          ship_types: generate_ship_sightings(),
-          anomalies_detected: :rand.uniform(5)
-        }
-      end)
-
-    {:ok,
-     %{
-       scans: scans,
-       total_ships_detected: Enum.sum(Enum.map(scans, & &1.ship_count)),
-       coverage: assess_scan_coverage(scans),
-       temporal_distribution: assess_temporal_coverage(scans)
-     }}
-  end
-
-  defp simulate_market_activity(analysis_area, _time_window_hours) do
-    # Simulate market data
-    {:ok,
-     %{
-       trade_volume: :rand.uniform(1_000_000_000),
-       active_orders: :rand.uniform(1000),
-       price_changes: generate_price_changes(),
-       activity_level: Enum.random([:low, :medium, :high])
-     }}
-  end
-
-  defp simulate_jump_logs(analysis_area, time_window_hours) do
-    system_ids = extract_system_ids(analysis_area)
-
-    jumps =
-      Enum.flat_map(system_ids, fn system_id ->
-        jump_count = :rand.uniform(100)
-
-        Enum.map(1..jump_count, fn _ ->
-          %{
-            system_id: system_id,
-            timestamp:
-              DateTime.add(DateTime.utc_now(), -:rand.uniform(time_window_hours * 3600), :second),
-            character_id: :rand.uniform(1_000_000),
-            ship_type: "ship_type_#{:rand.uniform(100)}"
-          }
-        end)
-      end)
-
-    {:ok,
-     %{
-       jumps: jumps,
-       total_jumps: length(jumps),
-       unique_pilots: length(Enum.uniq_by(jumps, & &1.character_id)),
-       traffic_density: calculate_traffic_density(jumps, system_ids)
-     }}
-  end
-
   # Helper functions
 
   defp extract_system_ids(%{systems: system_ids}) when is_list(system_ids), do: system_ids
   defp extract_system_ids(%{system_id: system_id}), do: [system_id]
-  defp extract_system_ids(_), do: [30_000_000 + :rand.uniform(5000)]
-
-  defp extract_random_system_id(analysis_area) do
-    analysis_area
-    |> extract_system_ids()
-    |> Enum.random()
-  end
-
-  defp generate_mock_report_content do
-    activities = [
-      "hostile fleet",
-      "mining operation",
-      "gate camp",
-      "structure timer",
-      "capital movement"
-    ]
-
-    sizes = ["small", "medium", "large"]
-
-    "#{Enum.random(sizes)} #{Enum.random(activities)} detected"
-  end
-
-  defp calculate_average_reliability([]), do: 0.0
-
-  defp calculate_average_reliability(reports) do
-    total = Enum.sum(Enum.map(reports, & &1.reliability))
-    Float.round(total / length(reports), 2)
-  end
-
-  defp generate_ship_sightings do
-    ship_count = :rand.uniform(10)
-
-    Enum.map(1..ship_count, fn _ ->
-      %{
-        ship_class: classify_ship_class(:rand.uniform(10)),
-        count: :rand.uniform(5)
-      }
-    end)
-  end
-
-  defp classify_ship_class(class_num) do
-    case class_num do
-      n when n <= 3 -> :frigate
-      n when n <= 5 -> :cruiser
-      n when n <= 7 -> :battlecruiser
-      n when n <= 9 -> :battleship
-      _ -> :capital
-    end
-  end
-
-  defp generate_price_changes do
-    Enum.map(1..5, fn _ ->
-      %{
-        item_type: "item_#{:rand.uniform(1000)}",
-        price_change: -50 + :rand.uniform(100),
-        volume_change: -100 + :rand.uniform(200)
-      }
-    end)
-  end
-
-  defp assess_scan_coverage(scans) do
-    unique_systems = scans |> Enum.map(& &1.system_id) |> Enum.uniq() |> length()
-    total_scans = length(scans)
-
-    coverage_ratio = if total_scans > 0, do: unique_systems / total_scans, else: 0
-
-    %{
-      unique_systems: unique_systems,
-      total_scans: total_scans,
-      coverage_ratio: Float.round(coverage_ratio, 2)
-    }
-  end
-
-  defp assess_temporal_coverage(scans) do
-    # Simple temporal analysis
-    %{
-      distribution: :uniform,
-      gaps_detected: false,
-      coverage_quality: :good
-    }
-  end
-
-  defp calculate_traffic_density(jumps, system_ids) do
-    jumps_per_system = length(jumps) / max(1, length(system_ids))
-
-    cond do
-      jumps_per_system > 50 -> :high
-      jumps_per_system > 20 -> :medium
-      true -> :low
-    end
-  end
+  defp extract_system_ids(_), do: []
 
   defp assess_data_quality(intelligence_data) do
     # Simple quality assessment based on data completeness
@@ -340,5 +241,209 @@ defmodule EveDmv.Shared.Intelligence.Collector do
       quality_ratio >= 0.4 -> :fair
       true -> :poor
     end
+  end
+
+  # Helper functions for intelligence analysis
+
+  defp analyze_killmails_for_intelligence_reports(killmails, system_ids) do
+    killmails
+    |> Enum.group_by(& &1.solar_system_id)
+    |> Enum.flat_map(fn {system_id, system_killmails} ->
+      if system_id in system_ids do
+        # Analyze killmail patterns for intelligence value
+        Enum.map(system_killmails, fn km ->
+          %{
+            report_id: generate_report_id(km),
+            system_id: system_id,
+            timestamp: km.killmail_time,
+            participant_count: length(km.participants || []),
+            ship_classes: extract_ship_classes(km.participants || []),
+            intelligence_type: classify_intelligence_type(km),
+            reliability: calculate_killmail_reliability(km)
+          }
+        end)
+      else
+        []
+      end
+    end)
+  end
+
+  defp analyze_ship_presence_from_killmails(killmails, system_ids, since) do
+    killmails
+    |> Enum.group_by(& &1.solar_system_id)
+    |> Enum.flat_map(fn {system_id, system_killmails} ->
+      if system_id in system_ids do
+        ship_presence =
+          system_killmails
+          |> Enum.flat_map(&(&1.participants || []))
+          |> Enum.group_by(& &1.ship_type_id)
+          |> Enum.map(fn {ship_type_id, ships} ->
+            %{
+              ship_type_id: ship_type_id,
+              count: length(ships),
+              last_seen: Enum.max_by(ships, & &1.killmail_time).killmail_time
+            }
+          end)
+
+        [
+          %{
+            system_id: system_id,
+            scan_time: since,
+            ship_count: length(ship_presence),
+            ships_detected: ship_presence
+          }
+        ]
+      else
+        []
+      end
+    end)
+  end
+
+  defp analyze_character_movements_from_killmails(killmails, system_ids) do
+    killmails
+    |> Enum.flat_map(&(&1.participants || []))
+    |> Enum.group_by(& &1.character_id)
+    |> Enum.flat_map(fn {character_id, participations} ->
+      # Analyze movement patterns from killmail locations
+      participations
+      |> Enum.sort_by(& &1.killmail_time)
+      |> Enum.chunk_every(2, 1, :discard)
+      |> Enum.filter(fn [prev, curr] ->
+        # Only include if moving between systems in our analysis area
+        prev.solar_system_id != curr.solar_system_id and
+          prev.solar_system_id in system_ids and
+          curr.solar_system_id in system_ids
+      end)
+      |> Enum.map(fn [prev, curr] ->
+        %{
+          character_id: character_id,
+          from_system_id: prev.solar_system_id,
+          to_system_id: curr.solar_system_id,
+          jump_time: curr.killmail_time,
+          ship_type_id: curr.ship_type_id
+        }
+      end)
+    end)
+  end
+
+  defp calculate_report_reliability(reports) do
+    if Enum.empty?(reports) do
+      0.0
+    else
+      avg_reliability =
+        reports
+        |> Enum.map(& &1.reliability)
+        |> Enum.sum()
+        |> Kernel./(length(reports))
+
+      Float.round(avg_reliability, 2)
+    end
+  end
+
+  defp calculate_scan_coverage(scans, system_ids) do
+    if Enum.empty?(system_ids) do
+      0.0
+    else
+      scanned_systems = scans |> Enum.map(& &1.system_id) |> Enum.uniq()
+      coverage = length(scanned_systems) / length(system_ids)
+      Float.round(coverage * 100, 1)
+    end
+  end
+
+  defp analyze_temporal_distribution(scans) do
+    if Enum.empty?(scans) do
+      %{}
+    else
+      scans
+      |> Enum.group_by(fn scan ->
+        scan.scan_time
+        |> DateTime.to_time()
+        |> Time.to_erl()
+        # Extract hour
+        |> elem(0)
+      end)
+      |> Enum.map(fn {hour, hour_scans} ->
+        {hour, length(hour_scans)}
+      end)
+      |> Enum.into(%{})
+    end
+  end
+
+  defp calculate_traffic_density_by_system(jumps, system_ids) do
+    system_densities =
+      jumps
+      |> Enum.group_by(& &1.to_system_id)
+      |> Enum.map(fn {system_id, system_jumps} ->
+        {system_id, length(system_jumps)}
+      end)
+      |> Enum.into(%{})
+
+    # Ensure all systems have a density value
+    system_ids
+    |> Enum.map(fn system_id ->
+      density = Map.get(system_densities, system_id, 0)
+      {system_id, Float.round(density / 1.0, 1)}
+    end)
+    |> Enum.into(%{})
+  end
+
+  # Utility functions for intelligence processing
+
+  defp generate_report_id(killmail) do
+    # Generate a unique report ID based on killmail data
+    :crypto.hash(:md5, "#{killmail.killmail_id}_#{killmail.solar_system_id}")
+    |> Base.encode16(case: :lower)
+    |> String.slice(0, 8)
+  end
+
+  defp extract_ship_classes(participants) do
+    participants
+    |> Enum.map(& &1.ship_type_id)
+    |> Enum.map(&classify_ship_class/1)
+    |> Enum.uniq()
+  end
+
+  defp classify_ship_class(ship_type_id) do
+    # Basic ship classification - this would use actual EVE ship data
+    cond do
+      ship_type_id in 500..600 -> :frigate
+      ship_type_id in 600..700 -> :cruiser
+      ship_type_id in 700..800 -> :battleship
+      true -> :unknown
+    end
+  end
+
+  defp classify_intelligence_type(killmail) do
+    participant_count = length(killmail.participants || [])
+
+    cond do
+      participant_count >= 20 -> :fleet_engagement
+      participant_count >= 5 -> :small_gang
+      participant_count >= 2 -> :skirmish
+      true -> :solo_activity
+    end
+  end
+
+  defp calculate_killmail_reliability(killmail) do
+    # Calculate reliability based on killmail characteristics
+    participant_count = length(killmail.participants || [])
+
+    base_reliability =
+      cond do
+        participant_count >= 10 -> 0.9
+        participant_count >= 5 -> 0.8
+        participant_count >= 2 -> 0.7
+        true -> 0.6
+      end
+
+    # Adjust for security status if available
+    security_adjustment =
+      case Map.get(killmail, :security_status, 0.0) do
+        # Bonus for null/lowsec
+        sec when sec < 0.0 -> 0.1
+        _ -> 0.0
+      end
+
+    min(1.0, base_reliability + security_adjustment)
   end
 end

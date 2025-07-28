@@ -122,12 +122,17 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
   end
 
   defp classify_ship_type(ship_type_id) do
-    # Simplified classification - would use actual data
-    cond do
-      rem(ship_type_id, 100) < 10 -> :venture
-      rem(ship_type_id, 100) < 20 -> :retriever
-      rem(ship_type_id, 100) < 30 -> :hauler
-      true -> :combat
+    # Use actual ship classification from static data
+    case EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id) do
+      {:ok, :mining_frigate} -> :venture
+      {:ok, :mining_barge} -> :retriever
+      # Group with mining barges
+      {:ok, :exhumer} -> :retriever
+      {:ok, :industrial} -> :hauler
+      {:ok, :transport} -> :hauler
+      {:ok, :freighter} -> :hauler
+      {:ok, _} -> :combat
+      {:error, _} -> :combat
     end
   end
 
@@ -140,7 +145,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
   end
 
   defp identify_peak_mining_times(mining_losses) do
-    if length(mining_losses) == 0 do
+    if Enum.empty?(mining_losses) do
       []
     else
       mining_losses
@@ -262,7 +267,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
   end
 
   defp calculate_activity_concentration(killmails) do
-    if length(killmails) == 0 do
+    if Enum.empty?(killmails) do
       0.0
     else
       # Time-based concentration
@@ -271,7 +276,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
         |> Enum.group_by(& &1.timestamp.hour)
         |> Enum.map(fn {_, kms} -> length(kms) end)
 
-      if length(hourly_distribution) > 0 do
+      if not Enum.empty?(hourly_distribution) do
         max_hourly = Enum.max(hourly_distribution)
         total = Enum.sum(hourly_distribution)
         Float.round(max_hourly / total, 3)
@@ -313,7 +318,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
     peak_hours = identify_peak_hours(hourly_activity)
 
     cond do
-      length(peak_hours) == 0 -> :no_pattern
+      Enum.empty?(peak_hours) -> :no_pattern
       consecutive_hours?(peak_hours) -> :concentrated
       european_hours?(peak_hours) -> :eu_timezone
       american_hours?(peak_hours) -> :us_timezone
@@ -345,7 +350,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
     end
   end
 
-  defp identify_control_indicators(resource_metrics, strategic_data) do
+  defp identify_control_indicators(resource_metrics, _strategic_data) do
     indicators = []
 
     # Mining dominance
@@ -403,7 +408,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
     min(1.0, base_confidence + activity_bonus + conflict_bonus)
   end
 
-  defp describe_resource_pattern(indicators, resource_metrics) do
+  defp describe_resource_pattern(indicators, _resource_metrics) do
     indicator_types = Enum.map(indicators, fn {type, _} -> type end)
 
     cond do
@@ -533,8 +538,8 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
     end
   end
 
-  defp calculate_competition_metrics(competitors, strategic_data) do
-    if length(competitors) == 0 do
+  defp calculate_competition_metrics(competitors, _strategic_data) do
+    if Enum.empty?(competitors) do
       %{
         intensity: 0.0,
         dominant: nil,
@@ -667,7 +672,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
   end
 
   defp find_peak_competition(window_competition) do
-    if length(window_competition) == 0 do
+    if Enum.empty?(window_competition) do
       nil
     else
       Enum.max_by(window_competition, & &1.competition_intensity)
@@ -675,7 +680,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
   end
 
   defp calculate_average_competitors(window_competition) do
-    if length(window_competition) == 0 do
+    if Enum.empty?(window_competition) do
       0.0
     else
       total = Enum.sum(Enum.map(window_competition, & &1.competitor_count))
@@ -684,7 +689,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
   end
 
   defp average(list) do
-    if length(list) == 0 do
+    if Enum.empty?(list) do
       0.0
     else
       Enum.sum(list) / length(list)

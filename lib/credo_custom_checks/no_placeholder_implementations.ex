@@ -32,6 +32,9 @@ defmodule CredoCustomChecks.NoPlaceholderImplementations do
       allow_in_tests: true
     ]
 
+  alias Credo.Check.Params
+  alias Credo.IssueMeta
+
   @doc false
   def run(source_file, params \\ []) do
     # Skip test files if configured
@@ -42,7 +45,7 @@ defmodule CredoCustomChecks.NoPlaceholderImplementations do
 
       source_file
       |> Credo.Code.to_tokens()
-      |> find_issues(issue_meta)
+      |> find_issues(issue_meta, params)
     end
   end
 
@@ -54,9 +57,9 @@ defmodule CredoCustomChecks.NoPlaceholderImplementations do
          String.ends_with?(source_file.filename, "_test.exs"))
   end
 
-  defp find_issues(tokens, issue_meta) do
+  defp find_issues(tokens, issue_meta, params) do
     hardcoded_values =
-      Params.get(issue_meta.params, :hardcoded_values, param_defaults()[:hardcoded_values])
+      Params.get(params, :hardcoded_values, param_defaults()[:hardcoded_values])
 
     tokens
     |> Enum.flat_map(fn token ->
@@ -67,7 +70,7 @@ defmodule CredoCustomChecks.NoPlaceholderImplementations do
     end)
   end
 
-  defp check_token({:int, _, value} = token, hardcoded_values) do
+  defp check_token({:int, _, value}, hardcoded_values) do
     if value in hardcoded_values do
       "Hardcoded value #{value} detected - likely placeholder implementation"
     else

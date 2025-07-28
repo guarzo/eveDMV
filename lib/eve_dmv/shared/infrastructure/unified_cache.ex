@@ -4,7 +4,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedCache do
 
   Consolidates cache functionality from:
   - MarketIntelligence.Infrastructure.PriceCache
-  - ThreatAssessment.Infrastructure.ThreatCache  
+  - ThreatAssessment.Infrastructure.ThreatCache
   - CombatIntelligence.Infrastructure.AnalysisCache
   - Surveillance.Infrastructure.MatchCache
   - CorporationAnalysis.Infrastructure.AnalysisCache
@@ -314,7 +314,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedCache do
     # Delete expired entries
     Enum.each(expired_keys, &:ets.delete(@cache_table, &1))
 
-    if length(expired_keys) > 0 do
+    if not Enum.empty?(expired_keys) do
       Logger.debug("Cleaned up #{length(expired_keys)} expired cache entries")
     end
 
@@ -468,5 +468,14 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedCache do
   @spec get_wormhole_intel(integer()) :: {:ok, map()} | {:error, :not_found}
   def get_wormhole_intel(system_id) do
     get(:wormhole, {:intel, system_id})
+  end
+
+  @doc """
+  Get cache hit rate for a domain.
+  """
+  @spec get_hit_rate(domain()) :: float()
+  def get_hit_rate(domain) do
+    stats = get_domain_stats(domain)
+    stats.hit_rate
   end
 end

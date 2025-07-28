@@ -9,7 +9,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CombatIntelligenceEngine do
   use GenServer
   require Logger
 
-  alias EveDmv.Shared.Infrastructure.{UnifiedCache, UnifiedRepository}
+  alias EveDmv.Shared.Infrastructure.UnifiedCache
   alias EveDmv.DomainEvents.KillmailEnriched
 
   # Public API

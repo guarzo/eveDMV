@@ -5,7 +5,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
   This module combines all character intelligence analysis functions that were previously
   split across multiple analyzer modules:
   - WeaponPreferenceAnalyzer
-  - ShipPreferenceAnalyzer  
+  - ShipPreferenceAnalyzer
   - GangPatternAnalyzer
   - ActivityStatsAnalyzer
   - IskEfficiencyAnalyzer
@@ -304,7 +304,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
               end)
 
             preferred_style =
-              if length(gang_patterns) > 0,
+              if not Enum.empty?(gang_patterns),
                 do: List.first(gang_patterns).size_category,
                 else: "unknown"
 
@@ -761,7 +761,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
   # Private helper functions
 
   defp calculate_diversity_score(preferences) when is_list(preferences) do
-    if length(preferences) == 0 do
+    if Enum.empty?(preferences) do
       0.0
     else
       # Simple diversity calculation based on distribution
@@ -849,7 +849,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
 
   defp find_peak_activity_day(_), do: "Unknown"
 
-  defp calculate_threat_level(total_events, total_kills, total_deaths) do
+  defp calculate_threat_level(total_events, total_kills, _total_deaths) do
     cond do
       total_events >= 100 and total_kills >= 50 -> :extreme
       total_events >= 50 and total_kills >= 25 -> :high
@@ -884,66 +884,24 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
   end
 
   defp generate_overall_assessment(
-         weapon_analysis,
+         _weapon_analysis,
          ship_analysis,
          gang_analysis,
          activity_analysis,
          isk_analysis,
-         summary_analysis
+         _summary_analysis
        ) do
     # Generate an overall threat/capability assessment
-    threat_indicators = []
-
-    # Activity level indicator
-    threat_indicators =
-      if activity_analysis.stats.total_events >= 50 do
-        [
-          "High activity level (#{activity_analysis.stats.total_events} events)"
-          | threat_indicators
-        ]
-      else
-        threat_indicators
-      end
-
-    # Efficiency indicator
-    threat_indicators =
-      if activity_analysis.stats.kill_death_efficiency >= 80.0 do
-        [
-          "High kill efficiency (#{activity_analysis.stats.kill_death_efficiency}%)"
-          | threat_indicators
-        ]
-      else
-        threat_indicators
-      end
-
-    # ISK efficiency indicator
-    threat_indicators =
-      if isk_analysis.efficiency_percentage >= 70.0 do
-        ["High ISK efficiency (#{isk_analysis.efficiency_percentage}%)" | threat_indicators]
-      else
-        threat_indicators
-      end
-
-    # Gang preference indicator
     preferred_gang_style = gang_analysis.stats.preferred_gang_style
-
-    threat_indicators =
-      case preferred_gang_style do
-        "solo" -> ["Solo combat preference" | threat_indicators]
-        "small_gang" -> ["Small gang specialist" | threat_indicators]
-        "fleet" -> ["Fleet combat experience" | threat_indicators]
-        _ -> threat_indicators
-      end
-
-    # Ship diversity indicator
     ship_diversity = ship_analysis.stats.ship_diversity_score
 
     threat_indicators =
-      if ship_diversity >= 0.7 do
-        ["High ship diversity (#{ship_diversity})" | threat_indicators]
-      else
-        threat_indicators
-      end
+      []
+      |> add_activity_indicator(activity_analysis.stats.total_events)
+      |> add_efficiency_indicator(activity_analysis.stats.kill_death_efficiency)
+      |> add_isk_efficiency_indicator(isk_analysis.efficiency_percentage)
+      |> add_gang_preference_indicator(preferred_gang_style)
+      |> add_ship_diversity_indicator(ship_diversity)
 
     overall_threat_level =
       cond do
@@ -999,60 +957,98 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
   end
 
   defp generate_tactical_recommendations(threat_level, threat_indicators, gang_style) do
-    base_recommendations = []
+    []
+    |> add_threat_level_recommendations(threat_level)
+    |> add_gang_style_recommendations(gang_style)
+    |> add_activity_recommendations(threat_indicators)
+    |> Enum.reverse()
+  end
 
-    # Threat level recommendations
-    base_recommendations =
-      case threat_level do
-        :extreme ->
-          [
-            "Extreme caution advised - avoid engagement unless overwhelming advantage"
-            | base_recommendations
-          ]
+  defp add_threat_level_recommendations(recommendations, threat_level) do
+    case threat_level do
+      :extreme ->
+        [
+          "Extreme caution advised - avoid engagement unless overwhelming advantage"
+          | recommendations
+        ]
 
-        :high ->
-          [
-            "High threat target - engage with superior numbers and preparation"
-            | base_recommendations
-          ]
+      :high ->
+        ["High threat target - engage with superior numbers and preparation" | recommendations]
 
-        :medium ->
-          [
-            "Moderate threat - standard engagement protocols with backup ready"
-            | base_recommendations
-          ]
+      :medium ->
+        ["Moderate threat - standard engagement protocols with backup ready" | recommendations]
 
-        :low ->
-          ["Low threat - standard engagement protocols apply" | base_recommendations]
+      :low ->
+        ["Low threat - standard engagement protocols apply" | recommendations]
 
-        :minimal ->
-          ["Minimal threat - opportunity target" | base_recommendations]
-      end
+      :minimal ->
+        ["Minimal threat - opportunity target" | recommendations]
+    end
+  end
 
-    # Gang style recommendations
-    base_recommendations =
-      case gang_style do
-        "solo" ->
-          ["Solo pilot - vulnerable to ganks but may be skilled in 1v1" | base_recommendations]
+  defp add_gang_style_recommendations(recommendations, gang_style) do
+    case gang_style do
+      "solo" ->
+        ["Solo pilot - vulnerable to ganks but may be skilled in 1v1" | recommendations]
 
-        "small_gang" ->
-          ["Small gang specialist - dangerous with 2-5 allies" | base_recommendations]
+      "small_gang" ->
+        ["Small gang specialist - dangerous with 2-5 allies" | recommendations]
 
-        "fleet" ->
-          ["Fleet pilot - most dangerous when supported" | base_recommendations]
+      "fleet" ->
+        ["Fleet pilot - most dangerous when supported" | recommendations]
 
-        _ ->
-          base_recommendations
-      end
+      _ ->
+        recommendations
+    end
+  end
 
-    # Specific threat indicator recommendations
-    base_recommendations =
-      if "High activity level" in Enum.map(threat_indicators, &String.slice(&1, 0, 18)) do
-        ["Very active player - expect experienced gameplay" | base_recommendations]
-      else
-        base_recommendations
-      end
+  defp add_activity_recommendations(recommendations, threat_indicators) do
+    if "High activity level" in Enum.map(threat_indicators, &String.slice(&1, 0, 18)) do
+      ["Very active player - expect experienced gameplay" | recommendations]
+    else
+      recommendations
+    end
+  end
 
-    Enum.reverse(base_recommendations)
+  # Helper functions for threat indicator pipeline
+  defp add_activity_indicator(indicators, total_events) do
+    if total_events >= 50 do
+      ["High activity level (#{total_events} events)" | indicators]
+    else
+      indicators
+    end
+  end
+
+  defp add_efficiency_indicator(indicators, kill_death_efficiency) do
+    if kill_death_efficiency >= 80.0 do
+      ["High kill efficiency (#{kill_death_efficiency}%)" | indicators]
+    else
+      indicators
+    end
+  end
+
+  defp add_isk_efficiency_indicator(indicators, efficiency_percentage) do
+    if efficiency_percentage >= 70.0 do
+      ["High ISK efficiency (#{efficiency_percentage}%)" | indicators]
+    else
+      indicators
+    end
+  end
+
+  defp add_gang_preference_indicator(indicators, preferred_gang_style) do
+    case preferred_gang_style do
+      "solo" -> ["Solo combat preference" | indicators]
+      "small_gang" -> ["Small gang specialist" | indicators]
+      "fleet" -> ["Fleet combat experience" | indicators]
+      _ -> indicators
+    end
+  end
+
+  defp add_ship_diversity_indicator(indicators, ship_diversity) do
+    if ship_diversity >= 0.7 do
+      ["High ship diversity (#{ship_diversity})" | indicators]
+    else
+      indicators
+    end
   end
 end

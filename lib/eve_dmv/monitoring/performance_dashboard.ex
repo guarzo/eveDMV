@@ -437,7 +437,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
     queries = metrics.queries
 
     query_stats =
-      if length(queries.durations) > 0 do
+      if not Enum.empty?(queries.durations) do
         sorted = Enum.sort(queries.durations)
 
         %{
@@ -463,7 +463,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
     # Calculate queries per second from recent history
     recent = Enum.take(queries.durations, 100)
 
-    if length(recent) > 0 do
+    if not Enum.empty?(recent) do
       # Over last 30 seconds
       Float.round(length(recent) / 30, 2)
     else
@@ -624,7 +624,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
   end
 
   defp average(list, extractor) do
-    if length(list) > 0 do
+    if not Enum.empty?(list) do
       sum = list |> Enum.map(extractor) |> Enum.sum()
       sum / length(list)
     else

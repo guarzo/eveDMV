@@ -234,7 +234,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
       |> Enum.map(fn k -> k.victim_ship_type_id || 0 end)
       |> Enum.filter(fn id -> id > 0 end)
 
-    if length(values) > 0 do
+    if not Enum.empty?(values) do
       # Rough conversion
       Enum.sum(values) / length(values) * 10_000
     else

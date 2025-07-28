@@ -29,7 +29,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
   def identify_key_moments(timeline) do
     # Find high-value kills (top 10% by ISK value)
     high_value_moments =
-      if length(timeline) > 0 do
+      if not Enum.empty?(timeline) do
         isk_values = Enum.map(timeline, & &1.isk_value)
         threshold = Enum.max(isk_values) * 0.9
 
@@ -79,7 +79,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
         |> Enum.chunk_by(fn event ->
           div(DateTime.to_unix(event.timestamp), 120)
         end)
-        |> Enum.filter(fn window -> length(window) > 0 end)
+        |> Enum.filter(fn window -> not Enum.empty?(window) end)
 
       # Calculate kill rates for each side per window
       window_stats =
@@ -211,7 +211,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
         end)
 
       priority_ratio =
-        if length(timeline) > 0 do
+        if not Enum.empty?(timeline) do
           Float.round(length(priority_kills) / length(timeline), 3)
         else
           0.0
@@ -355,7 +355,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
       div(DateTime.to_unix(event.timestamp), window_seconds)
     end)
     |> Map.values()
-    |> Enum.filter(fn window -> length(window) > 0 end)
+    |> Enum.filter(fn window -> not Enum.empty?(window) end)
     |> Enum.sort_by(fn window -> List.first(window).timestamp end, DateTime)
   end
 

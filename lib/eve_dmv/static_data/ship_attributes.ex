@@ -76,7 +76,7 @@ defmodule EveDmv.StaticData.ShipAttributes do
       description("Shield explosive damage resistance (0.0-1.0)")
     end
 
-    # Armor resistances  
+    # Armor resistances
     attribute :armor_em_resist, :decimal do
       allow_nil?(true)
       constraints(min: 0.0, max: 1.0)

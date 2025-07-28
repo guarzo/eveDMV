@@ -197,7 +197,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.PriceCache do
     expired_keys
     |> Enum.each(&:ets.delete(@cache_table, &1))
 
-    if length(expired_keys) > 0 do
+    if not Enum.empty?(expired_keys) do
       Logger.debug("Cleaned up #{length(expired_keys)} expired price cache entries")
     end
   end

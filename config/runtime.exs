@@ -129,9 +129,16 @@ unless config_env() == :test do
 end
 
 # Development-specific database configuration
+# Never override database config in test environment
 if config_env() == :dev and System.get_env("MIX_ENV") != "test" and Mix.env() != :test do
   if database_url = System.get_env("DATABASE_URL") do
-    config :eve_dmv, EveDmv.Repo, url: database_url
+    # Only apply DATABASE_URL if we're not in a test context
+    # Additional safety check to ensure we never override test pool config
+    current_pool = Application.get_env(:eve_dmv, EveDmv.Repo)[:pool]
+
+    if current_pool != Ecto.Adapters.SQL.Sandbox do
+      config :eve_dmv, EveDmv.Repo, url: database_url
+    end
   end
 end
 

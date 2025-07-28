@@ -240,7 +240,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Eng
     mid_point = div(length(kill_times), 2)
     {first_half, second_half} = Enum.split(kill_times, mid_point)
 
-    if length(first_half) > 0 && length(second_half) > 0 do
+    if not Enum.empty?(first_half) && not Enum.empty?(second_half) do
       first_density = length(first_half) / (List.last(first_half) - hd(first_half) + 1)
       second_density = length(second_half) / (List.last(second_half) - hd(second_half) + 1)
 

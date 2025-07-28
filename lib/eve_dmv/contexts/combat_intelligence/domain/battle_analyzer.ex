@@ -4,7 +4,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
 
   This module consolidates the following previously separate analyzers:
   - FleetEffectivenessAnalyzer
-  - TargetSelectionAnalyzer  
+  - TargetSelectionAnalyzer
   - TimingAnalyzer
   - FormationAnalyzer
   - BattlePhaseAnalyzer
@@ -13,7 +13,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
   The consolidation improves maintainability while preserving all real analysis functionality.
   """
 
-  alias EveDmv.StaticData.ShipTypes
   require Logger
 
   @doc """
@@ -22,7 +21,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
   Combines fleet effectiveness, target selection, timing, formation, and phase analysis
   into a single comprehensive analysis result.
   """
-  def analyze_battle(killmails, options \\ []) do
+  def analyze_battle(killmails, _options \\ []) do
     Logger.info("Starting comprehensive battle analysis for #{length(killmails)} killmails")
 
     with {:ok, timeline} <- build_battle_timeline(killmails),
@@ -188,7 +187,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
   @doc """
   Analyze battle phases and engagement progression.
   """
-  def analyze_battle_phases(timeline, participants) do
+  def analyze_battle_phases(timeline, _participants) do
     Logger.debug("Analyzing battle phases")
 
     if Enum.empty?(timeline.events) do
@@ -423,7 +422,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
     }
   end
 
-  defp analyze_tactical_rhythm(timeline, participants) do
+  defp analyze_tactical_rhythm(timeline, _participants) do
     if Enum.empty?(timeline.events) do
       %{tempo: 0.0, consistency: 0.0}
     else
@@ -497,7 +496,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
     end)
   end
 
-  defp calculate_formation_effectiveness(timeline, formations_by_side) do
+  defp calculate_formation_effectiveness(_timeline, formations_by_side) do
     if Enum.empty?(formations_by_side) do
       0.0
     else
@@ -536,7 +535,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
     end
   end
 
-  defp analyze_phase_transitions(phases, timeline) do
+  defp analyze_phase_transitions(phases, _timeline) do
     if length(phases) < 2 do
       []
     else
@@ -836,9 +835,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
     events
     |> Enum.chunk_by(fn event ->
       # Group by minute
+      # Group by minute
+      timestamp_seconds = event.timestamp |> DateTime.from_naive!("Etc/UTC") |> DateTime.to_unix()
+
       event.timestamp
       |> NaiveDateTime.truncate(:second)
-      |> NaiveDateTime.add(-rem(NaiveDateTime.to_unix(event.timestamp), 60), :second)
+      |> NaiveDateTime.add(-rem(timestamp_seconds, 60), :second)
     end)
     |> Enum.filter(fn window -> length(window) > 1 end)
     |> Enum.map(fn window ->
@@ -872,9 +874,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
     events
     |> Enum.chunk_by(fn event ->
       # Group by 10-second windows
+      # Group by 10-second windows
+      timestamp_seconds = event.timestamp |> DateTime.from_naive!("Etc/UTC") |> DateTime.to_unix()
+
       event.timestamp
       |> NaiveDateTime.truncate(:second)
-      |> NaiveDateTime.add(-rem(NaiveDateTime.to_unix(event.timestamp), 10), :second)
+      |> NaiveDateTime.add(-rem(timestamp_seconds, 10), :second)
     end)
     # At least 3 kills in 10 seconds
     |> Enum.filter(fn window -> length(window) >= 3 end)
@@ -986,7 +991,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
     end
   end
 
-  defp calculate_formation_cohesion(timeline, participants) do
+  defp calculate_formation_cohesion(timeline, _participants) do
     # Simplified cohesion based on coordination timing
     if Enum.empty?(timeline.events) do
       0.0
@@ -1089,7 +1094,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
     end
   end
 
-  defp calculate_phase_effectiveness(phase, timeline) do
+  defp calculate_phase_effectiveness(phase, _timeline) do
     # Simplified effectiveness calculation
     # 5 minutes as reference
     phase.intensity * min(1.0, phase.duration / 300.0)
@@ -1113,7 +1118,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
         strengths
       end
 
-    # Target selection strengths  
+    # Target selection strengths
     strengths =
       if target_analysis.focus_fire.quality > 0.7 do
         ["Excellent focus fire coordination" | strengths]
@@ -1253,14 +1258,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
     %{score: overall_score, assessment: assessment}
   end
 
-  defp calculate_overall_battle_score(analysis_components) do
+  defp calculate_overall_battle_score(_analysis_components) do
     # Extract key scores from each analysis component
     # This would be more sophisticated in a real implementation
     # Placeholder
     0.75
   end
 
-  defp extract_key_battle_factors(analysis_components) do
+  defp extract_key_battle_factors(_analysis_components) do
     [
       "Fleet composition effectiveness",
       "Target selection coordination",
@@ -1269,14 +1274,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
     ]
   end
 
-  defp determine_battle_outcome(analysis_components) do
+  defp determine_battle_outcome(_analysis_components) do
     # Determine battle outcome based on analysis
     # This would analyze ISK efficiency, casualties, objectives
     # Placeholder
     :decisive_victory
   end
 
-  defp extract_lessons_learned(analysis_components) do
+  defp extract_lessons_learned(_analysis_components) do
     [
       "Focus fire coordination was crucial",
       "Early engagement timing determined outcome",
@@ -1331,7 +1336,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
 
   # Target selection analysis helpers
 
-  defp analyze_target_prioritization(target_order, timeline) do
+  defp analyze_target_prioritization(target_order, _timeline) do
     if Enum.empty?(target_order) do
       %{consistency: 0.0, high_value_focus: 0.0}
     else
@@ -1384,7 +1389,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
     end
   end
 
-  defp evaluate_target_selection_effectiveness(timeline, participants) do
+  defp evaluate_target_selection_effectiveness(timeline, _participants) do
     if Enum.empty?(timeline.events) do
       %{overall: 0.0, coordination: 0.0}
     else
@@ -1474,7 +1479,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
   end
 
   defp get_dps_ships do
-    # This would use real EVE static data  
+    # This would use real EVE static data
     # Example DPS ship type IDs
     [24696, 24698, 24700]
   end
@@ -1644,7 +1649,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
   end
 
   defp calculate_fleet_tank_rating(participants) do
-    # Simplified tank calculation based on ship types  
+    # Simplified tank calculation based on ship types
     tank_ships = get_tank_ships()
     tank_count = Enum.count(participants, &(&1.ship_type_id in tank_ships))
     tank_count / length(participants)
@@ -1664,7 +1669,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
     covered_roles / length(roles)
   end
 
-  defp calculate_ship_synergy(participants) do
+  defp calculate_ship_synergy(_participants) do
     # Simplified synergy calculation based on ship combinations
     # This could be enhanced with actual EVE ship synergy data
     0.7

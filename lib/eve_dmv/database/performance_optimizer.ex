@@ -464,7 +464,7 @@ defmodule EveDmv.Database.PerformanceOptimizer do
 
     # Check for slow queries
     slow_query_recommendations =
-      if length(slow_queries) > 0 do
+      if not Enum.empty?(slow_queries) do
         [
           "Consider optimizing slow queries - #{length(slow_queries)} queries taking >1 second"
           | initial_recommendations
@@ -480,7 +480,7 @@ defmodule EveDmv.Database.PerformanceOptimizer do
       end)
 
     index_recommendations =
-      if length(unused_indexes) > 0 do
+      if not Enum.empty?(unused_indexes) do
         [
           "Consider dropping #{length(unused_indexes)} unused indexes to save space"
           | slow_query_recommendations
@@ -497,7 +497,7 @@ defmodule EveDmv.Database.PerformanceOptimizer do
       |> Enum.uniq()
 
     final_recommendations =
-      if length(high_scan_tables) > 0 do
+      if not Enum.empty?(high_scan_tables) do
         [
           "Tables with high scan counts may benefit from additional indexes: #{Enum.join(high_scan_tables, ", ")}"
           | index_recommendations

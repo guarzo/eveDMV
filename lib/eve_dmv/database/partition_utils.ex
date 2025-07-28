@@ -120,7 +120,9 @@ defmodule EveDmv.Database.PartitionUtils do
     # Calculate health metrics
     total_size = Enum.sum(Enum.map(combined_stats, & &1.size_bytes))
     total_rows = Enum.sum(Enum.map(combined_stats, & &1.row_count))
-    avg_size = if length(combined_stats) > 0, do: total_size / length(combined_stats), else: 0
+
+    avg_size =
+      if not Enum.empty?(combined_stats), do: total_size / length(combined_stats), else: 0
 
     # Identify problematic partitions
     oversized_partitions = Enum.filter(combined_stats, &(&1.size_bytes > avg_size * 2))
@@ -252,7 +254,7 @@ defmodule EveDmv.Database.PartitionUtils do
       end
 
     oversized_recommendations =
-      if length(oversized_partitions) > 0 do
+      if not Enum.empty?(oversized_partitions) do
         [
           "Monitor #{length(oversized_partitions)} oversized partitions for performance impact"
           | empty_partition_recommendations

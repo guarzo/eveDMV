@@ -140,7 +140,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
   {:ok, intelligence_report} with fused intelligence analysis
   """
   def fuse_intelligence_sources(analysis_area, options \\ []) do
-    time_window_hours = Keyword.get(options, :time_window_hours, 24)
+    _time_window_hours = Keyword.get(options, :time_window_hours, 24)
     confidence_threshold = Keyword.get(options, :confidence_threshold, 0.8)
     include_raw_data = Keyword.get(options, :include_raw_data, false)
 

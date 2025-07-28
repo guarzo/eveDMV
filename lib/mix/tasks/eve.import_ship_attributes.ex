@@ -9,7 +9,7 @@ defmodule Mix.Tasks.Eve.ImportShipAttributes do
   ## Usage
 
       mix eve.import_ship_attributes
-      
+
   ## Options
 
       --force - Force re-import even if attributes already exist

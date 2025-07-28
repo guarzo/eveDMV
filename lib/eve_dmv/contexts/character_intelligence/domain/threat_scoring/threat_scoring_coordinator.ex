@@ -25,15 +25,16 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
       {:ok, trends} = ThreatScoringCoordinator.analyze_threat_trends(character_id)
   """
 
-  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.DataFetchers.CombatDataFetcher
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.{
+    DataFetchers.CombatDataFetcher,
+    Calculators.ThreatScoreCalculator
+  }
 
-  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.Calculators.ThreatScoreCalculator
-
-  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.Analyzers.TrendAnalyzer
-
-  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.Generators.ComparisonEngine
-
-  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.Generators.InsightGenerator
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.{
+    Analyzers.TrendAnalyzer,
+    Generators.ComparisonEngine,
+    Generators.InsightGenerator
+  }
 
   alias EveDmv.Intelligence.Cache.IntelligenceCache
 

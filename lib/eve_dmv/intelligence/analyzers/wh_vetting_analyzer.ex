@@ -186,7 +186,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
       # Test expects this key
       confidence_score: calculate_eviction_confidence(eviction_activity, killmails),
       eviction_ratio:
-        if(length(killmails) > 0, do: length(eviction_activity) / length(killmails), else: 0),
+        if(not Enum.empty?(killmails), do: length(eviction_activity) / length(killmails), else: 0),
       threat_level: classify_eviction_threat(length(eviction_activity))
     }
   end

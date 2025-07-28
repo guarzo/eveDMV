@@ -387,7 +387,7 @@ defmodule EveDmv.Shared.Monitoring.AnomalyDetector do
     end
   end
 
-  defp calculate_severity(current_value, baseline_value, threshold) do
+  defp calculate_severity(current_value, baseline_value, _threshold) do
     if baseline_value == 0 do
       :moderate
     else
@@ -463,9 +463,10 @@ defmodule EveDmv.Shared.Monitoring.AnomalyDetector do
   end
 
   defp generate_anomaly_id() do
+    # Generate a proper UUID for anomaly identification
+    uuid = Ecto.UUID.generate()
     timestamp = DateTime.utc_now() |> DateTime.to_unix()
-    random = :rand.uniform(9999)
-    "ANOM-#{timestamp}-#{random}"
+    "ANOM-#{timestamp}-#{String.slice(uuid, 0..7)}"
   end
 
   defp classify_anomaly_type(anomaly) do
@@ -522,7 +523,7 @@ defmodule EveDmv.Shared.Monitoring.AnomalyDetector do
     end
   end
 
-  defp extract_baseline_engagement_patterns(baseline_patterns) do
+  defp extract_baseline_engagement_patterns(_baseline_patterns) do
     # Extract engagement pattern metrics from baseline
     %{
       solo_frequency: 0.3,
@@ -532,7 +533,7 @@ defmodule EveDmv.Shared.Monitoring.AnomalyDetector do
     }
   end
 
-  defp extract_baseline_temporal_patterns(baseline) do
+  defp extract_baseline_temporal_patterns(_baseline) do
     # Extract temporal patterns from baseline
     %{
       hourly_distribution: %{},
@@ -541,7 +542,7 @@ defmodule EveDmv.Shared.Monitoring.AnomalyDetector do
     }
   end
 
-  defp calculate_pattern_significance(observed, expected) do
+  defp calculate_pattern_significance(_observed, expected) do
     # Simplified pattern significance calculation
     if map_size(expected) == 0 do
       0.5
@@ -561,7 +562,7 @@ defmodule EveDmv.Shared.Monitoring.AnomalyDetector do
     end
   end
 
-  defp get_baseline_acceleration(baseline) do
+  defp get_baseline_acceleration(_baseline) do
     # Extract baseline acceleration metric
     # Simplified static baseline
     0.0
@@ -645,7 +646,7 @@ defmodule EveDmv.Shared.Monitoring.AnomalyDetector do
   end
 
   defp calculate_false_positive_rate(recent_detections) do
-    if length(recent_detections) == 0 do
+    if Enum.empty?(recent_detections) do
       # Default assumption
       0.1
     else
@@ -690,7 +691,7 @@ defmodule EveDmv.Shared.Monitoring.AnomalyDetector do
     |> Map.new()
   end
 
-  defp calculate_statistical_confidence(anomaly, baseline) do
+  defp calculate_statistical_confidence(anomaly, _baseline) do
     # Calculate confidence based on statistical strength
     deviation_factor = Map.get(anomaly, :deviation_factor, 1.0)
 
@@ -704,7 +705,7 @@ defmodule EveDmv.Shared.Monitoring.AnomalyDetector do
     end
   end
 
-  defp calculate_pattern_confidence(anomaly, baseline) do
+  defp calculate_pattern_confidence(anomaly, _baseline) do
     # Calculate confidence based on pattern strength
     deviation_score = Map.get(anomaly, :deviation_score, 0.5)
     significance = Map.get(anomaly, :significance, 0.5)
@@ -721,7 +722,7 @@ defmodule EveDmv.Shared.Monitoring.AnomalyDetector do
     end
   end
 
-  defp calculate_historical_confidence(anomaly, historical_data) do
+  defp calculate_historical_confidence(_anomaly, _historical_data) do
     # Calculate confidence based on historical precedent
     # Simplified: assume 70% confidence for historical validation
     0.7

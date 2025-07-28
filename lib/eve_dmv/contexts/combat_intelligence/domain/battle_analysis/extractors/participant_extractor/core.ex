@@ -63,7 +63,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
       unaligned: find_unaligned_participants(participants, sides, neutrals),
       analysis: %{
         side_count: map_size(sides),
-        has_third_parties: length(neutrals) > 0,
+        has_third_parties: not Enum.empty?(neutrals),
         complexity:
           assess_conflict_complexity(
             Map.get(sides, :side_a, []),
@@ -132,7 +132,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
 
     # Simple two-side identification
     # In reality, EVE battles can be more complex with multiple parties
-    if length(attacker_affiliations) > 0 and length(victim_affiliations) > 0 do
+    if not Enum.empty?(attacker_affiliations) and not Enum.empty?(victim_affiliations) do
       %{
         side_a: attackers,
         side_b: victims
@@ -359,7 +359,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
     specializations
   end
 
-  defp analyze_activity_patterns(participant) do
+  defp analyze_activity_patterns(_participant) do
     # Analyze when and how the participant typically operates
     # Placeholder implementation
     %{

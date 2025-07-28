@@ -11,7 +11,6 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
   use EveDmvWeb, :live_view
 
-  alias EveDmv.Contexts.ThreatSurveillance
   alias KillmailRaw
   alias SearchSuggestionService
 
@@ -68,7 +67,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
   @impl Phoenix.LiveView
   def handle_event("delete_profile", %{"id" => id}, socket) do
-    case safe_call(fn -> Surveillance.delete_profile(id) end) do
+    case safe_call(fn -> EveDmv.Contexts.Surveillance.Api.delete_profile(id) end) do
       {:ok, _} ->
         socket =
           socket
@@ -88,7 +87,9 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
     profile = find_profile(socket.assigns.profiles, id)
     enabled = !profile.enabled
 
-    case safe_call(fn -> Surveillance.update_profile(id, %{enabled: enabled}) end) do
+    case safe_call(fn ->
+           EveDmv.Contexts.Surveillance.Api.update_profile(id, %{enabled: enabled})
+         end) do
       {:ok, _} ->
         socket =
           socket
@@ -121,7 +122,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
     case editing_profile do
       %{id: nil} ->
         # Create new profile
-        case safe_call(fn -> Surveillance.create_profile(profile_data) end) do
+        case safe_call(fn -> EveDmv.Contexts.Surveillance.Api.create_profile(profile_data) end) do
           {:ok, _profile} ->
             socket =
               socket
@@ -139,7 +140,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
       %{id: id} ->
         # Update existing profile
-        case safe_call(fn -> Surveillance.update_profile(id, profile_data) end) do
+        case safe_call(fn -> EveDmv.Contexts.Surveillance.Api.update_profile(id, profile_data) end) do
           {:ok, _profile} ->
             socket =
               socket
@@ -470,7 +471,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
   # Private functions
   defp load_profiles(socket) do
-    case safe_call(fn -> Surveillance.list_profiles([]) end) do
+    case safe_call(fn -> EveDmv.Contexts.Surveillance.Api.list_profiles([]) end) do
       {:ok, profiles} ->
         # Profiles should already be in the correct format since we're not doing backwards compatibility
         formatted_profiles = Enum.map(profiles, &format_profile_for_ui/1)
@@ -788,7 +789,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
       test_killmails = get_recent_killmails_for_testing(@preview_killmail_limit)
 
       # Use the advanced filter engine for enhanced matching
-      alias EveDmv.Contexts.ThreatSurveillance
+      # alias EveDmv.Contexts.ThreatSurveillance - not currently used
 
       # Test criteria against killmails
       matches =
@@ -800,7 +801,10 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
           # Try advanced filter engine first if criteria structure supports it
           match_result =
             if has_advanced_criteria?(profile.criteria) do
-              case AdvancedFilterEngine.evaluate_complex_criteria(profile.criteria, killmail_data) do
+              case EveDmv.Contexts.Surveillance.Domain.AdvancedFilterEngine.evaluate_complex_criteria(
+                     profile.criteria,
+                     killmail_data
+                   ) do
                 %{matches: true} = result -> {:advanced, result}
                 %{matches: false} -> {:no_match, nil}
                 _ -> {:fallback, nil}
@@ -823,7 +827,10 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
             {:fallback, _} ->
               # Fallback to original matching engine
-              case MatchingEngine.test_criteria(profile.criteria, killmail) do
+              case EveDmv.Contexts.Surveillance.Domain.MatchingEngine.test_criteria(
+                     profile.criteria,
+                     killmail
+                   ) do
                 {:ok, result} ->
                   if result.matches do
                     %{

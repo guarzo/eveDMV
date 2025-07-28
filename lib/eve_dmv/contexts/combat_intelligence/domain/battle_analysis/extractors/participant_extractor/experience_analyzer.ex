@@ -339,7 +339,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
 
     %{
       total_damage: total_damage,
-      average_damage: if(length(pilots) > 0, do: total_damage / length(pilots), else: 0),
+      average_damage: if(not Enum.empty?(pilots), do: total_damage / length(pilots), else: 0),
       survival_rate: Float.round(survival_rate, 2)
     }
   end
@@ -469,7 +469,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
   defp calculate_veteran_ratio(members) do
     veterans = Enum.count(members, &is_veteran?/1)
 
-    if length(members) > 0 do
+    if not Enum.empty?(members) do
       Float.round(veterans / length(members), 2)
     else
       0.0
@@ -504,7 +504,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
       )
 
     {strongest_id, strongest} = List.first(sorted_groups)
-    {weakest_id, weakest} = List.last(sorted_groups)
+    {_weakest_id, weakest} = List.last(sorted_groups)
 
     skill_gap =
       Map.get(strongest, :average_experience, 0) -
@@ -770,7 +770,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
   defp measure_experience_diversity(experience_distribution) do
     levels = Map.keys(experience_distribution)
 
-    if length(levels) == 0 do
+    if Enum.empty?(levels) do
       0.0
     else
       # Calculate Shannon diversity index

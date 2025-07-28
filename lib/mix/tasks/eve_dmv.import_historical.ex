@@ -150,7 +150,7 @@ defmodule Mix.Tasks.EveDmv.ImportHistorical do
     Mix.shell().info("Peak Rate: #{state.peak_rate} killmails/min")
     Mix.shell().info(String.duplicate("=", 60))
 
-    if state.error_count > 0 and length(state.errors) > 0 do
+    if state.error_count > 0 and not Enum.empty?(state.errors) do
       Mix.shell().info("")
       Mix.shell().info("Recent Errors:")
 

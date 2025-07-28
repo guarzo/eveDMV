@@ -172,24 +172,140 @@ defmodule EveDmv.Shared.ChainIntelligence do
   # Private helper functions
 
   defp get_system_jump_activity(system_id, days_back) do
-    # Query for jump activity
-    # In production, this would query actual jump data
-    %{
-      total_jumps: :rand.uniform(1000),
-      unique_characters: :rand.uniform(100),
-      peak_hour: :rand.uniform(23),
-      days_analyzed: days_back
-    }
+    # Query killmail data to infer jump activity
+    since = DateTime.add(DateTime.utc_now(), -days_back * 24 * 3600, :second)
+
+    try do
+      # Query killmails in the system to analyze participant movement
+      killmails =
+        EveDmv.Api.read!(
+          EveDmv.Killmails.KillmailRaw,
+          filter: [
+            solar_system_id: system_id,
+            occurred_at: [greater_than: since]
+          ],
+          limit: 1000
+        )
+
+      # Extract unique characters from participants
+      unique_characters =
+        killmails
+        |> Enum.flat_map(&(&1.participants || []))
+        |> Enum.map(& &1.character_id)
+        |> Enum.uniq()
+        |> length()
+
+      # Calculate peak hour from killmail times
+      hour_counts =
+        killmails
+        |> Enum.map(fn km ->
+          km.killmail_time
+          |> DateTime.to_time()
+          |> Time.to_erl()
+          # Extract hour
+          |> elem(0)
+        end)
+        |> Enum.frequencies()
+
+      peak_hour =
+        if map_size(hour_counts) > 0 do
+          hour_counts
+          |> Enum.max_by(fn {_hour, count} -> count end)
+          |> elem(0)
+        else
+          0
+        end
+
+      %{
+        # Estimate: each kill involves movement
+        total_jumps: length(killmails) * 2,
+        unique_characters: unique_characters,
+        peak_hour: peak_hour,
+        days_analyzed: days_back
+      }
+    rescue
+      _ ->
+        # Fallback if query fails
+        %{
+          total_jumps: 0,
+          unique_characters: 0,
+          peak_hour: 0,
+          days_analyzed: days_back
+        }
+    end
   end
 
   defp get_system_connections(system_id) do
-    # Get wormhole connections for the system
-    # In production, this would query actual connection data
-    %{
-      static_connections: [],
-      wormhole_connections: [],
-      total_connections: :rand.uniform(5)
-    }
+    # Get system connections based on killmail activity patterns
+    # Real wormhole connections would require integration with mapping tools
+
+    try do
+      # Get recent killmails to analyze movement patterns
+      since = DateTime.add(DateTime.utc_now(), -24 * 3600, :second)
+
+      killmails =
+        EveDmv.Api.read!(
+          EveDmv.Killmails.KillmailRaw,
+          filter: [
+            solar_system_id: system_id,
+            occurred_at: [greater_than: since]
+          ],
+          limit: 500
+        )
+
+      # Analyze participant movements to infer connections
+      # Group by adjacent killmail locations for the same characters
+      connections = analyze_movement_patterns(killmails, system_id)
+
+      %{
+        # Would require static data import
+        static_connections: [],
+        wormhole_connections: connections,
+        total_connections: length(connections)
+      }
+    rescue
+      _ ->
+        %{
+          static_connections: [],
+          wormhole_connections: [],
+          total_connections: 0
+        }
+    end
+  end
+
+  defp analyze_movement_patterns(killmails, target_system_id) do
+    # Analyze character movements to infer connections
+    killmails
+    |> Enum.flat_map(&(&1.participants || []))
+    |> Enum.group_by(& &1.character_id)
+    |> Enum.flat_map(fn {_char_id, participations} ->
+      # Sort by time and look for movements
+      participations
+      |> Enum.sort_by(& &1.killmail_time)
+      |> Enum.chunk_every(2, 1, :discard)
+      |> Enum.filter(fn [prev, curr] ->
+        # One kill must be in our target system
+        (prev.solar_system_id == target_system_id or curr.solar_system_id == target_system_id) and
+          prev.solar_system_id != curr.solar_system_id
+      end)
+      |> Enum.map(fn [prev, curr] ->
+        if prev.solar_system_id == target_system_id do
+          curr.solar_system_id
+        else
+          prev.solar_system_id
+        end
+      end)
+    end)
+    |> Enum.frequencies()
+    |> Enum.map(fn {connected_system, count} ->
+      %{
+        system_id: connected_system,
+        activity_count: count,
+        connection_type: :inferred
+      }
+    end)
+    # Limit to top 5 connections
+    |> Enum.take(5)
   end
 
   defp calculate_traffic_score(jump_data) do
@@ -230,13 +346,46 @@ defmodule EveDmv.Shared.ChainIntelligence do
 
   defp calculate_connection_mass_usage(connection, fleet_data) do
     # Calculate mass usage for a specific connection
+    # Real implementation would track actual fleet movements through wormholes
+
+    # Get ships in the fleet
+    ships = Map.get(fleet_data, :ships, [])
+
+    # Calculate total fleet mass
+    fleet_mass =
+      ships
+      |> Enum.map(fn ship ->
+        type_id = Map.get(ship, :ship_type_id) || Map.get(ship, :type_id)
+
+        if type_id do
+          case EveDmv.StaticData.get_ship_mass(type_id) do
+            {:ok, mass} -> mass
+            # Default cruiser mass
+            _ -> 10_000_000
+          end
+        else
+          10_000_000
+        end
+      end)
+      |> Enum.sum()
+
+    # Standard wormhole mass limit (C2-C4 size)
+    mass_limit = 2_000_000_000
+
+    usage_percentage =
+      if mass_limit > 0 do
+        Float.round(fleet_mass / mass_limit * 100, 1)
+      else
+        0.0
+      end
+
     %{
       connection_id: connection.id,
       from_system: connection.from,
       to_system: connection.to,
-      mass_used: :rand.uniform(1_000_000_000),
-      mass_limit: 2_000_000_000,
-      usage_percentage: 50.0
+      mass_used: fleet_mass,
+      mass_limit: mass_limit,
+      usage_percentage: usage_percentage
     }
   end
 
@@ -359,25 +508,89 @@ defmodule EveDmv.Shared.ChainIntelligence do
   end
 
   defp get_chain_activity_data(chain_id, hours) do
-    # Mock activity data
-    # In production, this would query actual activity logs
-    %{
-      chain_id: chain_id,
-      hours: hours,
-      jumps: generate_mock_jumps(hours),
-      kills: []
-    }
+    # Get activity data from killmails
+    # Note: chain_id would normally reference a wormhole mapping tool
+    # For now, we'll analyze activity in a set of systems
+    since = DateTime.add(DateTime.utc_now(), -hours * 3600, :second)
+
+    try do
+      # Get recent killmails (using a default system for now)
+      killmails =
+        EveDmv.Api.read!(
+          EveDmv.Killmails.KillmailRaw,
+          filter: [
+            occurred_at: [greater_than: since]
+          ],
+          limit: 2000
+        )
+
+      # Group activity by hour
+      jumps = analyze_hourly_activity(killmails, hours)
+
+      %{
+        chain_id: chain_id,
+        hours: hours,
+        jumps: jumps,
+        kills: killmails
+      }
+    rescue
+      _ ->
+        %{
+          chain_id: chain_id,
+          hours: hours,
+          jumps: [],
+          kills: []
+        }
+    end
   end
 
-  defp generate_mock_jumps(hours) do
-    # Generate mock jump data for testing
-    Enum.map(1..hours, fn hour ->
+  defp analyze_hourly_activity(killmails, total_hours) do
+    # Group killmails by hour and extract activity
+    now = DateTime.utc_now()
+
+    # Initialize all hours with zero activity
+    hour_map =
+      1..total_hours
+      |> Enum.map(fn h -> {h, %{hour: h, jump_count: 0, unique_pilots: MapSet.new()}} end)
+      |> Map.new()
+
+    # Populate with actual activity
+    updated_map =
+      killmails
+      |> Enum.reduce(hour_map, fn km, acc ->
+        hours_ago = div(DateTime.diff(now, km.killmail_time, :second), 3600)
+
+        if hours_ago >= 1 and hours_ago <= total_hours do
+          pilots = (km.participants || []) |> Enum.map(& &1.character_id) |> MapSet.new()
+
+          Map.update(
+            acc,
+            hours_ago,
+            %{hour: hours_ago, jump_count: 1, unique_pilots: pilots},
+            fn existing ->
+              %{
+                existing
+                | jump_count: existing.jump_count + 1,
+                  unique_pilots: MapSet.union(existing.unique_pilots, pilots)
+              }
+            end
+          )
+        else
+          acc
+        end
+      end)
+
+    # Convert to list format
+    updated_map
+    |> Map.values()
+    |> Enum.map(fn data ->
       %{
-        hour: hour,
-        jump_count: :rand.uniform(20),
-        unique_pilots: :rand.uniform(10)
+        hour: data.hour,
+        jump_count: data.jump_count,
+        unique_pilots: MapSet.size(data.unique_pilots)
       }
     end)
+    |> Enum.sort_by(& &1.hour)
   end
 
   defp calculate_total_jumps(activity_data) do
@@ -399,11 +612,31 @@ defmodule EveDmv.Shared.ChainIntelligence do
   end
 
   defp analyze_hostile_presence(activity_data) do
-    # Analyze for hostile activity patterns
-    %{
-      detected: :rand.uniform(100) > 70,
-      confidence: :rand.uniform() * 100
-    }
+    # Analyze for hostile activity patterns based on kill data
+    kills = Map.get(activity_data, :kills, [])
+
+    if Enum.empty?(kills) do
+      %{
+        detected: false,
+        confidence: 0.0
+      }
+    else
+      # Look for patterns indicating hostile presence
+      total_kills = length(kills)
+
+      recent_kills =
+        Enum.filter(kills, fn kill ->
+          DateTime.diff(DateTime.utc_now(), kill.killmail_time, :hour) < 6
+        end)
+
+      recent_ratio = length(recent_kills) / max(total_kills, 1)
+
+      %{
+        # Hostile if >30% of kills are recent
+        detected: recent_ratio > 0.3,
+        confidence: Float.round(recent_ratio * 100, 1)
+      }
+    end
   end
 
   defp calculate_activity_score(activity_data) do
@@ -435,11 +668,93 @@ defmodule EveDmv.Shared.ChainIntelligence do
 
   defp detect_hostile_presence(activity, corporation_id) do
     # Check for hostile pilots in activity data
-    # Simplified implementation
+    # Query recent killmails to identify hostiles
+    try do
+      since = DateTime.add(DateTime.utc_now(), -48 * 3600, :second)
+
+      # Get killmails where our corporation was involved
+      killmails =
+        EveDmv.Api.read!(
+          EveDmv.Killmails.KillmailRaw,
+          filter: [
+            occurred_at: [greater_than: since]
+          ],
+          limit: 1000
+        )
+
+      # Filter for kills involving our corporation
+      relevant_kills =
+        Enum.filter(killmails, fn km ->
+          victim_corp = Map.get(km.victim || %{}, :corporation_id)
+          attacker_corps = (km.attackers || []) |> Enum.map(& &1.corporation_id)
+
+          victim_corp == corporation_id or corporation_id in attacker_corps
+        end)
+
+      # Identify hostile entities
+      hostile_data = analyze_hostile_entities(relevant_kills, corporation_id)
+
+      # Assess threat level based on hostile activity
+      threat_level =
+        cond do
+          length(hostile_data.hostile_pilots) > 10 -> :high
+          length(hostile_data.hostile_pilots) > 5 -> :medium
+          length(hostile_data.hostile_pilots) > 0 -> :low
+          true -> :minimal
+        end
+
+      %{
+        hostile_pilots: hostile_data.hostile_pilots |> Enum.take(20),
+        hostile_corporations: hostile_data.hostile_corporations |> Enum.take(10),
+        threat_assessment: threat_level
+      }
+    rescue
+      _ ->
+        %{
+          hostile_pilots: [],
+          hostile_corporations: [],
+          threat_assessment: :unknown
+        }
+    end
+  end
+
+  defp analyze_hostile_entities(killmails, corporation_id) do
+    # Extract hostile pilots and corporations
+    hostile_pilots =
+      killmails
+      |> Enum.flat_map(fn km ->
+        if Map.get(km.victim || %{}, :corporation_id) == corporation_id do
+          # We were the victim, all attackers are hostile
+          (km.attackers || []) |> Enum.map(& &1.character_id)
+        else
+          # We were attacking, victim is hostile
+          [Map.get(km.victim || %{}, :character_id)]
+        end
+      end)
+      |> Enum.filter(& &1)
+      |> Enum.frequencies()
+      |> Enum.sort_by(fn {_pilot, count} -> -count end)
+      |> Enum.map(fn {pilot, count} -> %{character_id: pilot, engagement_count: count} end)
+
+    hostile_corporations =
+      killmails
+      |> Enum.flat_map(fn km ->
+        if Map.get(km.victim || %{}, :corporation_id) == corporation_id do
+          # We were the victim, all attacker corps are hostile
+          (km.attackers || []) |> Enum.map(& &1.corporation_id)
+        else
+          # We were attacking, victim corp is hostile
+          [Map.get(km.victim || %{}, :corporation_id)]
+        end
+      end)
+      |> Enum.filter(& &1)
+      |> Enum.frequencies()
+      |> Enum.sort_by(fn {_corp, count} -> -count end)
+      |> Enum.map(fn {corp, count} -> %{corporation_id: corp, engagement_count: count} end)
+
     %{
-      hostile_pilots: [],
-      hostile_corporations: [],
-      threat_assessment: :low
+      hostile_pilots: hostile_pilots,
+      hostile_corporations: hostile_corporations
     }
   end
 

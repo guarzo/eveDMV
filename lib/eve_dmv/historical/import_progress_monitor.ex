@@ -291,7 +291,7 @@ defmodule EveDmv.Historical.ImportProgressMonitor do
     # Check error rate
     recent_errors = Enum.take(metrics.performance.errors_per_batch, 10)
 
-    if length(recent_errors) > 0 do
+    if not Enum.empty?(recent_errors) do
       error_rate = Enum.sum(recent_errors) / length(recent_errors)
 
       # More than 10 errors per batch on average
@@ -306,7 +306,7 @@ defmodule EveDmv.Historical.ImportProgressMonitor do
   defp calculate_average_rate(metrics) do
     rates = metrics.performance.rates
 
-    if length(rates) > 0 do
+    if not Enum.empty?(rates) do
       round(Enum.sum(rates) / length(rates))
     else
       0

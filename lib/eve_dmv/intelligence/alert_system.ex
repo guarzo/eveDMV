@@ -194,7 +194,7 @@ defmodule EveDmv.Intelligence.AlertSystem do
     # Eviction group associations
     eviction_alerts =
       if vetting.eviction_associations &&
-           length(vetting.eviction_associations["known_eviction_groups"] || []) > 0 do
+           not Enum.empty?(vetting.eviction_associations["known_eviction_groups"] || []) do
         [
           create_security_alert(
             character_id,

@@ -280,7 +280,7 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
       parsed_events = Enum.map(complete_events, &parse_single_event/1)
       events = Enum.filter(parsed_events, &(&1 != nil))
 
-      if length(events) > 0 do
+      if not Enum.empty?(events) do
         Logger.debug("Parsed #{length(events)} SSE events from chunk")
       end
 

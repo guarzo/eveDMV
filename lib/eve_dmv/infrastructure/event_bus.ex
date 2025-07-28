@@ -290,7 +290,14 @@ defmodule EveDmv.Infrastructure.EventBus do
   # Private functions
 
   defp topic_for_event(event_type) do
-    "#{@event_topic_prefix}#{event_type}"
+    event_type_str =
+      case event_type do
+        atom when is_atom(atom) -> Atom.to_string(atom)
+        binary when is_binary(binary) -> binary
+        other -> inspect(other)
+      end
+
+    "#{@event_topic_prefix}#{event_type_str}"
   end
 
   defp get_publishing_context(event_type) do

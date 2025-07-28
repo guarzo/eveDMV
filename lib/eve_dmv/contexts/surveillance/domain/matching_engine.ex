@@ -299,7 +299,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
         character_id && MapSet.member?(target_characters, character_id)
       end)
 
-    matches = victim_match or length(attacker_matches) > 0
+    matches = victim_match or not Enum.empty?(attacker_matches)
 
     victim_criteria =
       if victim_match do
@@ -325,7 +325,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
     confidence_score =
       cond do
         victim_match -> 1.0
-        length(attacker_matches) > 0 -> 0.8
+        not Enum.empty?(attacker_matches) -> 0.8
         true -> 0.0
       end
 
@@ -348,7 +348,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
         MapSet.member?(target_corporations, attacker.corporation_id)
       end)
 
-    matches = victim_match or length(attacker_matches) > 0
+    matches = victim_match or not Enum.empty?(attacker_matches)
 
     base_criteria = []
 
@@ -368,7 +368,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
     confidence_score =
       cond do
         victim_match -> 1.0
-        length(attacker_matches) > 0 -> 0.8
+        not Enum.empty?(attacker_matches) -> 0.8
         true -> 0.0
       end
 
@@ -406,7 +406,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
         MapSet.member?(target_ship_types, attacker.ship_type_id)
       end)
 
-    matches = victim_match or length(attacker_matches) > 0
+    matches = victim_match or not Enum.empty?(attacker_matches)
 
     base_criteria = []
 
@@ -426,7 +426,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
     confidence_score =
       cond do
         victim_match -> 1.0
-        length(attacker_matches) > 0 -> 0.8
+        not Enum.empty?(attacker_matches) -> 0.8
         true -> 0.0
       end
 
@@ -451,7 +451,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
         attacker.alliance_id && MapSet.member?(target_alliances, attacker.alliance_id)
       end)
 
-    matches = victim_match or length(attacker_matches) > 0
+    matches = victim_match or not Enum.empty?(attacker_matches)
 
     base_criteria = []
 
@@ -471,7 +471,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
     confidence_score =
       cond do
         victim_match -> 1.0
-        length(attacker_matches) > 0 -> 0.8
+        not Enum.empty?(attacker_matches) -> 0.8
         true -> 0.0
       end
 
@@ -735,7 +735,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
             MapSet.member?(inhabitant_character_ids, attacker.character_id)
           end)
 
-        matches = victim_match or length(attacker_matches) > 0
+        matches = victim_match or not Enum.empty?(attacker_matches)
 
         if matches do
           matched_criteria =
@@ -853,7 +853,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
   defp validate_character_criteria(criteria) do
     case criteria.character_ids do
-      ids when is_list(ids) and length(ids) > 0 ->
+      ids when is_list(ids) and ids != [] ->
         if Enum.all?(ids, &is_integer/1), do: :ok, else: {:error, :invalid_character_ids}
 
       _ ->
@@ -863,7 +863,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
   defp validate_corporation_criteria(criteria) do
     case criteria.corporation_ids do
-      ids when is_list(ids) and length(ids) > 0 ->
+      ids when is_list(ids) and ids != [] ->
         if Enum.all?(ids, &is_integer/1), do: :ok, else: {:error, :invalid_corporation_ids}
 
       _ ->
@@ -873,7 +873,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
   defp validate_system_criteria(criteria) do
     case criteria.system_ids do
-      ids when is_list(ids) and length(ids) > 0 ->
+      ids when is_list(ids) and ids != [] ->
         if Enum.all?(ids, &is_integer/1), do: :ok, else: {:error, :invalid_system_ids}
 
       _ ->
@@ -883,7 +883,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
   defp validate_ship_type_criteria(criteria) do
     case criteria.ship_type_ids do
-      ids when is_list(ids) and length(ids) > 0 ->
+      ids when is_list(ids) and ids != [] ->
         if Enum.all?(ids, &is_integer/1), do: :ok, else: {:error, :invalid_ship_type_ids}
 
       _ ->
@@ -893,7 +893,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
   defp validate_alliance_criteria(criteria) do
     case criteria.alliance_ids do
-      ids when is_list(ids) and length(ids) > 0 ->
+      ids when is_list(ids) and ids != [] ->
         if Enum.all?(ids, &is_integer/1), do: :ok, else: {:error, :invalid_alliance_ids}
 
       _ ->
@@ -928,7 +928,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
   defp validate_custom_criteria(criteria) do
     case criteria.conditions do
-      conditions when is_list(conditions) and length(conditions) > 0 ->
+      conditions when is_list(conditions) and conditions != [] ->
         if Enum.all?(conditions, &is_map/1), do: :ok, else: {:error, :invalid_custom_conditions}
 
       _ ->

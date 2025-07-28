@@ -522,7 +522,7 @@ defmodule EveDmv.StaticData.ShipTypes do
     |> Enum.reduce(0.0, fn {type_id, count}, acc ->
       case Map.get(ship_data, type_id) do
         nil ->
-          # Fallback to estimated EHP  
+          # Fallback to estimated EHP
           {:ok, ehp} = estimate_ehp_from_classification(type_id)
           acc + ehp * count
 

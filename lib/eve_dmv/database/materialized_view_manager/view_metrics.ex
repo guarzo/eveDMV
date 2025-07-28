@@ -337,7 +337,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
       Enum.map(Enum.filter(index_info.indexes, &(&1.efficiency < 0.5)), & &1.name)
 
     final_recommendations =
-      if length(inefficient_indexes) > 0 do
+      if not Enum.empty?(inefficient_indexes) do
         ["Review inefficient indexes: #{Enum.join(inefficient_indexes, ", ")}" | recs_with_size]
       else
         recs_with_size
@@ -396,7 +396,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
   end
 
   defp calculate_overall_health(health_data) do
-    if length(health_data) > 0 do
+    if not Enum.empty?(health_data) do
       avg_score =
         health_data
         |> Enum.map(& &1.health_score)
@@ -417,7 +417,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
       Enum.map(Enum.filter(health_data, &(not &1.is_populated)), & &1.view)
 
     issues_with_unpopulated =
-      if length(unpopulated) > 0 do
+      if not Enum.empty?(unpopulated) do
         ["Unpopulated views: #{Enum.join(unpopulated, ", ")}" | initial_issues]
       else
         initial_issues
@@ -428,7 +428,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
       Enum.map(Enum.filter(health_data, &(not &1.has_indexes)), & &1.view)
 
     final_issues =
-      if length(no_indexes) > 0 do
+      if not Enum.empty?(no_indexes) do
         ["Views without indexes: #{Enum.join(no_indexes, ", ")}" | issues_with_unpopulated]
       else
         issues_with_unpopulated

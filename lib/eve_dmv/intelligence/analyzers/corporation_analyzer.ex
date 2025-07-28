@@ -256,10 +256,21 @@ defmodule EveDmv.Intelligence.Analyzers.CorporationAnalyzer do
     %{focus: "null_sec", secondary_focus: "low_sec"}
   end
 
-  defp calculate_member_risk(_member) do
-    # Simplified risk calculation
-    # In real implementation, would use various risk factors
-    Enum.random(1..100)
+  defp calculate_member_risk(member) do
+    # Calculate risk based on actual member data
+    # Base risk on kill/death ratio and PvP activity
+    kills = Map.get(member, :recent_kills, 0)
+    deaths = Map.get(member, :recent_deaths, 0)
+
+    # Higher kills = higher risk, more deaths = lower risk
+    base_risk =
+      if deaths > 0 do
+        min(100, kills / deaths * 25)
+      else
+        min(100, kills * 5)
+      end
+
+    round(base_risk)
   end
 
   defp calculate_variance(values) do

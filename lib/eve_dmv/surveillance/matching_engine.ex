@@ -172,7 +172,7 @@ defmodule EveDmv.Surveillance.MatchingEngine do
   @impl GenServer
   def handle_info(:batch_record_matches, state) do
     # Process pending matches in batch
-    if length(state.pending_matches) > 0 do
+    if not Enum.empty?(state.pending_matches) do
       Logger.info("📝 Recording batch of #{length(state.pending_matches)} surveillance matches")
 
       # Record matches asynchronously to avoid blocking

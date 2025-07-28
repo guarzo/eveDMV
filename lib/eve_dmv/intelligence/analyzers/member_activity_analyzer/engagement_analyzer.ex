@@ -174,7 +174,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.EngagementAnalyze
   end
 
   defp calculate_average_engagement_score(member_engagement_data) do
-    if length(member_engagement_data) > 0 do
+    if not Enum.empty?(member_engagement_data) do
       total = Enum.sum(Enum.map(member_engagement_data, fn {_id, score} -> score end))
       Float.round(total / length(member_engagement_data), 2)
     else

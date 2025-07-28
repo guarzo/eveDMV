@@ -19,9 +19,8 @@ defmodule EveDmv.Contexts.ThreatSurveillance do
   use EveDmv.Contexts.BoundedContext, name: :threat_surveillance
   use Supervisor
 
-  alias EveDmv.Contexts.ThreatSurveillance.Api
   alias EveDmv.Contexts.ThreatSurveillance.Domain
-  alias EveDmv.Shared.Infrastructure.{UnifiedCache, UnifiedEventProcessor, UnifiedRepository}
+  alias EveDmv.Shared.Infrastructure.{UnifiedCache, UnifiedRepository}
   alias EveDmv.DomainEvents.KillmailEnriched
 
   # Supervisor implementation
@@ -189,6 +188,45 @@ defmodule EveDmv.Contexts.ThreatSurveillance do
 
     # Update surveillance profiles that depend on threat levels
     Domain.ProfileManagementService.update_threat_dependent_profiles(event)
+  end
+
+  @doc """
+  List surveillance profiles with filters.
+  """
+  def list_profiles(filters \\ []) do
+    UnifiedRepository.list_surveillance_profiles(filters)
+  end
+
+  @doc """
+  Get a surveillance profile by ID.
+  """
+  def get_profile(profile_id) do
+    UnifiedRepository.get_surveillance_profile(profile_id)
+  end
+
+  @doc """
+  Get alert metrics for the surveillance system.
+  """
+  def get_alert_metrics(options \\ []) do
+    Domain.AlertManagementService.get_metrics(options)
+  end
+
+  @doc """
+  Get surveillance system metrics.
+  """
+  def get_surveillance_metrics() do
+    %{
+      matching_engine: Domain.SurveillanceMatchingEngine.get_metrics(),
+      threat_assessment: Domain.ThreatAssessmentEngine.get_metrics(),
+      alert_service: Domain.AlertManagementService.get_metrics()
+    }
+  end
+
+  @doc """
+  Get recent alerts.
+  """
+  def get_recent_alerts(options \\ []) do
+    Domain.AlertManagementService.get_recent_alerts(options)
   end
 
   ## Repository Operations

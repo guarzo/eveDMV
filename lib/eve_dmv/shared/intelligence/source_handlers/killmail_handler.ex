@@ -216,7 +216,7 @@ defmodule EveDmv.Shared.Intelligence.SourceHandlers.KillmailHandler do
       end)
 
     %{
-      camping_detected: length(camping_systems) > 0,
+      camping_detected: not Enum.empty?(camping_systems),
       systems: camping_systems
     }
   end

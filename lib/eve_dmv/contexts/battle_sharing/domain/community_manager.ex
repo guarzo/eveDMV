@@ -139,7 +139,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.CommunityManager do
         |> Enum.map(&Map.get(&1.category_ratings, category))
         |> Enum.filter(& &1)
 
-      if length(category_ratings) > 0 do
+      if not Enum.empty?(category_ratings) do
         average = Enum.sum(category_ratings) / length(category_ratings)
 
         Map.put(acc, category, %{
@@ -286,51 +286,10 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.CommunityManager do
 
   # Private helper functions for search
 
-  defp perform_battle_report_search(query, filters, sort_by, limit) do
-    # Generate sample search data for demonstration
-    search_results = generate_search_sample_data()
-
-    filtered_results =
-      search_results
-      |> apply_text_search(query)
-      |> apply_search_filters(filters)
-      |> apply_search_sorting(sort_by)
-      |> Enum.take(limit)
-
-    {:ok, filtered_results}
-  end
-
-  defp generate_search_sample_data do
-    scenarios = [
-      {"Jita Trade Hub Siege", :structure_bash, :massive, 8.5},
-      {"Wormhole Capital Brawl", :capital_engagement, :large, 7.8},
-      {"Low-sec Faction Warfare", :small_gang, :medium, 6.9},
-      {"Null-sec Roaming Gang", :roaming, :small, 7.2},
-      {"Alliance Tournament Match", :tournament, :medium, 9.1},
-      {"Keepstar Defense", :structure_defense, :massive, 8.8},
-      {"Carrier Ratting Gank", :gank, :small, 5.4},
-      {"Providence Evacuation", :strategic_op, :large, 7.5}
-    ]
-
-    for {title, battle_type, scale, rating} <- scenarios do
-      %{
-        id: :crypto.strong_rand_bytes(8) |> Base.encode16(),
-        title: title,
-        description: generate_battle_description({title, battle_type, scale}),
-        battle_type: battle_type,
-        scale: scale,
-        rating: rating,
-        participants: scale_to_participants(scale),
-        isk_destroyed: scale_to_isk(scale),
-        duration: scale_to_duration(scale),
-        created_at: DateTime.add(DateTime.utc_now(), -:rand.uniform(30 * 24 * 3600), :second),
-        tags: generate_sample_tags(battle_type, scale),
-        has_video: :rand.uniform() > 0.5,
-        has_highlights: :rand.uniform() > 0.3,
-        views: :rand.uniform(10_000),
-        comments: :rand.uniform(50)
-      }
-    end
+  defp perform_battle_report_search(_query, _filters, _sort_by, _limit) do
+    # Battle sharing feature not yet implemented
+    # Return empty results instead of fake data
+    {:ok, []}
   end
 
   defp maybe_enrich_search_results(results, false), do: {:ok, results}
@@ -352,49 +311,12 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.CommunityManager do
   end
 
   # Utility functions for generating sample data and calculations
-
-  defp determine_battle_type(participants, isk_destroyed) do
-    cond do
-      participants > 500 -> :massive_fleet
-      isk_destroyed > 10_000_000_000 -> :capital_engagement
-      participants < 20 -> :small_gang
-      true -> :medium_fleet
-    end
-  end
-
-  defp determine_battle_scale(participants) do
-    cond do
-      participants > 200 -> :massive
-      participants > 50 -> :large
-      participants > 10 -> :medium
-      true -> :small
-    end
-  end
-
-  defp scale_to_participants(:small), do: 5 + :rand.uniform(10)
-  defp scale_to_participants(:medium), do: 15 + :rand.uniform(35)
-  defp scale_to_participants(:large), do: 50 + :rand.uniform(150)
-  defp scale_to_participants(:massive), do: 200 + :rand.uniform(800)
-
-  defp scale_to_isk(:small), do: (100 + :rand.uniform(900)) * 1_000_000
-  defp scale_to_isk(:medium), do: (1 + :rand.uniform(4)) * 1_000_000_000
-  defp scale_to_isk(:large), do: (5 + :rand.uniform(15)) * 1_000_000_000
-  defp scale_to_isk(:massive), do: (20 + :rand.uniform(80)) * 1_000_000_000
-
-  defp scale_to_duration(:small), do: 5 + :rand.uniform(15)
-  defp scale_to_duration(:medium), do: 15 + :rand.uniform(30)
-  defp scale_to_duration(:large), do: 30 + :rand.uniform(60)
-  defp scale_to_duration(:massive), do: 60 + :rand.uniform(120)
+  # Removed random data generation functions - battle sharing not yet implemented
 
   # Placeholder implementations for helper functions
   defp generate_rating_id, do: :crypto.strong_rand_bytes(8) |> Base.encode16()
   defp generate_ip_hash, do: :crypto.hash(:sha256, "127.0.0.1") |> Base.encode16()
   defp generate_user_agent_hash, do: :crypto.hash(:sha256, "sample-user-agent") |> Base.encode16()
-
-  defp generate_sample_highlights(_i), do: []
-  defp generate_sample_tags(_battle_type, _scale), do: ["pvp", "fleet"]
-  defp generate_video_links(_i), do: []
-  defp generate_battle_description(_data), do: "An epic battle in the depths of space."
 
   defp calculate_engagement_score(_report), do: 0.7
   defp assess_tactical_value(_report), do: 0.8
@@ -406,9 +328,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.CommunityManager do
   defp meets_category_criteria(_report, _category), do: true
   defp get_category_score(_report, _category), do: 0.8
 
-  defp apply_text_search(results, _query), do: results
-  defp apply_search_filters(results, _filters), do: results
-  defp apply_search_sorting(results, _sort_by), do: results
+  # Search functions removed - battle sharing not yet implemented
 
   defp get_match_factors(_result), do: %{}
   defp generate_content_summary(_result), do: ""

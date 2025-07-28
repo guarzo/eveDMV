@@ -138,7 +138,7 @@ defmodule EveDmv.Shared.Strategic.ResourceAnalyzer do
   defp analyze_window_resource_control(strategic_data, {start_time, end_time}) do
     window_kills = filter_resource_kills_by_window(strategic_data, start_time, end_time)
 
-    if length(window_kills) == 0 do
+    if Enum.empty?(window_kills) do
       %{
         dominant: nil,
         control_percentage: 0.0,
@@ -226,7 +226,7 @@ defmodule EveDmv.Shared.Strategic.ResourceAnalyzer do
   end
 
   defp calculate_overall_stability(stability_metrics) do
-    if length(stability_metrics) == 0 do
+    if Enum.empty?(stability_metrics) do
       1.0
     else
       # Stability based on control consistency
@@ -600,7 +600,7 @@ defmodule EveDmv.Shared.Strategic.ResourceAnalyzer do
         recommendations
       end
 
-    if length(recommendations) == 0 do
+    if Enum.empty?(recommendations) do
       ["Maintain current resource extraction operations"]
     else
       recommendations
@@ -608,7 +608,7 @@ defmodule EveDmv.Shared.Strategic.ResourceAnalyzer do
   end
 
   defp average(list) do
-    if length(list) == 0 do
+    if Enum.empty?(list) do
       0.0
     else
       Enum.sum(list) / length(list)
@@ -616,17 +616,10 @@ defmodule EveDmv.Shared.Strategic.ResourceAnalyzer do
   end
 
   defp classify_ship_type(ship_type_id) do
-    # Simplified ship classification
-    case rem(ship_type_id, 20) do
-      16 -> :venture
-      17 -> :retriever
-      18 -> :hulk
-      19 -> :orca
-      0 -> :rorqual
-      9 -> :hauler
-      11 -> :transport
-      12 -> :freighter
-      _ -> :other
+    # Use actual ship classification from static data
+    case EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id) do
+      {:ok, ship_class} -> ship_class
+      {:error, _} -> :other
     end
   end
 end

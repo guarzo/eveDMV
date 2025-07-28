@@ -449,21 +449,21 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository do
   defp add_profile_filters(query, params, profile) do
     # Add filters based on profile criteria
     case profile.criteria do
-      %{character_ids: character_ids} when is_list(character_ids) and length(character_ids) > 0 ->
+      %{character_ids: character_ids} when is_list(character_ids) and character_ids != [] ->
         placeholders =
           Enum.map_join(1..length(character_ids), ", ", fn i -> "$#{i + length(params)}" end)
 
         updated_query = "#{query} AND victim_character_id IN (#{placeholders})"
         {updated_query, params ++ character_ids}
 
-      %{corporation_ids: corp_ids} when is_list(corp_ids) and length(corp_ids) > 0 ->
+      %{corporation_ids: corp_ids} when is_list(corp_ids) and corp_ids != [] ->
         placeholders =
           Enum.map_join(1..length(corp_ids), ", ", fn i -> "$#{i + length(params)}" end)
 
         updated_query = "#{query} AND victim_corporation_id IN (#{placeholders})"
         {updated_query, params ++ corp_ids}
 
-      %{system_ids: system_ids} when is_list(system_ids) and length(system_ids) > 0 ->
+      %{system_ids: system_ids} when is_list(system_ids) and system_ids != [] ->
         placeholders =
           Enum.map_join(1..length(system_ids), ", ", fn i -> "$#{i + length(params)}" end)
 

@@ -160,8 +160,8 @@ defmodule EveDmv.Intelligence.CacheCleanupWorker do
 
   defp perform_expired_entry_cleanup do
     # This would integrate with the actual cache implementation
-    # For now, return a placeholder value
-    cleanup_count = Enum.random(0..10)
+    # For now, return 0 as no entries are cleaned
+    cleanup_count = 0
 
     if cleanup_count > 0 do
       Logger.debug("Cleaned up #{cleanup_count} expired cache entries")

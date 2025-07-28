@@ -129,11 +129,12 @@ defmodule EveDmv.Quality.MetricsCollector.TestMetrics do
       modules_count: length(critical_modules),
       covered_modules: length(critical_coverage),
       average_coverage:
-        if(length(critical_coverage) > 0,
+        if(not Enum.empty?(critical_coverage),
           do: Enum.sum(critical_coverage) / length(critical_coverage),
           else: 0
         ),
-      min_coverage: if(length(critical_coverage) > 0, do: Enum.min(critical_coverage), else: 0)
+      min_coverage:
+        if(not Enum.empty?(critical_coverage), do: Enum.min(critical_coverage), else: 0)
     }
   end
 

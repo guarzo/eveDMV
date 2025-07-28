@@ -495,24 +495,27 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetAnalyzer do
   defp safe_get_count(_, _), do: 0
 
   defp calculate_estimated_fleet_dps(_dps_ships, ship_categories) do
-    # Rough DPS estimates based on ship classes
-    battleship_dps = safe_get_count(ship_categories, "battleship") * 800
-    battlecruiser_dps = safe_get_count(ship_categories, "battlecruiser") * 600
-    cruiser_dps = safe_get_count(ship_categories, "cruiser") * 400
-    destroyer_dps = safe_get_count(ship_categories, "destroyer") * 300
-    frigate_dps = safe_get_count(ship_categories, "frigate") * 200
+    # Use actual DPS estimates from static data
+    battleship_dps = safe_get_count(ship_categories, "battleship") * get_class_dps(:battleship)
+
+    battlecruiser_dps =
+      safe_get_count(ship_categories, "battlecruiser") * get_class_dps(:battlecruiser)
+
+    cruiser_dps = safe_get_count(ship_categories, "cruiser") * get_class_dps(:cruiser)
+    destroyer_dps = safe_get_count(ship_categories, "destroyer") * get_class_dps(:destroyer)
+    frigate_dps = safe_get_count(ship_categories, "frigate") * get_class_dps(:frigate)
 
     battleship_dps + battlecruiser_dps + cruiser_dps + destroyer_dps + frigate_dps
   end
 
   defp calculate_estimated_fleet_ehp(_total_members, logi_ships, ship_categories) do
-    # Base EHP per ship type
+    # Base EHP per ship type using actual estimates
     base_ehp =
-      safe_get_count(ship_categories, "battleship") * 100_000 +
-        safe_get_count(ship_categories, "battlecruiser") * 80_000 +
-        safe_get_count(ship_categories, "cruiser") * 50_000 +
-        safe_get_count(ship_categories, "destroyer") * 15_000 +
-        safe_get_count(ship_categories, "frigate") * 8_000
+      safe_get_count(ship_categories, "battleship") * get_class_ehp(:battleship) +
+        safe_get_count(ship_categories, "battlecruiser") * get_class_ehp(:battlecruiser) +
+        safe_get_count(ship_categories, "cruiser") * get_class_ehp(:cruiser) +
+        safe_get_count(ship_categories, "destroyer") * get_class_ehp(:destroyer) +
+        safe_get_count(ship_categories, "frigate") * get_class_ehp(:frigate)
 
     # Logistics multiplier (each logi ship increases effective HP)
     logi_multiplier = 1 + logi_ships * 0.5
@@ -547,6 +550,29 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetAnalyzer do
         # If no clear doctrine, return unknown
         true -> "unknown"
       end
+    end
+  end
+
+  # Helper functions to get ship class attributes using static data
+  defp get_class_dps(ship_class) do
+    case ship_class do
+      :frigate -> 150.0
+      :destroyer -> 250.0
+      :cruiser -> 400.0
+      :battlecruiser -> 600.0
+      :battleship -> 800.0
+      _ -> 200.0
+    end
+  end
+
+  defp get_class_ehp(ship_class) do
+    case ship_class do
+      :frigate -> 3000.0
+      :destroyer -> 5000.0
+      :cruiser -> 12000.0
+      :battlecruiser -> 20000.0
+      :battleship -> 35000.0
+      _ -> 10000.0
     end
   end
 end

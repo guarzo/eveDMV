@@ -382,7 +382,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
     (frigates * 3000 + (total - frigates - capitals) * 1500 + capitals * 500) / total
   end
 
-  defp average(list) when is_list(list) and length(list) > 0 do
+  defp average(list) when is_list(list) and list != [] do
     Enum.sum(list) / length(list)
   end
 

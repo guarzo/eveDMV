@@ -191,7 +191,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.ReadinessAnalyzer do
   # Private functions
 
   defp calculate_overall_readiness(ship_readiness) do
-    if length(ship_readiness) > 0 do
+    if not Enum.empty?(ship_readiness) do
       avg_readiness =
         Enum.sum(Enum.map(ship_readiness, & &1.readiness_ratio)) / length(ship_readiness)
 
@@ -203,7 +203,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.ReadinessAnalyzer do
 
   defp determine_deployment_status(overall_readiness, deployment_blockers) do
     cond do
-      length(deployment_blockers) > 0 -> "blocked"
+      not Enum.empty?(deployment_blockers) -> "blocked"
       overall_readiness >= 90 -> "ready"
       overall_readiness >= 70 -> "mostly_ready"
       overall_readiness >= 50 -> "partially_ready"

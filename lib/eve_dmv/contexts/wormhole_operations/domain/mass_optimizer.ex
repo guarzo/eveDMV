@@ -220,7 +220,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
 
     # Check individual ship violations
     individual_viol_list =
-      if length(individual_violations) > 0 do
+      if not Enum.empty?(individual_violations) do
         [
           %{
             type: :individual_ship_violations,
@@ -732,7 +732,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
         t1_ship?(ship_name)
       end)
 
-    if length(t1_ships) > 0 do
+    if not Enum.empty?(t1_ships) do
       [
         %{
           type: :upgrade,

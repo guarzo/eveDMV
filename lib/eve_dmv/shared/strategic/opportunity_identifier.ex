@@ -543,7 +543,7 @@ defmodule EveDmv.Shared.Strategic.OpportunityIdentifier do
         advantages
       end
 
-    if length(advantages) == 0 do
+    if Enum.empty?(advantages) do
       ["Strategic value"]
     else
       advantages

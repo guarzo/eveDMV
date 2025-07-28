@@ -386,7 +386,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
       |> Enum.sum()
 
     avg_changes =
-      if length(migration_patterns) > 0 do
+      if not Enum.empty?(migration_patterns) do
         system_changes / length(migration_patterns)
       else
         0
@@ -482,7 +482,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     escalation_indicators =
       Enum.filter([kill_rate_indicator, value_indicator, gang_size_indicator], & &1)
 
-    escalation_detected = length(escalation_indicators) > 0
+    escalation_detected = not Enum.empty?(escalation_indicators)
     escalation_probability = min(1.0, length(escalation_indicators) * 0.3)
 
     %{

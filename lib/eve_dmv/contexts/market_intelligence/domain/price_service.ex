@@ -11,7 +11,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
   alias EveDmv.Contexts.MarketIntelligence.Infrastructure
   alias EveDmv.DomainEvents
   alias EveDmv.Infrastructure.EventBus
-  alias UnifiedCache
+  alias EveDmv.Shared.Infrastructure.UnifiedCache
 
   require Logger
 
@@ -123,7 +123,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
         {:error, :not_found} -> []
       end
 
-    if length(hot_items) > 0 do
+    if not Enum.empty?(hot_items) do
       Task.start(fn ->
         do_refresh_prices(hot_items, source: :best)
       end)
@@ -173,7 +173,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
     missing_type_ids = Enum.map(missing, fn {:missing, type_id} -> type_id end)
 
     fetched_result =
-      if length(missing_type_ids) > 0 do
+      if not Enum.empty?(missing_type_ids) do
         fetch_and_cache_prices(missing_type_ids, Keyword.get(options, :source, :best))
       else
         {:ok, %{}}

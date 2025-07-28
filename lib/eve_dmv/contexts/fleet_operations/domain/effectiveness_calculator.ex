@@ -11,13 +11,14 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
   require Logger
 
   # Effectiveness weights for different metrics
-  @effectiveness_weights %{
-    isk_efficiency: 0.3,
-    kill_death_ratio: 0.25,
-    survival_rate: 0.2,
-    objective_completion: 0.15,
-    tactical_execution: 0.1
-  }
+  # Currently unused as full fleet effectiveness calculation is not implemented
+  # @effectiveness_weights %{
+  #   isk_efficiency: 0.3,
+  #   kill_death_ratio: 0.25,
+  #   survival_rate: 0.2,
+  #   objective_completion: 0.15,
+  #   tactical_execution: 0.1
+  # }
 
   @doc """
   Calculate comprehensive fleet effectiveness metrics.
@@ -174,7 +175,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
     %{
       total_isk_lost: total_isk_lost,
       average_loss_value:
-        if(length(fleet_losses) > 0, do: total_isk_lost / length(fleet_losses), else: 0),
+        if(not Enum.empty?(fleet_losses), do: total_isk_lost / length(fleet_losses), else: 0),
       role_impact: role_impact,
       fleet_capability_reduction: calculate_capability_reduction(role_impact, participants)
     }
@@ -233,7 +234,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
       end)
 
     average_participation =
-      if length(participation_rates) > 0 do
+      if not Enum.empty?(participation_rates) do
         Enum.sum(participation_rates) / length(participation_rates)
       else
         0.0
@@ -268,7 +269,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
       end)
 
     sync_score =
-      if length(kill_windows) > 0 do
+      if not Enum.empty?(kill_windows) do
         Enum.sum(kill_windows) / length(kill_windows)
       else
         0.0
@@ -484,7 +485,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
       end)
 
     value_based_risk_factors =
-      if length(high_value_losses) > 0 do
+      if not Enum.empty?(high_value_losses) do
         [
           %{
             type: :high_value_targets,
@@ -504,7 +505,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
       end)
 
     comprehensive_risk_factors =
-      if length(logistics_losses) > 0 do
+      if not Enum.empty?(logistics_losses) do
         [
           %{
             type: :logistics_vulnerability,

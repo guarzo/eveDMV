@@ -449,7 +449,7 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
         ArchiveOperations.count_eligible_records(policy) > 100_000
       end)
 
-    if length(high_backlog_tables) > 0 do
+    if not Enum.empty?(high_backlog_tables) do
       table_names = Enum.map(high_backlog_tables, & &1.table)
 
       [
@@ -469,7 +469,7 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
         table_size.total_size > 10_000_000_000
       end)
 
-    if length(large_archives) > 0 do
+    if not Enum.empty?(large_archives) do
       archive_names = Enum.map(large_archives, & &1.archive_table)
 
       [

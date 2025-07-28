@@ -242,7 +242,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
   defp calculate_overall_focus_score(focus_fire_windows) do
     scores = Enum.map(focus_fire_windows, & &1.focus_score)
 
-    if length(scores) > 0 do
+    if not Enum.empty?(scores) do
       Float.round(Enum.sum(scores) / length(scores), 2)
     else
       0.0
@@ -550,7 +550,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
   end
 
   defp calculate_switch_frequency(switches) do
-    if length(switches) > 0 do
+    if not Enum.empty?(switches) do
       # Calculate average time between switches
       times = Enum.map(switches, & &1.switch_time)
 
@@ -575,7 +575,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
   defp calculate_avg_engagement_duration(switches) do
     durations = Enum.map(switches, & &1.time_on_prev_target)
 
-    if length(durations) > 0 do
+    if not Enum.empty?(durations) do
       Float.round(Enum.sum(durations) / length(durations), 2)
     else
       0.0
@@ -852,7 +852,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
   defp calculate_average_coordination(coordination_windows) do
     scores = Enum.map(coordination_windows, & &1.coordination_score)
 
-    if length(scores) > 0 do
+    if not Enum.empty?(scores) do
       Float.round(Enum.sum(scores) / length(scores), 2)
     else
       0.0
@@ -908,7 +908,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
   end
 
   defp calculate_phase_duration(phase_killmails) do
-    if length(phase_killmails) > 0 do
+    if not Enum.empty?(phase_killmails) do
       times = Enum.map(phase_killmails, & &1.killmail_time)
       first = Enum.min(times)
       last = Enum.max(times)

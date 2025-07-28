@@ -143,7 +143,7 @@ defmodule EveDmv.Killmails.KillmailProcessor do
   ## Examples
 
       participants = KillmailProcessor.build_participants(structured_data)
-      assert length(participants) > 0
+      assert not Enum.empty?(participants)
       assert Enum.any?(participants, & &1.is_victim)
   """
   @spec build_participants(killmail_data()) :: [changeset_data()]

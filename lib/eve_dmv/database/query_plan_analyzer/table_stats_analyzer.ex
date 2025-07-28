@@ -397,19 +397,22 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
     %{
       total_bloated_tables: length(bloated_tables),
       avg_bloat_ratio:
-        if(length(table_stats) > 0,
+        if(not Enum.empty?(table_stats),
           do: Enum.sum(Enum.map(table_stats, & &1.bloat_ratio)) / length(table_stats),
           else: 0
         ),
       highest_bloat:
-        if(length(table_stats) > 0, do: Enum.max_by(table_stats, & &1.bloat_ratio), else: nil)
+        if(not Enum.empty?(table_stats),
+          do: Enum.max_by(table_stats, & &1.bloat_ratio),
+          else: nil
+        )
     }
   end
 
   defp analyze_usage_efficiency(table_stats) do
     %{
       avg_index_usage:
-        if(length(table_stats) > 0,
+        if(not Enum.empty?(table_stats),
           do:
             Enum.sum(Enum.map(table_stats, & &1.usage_patterns.index_scan_ratio)) /
               length(table_stats),

@@ -52,7 +52,7 @@ defmodule EveDmv.Intelligence.Analyzers.MassCalculator do
       required = config["required"] || 1
       ships = config["preferred_ships"] || []
 
-      if length(ships) > 0 do
+      if not Enum.empty?(ships) do
         # Use the first preferred ship for mass calculation
         ship_name = hd(ships)
         ship_info = ship_data[ship_name] || %{mass_kg: get_fallback_mass_for_role(role)}

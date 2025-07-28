@@ -358,7 +358,7 @@ defmodule EveDmv.Database.PartitionManager do
         partitions: existing_partitions,
         retention_months: table_config.retention_months,
         next_partition_due: calculate_next_partition_date(),
-        status: if(length(existing_partitions) > 0, do: :active, else: :needs_setup)
+        status: if(not Enum.empty?(existing_partitions), do: :active, else: :needs_setup)
       }
     end)
   end

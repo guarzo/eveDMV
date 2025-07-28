@@ -281,7 +281,7 @@ defmodule EveDmvWeb.DashboardLive do
     </div>
 
     <!-- Recent Activity Timeline -->
-    <%= if @recent_kills && length(@recent_kills) > 0 do %>
+    <%= if @recent_kills && not Enum.empty?(@recent_kills) do %>
       <div class="bg-gray-800 rounded-lg p-6 mb-8">
         <h2 class="text-xl font-semibold text-white mb-4 flex items-center">
           ⚡ Recent Combat Activity

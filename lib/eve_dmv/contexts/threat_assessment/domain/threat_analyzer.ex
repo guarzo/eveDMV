@@ -533,7 +533,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Domain.ThreatAnalyzer do
 
     predictable_patterns = Map.get(vulnerabilities, :predictable_patterns, [])
 
-    if length(predictable_patterns) > 0 do
+    if not Enum.empty?(predictable_patterns) do
       [{:behavioral, "Predictable activity patterns", :medium} | risk_factors]
     else
       risk_factors

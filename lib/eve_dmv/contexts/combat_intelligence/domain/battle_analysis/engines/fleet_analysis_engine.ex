@@ -93,7 +93,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
       ewar_intensity = calculate_ewar_intensity(ewar_analysis, length(all_ships))
 
       %{
-        ewar_detected: length(ewar_analysis.ewar_ships) > 0,
+        ewar_detected: not Enum.empty?(ewar_analysis.ewar_ships),
         ewar_ships: ewar_analysis.ewar_ships,
         ewar_types: ewar_analysis.ewar_types,
         ewar_intensity: ewar_intensity,

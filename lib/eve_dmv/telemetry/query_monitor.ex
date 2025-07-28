@@ -386,7 +386,7 @@ defmodule EveDmv.Telemetry.QueryMonitor do
 
     # Check for N+1 alerts
     issues_with_n_plus_one =
-      if length(state.n_plus_one_alerts) > 0,
+      if not Enum.empty?(state.n_plus_one_alerts),
         do: ["#{length(state.n_plus_one_alerts)} N+1 query alerts" | issues_with_frequent],
         else: issues_with_frequent
 

@@ -398,7 +398,7 @@ defmodule EveDmv.Shared.Correlation.SystemActivityCollector do
     cond do
       # > 12 hours
       gap_minutes > 720 -> :major_quiet_period
-      # > 6 hours  
+      # > 6 hours
       gap_minutes > 360 -> :significant_gap
       # > 3 hours
       gap_minutes > 180 -> :moderate_gap
@@ -593,7 +593,7 @@ defmodule EveDmv.Shared.Correlation.SystemActivityCollector do
         as_victim: victim_count,
         as_attacker: attacker_count,
         survival_rate:
-          if(length(pilot_activities) > 0,
+          if(not Enum.empty?(pilot_activities),
             do: attacker_count / length(pilot_activities),
             else: 0
           ),

@@ -18,7 +18,7 @@ defmodule EveDmv.Shared.Strategic.TerritorialAnalyzer do
   @doc """
   Analyzes territorial control patterns across systems.
   """
-  def analyze_territorial_control(strategic_data, options \\ []) do
+  def analyze_territorial_control(strategic_data, _options \\ []) do
     control_zones = TerritorialPattern.analyze_control_zones(strategic_data)
     contested_areas = identify_contested_areas(strategic_data, control_zones)
     expansion_opportunities = identify_expansion_opportunities(strategic_data, control_zones)
@@ -177,7 +177,7 @@ defmodule EveDmv.Shared.Strategic.TerritorialAnalyzer do
   end
 
   defp calculate_conflict_intensity(killmails) do
-    if length(killmails) == 0 do
+    if Enum.empty?(killmails) do
       0.0
     else
       # Factors: kill frequency, ship types involved, ISK destroyed
@@ -252,7 +252,7 @@ defmodule EveDmv.Shared.Strategic.TerritorialAnalyzer do
   end
 
   defp calculate_overall_contestation(contested_systems) do
-    if length(contested_systems) == 0 do
+    if Enum.empty?(contested_systems) do
       0.0
     else
       intensities = Enum.map(contested_systems, & &1.conflict_intensity)
@@ -384,8 +384,8 @@ defmodule EveDmv.Shared.Strategic.TerritorialAnalyzer do
     end
   end
 
-  defp determine_expansion_direction(opportunities, control_zones) do
-    if length(opportunities) == 0 do
+  defp determine_expansion_direction(opportunities, _control_zones) do
+    if Enum.empty?(opportunities) do
       :no_clear_direction
     else
       # Group opportunities by type
@@ -438,7 +438,7 @@ defmodule EveDmv.Shared.Strategic.TerritorialAnalyzer do
   end
 
   defp calculate_control_ratio(control_zones) do
-    if length(control_zones.control_zones) == 0 do
+    if Enum.empty?(control_zones.control_zones) do
       0.0
     else
       controlled =
@@ -511,7 +511,7 @@ defmodule EveDmv.Shared.Strategic.TerritorialAnalyzer do
   end
 
   defp calculate_window_control(window_data)
-       when is_list(window_data) and length(window_data) > 0 do
+       when is_list(window_data) and window_data != [] do
     # Handle list of killmails (single system)
     if is_map(List.first(window_data)) && Map.has_key?(List.first(window_data), :attackers) do
       entities = extract_competing_entities(window_data)
@@ -583,7 +583,7 @@ defmodule EveDmv.Shared.Strategic.TerritorialAnalyzer do
   end
 
   defp identify_dominant_shift(changes) do
-    if length(changes) == 0 do
+    if Enum.empty?(changes) do
       nil
     else
       # Look for entity gaining most control
@@ -602,7 +602,7 @@ defmodule EveDmv.Shared.Strategic.TerritorialAnalyzer do
   end
 
   defp calculate_overall_stability(stability_metrics) do
-    if length(stability_metrics) == 0 do
+    if Enum.empty?(stability_metrics) do
       1.0
     else
       scores = Enum.map(stability_metrics, & &1.stability_score)
@@ -623,7 +623,7 @@ defmodule EveDmv.Shared.Strategic.TerritorialAnalyzer do
   end
 
   defp identify_most_changed_system(changes) do
-    if length(changes) == 0 do
+    if Enum.empty?(changes) do
       nil
     else
       changes
@@ -679,16 +679,10 @@ defmodule EveDmv.Shared.Strategic.TerritorialAnalyzer do
   end
 
   defp classify_ship_type(ship_type_id) do
-    # Simplified ship classification
-    case rem(ship_type_id, 20) do
-      0..2 -> :frigate
-      3..4 -> :destroyer
-      5..6 -> :cruiser
-      7 -> :battlecruiser
-      8 -> :battleship
-      9..12 -> :industrial
-      13..14 -> :assault_frigate
-      _ -> :other
+    # Use actual ship classification from static data
+    case EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id) do
+      {:ok, ship_class} -> ship_class
+      {:error, _} -> :other
     end
   end
 end

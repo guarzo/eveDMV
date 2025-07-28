@@ -39,7 +39,7 @@ defmodule EveDmv.Security.HeadersValidator do
     headers = get_security_headers(conn)
     issues = find_security_issues(headers)
 
-    if length(issues) > 0 do
+    if not Enum.empty?(issues) do
       log_security_issues(conn, issues)
     end
 
@@ -52,7 +52,7 @@ defmodule EveDmv.Security.HeadersValidator do
   def validate_headers(headers) when is_map(headers) do
     issues = find_security_issues_from_map(headers)
 
-    if length(issues) > 0 do
+    if not Enum.empty?(issues) do
       {:error, issues}
     else
       {:ok, :valid}
@@ -114,7 +114,7 @@ defmodule EveDmv.Security.HeadersValidator do
 
     failed_checks = Enum.filter(checks, fn {status, _} -> status == :error end)
 
-    if length(failed_checks) > 0 do
+    if not Enum.empty?(failed_checks) do
       Logger.warning("Security validation failed checks: #{inspect(failed_checks)}")
     else
       Logger.debug("All security checks passed")

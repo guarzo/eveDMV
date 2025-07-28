@@ -600,7 +600,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
         (usage_score + diversity_score) / 2
       end)
 
-    if length(mastery_scores) > 0 do
+    if not Enum.empty?(mastery_scores) do
       average_mastery = Enum.sum(mastery_scores) / length(mastery_scores)
       # 6 main ship classes
       class_breadth = min(1.0, classes_used / 6)
@@ -1072,7 +1072,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     kills = Enum.count(killmails, &(&1.victim_character_id == nil))
     _deaths = length(killmails) - kills
 
-    if length(killmails) > 0 do
+    if not Enum.empty?(killmails) do
       kills / length(killmails)
     else
       0.5
@@ -1125,7 +1125,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
         end
       end)
 
-    solo_rate = if length(killmails) > 0, do: solo_kills / length(killmails), else: 0
+    solo_rate = if not Enum.empty?(killmails), do: solo_kills / length(killmails), else: 0
     # 60%+ solo activity
     solo_rate > 0.6
   end
@@ -1143,7 +1143,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
         end
       end)
 
-    fleet_rate = if length(killmails) > 0, do: fleet_kills / length(killmails), else: 0
+    fleet_rate = if not Enum.empty?(killmails), do: fleet_kills / length(killmails), else: 0
     # 70%+ fleet activity
     fleet_rate > 0.7
   end
@@ -1156,7 +1156,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
         estimate_killmail_value(km) > 500_000_000
       end)
 
-    opportunist_rate = if length(killmails) > 0, do: high_value_kills / length(killmails), else: 0
+    opportunist_rate =
+      if not Enum.empty?(killmails), do: high_value_kills / length(killmails), else: 0
+
     # 30%+ high value targets
     opportunist_rate > 0.3
   end

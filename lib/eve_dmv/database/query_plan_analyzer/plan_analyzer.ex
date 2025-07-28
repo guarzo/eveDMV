@@ -242,7 +242,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.PlanAnalyzer do
 
     # Row estimation errors
     statistics_recommendations =
-      if length(analysis.row_estimation_errors) > 0 do
+      if not Enum.empty?(analysis.row_estimation_errors) do
         [
           "Update table statistics with ANALYZE to improve query planning"
           | initial_recommendations

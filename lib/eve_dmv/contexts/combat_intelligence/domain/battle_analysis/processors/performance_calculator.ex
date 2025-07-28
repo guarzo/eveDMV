@@ -258,7 +258,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Pe
         |> Enum.max(fn -> 0 end)
 
       average_intensity =
-        if length(timeline_data) > 0 do
+        if not Enum.empty?(timeline_data) do
           timeline_data
           |> Enum.map(& &1.intensity_score)
           |> Enum.sum()
@@ -318,7 +318,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Pe
           end
         end)
 
-      if length(efficiencies) > 0 do
+      if not Enum.empty?(efficiencies) do
         Float.round(Enum.sum(efficiencies) / length(efficiencies), 2)
       else
         0.0

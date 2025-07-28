@@ -57,25 +57,71 @@ defmodule EveDmv.Api do
 
   @doc """
   Executes a read query against this domain and returns the result or raises an error.
-
-  This function provides a convenient wrapper around Ash.read!/2 that automatically
-  passes this domain as the target.
-
-  ## Parameters
-  - `query` - An Ash query struct or queryable resource
-
-  ## Returns
-  - The query results on success
-  - Raises an error on failure
-
-  ## Examples
-      iex> KillmailRaw |> Ash.Query.limit(10) |> Api.read!()
-      [%KillmailRaw{}, ...]
-
-      iex> Api.read!(KillmailRaw)
-      [%KillmailRaw{}, ...]
   """
   def read!(query) do
     Ash.read!(query, domain: __MODULE__)
+  end
+
+  @doc """
+  Executes a read query against this domain with options.
+  """
+  def read!(resource, opts) when is_atom(resource) do
+    Ash.read!(resource, opts ++ [domain: __MODULE__])
+  end
+
+  @doc """
+  Executes a read query against this domain.
+  """
+  def read(query) do
+    Ash.read(query, domain: __MODULE__)
+  end
+
+  @doc """
+  Executes a read query against this domain with options.
+  """
+  def read(resource, opts) when is_atom(resource) do
+    Ash.read(resource, opts ++ [domain: __MODULE__])
+  end
+
+  @doc """
+  Creates a record in this domain.
+  """
+  def create(resource, attrs, opts \\ []) do
+    Ash.create(resource, attrs, opts ++ [domain: __MODULE__])
+  end
+
+  @doc """
+  Updates a record in this domain.
+  """
+  def update(record, attrs, opts \\ []) do
+    Ash.update(record, attrs, opts ++ [domain: __MODULE__])
+  end
+
+  @doc """
+  Destroys a record in this domain.
+  """
+  def destroy(record, opts \\ []) do
+    Ash.destroy(record, opts ++ [domain: __MODULE__])
+  end
+
+  @doc """
+  Bulk creates records in this domain.
+  """
+  def bulk_create(resource, attrs_list, opts \\ []) do
+    Ash.bulk_create(resource, attrs_list, opts ++ [domain: __MODULE__])
+  end
+
+  @doc """
+  Gets a record by ID in this domain.
+  """
+  def get(resource, id, opts \\ []) do
+    Ash.get(resource, id, opts ++ [domain: __MODULE__])
+  end
+
+  @doc """
+  Counts records in this domain.
+  """
+  def count(query) do
+    Ash.count(query, domain: __MODULE__)
   end
 end

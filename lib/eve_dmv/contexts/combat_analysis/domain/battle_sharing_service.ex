@@ -9,7 +9,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleSharingService do
   use GenServer
   require Logger
 
-  alias EveDmv.Shared.Infrastructure.{UnifiedCache, UnifiedRepository}
+  alias EveDmv.Shared.Infrastructure.UnifiedCache
 
   # Public API
 
@@ -36,6 +36,13 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleSharingService do
   """
   def evaluate_battle_for_sharing(battle_id) do
     GenServer.cast(__MODULE__, {:evaluate_battle_for_sharing, battle_id})
+  end
+
+  @doc """
+  Get all battle reports for a specific battle.
+  """
+  def get_battle_reports(battle_id) do
+    GenServer.call(__MODULE__, {:get_battle_reports, battle_id})
   end
 
   # GenServer implementation
@@ -71,6 +78,12 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleSharingService do
       error ->
         {:reply, error, state}
     end
+  end
+
+  @impl GenServer
+  def handle_call({:get_battle_reports, battle_id}, _from, state) do
+    reports = fetch_battle_reports(battle_id)
+    {:reply, {:ok, reports}, state}
   end
 
   @impl GenServer
@@ -134,7 +147,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleSharingService do
     end
   end
 
-  defp rate_battle_report_impl(report_id, user_id, rating) do
+  defp rate_battle_report_impl(report_id, _user_id, rating) do
     try do
       # Validate rating
       if rating < 1 or rating > 5 do
@@ -212,7 +225,11 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleSharingService do
   end
 
   defp generate_report_id() do
-    "report_#{System.system_time(:second)}_#{:rand.uniform(10000)}"
+    # Generate a proper UUID for battle report ID
+    timestamp = System.system_time(:second)
+    uuid_bytes = :crypto.strong_rand_bytes(8)
+    uuid_suffix = Base.encode16(uuid_bytes, case: :lower)
+    "report_#{timestamp}_#{uuid_suffix}"
   end
 
   defp generate_default_title(battle_data) do
@@ -224,5 +241,20 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleSharingService do
 
   defp generate_share_url(battle_id) do
     "https://evedmv.com/battles/#{battle_id}/share"
+  end
+
+  defp fetch_battle_reports(battle_id) do
+    # Fetch all reports for a specific battle
+    # In a real implementation, this would query the database
+    cache_key = {:battle_reports, battle_id}
+
+    case UnifiedCache.get_combat_analysis(cache_key) do
+      {:ok, reports} ->
+        reports
+
+      {:error, :not_found} ->
+        # Would query database for battle reports
+        []
+    end
   end
 end

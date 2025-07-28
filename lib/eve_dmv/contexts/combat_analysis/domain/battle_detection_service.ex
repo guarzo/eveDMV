@@ -8,6 +8,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService do
 
   use GenServer
   require Logger
+  import Ecto.Query
 
   alias EveDmv.Shared.Infrastructure.{UnifiedCache, UnifiedRepository}
   alias EveDmv.DomainEvents.KillmailEnriched
@@ -15,8 +16,6 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService do
 
   # 5 minutes
   @battle_time_window 300
-  # 100 AU
-  @battle_distance_au 100
   # Minimum participants for a battle
   @min_participants 3
 
@@ -60,6 +59,20 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService do
             error
         end
     end
+  end
+
+  @doc """
+  Create a battle from validated data.
+  """
+  def create_battle_from_data(battle_data) do
+    GenServer.call(__MODULE__, {:create_battle_from_data, battle_data})
+  end
+
+  @doc """
+  Detect recent battles.
+  """
+  def detect_recent_battles(hours_back, options \\ []) do
+    GenServer.call(__MODULE__, {:detect_recent_battles, hours_back, options})
   end
 
   # GenServer implementation
@@ -131,6 +144,50 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService do
     # Check if service is responsive and functioning
     health_status = if state.processed_killmails >= 0, do: :ok, else: {:error, :invalid_state}
     {:reply, health_status, state}
+  end
+
+  @impl GenServer
+  def handle_call({:detect_recent_battles, hours_back, options}, _from, state) do
+    result = perform_recent_battle_detection(hours_back, options)
+    {:reply, result, state}
+  end
+
+  @impl GenServer
+  def handle_call({:get_battle, battle_id}, _from, state) do
+    # Check active battles first
+    result =
+      case Map.get(state.active_battles, battle_id) do
+        nil ->
+          # Check pending battles
+          case Map.get(state.pending_battles, battle_id) do
+            nil ->
+              # Try to fetch from database
+              fetch_battle_from_db(battle_id)
+
+            battle ->
+              {:ok, battle}
+          end
+
+        battle ->
+          {:ok, battle}
+      end
+
+    {:reply, result, state}
+  end
+
+  @impl GenServer
+  def handle_call({:create_battle_from_data, battle_data}, _from, state) do
+    case create_battle_from_validated_data(battle_data) do
+      {:ok, battle} ->
+        # Add to active battles
+        updated_state =
+          Map.put(state, :active_battles, Map.put(state.active_battles, battle.id, battle))
+
+        {:reply, {:ok, battle}, updated_state}
+
+      error ->
+        {:reply, error, state}
+    end
   end
 
   # Private functions
@@ -247,5 +304,154 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService do
       {:ok, battles} -> Enum.take(battles, limit)
       {:error, :not_found} -> []
     end
+  end
+
+  defp perform_recent_battle_detection(hours_back, options) do
+    since = DateTime.add(DateTime.utc_now(), -hours_back * 3600, :second)
+    min_participants = Keyword.get(options, :min_participants, @min_participants)
+    min_value = Keyword.get(options, :min_value, 10_000_000)
+
+    # Query killmails within the time range
+    query =
+      from(k in EveDmv.Killmails.KillmailRaw,
+        where: k.killmail_time > ^since,
+        order_by: [asc: k.killmail_time]
+      )
+
+    killmails = EveDmv.Repo.all(query)
+
+    # Group killmails into potential battles
+    battles = detect_battles_from_killmails(killmails, min_participants, min_value)
+
+    {:ok, battles}
+  end
+
+  defp detect_battles_from_killmails(killmails, min_participants, min_value) do
+    # Group killmails by system and time windows
+    killmails
+    |> Enum.group_by(& &1.solar_system_id)
+    |> Enum.flat_map(fn {system_id, system_kills} ->
+      # Group by time windows within each system
+      group_by_time_windows(system_kills, @battle_time_window)
+      |> Enum.filter(fn kills ->
+        # Filter by minimum participants and value
+        participant_count = calculate_total_participants(kills)
+        total_value = Enum.sum(Enum.map(kills, &(&1.zkb_total_value || 0)))
+
+        participant_count >= min_participants and total_value >= min_value
+      end)
+      |> Enum.map(fn kills ->
+        # Create battle summary
+        %{
+          system_id: system_id,
+          start_time: List.first(kills).killmail_time,
+          end_time: List.last(kills).killmail_time,
+          killmail_count: length(kills),
+          participant_count: calculate_total_participants(kills),
+          total_value: Enum.sum(Enum.map(kills, &(&1.zkb_total_value || 0))),
+          killmail_ids: Enum.map(kills, & &1.killmail_id)
+        }
+      end)
+    end)
+  end
+
+  defp group_by_time_windows(killmails, window_seconds) do
+    # Sort by time
+    sorted = Enum.sort_by(killmails, & &1.killmail_time, DateTime)
+
+    # Group into time windows
+    Enum.reduce(sorted, [], fn km, acc ->
+      case acc do
+        [] ->
+          [[km]]
+
+        [current_group | rest] ->
+          last_time = List.last(current_group).killmail_time
+          time_diff = DateTime.diff(km.killmail_time, last_time)
+
+          if time_diff <= window_seconds do
+            # Add to current group
+            [[km | current_group] | rest]
+          else
+            # Start new group
+            [[km] | [Enum.reverse(current_group) | rest]]
+          end
+      end
+    end)
+    |> Enum.map(&Enum.reverse/1)
+    |> Enum.reverse()
+  end
+
+  defp calculate_total_participants(killmails) do
+    # Get unique participants across all killmails
+    participants =
+      killmails
+      |> Enum.flat_map(fn km ->
+        victim_id = get_in(km.victim, ["character_id"])
+        attacker_ids = Enum.map(km.attackers, & &1["character_id"])
+
+        [victim_id | attacker_ids]
+        |> Enum.filter(&(&1 != nil))
+      end)
+      |> Enum.uniq()
+
+    length(participants)
+  end
+
+  defp fetch_battle_from_db(battle_id) do
+    # Try to fetch battle from database
+    case UnifiedRepository.get_by_id(:combat, EveDmv.BattleAnalysis.Battle, battle_id) do
+      {:ok, battle} ->
+        # Enrich with additional data
+        enriched_battle = %{
+          battle
+          | killmails: fetch_battle_killmails(battle_id),
+            participants: fetch_battle_participants(battle_id)
+        }
+
+        {:ok, enriched_battle}
+
+      {:error, _reason} ->
+        {:error, :not_found}
+    end
+  end
+
+  defp fetch_battle_killmails(_battle_id) do
+    # Fetch killmails associated with the battle
+    # This would query a battle_killmails join table
+    []
+  end
+
+  defp fetch_battle_participants(_battle_id) do
+    # Fetch participants associated with the battle
+    # This would aggregate from killmail data
+    []
+  end
+
+  defp create_battle_from_validated_data(battle_data) do
+    # Create a new battle record
+    battle_attrs = %{
+      id: battle_data[:id] || generate_battle_id_from_data(battle_data),
+      system_id: battle_data[:system_id],
+      start_time: battle_data[:start_time],
+      end_time: battle_data[:end_time],
+      killmail_count: length(battle_data[:killmail_ids]),
+      participant_count: battle_data[:participant_count] || 0,
+      total_value: battle_data[:total_value] || 0,
+      status: :active,
+      created_at: DateTime.utc_now(),
+      updated_at: DateTime.utc_now()
+    }
+
+    # In a real implementation, this would save to database
+    # For now, return the battle structure
+    {:ok, battle_attrs}
+  end
+
+  defp generate_battle_id_from_data(battle_data) do
+    # Generate deterministic ID from battle data
+    timestamp = DateTime.to_unix(battle_data[:start_time])
+    system_hash = :erlang.phash2(battle_data[:system_id])
+    "battle_#{timestamp}_#{system_hash}_#{:rand.uniform(1000)}"
   end
 end

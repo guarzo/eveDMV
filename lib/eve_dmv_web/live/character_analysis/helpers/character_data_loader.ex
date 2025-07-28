@@ -6,7 +6,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
   This module was refactored as part of Phase 5 of the Large File Refactoring Plan.
   Data analysis logic has been moved to appropriate context modules:
 
-  - CharacterIntelligence: Ship preferences, weapon preferences, ISK efficiency, 
+  - CharacterIntelligence: Ship preferences, weapon preferences, ISK efficiency,
     gang patterns, activity stats, intelligence summary
   - CombatIntelligence: External group collaboration analysis
 

@@ -9,7 +9,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAssessmentEngine do
   use GenServer
   require Logger
 
-  alias EveDmv.Shared.Infrastructure.{UnifiedCache, UnifiedRepository}
+  alias EveDmv.Shared.Infrastructure.UnifiedCache
   alias EveDmv.DomainEvents.KillmailEnriched
 
   # Threat scoring weights
@@ -50,6 +50,24 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAssessmentEngine do
   end
 
   @doc """
+  Assess threat level for any entity type.
+  """
+  def assess_threat_level(entity_id, :character) do
+    assess_character_threat(entity_id)
+  end
+
+  def assess_threat_level(entity_id, :corporation) do
+    assess_corporation_threat(entity_id)
+  end
+
+  @doc """
+  Get threat assessment metrics.
+  """
+  def get_metrics do
+    GenServer.call(__MODULE__, :get_metrics)
+  end
+
+  @doc """
   Process killmail for threat assessment updates.
   """
   def process_killmail(%KillmailEnriched{} = killmail) do
@@ -82,7 +100,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAssessmentEngine do
     case perform_character_threat_assessment(character_id, options) do
       {:ok, assessment} ->
         # Cache the assessment
-        cache_key = {:character_threat, character_id}
+        _cache_key = {:character_threat, character_id}
         # 10 minutes
         UnifiedCache.cache_threat_assessment(character_id, assessment, 600)
 
@@ -116,7 +134,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAssessmentEngine do
     case update_threat_assessment(entity_id, entity_type, intelligence_data) do
       {:ok, updated_assessment} ->
         # Invalidate cache to force refresh
-        cache_key = {:"#{entity_type}_threat", entity_id}
+        cache_key = {safe_entity_type_atom(entity_type), entity_id}
         UnifiedCache.delete(:threat, cache_key)
 
         {:reply, {:ok, updated_assessment}, state}
@@ -418,7 +436,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAssessmentEngine do
   end
 
   defp get_current_assessment(entity_id, entity_type) do
-    cache_key = {:"#{entity_type}_threat", entity_id}
+    cache_key = {safe_entity_type_atom(entity_type), entity_id}
 
     case UnifiedCache.get(:threat, cache_key) do
       {:ok, assessment} -> assessment
@@ -443,4 +461,11 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAssessmentEngine do
   defp get_corporation_fleet_activity(_corp_id, _time_range), do: 0.0
   defp get_territorial_control_score(_corp_id), do: 0.0
   defp get_alliance_strength_modifier(_corp_id), do: 0.0
+
+  # Helper function to safely convert entity type to cache key atom
+  defp safe_entity_type_atom(:character), do: :character_threat
+  defp safe_entity_type_atom(:corporation), do: :corporation_threat
+  defp safe_entity_type_atom("character"), do: :character_threat
+  defp safe_entity_type_atom("corporation"), do: :corporation_threat
+  defp safe_entity_type_atom(_), do: :unknown_threat
 end

@@ -58,7 +58,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
           slow_queries: slow || 0,
           very_slow_queries: very_slow || 0,
           waiting_queries: waiting || 0,
-          has_issues: length(issues) > 0,
+          has_issues: not Enum.empty?(issues),
           issues: issues
         }
 
@@ -161,8 +161,8 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
         lagging_replicas = Enum.filter(replicas, & &1.is_lagging)
 
         %{
-          has_issues: length(lagging_replicas) > 0,
-          issues: if(length(lagging_replicas) > 0, do: ["replica_lag"], else: []),
+          has_issues: not Enum.empty?(lagging_replicas),
+          issues: if(not Enum.empty?(lagging_replicas), do: ["replica_lag"], else: []),
           replicas: replicas,
           lagging_count: length(lagging_replicas)
         }
@@ -232,7 +232,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
         %{
           count: length(transactions),
           transactions: transactions,
-          has_issues: length(transactions) > 0,
+          has_issues: not Enum.empty?(transactions),
           critical_count: Enum.count(transactions, &(&1.severity == :critical))
         }
 
@@ -466,7 +466,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
     initial_recommendations = []
 
     critical_recommendations =
-      if length(critical_tables) > 0 do
+      if not Enum.empty?(critical_tables) do
         [
           "#{length(critical_tables)} tables have > 30% dead tuples - urgent vacuum needed"
           | initial_recommendations
@@ -476,7 +476,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
       end
 
     final_recommendations =
-      if length(never_vacuumed) > 0 do
+      if not Enum.empty?(never_vacuumed) do
         ["#{length(never_vacuumed)} tables have never been vacuumed" | critical_recommendations]
       else
         critical_recommendations

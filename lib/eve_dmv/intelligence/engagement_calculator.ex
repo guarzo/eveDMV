@@ -92,7 +92,7 @@ defmodule EveDmv.Intelligence.EngagementCalculator do
   Takes a list of member analysis records and returns the average engagement score.
   """
   def calculate_average_engagement(member_analyses) when is_list(member_analyses) do
-    if length(member_analyses) > 0 do
+    if not Enum.empty?(member_analyses) do
       total_engagement =
         member_analyses
         |> Enum.map(&Map.get(&1, :engagement_score, 0))
@@ -121,7 +121,7 @@ defmodule EveDmv.Intelligence.EngagementCalculator do
   Members are considered at-risk if their burnout or disengagement score exceeds 50.
   """
   def calculate_at_risk_percentage(member_analyses) when is_list(member_analyses) do
-    if length(member_analyses) > 0 do
+    if not Enum.empty?(member_analyses) do
       at_risk_count =
         Enum.count(member_analyses, fn analysis ->
           burnout_risk = Map.get(analysis, :burnout_risk_score, 0)
@@ -142,7 +142,7 @@ defmodule EveDmv.Intelligence.EngagementCalculator do
   """
   def calculate_high_performers_percentage(member_analyses, threshold \\ 75)
       when is_list(member_analyses) do
-    if length(member_analyses) > 0 do
+    if not Enum.empty?(member_analyses) do
       high_performer_count =
         Enum.count(member_analyses, fn analysis ->
           Map.get(analysis, :engagement_score, 0) > threshold

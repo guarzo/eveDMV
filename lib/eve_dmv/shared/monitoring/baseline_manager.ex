@@ -5,7 +5,7 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
   Responsible for:
   - Baseline data collection
   - Activity baseline calculation
-  - Pattern baseline calculation  
+  - Pattern baseline calculation
   - Threat baseline calculation
   - Baseline validation and quality assessment
   """
@@ -190,7 +190,7 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
   end
 
   defp calculate_average_killmails_per_hour(killmails) do
-    if length(killmails) == 0 do
+    if Enum.empty?(killmails) do
       0.0
     else
       time_span_hours = calculate_time_span_hours(killmails)
@@ -256,19 +256,19 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
       total_participants: length(participants),
       unique_participants: length(unique_participants),
       participation_ratio:
-        if(length(participants) > 0,
+        if(not Enum.empty?(participants),
           do: length(unique_participants) / length(participants),
           else: 0
         ),
       average_participants_per_kill:
-        if(length(killmails) > 0, do: length(participants) / length(killmails), else: 0)
+        if(not Enum.empty?(killmails), do: length(participants) / length(killmails), else: 0)
     }
   end
 
   defp calculate_value_baseline(killmails) do
     values = Enum.map(killmails, &Map.get(&1, :zkb_total_value, 0))
 
-    if length(values) == 0 do
+    if Enum.empty?(values) do
       %{total_value: 0, average_value: 0, median_value: 0, max_value: 0}
     else
       sorted_values = Enum.sort(values)
@@ -326,10 +326,10 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
       clusters = find_temporal_clusters(sorted_kills, 3600)
 
       %{
-        clustering_detected: length(clusters) > 0,
+        clustering_detected: not Enum.empty?(clusters),
         cluster_count: length(clusters),
         average_cluster_size:
-          if(length(clusters) > 0,
+          if(not Enum.empty?(clusters),
             do: Enum.sum(Enum.map(clusters, &length/1)) / length(clusters),
             else: 0
           )
@@ -371,7 +371,7 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
         |> Enum.chunk_every(2, 1, :discard)
         |> Enum.map(fn [k1, k2] -> DateTime.diff(k2.timestamp, k1.timestamp, :second) end)
 
-      if length(intervals) == 0 do
+      if Enum.empty?(intervals) do
         1.0
       else
         mean_interval = Enum.sum(intervals) / length(intervals)
@@ -558,8 +558,15 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
     # Simplified - would use actual ship type data
     Enum.count(killmails, fn km ->
       ship_type_id = km.victim.ship_type_id
-      # Simplified capital ship detection
-      rem(ship_type_id, 100) < 5
+      # Use actual ship classification
+      case EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id) do
+        {:ok, ship_class}
+        when ship_class in [:carrier, :dreadnought, :titan, :supercarrier, :force_auxiliary] ->
+          true
+
+        _ ->
+          false
+      end
     end)
   end
 
@@ -568,14 +575,17 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
   end
 
   defp count_pod_kills(killmails) do
-    # Simplified pod detection
+    # Use actual pod ship type IDs
+    # Capsule (pod) type_id is 670 and Capsule - Genolution 'Auroral' 197-variant is 33328
+    pod_type_ids = [670, 33328]
+
     Enum.count(killmails, fn km ->
-      rem(km.victim.ship_type_id, 50) == 1
+      km.victim.ship_type_id in pod_type_ids
     end)
   end
 
   defp calculate_threat_frequency(killmails) do
-    if length(killmails) == 0 do
+    if Enum.empty?(killmails) do
       0.0
     else
       time_span = calculate_time_span_hours(killmails)
@@ -590,7 +600,7 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
   end
 
   defp assess_threat_severity(killmails) do
-    if length(killmails) == 0 do
+    if Enum.empty?(killmails) do
       :minimal
     else
       high_value_ratio = count_high_value_threats(killmails) / length(killmails)
@@ -661,7 +671,7 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
         threats
       end
 
-    if length(threats) == 0, do: [:minimal_threats], else: threats
+    if Enum.empty?(threats), do: [:minimal_threats], else: threats
   end
 
   defp calculate_threat_baseline_confidence(threat_indicators) do
@@ -835,7 +845,7 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
         recommendations
       end
 
-    if length(recommendations) == 0 do
+    if Enum.empty?(recommendations) do
       ["Baseline quality meets requirements"]
     else
       recommendations

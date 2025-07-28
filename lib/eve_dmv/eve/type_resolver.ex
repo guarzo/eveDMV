@@ -203,7 +203,7 @@ defmodule EveDmv.Eve.TypeResolver do
 
   # Use Ash bulk_create for better performance
   defp bulk_create_item_types(item_data_list)
-       when is_list(item_data_list) and length(item_data_list) > 0 do
+       when is_list(item_data_list) and item_data_list != [] do
     Logger.info("Bulk creating #{length(item_data_list)} item types")
 
     try do

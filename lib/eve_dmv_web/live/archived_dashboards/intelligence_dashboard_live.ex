@@ -434,7 +434,7 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
     updated_events = [recent_event | socket.assigns.recent_events] |> Enum.take(50)
 
     updated_analyses =
-      if length(event.significant_changes || []) > 0 do
+      if not Enum.empty?(event.significant_changes || []) do
         analysis_info = %{
           character_id: event.character_id,
           analysis_type: event.analysis_type,
@@ -508,49 +508,7 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
     }
   end
 
-  # Template helper functions
-
-  defp threat_level_color(level) when is_atom(level) do
-    case level do
-      :extreme -> "danger"
-      :very_high -> "danger"
-      :high -> "warning"
-      :moderate -> "info"
-      :low -> "success"
-      :minimal -> "secondary"
-      _ -> "secondary"
-    end
-  end
-
-  defp threat_level_color(_), do: "secondary"
-
-  defp system_status_color(status) when is_binary(status) do
-    case status do
-      "healthy" -> "success"
-      "warning" -> "warning"
-      "error" -> "danger"
-      "unknown" -> "secondary"
-      _ -> "secondary"
-    end
-  end
-
-  defp system_status_color(_), do: "secondary"
-
-  defp relative_time(datetime) when is_struct(datetime, DateTime) do
-    case EveDmvWeb.Helpers.TimeFormatter.format_relative_time(datetime) do
-      result when is_binary(result) -> result
-    end
-  rescue
-    _ -> "unknown"
-  end
-
-  defp format_time(datetime) when is_struct(datetime, DateTime) do
-    case EveDmvWeb.Helpers.TimeFormatter.format_datetime(datetime) do
-      result when is_binary(result) -> result
-    end
-  rescue
-    _ -> "unknown"
-  end
+  # Template helper functions (removed unused functions)
 
   # Export functions
 

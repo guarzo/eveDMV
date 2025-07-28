@@ -417,65 +417,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   end
 
   defp get_theoretical_ship_stats(ship_type_id) do
-    # Theoretical ship statistics (would come from static data in production)
+    # Get actual ship statistics from static data
+    base_stats = get_ship_base_stats(ship_type_id)
     ship_class = determine_ship_class(ship_type_id)
-
-    base_stats =
-      case ship_class do
-        :frigate ->
-          %{
-            base_hp: 3000,
-            base_dps: 150,
-            base_speed: 300,
-            base_sig: 40,
-            expected_survival_time: 45
-          }
-
-        :destroyer ->
-          %{
-            base_hp: 8000,
-            base_dps: 250,
-            base_speed: 200,
-            base_sig: 70,
-            expected_survival_time: 90
-          }
-
-        :cruiser ->
-          %{
-            base_hp: 15_000,
-            base_dps: 300,
-            base_speed: 150,
-            base_sig: 120,
-            expected_survival_time: 120
-          }
-
-        :battlecruiser ->
-          %{
-            base_hp: 30_000,
-            base_dps: 500,
-            base_speed: 100,
-            base_sig: 200,
-            expected_survival_time: 180
-          }
-
-        :battleship ->
-          %{
-            base_hp: 60_000,
-            base_dps: 700,
-            base_speed: 80,
-            base_sig: 300,
-            expected_survival_time: 240
-          }
-
-        _ ->
-          %{
-            base_hp: 10_000,
-            base_dps: 200,
-            base_speed: 150,
-            base_sig: 100,
-            expected_survival_time: 120
-          }
-      end
 
     Map.put(base_stats, :ship_class, ship_class)
   end
@@ -933,7 +877,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
       end)
       |> Enum.filter(& &1)
 
-    if length(ship_types) > 0 do
+    if not Enum.empty?(ship_types) do
       FleetAnalyzer.analyze_fleet_composition(ship_types)
     else
       nil
@@ -1499,59 +1443,87 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   end
 
   defp get_ship_base_stats(ship_type_id) do
-    # In production, this would query the SDE for actual ship stats
-    # For now, return reasonable defaults based on ship class
+    # Query actual ship statistics from static data
+    case EveDmv.StaticData.ShipTypes.get_ship_attributes(ship_type_id) do
+      {:ok, attributes} ->
+        # Get DPS from static data
+        dps =
+          case EveDmv.StaticData.ShipTypes.get_ship_dps(ship_type_id) do
+            {:ok, value} -> value
+            # Fallback only if static data fails
+            _ -> 200.0
+          end
 
-    # Simplified ship class detection
-    cond do
-      # Frigates
-      ship_type_id in 582..650 ->
+        # Get EHP from static data
+        ehp =
+          case EveDmv.StaticData.ShipTypes.get_ship_ehp(ship_type_id) do
+            {:ok, value} -> value
+            # Fallback only if static data fails
+            _ -> 10_000.0
+          end
+
+        # Calculate expected survival time based on ship class
+        ship_class = determine_ship_class(ship_type_id)
+        expected_survival_time = calculate_expected_survival_time(ship_class)
+
         %{
-          shield_hp: 500,
-          armor_hp: 400,
-          hull_hp: 300,
-          max_velocity: 400,
-          sig_radius: 35,
-          capacitor: 350,
+          base_hp: ehp,
+          base_dps: dps,
+          base_speed: attributes.max_velocity || 150.0,
+          base_sig: attributes.signature_radius || 100.0,
+          expected_survival_time: expected_survival_time,
+          # Include other attributes that might be needed
+          shield_hp: attributes.shield_hp || ehp * 0.4,
+          armor_hp: attributes.armor_hp || ehp * 0.3,
+          hull_hp: attributes.structure_hp || ehp * 0.3,
+          max_velocity: attributes.max_velocity || 150.0,
+          sig_radius: attributes.signature_radius || 100.0,
+          capacitor: attributes.capacitor || 350.0,
           # ms
           cap_recharge_rate: 150_000
         }
 
-      # Cruisers
-      ship_type_id in 620..634 ->
-        %{
-          shield_hp: 2500,
-          armor_hp: 2000,
-          hull_hp: 1800,
-          max_velocity: 250,
-          sig_radius: 130,
-          capacitor: 1500,
-          cap_recharge_rate: 300_000
-        }
+      _ ->
+        # Fallback for unknown ships
+        ship_class = determine_ship_class(ship_type_id)
+        expected_survival_time = calculate_expected_survival_time(ship_class)
 
-      # Battleships
-      ship_type_id in 638..645 ->
-        %{
-          shield_hp: 8000,
-          armor_hp: 7000,
-          hull_hp: 6500,
-          max_velocity: 120,
-          sig_radius: 400,
-          capacitor: 5500,
-          cap_recharge_rate: 900_000
-        }
+        # Use conservative defaults based on ship class
+        {base_ehp, base_dps, base_speed, base_sig} =
+          case ship_class do
+            :frigate -> {5_000, 150, 400, 35}
+            :destroyer -> {12_000, 250, 300, 70}
+            :cruiser -> {25_000, 400, 250, 130}
+            :battlecruiser -> {60_000, 600, 180, 200}
+            :battleship -> {120_000, 800, 120, 400}
+            _ -> {10_000, 200, 200, 100}
+          end
 
-      # Default
-      true ->
         %{
-          shield_hp: 1000,
-          armor_hp: 1000,
-          hull_hp: 1000,
-          max_velocity: 200,
-          sig_radius: 100,
+          base_hp: base_ehp,
+          base_dps: base_dps,
+          base_speed: base_speed,
+          base_sig: base_sig,
+          expected_survival_time: expected_survival_time,
+          shield_hp: base_ehp * 0.4,
+          armor_hp: base_ehp * 0.3,
+          hull_hp: base_ehp * 0.3,
+          max_velocity: base_speed,
+          sig_radius: base_sig,
           capacitor: 1000,
           cap_recharge_rate: 250_000
         }
+    end
+  end
+
+  defp calculate_expected_survival_time(ship_class) do
+    case ship_class do
+      :frigate -> 45
+      :destroyer -> 90
+      :cruiser -> 120
+      :battlecruiser -> 180
+      :battleship -> 240
+      _ -> 120
     end
   end
 
@@ -1678,7 +1650,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
           victim_match || attacker_match
         end)
 
-      if length(appearances) > 0 do
+      if not Enum.empty?(appearances) do
         first = List.first(appearances)
         last = List.last(appearances)
 
@@ -1699,7 +1671,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
       killmails = battle_data.killmails
       involved = find_character_involvement(character_id, ship_type_id, killmails)
 
-      if length(involved) > 0 do
+      if not Enum.empty?(involved) do
         timestamps = Enum.map(involved, & &1.killmail_time)
         first = Enum.min(timestamps)
         last = Enum.max(timestamps)
@@ -1973,7 +1945,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
     first_half = Enum.take(values, div(length(values), 2))
     second_half = Enum.drop(values, div(length(values), 2))
 
-    if length(first_half) > 0 and length(second_half) > 0 do
+    if not Enum.empty?(first_half) and not Enum.empty?(second_half) do
       avg_first = average(first_half)
       avg_second = average(second_half)
 

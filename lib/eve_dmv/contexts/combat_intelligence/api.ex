@@ -277,7 +277,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   defp validate_search_criteria(_), do: {:error, :invalid_search_criteria}
 
   defp validate_character_ids(character_ids)
-       when is_list(character_ids) and length(character_ids) > 0 do
+       when is_list(character_ids) and character_ids != [] do
     if Enum.all?(character_ids, &(is_integer(&1) and &1 > 0)) do
       :ok
     else

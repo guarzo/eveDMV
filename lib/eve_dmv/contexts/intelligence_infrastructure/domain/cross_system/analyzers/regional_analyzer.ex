@@ -64,7 +64,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
             total_kills = length(killmails)
 
             avg_kills_per_system =
-              if length(systems) > 0, do: total_kills / length(systems), else: 0
+              if not Enum.empty?(systems), do: total_kills / length(systems), else: 0
 
             hotspots =
               activity_by_system
@@ -167,7 +167,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
                 length(high_value_kills) > 50 -> :critical
                 length(high_value_kills) > 20 -> :high
                 length(high_value_kills) > 10 -> :moderate
-                length(high_value_kills) > 0 -> :low
+                not Enum.empty?(high_value_kills) -> :low
                 true -> :minimal
               end
 
@@ -372,7 +372,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
         Decimal.add(acc, k.total_value || Decimal.new(0))
       end)
 
-    if length(kills) > 0 do
+    if not Enum.empty?(kills) do
       Decimal.div(total, Decimal.new(length(kills)))
     else
       Decimal.new(0)

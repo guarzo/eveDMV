@@ -152,7 +152,7 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
           phx-value-tab="alerts"
           class={"tab " <> if @selected_tab == :alerts, do: "active", else: ""}
         >
-          Alerts <%= if length(@report.alerts) > 0, do: "(#{length(@report.alerts)})", else: "" %>
+          Alerts <%= if not Enum.empty?(@report.alerts), do: "(#{length(@report.alerts)})", else: "" %>
         </button>
       </div>
 
@@ -303,7 +303,7 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
         </table>
       </div>
 
-      <%= if length(@metrics.queries.slow_queries) > 0 do %>
+      <%= if not Enum.empty?(@metrics.queries.slow_queries) do %>
         <div class="slow-queries">
           <h3>Recent Slow Queries</h3>
           <table class="data-table">
@@ -444,7 +444,7 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
         </button>
       </div>
 
-      <%= if length(@alerts) == 0 do %>
+      <%= if Enum.empty?(@alerts) do %>
         <div class="no-alerts">
           ✅ No active performance alerts
         </div>

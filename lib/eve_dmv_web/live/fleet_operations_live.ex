@@ -609,7 +609,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
         </div>
 
         <!-- Most Common Ships -->
-        #{if length(most_common_ships) > 0 do
+        #{if not Enum.empty?(most_common_ships) do
       """
       <div>
         <h4 class="font-medium text-gray-900 dark:text-white mb-2">Most Common Ships</h4>
@@ -701,7 +701,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
 
         <!-- Fleet Tactical Insights -->
         #{case Map.get(data || %{}, :composition_summary) do
-      %{fleet_insights: insights} when is_list(insights) and length(insights) > 0 -> """
+      %{fleet_insights: insights} when is_list(insights) and insights != [] -> """
         <div>
           <h4 class="font-medium text-gray-900 dark:text-white mb-2">Tactical Insights</h4>
           <div class="space-y-2">
@@ -884,7 +884,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
     end}
 
         <!-- Top Performers -->
-        #{if length(top_performers) > 0 do
+        #{if not Enum.empty?(top_performers) do
       """
       <div>
         <h4 class="font-medium text-gray-900 dark:text-white mb-3">Top Performers</h4>
@@ -992,7 +992,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
 
   defp calculate_average_ship_value(participants) do
     total_value = Enum.sum(Enum.map(participants, &Map.get(&1, :ship_value, 0)))
-    if length(participants) > 0, do: round(total_value / length(participants)), else: 0
+    if not Enum.empty?(participants), do: round(total_value / length(participants)), else: 0
   end
 
   defp get_most_common_ship(ship_distribution) do
@@ -1026,7 +1026,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
     total_value = Enum.sum(Enum.map(participants, &Map.get(&1, :ship_value, 0)))
     victims = Enum.count(participants, &Map.get(&1, :is_victim, false))
 
-    if length(participants) > 0 do
+    if not Enum.empty?(participants) do
       risk_factor = victims / length(participants)
       # Normalize to 1B ISK
       value_factor = min(1.0, total_value / 1_000_000_000)

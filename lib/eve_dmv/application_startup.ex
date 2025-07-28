@@ -127,7 +127,7 @@ defmodule EveDmv.ApplicationStartup do
         end
       end)
 
-    if length(missing_required) > 0 do
+    if not Enum.empty?(missing_required) do
       Logger.error(
         "❌ Missing required environment variables: #{Enum.join(missing_required, ", ")}"
       )
@@ -146,7 +146,7 @@ defmodule EveDmv.ApplicationStartup do
           end
         end)
 
-      if length(missing_optional) > 0 do
+      if not Enum.empty?(missing_optional) do
         Logger.info(
           "ℹ️ Optional environment variables not set: #{Enum.join(missing_optional, ", ")}"
         )

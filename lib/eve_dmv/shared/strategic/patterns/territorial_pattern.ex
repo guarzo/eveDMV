@@ -12,7 +12,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
   require Logger
 
   @territorial_control_threshold 0.6
-  @expansion_threshold 0.3
+  # @expansion_threshold 0.3  # Currently unused
 
   @doc """
   Identifies territorial expansion patterns.
@@ -205,7 +205,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
     if hours > 0, do: kill_count / hours, else: 0.0
   end
 
-  defp identify_expansion_indicators(expansion_metrics, strategic_data) do
+  defp identify_expansion_indicators(expansion_metrics, _strategic_data) do
     indicators = []
 
     # System count increase
@@ -305,7 +305,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
     total_activity >= 10.0
   end
 
-  defp describe_expansion_pattern(indicators, expansion_metrics) do
+  defp describe_expansion_pattern(indicators, _expansion_metrics) do
     indicator_types = Enum.map(indicators, fn {type, _} -> type end)
 
     cond do
@@ -337,7 +337,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
         expansion_metrics
         |> Enum.map(& &1.entity_spread)
         |> then(fn spreads ->
-          if length(spreads) > 0, do: Enum.sum(spreads) / length(spreads), else: 0.0
+          if not Enum.empty?(spreads), do: Enum.sum(spreads) / length(spreads), else: 0.0
         end),
       peak_activity:
         expansion_metrics
@@ -371,7 +371,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
   end
 
   defp average(list) do
-    if length(list) == 0 do
+    if Enum.empty?(list) do
       0.0
     else
       Enum.sum(list) / length(list)
@@ -429,7 +429,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
         length(km.attackers) >= 5
       end)
 
-    if length(killmails) > 0 do
+    if not Enum.empty?(killmails) do
       Float.round(defensive_kills / length(killmails), 3)
     else
       0.0
@@ -467,7 +467,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
       # Responses within 30 minutes
       |> Enum.filter(&(&1 <= 30))
 
-    if length(response_intervals) > 0 do
+    if not Enum.empty?(response_intervals) do
       avg_response = Enum.sum(response_intervals) / length(response_intervals)
       # Convert to score (lower is better)
       Float.round(1.0 - min(avg_response / 30, 1.0), 3)
@@ -493,7 +493,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
         {data.system_id, unique_pilots}
       end)
 
-    if length(system_forces) > 0 do
+    if not Enum.empty?(system_forces) do
       total_pilots = Enum.sum(Enum.map(system_forces, fn {_, pilots} -> pilots end))
       max_concentration = Enum.max(Enum.map(system_forces, fn {_, pilots} -> pilots end))
 
@@ -507,7 +507,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
     end
   end
 
-  defp identify_consolidation_indicators(strategic_data, metrics) do
+  defp identify_consolidation_indicators(_strategic_data, metrics) do
     indicators = []
 
     # High system concentration
@@ -633,7 +633,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
     end
   end
 
-  defp identify_control_zones(systems, activity_levels) do
+  defp identify_control_zones(_systems, activity_levels) do
     # Group adjacent high-activity systems
     high_activity_systems =
       activity_levels
@@ -661,7 +661,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
 
   defp assess_zone_stability(zones, strategic_data) do
     # Simplified stability based on activity consistency
-    if length(zones) == 0 do
+    if Enum.empty?(zones) do
       1.0
     else
       # Check for consistent activity patterns
@@ -675,7 +675,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
           calculate_zone_stability(system, killmail_data, time_windows)
         end)
 
-      if length(stability_scores) > 0 do
+      if not Enum.empty?(stability_scores) do
         Float.round(Enum.sum(stability_scores) / length(stability_scores), 3)
       else
         0.0

@@ -99,8 +99,10 @@ defmodule EveDmv.Shared.Strategic.AssessmentCompiler do
 
   defp generate_assessment_id do
     timestamp = :os.system_time(:millisecond)
-    random = :rand.uniform(9999)
-    "STRAT-#{timestamp}-#{random}"
+    # Use secure random bytes for ID generation
+    random_bytes = :crypto.strong_rand_bytes(4)
+    random_suffix = Base.encode16(random_bytes, case: :lower)
+    "STRAT-#{timestamp}-#{random_suffix}"
   end
 
   defp extract_time_period(strategic_data) do
@@ -326,7 +328,7 @@ defmodule EveDmv.Shared.Strategic.AssessmentCompiler do
         factors
       end
 
-    if length(factors) == 0 do
+    if Enum.empty?(factors) do
       ["Stable operational environment"]
     else
       factors
@@ -656,7 +658,7 @@ defmodule EveDmv.Shared.Strategic.AssessmentCompiler do
 
     posture_action = List.first(posture.implementation_guidelines)
 
-    if length(best_opportunities) > 0 do
+    if not Enum.empty?(best_opportunities) do
       "#{posture_action}. Priority opportunities: #{Enum.join(best_opportunities, ", ")}"
     else
       posture_action
@@ -883,7 +885,7 @@ defmodule EveDmv.Shared.Strategic.AssessmentCompiler do
         insights
       end
 
-    if length(insights) == 0 do
+    if Enum.empty?(insights) do
       ["No significant cross-domain correlations identified"]
     else
       insights
@@ -952,7 +954,7 @@ defmodule EveDmv.Shared.Strategic.AssessmentCompiler do
   defp assess_overall_threat_severity(pattern_analysis) do
     threats = identify_threats_from_patterns(pattern_analysis)
 
-    if length(threats) == 0 do
+    if Enum.empty?(threats) do
       :minimal
     else
       severities = Enum.map(threats, & &1.severity)

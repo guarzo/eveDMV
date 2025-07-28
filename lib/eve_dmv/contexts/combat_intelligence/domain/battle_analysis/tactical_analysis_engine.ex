@@ -427,7 +427,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.TacticalAnaly
       end)
 
     %{
-      evolution_detected: length(pattern_changes) > 0,
+      evolution_detected: not Enum.empty?(pattern_changes),
       pattern_changes: pattern_changes,
       trend: determine_pattern_trend(pattern_changes)
     }

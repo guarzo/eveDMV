@@ -279,7 +279,7 @@ defmodule EveDmv.Shared.Strategic.TemporalAnalyzer do
   end
 
   defp calculate_average_cluster_size(clusters) do
-    if length(clusters) == 0 do
+    if Enum.empty?(clusters) do
       0.0
     else
       total_size = Enum.sum(Enum.map(clusters, & &1.size))
@@ -297,7 +297,7 @@ defmodule EveDmv.Shared.Strategic.TemporalAnalyzer do
   end
 
   defp create_time_windows(killmails, window_size_hours) do
-    if length(killmails) == 0 do
+    if Enum.empty?(killmails) do
       []
     else
       sorted_killmails = Enum.sort_by(killmails, & &1.timestamp, DateTime)
@@ -421,7 +421,7 @@ defmodule EveDmv.Shared.Strategic.TemporalAnalyzer do
         |> Enum.chunk_every(2, 1, :discard)
         |> Enum.map(fn [t1, t2] -> DateTime.diff(t2, t1, :hour) end)
 
-      if length(intervals) > 0 do
+      if not Enum.empty?(intervals) do
         avg_interval = Enum.sum(intervals) / length(intervals)
 
         %{

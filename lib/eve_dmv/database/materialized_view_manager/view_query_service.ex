@@ -247,7 +247,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewQueryService do
     end
   end
 
-  defp export_to_csv(data) when is_list(data) and length(data) > 0 do
+  defp export_to_csv(data) when is_list(data) and data != [] do
     headers = data |> List.first() |> Map.keys() |> Enum.join(",")
 
     rows =

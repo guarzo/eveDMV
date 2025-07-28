@@ -85,10 +85,12 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TrendAnaly
         second_half = Enum.drop(activity_data, mid_point)
 
         first_avg =
-          if length(first_half) > 0, do: Enum.sum(first_half) / length(first_half), else: 0
+          if not Enum.empty?(first_half), do: Enum.sum(first_half) / length(first_half), else: 0
 
         second_avg =
-          if length(second_half) > 0, do: Enum.sum(second_half) / length(second_half), else: 0
+          if not Enum.empty?(second_half),
+            do: Enum.sum(second_half) / length(second_half),
+            else: 0
 
         change_percent = if first_avg > 0, do: (second_avg - first_avg) / first_avg * 100, else: 0
 
@@ -240,10 +242,11 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TrendAnaly
     first_half = Enum.take(activity_series, mid_point)
     second_half = Enum.drop(activity_series, mid_point)
 
-    first_avg = if length(first_half) > 0, do: Enum.sum(first_half) / length(first_half), else: 0
+    first_avg =
+      if not Enum.empty?(first_half), do: Enum.sum(first_half) / length(first_half), else: 0
 
     second_avg =
-      if length(second_half) > 0, do: Enum.sum(second_half) / length(second_half), else: 0
+      if not Enum.empty?(second_half), do: Enum.sum(second_half) / length(second_half), else: 0
 
     growth_rate = if first_avg > 0, do: (second_avg - first_avg) / first_avg * 100, else: 0
 
@@ -374,7 +377,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TrendAnaly
   end
 
   defp calculate_activity_spread(values) do
-    if length(values) > 0 do
+    if not Enum.empty?(values) do
       max_val = Enum.max(values)
       min_val = Enum.min(values)
       if max_val > 0, do: (max_val - min_val) / max_val, else: 0.0
@@ -384,7 +387,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TrendAnaly
   end
 
   defp calculate_variance(values) do
-    if length(values) > 0 do
+    if not Enum.empty?(values) do
       mean = Enum.sum(values) / length(values)
 
       values

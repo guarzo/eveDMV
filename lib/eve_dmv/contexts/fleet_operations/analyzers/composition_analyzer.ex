@@ -807,7 +807,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
         end)
 
       # Average the balance scores
-      if length(balance_scores) > 0 do
+      if not Enum.empty?(balance_scores) do
         Enum.sum(balance_scores) / length(balance_scores)
       else
         0.0
@@ -940,29 +940,16 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
         0
 
       id when is_integer(id) ->
-        cond do
-          # Frigates (fast)
-          id in 582..650 -> 2500
-          # Destroyers (fast)
-          id in 324..380 -> 2200
-          # Cruisers (medium)
-          id in 620..634 -> 1800
-          # Battlecruisers (slow)
-          id in 1201..1310 -> 1200
-          # Battleships (slow)
-          id in 638..645 -> 800
-          # Carriers (very slow)
-          id in 547..554 -> 400
-          # Dreadnoughts (very slow)
-          id in 670..673 -> 300
-          # Titans (extremely slow)
-          id in 3514..3518 -> 200
-          # T3 Cruisers (medium-fast)
-          id in 11_567..12_034 -> 1900
-          # T3 Destroyers (fast)
-          id in 29_984..29_990 -> 2300
-          # Default
-          true -> 1500
+        # Use proper classification from ShipTypes module
+        case EveDmv.StaticData.ShipTypes.classify_ship_type(id) do
+          :frigate -> 2500
+          :destroyer -> 2200
+          :cruiser -> 1800
+          :battlecruiser -> 1200
+          :battleship -> 800
+          :capital -> 400
+          :supercapital -> 200
+          _ -> 1500
         end
 
       _ ->
@@ -1002,30 +989,17 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
             dps
 
           {:error, _} ->
-            # Fallback to ship class estimation if no data available
-            cond do
-              # Frigates
-              id in 582..650 -> 150
-              # Destroyers
-              id in 324..380 -> 200
-              # Cruisers
-              id in 620..634 -> 350
-              # Battlecruisers
-              id in 1201..1310 -> 600
-              # Battleships
-              id in 638..645 -> 800
-              # Carriers
-              id in 547..554 -> 2000
-              # Dreadnoughts
-              id in 670..673 -> 5000
-              # Titans
-              id in 3514..3518 -> 8000
-              # T3 Cruisers
-              id in 11_567..12_034 -> 450
-              # T3 Destroyers
-              id in 29_984..29_990 -> 250
-              # Default
-              true -> 200
+            # Use proper classification fallback from ShipTypes module
+            # This will use estimated values based on ship class
+            case EveDmv.StaticData.ShipTypes.classify_ship_type(id) do
+              :frigate -> 150.0
+              :destroyer -> 250.0
+              :cruiser -> 400.0
+              :battlecruiser -> 600.0
+              :battleship -> 800.0
+              :capital -> 2000.0
+              :supercapital -> 5000.0
+              _ -> 200.0
             end
         end
 
@@ -1065,30 +1039,17 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
             ehp
 
           {:error, _} ->
-            # Fallback to ship class estimation if no data available
-            cond do
-              # Frigates
-              id in 582..650 -> 8_000
-              # Destroyers
-              id in 324..380 -> 15_000
-              # Cruisers
-              id in 620..634 -> 35_000
-              # Battlecruisers
-              id in 1201..1310 -> 80_000
-              # Battleships
-              id in 638..645 -> 150_000
-              # Carriers
-              id in 547..554 -> 8_000_000
-              # Dreadnoughts
-              id in 670..673 -> 15_000_000
-              # Titans
-              id in 3514..3518 -> 50_000_000
-              # T3 Cruisers
-              id in 11_567..12_034 -> 45_000
-              # T3 Destroyers
-              id in 29_984..29_990 -> 20_000
-              # Default
-              true -> 25_000
+            # Use proper classification fallback from ShipTypes module
+            # This will use estimated values based on ship class
+            case EveDmv.StaticData.ShipTypes.classify_ship_type(id) do
+              :frigate -> 3000.0
+              :destroyer -> 5000.0
+              :cruiser -> 12000.0
+              :battlecruiser -> 20000.0
+              :battleship -> 35000.0
+              :capital -> 200_000.0
+              :supercapital -> 500_000.0
+              _ -> 10000.0
             end
         end
 
@@ -1321,7 +1282,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
 
   defp slot_matches_flag(_, _), do: false
 
-  defp classify_role_from_fittings(fittings) when is_list(fittings) and length(fittings) > 0 do
+  defp classify_role_from_fittings(fittings) when is_list(fittings) and fittings != [] do
     # Analyze fitting patterns to classify role
     weapon_count = count_weapons_in_fittings(fittings)
     logi_count = count_logi_modules_in_fittings(fittings)

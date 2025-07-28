@@ -147,7 +147,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       socket =
         socket
         |> assign(:pilot_suggestions, suggestions)
-        |> assign(:show_pilot_suggestions, length(suggestions) > 0)
+        |> assign(:show_pilot_suggestions, not Enum.empty?(suggestions))
         |> assign(:pilot_name, search_term)
 
       {:noreply, socket}
@@ -204,7 +204,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
               content = :zlib.uncompress(compressed)
 
               # Parse the log with ENHANCED parser
-              case EnhancedCombatLogParser.parse_combat_log(
+              case EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser.parse_combat_log(
                      content,
                      pilot_name: combat_log.pilot_name
                    ) do
@@ -342,7 +342,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       |> Map.put(:fitting_data, existing_fitting)
       |> Map.put(:combat_log_analysis, combat_log_analysis)
 
-    case ShipPerformanceAnalyzer.analyze_ship_performance(
+    case EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer.analyze_ship_performance(
            enhanced_ship_data,
            socket.assigns.current_battle
          ) do
@@ -537,7 +537,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       # Update ship data with new fitting
       ship_data = Map.put(socket.assigns.selected_ship, :fitting_data, fitting.parsed_fitting)
 
-      case ShipPerformanceAnalyzer.analyze_ship_performance(
+      case EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer.analyze_ship_performance(
              ship_data,
              socket.assigns.current_battle
            ) do
@@ -737,13 +737,13 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   # Name resolution helpers
   def resolve_system_name(system_id) when is_integer(system_id) do
-    NameResolver.system_name(system_id)
+    EveDmv.Eve.NameResolver.StaticDataResolver.system_name(system_id)
   end
 
   def resolve_system_name(_), do: "Unknown System"
 
   def resolve_character_name(character_id) when is_integer(character_id) do
-    NameResolver.character_name(character_id)
+    EveDmv.Eve.NameResolver.EsiEntityResolver.character_name(character_id)
   end
 
   def resolve_character_name(_), do: "Unknown"
@@ -783,7 +783,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       all_sides = (pilot_sides ++ battle_sides) |> Enum.uniq() |> Enum.sort()
 
       # Use detected sides or default to side_1, side_2
-      custom_sides = if length(all_sides) > 0, do: all_sides, else: ["side_1", "side_2"]
+      custom_sides = if not Enum.empty?(all_sides), do: all_sides, else: ["side_1", "side_2"]
 
       # Calculate corporation summaries
       corp_summaries = calculate_corp_summaries(battle)
@@ -831,7 +831,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
         |> Enum.reduce(acc, fn attacker, acc2 ->
           # Distribute victim value among all attackers
           attacker_share =
-            if length(event.attackers) > 0 do
+            if not Enum.empty?(event.attackers) do
               victim_value / length(event.attackers)
             else
               0
@@ -881,7 +881,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   defp load_battle_metrics(socket) do
     if socket.assigns.current_battle do
-      case EveDmv.Contexts.CombatAnalysis.Domain.BattleMetricsCalculator.calculate_battle_metrics(
+      case EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator.calculate_battle_metrics(
              socket.assigns.current_battle
            ) do
         {:ok, metrics} ->

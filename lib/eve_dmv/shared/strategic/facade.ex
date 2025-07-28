@@ -39,7 +39,7 @@ defmodule EveDmv.Shared.Strategic.Facade do
          # Pattern analysis
          {:ok, pattern_analysis} <-
            PatternRecognition.identify_strategic_patterns(strategic_data, options[:pattern_focus]),
-         # Territorial analysis  
+         # Territorial analysis
          territorial_analysis <-
            analyze_territorial_patterns(
              strategic_data,

@@ -219,7 +219,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Calculators
     end
   end
 
-  defp calculate_average(scores) when length(scores) > 0 do
+  defp calculate_average(scores) when scores != [] do
     Enum.sum(scores) / length(scores)
   end
 

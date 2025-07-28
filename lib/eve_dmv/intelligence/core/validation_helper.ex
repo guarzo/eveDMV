@@ -179,7 +179,7 @@ defmodule EveDmv.Intelligence.Core.ValidationHelper do
 
     invalid_includes = include -- valid_includes
 
-    if length(invalid_includes) > 0 do
+    if not Enum.empty?(invalid_includes) do
       {:error, "Invalid include options: #{inspect(invalid_includes)}"}
     else
       :ok
@@ -247,7 +247,7 @@ defmodule EveDmv.Intelligence.Core.ValidationHelper do
         end
       end)
 
-    if length(invalid_ids) > 0 do
+    if not Enum.empty?(invalid_ids) do
       indices = Enum.map(invalid_ids, fn {_id, index} -> index end)
       {:error, "Invalid entity IDs at indices: #{inspect(indices)}"}
     else

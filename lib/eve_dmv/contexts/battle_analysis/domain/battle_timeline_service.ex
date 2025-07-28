@@ -157,7 +157,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
 
     # Cleanup/final phase - only add if there are events after other phases
     last_phase_end =
-      if length(initial_phases) > 0 do
+      if not Enum.empty?(initial_phases) do
         initial_phases |> Enum.map(& &1.end_time) |> Enum.max()
       else
         nil

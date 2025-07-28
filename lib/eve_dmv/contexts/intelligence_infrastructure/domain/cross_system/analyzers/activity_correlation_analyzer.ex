@@ -157,7 +157,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   def generate_activity_insights(activity_patterns) do
     # Peak hour insights
     peak_insights =
-      if length(activity_patterns.peak_activity_hours) > 0 do
+      if not Enum.empty?(activity_patterns.peak_activity_hours) do
         peak_hours_str = Enum.join(activity_patterns.peak_activity_hours, ", ")
         ["Peak activity detected at hours: #{peak_hours_str} EVE time"]
       else
@@ -176,7 +176,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
     # Anomaly insights
     anomaly_insights =
-      if length(activity_patterns.anomalies) > 0 do
+      if not Enum.empty?(activity_patterns.anomalies) do
         [
           "#{length(activity_patterns.anomalies)} activity anomalies detected requiring investigation"
         ]
@@ -192,7 +192,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   """
   def generate_movement_insights(movement_patterns) do
     corridor_insights =
-      if length(movement_patterns.movement_corridors) > 0 do
+      if not Enum.empty?(movement_patterns.movement_corridors) do
         primary_corridors =
           Enum.count(movement_patterns.movement_corridors, fn c -> c.corridor_type == :primary end)
 
@@ -207,7 +207,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
     # Choke point insights
     choke_insights =
-      if length(movement_patterns.choke_points) > 0 do
+      if not Enum.empty?(movement_patterns.choke_points) do
         top_choke = List.first(movement_patterns.choke_points)
 
         if top_choke && top_choke.choke_score > 50 do
@@ -256,7 +256,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     kill_counts = Map.values(system_kills)
 
     avg_kills =
-      if length(kill_counts) > 0, do: Enum.sum(kill_counts) / length(kill_counts), else: 0
+      if not Enum.empty?(kill_counts), do: Enum.sum(kill_counts) / length(kill_counts), else: 0
 
     std_dev = calculate_std_deviation(kill_counts)
 
@@ -624,7 +624,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
           end
         end)
 
-      if length(similarities) > 0 do
+      if not Enum.empty?(similarities) do
         Enum.sum(similarities) / length(similarities)
       else
         0.0
@@ -762,7 +762,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
         |> Enum.map(fn {_hour, kills} -> length(kills) end)
 
       avg_activity =
-        if length(hourly_activity) > 0 do
+        if not Enum.empty?(hourly_activity) do
           Enum.sum(hourly_activity) / length(hourly_activity)
         else
           0

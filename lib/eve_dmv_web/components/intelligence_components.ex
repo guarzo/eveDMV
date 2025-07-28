@@ -270,7 +270,7 @@ defmodule EveDmvWeb.IntelligenceComponents do
         </div>
       </div>
 
-      <div :if={length(@fitness_data.probation_recommendations) > 0} class="probation-terms">
+      <div :if={not Enum.empty?(@fitness_data.probation_recommendations)} class="probation-terms">
         <h4>Recommended Probation Terms</h4>
         <ul class="probation-list">
           <%= for term <- @fitness_data.probation_recommendations do %>
@@ -451,7 +451,7 @@ defmodule EveDmvWeb.IntelligenceComponents do
         </div>
       </div>
 
-      <div :if={length(@anomalies.anomalies_detected) > 0} class="anomaly-list">
+      <div :if={not Enum.empty?(@anomalies.anomalies_detected)} class="anomaly-list">
         <%= for anomaly <- @anomalies.anomalies_detected do %>
           <div class="anomaly-item">
             <i class="icon-alert-circle"></i>

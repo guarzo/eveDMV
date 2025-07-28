@@ -96,7 +96,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewRefreshScheduler do
   def perform_incremental_refreshes(_views) do
     incremental_views = ViewDefinitions.views_by_strategy(:incremental)
 
-    if length(incremental_views) > 0 do
+    if not Enum.empty?(incremental_views) do
       Logger.debug("Performing incremental refresh for #{length(incremental_views)} views")
 
       refreshed_views =
@@ -134,7 +134,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewRefreshScheduler do
     table_names = ViewDefinitions.extract_tables_from_pattern(cache_pattern)
     affected_views = ViewDefinitions.find_affected_views(table_names)
 
-    if length(affected_views) > 0 do
+    if not Enum.empty?(affected_views) do
       Logger.debug("Refreshing #{length(affected_views)} views affected by cache invalidation")
 
       refreshed_views =

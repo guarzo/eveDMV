@@ -323,7 +323,7 @@ defmodule EveDmvWeb.ProfileLive do
             <div>
               <label class="block text-sm font-medium text-gray-300 mb-1">Authorized Scopes</label>
               <div class="bg-gray-700 px-3 py-2 rounded-md text-white">
-                <%= if @current_user.scopes && length(@current_user.scopes) > 0 do %>
+                <%= if @current_user.scopes && not Enum.empty?(@current_user.scopes) do %>
                   <div class="flex flex-wrap gap-2">
                     <%= for scope <- @current_user.scopes do %>
                       <span class="bg-blue-600 text-white px-2 py-1 rounded text-xs">

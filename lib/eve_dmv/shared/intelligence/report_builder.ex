@@ -87,8 +87,9 @@ defmodule EveDmv.Shared.Intelligence.ReportBuilder do
 
   defp generate_report_id do
     timestamp = :os.system_time(:millisecond)
-    random = :rand.uniform(9999)
-    "INT-#{timestamp}-#{random}"
+    # Use UUID for unique report IDs instead of random numbers
+    unique_id = :crypto.strong_rand_bytes(4) |> Base.encode16(case: :lower)
+    "INT-#{timestamp}-#{unique_id}"
   end
 
   defp determine_classification(fused_intelligence) do
@@ -140,7 +141,7 @@ defmodule EveDmv.Shared.Intelligence.ReportBuilder do
     # Add threat points
     threat_points =
       case get_in(fused_intelligence, [:threat_assessment, :immediate_threats]) do
-        threats when is_list(threats) and length(threats) > 0 ->
+        threats when is_list(threats) and threats != [] ->
           ["#{length(threats)} immediate threats identified"]
 
         _ ->
@@ -311,7 +312,9 @@ defmodule EveDmv.Shared.Intelligence.ReportBuilder do
   end
 
   defp generate_threat_id do
-    "THREAT-#{:rand.uniform(99999)}"
+    timestamp = :os.system_time(:microsecond)
+    unique_id = :crypto.strong_rand_bytes(3) |> Base.encode16(case: :lower)
+    "THREAT-#{timestamp}-#{unique_id}"
   end
 
   defp format_activity_summary(activity_summary) do
@@ -407,7 +410,7 @@ defmodule EveDmv.Shared.Intelligence.ReportBuilder do
     base_recs = []
 
     immediate_threat_recs =
-      if length(threat_assessment.immediate_threats) > 0 do
+      if not Enum.empty?(threat_assessment.immediate_threats) do
         [
           %{
             action: "Deploy defensive fleet immediately",

@@ -275,7 +275,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
 
   # Add temporal activity insights
   defp add_temporal_insights(insights, %{timezone_activity: timezone_data})
-       when length(timezone_data) > 0 do
+       when timezone_data != [] do
     [{peak_hour, _count} | _] = timezone_data
     ["Most active during #{format_hour(peak_hour)} UTC" | insights]
   end

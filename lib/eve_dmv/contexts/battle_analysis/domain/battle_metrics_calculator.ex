@@ -185,7 +185,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
     %{
       total_isk_destroyed: total_destroyed,
       average_loss_value:
-        if(length(killmails) > 0,
+        if(not Enum.empty?(killmails),
           do: Float.round(total_destroyed / length(killmails), 2),
           else: 0
         ),
@@ -206,7 +206,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
     %{
       total_damage_applied: total_damage,
       average_damage_per_kill:
-        if(length(killmails) > 0, do: Float.round(total_damage / length(killmails), 2), else: 0),
+        if(not Enum.empty?(killmails),
+          do: Float.round(total_damage / length(killmails), 2),
+          else: 0
+        ),
       dps_overall:
         if(duration_seconds > 0, do: Float.round(total_damage / duration_seconds, 2), else: 0),
       damage_by_weapon_type: group_damage_by_weapon_type(killmails),
@@ -266,7 +269,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
   defp calculate_average_attackers(killmails) do
     total_attackers = Enum.sum(Enum.map(killmails, &(&1.attacker_count || 0)))
 
-    if length(killmails) > 0 do
+    if not Enum.empty?(killmails) do
       Float.round(total_attackers / length(killmails), 1)
     else
       0
@@ -471,7 +474,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
       |> Enum.map(&calculate_killmail_overkill/1)
       |> Enum.reject(&is_nil/1)
 
-    if length(overkill_data) > 0 do
+    if not Enum.empty?(overkill_data) do
       total_overkill = Enum.sum(Enum.map(overkill_data, & &1.overkill_percentage))
       average_overkill = total_overkill / length(overkill_data)
 
@@ -519,26 +522,30 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
   end
 
   defp estimate_ship_ehp(ship_type_id) when is_integer(ship_type_id) do
-    # Rough EHP estimates based on ship class
-    cond do
-      # Frigates
-      ship_type_id in 582..650 -> 5_000
-      # Destroyers
-      ship_type_id in 324..380 -> 12_000
-      # Cruisers
-      ship_type_id in 620..634 -> 25_000
-      # Battlecruisers
-      ship_type_id in 1201..1310 -> 60_000
-      # Battleships
-      ship_type_id in 638..645 -> 120_000
-      # Carriers
-      ship_type_id in 547..554 -> 2_000_000
-      # Dreadnoughts
-      ship_type_id in 670..673 -> 8_000_000
-      # Titans
-      ship_type_id in 3514..3518 -> 25_000_000
-      # Default estimate
-      true -> 30_000
+    # Get actual EHP from static data
+    case EveDmv.StaticData.ShipTypes.get_ship_ehp(ship_type_id) do
+      {:ok, ehp} when ehp > 0 ->
+        ehp
+
+      _ ->
+        # Fallback: Get ship class and use conservative estimates
+        case EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id) do
+          {:ok, :frigate} -> 5_000
+          {:ok, :destroyer} -> 12_000
+          {:ok, :cruiser} -> 25_000
+          {:ok, :battlecruiser} -> 60_000
+          {:ok, :battleship} -> 120_000
+          {:ok, :carrier} -> 2_000_000
+          {:ok, :dreadnought} -> 8_000_000
+          {:ok, :titan} -> 25_000_000
+          {:ok, :supercarrier} -> 15_000_000
+          {:ok, :force_auxiliary} -> 3_000_000
+          {:ok, :industrial} -> 10_000
+          {:ok, :mining_barge} -> 15_000
+          {:ok, :exhumer} -> 20_000
+          # Conservative default
+          _ -> 30_000
+        end
     end
   end
 

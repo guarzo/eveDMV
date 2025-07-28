@@ -165,7 +165,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       # Detect spillover patterns
       spillover_vectors = detect_spillover_patterns(threat_timeline)
 
-      spillover_detected = length(spillover_vectors) > 0
+      spillover_detected = not Enum.empty?(spillover_vectors)
 
       # Calculate spillover probability
       spillover_probability =
@@ -284,7 +284,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
           escalation_indicators
         end
 
-      escalation_detected = length(escalation_indicators) > 0
+      escalation_detected = not Enum.empty?(escalation_indicators)
       escalation_probability = calculate_escalation_probability(escalation_indicators)
 
       %{
@@ -367,7 +367,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
         kill.victim_ship_type_id && kill.victim_ship_type_id > 35_000
       end)
 
-    if length(structure_kills) > 0 do
+    if not Enum.empty?(structure_kills) do
       affected_systems = structure_kills |> Enum.map(& &1.solar_system_id) |> Enum.uniq()
       target_types = structure_kills |> Enum.map(& &1.victim_ship_type_id) |> Enum.uniq()
 
@@ -395,7 +395,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
         |> Enum.filter(fn chunk -> length(chunk) > 3 end)
       end)
 
-    if length(fleet_indicators) > 0 do
+    if not Enum.empty?(fleet_indicators) do
       avg_fleet_size =
         fleet_indicators
         |> Enum.map(&length/1)
@@ -433,7 +433,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
           kill.victim_ship_type_id < 30_000
       end)
 
-    if length(capital_kills) > 0 do
+    if not Enum.empty?(capital_kills) do
       ship_types = capital_kills |> Enum.map(& &1.victim_ship_type_id) |> Enum.uniq()
 
       %{
@@ -622,7 +622,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       severity_count >= 2 -> :immediate_defensive_posture
       severity_count == 1 -> :heightened_alert
       length(indicators) > 2 -> :increased_monitoring
-      length(indicators) > 0 -> :standard_vigilance
+      not Enum.empty?(indicators) -> :standard_vigilance
       true -> :normal_operations
     end
   end

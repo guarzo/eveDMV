@@ -184,4 +184,25 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
     Logger.debug("Invalidated intelligence scores cache", character_id: character_id)
     :ok
   end
+
+  @doc """
+  Get cache statistics.
+  """
+  @spec get_stats() :: {:ok, map()}
+  def get_stats() do
+    # Get cache stats from the Cache module if available
+    case Cache.stats(@cache_type) do
+      {:ok, stats} ->
+        {:ok, stats}
+
+      _ ->
+        {:ok,
+         %{
+           cache_size: 0,
+           hit_rate: 0.0,
+           miss_rate: 0.0,
+           evictions: 0
+         }}
+    end
+  end
 end

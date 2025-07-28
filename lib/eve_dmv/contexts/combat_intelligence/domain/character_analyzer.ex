@@ -77,6 +77,25 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
     compare_characters_implementation(character_ids)
   end
 
+  @doc """
+  Get cache statistics for character analysis.
+  """
+  @spec get_cache_stats() :: map()
+  def get_cache_stats() do
+    case AnalysisCache.get_stats() do
+      {:ok, stats} ->
+        stats
+
+      _ ->
+        %{
+          cache_size: 0,
+          hit_rate: 0.0,
+          miss_rate: 0.0,
+          evictions: 0
+        }
+    end
+  end
+
   # Private functions
 
   defp perform_analysis(character_id, _context) do

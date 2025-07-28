@@ -49,7 +49,7 @@ defmodule EveDmv.Killmails.KillmailBroadcaster do
 
         # Use the surveillance matching engine to find matching profiles
         case MatchingEngine.match_killmail(killmail_data) do
-          matched_profiles when is_list(matched_profiles) and length(matched_profiles) > 0 ->
+          matched_profiles when is_list(matched_profiles) and matched_profiles != [] ->
             Logger.info(
               "🎯 Killmail #{killmail_data["killmail_id"]} matched #{length(matched_profiles)} surveillance profiles"
             )

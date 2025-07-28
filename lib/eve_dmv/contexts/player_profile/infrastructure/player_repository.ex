@@ -534,10 +534,10 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
       [[threat_level, activity_level, engagement_preference, tactical_tendency]] = results
 
       %{
-        threat_level: String.to_atom(threat_level || "unknown"),
-        activity_level: String.to_atom(activity_level || "unknown"),
-        engagement_preference: String.to_atom(engagement_preference || "unknown"),
-        tactical_tendency: String.to_atom(tactical_tendency || "unknown")
+        threat_level: safe_to_atom(threat_level, :unknown),
+        activity_level: safe_to_atom(activity_level, :unknown),
+        engagement_preference: safe_to_atom(engagement_preference, :unknown),
+        tactical_tendency: safe_to_atom(tactical_tendency, :unknown)
       }
     end
   end
@@ -592,4 +592,19 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
     SELECT weapon_id, weapon_name, usage_count FROM weapon_usage
     """
   end
+
+  # Helper function to safely convert strings to existing atoms
+  defp safe_to_atom(nil, default), do: default
+  defp safe_to_atom("", default), do: default
+
+  defp safe_to_atom(value, default) when is_binary(value) do
+    try do
+      String.to_existing_atom(value)
+    rescue
+      ArgumentError -> default
+    end
+  end
+
+  defp safe_to_atom(value, _default) when is_atom(value), do: value
+  defp safe_to_atom(_value, default), do: default
 end

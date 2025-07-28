@@ -541,7 +541,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     %{
       logi_count: length(logi_ships),
       total_rep_power: total_rep_power,
-      rep_per_logi: if(length(logi_ships) > 0, do: total_rep_power / length(logi_ships), else: 0),
+      rep_per_logi:
+        if(not Enum.empty?(logi_ships), do: total_rep_power / length(logi_ships), else: 0),
       sustainability_rating:
         rate_logistics_sustainability(length(logi_ships), length(ship_analyses))
     }
@@ -707,7 +708,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
   end
 
   defp assess_range_flexibility(range_groups) do
-    active_ranges = Enum.count(range_groups, fn {_range, ships} -> length(ships) > 0 end)
+    active_ranges = Enum.count(range_groups, fn {_range, ships} -> not Enum.empty?(ships) end)
 
     cond do
       active_ranges >= 4 -> :very_flexible

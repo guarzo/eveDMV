@@ -8,7 +8,6 @@ defmodule EveDmv.Database.QueryOptimizations do
 
   import Ecto.Query
   alias EveDmv.Repo
-  alias EveDmv.Database.QueryOptimizer
   require Logger
 
   @doc """
@@ -51,7 +50,7 @@ defmodule EveDmv.Database.QueryOptimizations do
   def batch_load_character_stats(character_ids) do
     query = """
     WITH character_stats AS (
-      SELECT 
+      SELECT
         character_id,
         COUNT(CASE WHEN involvement_type = 'victim' THEN 1 END) as deaths,
         COUNT(CASE WHEN involvement_type = 'attacker' THEN 1 END) as kills,
@@ -59,21 +58,21 @@ defmodule EveDmv.Database.QueryOptimizations do
         SUM(CASE WHEN involvement_type = 'attacker' THEN total_value ELSE 0 END) as isk_destroyed
       FROM (
         -- Victims
-        SELECT 
+        SELECT
           victim_character_id as character_id,
           'victim' as involvement_type,
           COALESCE((raw_data->>'total_value')::numeric, 0) as total_value
         FROM killmails_raw
         WHERE victim_character_id = ANY($1)
           AND killmail_time >= NOW() - INTERVAL '90 days'
-        
+
         UNION ALL
-        
+
         -- Attackers (using indexed JSONB query)
-        SELECT 
+        SELECT
           (attacker->>'character_id')::bigint as character_id,
           'attacker' as involvement_type,
-          COALESCE((raw_data->>'total_value')::numeric, 0) / 
+          COALESCE((raw_data->>'total_value')::numeric, 0) /
             jsonb_array_length(raw_data->'attackers') as total_value
         FROM killmails_raw,
              LATERAL jsonb_array_elements(raw_data->'attackers') as attacker
@@ -106,7 +105,7 @@ defmodule EveDmv.Database.QueryOptimizations do
   def batch_load_recent_activity(character_ids, limit \\ 10) do
     query = """
     WITH ranked_activity AS (
-      SELECT 
+      SELECT
         character_id,
         killmail_id,
         killmail_time,
@@ -117,7 +116,7 @@ defmodule EveDmv.Database.QueryOptimizations do
         ROW_NUMBER() OVER (PARTITION BY character_id ORDER BY killmail_time DESC) as rn
       FROM (
         -- Victims
-        SELECT 
+        SELECT
           victim_character_id as character_id,
           killmail_id,
           killmail_time,
@@ -127,11 +126,11 @@ defmodule EveDmv.Database.QueryOptimizations do
           COALESCE((raw_data->>'total_value')::numeric, 0) as total_value
         FROM killmails_raw
         WHERE victim_character_id = ANY($1)
-        
+
         UNION ALL
-        
+
         -- Attackers
-        SELECT 
+        SELECT
           (attacker->>'character_id')::bigint as character_id,
           k.killmail_id,
           k.killmail_time,
@@ -144,7 +143,7 @@ defmodule EveDmv.Database.QueryOptimizations do
         WHERE (attacker->>'character_id')::bigint = ANY($1)
       ) as all_activity
     )
-    SELECT 
+    SELECT
       character_id,
       killmail_id,
       killmail_time,
@@ -197,14 +196,14 @@ defmodule EveDmv.Database.QueryOptimizations do
         victim_alliance_id as alliance_id,
         victim_alliance_name as alliance_name,
         FIRST_VALUE(killmail_time) OVER (
-          PARTITION BY victim_character_id, victim_corporation_id 
+          PARTITION BY victim_character_id, victim_corporation_id
           ORDER BY killmail_time DESC
         ) as last_seen
       FROM killmails_raw
       WHERE victim_character_id = ANY($1)
         AND victim_corporation_id IS NOT NULL
     )
-    SELECT 
+    SELECT
       character_id,
       corporation_id,
       corporation_name,
@@ -247,7 +246,7 @@ defmodule EveDmv.Database.QueryOptimizations do
   def batch_load_ship_preferences(character_ids, limit \\ 5) do
     query = """
     WITH ship_usage AS (
-      SELECT 
+      SELECT
         character_id,
         ship_type_id,
         COUNT(*) as usage_count,
@@ -255,18 +254,18 @@ defmodule EveDmv.Database.QueryOptimizations do
         COUNT(CASE WHEN involvement_type = 'loss' THEN 1 END) as loss_count
       FROM (
         -- Ships lost
-        SELECT 
+        SELECT
           victim_character_id as character_id,
           victim_ship_type_id as ship_type_id,
           'loss' as involvement_type
         FROM killmails_raw
         WHERE victim_character_id = ANY($1)
           AND killmail_time >= NOW() - INTERVAL '90 days'
-        
+
         UNION ALL
-        
+
         -- Ships used in kills
-        SELECT 
+        SELECT
           (attacker->>'character_id')::bigint as character_id,
           (attacker->>'ship_type_id')::bigint as ship_type_id,
           'kill' as involvement_type
@@ -280,7 +279,7 @@ defmodule EveDmv.Database.QueryOptimizations do
       GROUP BY character_id, ship_type_id
     ),
     ranked_ships AS (
-      SELECT 
+      SELECT
         character_id,
         ship_type_id,
         usage_count,
@@ -289,7 +288,7 @@ defmodule EveDmv.Database.QueryOptimizations do
         ROW_NUMBER() OVER (PARTITION BY character_id ORDER BY usage_count DESC) as rank
       FROM ship_usage
     )
-    SELECT 
+    SELECT
       rs.character_id,
       rs.ship_type_id,
       rs.usage_count,

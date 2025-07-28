@@ -463,7 +463,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
     (corp_diversity + alliance_diversity) / 2.0
   end
 
-  defp calculate_size_diversity(sizes) when length(sizes) == 0, do: 0.0
+  defp calculate_size_diversity(sizes) when sizes == [], do: 0.0
 
   defp calculate_size_diversity(sizes) do
     total = Enum.sum(sizes)

@@ -138,8 +138,8 @@ defmodule EveDmv.Shared.Monitoring.Facade do
       # Process any escalated alerts
       escalated_alerts = Enum.filter(escalation_result.escalations, &(&1.status == :escalated))
 
-      if length(escalated_alerts) > 0 do
-        Logger.warn("#{length(escalated_alerts)} alerts escalated")
+      if not Enum.empty?(escalated_alerts) do
+        Logger.warning("#{length(escalated_alerts)} alerts escalated")
 
         # Deliver escalated alerts
         notification_channels = get_escalation_channels(alert_manager)
@@ -491,8 +491,9 @@ defmodule EveDmv.Shared.Monitoring.Facade do
   end
 
   defp generate_monitoring_id() do
+    # Generate a proper UUID-based monitoring ID
     timestamp = DateTime.utc_now() |> DateTime.to_unix()
-    random = :rand.uniform(9999)
-    "MON-#{timestamp}-#{random}"
+    uuid = Ecto.UUID.generate()
+    "MON-#{timestamp}-#{String.slice(uuid, 0..7)}"
   end
 end

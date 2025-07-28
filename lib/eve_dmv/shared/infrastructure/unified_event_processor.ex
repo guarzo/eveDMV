@@ -26,9 +26,6 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedEventProcessor do
   @default_batch_size 10
   # 5 seconds
   @default_batch_timeout 5_000
-  @max_retry_attempts 3
-  # 1 second
-  @retry_backoff_base 1_000
 
   @type event_handler :: {module(), atom()} | function()
   @type event_type :: atom()
@@ -168,6 +165,11 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedEventProcessor do
   end
 
   @impl GenServer
+  def handle_call(:get_queue_size, _from, state) do
+    {:reply, length(state.event_queue), state}
+  end
+
+  @impl GenServer
   def handle_cast({:queue_event, event}, state) do
     new_queue = [event | state.event_queue]
 
@@ -182,7 +184,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedEventProcessor do
 
   @impl GenServer
   def handle_info(:process_batch, state) do
-    if length(state.event_queue) > 0 do
+    if not Enum.empty?(state.event_queue) do
       {updated_state, _batch_result} = process_event_batch(state.event_queue, state)
       schedule_batch_processing(state.batch_timeout)
       {:noreply, %{updated_state | event_queue: []}}
@@ -332,11 +334,17 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedEventProcessor do
   defp get_event_type(%StaticDataUpdated{}), do: :static_data_updated
 
   defp get_event_type(event) do
-    event.__struct__
-    |> Module.split()
-    |> List.last()
-    |> Macro.underscore()
-    |> String.to_atom()
+    module_name =
+      event.__struct__
+      |> Module.split()
+      |> List.last()
+      |> Macro.underscore()
+
+    try do
+      String.to_existing_atom(module_name)
+    rescue
+      ArgumentError -> :unknown_event
+    end
   end
 
   defp update_event_stats(stats, event, result) do
@@ -464,33 +472,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedEventProcessor do
 
   ## Event Processing Retry Logic
 
-  defp process_with_retry(event, handler, attempt \\ 1) do
-    case process_with_handler(event, handler) do
-      :ok ->
-        :ok
-
-      {:error, reason} when attempt < @max_retry_attempts ->
-        backoff_time = @retry_backoff_base * :math.pow(2, attempt - 1)
-
-        Logger.warn("Event processing failed, retrying in #{backoff_time}ms", %{
-          attempt: attempt,
-          max_attempts: @max_retry_attempts,
-          handler: inspect(handler),
-          error: inspect(reason)
-        })
-
-        Process.sleep(round(backoff_time))
-        process_with_retry(event, handler, attempt + 1)
-
-      {:error, reason} ->
-        Logger.error("Event processing failed after #{@max_retry_attempts} attempts", %{
-          handler: inspect(handler),
-          final_error: inspect(reason)
-        })
-
-        {:error, reason}
-    end
-  end
+  # defp process_with_retry - removed as unused
 
   ## Health Check and Monitoring
 
@@ -521,10 +503,5 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedEventProcessor do
   @spec get_queue_size() :: non_neg_integer()
   def get_queue_size() do
     GenServer.call(__MODULE__, :get_queue_size)
-  end
-
-  @impl GenServer
-  def handle_call(:get_queue_size, _from, state) do
-    {:reply, length(state.event_queue), state}
   end
 end

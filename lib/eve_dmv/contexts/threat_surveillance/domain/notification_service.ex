@@ -9,7 +9,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.NotificationService do
   use GenServer
   require Logger
 
-  alias EveDmv.Shared.Infrastructure.{UnifiedCache, UnifiedRepository}
+  alias EveDmv.Shared.Infrastructure.UnifiedCache
   alias Phoenix.PubSub
 
   # Notification channels
@@ -62,6 +62,23 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.NotificationService do
     GenServer.call(__MODULE__, :get_stats)
   end
 
+  @doc """
+  Process a surveillance match event.
+  """
+  def process_surveillance_match(event) do
+    # Convert event to match data format
+    match_data = %{
+      user_id: event.profile.user_id,
+      profile_id: event.profile_id,
+      killmail_id: event.killmail_id,
+      match_type: event.match_type,
+      confidence: event.confidence,
+      timestamp: DateTime.utc_now()
+    }
+
+    send_match_notification(match_data)
+  end
+
   # GenServer implementation
 
   @impl GenServer
@@ -97,7 +114,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.NotificationService do
       channels = get_user_notification_channels(user_id, :surveillance_match)
 
       case deliver_notification(notification, channels, state) do
-        {:ok, delivery_results, updated_state} ->
+        {:ok, _delivery_results, updated_state} ->
           Logger.info("Sent surveillance match notification to user #{user_id}")
           {:noreply, updated_state}
 
@@ -131,7 +148,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.NotificationService do
       channels = get_user_notification_channels(user_id, :threat_alert)
 
       case deliver_notification(notification, channels, state) do
-        {:ok, delivery_results, updated_state} ->
+        {:ok, _delivery_results, updated_state} ->
           Logger.info("Sent threat alert notification to user #{user_id}")
           {:noreply, updated_state}
 
@@ -161,7 +178,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.NotificationService do
       }
 
       case deliver_notification(notification, channels, state) do
-        {:ok, delivery_results, updated_state} ->
+        {:ok, _delivery_results, updated_state} ->
           Logger.debug("Sent custom notification to user #{user_id}")
           {:noreply, updated_state}
 

@@ -46,6 +46,20 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.AlertManagementService do
     GenServer.call(__MODULE__, :get_metrics)
   end
 
+  @doc """
+  Get recent alerts.
+  """
+  def get_recent_alerts(options \\ []) do
+    GenServer.call(__MODULE__, {:get_recent_alerts, options})
+  end
+
+  @doc """
+  Get alert metrics with options.
+  """
+  def get_metrics(options) when is_list(options) do
+    GenServer.call(__MODULE__, {:get_metrics, options})
+  end
+
   # GenServer implementation
 
   @impl GenServer
@@ -295,7 +309,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.AlertManagementService do
     end
   end
 
-  defp get_users_watching_entity(entity_id, entity_type) do
+  defp get_users_watching_entity(_entity_id, _entity_type) do
     # Find users who have surveillance profiles that would match this entity
     # This would involve querying profiles with criteria matching the entity
     # Placeholder

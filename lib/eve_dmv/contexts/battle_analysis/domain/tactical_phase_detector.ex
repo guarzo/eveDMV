@@ -159,7 +159,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
         duration_seconds: round(window_size)
       }
     end)
-    |> Enum.filter(&(length(&1.killmails) > 0))
+    |> Enum.filter(&(not Enum.empty?(&1.killmails)))
   end
 
   defp extract_phase_features(temporal_windows) do
@@ -223,7 +223,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
       participants = extract_all_participants(window.killmails)
       attackers = extract_attackers_count(window.killmails)
 
-      if length(participants) > 0 do
+      if not Enum.empty?(participants) do
         attackers / length(participants)
       else
         0.0
@@ -419,7 +419,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
     |> Enum.map(fn {old_centroid, cluster_id} ->
       cluster_points = Map.get(cluster_groups, cluster_id, [])
 
-      if length(cluster_points) > 0 do
+      if not Enum.empty?(cluster_points) do
         points = Enum.map(cluster_points, fn {point, _cluster} -> point end)
         calculate_centroid_mean(points)
       else

@@ -927,7 +927,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
     fleet_splits = Map.get(tactical_patterns, :fleet_splits, [])
 
     innovations =
-      if length(fleet_splits) > 0 do
+      if not Enum.empty?(fleet_splits) do
         effectiveness = calculate_split_effectiveness(fleet_splits)
         [%{innovation: :split_fleet_maneuver, effectiveness: effectiveness} | innovations]
       else
@@ -938,7 +938,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
     alpha_strikes = Map.get(tactical_patterns, :alpha_strikes, [])
 
     innovations =
-      if length(alpha_strikes) > 0 do
+      if not Enum.empty?(alpha_strikes) do
         effectiveness = calculate_alpha_strike_effectiveness(alpha_strikes)
         [%{innovation: :coordinated_alpha_strike, effectiveness: effectiveness} | innovations]
       else
@@ -949,7 +949,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
     feints = Map.get(tactical_patterns, :tactical_feints, [])
 
     innovations =
-      if length(feints) > 0 do
+      if not Enum.empty?(feints) do
         effectiveness = calculate_feint_effectiveness(feints)
         [%{innovation: :tactical_feint, effectiveness: effectiveness} | innovations]
       else
@@ -960,7 +960,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
     ewar_coordination = Map.get(tactical_patterns, :ewar_coordination, [])
 
     innovations =
-      if length(ewar_coordination) > 0 do
+      if not Enum.empty?(ewar_coordination) do
         effectiveness = calculate_ewar_coordination_effectiveness(ewar_coordination)
         [%{innovation: :ewar_coordination, effectiveness: effectiveness} | innovations]
       else

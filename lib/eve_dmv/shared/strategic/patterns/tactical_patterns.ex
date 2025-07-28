@@ -173,7 +173,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
   end
 
   defp identify_chokepoints(system_traffic) do
-    if length(system_traffic) == 0 do
+    if Enum.empty?(system_traffic) do
       []
     else
       avg_traffic =
@@ -257,7 +257,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
               DateTime.compare(km.timestamp, DateTime.add(window, 3600, :second)) == :lt
           end)
 
-        if length(window_kills) > 0 do
+        if not Enum.empty?(window_kills) do
           window_controller = identify_dominant_controller(window_kills)
           window_controller == dominant_entity
         else
@@ -265,7 +265,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
         end
       end)
 
-    if length(time_windows) > 0 do
+    if not Enum.empty?(time_windows) do
       Float.round(windows_with_control / length(time_windows), 3)
     else
       0.0
@@ -273,7 +273,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
   end
 
   defp create_hourly_windows(killmails) do
-    if length(killmails) == 0 do
+    if Enum.empty?(killmails) do
       []
     else
       min_time = Enum.min_by(killmails, & &1.timestamp).timestamp
@@ -288,7 +288,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
   end
 
   defp calculate_chokepoint_confidence(control_metrics) do
-    if length(control_metrics) == 0 do
+    if Enum.empty?(control_metrics) do
       0.0
     else
       # Average control percentage across all chokepoints
@@ -308,7 +308,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
   end
 
   defp describe_chokepoint_control(chokepoints, control_metrics) do
-    if length(chokepoints) == 0 do
+    if Enum.empty?(chokepoints) do
       "No significant chokepoints identified"
     else
       controlled_count = Enum.count(control_metrics, &(&1.control_percentage > 0.5))
@@ -384,7 +384,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
   end
 
   defp calculate_average_gang_size(killmails) do
-    if length(killmails) == 0 do
+    if Enum.empty?(killmails) do
       0.0
     else
       total_attackers =
@@ -494,7 +494,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
   end
 
   defp calculate_variance(values, mean) do
-    if length(values) == 0 do
+    if Enum.empty?(values) do
       0.0
     else
       squared_diffs = Enum.map(values, fn v -> :math.pow(v - mean, 2) end)
@@ -571,7 +571,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
     end
   end
 
-  defp describe_harassment_pattern(indicators, metrics) do
+  defp describe_harassment_pattern(indicators, _metrics) do
     indicator_types = Enum.map(indicators, fn {type, _} -> type end)
 
     cond do
@@ -981,7 +981,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
           DateTime.diff(k2.timestamp, k1.timestamp, :hour)
         end)
 
-      if length(intervals) > 0 do
+      if not Enum.empty?(intervals) do
         avg_interval = average(intervals)
         variance = calculate_variance(intervals, avg_interval)
         cv = if avg_interval > 0, do: :math.sqrt(variance) / avg_interval, else: 1.0
@@ -1064,7 +1064,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
     end
   end
 
-  defp describe_disruption_pattern(indicators, metrics) do
+  defp describe_disruption_pattern(indicators, _metrics) do
     indicator_types = Enum.map(indicators, fn {type, _} -> type end)
 
     cond do
@@ -1267,7 +1267,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
   end
 
   defp calculate_max_concentration(system_concentrations) do
-    if length(system_concentrations) > 0 do
+    if not Enum.empty?(system_concentrations) do
       system_concentrations
       |> Enum.map(& &1.concentration)
       |> Enum.max()
@@ -1315,7 +1315,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
   end
 
   defp calculate_average_fleet_size(fleet_kills) do
-    if length(fleet_kills) == 0 do
+    if Enum.empty?(fleet_kills) do
       0.0
     else
       total_attackers =
@@ -1343,7 +1343,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
         Enum.any?(corp_attackers, &(&1 >= 3))
       end)
 
-    if length(killmails) > 0 do
+    if not Enum.empty?(killmails) do
       Float.round(coordinated_kills / length(killmails), 3)
     else
       0.0
@@ -1462,7 +1462,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
     end
   end
 
-  defp describe_preparation_pattern(indicators, metrics) do
+  defp describe_preparation_pattern(indicators, _metrics) do
     indicator_types = Enum.map(indicators, fn {type, _} -> type end)
 
     cond do
@@ -1548,30 +1548,15 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
   end
 
   defp classify_ship_type(ship_type_id) do
-    # Simplified ship classification
-    # In production, would use actual EVE ship type data
-    case rem(ship_type_id, 20) do
-      0..2 -> :frigate
-      3..4 -> :destroyer
-      5..6 -> :cruiser
-      7 -> :battlecruiser
-      8 -> :battleship
-      9 -> :hauler
-      10 -> :industrial
-      11 -> :transport
-      12 -> :freighter
-      13 -> :interceptor
-      14 -> :covert_ops
-      15 -> :assault_frigate
-      16 -> :venture
-      17 -> :retriever
-      18 -> :orca
-      19 -> :rorqual
+    # Use actual ship classification from static data
+    case EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id) do
+      {:ok, ship_class} -> ship_class
+      {:error, _} -> :unknown
     end
   end
 
   defp average(list) do
-    if length(list) == 0 do
+    if Enum.empty?(list) do
       0.0
     else
       Enum.sum(list) / length(list)

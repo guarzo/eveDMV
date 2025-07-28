@@ -97,7 +97,14 @@ config :logger, :console,
     :response_time,
     :memory_usage,
     :priority,
-    :description
+    :description,
+    :url,
+    :body,
+    :headers,
+    :body_type,
+    :profile_id,
+    :name,
+    :new_level
   ]
 
 # Filter sensitive parameters from logs
@@ -132,7 +139,8 @@ config :eve_dmv,
     EveDmv.Domains.Analytics,
     EveDmv.Domains.Intelligence,
     EveDmv.Domains.Surveillance,
-    EveDmv.Contexts.BattleAnalysis.Api
+    EveDmv.Contexts.BattleAnalysis.Api,
+    EveDmv.Contexts.FleetOperations.Domain
   ]
 
 # AshPostgres configuration

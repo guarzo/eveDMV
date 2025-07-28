@@ -349,25 +349,37 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CharacterAnalysisEngine do
   end
 
   defp identify_threat_factors(character_id, time_range) do
-    factors = []
+    initial_factors = []
 
-    if get_character_kills_count(character_id, time_range) > 50 do
-      factors = ["High kill activity" | factors]
-    end
+    high_kill_factors =
+      if get_character_kills_count(character_id, time_range) > 50 do
+        ["High kill activity" | initial_factors]
+      else
+        initial_factors
+      end
 
-    if calculate_solo_percentage(character_id, time_range) > 30.0 do
-      factors = ["Frequent solo operations" | factors]
-    end
+    solo_factors =
+      if calculate_solo_percentage(character_id, time_range) > 30.0 do
+        ["Frequent solo operations" | high_kill_factors]
+      else
+        high_kill_factors
+      end
 
-    if assess_unpredictability(character_id, time_range) > 0.7 do
-      factors = ["Unpredictable behavior" | factors]
-    end
+    unpredictability_factors =
+      if assess_unpredictability(character_id, time_range) > 0.7 do
+        ["Unpredictable behavior" | solo_factors]
+      else
+        solo_factors
+      end
 
-    if assess_aggression_level(character_id, time_range) > 0.8 do
-      factors = ["High aggression" | factors]
-    end
+    final_factors =
+      if assess_aggression_level(character_id, time_range) > 0.8 do
+        ["High aggression" | unpredictability_factors]
+      else
+        unpredictability_factors
+      end
 
-    factors
+    final_factors
   end
 
   # Cache management
@@ -469,7 +481,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CharacterAnalysisEngine do
            filter: [character_id: character_id, is_victim: false],
            filters: [{:killmail_time, {:>, time_threshold}}]
          ) do
-      {:ok, participations} when length(participations) > 0 ->
+      {:ok, participations} when participations != [] ->
         # For each killmail, count total attackers
         gang_sizes =
           Enum.map(participations, fn participation ->
@@ -481,7 +493,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CharacterAnalysisEngine do
             end
           end)
 
-        if length(gang_sizes) > 0 do
+        if not Enum.empty?(gang_sizes) do
           Float.round(Enum.sum(gang_sizes) / length(gang_sizes), 1)
         else
           1.0
@@ -500,7 +512,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CharacterAnalysisEngine do
            filter: [character_id: character_id, is_victim: false],
            filters: [{:killmail_time, {:>, time_threshold}}]
          ) do
-      {:ok, participations} when length(participations) > 0 ->
+      {:ok, participations} when participations != [] ->
         solo_kills =
           Enum.count(participations, fn participation ->
             case EveDmv.Api.read(EveDmv.Killmails.Participant,
@@ -664,7 +676,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CharacterAnalysisEngine do
            filter: [character_id: character_id],
            filters: [{:killmail_time, {:>, time_threshold}}]
          ) do
-      {:ok, participations} when length(participations) > 0 ->
+      {:ok, participations} when participations != [] ->
         ship_counts =
           Enum.reduce(participations, %{}, fn p, acc ->
             Map.update(acc, p.ship_type_id, 1, &(&1 + 1))

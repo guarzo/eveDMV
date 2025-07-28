@@ -193,7 +193,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.CorporationAnalyz
   end
 
   defp calculate_average_engagement(member_analyses) do
-    if length(member_analyses) > 0 do
+    if not Enum.empty?(member_analyses) do
       total = Enum.sum(Enum.map(member_analyses, & &1.engagement_score))
       Float.round(total / length(member_analyses), 2)
     else
@@ -202,7 +202,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.CorporationAnalyz
   end
 
   defp calculate_at_risk_percentage(member_analyses) do
-    if length(member_analyses) > 0 do
+    if not Enum.empty?(member_analyses) do
       at_risk_count = Enum.count(member_analyses, &(&1.burnout_risk_score > 60))
       Float.round(at_risk_count / length(member_analyses) * 100, 2)
     else
@@ -211,7 +211,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.CorporationAnalyz
   end
 
   defp calculate_high_performers_percentage(member_analyses) do
-    if length(member_analyses) > 0 do
+    if not Enum.empty?(member_analyses) do
       high_performers = Enum.count(member_analyses, &(&1.engagement_score > 80))
       Float.round(high_performers / length(member_analyses) * 100, 2)
     else

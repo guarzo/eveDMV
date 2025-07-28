@@ -162,7 +162,7 @@ defmodule EveDmv.Shared.Strategic.TrendAnalyzer do
   end
 
   defp calculate_daily_intensity(killmails) do
-    if length(killmails) == 0 do
+    if Enum.empty?(killmails) do
       0.0
     else
       factors = %{
@@ -582,7 +582,7 @@ defmodule EveDmv.Shared.Strategic.TrendAnalyzer do
   end
 
   defp calculate_pattern_stability(patterns) do
-    if length(patterns) == 0 do
+    if Enum.empty?(patterns) do
       0.0
     else
       # Stability based on pattern confidence consistency
@@ -839,7 +839,7 @@ defmodule EveDmv.Shared.Strategic.TrendAnalyzer do
       end)
       |> Enum.reject(&is_nil/1)
 
-    if length(surrounding) > 0 do
+    if not Enum.empty?(surrounding) do
       average(surrounding)
     else
       0.0
@@ -890,7 +890,7 @@ defmodule EveDmv.Shared.Strategic.TrendAnalyzer do
   end
 
   defp average(list) do
-    if length(list) == 0 do
+    if Enum.empty?(list) do
       0.0
     else
       Enum.sum(list) / length(list)

@@ -280,7 +280,7 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
       Application.get_env(:eve_dmv, :default_chain_id) ||
         System.get_env("DEFAULT_CHAIN_ID")
 
-    if default_chain_id && length(socket.assigns.monitored_chains) > 0 do
+    if default_chain_id && not Enum.empty?(socket.assigns.monitored_chains) do
       # Find the configured chain in our monitored chains
       configured_chain =
         Enum.find(socket.assigns.monitored_chains, fn chain ->

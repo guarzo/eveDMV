@@ -11,7 +11,6 @@ defmodule EveDmvWeb.SystemActivityLive do
   import EveDmvWeb.Components.PageHeaderComponent
   import EveDmvWeb.Components.StatsGridComponent
 
-  alias EveDmv.Analytics.SystemActivityMetrics
   alias EveDmv.Presentation.Formatters
 
   @topic "system_activity"
@@ -114,19 +113,14 @@ defmodule EveDmvWeb.SystemActivityLive do
   defp load_overview_data(socket) do
     timeframe = socket.assigns.selected_timeframe
 
-    # Load activity trends for overview
-    trends = SystemActivityMetrics.get_activity_trends(timeframe)
+    # Load activity trends from actual killmail data
+    trends = calculate_activity_trends_from_killmails(timeframe)
 
     # Load sample regional data for top systems
     # Get top 10 active systems
     top_systems = get_top_active_system_ids(10)
 
-    regional_metrics =
-      if length(top_systems) > 0 do
-        SystemActivityMetrics.get_regional_activity_metrics(top_systems, timeframe)
-      else
-        %{system_metrics: [], hotspots: []}
-      end
+    regional_metrics = calculate_regional_metrics_from_killmails(top_systems, timeframe)
 
     socket
     |> assign(:activity_trends, trends)
@@ -137,7 +131,7 @@ defmodule EveDmvWeb.SystemActivityLive do
   defp load_system_detail(socket, system_id) do
     if system_id do
       timeframe = socket.assigns.selected_timeframe
-      metrics = SystemActivityMetrics.get_system_metrics(system_id, timeframe)
+      metrics = calculate_system_metrics_from_killmails(system_id, timeframe)
 
       socket
       |> assign(:system_metrics, metrics)
@@ -152,7 +146,7 @@ defmodule EveDmvWeb.SystemActivityLive do
 
     # Get active systems for regional analysis
     system_ids = get_active_system_ids_for_timeframe(timeframe, 50)
-    regional_metrics = SystemActivityMetrics.get_regional_activity_metrics(system_ids, timeframe)
+    regional_metrics = calculate_regional_metrics_from_killmails(system_ids, timeframe)
 
     socket
     |> assign(:regional_metrics, regional_metrics)
@@ -161,7 +155,7 @@ defmodule EveDmvWeb.SystemActivityLive do
 
   defp load_trends_data(socket) do
     timeframe = socket.assigns.selected_timeframe
-    trends = SystemActivityMetrics.get_activity_trends(timeframe)
+    trends = calculate_activity_trends_from_killmails(timeframe)
 
     socket
     |> assign(:activity_trends, trends)
@@ -170,7 +164,7 @@ defmodule EveDmvWeb.SystemActivityLive do
 
   defp load_heatmap_data(socket) do
     timeframe = socket.assigns.selected_timeframe
-    heatmap = SystemActivityMetrics.get_activity_heatmap(timeframe, 100)
+    heatmap = calculate_activity_heatmap_from_killmails(timeframe, 100)
 
     socket
     |> assign(:activity_heatmap, heatmap)
@@ -255,6 +249,229 @@ defmodule EveDmvWeb.SystemActivityLive do
       diff_seconds < 3600 -> "#{div(diff_seconds, 60)}m ago"
       diff_seconds < 86_400 -> "#{div(diff_seconds, 3600)}h ago"
       true -> "#{div(diff_seconds, 86_400)}d ago"
+    end
+  end
+
+  # Real implementations using killmail data
+
+  defp calculate_activity_trends_from_killmails(timeframe) do
+    {:ok, killmails} = get_killmails_for_timeframe(timeframe)
+
+    total_activity = length(killmails)
+
+    # Calculate period-over-period change
+    previous_timeframe = get_previous_timeframe(timeframe)
+    {:ok, previous_killmails} = get_killmails_for_timeframe(previous_timeframe)
+    previous_activity = length(previous_killmails)
+
+    change =
+      if previous_activity > 0 do
+        (total_activity - previous_activity) / previous_activity * 100
+      else
+        0.0
+      end
+
+    trend_direction =
+      cond do
+        change > 5 -> :increasing
+        change < -5 -> :decreasing
+        true -> :stable
+      end
+
+    %{
+      total_activity: total_activity,
+      trend_direction: trend_direction,
+      period_over_period_change: Float.round(change, 1)
+    }
+  end
+
+  defp calculate_regional_metrics_from_killmails(system_ids, timeframe) do
+    {:ok, killmails} = get_killmails_for_timeframe(timeframe)
+
+    # Filter killmails to specified systems
+    system_killmails = Enum.filter(killmails, fn km -> km.solar_system_id in system_ids end)
+
+    # Group by system and calculate metrics
+    system_metrics =
+      system_killmails
+      |> Enum.group_by(& &1.solar_system_id)
+      |> Enum.map(fn {system_id, kms} ->
+        %{
+          system_id: system_id,
+          killmail_count: length(kms),
+          total_isk_value: Enum.sum(Enum.map(kms, &(&1.zkb_total_value || 0))),
+          unique_characters: length(Enum.uniq(Enum.map(kms, & &1.victim.character_id)))
+        }
+      end)
+      |> Enum.sort_by(& &1.killmail_count, :desc)
+
+    # Identify hotspots (top 25% by activity)
+    hotspot_threshold = max(1, div(length(system_metrics), 4))
+    hotspots = Enum.take(system_metrics, hotspot_threshold)
+
+    %{
+      system_metrics: system_metrics,
+      hotspots: hotspots
+    }
+  end
+
+  defp calculate_system_metrics_from_killmails(system_id, timeframe) do
+    {:ok, killmails} = get_killmails_for_timeframe(timeframe)
+
+    # Filter to specific system
+    system_killmails = Enum.filter(killmails, fn km -> km.solar_system_id == system_id end)
+
+    if Enum.empty?(system_killmails) do
+      %{activity_score: 0.0, classifications: [], peak_hours: []}
+    else
+      # Calculate activity score based on killmail frequency and value
+      killmail_count = length(system_killmails)
+      total_value = Enum.sum(Enum.map(system_killmails, &(&1.zkb_total_value || 0)))
+
+      activity_score =
+        Float.round(killmail_count * :math.log10(max(1, total_value / 1_000_000)), 2)
+
+      # Classify activity type based on patterns
+      classifications = classify_system_activity(system_killmails)
+
+      # Find peak hours
+      peak_hours = calculate_peak_hours(system_killmails)
+
+      %{
+        activity_score: activity_score,
+        classifications: classifications,
+        peak_hours: peak_hours
+      }
+    end
+  end
+
+  defp calculate_activity_heatmap_from_killmails(timeframe, limit) do
+    {:ok, killmails} = get_killmails_for_timeframe(timeframe)
+
+    # Group by system and calculate activity intensity
+    system_activity =
+      killmails
+      |> Enum.group_by(& &1.solar_system_id)
+      |> Enum.map(fn {system_id, kms} ->
+        intensity = length(kms) + Enum.sum(Enum.map(kms, &(&1.zkb_total_value || 0))) / 10_000_000
+        %{system_id: system_id, intensity: Float.round(intensity, 2)}
+      end)
+      |> Enum.sort_by(& &1.intensity, :desc)
+      |> Enum.take(limit)
+
+    max_value =
+      if Enum.empty?(system_activity) do
+        0
+      else
+        Enum.max_by(system_activity, & &1.intensity).intensity
+      end
+
+    %{
+      data: system_activity,
+      max_value: max_value
+    }
+  end
+
+  defp classify_system_activity(killmails) do
+    classifications = []
+
+    # High value activity
+    high_value_kills = Enum.count(killmails, fn km -> (km.zkb_total_value || 0) > 100_000_000 end)
+
+    classifications =
+      if high_value_kills > 0, do: ["High Value Targets" | classifications], else: classifications
+
+    # Capital activity
+    capital_kills =
+      Enum.count(killmails, fn km ->
+        ship_class = EveDmv.StaticData.get_ship_class(km.victim.ship_type_id)
+        ship_class in [:dreadnought, :carrier, :supercarrier, :titan]
+      end)
+
+    classifications =
+      if capital_kills > 0, do: ["Capital Warfare" | classifications], else: classifications
+
+    # Gang activity (multiple attackers)
+    gang_kills = Enum.count(killmails, fn km -> length(km.attackers) > 5 end)
+    total_kills = length(killmails)
+
+    classifications =
+      if gang_kills / total_kills > 0.5 do
+        ["Fleet Operations" | classifications]
+      else
+        classifications
+      end
+
+    classifications
+  end
+
+  defp calculate_peak_hours(killmails) do
+    # Group by hour of day and find peaks
+    hourly_activity =
+      killmails
+      |> Enum.group_by(fn km -> km.killmail_time.hour end)
+      |> Enum.map(fn {hour, kms} -> {hour, length(kms)} end)
+      |> Enum.sort_by(fn {_, count} -> count end, :desc)
+      |> Enum.take(3)
+      |> Enum.map(fn {hour, _count} -> hour end)
+
+    hourly_activity
+  end
+
+  defp get_previous_timeframe(:last_24h), do: :previous_24h
+  defp get_previous_timeframe(:last_7d), do: :previous_7d
+  defp get_previous_timeframe(:last_30d), do: :previous_30d
+  defp get_previous_timeframe(_), do: :last_24h
+
+  defp get_killmails_for_timeframe(timeframe) do
+    case timeframe do
+      :last_24h ->
+        since = DateTime.add(DateTime.utc_now(), -24, :hour)
+
+        EveDmv.Api.read(EveDmv.Killmails.KillmailRaw,
+          query: [filter: [killmail_time: [greater_than: since]]]
+        )
+
+      :previous_24h ->
+        since = DateTime.add(DateTime.utc_now(), -48, :hour)
+        until = DateTime.add(DateTime.utc_now(), -24, :hour)
+
+        EveDmv.Api.read(EveDmv.Killmails.KillmailRaw,
+          query: [filter: [killmail_time: [greater_than: since, less_than: until]]]
+        )
+
+      :last_7d ->
+        since = DateTime.add(DateTime.utc_now(), -7, :day)
+
+        EveDmv.Api.read(EveDmv.Killmails.KillmailRaw,
+          query: [filter: [killmail_time: [greater_than: since]]]
+        )
+
+      :previous_7d ->
+        since = DateTime.add(DateTime.utc_now(), -14, :day)
+        until = DateTime.add(DateTime.utc_now(), -7, :day)
+
+        EveDmv.Api.read(EveDmv.Killmails.KillmailRaw,
+          query: [filter: [killmail_time: [greater_than: since, less_than: until]]]
+        )
+
+      :last_30d ->
+        since = DateTime.add(DateTime.utc_now(), -30, :day)
+
+        EveDmv.Api.read(EveDmv.Killmails.KillmailRaw,
+          query: [filter: [killmail_time: [greater_than: since]]]
+        )
+
+      :previous_30d ->
+        since = DateTime.add(DateTime.utc_now(), -60, :day)
+        until = DateTime.add(DateTime.utc_now(), -30, :day)
+
+        EveDmv.Api.read(EveDmv.Killmails.KillmailRaw,
+          query: [filter: [killmail_time: [greater_than: since, less_than: until]]]
+        )
+
+      _ ->
+        {:ok, []}
     end
   end
 end

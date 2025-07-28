@@ -216,7 +216,7 @@ defmodule EveDmv.Shared.Strategic.RecommendationEngine do
     end
   end
 
-  defp estimate_timeline(action_type, urgency) do
+  defp estimate_timeline(_action_type, urgency) do
     case urgency do
       :critical -> "Immediate - within 24 hours"
       :high -> "Within 48 hours"
@@ -339,11 +339,17 @@ defmodule EveDmv.Shared.Strategic.RecommendationEngine do
 
   defp unify_focus(focuses) do
     # Combine multiple focuses into unified approach
-    focuses
-    |> Enum.uniq()
-    |> Enum.take(2)
-    |> Enum.join("_and_")
-    |> String.to_atom()
+    unified_name =
+      focuses
+      |> Enum.uniq()
+      |> Enum.take(2)
+      |> Enum.join("_and_")
+
+    try do
+      String.to_existing_atom(unified_name)
+    rescue
+      ArgumentError -> :combined_focus
+    end
   end
 
   defp calculate_synergy(strategies) do

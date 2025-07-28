@@ -321,7 +321,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.RecruitmentRetent
   end
 
   defp calculate_average_days_inactive(members) do
-    if length(members) > 0 do
+    if not Enum.empty?(members) do
       total_days = Enum.sum(Enum.map(members, & &1.days_inactive))
       Float.round(total_days / length(members), 1)
     else

@@ -489,28 +489,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
     end
   end
 
-  defp estimate_fleet_dps(participants) do
-    # Calculate fleet DPS using real ship attributes
-    Enum.sum(
-      Enum.map(participants, fn participant ->
-        case EveDmv.StaticData.ShipTypes.get_ship_dps(participant.ship_type_id) do
-          {:ok, dps} ->
-            dps
-
-          {:error, _} ->
-            # Fallback to ship class estimation if no data available
-            case get_ship_class(participant.ship_type_id) do
-              :frigate -> 200
-              :destroyer -> 400
-              :cruiser -> 600
-              :battlecruiser -> 1000
-              :battleship -> 1500
-              :capital -> 8000
-            end
-        end
-      end)
-    )
-  end
+  # defp estimate_fleet_dps - removed as unused
 
   defp categorize_participants(participants, killmails) do
     # Determine friendly vs hostile based on killmail analysis
@@ -578,7 +557,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
       isk_lost: isk_lost,
       isk_efficiency: Float.round(isk_efficiency, 2),
       survival_rate:
-        if(length(participants) > 0,
+        if(not Enum.empty?(participants),
           do: (length(participants) - losses) / length(participants) * 100,
           else: 0
         )

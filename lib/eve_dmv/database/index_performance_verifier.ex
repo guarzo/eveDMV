@@ -305,7 +305,7 @@ defmodule EveDmv.Database.IndexPerformanceVerifier do
     failed_queries = Enum.filter(results, &(&1.status == :fail))
 
     recommendations =
-      if length(failed_queries) > 0 do
+      if not Enum.empty?(failed_queries) do
         [
           "#{length(failed_queries)} queries are not using expected indexes. Review query plans."
           | recommendations
@@ -322,7 +322,7 @@ defmodule EveDmv.Database.IndexPerformanceVerifier do
       )
 
     recommendations =
-      if length(slow_queries) > 0 do
+      if not Enum.empty?(slow_queries) do
         [
           "#{length(slow_queries)} queries are taking over 100ms. Consider additional optimization."
           | recommendations
@@ -337,7 +337,7 @@ defmodule EveDmv.Database.IndexPerformanceVerifier do
       |> Enum.filter(&(&1[:metrics] && &1.metrics[:has_sequential_scan]))
 
     recommendations =
-      if length(seq_scan_queries) > 0 do
+      if not Enum.empty?(seq_scan_queries) do
         [
           "#{length(seq_scan_queries)} queries are using sequential scans. May need additional indexes."
           | recommendations

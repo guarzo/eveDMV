@@ -368,11 +368,12 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
   end
 
   defp analyze_query_performance do
-    # Analyze recent query performance
+    # Placeholder for actual query performance metrics
+    # In production, this would query actual performance data from telemetry
     %{
-      avg_query_time_ms: :rand.uniform(500) + 100,
-      slow_queries_count: :rand.uniform(10),
-      total_queries: :rand.uniform(1000) + 500
+      avg_query_time_ms: 0,
+      slow_queries_count: 0,
+      total_queries: 0
     }
   end
 

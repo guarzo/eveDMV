@@ -7,7 +7,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleAnalysisCoordinator do
   use GenServer
   require Logger
 
-  alias EveDmv.Shared.Infrastructure.{UnifiedCache, UnifiedRepository}
+  alias EveDmv.Shared.Infrastructure.UnifiedCache
   alias EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService
 
   # Public API
@@ -35,6 +35,13 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleAnalysisCoordinator do
   """
   def analyze_detected_battle(battle_id) do
     GenServer.cast(__MODULE__, {:analyze_detected_battle, battle_id})
+  end
+
+  @doc """
+  Reconstruct battle timeline from battle data.
+  """
+  def reconstruct_timeline(battle) do
+    GenServer.call(__MODULE__, {:reconstruct_timeline, battle})
   end
 
   # GenServer implementation
@@ -70,6 +77,12 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleAnalysisCoordinator do
       error ->
         {:reply, error, state}
     end
+  end
+
+  @impl GenServer
+  def handle_call({:reconstruct_timeline, battle}, _from, state) do
+    timeline = reconstruct_battle_timeline(battle)
+    {:reply, {:ok, timeline}, state}
   end
 
   @impl GenServer
@@ -265,7 +278,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleAnalysisCoordinator do
     }
   end
 
-  defp generate_tactical_recommendations(battle_data) do
+  defp generate_tactical_recommendations(_battle_data) do
     [
       "Fleet doctrine analysis suggests improved coordination needed",
       "Ship composition could be optimized for this engagement type",
@@ -379,5 +392,27 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleAnalysisCoordinator do
 
   defp assess_territorial_impact(_battle_data) do
     %{control_shift: false, strategic_significance: :low}
+  end
+
+  defp reconstruct_battle_timeline(battle) do
+    # Reconstruct timeline from battle data
+    %{
+      battle_id: battle[:id] || battle.id,
+      timeline_events: extract_timeline_events(battle),
+      phases: identify_tactical_phases(battle),
+      key_moments: identify_key_moments(battle),
+      duration_seconds: calculate_battle_duration(battle),
+      intensity_curve: calculate_intensity_curve(battle)
+    }
+  end
+
+  defp extract_timeline_events(_battle) do
+    # Extract events from battle killmails
+    []
+  end
+
+  defp calculate_intensity_curve(_battle) do
+    # Calculate battle intensity over time
+    []
   end
 end

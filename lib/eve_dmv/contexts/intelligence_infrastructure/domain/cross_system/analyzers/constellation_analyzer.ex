@@ -305,7 +305,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
                 length(threat_kills) > 40 -> :critical
                 length(threat_kills) > 20 -> :high
                 length(threat_kills) > 10 -> :moderate
-                length(threat_kills) > 0 -> :low
+                not Enum.empty?(threat_kills) -> :low
                 true -> :minimal
               end
 

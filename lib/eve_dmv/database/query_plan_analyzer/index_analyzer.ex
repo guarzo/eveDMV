@@ -97,7 +97,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
 
     # Missing indexes for sequential scans
     scan_index_recommendations =
-      if length(sequential_scans) > 0 do
+      if not Enum.empty?(sequential_scans) do
         scan_suggestions =
           sequential_scans
           |> Enum.map(&suggest_index_for_scan/1)
@@ -132,7 +132,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
 
     # Unused index cleanup
     cleanup_recommendations =
-      if length(analysis.potentially_unused_indexes) > 0 do
+      if not Enum.empty?(analysis.potentially_unused_indexes) do
         [
           "Consider removing unused indexes: #{Enum.join(analysis.potentially_unused_indexes, ", ")}"
           | bitmap_scan_recommendations
@@ -301,7 +301,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
       # Extract column names from filter condition (simplified)
       columns = extract_columns_from_filter(scan.filter)
 
-      if length(columns) > 0 do
+      if not Enum.empty?(columns) do
         "CREATE INDEX ON #{scan.relation} (#{Enum.join(columns, ", ")}) -- for filter: #{scan.filter}"
       end
     end
@@ -328,7 +328,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
 
   defp has_expensive_bitmap_scans(analysis) do
     Map.get(analysis.index_types, "Bitmap Index Scan", 0) > 0 and
-      length(analysis.high_cost_indexes) > 0
+      not Enum.empty?(analysis.high_cost_indexes)
   end
 
   defp calculate_filter_selectivity(scan_info) do

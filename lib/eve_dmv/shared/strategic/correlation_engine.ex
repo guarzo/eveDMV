@@ -140,7 +140,7 @@ defmodule EveDmv.Shared.Strategic.CorrelationEngine do
   end
 
   defp create_hourly_windows(killmails) do
-    if length(killmails) == 0 do
+    if Enum.empty?(killmails) do
       []
     else
       min_time = Enum.min_by(killmails, & &1.timestamp).timestamp
@@ -217,7 +217,7 @@ defmodule EveDmv.Shared.Strategic.CorrelationEngine do
   end
 
   defp calculate_temporal_overlap(kills1, kills2) do
-    if length(kills1) == 0 || length(kills2) == 0 do
+    if Enum.empty?(kills1) || Enum.empty?(kills2) do
       0.0
     else
       times1 =
@@ -338,7 +338,7 @@ defmodule EveDmv.Shared.Strategic.CorrelationEngine do
   end
 
   defp calculate_average_degree(graph) do
-    if length(graph.nodes) == 0 do
+    if Enum.empty?(graph.nodes) do
       0.0
     else
       degree_sum =
@@ -400,7 +400,7 @@ defmodule EveDmv.Shared.Strategic.CorrelationEngine do
       end)
       |> Enum.map(& &1.correlation)
 
-    if length(internal_correlations) > 0 do
+    if not Enum.empty?(internal_correlations) do
       Float.round(Enum.sum(internal_correlations) / length(internal_correlations), 3)
     else
       0.0
@@ -447,7 +447,7 @@ defmodule EveDmv.Shared.Strategic.CorrelationEngine do
   end
 
   defp calculate_peak_concentration(killmails) do
-    if length(killmails) == 0 do
+    if Enum.empty?(killmails) do
       0.0
     else
       hourly_counts =
@@ -507,7 +507,7 @@ defmodule EveDmv.Shared.Strategic.CorrelationEngine do
   end
 
   defp calculate_average_activity(vectors) do
-    if length(vectors) == 0 do
+    if Enum.empty?(vectors) do
       0.0
     else
       total_kills = Enum.sum(Enum.map(vectors, & &1.kill_count))
@@ -573,7 +573,7 @@ defmodule EveDmv.Shared.Strategic.CorrelationEngine do
   end
 
   defp assess_cluster_quality(clusters) do
-    if length(clusters) == 0 do
+    if Enum.empty?(clusters) do
       0.0
     else
       cohesion_scores = Enum.map(clusters, & &1.cohesion)

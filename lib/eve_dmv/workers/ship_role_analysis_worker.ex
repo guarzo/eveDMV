@@ -215,7 +215,7 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
           |> Enum.filter(&match?({:ok, _}, &1))
           |> Enum.map(fn {:ok, classification} -> classification end)
 
-        if length(role_classifications) > 0 do
+        if not Enum.empty?(role_classifications) do
           # Aggregate role distributions
           aggregated_roles = aggregate_role_distributions(role_classifications)
           # Calculate confidence score based on consistency and sample size
