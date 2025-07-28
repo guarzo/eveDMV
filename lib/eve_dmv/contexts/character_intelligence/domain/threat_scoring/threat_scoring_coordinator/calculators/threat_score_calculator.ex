@@ -10,8 +10,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
   """
 
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.CombatThreatEngine
-  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.ShipMasteryEngine
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.GangEffectivenessEngine
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.ShipMasteryEngine
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.UnpredictabilityEngine
 
   require Logger
