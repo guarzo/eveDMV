@@ -422,7 +422,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
   defp analyze_damage_application(events) do
     damage_events = Enum.filter(events, &(&1.type == :damage_dealt))
 
-    if not Enum.empty?(damage_events) do
+    if Enum.empty?(damage_events) do
+      %{total_shots: 0, average_application: 0}
+    else
       quality_breakdown =
         damage_events
         |> Enum.group_by(& &1.hit_quality)
@@ -449,8 +451,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
         average_application: avg_application,
         quality_breakdown: quality_breakdown
       }
-    else
-      %{total_shots: 0, average_application: 0}
     end
   end
 
@@ -638,8 +638,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
     timestamps = events |> Enum.map(& &1.timestamp) |> Enum.filter(& &1)
 
     %{
-      start_time: if(not Enum.empty?(timestamps), do: Enum.min(timestamps), else: nil),
-      end_time: if(not Enum.empty?(timestamps), do: Enum.max(timestamps), else: nil),
+      start_time: if(Enum.empty?(timestamps), do: nil, else: Enum.min(timestamps)),
+      end_time: if(Enum.empty?(timestamps), do: nil, else: Enum.max(timestamps)),
       event_types: events |> Enum.map(& &1.type) |> Enum.uniq(),
       total_events: length(events)
     }
