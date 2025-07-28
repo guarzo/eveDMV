@@ -8,9 +8,9 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
   """
 
   use EveDmv.ErrorHandler
-  alias EveDmv.Result
-  alias EveDmv.Eve.ItemType
   alias Ecto.Adapters.SQL
+  alias EveDmv.Eve.ItemType
+  alias EveDmv.Result
 
   @doc """
   Analyze fleet composition for effectiveness and tactical balance.
@@ -1044,12 +1044,12 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
             case EveDmv.StaticData.ShipTypes.classify_ship_type(id) do
               :frigate -> 3000.0
               :destroyer -> 5000.0
-              :cruiser -> 12000.0
-              :battlecruiser -> 20000.0
-              :battleship -> 35000.0
+              :cruiser -> 12_000.0
+              :battlecruiser -> 20_000.0
+              :battleship -> 35_000.0
               :capital -> 200_000.0
               :supercapital -> 500_000.0
-              _ -> 10000.0
+              _ -> 10_000.0
             end
         end
 
