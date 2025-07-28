@@ -111,14 +111,14 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
         (usage_score + diversity_score) / 2
       end)
 
-    if not Enum.empty?(mastery_scores) do
+    if Enum.empty?(mastery_scores) do
+      0.0
+    else
       average_mastery = Enum.sum(mastery_scores) / length(mastery_scores)
       # Main ship classes
       class_breadth = min(1.0, classes_used / @max_ship_classes)
 
       average_mastery * 0.7 + class_breadth * 0.3
-    else
-      0.0
     end
   end
 
