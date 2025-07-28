@@ -13,8 +13,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
   - Integration with chain tracking for connection management
   """
 
-  alias EveDmv.StaticData
   alias EveDmv.Contexts.WormholeOperations.Domain.ChainTracker
+  alias EveDmv.StaticData
   require Logger
 
   @doc """
