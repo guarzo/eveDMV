@@ -20,8 +20,9 @@ defmodule EveDmv.Contexts.CombatAnalysis do
   use Supervisor
 
   alias EveDmv.Contexts.CombatAnalysis.Domain
-  alias EveDmv.Shared.Infrastructure.{UnifiedCache, UnifiedEventProcessor}
   alias EveDmv.DomainEvents.KillmailEnriched
+  alias EveDmv.Shared.Infrastructure.UnifiedCache
+  alias EveDmv.Shared.Infrastructure.UnifiedEventProcessor
 
   # Supervisor implementation
 
