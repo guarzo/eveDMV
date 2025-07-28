@@ -529,9 +529,9 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
       state_distribution: state_distribution,
       type_distribution: type_distribution,
       average_confidence:
-        if(not Enum.empty?(recent_alerts),
-          do: Enum.sum(Enum.map(recent_alerts, & &1.confidence_score)) / length(recent_alerts),
-          else: 0
+        if(Enum.empty?(recent_alerts),
+          do: 0,
+          else: Enum.sum(Enum.map(recent_alerts, & &1.confidence_score)) / length(recent_alerts)
         ),
       current_counters: state.alert_counters
     }
