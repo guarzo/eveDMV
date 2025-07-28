@@ -877,10 +877,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
       end)
       |> Enum.filter(& &1)
 
-    if not Enum.empty?(ship_types) do
-      FleetAnalyzer.analyze_fleet_composition(ship_types)
-    else
+    if Enum.empty?(ship_types) do
       nil
+    else
+      FleetAnalyzer.analyze_fleet_composition(ship_types)
     end
   rescue
     error ->
@@ -1650,7 +1650,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
           victim_match || attacker_match
         end)
 
-      if not Enum.empty?(appearances) do
+      if Enum.empty?(appearances) do
+        0
+      else
         first = List.first(appearances)
         last = List.last(appearances)
 
@@ -1663,22 +1665,20 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
         end_time = if death, do: death.timestamp, else: last.timestamp
 
         NaiveDateTime.diff(end_time, first.timestamp, :second)
-      else
-        0
       end
     else
       # Fallback to killmail timestamps
       killmails = battle_data.killmails
       involved = find_character_involvement(character_id, ship_type_id, killmails)
 
-      if not Enum.empty?(involved) do
+      if Enum.empty?(involved) do
+        0
+      else
         timestamps = Enum.map(involved, & &1.killmail_time)
         first = Enum.min(timestamps)
         last = Enum.max(timestamps)
 
         NaiveDateTime.diff(last, first, :second)
-      else
-        0
       end
     end
   end
