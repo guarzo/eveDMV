@@ -9,8 +9,8 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAssessmentEngine do
   use GenServer
   require Logger
 
-  alias EveDmv.Shared.Infrastructure.UnifiedCache
   alias EveDmv.DomainEvents.KillmailEnriched
+  alias EveDmv.Shared.Infrastructure.UnifiedCache
 
   # Threat scoring weights
   @threat_weights %{

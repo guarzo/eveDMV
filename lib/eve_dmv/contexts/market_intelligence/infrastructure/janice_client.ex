@@ -12,8 +12,8 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
   use GenServer
   require Logger
 
-  alias EveDmv.Http.UnifiedClient
   alias EveDmv.Config.Http
+  alias EveDmv.Http.UnifiedClient
 
   @base_url "https://janice.e-351.com/api/rest/v2"
   # 15 minutes

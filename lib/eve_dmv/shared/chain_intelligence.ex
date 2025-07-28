@@ -399,7 +399,7 @@ defmodule EveDmv.Shared.ChainIntelligence do
   Consolidates topology analysis from both contexts.
   """
   @spec analyze_chain_topology(integer(), keyword()) :: {:ok, map()} | {:error, term()}
-  def analyze_chain_topology(chain_id, opts \\ []) do
+  def analyze_chain_topology(chain_id, _opts \\ []) do
     try do
       {:ok, topology} = get_chain_topology(chain_id)
 
@@ -501,7 +501,7 @@ defmodule EveDmv.Shared.ChainIntelligence do
     |> Enum.map(fn {system, _} -> system end)
   end
 
-  defp find_chokepoints(topology) do
+  defp find_chokepoints(_topology) do
     # Find systems that are critical for chain connectivity
     # These are systems whose removal would split the chain
     []
@@ -666,7 +666,7 @@ defmodule EveDmv.Shared.ChainIntelligence do
     Float.round(min(100.0, vulnerability), 2)
   end
 
-  defp detect_hostile_presence(activity, corporation_id) do
+  defp detect_hostile_presence(_activity, corporation_id) do
     # Check for hostile pilots in activity data
     # Query recent killmails to identify hostiles
     try do

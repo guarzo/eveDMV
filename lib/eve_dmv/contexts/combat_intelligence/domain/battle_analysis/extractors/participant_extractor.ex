@@ -12,13 +12,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
   All functionality is preserved through delegation to the appropriate sub-modules.
   """
 
-  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.ParticipantExtractor.{
-    Core,
-    AffiliationAnalyzer,
-    RoleClassifier,
-    ExperienceAnalyzer,
-    ActivityTracker
-  }
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.ParticipantExtractor.ActivityTracker
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.ParticipantExtractor.AffiliationAnalyzer
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.ParticipantExtractor.Core
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.ParticipantExtractor.ExperienceAnalyzer
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.ParticipantExtractor.RoleClassifier
 
   require Logger
 

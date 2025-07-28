@@ -16,8 +16,8 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
   require Logger
 
   alias EveDmv.Api
-  alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Intelligence.CharacterStats
+  alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Shared.Infrastructure.UnifiedCache
   alias EveDmv.StaticData
 

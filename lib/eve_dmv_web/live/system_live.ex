@@ -10,11 +10,11 @@ defmodule EveDmvWeb.SystemLive do
 
   import EveDmvWeb.FormatHelpers
 
+  alias Ecto.Adapters.SQL
   alias EveDmv.Analytics.BattleDetector
   alias EveDmv.Cache.AnalysisCache
   alias EveDmv.Eve.SolarSystem
   alias EveDmv.Repo
-  alias Ecto.Adapters.SQL
 
   @impl Phoenix.LiveView
   def mount(%{"system_id" => system_id}, _session, socket) do

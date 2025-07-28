@@ -727,7 +727,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
     # Analyze actual entry points based on wormhole connection data
     # Query actual wormhole connections if available
     case get_actual_wormhole_connections(topology.system_id) do
-      {:ok, connections} when length(connections) > 0 ->
+      {:ok, connections} when connections != [] ->
         # Use real wormhole connection data
         connections
         |> Enum.with_index(1)
@@ -925,7 +925,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
            """,
            [cutoff_time, system_id]
          ) do
-      {:ok, %{rows: rows}} when length(rows) > 0 ->
+      {:ok, %{rows: rows}} when rows != [] ->
         connections =
           rows
           |> Enum.with_index(1)
@@ -947,7 +947,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
     end
   end
 
-  defp assess_connection_threat_level(connection, recent_activity) do
+  defp assess_connection_threat_level(connection, _recent_activity) do
     # Assess threat level based on connection characteristics and recent activity
     base_threat =
       case connection.wormhole_type do
@@ -975,7 +975,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
     end
   end
 
-  defp determine_monitoring_status(connection, threat_level) do
+  defp determine_monitoring_status(_connection, threat_level) do
     # Determine monitoring status based on threat level and connection characteristics
     case threat_level do
       :critical -> :monitored
@@ -1086,7 +1086,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
     end
   end
 
-  defp get_system_escape_connections(route_type) do
+  defp get_system_escape_connections(_route_type) do
     # Get connections suitable for escape routes
     # This would query actual wormhole mapping data
     # Placeholder - would implement with real data

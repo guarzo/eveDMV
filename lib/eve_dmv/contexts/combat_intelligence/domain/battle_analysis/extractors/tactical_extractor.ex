@@ -7,10 +7,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   analyzer modules to improve maintainability and avoid parsing timeouts.
   """
 
-  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.CoordinationAnalyzer
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.EngagementAnalyzer
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.MovementAnalyzer
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer
 
   require Logger
 

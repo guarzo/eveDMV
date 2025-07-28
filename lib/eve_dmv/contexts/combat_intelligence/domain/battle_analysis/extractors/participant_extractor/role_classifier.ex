@@ -718,7 +718,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
   end
 
   defp find_role_conflicts(existing_roles) do
-    conflict_pairs = [
+    _conflict_pairs = [
       {:all_dps, "No support roles - glass cannon fleet"},
       {:no_tackle, "Cannot control engagement range"},
       {:capital_no_support, "Capitals vulnerable without subcap support"}

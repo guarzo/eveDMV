@@ -20,8 +20,9 @@ defmodule EveDmv.Contexts.ThreatSurveillance do
   use Supervisor
 
   alias EveDmv.Contexts.ThreatSurveillance.Domain
-  alias EveDmv.Shared.Infrastructure.{UnifiedCache, UnifiedRepository}
   alias EveDmv.DomainEvents.KillmailEnriched
+  alias EveDmv.Shared.Infrastructure.UnifiedCache
+  alias EveDmv.Shared.Infrastructure.UnifiedRepository
 
   # Supervisor implementation
 

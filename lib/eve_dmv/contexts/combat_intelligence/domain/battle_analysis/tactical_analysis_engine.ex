@@ -11,8 +11,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.TacticalAnaly
   - Command pattern detection
   """
 
-  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.TacticalExtractor
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.BattlePhaseAnalyzer
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.TacticalExtractor
 
   require Logger
 

@@ -448,7 +448,7 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
     start_time = DateTime.add(current_time, -hours * 3600, :second)
 
     # Get actual alert data and group by hour
-    case safe_call(fn -> ThreatSurveillance.get_recent_alerts(limit: 10000) end) do
+    case safe_call(fn -> ThreatSurveillance.get_recent_alerts(limit: 10_000) end) do
       {:ok, alerts} ->
         alerts
         |> Enum.filter(fn alert ->

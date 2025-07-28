@@ -260,7 +260,7 @@ defmodule EveDmv.Contexts.BattleSharing do
   defp generate_sample_battle_reports(battle_id) do
     # Get actual battle reports from the database
     case get_battle_reports_from_db(battle_id) do
-      {:ok, reports} when length(reports) > 0 ->
+      {:ok, reports} when reports != [] ->
         reports
 
       _ ->
@@ -358,16 +358,14 @@ defmodule EveDmv.Contexts.BattleSharing do
     end
   end
 
-  defp query_character_battle_reports(character_id, offset, limit) do
+  defp query_character_battle_reports(_character_id, _offset, _limit) do
     try do
       # This would query the actual database for battle reports
       # created by the specified character with pagination
       {:ok, []}
     rescue
       error ->
-        Logger.error(
-          "Failed to query battle reports for character #{character_id}: #{inspect(error)}"
-        )
+        Logger.error("Failed to query battle reports: #{inspect(error)}")
 
         {:error, :query_failed}
     end
@@ -392,7 +390,7 @@ defmodule EveDmv.Contexts.BattleSharing do
     end
   end
 
-  defp fetch_battle_report_from_service(report_id) do
+  defp fetch_battle_report_from_service(_report_id) do
     try do
       # This would integrate with the actual BattleCurator service
       # For now, return not found to avoid fake data

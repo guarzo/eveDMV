@@ -5,13 +5,11 @@ defmodule EveDmvWeb.MonitoringDashboardLive do
 
   use EveDmvWeb, :live_view
 
-  alias EveDmv.Monitoring.{
-    ErrorTracker,
-    PipelineMonitor,
-    AlertDispatcher,
-    ErrorRecoveryWorker,
-    MissingDataTracker
-  }
+  alias EveDmv.Monitoring.AlertDispatcher
+  alias EveDmv.Monitoring.ErrorRecoveryWorker
+  alias EveDmv.Monitoring.ErrorTracker
+  alias EveDmv.Monitoring.MissingDataTracker
+  alias EveDmv.Monitoring.PipelineMonitor
 
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 

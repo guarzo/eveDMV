@@ -119,14 +119,14 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
       EveDmv.Contexts.FleetOperations.Resources.FleetDoctrine
       |> filter(name == ^name)
 
-    query =
+    final_query =
       if corporation_id do
         filter(query, corporation_id == ^corporation_id or is_public == true)
       else
         query
       end
 
-    case Ash.read_one(query, domain: EveDmv.Contexts.FleetOperations.Domain) do
+    case Ash.read_one(final_query, domain: EveDmv.Contexts.FleetOperations.Domain) do
       {:ok, doctrine} -> {:ok, doctrine}
       {:error, _} -> {:error, :not_found}
     end
@@ -147,7 +147,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
     query = EveDmv.Contexts.FleetOperations.Resources.FleetDoctrine
 
     # Apply filters
-    query =
+    base_query =
       if corporation_id = opts[:corporation_id] do
         # Use the custom action
         args = %{corporation_id: corporation_id}
@@ -158,21 +158,21 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
         query
       end
 
-    query =
+    type_filtered_query =
       if type = opts[:doctrine_type] do
-        filter(query, doctrine_type == ^type)
+        filter(base_query, doctrine_type == ^type)
       else
-        query
+        base_query
       end
 
-    query =
+    active_filtered_query =
       if Keyword.get(opts, :is_active, true) do
-        filter(query, is_active == true)
+        filter(type_filtered_query, is_active == true)
       else
-        query
+        type_filtered_query
       end
 
-    query =
+    search_filtered_query =
       if search_term = opts[:search] do
         # Use the custom search action
         args = %{query: search_term}
@@ -180,16 +180,16 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
         EveDmv.Contexts.FleetOperations.Resources.FleetDoctrine
         |> Ash.Query.for_read(:search, args)
       else
-        query
+        active_filtered_query
       end
 
     # Sort by usage and name
-    query =
-      query
+    final_query =
+      search_filtered_query
       |> sort(usage_count: :desc, name: :asc)
       |> load([:total_minimum_pilots, :completeness_score])
 
-    case Ash.read(query, domain: EveDmv.Contexts.FleetOperations.Domain) do
+    case Ash.read(final_query, domain: EveDmv.Contexts.FleetOperations.Domain) do
       {:ok, doctrines} ->
         {:ok, doctrines}
 
@@ -371,7 +371,6 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
     ship_score + role_score + desc_score + fitting_score + effectiveness_score
   end
 
-
   defp get_ship_class_for_type(ship_type_id) do
     # Real ship class determination using static data
     case StaticData.get_ship_class(ship_type_id) do
@@ -513,10 +512,10 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
 
     # Calculate average ship compliance
     ship_score =
-      if not Enum.empty?(compliance_scores) do
-        Enum.sum(compliance_scores) / length(compliance_scores)
-      else
+      if Enum.empty?(compliance_scores) do
         1.0
+      else
+        Enum.sum(compliance_scores) / length(compliance_scores)
       end
 
     %{
@@ -562,10 +561,10 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
 
     # Calculate average role compliance
     role_score =
-      if not Enum.empty?(compliance_scores) do
-        Enum.sum(compliance_scores) / length(compliance_scores)
-      else
+      if Enum.empty?(compliance_scores) do
         1.0
+      else
+        Enum.sum(compliance_scores) / length(compliance_scores)
       end
 
     %{

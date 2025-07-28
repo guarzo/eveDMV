@@ -615,18 +615,24 @@ defmodule EveDmv.Shared.Strategic.AssessmentCompiler do
     # Pattern findings
     dominant_pattern = pattern_analysis.dominant_pattern
 
-    if dominant_pattern do
-      findings = findings ++ ["Dominant pattern: #{dominant_pattern}"]
-    end
+    pattern_findings =
+      if dominant_pattern do
+        findings ++ ["Dominant pattern: #{dominant_pattern}"]
+      else
+        findings
+      end
 
     # Opportunity findings
     opportunity_count = opportunity_analysis.total_opportunities
 
-    if opportunity_count > 0 do
-      findings = findings ++ ["#{opportunity_count} strategic opportunities identified"]
-    end
+    final_findings =
+      if opportunity_count > 0 do
+        pattern_findings ++ ["#{opportunity_count} strategic opportunities identified"]
+      else
+        pattern_findings
+      end
 
-    Enum.take(findings, 5)
+    Enum.take(final_findings, 5)
   end
 
   defp summarize_strategic_situation(environment, posture) do

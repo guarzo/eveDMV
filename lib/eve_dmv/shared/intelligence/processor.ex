@@ -208,7 +208,7 @@ defmodule EveDmv.Shared.Intelligence.Processor do
     Float.round(actual_sources / total_possible, 2)
   end
 
-  defp assess_data_freshness(processed_data) do
+  defp assess_data_freshness(_processed_data) do
     # In production, would check actual timestamps
     # For now, return good freshness
     1.0

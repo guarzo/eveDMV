@@ -15,8 +15,8 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
 
   # alias EveDmv.Api
   alias EveDmv.Killmails.KillmailRaw
-  alias EveDmv.StaticData
   alias EveDmv.Shared.Infrastructure.UnifiedCache
+  alias EveDmv.StaticData
 
   require Logger
   import Ecto.Query

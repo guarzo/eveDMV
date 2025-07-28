@@ -9,8 +9,9 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CharacterAnalysisEngine do
   use GenServer
   require Logger
 
-  alias EveDmv.Shared.Infrastructure.{UnifiedCache, UnifiedRepository}
   alias EveDmv.DomainEvents.KillmailEnriched
+  alias EveDmv.Shared.Infrastructure.UnifiedCache
+  alias EveDmv.Shared.Infrastructure.UnifiedRepository
 
   # Analysis time ranges
   @time_ranges %{

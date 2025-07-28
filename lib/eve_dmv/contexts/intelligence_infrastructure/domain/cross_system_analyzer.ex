@@ -21,17 +21,15 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
   - MonitoringEngine: Real-time monitoring and alerting
   """
 
-  alias EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.{
-    WormholeChainAnalyzer,
-    ActivityCorrelator,
-    MonitoringEngine
-  }
-
-  # Use new modular strategic analysis system
-  alias EveDmv.Shared.Strategic.Facade, as: StrategicPatternAnalyzer
+  alias EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.ActivityCorrelator
+  alias EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.MonitoringEngine
+  alias EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.WormholeChainAnalyzer
 
   # Use new modular intelligence system
   alias EveDmv.Shared.Intelligence.Facade, as: IntelligenceFusion
+
+  # Use new modular strategic analysis system
+  alias EveDmv.Shared.Strategic.Facade, as: StrategicPatternAnalyzer
 
   require Logger
 

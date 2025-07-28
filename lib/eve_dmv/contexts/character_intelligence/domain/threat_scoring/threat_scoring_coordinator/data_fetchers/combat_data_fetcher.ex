@@ -1,4 +1,5 @@
-defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.DataFetchers.CombatDataFetcher do
+defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.DataFetchers.
+            CombatDataFetcher do
   @moduledoc """
   Handles fetching and processing of combat data for threat scoring analysis.
 

@@ -7,10 +7,10 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   """
 
   alias EveDmv.Database.CharacterQueries
-  alias EveDmv.Database.QueryPerformance
   alias EveDmv.Shared.KillmailQueries
-  alias EveDmv.StaticData
   alias EveDmv.Cache.QueryCache
+  alias EveDmv.Database.QueryPerformance
+  alias EveDmv.StaticData
   require Logger
 
   # Cache TTL configuration

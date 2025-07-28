@@ -24,19 +24,18 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   # alias EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer
   # alias EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer
 
-  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.DataCollectors.BattleDataCollector
-
-  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.BattleTimelineBuilder
-  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.ParticipantExtractor
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.BattlePhaseAnalyzer
-  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.PerformanceCalculator
-  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.PerformanceMetricsCalculator
-  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetCompositionAnalyzer
-  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.TacticalAnalysisEngine
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleComparisonEngine
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.DataCollectors.BattleDataCollector
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.FleetComparisonEngine
-  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.RecommendationEngine
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.LiveEngagementTracker
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.RecommendationEngine
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.ParticipantExtractor
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetCompositionAnalyzer
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.PerformanceMetricsCalculator
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.BattleTimelineBuilder
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.PerformanceCalculator
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.TacticalAnalysisEngine
   alias EveDmv.DomainEvents.BattleAnalysisComplete
   alias EveDmv.DomainEvents.TacticalInsightGenerated
   alias EveDmv.Infrastructure.EventBus

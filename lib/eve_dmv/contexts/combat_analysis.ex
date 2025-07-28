@@ -225,14 +225,14 @@ defmodule EveDmv.Contexts.CombatAnalysis do
   @doc """
   Get combat analysis cache statistics.
   """
-  def get_cache_stats() do
+  def get_cache_stats do
     UnifiedCache.get_domain_stats(:combat)
   end
 
   @doc """
   Clear combat analysis cache.
   """
-  def clear_cache() do
+  def clear_cache do
     UnifiedCache.invalidate_domain(:combat)
   end
 
@@ -241,7 +241,7 @@ defmodule EveDmv.Contexts.CombatAnalysis do
   @doc """
   Perform health check on combat analysis services.
   """
-  def health_check() do
+  def health_check do
     services = [
       Domain.BattleDetectionService,
       Domain.CombatIntelligenceEngine,
@@ -277,7 +277,7 @@ defmodule EveDmv.Contexts.CombatAnalysis do
 
   defp parse_zkillboard_url(url) do
     # Parse zKillboard URL format
-    # Examples: 
+    # Examples:
     # https://zkillboard.com/kill/123456/
     # https://zkillboard.com/related/30002537/202301011200/
 

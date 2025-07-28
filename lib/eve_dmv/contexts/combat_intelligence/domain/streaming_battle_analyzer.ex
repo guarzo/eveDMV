@@ -14,8 +14,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
   """
 
   use GenServer
-  alias EveDmv.Repo
   alias EveDmv.Contexts.CombatIntelligence.Domain.Shared.KillmailMapper
+  alias EveDmv.Repo
   require Logger
 
   # Configuration constants

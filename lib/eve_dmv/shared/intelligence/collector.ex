@@ -141,7 +141,7 @@ defmodule EveDmv.Shared.Intelligence.Collector do
     end
   end
 
-  defp collect_from_source(:market_activity, analysis_area, time_window_hours) do
+  defp collect_from_source(:market_activity, _analysis_area, _time_window_hours) do
     # Market activity tracking is not yet implemented
     # Return empty data structure instead of random data
     {:ok,

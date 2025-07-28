@@ -5,8 +5,8 @@ defmodule EveDmvWeb.HomeLive do
 
   use EveDmvWeb, :live_view
 
-  alias EveDmv.Eve.SolarSystem
   alias Ecto.Adapters.SQL
+  alias EveDmv.Eve.SolarSystem
 
   # Load current user from session on mount (optional for public pages)
   on_mount({EveDmvWeb.AuthLive, :load_from_session_optional})

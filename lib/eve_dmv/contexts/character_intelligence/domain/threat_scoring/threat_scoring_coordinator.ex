@@ -26,8 +26,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
   """
 
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.Analyzers.TrendAnalyzer
-  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.Calculators.ThreatScoreCalculator
-  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.DataFetchers.CombatDataFetcher
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.Calculators.
+          ThreatScoreCalculator,
+        as: Calculator
+
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.DataFetchers.
+          CombatDataFetcher,
+        as: DataFetcher
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.Generators.ComparisonEngine
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.Generators.InsightGenerator
 
@@ -70,9 +75,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
     Logger.info("Calculating threat score for character #{character_id}")
 
     with {:ok, combat_data} <-
-           CombatDataFetcher.fetch_character_combat_data(character_id, options),
+           DataFetcher.fetch_character_combat_data(character_id, options),
          {:ok, threat_assessment} <-
-           ThreatScoreCalculator.calculate_comprehensive_score(combat_data, options),
+           Calculator.calculate_comprehensive_score(combat_data, options),
          {:ok, insights} <- InsightGenerator.generate_threat_insights(threat_assessment) do
       {:ok, Map.put(threat_assessment, :insights, insights)}
     else

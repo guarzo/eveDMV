@@ -12,10 +12,10 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ProfileManagementService do
   Works with real surveillance profile data stored in the database.
   """
 
-  alias EveDmv.Surveillance.Profile
-  alias EveDmv.Api
-  alias EveDmv.Shared.Infrastructure.UnifiedCache
   alias EveDmv.Contexts.Surveillance.Domain.AdvancedFilterEngine
+  alias EveDmv.Api
+  alias EveDmv.Surveillance.Profile
+  alias EveDmv.Shared.Infrastructure.UnifiedCache
 
   require Logger
   require Ash.Query

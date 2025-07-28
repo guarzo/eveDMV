@@ -7,8 +7,8 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleAnalysisCoordinator do
   use GenServer
   require Logger
 
-  alias EveDmv.Shared.Infrastructure.UnifiedCache
   alias EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService
+  alias EveDmv.Shared.Infrastructure.UnifiedCache
 
   # Public API
 

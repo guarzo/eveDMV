@@ -34,7 +34,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.
   @doc """
   Analyzes connections within a wormhole chain.
   """
-  def analyze_wormhole_connections(chain_map, time_window_hours) do
+  def analyze_wormhole_connections(chain_map, _time_window_hours) do
     connections = chain_map.connections
 
     connection_analysis =
@@ -125,7 +125,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.
            """,
            [system_id, cutoff_time]
          ) do
-      {:ok, %{rows: rows}} when length(rows) > 0 ->
+      {:ok, %{rows: rows}} when rows != [] ->
         total_kills = rows |> Enum.map(fn [count, _, _] -> count end) |> Enum.sum()
 
         peak_hour =
@@ -487,27 +487,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.
     |> Enum.sum()
   end
 
-  defp estimate_peak_traffic_time(system_id) do
-    # Estimate peak traffic time based on historical killmail data
-    case get_peak_activity_hour_for_system(system_id) do
-      {:ok, hour} ->
-        ~T[00:00:00]
-        |> Time.add(hour * 3600)
-
-      :error ->
-        # Default to common EVE peak time (18:00 UTC)
-        ~T[18:00:00]
-    end
-  end
-
-  defp classify_traffic_pattern(ships_per_hour) do
-    cond do
-      ships_per_hour < 10 -> "light"
-      ships_per_hour < 20 -> "moderate"
-      ships_per_hour < 30 -> "heavy"
-      true -> "extreme"
-    end
-  end
 
   defp calculate_collapse_confidence(connection_data) do
     # Confidence based on stability and data quality
@@ -585,28 +564,4 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.
     end
   end
 
-  defp get_peak_activity_hour_for_system(system_id) do
-    # Get the hour with most killmails for this system (last 7 days)
-    cutoff_time = DateTime.add(DateTime.utc_now(), -7 * 24, :hour)
-
-    case EveDmv.Repo.query(
-           """
-             SELECT EXTRACT(hour FROM km.killmail_time)::integer as hour,
-                    COUNT(*) as kill_count
-             FROM killmails_raw km
-             WHERE km.solar_system_id = $1
-               AND km.killmail_time >= $2
-             GROUP BY EXTRACT(hour FROM km.killmail_time)
-             ORDER BY kill_count DESC
-             LIMIT 1
-           """,
-           [system_id, cutoff_time]
-         ) do
-      {:ok, %{rows: [[hour, _count]]}} when not is_nil(hour) ->
-        {:ok, hour}
-
-      _ ->
-        :error
-    end
-  end
 end

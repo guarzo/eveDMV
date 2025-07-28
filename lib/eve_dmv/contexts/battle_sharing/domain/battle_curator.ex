@@ -7,8 +7,8 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
   """
 
   alias EveDmv.Contexts.BattleAnalysis
-  alias EveDmv.Contexts.BattleSharing.Domain.VideoProcessor
   alias EveDmv.Contexts.BattleSharing.Domain.CommunityManager
+  alias EveDmv.Contexts.BattleSharing.Domain.VideoProcessor
 
   require Logger
 

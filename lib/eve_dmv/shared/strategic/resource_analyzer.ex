@@ -16,7 +16,7 @@ defmodule EveDmv.Shared.Strategic.ResourceAnalyzer do
   @doc """
   Analyzes resource competition across the area of operations.
   """
-  def analyze_resource_competition(strategic_data, options \\ []) do
+  def analyze_resource_competition(strategic_data, _options \\ []) do
     resource_patterns = ResourcePattern.identify_resource_control(strategic_data)
     competition_analysis = ResourcePattern.analyze_resource_competition(strategic_data)
 

@@ -565,7 +565,7 @@ defmodule EveDmv.StaticData.ShipTypes do
     end
   end
 
-  defp calculate_role_balance_bonus(role_distribution, total_ships) do
+  defp calculate_role_balance_bonus(role_distribution, _total_ships) do
     # Reward fleets with good role distribution
     role_count = map_size(role_distribution)
 
@@ -581,7 +581,7 @@ defmodule EveDmv.StaticData.ShipTypes do
     end
   end
 
-  defp calculate_composition_diversity(ship_composition, ship_data) do
+  defp calculate_composition_diversity(ship_composition, _ship_data) do
     # Calculate Shannon diversity index for ship types
     total_ships = Enum.sum(Map.values(ship_composition))
 

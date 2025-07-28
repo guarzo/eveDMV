@@ -17,7 +17,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.HistoricalService do
   def start_fetch_task(character_ids, opts \\ []) do
     batch_size = Keyword.get(opts, :batch_size, 5)
     # 5 minutes
-    timeout = Keyword.get(opts, :timeout, 300_000)
+    _timeout = Keyword.get(opts, :timeout, 300_000)
     callback = Keyword.get(opts, :callback)
 
     Logger.info("Starting historical fetch task for #{length(character_ids)} characters")

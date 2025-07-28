@@ -10,9 +10,10 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService do
   require Logger
   import Ecto.Query
 
-  alias EveDmv.Shared.Infrastructure.{UnifiedCache, UnifiedRepository}
   alias EveDmv.DomainEvents.KillmailEnriched
   alias EveDmv.Infrastructure.EventBus
+  alias EveDmv.Shared.Infrastructure.UnifiedCache
+  alias EveDmv.Shared.Infrastructure.UnifiedRepository
 
   # 5 minutes
   @battle_time_window 300

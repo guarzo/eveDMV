@@ -57,7 +57,7 @@ defmodule EveDmv.Shared.Monitoring.StreamManager do
   @doc """
   Initializes stream state for monitoring.
   """
-  def initialize_stream_state(monitoring_setup, stream_mode, buffer_size) do
+  def initialize_stream_state(_monitoring_setup, stream_mode, buffer_size) do
     {:ok,
      %{
        stream_mode: stream_mode,
@@ -154,7 +154,7 @@ defmodule EveDmv.Shared.Monitoring.StreamManager do
   @doc """
   Updates stream statistics with new data.
   """
-  def update_stream_statistics(stream_state, event_data) do
+  def update_stream_statistics(stream_state, _event_data) do
     stats = stream_state.stream_statistics
 
     updated_stats = %{

@@ -197,13 +197,13 @@
           {Credo.Check.Refactor.MapInto, []},
           # Allow anonymous function in pipes for data transformation
           {Credo.Check.Readability.PipeIntoAnonymousFunctions, []},
-          
+
           ## High-impact exclusions for cleaner codebase focus
           # Appending single items is often more readable in our data pipelines
           {Credo.Check.Refactor.AppendSingleItem, []},
           # Negated is_nil is more readable than alternatives
           {Credo.Check.Refactor.NegatedIsNil, []},
-          
+
           ## Temporarily disabled - will re-enable with higher thresholds later
           # Re-enable with higher limits once major issues are resolved
           {Credo.Check.Refactor.ABCSize, []},

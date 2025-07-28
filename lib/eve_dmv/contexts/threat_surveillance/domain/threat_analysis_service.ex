@@ -13,15 +13,12 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
   and threat scoring from the ThreatAssessmentEngine.
   """
 
-  alias EveDmv.Contexts.ThreatSurveillance.Domain.{
-    ThreatAssessmentEngine,
-    BehavioralPatternAnalyzer
-  }
-
-  alias EveDmv.Shared.Infrastructure.UnifiedCache
   alias EveDmv.Api
-  alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer
   alias EveDmv.Intelligence.CharacterStats
+  alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAssessmentEngine
+  alias EveDmv.Shared.Infrastructure.UnifiedCache
 
   require Logger
   import Ecto.Query
@@ -582,7 +579,8 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
       "tackle" -> :tackle
       "dps" -> :dps
       "support" -> :support
-      _ -> :dps  # Default fallback
+      # Default fallback
+      _ -> :dps
     end
   end
 

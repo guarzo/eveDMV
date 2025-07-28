@@ -11,8 +11,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleCompari
   - Multi-battle comparison logic
   """
 
-  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.TacticalAnalysisEngine
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.FleetComparisonEngine
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.TacticalAnalysisEngine
 
   require Logger
 

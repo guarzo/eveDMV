@@ -209,9 +209,6 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.FleetAnalysisEngine do
 
         {error_a, _} ->
           error_a
-
-        {_, error_b} ->
-          error_b
       end
     rescue
       error ->
@@ -254,7 +251,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.FleetAnalysisEngine do
     end
   end
 
-  defp analyze_fleet_performance(fleet_data, battle_results) do
+  defp analyze_fleet_performance(fleet_data, _battle_results) do
     try do
       # Simplified performance analysis using only composition data
       composition = analyze_ship_composition(fleet_data)
@@ -799,13 +796,13 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.FleetAnalysisEngine do
     balance = analysis[:fleet_balance] || %{}
     suggestions = []
 
-    if balance[:overall_balance] && balance[:overall_balance] < 0.6 do
-      role_scores = balance[:role_balance_scores] || %{}
+    final_suggestions =
+      if balance[:overall_balance] && balance[:overall_balance] < 0.6 do
+        role_scores = balance[:role_balance_scores] || %{}
 
-      # Find the most imbalanced role
-      worst_role = Enum.min_by(role_scores, fn {_role, score} -> score end, fn -> nil end)
+        # Find the most imbalanced role
+        worst_role = Enum.min_by(role_scores, fn {_role, score} -> score end, fn -> nil end)
 
-      suggestions =
         case worst_role do
           {role, _score} ->
             [
@@ -819,14 +816,16 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.FleetAnalysisEngine do
           nil ->
             suggestions
         end
-    end
+      else
+        suggestions
+      end
 
-    suggestions
+    final_suggestions
   end
 
   defp filter_suggestions_by_constraints(suggestions, constraints) do
     # Filter suggestions based on constraints like max_ships, budget, etc.
-    max_ships = Keyword.get(constraints, :max_ships, 999)
+    _max_ships = Keyword.get(constraints, :max_ships, 999)
     allowed_types = Keyword.get(constraints, :allowed_ship_types, :all)
 
     Enum.filter(suggestions, fn suggestion ->

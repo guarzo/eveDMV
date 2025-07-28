@@ -213,7 +213,7 @@ defmodule EveDmv.Shared.Strategic.OpportunityIdentifier do
       pattern_analysis
       |> get_in([:pattern_relationships]) || []
 
-    timing_opps = []
+    _initial_timing_opps = []
 
     # Transition opportunities
     timing_opps =

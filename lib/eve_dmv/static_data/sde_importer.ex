@@ -65,7 +65,7 @@ defmodule EveDmv.StaticData.SdeImporter do
   defp decompress_bz2(compressed_data) do
     # Write to temp file and use system bunzip2
     temp_file = "/tmp/sde_temp_#{:rand.uniform(99999)}.bz2"
-    temp_output = "/tmp/sde_temp_#{:rand.uniform(99999)}.csv"
+    _temp_output = "/tmp/sde_temp_#{:rand.uniform(99999)}.csv"
 
     try do
       File.write!(temp_file, compressed_data)
@@ -118,7 +118,7 @@ defmodule EveDmv.StaticData.SdeImporter do
     end)
   end
 
-  defp process_ship_attributes(dgm_types, dgm_attributes, inv_types) do
+  defp process_ship_attributes(dgm_types, _dgm_attributes, inv_types) do
     Logger.info("Processing ship attributes from SDE data")
 
     # Get all ship types
