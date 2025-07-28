@@ -297,13 +297,13 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
   end
 
   defp validate_participants(participants) when is_list(participants) do
-    if not Enum.empty?(participants) do
+    if Enum.empty?(participants) do
+      {:error, :no_participants}
+    else
       case validate_participant_structure(participants) do
         :ok -> :ok
         {:error, reason} -> {:error, {:invalid_participants, reason}}
       end
-    else
-      {:error, :no_participants}
     end
   end
 
@@ -321,13 +321,13 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
   end
 
   defp validate_killmails(killmails) when is_list(killmails) do
-    if not Enum.empty?(killmails) do
+    if Enum.empty?(killmails) do
+      {:error, :no_killmails}
+    else
       case validate_killmail_structure(killmails) do
         :ok -> :ok
         {:error, reason} -> {:error, {:invalid_killmails, reason}}
       end
-    else
-      {:error, :no_killmails}
     end
   end
 

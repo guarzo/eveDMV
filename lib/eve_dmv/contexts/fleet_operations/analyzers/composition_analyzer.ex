@@ -803,10 +803,10 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
         end)
 
       # Average the balance scores
-      if not Enum.empty?(balance_scores) do
-        Enum.sum(balance_scores) / length(balance_scores)
-      else
+      if Enum.empty?(balance_scores) do
         0.0
+      else
+        Enum.sum(balance_scores) / length(balance_scores)
       end
     end
   end
@@ -1185,7 +1185,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
     total_value = Enum.sum(Enum.map(participant_data, &(&1.ship_value || 0)))
     avg_ship_value = if total_pilots > 0, do: total_value / total_pilots, else: 0
 
-    insights =
+    value_insights =
       cond do
         avg_ship_value > 100_000_000 ->
           [
@@ -1207,7 +1207,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
       end
 
     # Cap the insights to top 5 most relevant
-    insights |> Enum.take(5)
+    value_insights |> Enum.take(5)
   end
 
   defp get_role_count(role_data) when is_map(role_data), do: Map.get(role_data, :count, 0)

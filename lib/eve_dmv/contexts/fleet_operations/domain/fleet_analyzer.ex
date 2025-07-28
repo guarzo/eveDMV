@@ -557,9 +557,9 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
       isk_lost: isk_lost,
       isk_efficiency: Float.round(isk_efficiency, 2),
       survival_rate:
-        if(not Enum.empty?(participants),
-          do: (length(participants) - losses) / length(participants) * 100,
-          else: 0
+        if(Enum.empty?(participants),
+          do: 0,
+          else: (length(participants) - losses) / length(participants) * 100
         )
     }
   end
