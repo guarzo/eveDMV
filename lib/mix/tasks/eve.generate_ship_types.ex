@@ -11,8 +11,8 @@ defmodule Mix.Tasks.Eve.GenerateShipTypes do
 
   use Mix.Task
   import Ecto.Query
-  alias EveDmv.Repo
   alias EveDmv.Eve.ItemType
+  alias EveDmv.Repo
 
   @group_mappings %{
     # Frigates

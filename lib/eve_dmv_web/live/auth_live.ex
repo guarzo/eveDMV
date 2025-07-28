@@ -6,10 +6,10 @@ defmodule EveDmvWeb.AuthLive do
   import Phoenix.LiveView
   import Phoenix.Component
 
-  alias EveDmv.Security.AuditLogger
-  alias EveDmv.Users.User
-  alias EveDmv.Users.Account
   alias EveDmv.Api
+  alias EveDmv.Security.AuditLogger
+  alias EveDmv.Users.Account
+  alias EveDmv.Users.User
 
   def on_mount(:load_from_session, _params, session, socket) do
     socket = assign_current_user(socket, session)

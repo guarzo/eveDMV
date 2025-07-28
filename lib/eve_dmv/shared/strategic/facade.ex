@@ -6,18 +6,16 @@ defmodule EveDmv.Shared.Strategic.Facade do
   strategic analysis components.
   """
 
-  alias EveDmv.Shared.Strategic.{
-    DataCollector,
-    TemporalAnalyzer,
-    CorrelationEngine,
-    PatternRecognition,
-    TerritorialAnalyzer,
-    ResourceAnalyzer,
-    TrendAnalyzer,
-    OpportunityIdentifier,
-    RecommendationEngine,
-    AssessmentCompiler
-  }
+  alias EveDmv.Shared.Strategic.AssessmentCompiler
+  alias EveDmv.Shared.Strategic.CorrelationEngine
+  alias EveDmv.Shared.Strategic.DataCollector
+  alias EveDmv.Shared.Strategic.OpportunityIdentifier
+  alias EveDmv.Shared.Strategic.PatternRecognition
+  alias EveDmv.Shared.Strategic.RecommendationEngine
+  alias EveDmv.Shared.Strategic.ResourceAnalyzer
+  alias EveDmv.Shared.Strategic.TemporalAnalyzer
+  alias EveDmv.Shared.Strategic.TerritorialAnalyzer
+  alias EveDmv.Shared.Strategic.TrendAnalyzer
 
   require Logger
 

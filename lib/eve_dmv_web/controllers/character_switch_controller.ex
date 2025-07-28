@@ -7,8 +7,8 @@ defmodule EveDmvWeb.CharacterSwitchController do
 
   use EveDmvWeb, :controller
 
-  alias EveDmv.Users.AccountManager
   alias EveDmv.Security.AuditLogger
+  alias EveDmv.Users.AccountManager
 
   plug(:require_authenticated_user)
 

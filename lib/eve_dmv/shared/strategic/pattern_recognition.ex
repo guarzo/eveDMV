@@ -9,11 +9,9 @@ defmodule EveDmv.Shared.Strategic.PatternRecognition do
   - Pattern classification
   """
 
-  alias EveDmv.Shared.Strategic.Patterns.{
-    TerritorialPattern,
-    ResourcePattern,
-    TacticalPatterns
-  }
+  alias EveDmv.Shared.Strategic.Patterns.ResourcePattern
+  alias EveDmv.Shared.Strategic.Patterns.TacticalPatterns
+  alias EveDmv.Shared.Strategic.Patterns.TerritorialPattern
 
   require Logger
 

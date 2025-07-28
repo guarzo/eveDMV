@@ -9,8 +9,8 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
   use GenServer
   alias EveDmv.Logging.StructuredLogger
   alias EveDmv.Workers.BackgroundTaskSupervisor
-  alias EveDmv.Workers.UITaskSupervisor
   alias EveDmv.Workers.RealtimeTaskSupervisor
+  alias EveDmv.Workers.UITaskSupervisor
 
   require Logger
 

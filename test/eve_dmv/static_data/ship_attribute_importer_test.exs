@@ -1,8 +1,9 @@
 defmodule EveDmv.StaticData.ShipAttributeImporterTest do
   # Not async due to GenServer
   use EveDmv.DataCase, async: false
-  alias EveDmv.StaticData.{ShipAttributeImporter, ShipAttributes}
   alias EveDmv.Eve.ItemType
+  alias EveDmv.StaticData.ShipAttributeImporter
+  alias EveDmv.StaticData.ShipAttributes
 
   describe "ShipAttributeImporter GenServer" do
     setup do

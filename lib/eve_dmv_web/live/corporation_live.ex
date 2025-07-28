@@ -12,8 +12,8 @@ defmodule EveDmvWeb.CorporationLive do
   alias EveDmv.Cache.AnalysisCache
   alias EveDmv.Contexts.CorporationIntelligence
   alias EveDmv.Pagination.CursorPaginator
-  alias EveDmvWeb.Helpers.TimeFormatter
   alias EveDmvWeb.CorporationLive.DataLoader
+  alias EveDmvWeb.Helpers.TimeFormatter
   require Logger
 
   @moduledoc """

@@ -9,8 +9,8 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
   - Generate test data that matches production patterns
   """
 
-  alias EveDmv.Repo
   alias Ecto.Adapters.SQL
+  alias EveDmv.Repo
   # alias EveDmv.Telemetry.QueryMonitor # Currently unused
   require Logger
 

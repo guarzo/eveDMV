@@ -11,10 +11,10 @@ defmodule EveDmv.StaticData.ShipTypes do
   """
 
   import Ecto.Query
-  alias EveDmv.Repo
-  alias EveDmv.Eve.ItemType
-  alias EveDmv.StaticData.ShipAttributes
   alias EveDmv.Api
+  alias EveDmv.Eve.ItemType
+  alias EveDmv.Repo
+  alias EveDmv.StaticData.ShipAttributes
 
   @doc """
   Classify a ship by its type ID using database lookup.

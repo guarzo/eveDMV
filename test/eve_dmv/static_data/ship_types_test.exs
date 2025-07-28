@@ -1,7 +1,7 @@
 defmodule EveDmv.StaticData.ShipTypesTest do
   use EveDmv.DataCase, async: true
-  alias EveDmv.StaticData.ShipTypes
   alias EveDmv.Eve.ItemType
+  alias EveDmv.StaticData.ShipTypes
 
   describe "classify_ship_type/1" do
     setup do

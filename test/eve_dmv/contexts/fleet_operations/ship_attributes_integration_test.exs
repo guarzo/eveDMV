@@ -1,9 +1,10 @@
 defmodule EveDmv.Contexts.FleetOperations.ShipAttributesIntegrationTest do
   use EveDmv.DataCase, async: true
-  alias EveDmv.StaticData.{ShipAttributes, ShipTypes}
   alias EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer
   alias EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer
   alias EveDmv.Eve.ItemType
+  alias EveDmv.StaticData.ShipAttributes
+  alias EveDmv.StaticData.ShipTypes
 
   describe "FleetAnalyzer integration with ship attributes" do
     setup do

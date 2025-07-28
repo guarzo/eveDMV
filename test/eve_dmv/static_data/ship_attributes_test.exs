@@ -1,7 +1,8 @@
 defmodule EveDmv.StaticData.ShipAttributesTest do
   use EveDmv.DataCase, async: true
-  alias EveDmv.StaticData.{ShipAttributes, ShipTypes}
   alias EveDmv.Eve.ItemType
+  alias EveDmv.StaticData.ShipAttributes
+  alias EveDmv.StaticData.ShipTypes
 
   describe "ship attributes creation and queries" do
     setup do

@@ -11,12 +11,10 @@ defmodule EveDmv.Shared.Monitoring.Facade do
   Maintains the same interface as the original MonitoringEngine.
   """
 
-  alias EveDmv.Shared.Monitoring.{
-    BaselineManager,
-    StreamManager,
-    AnomalyDetector,
-    AlertManager
-  }
+  alias EveDmv.Shared.Monitoring.AlertManager
+  alias EveDmv.Shared.Monitoring.AnomalyDetector
+  alias EveDmv.Shared.Monitoring.BaselineManager
+  alias EveDmv.Shared.Monitoring.StreamManager
 
   require Logger
 
