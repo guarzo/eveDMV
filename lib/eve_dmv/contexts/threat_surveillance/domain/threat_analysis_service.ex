@@ -15,9 +15,9 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
 
   alias EveDmv.Api
   alias EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer
+  alias EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAssessmentEngine
   alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Killmails.KillmailRaw
-  alias EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAssessmentEngine
   alias EveDmv.Shared.Infrastructure.UnifiedCache
 
   require Logger

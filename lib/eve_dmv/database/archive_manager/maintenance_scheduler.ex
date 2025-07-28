@@ -8,8 +8,8 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Database.ArchiveManager, as: AM
-  alias AM.ArchiveOperations
-  alias AM.PartitionManager
+  alias EveDmv.Database.ArchiveManager.ArchiveOperations
+  alias EveDmv.Database.ArchiveManager.PartitionManager
   alias EveDmv.Repo
 
   require Logger
