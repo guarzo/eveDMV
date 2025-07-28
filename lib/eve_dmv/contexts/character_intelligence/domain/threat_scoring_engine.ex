@@ -600,14 +600,14 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
         (usage_score + diversity_score) / 2
       end)
 
-    if not Enum.empty?(mastery_scores) do
+    if Enum.empty?(mastery_scores) do
+      0.0
+    else
       average_mastery = Enum.sum(mastery_scores) / length(mastery_scores)
       # 6 main ship classes
       class_breadth = min(1.0, classes_used / 6)
 
       average_mastery * 0.7 + class_breadth * 0.3
-    else
-      0.0
     end
   end
 
@@ -1072,10 +1072,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     kills = Enum.count(killmails, &(&1.victim_character_id == nil))
     _deaths = length(killmails) - kills
 
-    if not Enum.empty?(killmails) do
-      kills / length(killmails)
-    else
+    if Enum.empty?(killmails) do
       0.5
+    else
+      kills / length(killmails)
     end
   end
 
