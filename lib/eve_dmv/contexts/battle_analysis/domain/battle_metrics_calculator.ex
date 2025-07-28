@@ -185,9 +185,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
     %{
       total_isk_destroyed: total_destroyed,
       average_loss_value:
-        if(not Enum.empty?(killmails),
-          do: Float.round(total_destroyed / length(killmails), 2),
-          else: 0
+        if(Enum.empty?(killmails),
+          do: 0,
+          else: Float.round(total_destroyed / length(killmails), 2)
         ),
       most_expensive_loss: find_most_expensive_loss(killmails),
       isk_by_ship_class: group_isk_by_ship_class(killmails),
@@ -206,9 +206,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
     %{
       total_damage_applied: total_damage,
       average_damage_per_kill:
-        if(not Enum.empty?(killmails),
-          do: Float.round(total_damage / length(killmails), 2),
-          else: 0
+        if(Enum.empty?(killmails),
+          do: 0,
+          else: Float.round(total_damage / length(killmails), 2)
         ),
       dps_overall:
         if(duration_seconds > 0, do: Float.round(total_damage / duration_seconds, 2), else: 0),
@@ -269,10 +269,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
   defp calculate_average_attackers(killmails) do
     total_attackers = Enum.sum(Enum.map(killmails, &(&1.attacker_count || 0)))
 
-    if not Enum.empty?(killmails) do
-      Float.round(total_attackers / length(killmails), 1)
-    else
+    if Enum.empty?(killmails) do
       0
+    else
+      Float.round(total_attackers / length(killmails), 1)
     end
   end
 
@@ -474,7 +474,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
       |> Enum.map(&calculate_killmail_overkill/1)
       |> Enum.reject(&is_nil/1)
 
-    if not Enum.empty?(overkill_data) do
+    if Enum.empty?(overkill_data) do
+      %{
+        average_overkill_percentage: 0.0,
+        most_overkilled_target: nil
+      }
+    else
       total_overkill = Enum.sum(Enum.map(overkill_data, & &1.overkill_percentage))
       average_overkill = total_overkill / length(overkill_data)
 
@@ -483,11 +488,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
       %{
         average_overkill_percentage: Float.round(average_overkill, 1),
         most_overkilled_target: most_overkilled
-      }
-    else
-      %{
-        average_overkill_percentage: 0.0,
-        most_overkilled_target: nil
       }
     end
   end
