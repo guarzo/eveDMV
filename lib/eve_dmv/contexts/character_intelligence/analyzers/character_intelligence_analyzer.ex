@@ -304,9 +304,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
               end)
 
             preferred_style =
-              if not Enum.empty?(gang_patterns),
-                do: List.first(gang_patterns).size_category,
-                else: "unknown"
+              if Enum.empty?(gang_patterns),
+                do: "unknown",
+                else: List.first(gang_patterns).size_category
 
             gang_stats = %{
               total_participations: total_participations,
@@ -527,10 +527,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
             net_isk = isk_destroyed - isk_lost
 
             efficiency_ratio =
-              if isk_lost > 0 do
-                Float.round(isk_destroyed / isk_lost, 2)
-              else
-                if isk_destroyed > 0, do: :infinite, else: 0.0
+              cond do
+                isk_lost > 0 -> Float.round(isk_destroyed / isk_lost, 2)
+                isk_destroyed > 0 -> :infinite
+                true -> 0.0
               end
 
             efficiency_percentage =
