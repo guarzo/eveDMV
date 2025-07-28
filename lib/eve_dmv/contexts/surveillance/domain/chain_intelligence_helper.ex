@@ -142,59 +142,55 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
   end
 
   defp sync_single_chain_topology(map_id) do
-    try do
-      # Fetch current topology from Wanderer API
-      case WandererClient.get_chain_topology(map_id) do
-        {:ok, topology} ->
-          # Update local topology cache/database
-          case update_topology_cache(map_id, topology) do
-            {:ok, _} ->
-              Logger.debug("Synced topology for chain #{map_id}")
-              {:ok, map_id}
+    # Fetch current topology from Wanderer API
+    case WandererClient.get_chain_topology(map_id) do
+      {:ok, topology} ->
+        # Update local topology cache/database
+        case update_topology_cache(map_id, topology) do
+          {:ok, _} ->
+            Logger.debug("Synced topology for chain #{map_id}")
+            {:ok, map_id}
 
-            {:error, reason} ->
-              Logger.error(
-                "Failed to update topology cache for chain #{map_id}: #{inspect(reason)}"
-              )
+          {:error, reason} ->
+            Logger.error(
+              "Failed to update topology cache for chain #{map_id}: #{inspect(reason)}"
+            )
 
-              {:error, {map_id, reason}}
-          end
+            {:error, {map_id, reason}}
+        end
 
-        {:error, reason} ->
-          Logger.error("Failed to fetch topology for chain #{map_id}: #{inspect(reason)}")
-          {:error, {map_id, reason}}
-      end
-    rescue
-      exception ->
-        Logger.error("Exception syncing chain #{map_id}: #{inspect(exception)}")
-        {:error, {map_id, exception}}
+      {:error, reason} ->
+        Logger.error("Failed to fetch topology for chain #{map_id}: #{inspect(reason)}")
+        {:error, {map_id, reason}}
     end
+  rescue
+    exception ->
+      Logger.error("Exception syncing chain #{map_id}: #{inspect(exception)}")
+      {:error, {map_id, exception}}
   end
 
   defp update_topology_cache(map_id, topology) do
     # Store topology data in the database or cache
     # This could use Ash resources or direct database operations
-    try do
-      # For now, we'll use a simple approach - store in ETS or database
-      topology_data = %{
-        map_id: map_id,
-        topology: topology,
-        last_updated: DateTime.utc_now(),
-        system_count: count_systems(topology),
-        connection_count: count_connections(topology)
-      }
+    # For now, we'll use a simple approach - store in ETS or database
+    topology_data = %{
+      map_id: map_id,
+      topology: topology,
+      last_updated: DateTime.utc_now(),
+      system_count: count_systems(topology),
+      connection_count: count_connections(topology)
+    }
 
-      # Could store in database table or ETS for fast access
-      # For now, just log the update
-      Logger.debug(
-        "Updated topology cache for chain #{map_id} with #{topology_data.system_count} systems"
-      )
+    # Could store in database table or ETS for fast access
+    # For now, just log the update
+    Logger.debug(
+      "Updated topology cache for chain #{map_id} with #{topology_data.system_count} systems"
+    )
 
-      {:ok, topology_data}
-    rescue
-      exception ->
-        {:error, exception}
-    end
+    {:ok, topology_data}
+  rescue
+    exception ->
+      {:error, exception}
   end
 
   defp count_systems(topology) when is_map(topology) do
