@@ -11,6 +11,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
   use EveDmvWeb, :live_view
 
+  alias EveDmv.Contexts.Surveillance.Api, as: SurveillanceApi
   alias KillmailRaw
   alias SearchSuggestionService
 
@@ -67,7 +68,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
   @impl Phoenix.LiveView
   def handle_event("delete_profile", %{"id" => id}, socket) do
-    case safe_call(fn -> EveDmv.Contexts.Surveillance.Api.delete_profile(id) end) do
+    case safe_call(fn -> SurveillanceApi.delete_profile(id) end) do
       {:ok, _} ->
         socket =
           socket
@@ -88,7 +89,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
     enabled = !profile.enabled
 
     case safe_call(fn ->
-           EveDmv.Contexts.Surveillance.Api.update_profile(id, %{enabled: enabled})
+           SurveillanceApi.update_profile(id, %{enabled: enabled})
          end) do
       {:ok, _} ->
         socket =
@@ -471,7 +472,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
   # Private functions
   defp load_profiles(socket) do
-    case safe_call(fn -> EveDmv.Contexts.Surveillance.Api.list_profiles([]) end) do
+    case safe_call(fn -> SurveillanceApi.list_profiles([]) end) do
       {:ok, profiles} ->
         # Profiles should already be in the correct format since we're not doing backwards compatibility
         formatted_profiles = Enum.map(profiles, &format_profile_for_ui/1)

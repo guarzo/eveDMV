@@ -328,12 +328,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
         classify_ship_role(km.victim_ship_type_id) == :command
       end)
 
-    if not Enum.empty?(attacker_killmails) do
+    if Enum.empty?(attacker_killmails) do
+      0.5
+    else
       command_ratio = command_ship_kills / length(attacker_killmails)
       # Strong bonus for command ship usage
       min(1.0, command_ratio * 5.0)
-    else
-      0.5
     end
   end
 
@@ -360,11 +360,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
       |> Enum.uniq()
       |> length()
 
-    if not Enum.empty?(attacker_killmails) do
+    if Enum.empty?(attacker_killmails) do
+      0.5
+    else
       diversity_ratio = ship_types_in_kills / length(attacker_killmails)
       min(1.0, diversity_ratio * 2.0)
-    else
-      0.5
     end
   end
 
