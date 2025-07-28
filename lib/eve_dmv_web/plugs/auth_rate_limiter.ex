@@ -7,9 +7,7 @@ defmodule EveDmvWeb.Plugs.AuthRateLimiter do
   """
 
   import Plug.Conn
-
   alias EveDmv.Security.AuditLogger
-
   require Logger
 
   # Default configuration

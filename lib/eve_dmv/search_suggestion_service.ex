@@ -6,10 +6,10 @@ defmodule SearchSuggestionService do
   based on user input. It uses PostgreSQL's trigram indexing for fuzzy search capabilities.
   """
 
+  import Ash.Query
   alias EveDmv.Api
   alias EveDmv.Killmails.Participant
   alias EveDmv.Eve.{ItemType, SolarSystem}
-  import Ash.Query
 
   @doc """
   Get character name suggestions based on a search query.
@@ -189,7 +189,8 @@ defmodule SearchSuggestionService do
       suggestions =
         ItemType
         |> select([:type_id, :type_name])
-        |> filter(category_id == 6)  # Ships category
+        # Ships category
+        |> filter(category_id == 6)
         |> filter(ilike(type_name, ^"%#{query}%"))
         |> sort(:type_name)
         |> limit(limit)

@@ -70,15 +70,16 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
       |> Enum.chunk_every(batch_size)
       |> Enum.with_index(1)
 
-    result_stream = Task.async_stream(
-      batches,
-      fn {batch, idx} ->
-        Logger.debug("Processing #{type} batch #{idx}")
-        Enum.each(batch, fun)
-      end,
-      max_concurrency: System.schedulers_online(),
-      ordered: false
-    )
+    result_stream =
+      Task.async_stream(
+        batches,
+        fn {batch, idx} ->
+          Logger.debug("Processing #{type} batch #{idx}")
+          Enum.each(batch, fun)
+        end,
+        max_concurrency: System.schedulers_online(),
+        ordered: false
+      )
 
     Stream.run(result_stream)
   end

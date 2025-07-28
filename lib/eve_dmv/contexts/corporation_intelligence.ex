@@ -812,16 +812,16 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
         today = Date.utc_today()
 
         start_date =
-          Date.beginning_of_month(today)
-
-        Date.shift(month: -i)
-        DateTime.new!(~T[00:00:00])
+          today
+          |> Date.beginning_of_month()
+          |> Date.shift(month: -i)
+          |> DateTime.new!(~T[00:00:00])
 
         end_date =
-          Date.beginning_of_month(today)
-
-        Date.shift(month: -(i - 1))
-        DateTime.new!(~T[00:00:00])
+          today
+          |> Date.beginning_of_month()
+          |> Date.shift(month: -(i - 1))
+          |> DateTime.new!(~T[00:00:00])
 
         query =
           Participant

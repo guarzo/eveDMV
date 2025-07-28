@@ -136,9 +136,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
   # Private helper functions
 
   defp fetch_battle_data(battle_id) do
-    case BattleAnalysis.get_battle_by_id(battle_id) do
-      nil -> {:error, "Battle not found"}
-      battle -> {:ok, battle}
+    case BattleAnalysis.get_battle_with_timeline(battle_id) do
+      {:ok, battle_data} -> {:ok, battle_data.battle}
+      {:error, _reason} -> {:error, "Battle not found"}
     end
   rescue
     error ->
@@ -200,11 +200,11 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
       creator_character_id: opts.creator_id,
       title: opts.title,
       description: opts.description,
-      videos: opts.videos || [],
-      tactical_highlights: opts.highlights || [],
+      videos: Map.get(opts, :videos, []),
+      tactical_highlights: Map.get(opts, :highlights, []),
       auto_analysis: opts.auto_analysis,
       visibility: opts.visibility,
-      tags: opts.tags || [],
+      tags: Map.get(opts, :tags, []),
       allow_comments: opts.allow_comments,
       allow_ratings: opts.allow_ratings,
       community_features: %{

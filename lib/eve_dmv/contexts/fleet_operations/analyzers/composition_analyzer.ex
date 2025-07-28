@@ -10,6 +10,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
   use EveDmv.ErrorHandler
   alias EveDmv.Result
   alias EveDmv.Eve.ItemType
+  alias Ecto.Adapters.SQL
 
   @doc """
   Analyze fleet composition for effectiveness and tactical balance.
@@ -216,7 +217,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
       LIMIT 20
       """
 
-      case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [ship_type_id]) do
+      case SQL.query(EveDmv.Repo, query, [ship_type_id]) do
         {:ok, %{rows: rows}} when rows != [] ->
           # Analyze fitting patterns from killmail data
           fittings = extract_fitting_data(rows)
@@ -233,7 +234,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
   end
 
   # Helper functions to identify module types by type_id
-  defp is_weapon_module(type_id) do
+  defp weapon_module?(type_id) do
     # Common weapon type IDs - this is a simplified check
     # In production, would query static data for proper categorization
     type_id in [
@@ -275,7 +276,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
     ]
   end
 
-  defp is_remote_repair_module(type_id) do
+  defp remote_repair_module?(type_id) do
     # Remote repair modules
     type_id in [
       # Remote armor repairers
@@ -293,7 +294,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
     ]
   end
 
-  defp is_ewar_module(type_id) do
+  defp ewar_module?(type_id) do
     # EWAR modules
     type_id in [
       # ECM
@@ -996,29 +997,36 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
         0
 
       id when is_integer(id) ->
-        cond do
-          # Frigates
-          id in 582..650 -> 150
-          # Destroyers
-          id in 324..380 -> 200
-          # Cruisers
-          id in 620..634 -> 350
-          # Battlecruisers
-          id in 1201..1310 -> 600
-          # Battleships
-          id in 638..645 -> 800
-          # Carriers
-          id in 547..554 -> 2000
-          # Dreadnoughts
-          id in 670..673 -> 5000
-          # Titans
-          id in 3514..3518 -> 8000
-          # T3 Cruisers
-          id in 11_567..12_034 -> 450
-          # T3 Destroyers
-          id in 29_984..29_990 -> 250
-          # Default
-          true -> 200
+        case EveDmv.StaticData.ShipTypes.get_ship_dps(id) do
+          {:ok, dps} ->
+            dps
+
+          {:error, _} ->
+            # Fallback to ship class estimation if no data available
+            cond do
+              # Frigates
+              id in 582..650 -> 150
+              # Destroyers
+              id in 324..380 -> 200
+              # Cruisers
+              id in 620..634 -> 350
+              # Battlecruisers
+              id in 1201..1310 -> 600
+              # Battleships
+              id in 638..645 -> 800
+              # Carriers
+              id in 547..554 -> 2000
+              # Dreadnoughts
+              id in 670..673 -> 5000
+              # Titans
+              id in 3514..3518 -> 8000
+              # T3 Cruisers
+              id in 11_567..12_034 -> 450
+              # T3 Destroyers
+              id in 29_984..29_990 -> 250
+              # Default
+              true -> 200
+            end
         end
 
       _ ->
@@ -1026,7 +1034,15 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
     end
   end
 
-  defp calculate_alpha_strike_potential(_participant_data), do: 50_000
+  defp calculate_alpha_strike_potential(participant_data) do
+    # Alpha strike is roughly 2x average DPS for most ships
+    total_dps =
+      participant_data
+      |> Enum.map(&estimate_ship_dps/1)
+      |> Enum.sum()
+
+    round(total_dps * 2)
+  end
 
   defp calculate_effective_hp(participant_data) do
     participant_data
@@ -1044,29 +1060,36 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
         0
 
       id when is_integer(id) ->
-        cond do
-          # Frigates
-          id in 582..650 -> 8_000
-          # Destroyers
-          id in 324..380 -> 15_000
-          # Cruisers
-          id in 620..634 -> 35_000
-          # Battlecruisers
-          id in 1201..1310 -> 80_000
-          # Battleships
-          id in 638..645 -> 150_000
-          # Carriers
-          id in 547..554 -> 8_000_000
-          # Dreadnoughts
-          id in 670..673 -> 15_000_000
-          # Titans
-          id in 3514..3518 -> 50_000_000
-          # T3 Cruisers
-          id in 11_567..12_034 -> 45_000
-          # T3 Destroyers
-          id in 29_984..29_990 -> 20_000
-          # Default
-          true -> 25_000
+        case EveDmv.StaticData.ShipTypes.get_ship_ehp(id) do
+          {:ok, ehp} ->
+            ehp
+
+          {:error, _} ->
+            # Fallback to ship class estimation if no data available
+            cond do
+              # Frigates
+              id in 582..650 -> 8_000
+              # Destroyers
+              id in 324..380 -> 15_000
+              # Cruisers
+              id in 620..634 -> 35_000
+              # Battlecruisers
+              id in 1201..1310 -> 80_000
+              # Battleships
+              id in 638..645 -> 150_000
+              # Carriers
+              id in 547..554 -> 8_000_000
+              # Dreadnoughts
+              id in 670..673 -> 15_000_000
+              # Titans
+              id in 3514..3518 -> 50_000_000
+              # T3 Cruisers
+              id in 11_567..12_034 -> 45_000
+              # T3 Destroyers
+              id in 29_984..29_990 -> 20_000
+              # Default
+              true -> 25_000
+            end
         end
 
       _ ->
@@ -1318,7 +1341,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
     fittings
     |> Enum.map(fn fitting ->
       fitting.high_slots
-      |> Enum.count(&is_weapon_module/1)
+      |> Enum.count(&weapon_module?/1)
     end)
     |> Enum.sum()
   end
@@ -1327,7 +1350,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
     fittings
     |> Enum.map(fn fitting ->
       fitting.high_slots
-      |> Enum.count(&is_remote_repair_module/1)
+      |> Enum.count(&remote_repair_module?/1)
     end)
     |> Enum.sum()
   end
@@ -1336,7 +1359,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
     fittings
     |> Enum.map(fn fitting ->
       fitting.high_slots
-      |> Enum.count(&is_ewar_module/1)
+      |> Enum.count(&ewar_module?/1)
     end)
     |> Enum.sum()
   end

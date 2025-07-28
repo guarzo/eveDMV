@@ -13,6 +13,16 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
   alias EveDmv.Workers.RealtimeTaskSupervisor
 
   require Logger
+
+  defstruct [
+    :shutdown_reason,
+    :shutdown_started_at,
+    :current_phase,
+    :completed_phases,
+    :shutdown_timeout,
+    :shutdown_timer
+  ]
+
   # Shutdown phases with timeouts (in milliseconds)
   @shutdown_phases [
     {:stop_accepting_work, 2_000},
@@ -25,15 +35,6 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
   @total_shutdown_timeout Enum.reduce(@shutdown_phases, 0, fn {_phase, timeout}, acc ->
                             acc + timeout
                           end)
-
-  defstruct [
-    :shutdown_reason,
-    :shutdown_started_at,
-    :current_phase,
-    :completed_phases,
-    :shutdown_timeout,
-    :shutdown_timer
-  ]
 
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)

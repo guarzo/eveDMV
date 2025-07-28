@@ -14,10 +14,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
   """
 
   use GenServer
-  require Logger
-
   alias EveDmv.Repo
   alias EveDmv.Contexts.CombatIntelligence.Domain.Shared.KillmailMapper
+  require Logger
 
   # Configuration constants
   @default_batch_size 1000

@@ -279,25 +279,23 @@ defmodule EveDmv.Eve.EsiUtils do
 
   defp calculate_total_tenure_days(history) when is_list(history) do
     # Calculate real tenure based on start_date and end_date fields
-    try do
-      # Sort history by start_date to process chronologically
-      sorted_history =
-        Enum.sort_by(history, fn record ->
-          case Map.get(record, "start_date") do
-            date when is_binary(date) -> Date.from_iso8601!(date)
-            %Date{} = date -> date
-            # EVE launch date as fallback
-            _ -> ~D[2003-05-06]
-          end
-        end)
+    # Sort history by start_date to process chronologically
+    sorted_history =
+      Enum.sort_by(history, fn record ->
+        case Map.get(record, "start_date") do
+          date when is_binary(date) -> Date.from_iso8601!(date)
+          %Date{} = date -> date
+          # EVE launch date as fallback
+          _ -> ~D[2003-05-06]
+        end
+      end)
 
-      total_days = calculate_tenure_from_records(sorted_history)
-      max(0, total_days)
-    rescue
-      _error ->
-        # Fallback to simple calculation if date parsing fails
-        length(history) * 90
-    end
+    total_days = calculate_tenure_from_records(sorted_history)
+    max(0, total_days)
+  rescue
+    _error ->
+      # Fallback to simple calculation if date parsing fails
+      length(history) * 90
   end
 
   defp calculate_tenure_from_records([]), do: 0

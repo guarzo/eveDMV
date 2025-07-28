@@ -11,6 +11,7 @@ defmodule EveDmvWeb.CorporationLive do
   alias EveDmv.Analytics.BattleDetector
   alias EveDmv.Cache.AnalysisCache
   alias EveDmv.Contexts.CorporationIntelligence
+  alias EveDmv.Pagination.CursorPaginator
   alias EveDmvWeb.Helpers.TimeFormatter
   alias EveDmvWeb.CorporationLive.DataLoader
   require Logger
@@ -132,13 +133,13 @@ defmodule EveDmvWeb.CorporationLive do
     corporation_id = socket.assigns.corporation_id
     page_size = socket.assigns[:members_page_size] || 50
 
-    case EveDmv.Pagination.CursorPaginator.paginate_corporation_members(
+    case CursorPaginator.paginate_corporation_members(
            corporation_id,
            after: cursor,
            page_size: page_size
          ) do
       paginator ->
-        pagination = EveDmv.Pagination.CursorPaginator.pagination_assigns(paginator)
+        pagination = CursorPaginator.pagination_assigns(paginator)
 
         socket =
           socket
@@ -154,13 +155,13 @@ defmodule EveDmvWeb.CorporationLive do
     corporation_id = socket.assigns.corporation_id
     page_size = socket.assigns[:members_page_size] || 50
 
-    case EveDmv.Pagination.CursorPaginator.paginate_corporation_members(
+    case CursorPaginator.paginate_corporation_members(
            corporation_id,
            before: cursor,
            page_size: page_size
          ) do
       paginator ->
-        pagination = EveDmv.Pagination.CursorPaginator.pagination_assigns(paginator)
+        pagination = CursorPaginator.pagination_assigns(paginator)
 
         socket =
           socket
@@ -177,12 +178,12 @@ defmodule EveDmvWeb.CorporationLive do
     page_size = String.to_integer(size_str)
 
     # Reset to first page with new size
-    case EveDmv.Pagination.CursorPaginator.paginate_corporation_members(
+    case CursorPaginator.paginate_corporation_members(
            corporation_id,
            page_size: page_size
          ) do
       paginator ->
-        pagination = EveDmv.Pagination.CursorPaginator.pagination_assigns(paginator)
+        pagination = CursorPaginator.pagination_assigns(paginator)
 
         socket =
           socket
@@ -314,7 +315,7 @@ defmodule EveDmvWeb.CorporationLive do
   defp load_more_recent_activity(corporation_id, cursor) do
     try do
       activities =
-        EveDmv.Pagination.CursorPaginator.paginate_character_activity(
+        CursorPaginator.paginate_character_activity(
           corporation_id,
           after: cursor,
           page_size: 50

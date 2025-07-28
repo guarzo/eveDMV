@@ -673,7 +673,8 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
     ["Consider reducing logistics ships - current ratio above optimal"]
   end
 
-  defp logistics_recommendations(_), do: []
+  defp logistics_recommendations(_),
+    do: ["Fleet logistics analysis requires additional ship data"]
 
   defp role_balance_recommendations(role_balance) do
     ewar_rec =
@@ -725,13 +726,14 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
     end
   end
 
-  defp doctrine_recommendations(_, _), do: []
+  defp doctrine_recommendations(_, _),
+    do: ["Doctrine analysis requires fleet doctrine definitions"]
 
   defp support_recommendations(%{score: score}) when score < 0.30 do
     ["Fleet lacks support ships - consider adding EWAR, tackle, or command ships"]
   end
 
-  defp support_recommendations(_), do: []
+  defp support_recommendations(_), do: ["Support analysis requires EWAR and tackle ship data"]
 
   # Ship type classifications (simplified - in practice this would be more comprehensive)
   defp get_armor_ship_types do

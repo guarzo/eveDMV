@@ -16,8 +16,6 @@ defmodule EveDmvWeb.KillFeedLive do
   # Import reusable components
   @topic "kill_feed"
   @feed_limit 50
-  # pixels from bottom to trigger load
-  @scroll_threshold 200
   # Load current user from session on mount (optional for public pages)
   on_mount({EveDmvWeb.AuthLive, :load_from_session_optional})
 

@@ -23,7 +23,7 @@
         ]
       },
       plugins: [],
-      requires: [],
+      requires: ["lib/credo_custom_checks/*.ex"],
       strict: true,
       parse_timeout: 5000,
       color: true,
@@ -188,6 +188,44 @@
              # Allow more duplication due to data processing patterns
              mass_threshold: 35,
              nodes_threshold: 3
+           ]},
+
+          ## Custom placeholder detection checks
+          {CredoCustomChecks.NoPlaceholderImplementations,
+           [
+             # Common placeholder values from the codebase
+             hardcoded_values: [
+               # DPS values
+               200,
+               600,
+               800,
+               1000,
+               # Mass thresholds
+               10_000_000,
+               100_000_000,
+               # Arbitrary percentages
+               15,
+               25,
+               50,
+               75,
+               # Common placeholder counts
+               5,
+               10,
+               100
+             ],
+             allow_in_tests: true
+           ]},
+          {CredoCustomChecks.NoModuloClassification,
+           [
+             allow_in_tests: true
+           ]},
+          {CredoCustomChecks.NoEnumRandom,
+           [
+             allow_in_tests: true
+           ]},
+          {CredoCustomChecks.RequireRealData,
+           [
+             allow_in_tests: true
            ]}
         ],
         disabled: [

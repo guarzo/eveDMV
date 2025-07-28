@@ -84,13 +84,13 @@ defmodule EveDmv.StaticData.ShipTypesTest do
     test "classifies frigates correctly" do
       assert ShipTypes.classify_ship_type(587) == :frigate
       # Interceptor is a frigate
-      assert ShipTypes.classify_ship_type(11202) == :frigate
+      assert ShipTypes.classify_ship_type(11_202) == :frigate
     end
 
     test "classifies cruisers correctly" do
       assert ShipTypes.classify_ship_type(621) == :cruiser
       # Logistics cruiser
-      assert ShipTypes.classify_ship_type(11978) == :cruiser
+      assert ShipTypes.classify_ship_type(11_978) == :cruiser
     end
 
     test "classifies battleships correctly" do
@@ -98,15 +98,15 @@ defmodule EveDmv.StaticData.ShipTypesTest do
     end
 
     test "classifies mining ships correctly" do
-      assert ShipTypes.classify_ship_type(32880) == :mining
+      assert ShipTypes.classify_ship_type(32_880) == :mining
     end
 
     test "classifies capital ships correctly" do
-      assert ShipTypes.classify_ship_type(23757) == :capital
+      assert ShipTypes.classify_ship_type(23_757) == :capital
     end
 
     test "classifies supercapital ships correctly" do
-      assert ShipTypes.classify_ship_type(11567) == :supercapital
+      assert ShipTypes.classify_ship_type(11_567) == :supercapital
     end
 
     test "returns :unknown for non-existent ships" do
@@ -178,7 +178,7 @@ defmodule EveDmv.StaticData.ShipTypesTest do
       assert 587 in frigate_ids
       assert 603 in frigate_ids
       # Interceptors are frigates
-      assert 11202 in frigate_ids
+      assert 11_202 in frigate_ids
     end
 
     test "returns empty list for invalid class" do
@@ -222,7 +222,7 @@ defmodule EveDmv.StaticData.ShipTypesTest do
       # Frigate
       assert ShipTypes.is_tackle_ship?(587) == true
       # Destroyer
-      assert ShipTypes.is_tackle_ship?(16242) == true
+      assert ShipTypes.is_tackle_ship?(16_242) == true
       # Cruiser
       assert ShipTypes.is_tackle_ship?(621) == false
     end
@@ -233,7 +233,7 @@ defmodule EveDmv.StaticData.ShipTypesTest do
       # Frigate
       assert ShipTypes.is_dps_ship?(587) == false
       # Destroyer
-      assert ShipTypes.is_dps_ship?(16242) == false
+      assert ShipTypes.is_dps_ship?(16_242) == false
     end
 
     test "tactical_ship_groups returns correct groupings" do
@@ -280,27 +280,27 @@ defmodule EveDmv.StaticData.ShipTypesTest do
     end
 
     test "is_interceptor? correctly identifies interceptors" do
-      assert ShipTypes.is_interceptor?(11202) == true
-      assert ShipTypes.is_interceptor?(11978) == false
+      assert ShipTypes.is_interceptor?(11_202) == true
+      assert ShipTypes.is_interceptor?(11_978) == false
     end
 
     test "is_logistics? correctly identifies logistics ships" do
-      assert ShipTypes.is_logistics?(11978) == true
-      assert ShipTypes.is_logistics?(11202) == false
+      assert ShipTypes.is_logistics?(11_978) == true
+      assert ShipTypes.is_logistics?(11_202) == false
     end
 
     test "is_ewar? correctly identifies EWAR ships" do
-      assert ShipTypes.is_ewar?(11174) == true
-      assert ShipTypes.is_ewar?(11202) == false
+      assert ShipTypes.is_ewar?(11_174) == true
+      assert ShipTypes.is_ewar?(11_202) == false
     end
 
     test "is_support_ship? identifies both logistics and EWAR" do
       # Logistics
-      assert ShipTypes.is_support_ship?(11978) == true
+      assert ShipTypes.is_support_ship?(11_978) == true
       # EWAR
-      assert ShipTypes.is_support_ship?(11174) == true
+      assert ShipTypes.is_support_ship?(11_174) == true
       # Interceptor
-      assert ShipTypes.is_support_ship?(11202) == false
+      assert ShipTypes.is_support_ship?(11_202) == false
     end
 
     test "ship ID getter functions return correct lists" do
@@ -308,9 +308,9 @@ defmodule EveDmv.StaticData.ShipTypesTest do
       logistics_ids = ShipTypes.logistics_ship_ids()
       ewar_ids = ShipTypes.ewar_ship_ids()
 
-      assert 11202 in interceptor_ids
-      assert 11978 in logistics_ids
-      assert 11174 in ewar_ids
+      assert 11_202 in interceptor_ids
+      assert 11_978 in logistics_ids
+      assert 11_174 in ewar_ids
     end
   end
 
@@ -326,7 +326,7 @@ defmodule EveDmv.StaticData.ShipTypesTest do
           published: true
         })
 
-      assert ShipTypes.classify_ship_type(12345) == :unknown
+      assert ShipTypes.classify_ship_type(12_345) == :unknown
     end
 
     test "handles unpublished ships" do
@@ -342,7 +342,7 @@ defmodule EveDmv.StaticData.ShipTypesTest do
 
       # Should not appear in class listings
       frigate_ids = ShipTypes.get_ship_ids_for_class(:frigate)
-      refute 99999 in frigate_ids
+      refute 99_999 in frigate_ids
     end
   end
 

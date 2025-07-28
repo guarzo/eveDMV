@@ -9,10 +9,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.DataCollector
   - Handling streaming vs standard fetch decisions
   """
 
-  require Logger
-
   alias EveDmv.Contexts.CombatIntelligence.Domain.Shared.KillmailMapper
   alias EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer
+  require Logger
 
   @doc """
   Fetch killmails related to a specific battle.

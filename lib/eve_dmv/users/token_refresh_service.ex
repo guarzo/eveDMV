@@ -8,12 +8,10 @@ defmodule EveDmv.Users.TokenRefreshService do
   """
 
   use GenServer
-  require Logger
-
+  import Ash.Query
   alias EveDmv.Api
   alias EveDmv.Users.User
-
-  import Ash.Query
+  require Logger
 
   # Check for expiring tokens every 2 minutes
   @check_interval :timer.minutes(2)
@@ -242,8 +240,13 @@ defmodule EveDmv.Users.TokenRefreshService do
 
       url = "https://login.eveonline.com/v2/oauth/token"
 
-      case HTTPoison.post(url, body, headers) do
-        {:ok, %HTTPoison.Response{status_code: 200, body: response_body}} ->
+      opts = [
+        headers: headers,
+        timeout: EveDmv.Config.Http.service_timeout(:esi)
+      ]
+
+      case EveDmv.Http.UnifiedClient.post(url, body, opts) do
+        {:ok, %{status: 200, body: response_body}} ->
           case Jason.decode(response_body) do
             {:ok, token_data} ->
               # Calculate expiration time
@@ -270,7 +273,7 @@ defmodule EveDmv.Users.TokenRefreshService do
               {:error, :invalid_response}
           end
 
-        {:ok, %HTTPoison.Response{status_code: status_code, body: body}} ->
+        {:ok, %{status: status_code, body: body}} ->
           Logger.error("Token refresh failed with status #{status_code}: #{body}")
           {:error, :refresh_failed}
 

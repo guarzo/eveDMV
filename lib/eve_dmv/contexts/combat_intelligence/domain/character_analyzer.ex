@@ -1,27 +1,23 @@
 defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   @moduledoc """
   Analyzes character combat patterns and intelligence.
+
+  Simplified character analysis module that provides direct analysis operations
+  without GenServer overhead.
   """
 
-  use GenServer
-
   import Ecto.Query
-  require Logger
-
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator
   alias EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache
   alias EveDmv.Repo
-
-  def start_link(opts \\ []) do
-    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
-  end
+  require Logger
 
   @doc """
   Analyze a character's combat intelligence.
   """
   @spec analyze(integer(), map()) :: {:ok, map()} | {:error, term()}
   def analyze(character_id, context) do
-    GenServer.call(__MODULE__, {:analyze, character_id, context})
+    perform_analysis(character_id, context)
   end
 
   @doc """
@@ -49,7 +45,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   """
   @spec bulk_analyze([integer()], map()) :: {:ok, map()} | {:error, term()}
   def bulk_analyze(character_ids, context) do
-    GenServer.call(__MODULE__, {:bulk_analyze, character_ids, context}, 30_000)
+    results =
+      Enum.map(character_ids, fn id ->
+        {id, perform_analysis(id, context)}
+      end)
+
+    {:ok, Map.new(results)}
   end
 
   @doc """
@@ -57,7 +58,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   """
   @spec search_by_criteria(map()) :: {:ok, [map()]} | {:error, term()}
   def search_by_criteria(criteria) do
-    GenServer.call(__MODULE__, {:search, criteria})
+    search_characters_by_criteria(criteria)
   end
 
   @doc """
@@ -65,7 +66,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   """
   @spec get_activity_patterns(integer(), keyword()) :: {:ok, map()} | {:error, term()}
   def get_activity_patterns(character_id, opts \\ []) do
-    GenServer.call(__MODULE__, {:activity_patterns, character_id, opts})
+    analyze_character_activity_patterns(character_id, opts)
   end
 
   @doc """
@@ -73,85 +74,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   """
   @spec compare_characters([integer()]) :: {:ok, map()} | {:error, term()}
   def compare_characters(character_ids) do
-    GenServer.call(__MODULE__, {:compare, character_ids})
-  end
-
-  @doc """
-  Get cache statistics.
-  """
-  @spec get_cache_stats() :: map()
-  def get_cache_stats do
-    GenServer.call(__MODULE__, :cache_stats)
-  end
-
-  # GenServer callbacks
-
-  @impl GenServer
-  def init(_opts) do
-    {:ok,
-     %{
-       analysis_count: 0,
-       cache_hits: 0,
-       cache_misses: 0
-     }}
-  end
-
-  @impl GenServer
-  def handle_call({:analyze, character_id, context}, _from, state) do
-    result = perform_analysis(character_id, context)
-
-    new_state =
-      case result do
-        {:ok, _} -> %{state | analysis_count: state.analysis_count + 1}
-      end
-
-    {:reply, result, new_state}
-  end
-
-  @impl GenServer
-  def handle_call({:bulk_analyze, character_ids, context}, _from, state) do
-    results =
-      Enum.map(character_ids, fn id ->
-        {id, perform_analysis(id, context)}
-      end)
-
-    {:reply, {:ok, Map.new(results)}, state}
-  end
-
-  @impl GenServer
-  def handle_call({:search, criteria}, _from, state) do
-    case search_characters_by_criteria(criteria) do
-      {:ok, results} -> {:reply, {:ok, results}, state}
-      {:error, reason} -> {:reply, {:error, reason}, state}
-    end
-  end
-
-  @impl GenServer
-  def handle_call({:activity_patterns, character_id, opts}, _from, state) do
-    case analyze_character_activity_patterns(character_id, opts) do
-      {:ok, patterns} -> {:reply, {:ok, patterns}, state}
-      {:error, reason} -> {:reply, {:error, reason}, state}
-    end
-  end
-
-  @impl GenServer
-  def handle_call({:compare, character_ids}, _from, state) do
-    case compare_characters_implementation(character_ids) do
-      {:ok, comparison} -> {:reply, {:ok, comparison}, state}
-      {:error, reason} -> {:reply, {:error, reason}, state}
-    end
-  end
-
-  @impl GenServer
-  def handle_call(:cache_stats, _from, state) do
-    stats = %{
-      analysis_count: state.analysis_count,
-      cache_hits: state.cache_hits,
-      cache_misses: state.cache_misses,
-      hit_rate: calculate_hit_rate(state.cache_hits, state.cache_misses)
-    }
-
-    {:reply, stats, state}
+    compare_characters_implementation(character_ids)
   end
 
   # Private functions
@@ -176,12 +99,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
 
         {:ok, analysis}
     end
-  end
-
-  defp calculate_hit_rate(0, 0), do: 0.0
-
-  defp calculate_hit_rate(hits, misses) do
-    Float.round(hits / (hits + misses) * 100, 2)
   end
 
   defp search_characters_by_criteria(criteria) do

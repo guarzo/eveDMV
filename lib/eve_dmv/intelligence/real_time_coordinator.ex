@@ -15,11 +15,10 @@ defmodule EveDmv.Intelligence.RealTimeCoordinator do
   """
 
   use GenServer
-  require Logger
-
   alias EveDmv.Intelligence.EventPublisher
   alias EveDmv.Infrastructure.EventBus
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator
+  require Logger
 
   # Update thresholds for determining when to publish events
   # 15% change triggers event

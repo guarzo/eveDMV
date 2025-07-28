@@ -185,7 +185,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
   end
 
   defp analyze_ships_for_ewar(ships) do
-    ewar_ships = Enum.filter(ships, &is_ewar_ship?/1)
+    ewar_ships = Enum.filter(ships, &ewar_ship?/1)
     ewar_types = ewar_ships |> Enum.map(&classify_ewar_type/1) |> Enum.uniq()
 
     breakdown =
@@ -337,7 +337,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
     "#{primary} characteristics with #{ship_count} ships and #{diversity}% composition diversity"
   end
 
-  defp is_ewar_ship?(ship_type_id) do
+  defp ewar_ship?(ship_type_id) do
     # EWAR ship classification based on ship types
     ewar_ship_types = [
       # Recon ships

@@ -12,7 +12,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.TacticalAnaly
   """
 
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.TacticalExtractor
-  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.TacticalPatternDetector
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.BattlePhaseAnalyzer
 
   require Logger
@@ -55,7 +54,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.TacticalAnaly
           timing_patterns
         ),
       tactical_insights:
-        TacticalExtractor.generate_tactical_insights(
+        generate_tactical_insights_from_patterns(
           tactical_patterns,
           positioning_patterns,
           timing_patterns
@@ -587,12 +586,58 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.TacticalAnaly
   defp capital_ship_kill?(event) do
     # Check if ship is capital class
     ship_type_id = Map.get(event, :ship_type_id, 0)
-    ship_type_id >= 19720 and ship_type_id <= 42999
+    ship_type_id >= 19_720 and ship_type_id <= 42_999
   end
 
   defp commander_kill?(event) do
     # Check if victim had fleet commander role
     Map.get(event, :victim_is_fc, false)
+  end
+
+  defp generate_tactical_insights_from_patterns(
+         tactical_patterns,
+         positioning_patterns,
+         timing_patterns
+       ) do
+    # Generate insights from the patterns
+    %{
+      tactical_insights: extract_tactical_insights(tactical_patterns),
+      positioning_insights: extract_positioning_insights(positioning_patterns),
+      timing_insights: extract_timing_insights(timing_patterns),
+      combined_insights:
+        combine_insights(tactical_patterns, positioning_patterns, timing_patterns)
+    }
+  end
+
+  defp extract_tactical_insights(patterns) do
+    patterns
+    |> Map.get(:summary, %{})
+    |> Map.to_list()
+    |> Enum.map(fn {key, value} -> %{type: key, value: value} end)
+  end
+
+  defp extract_positioning_insights(patterns) do
+    patterns
+    |> Map.get(:patterns, [])
+    |> Enum.take(3)
+  end
+
+  defp extract_timing_insights(patterns) do
+    patterns
+    |> Map.get(:patterns, [])
+    |> Enum.take(3)
+  end
+
+  defp combine_insights(tactical, positioning, timing) do
+    [
+      tactical[:summary],
+      positioning[:summary],
+      timing[:summary]
+    ]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.flat_map(&Map.to_list/1)
+    |> Enum.uniq_by(fn {key, _} -> key end)
+    |> Map.new()
   end
 
   defp determine_event_type(event) do
@@ -689,7 +734,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.TacticalAnaly
     end
   end
 
-  defp analyze_pattern_changes(prev_battle, curr_battle) do
+  defp analyze_pattern_changes(_prev_battle, curr_battle) do
     %{
       timestamp: Map.get(curr_battle, :timestamp, DateTime.utc_now()),
       changes_detected: true,

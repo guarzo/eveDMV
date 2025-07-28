@@ -39,56 +39,52 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
 
   # Fetch threat assessments for all characters
   defp fetch_threat_assessments(character_ids, options) do
-    try do
-      threat_assessments =
-        character_ids
-        |> Enum.map(fn character_id ->
-          case ThreatScoringCoordinator.calculate_threat_score_uncached(character_id, options) do
-            {:ok, assessment} ->
-              {:ok, Map.put(assessment, :character_id, character_id)}
+    threat_assessments =
+      character_ids
+      |> Enum.map(fn character_id ->
+        case ThreatScoringCoordinator.calculate_threat_score_uncached(character_id, options) do
+          {:ok, assessment} ->
+            {:ok, Map.put(assessment, :character_id, character_id)}
 
-            {:error, reason} ->
-              Logger.debug("Failed to assess character #{character_id}: #{inspect(reason)}")
-              {:error, reason}
-          end
-        end)
-        |> Enum.filter(&match?({:ok, _}, &1))
-        |> Enum.map(&elem(&1, 1))
+          {:error, reason} ->
+            Logger.debug("Failed to assess character #{character_id}: #{inspect(reason)}")
+            {:error, reason}
+        end
+      end)
+      |> Enum.filter(&match?({:ok, _}, &1))
+      |> Enum.map(&elem(&1, 1))
 
-      if Enum.empty?(threat_assessments) do
-        {:error, "No valid threat assessments could be generated"}
-      else
-        {:ok, threat_assessments}
-      end
-    rescue
-      error ->
-        Logger.error("Error during threat assessment collection: #{inspect(error)}")
-        {:error, "Assessment collection failed"}
+    if Enum.empty?(threat_assessments) do
+      {:error, "No valid threat assessments could be generated"}
+    else
+      {:ok, threat_assessments}
     end
+  rescue
+    error ->
+      Logger.error("Error during threat assessment collection: #{inspect(error)}")
+      {:error, "Assessment collection failed"}
   end
 
   # Generate comprehensive comparison analysis
   defp generate_comparison_analysis(threat_assessments, options) do
-    try do
-      analysis = %{
-        characters_analyzed: length(threat_assessments),
-        threat_distribution: analyze_threat_distribution(threat_assessments),
-        top_threats: identify_top_threats(threat_assessments),
-        threat_rankings: rank_by_threat_level(threat_assessments),
-        comparative_insights: generate_comparative_insights(threat_assessments),
-        analysis_metadata: %{
-          analysis_timestamp: DateTime.utc_now(),
-          options_used: options,
-          success_rate: calculate_success_rate(threat_assessments, options)
-        }
+    analysis = %{
+      characters_analyzed: length(threat_assessments),
+      threat_distribution: analyze_threat_distribution(threat_assessments),
+      top_threats: identify_top_threats(threat_assessments),
+      threat_rankings: rank_by_threat_level(threat_assessments),
+      comparative_insights: generate_comparative_insights(threat_assessments),
+      analysis_metadata: %{
+        analysis_timestamp: DateTime.utc_now(),
+        options_used: options,
+        success_rate: calculate_success_rate(threat_assessments, options)
       }
+    }
 
-      {:ok, analysis}
-    rescue
-      error ->
-        Logger.error("Error generating comparison analysis: #{inspect(error)}")
-        {:error, "Analysis generation failed"}
-    end
+    {:ok, analysis}
+  rescue
+    error ->
+      Logger.error("Error generating comparison analysis: #{inspect(error)}")
+      {:error, "Analysis generation failed"}
   end
 
   # Analyze distribution of threat levels

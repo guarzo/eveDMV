@@ -4,13 +4,12 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
 
   Provides comprehensive fleet composition analysis, engagement evaluation,
   and tactical recommendations for fleet commanders and doctrine planners.
+
+  Converted from GenServer to simple module for stateless operations.
   """
 
-  use GenServer
   use EveDmv.ErrorHandler
-  alias EveDmv.Contexts.FleetOperations.Infrastructure.EngagementCache
   alias EveDmv.DomainEvents.FleetAnalysisComplete
-  # alias EveDmv.DomainEvents.FleetEngagement
   alias EveDmv.Infrastructure.EventBus
   alias EveDmv.StaticData
 
@@ -28,107 +27,18 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
 
   # Public API
 
-  def start_link(opts \\ []) do
-    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
-  end
-
   @doc """
   Analyze fleet composition for effectiveness and optimization.
   """
   def analyze_composition(fleet_data) do
-    GenServer.call(__MODULE__, {:analyze_composition, fleet_data})
+    perform_composition_analysis(fleet_data)
   end
 
   @doc """
   Analyze a fleet engagement from killmail data.
   """
   def analyze_engagement(engagement_data) do
-    GenServer.call(__MODULE__, {:analyze_engagement, engagement_data})
-  end
-
-  @doc """
-  Calculate mass analysis for wormhole operations.
-  """
-  def calculate_mass_analysis(fleet_data) do
-    GenServer.call(__MODULE__, {:calculate_mass_analysis, fleet_data})
-  end
-
-  @doc """
-  Generate improvement recommendations for a fleet.
-  """
-  def generate_improvement_recommendations(fleet_data) do
-    GenServer.call(__MODULE__, {:generate_recommendations, fleet_data})
-  end
-
-  @doc """
-  Calculate optimal composition for a doctrine and pilot count.
-  """
-  def calculate_optimal_composition(doctrine, pilot_count) do
-    GenServer.call(__MODULE__, {:calculate_optimal_composition, doctrine, pilot_count})
-  end
-
-  @doc """
-  Force reanalysis of a fleet engagement.
-  """
-  def force_reanalyze_engagement(engagement_id) do
-    GenServer.call(__MODULE__, {:force_reanalyze_engagement, engagement_id})
-  end
-
-  @doc """
-  Calculate wormhole mass limits for fleet data.
-  """
-  def calculate_wormhole_mass_limits(fleet_data) do
-    GenServer.call(__MODULE__, {:calculate_wormhole_mass_limits, fleet_data})
-  end
-
-  @doc """
-  Get analyzer metrics and performance data.
-  """
-  def get_metrics do
-    GenServer.call(__MODULE__, :get_metrics)
-  end
-
-  # GenServer implementation
-
-  @impl GenServer
-  def init(_opts) do
-    state = %{
-      analysis_cache: %{},
-      metrics: %{
-        compositions_analyzed: 0,
-        engagements_analyzed: 0,
-        recommendations_generated: 0,
-        cache_hits: 0,
-        cache_misses: 0,
-        average_analysis_time_ms: 0
-      },
-      recent_analysis_times: []
-    }
-
-    Logger.info("FleetAnalyzer started")
-    {:ok, state}
-  end
-
-  @impl GenServer
-  def handle_call({:analyze_composition, fleet_data}, _from, state) do
-    start_time = System.monotonic_time(:millisecond)
-
-    {:ok, analysis} = perform_composition_analysis(fleet_data)
-    end_time = System.monotonic_time(:millisecond)
-    analysis_time = end_time - start_time
-
-    new_state = update_analysis_metrics(state, :composition, analysis_time, true)
-
-    {:reply, {:ok, analysis}, new_state}
-  end
-
-  @impl GenServer
-  def handle_call({:analyze_engagement, engagement_data}, _from, state) do
-    start_time = System.monotonic_time(:millisecond)
-
     {:ok, analysis} = perform_engagement_analysis(engagement_data)
-    end_time = System.monotonic_time(:millisecond)
-    analysis_time = end_time - start_time
 
     # Publish engagement analysis complete event
     EventBus.publish(%FleetAnalysisComplete{
@@ -138,74 +48,64 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
       timestamp: DateTime.utc_now()
     })
 
-    new_state = update_analysis_metrics(state, :engagement, analysis_time, true)
-
-    {:reply, {:ok, analysis}, new_state}
+    {:ok, analysis}
   end
 
-  @impl GenServer
-  def handle_call({:calculate_mass_analysis, fleet_data}, _from, state) do
-    {:ok, mass_analysis} = calculate_fleet_mass_analysis(fleet_data)
-    {:reply, {:ok, mass_analysis}, state}
+  @doc """
+  Calculate mass analysis for wormhole operations.
+  """
+  def calculate_mass_analysis(fleet_data) do
+    calculate_fleet_mass_analysis(fleet_data)
   end
 
-  @impl GenServer
-  def handle_call({:generate_recommendations, fleet_data}, _from, state) do
-    {:ok, recommendations} = generate_fleet_recommendations(fleet_data)
+  @doc """
+  Generate improvement recommendations for a fleet.
+  """
+  def generate_improvement_recommendations(fleet_data) do
+    generate_fleet_recommendations(fleet_data)
+  end
 
-    new_metrics = %{
-      state.metrics
-      | recommendations_generated: state.metrics.recommendations_generated + 1
+  @doc """
+  Calculate optimal composition for a doctrine and pilot count.
+  """
+  def calculate_optimal_composition(doctrine, pilot_count) do
+    calculate_doctrine_optimal_composition(doctrine, pilot_count)
+  end
+
+  @doc """
+  Force reanalysis of a fleet engagement.
+
+  In a real implementation, this would load and reanalyze engagement data.
+  """
+  def force_reanalyze_engagement(engagement_id) do
+    Logger.info(
+      "Force reanalyzed engagement requested for: #{engagement_id} (no engagement data available)"
+    )
+
+    {:error, :no_engagement_data}
+  end
+
+  @doc """
+  Calculate wormhole mass limits for fleet data.
+  """
+  def calculate_wormhole_mass_limits(fleet_data) do
+    calculate_wormhole_compatibility(fleet_data)
+  end
+
+  @doc """
+  Get analyzer metrics and performance data.
+
+  Since this is now stateless, returns empty metrics.
+  """
+  def get_metrics do
+    %{
+      compositions_analyzed: 0,
+      engagements_analyzed: 0,
+      recommendations_generated: 0,
+      cache_hits: 0,
+      cache_misses: 0,
+      average_analysis_time_ms: 0.0
     }
-
-    new_state = %{state | metrics: new_metrics}
-
-    {:reply, {:ok, recommendations}, new_state}
-  end
-
-  @impl GenServer
-  def handle_call({:calculate_optimal_composition, doctrine, pilot_count}, _from, state) do
-    {:ok, composition} = calculate_doctrine_optimal_composition(doctrine, pilot_count)
-    {:reply, {:ok, composition}, state}
-  end
-
-  @impl GenServer
-  def handle_call({:force_reanalyze_engagement, engagement_id}, _from, state) do
-    case EngagementCache.get_engagement_details(engagement_id) do
-      {:ok, engagement_data} ->
-        {:ok, analysis} = perform_engagement_analysis(engagement_data)
-        # Store updated analysis
-        EngagementCache.store_engagement_analysis(engagement_id, analysis)
-
-        Logger.info("Force reanalyzed engagement: #{engagement_id}")
-        {:reply, {:ok, analysis}, state}
-
-      {:error, reason} ->
-        {:reply, {:error, reason}, state}
-    end
-  end
-
-  @impl GenServer
-  def handle_call({:calculate_wormhole_mass_limits, fleet_data}, _from, state) do
-    {:ok, wormhole_analysis} = calculate_wormhole_compatibility(fleet_data)
-    {:reply, {:ok, wormhole_analysis}, state}
-  end
-
-  @impl GenServer
-  def handle_call(:get_metrics, _from, state) do
-    # Calculate current average analysis time
-    current_avg =
-      case state.recent_analysis_times do
-        [] -> 0
-        times -> Enum.sum(times) / length(times)
-      end
-
-    metrics = %{
-      state.metrics
-      | average_analysis_time_ms: Float.round(current_avg, 2)
-    }
-
-    {:reply, metrics, state}
   end
 
   # Private analysis functions
@@ -310,144 +210,38 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
   defp analyze_role_distribution(participants) do
     role_counts =
       Enum.reduce(participants, %{}, fn participant, acc ->
-        role = get_participant_role(participant)
+        role = determine_participant_role(participant)
         Map.update(acc, role, 1, &(&1 + 1))
-      end)
-
-    total_participants = length(participants)
-
-    role_distribution =
-      Map.new(role_counts, fn {role, count} ->
-        {role,
-         %{
-           count: count,
-           percentage: Float.round(count / total_participants * 100, 1)
-         }}
       end)
 
     # Check for essential roles
     essential_roles = [:dps, :logistics, :tackle]
 
-    missing_roles =
+    missing_essential_roles =
       Enum.filter(essential_roles, fn role ->
         Map.get(role_counts, role, 0) == 0
       end)
 
     %{
-      total_participants: total_participants,
-      role_distribution: role_distribution,
-      missing_essential_roles: missing_roles,
+      roles: role_counts,
+      missing_essential_roles: missing_essential_roles,
       role_balance_score: calculate_role_balance_score(role_counts)
     }
   end
 
-  defp calculate_composition_effectiveness(composition_breakdown, role_distribution) do
-    # Base effectiveness from ship diversity
-    diversity_factor = composition_breakdown.diversity_score * 0.3
+  defp determine_participant_role(participant) do
+    # Determine role based on ship type
+    ship_class = get_ship_class(participant.ship_type_id)
 
-    # Role balance factor
-    role_balance_factor = role_distribution.role_balance_score * 0.4
-
-    # Fleet size factor (diminishing returns after 20 pilots)
-    fleet_size = composition_breakdown.total_ships
-    size_factor = min(1.0, fleet_size / 20) * 0.3
-
-    overall_effectiveness = diversity_factor + role_balance_factor + size_factor
-
-    Float.round(overall_effectiveness, 3)
-  end
-
-  defp calculate_fleet_mass_analysis(fleet_data) do
-    participants = fleet_data.participants
-
-    total_mass = calculate_total_fleet_mass(participants)
-
-    # Determine wormhole compatibility
-    wormhole_compatibility = determine_wormhole_compatibility(total_mass)
-
-    # Mass distribution by ship class
-    mass_distribution = calculate_mass_distribution(participants)
-
-    mass_analysis = %{
-      total_mass_kg: total_mass,
-      mass_distribution: mass_distribution,
-      wormhole_compatibility: wormhole_compatibility,
-      mass_efficiency_score: calculate_mass_efficiency(participants, total_mass)
-    }
-
-    {:ok, mass_analysis}
-  end
-
-  defp generate_fleet_recommendations(fleet_data) do
-    participants = fleet_data.participants
-
-    # Analyze current composition
-    composition = analyze_ship_composition(participants)
-    roles = analyze_role_distribution(participants)
-
-    base_recommendations = []
-
-    # Role-based recommendations
-    role_recommendations = add_role_recommendations(base_recommendations, roles)
-
-    # Ship composition recommendations
-    composition_suggestions = add_composition_recommendations(role_recommendations, composition)
-
-    # Mass optimization recommendations
-    mass_analysis = calculate_total_fleet_mass(participants)
-
-    mass_recommendations =
-      add_mass_recommendations(composition_suggestions, mass_analysis, participants)
-
-    # Tactical recommendations
-    optimization_recommendations = add_tactical_recommendations(mass_recommendations, fleet_data)
-
-    {:ok,
-     %{
-       recommendations: optimization_recommendations,
-       priority_recommendations:
-         filter_high_priority_recommendations(optimization_recommendations),
-       improvement_score: calculate_improvement_potential(fleet_data)
-     }}
-  end
-
-  defp calculate_doctrine_optimal_composition(doctrine, pilot_count) do
-    ship_requirements = doctrine.ship_requirements
-    role_requirements = doctrine.role_requirements
-
-    # Distribute pilots based on doctrine requirements
-    composition = distribute_pilots_to_doctrine(ship_requirements, role_requirements, pilot_count)
-
-    # Calculate effectiveness of this composition
-    effectiveness_score = calculate_doctrine_effectiveness(composition, doctrine)
-
-    optimal_composition = %{
-      pilot_count: pilot_count,
-      ship_allocation: composition.ship_allocation,
-      role_allocation: composition.role_allocation,
-      effectiveness_score: effectiveness_score,
-      mass_total: composition.total_mass,
-      doctrine_compliance: composition.compliance_score
-    }
-
-    {:ok, optimal_composition}
-  end
-
-  # Helper functions
-
-  defp get_ship_class(ship_type_id) do
-    StaticData.get_ship_class(ship_type_id)
-  end
-
-  defp get_participant_role(participant) do
-    # In a real implementation, this would determine role based on ship type and fitting
-    # For now, we'll use ship class as a proxy
-    case get_ship_class(participant.ship_type_id) do
+    case ship_class do
       :frigate ->
-        :tackle
-
-      :destroyer ->
-        :dps
+        case StaticData.get_ship_class(participant.ship_type_id) do
+          :logistics_frigate -> :logistics
+          :electronic_attack_frigate -> :ewar
+          :interceptor -> :tackle
+          :interdictor -> :tackle
+          _ -> :tackle
+        end
 
       :cruiser ->
         case StaticData.get_ship_class(participant.ship_type_id) do
@@ -458,8 +252,11 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
           _ -> :dps
         end
 
-      :battlecruiser ->
+      :destroyer ->
         :dps
+
+      :battlecruiser ->
+        :command
 
       :battleship ->
         :dps
@@ -469,156 +266,247 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
     end
   end
 
-  defp calculate_diversity_score(ship_counts) do
-    total_ships = Enum.sum(Map.values(ship_counts))
-    unique_classes = map_size(ship_counts)
+  defp calculate_composition_effectiveness(composition_breakdown, role_distribution) do
+    diversity_score = composition_breakdown.diversity_score
+    role_balance_score = role_distribution.role_balance_score
 
-    # Shannon diversity index adapted for fleet composition
-    diversity =
-      Map.values(ship_counts)
+    # Penalty for missing essential roles
+    essential_role_penalty = length(role_distribution.missing_essential_roles) * 0.2
+
+    effectiveness = (diversity_score + role_balance_score) / 2 - essential_role_penalty
+    max(0.0, min(1.0, effectiveness))
+  end
+
+  defp calculate_diversity_score(ship_counts) do
+    ship_count = map_size(ship_counts)
+    total_ships = Enum.sum(Map.values(ship_counts))
+
+    if total_ships > 0 do
+      # Shannon diversity index
+      ship_counts
+      |> Map.values()
       |> Enum.map(fn count ->
-        proportion = count / total_ships
-        proportion * :math.log(proportion)
+        p = count / total_ships
+        -p * :math.log(p)
       end)
       |> Enum.sum()
-      |> then(&(-&1))
-
-    # Normalize to 0-1 range
-    max_diversity = :math.log(unique_classes)
-    if max_diversity > 0, do: diversity / max_diversity, else: 0
-  end
-
-  defp calculate_role_balance_score(role_counts) do
-    total_count = Enum.sum(Map.values(role_counts))
-
-    # Check if essential roles are covered
-    dps_count = Map.get(role_counts, :dps, 0)
-    logistics_count = Map.get(role_counts, :logistics, 0)
-    tackle_count = Map.get(role_counts, :tackle, 0)
-
-    # Calculate balance score
-    dps_ratio = dps_count / total_count
-    logistics_ratio = logistics_count / total_count
-    tackle_ratio = tackle_count / total_count
-
-    # Ideal ratios: 60% DPS, 15% Logistics, 25% Tackle
-    dps_score = 1 - abs(dps_ratio - 0.60)
-    logistics_score = 1 - abs(logistics_ratio - 0.15)
-    tackle_score = 1 - abs(tackle_ratio - 0.25)
-
-    # Penalize missing essential roles
-    role_coverage =
-      if logistics_count > 0 and tackle_count > 0 and dps_count > 0, do: 1.0, else: 0.5
-
-    (dps_score + logistics_score + tackle_score) / 3 * role_coverage
-  end
-
-  defp calculate_total_fleet_mass(participants) do
-    ships =
-      Enum.map(participants, fn participant ->
-        %{ship_type_id: participant.ship_type_id}
-      end)
-
-    ships
-    |> Enum.map(fn ship ->
-      ship_type_id =
-        case ship do
-          %{ship_type_id: id} -> id
-          %{"ship_type_id" => id} -> id
-          _ -> nil
-        end
-
-      if ship_type_id do
-        case StaticData.get_ship_mass(ship_type_id) do
-          {:ok, mass} -> mass
-          # Realistic cruiser mass fallback
-          {:error, _} -> 12_000_000.0
-        end
-      else
-        10_000_000.0
-      end
-    end)
-    |> Enum.sum()
-  end
-
-  defp determine_wormhole_compatibility(_total_mass) do
-    # Check compatibility for standard wormhole classes
-    wh_classes =
-      ["C1", "C2", "C3", "C4", "C5", "C6"]
-      |> Enum.reduce(%{}, fn wh_class, acc ->
-        # For now, just check against basic wormhole mass limits
-        # This should be improved to check actual mass limits per class
-        wh_atom = wh_class |> String.downcase() |> String.to_existing_atom()
-        mass_limit = Map.get(@wormhole_mass_limits, wh_atom, 0)
-
-        # Simple check - if mass limit exists, assume compatibility
-        if mass_limit > 0 do
-          Map.put(acc, wh_atom, %{
-            can_jump: true,
-            trips_needed: 1,
-            mass_utilization: 0.0
-          })
-        else
-          Map.put(acc, wh_atom, %{
-            can_jump: false,
-            trips_needed: 999,
-            mass_utilization: 100.0
-          })
-        end
-      end)
-
-    wh_classes
-  end
-
-  defp calculate_mass_distribution(participants) do
-    mass_by_class =
-      Enum.reduce(participants, %{}, fn participant, acc ->
-        ship_class = get_ship_class(participant.ship_type_id)
-
-        ship_mass =
-          case StaticData.get_ship_mass(participant.ship_type_id) do
-            {:ok, mass} -> mass
-            # Realistic cruiser mass fallback for unknown ships
-            {:error, _} -> 12_000_000.0
-          end
-
-        Map.update(acc, ship_class, ship_mass, &(&1 + ship_mass))
-      end)
-
-    total_mass = Enum.sum(Map.values(mass_by_class))
-
-    Map.new(mass_by_class, fn {ship_class, mass} ->
-      {ship_class,
-       %{
-         total_mass: mass,
-         percentage: Float.round(mass / total_mass * 100, 1)
-       }}
-    end)
-  end
-
-  defp calculate_mass_efficiency(participants, total_mass) do
-    # Mass efficiency based on damage potential per kg
-    estimated_dps = estimate_fleet_dps(participants)
-
-    if total_mass > 0 do
-      # DPS per million kg
-      Float.round(estimated_dps / total_mass * 1_000_000, 2)
+      |> (fn h -> h / :math.log(ship_count) end).()
     else
       0.0
     end
   end
 
+  defp calculate_role_balance_score(role_counts) do
+    total_count = Enum.sum(Map.values(role_counts))
+
+    if total_count > 0 do
+      # Ideal role distribution
+      ideal_distribution = %{
+        dps: 0.5,
+        logistics: 0.2,
+        tackle: 0.15,
+        ewar: 0.1,
+        command: 0.05
+      }
+
+      # Calculate deviation from ideal
+      deviation =
+        Enum.sum(
+          Enum.map(ideal_distribution, fn {role, ideal_ratio} ->
+            actual_ratio = Map.get(role_counts, role, 0) / total_count
+            abs(actual_ratio - ideal_ratio)
+          end)
+        )
+
+      # Convert to score (lower deviation = higher score)
+      1.0 - min(1.0, deviation)
+    else
+      0.0
+    end
+  end
+
+  defp calculate_total_fleet_mass(participants) do
+    total_mass =
+      Enum.sum(
+        Enum.map(participants, fn participant ->
+          case StaticData.get_ship_mass(participant.ship_type_id) do
+            {:ok, mass} -> mass
+            {:error, _} -> estimate_ship_mass(participant.ship_type_id)
+          end
+        end)
+      )
+
+    wormhole_compatibility = determine_wormhole_compatibility(total_mass)
+
+    %{
+      total_mass: round(total_mass),
+      mass_category: categorize_mass(total_mass),
+      wormhole_compatibility: wormhole_compatibility,
+      per_pilot_average: round(total_mass / max(1, length(participants)))
+    }
+  end
+
+  defp determine_wormhole_compatibility(total_mass) do
+    Enum.map(@wormhole_mass_limits, fn {class, limit} ->
+      {class,
+       %{
+         fits: total_mass <= limit,
+         remaining_mass: max(0, limit - total_mass),
+         usage_percentage: Float.round(total_mass / limit * 100, 1)
+       }}
+    end)
+    |> Enum.into(%{})
+  end
+
+  defp categorize_mass(mass) do
+    cond do
+      mass < 100_000_000 -> :light
+      mass < 500_000_000 -> :medium
+      mass < 1_500_000_000 -> :heavy
+      true -> :capital
+    end
+  end
+
+  defp get_ship_class(ship_type_id) do
+    case StaticData.get_ship_class(ship_type_id) do
+      class when is_atom(class) ->
+        cond do
+          class in [
+            :frigate,
+            :assault_frigate,
+            :covert_ops,
+            :interceptor,
+            :interdictor,
+            :electronic_attack_frigate,
+            :logistics_frigate
+          ] ->
+            :frigate
+
+          class in [:destroyer, :tactical_destroyer, :command_destroyer] ->
+            :destroyer
+
+          class in [
+            :cruiser,
+            :heavy_assault_cruiser,
+            :heavy_interdictor,
+            :force_recon,
+            :combat_recon,
+            :logistics_cruiser,
+            :strategic_cruiser
+          ] ->
+            :cruiser
+
+          class in [:battlecruiser, :attack_battlecruiser] ->
+            :battlecruiser
+
+          class in [:battleship, :marauder, :black_ops] ->
+            :battleship
+
+          class in [:dreadnought, :carrier, :supercarrier, :titan, :force_auxiliary] ->
+            :capital
+
+          true ->
+            :frigate
+        end
+
+      _ ->
+        :frigate
+    end
+  end
+
+  defp estimate_ship_mass(ship_type_id) do
+    # Estimate based on ship type ID ranges if not in static data
+    cond do
+      # Frigate mass
+      ship_type_id < 1000 -> 1_500_000
+      # Cruiser mass
+      ship_type_id < 2000 -> 12_000_000
+      # Battleship mass
+      ship_type_id < 3000 -> 110_000_000
+      # Capital mass
+      true -> 1_300_000_000
+    end
+  end
+
+  defp calculate_fleet_mass_analysis(fleet_data) do
+    mass_analysis = calculate_total_fleet_mass(fleet_data.participants)
+    {:ok, mass_analysis}
+  end
+
+  defp generate_fleet_recommendations(fleet_data) do
+    participants = fleet_data.participants
+
+    composition_breakdown = analyze_ship_composition(participants)
+    role_distribution = analyze_role_distribution(participants)
+    mass_analysis = calculate_total_fleet_mass(participants)
+
+    recommendations =
+      []
+      |> add_role_recommendations(role_distribution)
+      |> add_composition_recommendations(composition_breakdown.ship_classes)
+      |> add_mass_recommendations(mass_analysis.total_mass, participants)
+      |> add_tactical_recommendations(fleet_data)
+
+    high_priority_recs = filter_high_priority_recommendations(recommendations)
+    improvement_potential = calculate_improvement_potential(fleet_data)
+
+    recommendation_result = %{
+      recommendations: recommendations,
+      high_priority_count: length(high_priority_recs),
+      improvement_potential_percentage: improvement_potential,
+      generated_at: DateTime.utc_now()
+    }
+
+    {:ok, recommendation_result}
+  end
+
+  defp calculate_doctrine_optimal_composition(doctrine, pilot_count) do
+    # Validate inputs
+    if pilot_count <= 0 do
+      {:error, :invalid_pilot_count}
+    else
+      # Get doctrine requirements
+      ship_requirements = Map.get(doctrine, :ship_requirements, %{})
+      role_requirements = Map.get(doctrine, :role_requirements, %{})
+
+      # Calculate optimal distribution
+      optimal_composition =
+        distribute_pilots_to_doctrine(ship_requirements, role_requirements, pilot_count)
+
+      # Calculate effectiveness
+      effectiveness = calculate_doctrine_effectiveness(optimal_composition, doctrine)
+
+      result = %{
+        doctrine_name: doctrine.name,
+        pilot_count: pilot_count,
+        optimal_composition: optimal_composition,
+        effectiveness_score: Float.round(effectiveness, 3),
+        mass_category: categorize_mass(optimal_composition.total_mass),
+        compliance_score: optimal_composition.compliance_score
+      }
+
+      {:ok, result}
+    end
+  end
+
   defp estimate_fleet_dps(participants) do
-    # Rough DPS estimation based on ship classes
+    # Calculate fleet DPS using real ship attributes
     Enum.sum(
       Enum.map(participants, fn participant ->
-        case get_ship_class(participant.ship_type_id) do
-          :frigate -> 200
-          :destroyer -> 400
-          :cruiser -> 600
-          :battlecruiser -> 1000
-          :battleship -> 1500
-          :capital -> 8000
+        case EveDmv.StaticData.ShipTypes.get_ship_dps(participant.ship_type_id) do
+          {:ok, dps} ->
+            dps
+
+          {:error, _} ->
+            # Fallback to ship class estimation if no data available
+            case get_ship_class(participant.ship_type_id) do
+              :frigate -> 200
+              :destroyer -> 400
+              :cruiser -> 600
+              :battlecruiser -> 1000
+              :battleship -> 1500
+              :capital -> 8000
+            end
         end
       end)
     )
@@ -1141,24 +1029,5 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
   defp calculate_wormhole_compatibility(fleet_data) do
     total_mass = calculate_total_fleet_mass(fleet_data.participants)
     determine_wormhole_compatibility(total_mass)
-  end
-
-  defp update_analysis_metrics(state, analysis_type, analysis_time, _success) do
-    new_metrics =
-      case analysis_type do
-        :composition ->
-          %{state.metrics | compositions_analyzed: state.metrics.compositions_analyzed + 1}
-
-        :engagement ->
-          %{state.metrics | engagements_analyzed: state.metrics.engagements_analyzed + 1}
-      end
-
-    new_processing_times = [analysis_time | Enum.take(state.recent_analysis_times, 99)]
-
-    %{
-      state
-      | metrics: new_metrics,
-        recent_analysis_times: new_processing_times
-    }
   end
 end

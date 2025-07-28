@@ -8,9 +8,9 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
   - Create sanitized data dumps for development testing
   """
 
-  alias EveDmv.Telemetry.QueryMonitor
-  # alias EveDmv.Telemetry.PerformanceMonitor # Currently unused
+  alias Ecto.Adapters.SQL
   alias EveDmv.Repo
+  alias EveDmv.Telemetry.QueryMonitor
 
   @doc """
   Export slow query patterns and statistics to JSON format.
@@ -135,7 +135,7 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
       pg_database_size(current_database()) as size_bytes
     """
 
-    case Ecto.Adapters.SQL.query(Repo, query) do
+    case SQL.query(Repo, query) do
       {:ok, %{rows: [[size, size_bytes]]}} ->
         %{size: size, size_bytes: size_bytes}
 
@@ -153,7 +153,7 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
       (SELECT setting::int FROM pg_settings WHERE name = 'superuser_reserved_connections') as reserved_for_superuser
     """
 
-    case Ecto.Adapters.SQL.query(Repo, query) do
+    case SQL.query(Repo, query) do
       {:ok, %{rows: [[max_conn, active_conn, total_conn, reserved]]}} ->
         %{
           max_connections: max_conn,
@@ -186,7 +186,7 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
     ORDER BY tablename, attname
     """
 
-    case Ecto.Adapters.SQL.query(Repo, query) do
+    case SQL.query(Repo, query) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [schema, table, column, n_distinct, correlation, _mcv] ->
           %{
@@ -219,7 +219,7 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
     LIMIT 20
     """
 
-    case Ecto.Adapters.SQL.query(Repo, query) do
+    case SQL.query(Repo, query) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [query, calls, total_time, mean_time, rows_affected, hit_percent] ->
           %{
@@ -271,7 +271,7 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
     WHERE active_count > 80
     """
 
-    case Ecto.Adapters.SQL.query(Repo, query, [cutoff_time]) do
+    case SQL.query(Repo, query, [cutoff_time]) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [type, message, detected_at, severity] ->
           %{
@@ -302,7 +302,7 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
       AND query NOT LIKE '%pg_stat_%'
     """
 
-    case Ecto.Adapters.SQL.query(Repo, query, [cutoff_time]) do
+    case SQL.query(Repo, query, [cutoff_time]) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [type, message, detected_at, severity] ->
           %{

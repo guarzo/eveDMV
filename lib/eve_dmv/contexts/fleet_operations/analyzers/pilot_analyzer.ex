@@ -89,24 +89,20 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
   """
   def get_available_pilots(corporation_id, base_data \\ %{}, _opts \\ [])
       when is_integer(corporation_id) do
-    case get_corporation_pilots(base_data, corporation_id) do
-      {:ok, corporation_pilots} ->
-        available_pilots =
-          corporation_pilots
-          |> Enum.filter(&pilot_available_for_fleet?/1)
-          |> Enum.map(&enrich_pilot_data/1)
-          |> Enum.sort_by(& &1.activity_score, :desc)
+    {:ok, corporation_pilots} = get_corporation_pilots(base_data, corporation_id)
 
-        Result.ok(%{
-          corporation_id: corporation_id,
-          total_pilots: length(corporation_pilots),
-          available_pilots: length(available_pilots),
-          pilot_details: available_pilots
-        })
+    available_pilots =
+      corporation_pilots
+      |> Enum.filter(&pilot_available_for_fleet?/1)
+      |> Enum.map(&enrich_pilot_data/1)
+      |> Enum.sort_by(& &1.activity_score, :desc)
 
-      {:error, _reason} = error ->
-        error
-    end
+    Result.ok(%{
+      corporation_id: corporation_id,
+      total_pilots: length(corporation_pilots),
+      available_pilots: length(available_pilots),
+      pilot_details: available_pilots
+    })
   rescue
     exception ->
       Result.error(
@@ -317,16 +313,14 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
             ship_usage = Map.get(analysis_data, "ship_usage", %{})
             ship_categories = Map.get(ship_usage, "ship_categories", %{})
 
-            ship_groups =
-              ship_categories
-              |> Enum.map(fn {category, count} ->
-                group = map_category_to_group(category)
-                {group, count}
-              end)
-              |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
-
-            Enum.map(fn {group, counts} -> {group, Enum.sum(counts)} end) |> Map.new()
-            ship_groups
+            ship_categories
+            |> Enum.map(fn {category, count} ->
+              group = map_category_to_group(category)
+              {group, count}
+            end)
+            |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+            |> Enum.map(fn {group, counts} -> {group, Enum.sum(counts)} end)
+            |> Map.new()
 
           {:error, _} ->
             %{}
@@ -642,7 +636,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
 
   defp estimate_form_up_time(pilot_assignments) do
     # Estimate form-up time based on pilot availability and readiness
-    avg_availability =
+    sum =
       pilot_assignments
       |> Enum.map(fn {_pilot_id, assignment} ->
         case assignment.availability do
@@ -654,8 +648,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
       end)
       |> Enum.sum()
 
-    Kernel./(map_size(pilot_assignments))
-
+    avg_availability = sum / map_size(pilot_assignments)
     trunc(avg_availability)
   end
 end

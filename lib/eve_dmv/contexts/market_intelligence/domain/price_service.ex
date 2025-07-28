@@ -11,6 +11,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
   alias EveDmv.Contexts.MarketIntelligence.Infrastructure
   alias EveDmv.DomainEvents
   alias EveDmv.Infrastructure.EventBus
+  alias UnifiedCache
 
   require Logger
 
@@ -45,7 +46,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
   Get cache statistics.
   """
   def get_cache_stats do
-    Infrastructure.PriceCache.stats()
+    UnifiedCache.get_domain_stats(:market)
   end
 
   @doc """
@@ -115,7 +116,12 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
   @impl GenServer
   def handle_info(:refresh_hot_items, state) do
     # Refresh hot items that are frequently requested
-    hot_items = Infrastructure.PriceCache.get_hot_items(100)
+    hot_items =
+      UnifiedCache.get(:market, :hot_items)
+      |> case do
+        {:ok, items} -> Enum.take(items, 100)
+        {:error, :not_found} -> []
+      end
 
     if length(hot_items) > 0 do
       Task.start(fn ->
@@ -135,7 +141,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
     # 1 hour default
     cache_ttl = Keyword.get(options, :cache_ttl, 3600)
 
-    case Infrastructure.PriceCache.get(type_id) do
+    case UnifiedCache.get_price(type_id) do
       {:ok, cached_price} ->
         if price_fresh?(cached_price, cache_ttl) do
           {:ok, cached_price}
@@ -153,7 +159,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
     {cached, missing} =
       type_ids
       |> Enum.map(fn type_id ->
-        case Infrastructure.PriceCache.get(type_id) do
+        case UnifiedCache.get_price(type_id) do
           {:ok, price} -> {:cached, type_id, price}
           :miss -> {:missing, type_id}
         end
@@ -207,7 +213,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
     case Infrastructure.ExternalPriceClient.get_price(type_id, source) do
       {:ok, price_data} ->
         # Cache the result
-        Infrastructure.PriceCache.put(type_id, price_data)
+        UnifiedCache.cache_price(type_id, price_data)
 
         # Publish price update event
         event =
@@ -249,9 +255,9 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
         # Cache all results
         Enum.each(prices, fn {type_id, price_data} ->
           if force_refresh do
-            Infrastructure.PriceCache.put(type_id, price_data, force: true)
+            UnifiedCache.cache_price(type_id, price_data)
           else
-            Infrastructure.PriceCache.put(type_id, price_data)
+            UnifiedCache.cache_price(type_id, price_data)
           end
         end)
 

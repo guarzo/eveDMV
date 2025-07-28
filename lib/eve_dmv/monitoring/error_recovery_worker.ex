@@ -51,7 +51,7 @@ defmodule EveDmv.Monitoring.ErrorRecoveryWorker do
 
   # Server callbacks
 
-  @impl true
+  @impl GenServer
   def init(_opts) do
     # Schedule first check
     schedule_check()
@@ -67,26 +67,26 @@ defmodule EveDmv.Monitoring.ErrorRecoveryWorker do
     {:ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast(:check_now, state) do
     new_state = perform_recovery_check(state)
     {:noreply, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:get_history, limit}, _from, state) do
     history = Enum.take(state.recovery_history, limit)
     {:reply, history, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:scheduled_check, state) do
     new_state = perform_recovery_check(state)
     schedule_check()
     {:noreply, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info({:error_spike_detected, error_code}, state) do
     Logger.warning("Error spike detected for #{error_code}, initiating recovery check")
     new_state = handle_error_spike(error_code, state)

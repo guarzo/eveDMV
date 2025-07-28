@@ -7,9 +7,7 @@ defmodule EveDmvWeb.Plugs.ApiAuth do
   """
 
   import Plug.Conn
-
   alias EveDmv.Security.ApiAuthentication
-
   require Logger
 
   @doc """

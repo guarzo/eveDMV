@@ -70,8 +70,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainStatusService do
   defp count_total_inhabitants(chain_data) do
     inhabitants = Map.get(chain_data, :inhabitants, %{})
 
-    Map.values(inhabitants)
-    |> Enum.map(&length/1) |> Enum.sum()
+    Map.values(inhabitants) |> Enum.map(&length/1) |> Enum.sum()
   end
 
   defp calculate_current_threat_level(chain_data) do

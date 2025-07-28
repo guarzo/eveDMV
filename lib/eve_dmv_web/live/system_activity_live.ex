@@ -1,4 +1,11 @@
 defmodule EveDmvWeb.SystemActivityLive do
+  @moduledoc """
+  LiveView for displaying real-time system activity in EVE Online.
+
+  Shows current PvP activity, recent kills, and danger metrics
+  for a selected solar system with automatic updates via PubSub.
+  """
+
   use EveDmvWeb, :live_view
 
   import EveDmvWeb.Components.PageHeaderComponent

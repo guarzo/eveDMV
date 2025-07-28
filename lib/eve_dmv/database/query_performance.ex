@@ -6,10 +6,8 @@ defmodule EveDmv.Database.QueryPerformance do
   and identify bottlenecks.
   """
 
-  alias EveDmv.Monitoring.PerformanceTracker
-
   import EveDmv.Monitoring.PerformanceTracker, only: [time_query: 3]
-
+  alias EveDmv.Monitoring.PerformanceTracker
   require EveDmv.Monitoring.PerformanceTracker
 
   @doc """

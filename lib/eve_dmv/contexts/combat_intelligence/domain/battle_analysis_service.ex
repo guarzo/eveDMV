@@ -19,20 +19,15 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   # get_in/2 is automatically imported from Kernel
 
-  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.ShipClassificationAnalyzer
-
   # alias EveDmv.Contexts.CombatIntelligence.Infrastructure.BattleCache
   # alias EveDmv.Contexts.CombatIntelligence.Infrastructure.KillmailRepository
   # alias EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer
   # alias EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer
-  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.OutcomeAnalyzer
 
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.DataCollectors.BattleDataCollector
 
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.BattleTimelineBuilder
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.ParticipantExtractor
-  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.TacticalExtractor
-  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.TacticalPatternDetector
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.BattlePhaseAnalyzer
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.PerformanceCalculator
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.PerformanceMetricsCalculator
@@ -42,7 +37,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.FleetComparisonEngine
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.RecommendationEngine
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.LiveEngagementTracker
-  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.FleetAnalysisEngine
   alias EveDmv.DomainEvents.BattleAnalysisComplete
   alias EveDmv.DomainEvents.TacticalInsightGenerated
   alias EveDmv.Infrastructure.EventBus

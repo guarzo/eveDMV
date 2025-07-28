@@ -11,7 +11,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
   use EveDmvWeb, :live_view
 
-  alias EveDmv.Contexts.Surveillance.Domain.AdvancedFilterEngine
+  alias EveDmv.Contexts.ThreatSurveillance
   alias KillmailRaw
   alias SearchSuggestionService
 
@@ -788,7 +788,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
       test_killmails = get_recent_killmails_for_testing(@preview_killmail_limit)
 
       # Use the advanced filter engine for enhanced matching
-      alias EveDmv.Contexts.Surveillance.Domain.AdvancedFilterEngine
+      alias EveDmv.Contexts.ThreatSurveillance
 
       # Test criteria against killmails
       matches =

@@ -5,6 +5,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
   This module computes specialized scores including danger ratings,
   hunter effectiveness, fleet command ability, solo pilot skill,
   and awox (betrayal) risk.
+
+  Simplified intelligence scoring module that provides direct scoring operations
+  without GenServer overhead.
   """
 
   import Ash.Expr
@@ -12,18 +15,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
   require Logger
   require Ash.Query
 
-  use GenServer
-
-  def start_link(opts \\ []) do
-    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
-  end
-
   @doc """
   Calculate intelligence score for a character using specific scoring algorithm.
   """
   @spec calculate_score(integer(), atom()) :: {:ok, map()} | {:error, term()}
   def calculate_score(character_id, scoring_type) do
-    GenServer.call(__MODULE__, {:calculate_score, character_id, scoring_type})
+    perform_score_calculation(character_id, scoring_type)
   end
 
   @doc """
@@ -31,7 +28,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
   """
   @spec get_recommendations(integer()) :: {:ok, [map()]} | {:error, term()}
   def get_recommendations(character_id) do
-    GenServer.call(__MODULE__, {:get_recommendations, character_id})
+    recommendations = generate_recommendations(character_id)
+    {:ok, recommendations}
   end
 
   @doc """
@@ -69,36 +67,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
       end)
 
     {:ok, scores}
-  end
-
-  # GenServer callbacks
-  @impl GenServer
-  def init(_opts) do
-    {:ok,
-     %{
-       calculation_count: 0,
-       cache_hits: 0,
-       cache_misses: 0
-     }}
-  end
-
-  @impl GenServer
-  def handle_call({:calculate_score, character_id, scoring_type}, _from, state) do
-    result = perform_score_calculation(character_id, scoring_type)
-
-    new_state =
-      case result do
-        {:ok, _} -> %{state | calculation_count: state.calculation_count + 1}
-        _ -> state
-      end
-
-    {:reply, result, new_state}
-  end
-
-  @impl GenServer
-  def handle_call({:get_recommendations, character_id}, _from, state) do
-    recommendations = generate_recommendations(character_id)
-    {:reply, {:ok, recommendations}, state}
   end
 
   # Private functions

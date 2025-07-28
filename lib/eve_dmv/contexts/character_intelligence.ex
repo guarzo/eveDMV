@@ -155,6 +155,72 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
     ShipIntelligenceBridge.get_character_ship_preferences(character_id)
   end
 
+  @doc """
+  Get detailed ship preferences for a character.
+  Returns top ships used with usage counts, efficiency metrics, and ship classifications.
+  """
+  def get_detailed_ship_preferences(character_id, since_date) do
+    EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceAnalyzer.analyze_ship_preferences(
+      character_id,
+      since_date
+    )
+  end
+
+  @doc """
+  Get weapon preferences for a character.
+  Returns weapon usage patterns, categories, and effectiveness ratings.
+  """
+  def get_weapon_preferences(character_id, since_date) do
+    EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceAnalyzer.analyze_weapon_preferences(
+      character_id,
+      since_date
+    )
+  end
+
+  @doc """
+  Calculate ISK efficiency metrics for a character.
+  Returns ISK destroyed/lost, efficiency percentage, and risk assessment.
+  """
+  def calculate_isk_efficiency(character_id, since_date) do
+    EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceAnalyzer.analyze_isk_efficiency(
+      character_id,
+      since_date
+    )
+  end
+
+  @doc """
+  Get gang size patterns for a character.
+  Returns preferences for solo, small gang, medium gang, large gang, and fleet operations.
+  """
+  def get_gang_size_patterns(character_id, since_date) do
+    EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceAnalyzer.analyze_gang_patterns(
+      character_id,
+      since_date
+    )
+  end
+
+  @doc """
+  Calculate activity statistics for a character.
+  Returns recent activity, timezone estimates, activity consistency, and trends.
+  """
+  def calculate_activity_stats(character_id, since_date) do
+    EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceAnalyzer.analyze_activity_stats(
+      character_id,
+      since_date
+    )
+  end
+
+  @doc """
+  Get character intelligence summary.
+  Returns peak activity times, top locations, operational preferences, and activity spread.
+  """
+  def get_intelligence_summary(character_id, since_date) do
+    EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceAnalyzer.analyze_intelligence_summary(
+      character_id,
+      since_date
+    )
+  end
+
   # Private helper functions
   defp enhance_with_ship_intelligence(threat_data, character_id) do
     {:ok, ship_intelligence} = ShipIntelligenceBridge.calculate_ship_specialization(character_id)

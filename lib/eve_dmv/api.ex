@@ -35,6 +35,7 @@ defmodule EveDmv.Api do
     # Essential EVE static data
     resource(EveDmv.Eve.ItemType)
     resource(EveDmv.Eve.SolarSystem)
+    resource(EveDmv.StaticData.ShipAttributes)
 
     # Core intelligence resources
     resource(EveDmv.Intelligence.CharacterStats)

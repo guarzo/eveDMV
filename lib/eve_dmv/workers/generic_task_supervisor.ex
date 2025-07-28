@@ -13,7 +13,7 @@ defmodule EveDmv.Workers.GenericTaskSupervisor do
   defmodule MyTaskSupervisor do
     use EveDmv.Workers.GenericTaskSupervisor
 
-    @impl true
+    @impl EveDmv.Workers.GenericTaskSupervisor
     def config do
       [
         telemetry_prefix: [:my_app, :tasks],

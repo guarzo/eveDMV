@@ -349,13 +349,13 @@ defmodule EveDmv.Performance.RegressionDetector do
 
       _ ->
         # No baseline yet, store as baseline if this looks like a good value
-        if is_reasonable_baseline?(metric_name, value) do
+        if reasonable_baseline?(metric_name, value) do
           :ets.insert(@baseline_table, {metric_name, value})
         end
     end
   end
 
-  defp is_reasonable_baseline?(metric_name, value) do
+  defp reasonable_baseline?(metric_name, value) do
     cond do
       # Reasonable query time
       String.contains?(metric_name, "time") -> value > 0 and value < 30_000

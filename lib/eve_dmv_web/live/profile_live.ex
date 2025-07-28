@@ -5,6 +5,11 @@ defmodule EveDmvWeb.ProfileLive do
 
   use EveDmvWeb, :live_view
 
+  alias EveDmv.Contexts.CharacterIntelligence
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator
+  alias EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer
+  alias EveDmv.Integrations.ShipIntelligenceBridge
+
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
@@ -63,14 +68,14 @@ defmodule EveDmvWeb.ProfileLive do
   end
 
   defp get_character_combat_stats(character_id) do
-    case EveDmv.Contexts.CharacterIntelligence.get_character_intelligence_report(character_id) do
+    case CharacterIntelligence.get_character_intelligence_report(character_id) do
       {:ok, report} -> report.combat_stats
       _ -> nil
     end
   end
 
   defp get_character_ship_intelligence(character_id) do
-    case EveDmv.Integrations.ShipIntelligenceBridge.calculate_ship_specialization(character_id) do
+    case ShipIntelligenceBridge.calculate_ship_specialization(character_id) do
       {:ok, intelligence} -> intelligence
       _ -> nil
     end
@@ -92,27 +97,21 @@ defmodule EveDmvWeb.ProfileLive do
 
     # Get character intelligence data
     intelligence_data =
-      case EveDmv.Contexts.CharacterIntelligence.get_character_intelligence_report(
-             user.eve_character_id
-           ) do
+      case CharacterIntelligence.get_character_intelligence_report(user.eve_character_id) do
         {:ok, report} -> report
         _ -> %{error: "Intelligence data not available"}
       end
 
     # Get threat scoring data
     threat_data =
-      case EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.calculate_threat_score(
-             user.eve_character_id
-           ) do
+      case ThreatScoringCoordinator.calculate_threat_score(user.eve_character_id) do
         {:ok, threat_score} -> threat_score
         {:error, _} -> %{error: "Threat scoring data not available"}
       end
 
     # Get activity patterns
     activity_data =
-      case EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer.get_activity_patterns(
-             user.eve_character_id
-           ) do
+      case CharacterAnalyzer.get_activity_patterns(user.eve_character_id) do
         {:ok, patterns} -> patterns
         {:error, _} -> %{error: "Activity patterns not available"}
       end

@@ -1,9 +1,4 @@
 defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
-  import Ecto.Query
-  alias EveDmv.Analytics.ModuleClassifier
-  alias EveDmv.Repo
-  require Logger
-
   @moduledoc """
   Background worker for continuous ship role pattern analysis.
 
@@ -15,6 +10,10 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
   """
 
   use GenServer
+  import Ecto.Query
+  alias EveDmv.Analytics.ModuleClassifier
+  alias EveDmv.Repo
+  require Logger
   # Configuration
   # 6 hours
   @analysis_interval_ms 1000 * 60 * 60 * 6
@@ -103,7 +102,7 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
   end
 
   ## GenServer Callbacks
-  @impl true
+  @impl GenServer
   def init(_opts) do
     # Schedule the first analysis
     timer_ref = schedule_next_analysis()
@@ -118,7 +117,7 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
     {:ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:analyze_now, _from, state) do
     # Cancel existing timer and run analysis now
     if state.timer_ref do
@@ -147,12 +146,12 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_stats, _from, state) do
     {:reply, state.stats, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:run_analysis, state) do
     case perform_analysis() do
       {:ok, stats} ->

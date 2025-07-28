@@ -7,16 +7,11 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   """
 
   use EveDmvWeb, :live_view
+  import EveDmvWeb.BattleAnalysisLive.Helpers
 
-  alias EveDmv.Contexts.BattleAnalysis
-  alias EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser
-  alias EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer
-  alias EveDmv.Contexts.BattleAnalysis.Resources.CombatLog
-  alias EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting
-  alias EveDmv.Contexts.BattleSharing
+  alias EveDmv.Contexts.CombatAnalysis
   alias EveDmv.Performance.BatchNameResolver
   alias EveDmvWeb.BattleAnalysisLive.Helpers
-  import EveDmvWeb.BattleAnalysisLive.Helpers
 
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
@@ -59,7 +54,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     self = self()
 
     Task.start(fn ->
-      result = BattleAnalysis.import_from_zkillboard(url)
+      result = CombatAnalysis.import_from_zkillboard(url)
       send(self, {:import_complete, result})
     end)
 
@@ -435,7 +430,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
         visibility: String.to_existing_atom(params["visibility"])
       ]
 
-      case BattleSharing.create_battle_report_from_data(
+      case CombatAnalysis.create_battle_report_from_data(
              socket.assigns.current_battle,
              creator_id,
              options
@@ -488,7 +483,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     rater_id = 12_345
     rating_value = String.to_integer(rating)
 
-    case BattleSharing.rate_battle_report(report_id, rater_id, rating_value) do
+    case CombatAnalysis.rate_battle_report(report_id, rater_id, rating_value) do
       {:ok, _} ->
         {:noreply,
          socket
@@ -565,7 +560,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   # Private functions
 
   defp load_recent_battles(socket) do
-    case BattleAnalysis.detect_recent_battles(48, min_participants: 2) do
+    case CombatAnalysis.detect_recent_battles(48, min_participants: 2) do
       {:ok, battles} ->
         # Only show significant battles (multiple kills OR lasting > 2 minutes)
         significant_battles =
@@ -600,7 +595,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
         if Map.has_key?(existing_battle, :timeline) do
           existing_battle
         else
-          timeline = BattleAnalysis.reconstruct_battle_timeline(existing_battle)
+          timeline = CombatAnalysis.reconstruct_battle_timeline(existing_battle)
           Map.put(existing_battle, :timeline, timeline)
         end
 
@@ -612,7 +607,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
       # Load intelligence analysis
       intelligence =
-        case BattleAnalysis.analyze_battle_with_intelligence(battle_with_timeline) do
+        case CombatAnalysis.analyze_battle_with_intelligence(battle_with_timeline) do
           {:ok, intel} -> intel
           _ -> nil
         end
@@ -629,7 +624,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       |> load_battle_reports()
     else
       # Try to load from backend
-      case BattleAnalysis.get_battle_with_timeline(battle_id) do
+      case CombatAnalysis.get_battle_with_timeline(battle_id) do
         {:ok, battle} ->
           # Preload all names to prevent N+1 queries
           BatchNameResolver.preload_battle_names(battle)
@@ -639,7 +634,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
           # Load intelligence analysis
           intelligence =
-            case BattleAnalysis.analyze_battle_with_intelligence(battle) do
+            case CombatAnalysis.analyze_battle_with_intelligence(battle) do
               {:ok, intel} -> intel
               _ -> nil
             end
@@ -886,7 +881,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   defp load_battle_metrics(socket) do
     if socket.assigns.current_battle do
-      case EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator.calculate_battle_metrics(
+      case EveDmv.Contexts.CombatAnalysis.Domain.BattleMetricsCalculator.calculate_battle_metrics(
              socket.assigns.current_battle
            ) do
         {:ok, metrics} ->
@@ -902,7 +897,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   defp load_battle_reports(socket) do
     if socket.assigns.current_battle do
-      case BattleSharing.get_reports_for_battle(socket.assigns.current_battle.battle_id) do
+      case CombatAnalysis.get_reports_for_battle(socket.assigns.current_battle.battle_id) do
         {:ok, reports} ->
           assign(socket, :battle_reports, reports)
 
@@ -1004,6 +999,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   # Get pilot suggestions for autocomplete based on current battle participants
   defp get_pilot_suggestions(nil, _search_term), do: []
+  # No battle data available for suggestions
 
   defp get_pilot_suggestions(battle, search_term) when is_binary(search_term) do
     # First try to get pilots from the current battle if available
@@ -1117,6 +1113,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   end
 
   defp get_all_pilots_from_battle(_), do: []
+  # Battle data structure not available
 
   defp has_combat_log?(pilot_name, combat_logs)
        when is_binary(pilot_name) and is_list(combat_logs) do

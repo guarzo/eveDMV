@@ -258,15 +258,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.PerformanceMe
   Analyze factors that contributed to battle victory.
   """
   def analyze_victory_factors(tactical_analysis, performance_metrics) do
-    try do
-      # Use the comprehensive OutcomeAnalyzer for detailed victory factor analysis
-      OutcomeAnalyzer.analyze_victory_factors(tactical_analysis, performance_metrics)
-    rescue
-      e ->
-        Logger.error("Victory factor analysis failed: #{Exception.message(e)}")
-        # Fallback to basic analysis if the comprehensive analyzer fails
-        perform_basic_victory_analysis(tactical_analysis, performance_metrics)
-    end
+    # Use the comprehensive OutcomeAnalyzer for detailed victory factor analysis
+    OutcomeAnalyzer.analyze_victory_factors(tactical_analysis, performance_metrics)
+  rescue
+    e ->
+      Logger.error("Victory factor analysis failed: #{Exception.message(e)}")
+      # Fallback to basic analysis if the comprehensive analyzer fails
+      perform_basic_victory_analysis(tactical_analysis, performance_metrics)
   end
 
   @doc """

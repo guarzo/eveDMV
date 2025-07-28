@@ -198,7 +198,7 @@ defmodule EveDmv.Shared.ActivityMetrics do
 
   defp days_since(%NaiveDateTime{} = datetime) do
     datetime
-    |> DateTime.from_naive!()
+    |> DateTime.from_naive!("Etc/UTC")
     |> days_since()
   end
 

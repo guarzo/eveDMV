@@ -20,7 +20,7 @@ defmodule EveDmv.Workers.UITaskSupervisor do
 
   use EveDmv.Workers.GenericTaskSupervisor
 
-  @impl true
+  @impl EveDmv.Workers.GenericTaskSupervisor
   def config do
     [
       name: __MODULE__,

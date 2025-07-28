@@ -7,8 +7,8 @@ defmodule EveDmv.Pagination.CursorPaginator do
   with proper ordering and memory bounds.
   """
 
-  alias EveDmv.Repo
   import Ecto.Query
+  alias EveDmv.Repo
 
   @default_page_size 50
   @max_page_size 1000

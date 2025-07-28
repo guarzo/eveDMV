@@ -49,36 +49,34 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
       "Calculating comprehensive threat score for character #{combat_data.character_id}"
     )
 
-    try do
-      # Calculate dimensional scores using existing engines
-      dimensional_scores = calculate_dimensional_scores(combat_data)
+    # Calculate dimensional scores using existing engines
+    dimensional_scores = calculate_dimensional_scores(combat_data)
 
-      # Calculate weighted threat score
-      weighted_score = calculate_weighted_threat_score(dimensional_scores)
-      threat_level = determine_threat_level(weighted_score)
+    # Calculate weighted threat score
+    weighted_score = calculate_weighted_threat_score(dimensional_scores)
+    threat_level = determine_threat_level(weighted_score)
 
-      # Build comprehensive assessment
-      threat_assessment = %{
-        character_id: combat_data.character_id,
-        threat_score: weighted_score,
-        threat_level: threat_level,
-        confidence: calculate_confidence(dimensional_scores),
-        analysis_window_days: combat_data.analysis_period_days,
-        total_killmails: combat_data.total_killmails,
-        dimensional_scores: dimensional_scores,
-        analyzed_at: DateTime.utc_now()
-      }
+    # Build comprehensive assessment
+    threat_assessment = %{
+      character_id: combat_data.character_id,
+      threat_score: weighted_score,
+      threat_level: threat_level,
+      confidence: calculate_confidence(dimensional_scores),
+      analysis_window_days: combat_data.analysis_period_days,
+      total_killmails: combat_data.total_killmails,
+      dimensional_scores: dimensional_scores,
+      analyzed_at: DateTime.utc_now()
+    }
 
-      Logger.info(
-        "Calculated threat score #{weighted_score} (#{threat_level}) for character #{combat_data.character_id}"
-      )
+    Logger.info(
+      "Calculated threat score #{weighted_score} (#{threat_level}) for character #{combat_data.character_id}"
+    )
 
-      {:ok, threat_assessment}
-    rescue
-      error ->
-        Logger.error("Exception during threat score calculation: #{inspect(error)}")
-        {:error, :calculation_error}
-    end
+    {:ok, threat_assessment}
+  rescue
+    error ->
+      Logger.error("Exception during threat score calculation: #{inspect(error)}")
+      {:error, :calculation_error}
   end
 
   # Private calculation functions

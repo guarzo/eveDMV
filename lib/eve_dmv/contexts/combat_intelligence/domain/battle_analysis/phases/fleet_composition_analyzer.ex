@@ -6,11 +6,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
   delegating specific tasks to specialized analyzer modules for better maintainability.
   """
 
-  require Logger
-
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.ShipClassificationAnalyzer
 
-  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.FleetEffectivenessAnalyzer
+  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer
+
+  require Logger
 
   @doc """
   Analyze fleet compositions from participant data.
@@ -151,9 +151,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
 
     # Basic composition analysis using extracted modules
     role_distribution = ShipClassificationAnalyzer.calculate_role_distribution(participants)
-    effectiveness = FleetEffectivenessAnalyzer.estimate_fleet_effectiveness(participants)
-    synergy = FleetEffectivenessAnalyzer.calculate_fleet_synergy(participants)
-    balance = FleetEffectivenessAnalyzer.analyze_composition_balance(role_distribution)
+    effectiveness = BattleAnalyzer.estimate_fleet_effectiveness(participants)
+    synergy = BattleAnalyzer.calculate_fleet_synergy(participants)
+    balance = BattleAnalyzer.analyze_composition_balance(role_distribution)
 
     %{
       fleet_size: length(participants),
@@ -161,7 +161,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       effectiveness: effectiveness,
       synergy: synergy,
       balance: balance,
-      fleet_strength: FleetEffectivenessAnalyzer.calculate_fleet_strength(participants)
+      fleet_strength: BattleAnalyzer.calculate_fleet_strength(participants)
     }
   end
 
@@ -193,11 +193,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
       role_distribution =
         ShipClassificationAnalyzer.calculate_role_distribution(side_participants)
 
-      effectiveness = FleetEffectivenessAnalyzer.estimate_fleet_effectiveness(side_participants)
-      synergy = FleetEffectivenessAnalyzer.calculate_fleet_synergy(side_participants)
+      effectiveness = BattleAnalyzer.estimate_fleet_effectiveness(side_participants)
+      synergy = BattleAnalyzer.calculate_fleet_synergy(side_participants)
 
       doctrine_adherence =
-        FleetEffectivenessAnalyzer.calculate_doctrine_adherence(side_participants)
+        BattleAnalyzer.calculate_doctrine_adherence(side_participants)
 
       %{
         participant_count: length(side_participants),
@@ -205,7 +205,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
         effectiveness: effectiveness,
         synergy: synergy,
         doctrine_adherence: doctrine_adherence,
-        fleet_strength: FleetEffectivenessAnalyzer.calculate_fleet_strength(side_participants)
+        fleet_strength: BattleAnalyzer.calculate_fleet_strength(side_participants)
       }
     end
   end
@@ -255,7 +255,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.FleetC
         performance_grade: :no_data
       }
     else
-      survival_rate = FleetEffectivenessAnalyzer.calculate_survival_rate(ships, killmails)
+      survival_rate = BattleAnalyzer.calculate_survival_rate(ships, killmails)
       kill_participation = calculate_kill_participation(ships, killmails)
       effectiveness_score = calculate_effectiveness_score(ships, killmails)
 

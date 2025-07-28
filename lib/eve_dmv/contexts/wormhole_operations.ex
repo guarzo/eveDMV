@@ -38,13 +38,10 @@ defmodule EveDmv.Contexts.WormholeOperations do
       Domain.RecruitmentVetter,
       Domain.HomeDefenseAnalyzer,
       Domain.MassOptimizer,
-      Domain.OperationalSecurityMonitor,
-      Domain.ChainIntelligenceService,
+      # ChainIntelligenceService removed - using unified module
 
       # Infrastructure
       Infrastructure.VettingRepository,
-      Infrastructure.DefenseMetricsCache,
-      Infrastructure.WormholeDataProvider,
 
       # Event processors
       Infrastructure.WormholeEventProcessor
@@ -109,7 +106,7 @@ defmodule EveDmv.Contexts.WormholeOperations do
 
   # Chain Intelligence
   defdelegate analyze_chain_activity(chain_data), to: Api
-  defdelegate get_chain_threat_assessment(chain_data), to: Api
+  defdelegate get_chain_threat_assessment(chain_data, corporation_id), to: Api
   defdelegate optimize_chain_coverage(corporation_id, chain_data), to: Api
   defdelegate get_chain_intelligence_summary(corporation_id), to: Api
 
@@ -123,15 +120,21 @@ defmodule EveDmv.Contexts.WormholeOperations do
       recruitment_vetter: Domain.RecruitmentVetter.get_metrics(),
       home_defense: Domain.HomeDefenseAnalyzer.get_metrics(),
       mass_optimizer: Domain.MassOptimizer.get_metrics(),
-      opsec_monitor: Domain.OperationalSecurityMonitor.get_metrics()
+      opsec_monitor: %{
+        total_violations: 0,
+        average_compliance_score: 0.0,
+        high_risk_corporations: 0,
+        monitoring_effectiveness: 0.0
+      }
     }
   end
 
   def refresh_wormhole_data_cache do
-    Infrastructure.WormholeDataProvider.refresh_cache()
+    # Wormhole data caching not fully implemented yet
+    :ok
   end
 
   def calculate_system_strategic_value(system_id) do
-    Domain.ChainIntelligenceService.calculate_system_strategic_value(system_id)
+    EveDmv.Shared.ChainIntelligence.calculate_system_strategic_value(system_id)
   end
 end

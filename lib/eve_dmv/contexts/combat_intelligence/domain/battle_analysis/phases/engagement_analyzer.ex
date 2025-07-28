@@ -6,9 +6,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Engage
   within individual battles or skirmishes.
   """
 
-  require Logger
-
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Services.SideDeterminationService
+  require Logger
 
   @doc """
   Analyze individual engagement mechanics.

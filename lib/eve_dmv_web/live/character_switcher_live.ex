@@ -12,7 +12,7 @@ defmodule EveDmvWeb.CharacterSwitcherLive do
 
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
-  @impl true
+  @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     current_user = socket.assigns[:current_user]
     current_account = socket.assigns[:current_account]
@@ -34,7 +34,7 @@ defmodule EveDmvWeb.CharacterSwitcherLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
     <div class="character-switcher">
@@ -143,12 +143,12 @@ defmodule EveDmvWeb.CharacterSwitcherLive do
     """
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("toggle_character_list", _params, socket) do
     {:noreply, update(socket, :show_character_list, &(!&1))}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("switch_character", %{"character-id" => character_id}, socket) do
     current_account = socket.assigns.current_account
 
@@ -172,12 +172,12 @@ defmodule EveDmvWeb.CharacterSwitcherLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("toggle_link_character", _params, socket) do
     {:noreply, assign(socket, :linking_new_character, true)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("cancel_link_character", _params, socket) do
     {:noreply, assign(socket, :linking_new_character, false)}
   end

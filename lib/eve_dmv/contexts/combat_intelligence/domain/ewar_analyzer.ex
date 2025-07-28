@@ -660,9 +660,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
 
   defp identify_ewar_gaps(ewar_ships) do
     present_types =
-      ewar_ships
-
-    Enum.flat_map(& &1.ewar_types) |> Enum.uniq() |> MapSet.new()
+      ewar_ships |> Enum.flat_map(& &1.ewar_types) |> Enum.uniq() |> MapSet.new()
 
     all_types =
       MapSet.new([:ecm, :damps, :tracking_disruptors, :target_painters, :neuts, :tackle])

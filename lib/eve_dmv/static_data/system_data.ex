@@ -6,8 +6,8 @@ defmodule EveDmv.StaticData.SystemData do
   This module should be enhanced with actual EVE static data when available.
   """
 
-  alias EveDmv.Repo
   import Ecto.Query
+  alias EveDmv.Repo
   require Logger
 
   # System ID ranges for different space types (currently unused but kept for future expansion)

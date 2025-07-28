@@ -39,7 +39,6 @@ defmodule EveDmv.Contexts.FleetOperations do
 
       # Infrastructure
       Infrastructure.FleetRepository,
-      Infrastructure.EngagementCache,
       Infrastructure.MetricsAggregator,
 
       # Event processors

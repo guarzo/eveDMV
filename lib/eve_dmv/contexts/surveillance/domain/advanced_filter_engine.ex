@@ -342,17 +342,41 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AdvancedFilterEngine do
 
   defp extract_field_value(killmail_data, field) do
     case field do
-      "killmail_id" -> killmail_data["killmail_id"]
-      "solar_system_id" -> killmail_data["solar_system_id"]
-      "killmail_time" -> DateTime.from_iso8601!(killmail_data["killmail_time"])
-      "total_value" -> killmail_data["zkb"]["totalValue"] || 0
-      "victim_character_id" -> get_in(killmail_data, ["victim", "character_id"])
-      "victim_corporation_id" -> get_in(killmail_data, ["victim", "corporation_id"])
-      "victim_alliance_id" -> get_in(killmail_data, ["victim", "alliance_id"])
-      "victim_ship_type_id" -> get_in(killmail_data, ["victim", "ship_type_id"])
-      "attacker_count" -> length(killmail_data["attackers"] || [])
-      "points" -> killmail_data["zkb"]["points"] || 0
-      _ -> nil
+      "killmail_id" ->
+        killmail_data["killmail_id"]
+
+      "solar_system_id" ->
+        killmail_data["solar_system_id"]
+
+      "killmail_time" ->
+        case DateTime.from_iso8601(killmail_data["killmail_time"]) do
+          {:ok, datetime} -> datetime
+          {:error, _} -> nil
+        end
+
+      "total_value" ->
+        killmail_data["zkb"]["totalValue"] || 0
+
+      "victim_character_id" ->
+        get_in(killmail_data, ["victim", "character_id"])
+
+      "victim_corporation_id" ->
+        get_in(killmail_data, ["victim", "corporation_id"])
+
+      "victim_alliance_id" ->
+        get_in(killmail_data, ["victim", "alliance_id"])
+
+      "victim_ship_type_id" ->
+        get_in(killmail_data, ["victim", "ship_type_id"])
+
+      "attacker_count" ->
+        length(killmail_data["attackers"] || [])
+
+      "points" ->
+        killmail_data["zkb"]["points"] || 0
+
+      _ ->
+        nil
     end
   end
 

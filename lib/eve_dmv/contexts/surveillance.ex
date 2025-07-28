@@ -105,10 +105,8 @@ defmodule EveDmv.Contexts.Surveillance do
   end
 
   defp get_system_load_percent do
-    # Simulate system load calculation
-    # In production, this would check actual CPU/memory usage
-    # 10-30% load
-    :rand.uniform(20) + 10
+    # Return 0 - real implementation would check actual system metrics
+    0
   end
 
   defp get_cache_hit_rate do

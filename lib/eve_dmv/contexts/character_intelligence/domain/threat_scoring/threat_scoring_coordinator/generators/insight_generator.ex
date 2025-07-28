@@ -47,86 +47,83 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
 
   # Fetch killmail activity from the last 30 days
   defp fetch_recent_activity(character_id) do
-    try do
-      # Fetch recent killmails and filter for character involvement
-      recent_killmails =
-        KillmailRaw
-        |> Ash.Query.limit(1000)
-        |> Ash.read!(domain: EveDmv.Api)
+    # Fetch recent killmails and filter for character involvement
+    recent_killmails =
+      KillmailRaw
+      |> Ash.Query.limit(1000)
+      |> Ash.read!(domain: EveDmv.Api)
 
-      # Filter for character involvement in memory
-      relevant_killmails = 
-        Enum.filter(recent_killmails, fn km ->
-          # Check if character was victim
-          victim_match = Map.get(km, :victim_character_id) == character_id
-          
-          # Check if character was attacker
-          attacker_match = case Map.get(km, :raw_data) do
+    # Filter for character involvement in memory
+    relevant_killmails =
+      Enum.filter(recent_killmails, fn km ->
+        # Check if character was victim
+        victim_match = Map.get(km, :victim_character_id) == character_id
+
+        # Check if character was attacker
+        attacker_match =
+          case Map.get(km, :raw_data) do
             %{"attackers" => attackers} when is_list(attackers) ->
               Enum.any?(attackers, fn attacker ->
                 Map.get(attacker, "character_id") == character_id
               end)
-            _ -> false
+
+            _ ->
+              false
           end
-          
-          victim_match or attacker_match
-        end)
-        |> Enum.sort_by(&Map.get(&1, :killmail_time), {:desc, DateTime})
 
-      {:ok, relevant_killmails}
-    rescue
-      error ->
-        Logger.error(
-          "Error fetching recent activity for character #{character_id}: #{inspect(error)}"
-        )
+        victim_match or attacker_match
+      end)
+      |> Enum.sort_by(&Map.get(&1, :killmail_time), {:desc, DateTime})
 
-        {:error, "Database query failed"}
-    end
+    {:ok, relevant_killmails}
+  rescue
+    error ->
+      Logger.error(
+        "Error fetching recent activity for character #{character_id}: #{inspect(error)}"
+      )
+
+      {:error, "Database query failed"}
   end
 
   # Analyze patterns in killmail data to extract threat indicators
   defp analyze_threat_patterns(killmails) do
-    try do
-      patterns = %{
-        aggression_frequency: calculate_aggression_frequency(killmails),
-        victim_frequency: calculate_victim_frequency(killmails),
-        target_preferences: analyze_target_preferences(killmails),
-        fleet_patterns: analyze_fleet_participation(killmails),
-        timezone_activity: analyze_timezone_patterns(killmails),
-        activity_level: calculate_activity_level(killmails)
-      }
+    patterns = %{
+      aggression_frequency: calculate_aggression_frequency(killmails),
+      victim_frequency: calculate_victim_frequency(killmails),
+      target_preferences: analyze_target_preferences(killmails),
+      fleet_patterns: analyze_fleet_participation(killmails),
+      timezone_activity: analyze_timezone_patterns(killmails),
+      activity_level: calculate_activity_level(killmails)
+    }
 
-      {:ok, patterns}
-    rescue
-      error ->
-        Logger.error("Error analyzing threat patterns: #{inspect(error)}")
-        {:error, "Pattern analysis failed"}
-    end
+    {:ok, patterns}
+  rescue
+    error ->
+      Logger.error("Error analyzing threat patterns: #{inspect(error)}")
+      {:error, "Pattern analysis failed"}
   end
 
   # Compile human-readable insights from assessment and patterns
   defp compile_insights(assessment, patterns) do
-    try do
-      insights = []
+    insights = []
 
-      # Threat level insights
-      insights = add_threat_level_insights(insights, assessment.threat_score)
+    # Threat level insights
+    insights = add_threat_level_insights(insights, assessment.threat_score)
 
-      # Activity pattern insights
-      insights = add_activity_insights(insights, patterns)
+    # Activity pattern insights
+    insights = add_activity_insights(insights, patterns)
 
-      # Combat behavior insights
-      insights = add_combat_insights(insights, patterns)
+    # Combat behavior insights
+    insights = add_combat_insights(insights, patterns)
 
-      # Temporal pattern insights
-      insights = add_temporal_insights(insights, patterns)
+    # Temporal pattern insights
+    insights = add_temporal_insights(insights, patterns)
 
-      {:ok, Enum.reverse(insights)}
-    rescue
-      error ->
-        Logger.error("Error compiling insights: #{inspect(error)}")
-        {:error, "Insight compilation failed"}
-    end
+    {:ok, Enum.reverse(insights)}
+  rescue
+    error ->
+      Logger.error("Error compiling insights: #{inspect(error)}")
+      {:error, "Insight compilation failed"}
   end
 
   # Calculate frequency of aggressive actions (as attacker)

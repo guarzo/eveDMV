@@ -5,14 +5,13 @@ defmodule EveDmvWeb.KillmailLive do
 
   use EveDmvWeb, :live_view
 
+  import Ash.Query
   alias EveDmv.Api
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Market.PriceService
-
   require Logger
-  import Ash.Query
 
-  @impl true
+  @impl Phoenix.LiveView
   def mount(%{"killmail_id" => killmail_id_str}, _session, socket) do
     case Integer.parse(killmail_id_str) do
       {killmail_id, ""} ->
@@ -37,7 +36,7 @@ defmodule EveDmvWeb.KillmailLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("export_killmail", %{"format" => format}, socket) do
     case socket.assigns.killmail do
       nil ->
@@ -63,12 +62,12 @@ defmodule EveDmvWeb.KillmailLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("change_export_format", %{"format" => format}, socket) do
     {:noreply, assign(socket, :export_format, format)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("copy_zkb_link", _params, socket) do
     case socket.assigns.killmail do
       nil ->
@@ -96,7 +95,7 @@ defmodule EveDmvWeb.KillmailLive do
     |> assign(:loading, true)
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({ref, result}, socket) when socket.assigns.loading_task.ref == ref do
     Process.demonitor(ref, [:flush])
 
@@ -118,7 +117,7 @@ defmodule EveDmvWeb.KillmailLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:DOWN, _ref, :process, _pid, _reason}, socket) do
     # Handle task crash
     socket =
@@ -366,7 +365,7 @@ defmodule EveDmvWeb.KillmailLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
     <div class="container mx-auto px-4 py-8">

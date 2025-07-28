@@ -729,7 +729,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
       ships
       |> Enum.filter(fn ship ->
         ship_name = Map.get(ship, :type_name, "")
-        is_t1_ship(ship_name)
+        t1_ship?(ship_name)
       end)
 
     if length(t1_ships) > 0 do
@@ -766,7 +766,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
     end
   end
 
-  defp is_t1_ship(ship_name) do
+  defp t1_ship?(ship_name) do
     ship_name = String.downcase(ship_name)
 
     # Common T1 ships

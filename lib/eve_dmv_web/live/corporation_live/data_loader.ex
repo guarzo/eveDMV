@@ -3,7 +3,8 @@ defmodule EveDmvWeb.CorporationLive.DataLoader do
   Optimized data loading for corporation analysis using new query modules.
   """
 
-  alias EveDmv.Database.{CorporationQueries, QueryPerformance}
+  alias EveDmv.Database.CorporationQueries
+  alias EveDmv.Database.QueryPerformance
   alias EveDmv.Cache.AnalysisCache
   alias EveDmv.Eve.EsiCorporationClient
   require Logger
@@ -37,8 +38,9 @@ defmodule EveDmvWeb.CorporationLive.DataLoader do
     # Await all tasks and collect results
     results =
       tasks
+      |> Enum.map(&Task.await(&1, 30_000))
+      |> Map.new()
 
-    Enum.map(&Task.await(&1, 30_000)) |> Map.new()
     # Combine all data
     %{
       corporation_id: corporation_id,

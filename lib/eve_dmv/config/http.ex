@@ -131,4 +131,29 @@ defmodule EveDmv.Config.Http do
       ]
     ]
   end
+
+  @doc """
+  Get unified HTTP client default options.
+  """
+  @spec unified_client_options() :: keyword()
+  def unified_client_options do
+    [
+      timeout: timeout(),
+      connect_timeout: connect_timeout(),
+      retry_attempts: retry_attempts(),
+      retry_delay: retry_delay(),
+      max_retry_delay: max_retry_delay(),
+      detailed_logging: Config.get(:eve_dmv, :http_detailed_logging, false)
+    ]
+  end
+
+  @doc """
+  Get service-specific timeout configuration.
+  """
+  @spec service_timeout(atom()) :: pos_integer()
+  def service_timeout(:janice), do: janice_timeout()
+  def service_timeout(:mutamarket), do: mutamarket_timeout()
+  def service_timeout(:esi), do: esi_timeout()
+  def service_timeout(:sse), do: sse_timeout()
+  def service_timeout(_), do: timeout()
 end

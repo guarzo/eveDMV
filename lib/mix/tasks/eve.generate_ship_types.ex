@@ -1,11 +1,4 @@
 defmodule Mix.Tasks.Eve.GenerateShipTypes do
-  use Mix.Task
-  import Ecto.Query
-  alias EveDmv.Repo
-  alias EveDmv.Eve.ItemType
-
-  @shortdoc "Generate ship type classifications from EVE static data"
-
   @moduledoc """
   Generates ship type classifications based on actual EVE SDE data.
 
@@ -13,6 +6,13 @@ defmodule Mix.Tasks.Eve.GenerateShipTypes do
 
       mix eve.generate_ship_types
   """
+
+  @shortdoc "Generate ship type classifications from EVE static data"
+
+  use Mix.Task
+  import Ecto.Query
+  alias EveDmv.Repo
+  alias EveDmv.Eve.ItemType
 
   @group_mappings %{
     # Frigates

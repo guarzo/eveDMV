@@ -358,13 +358,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtili
   def get_item_type_info(ship_type_id) do
     alias EveDmv.Eve.ItemType
 
-    try do
-      case Ash.get(ItemType, ship_type_id, domain: EveDmv.Api) do
-        {:ok, item_type} -> {:ok, item_type}
-        {:error, _reason} -> {:error, :not_found}
-      end
-    rescue
-      _ -> {:error, :static_data_unavailable}
+    case Ash.get(ItemType, ship_type_id, domain: EveDmv.Api) do
+      {:ok, item_type} -> {:ok, item_type}
+      {:error, _reason} -> {:error, :not_found}
     end
+  rescue
+    _ -> {:error, :static_data_unavailable}
   end
 end

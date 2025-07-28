@@ -98,6 +98,7 @@ defmodule EveDmv.Users.Account do
     update :add_character do
       accept([])
       argument(:character_id, :uuid, allow_nil?: false)
+      require_atomic?(false)
 
       change(fn changeset, context ->
         character_id = Ash.Changeset.get_argument(changeset, :character_id)
@@ -119,6 +120,7 @@ defmodule EveDmv.Users.Account do
     update :switch_primary_character do
       accept([])
       argument(:character_id, :uuid, allow_nil?: false)
+      require_atomic?(false)
 
       change(fn changeset, _context ->
         character_id = Ash.Changeset.get_argument(changeset, :character_id)
@@ -132,6 +134,7 @@ defmodule EveDmv.Users.Account do
     # Update last login
     update :update_last_login do
       accept([])
+      require_atomic?(false)
 
       change(fn changeset, _context ->
         Changeset.change_attribute(changeset, :last_login_at, DateTime.utc_now())

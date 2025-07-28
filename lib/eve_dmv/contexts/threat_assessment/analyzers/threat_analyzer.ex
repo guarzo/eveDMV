@@ -16,7 +16,6 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
 
   use EveDmv.ErrorHandler
 
-  alias EveDmv.Contexts.ThreatAssessment.Infrastructure.StandingsRepository
   alias EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatDataProvider
   alias EveDmv.Result
 
@@ -248,22 +247,13 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
     end
   end
 
-  defp analyze_standings(corporation_id, alliance_id) do
-    corp_standing =
-      if corporation_id,
-        do: StandingsRepository.check_corporation_standing(corporation_id),
-        else: nil
-
-    alliance_standing =
-      if alliance_id, do: StandingsRepository.check_alliance_standing(alliance_id), else: nil
-
-    standing_override = determine_standing_override(corp_standing, alliance_standing)
-
+  defp analyze_standings(_corporation_id, _alliance_id) do
+    # Standings data not available - return neutral standings
     {:ok,
      %{
-       corporation_standing: corp_standing,
-       alliance_standing: alliance_standing,
-       standing_override: standing_override
+       corporation_standing: nil,
+       alliance_standing: nil,
+       standing_override: nil
      }}
   end
 
@@ -452,14 +442,6 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
         threat_score >= @friendly_threshold -> :neutral
         true -> :friendly
       end
-    end
-  end
-
-  defp determine_standing_override(corp_standing, alliance_standing) do
-    cond do
-      corp_standing == :red or alliance_standing == :red -> :hostile
-      corp_standing == :blue or alliance_standing == :blue -> :friendly
-      true -> nil
     end
   end
 

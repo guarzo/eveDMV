@@ -317,7 +317,7 @@ defmodule EveDmv.Intelligence.WandererClient do
 
   defp check_system_in_all_chains(system_id, monitored_maps, auth_token) do
     # Convert to integer if string
-    system_id = 
+    system_id =
       case Integer.parse(to_string(system_id)) do
         {id, _} -> id
         :error -> system_id
@@ -335,11 +335,11 @@ defmodule EveDmv.Intelligence.WandererClient do
           {:ok, %{in_chain: true} = result} ->
             # Found in this chain, return result
             {:halt, {:ok, result}}
-          
+
           {:ok, %{in_chain: false}} ->
             # Not in this chain, continue checking
             {:cont, {:ok, %{in_chain: false}}}
-          
+
           {:error, _reason} ->
             # Error checking this chain, continue to next
             {:cont, {:ok, %{in_chain: false}}}
@@ -358,13 +358,14 @@ defmodule EveDmv.Intelligence.WandererClient do
         # Parse topology and check if system is present
         topology = parse_topology_data(data)
         systems = Map.get(topology, "systems", [])
-        
+
         # Check if system exists in this chain
-        system_found = Enum.find(systems, fn system ->
-          Map.get(system, "solar_system_id") == system_id or
-          Map.get(system, "id") == system_id or
-          Map.get(system, "system_id") == system_id
-        end)
+        system_found =
+          Enum.find(systems, fn system ->
+            Map.get(system, "solar_system_id") == system_id or
+              Map.get(system, "id") == system_id or
+              Map.get(system, "system_id") == system_id
+          end)
 
         if system_found do
           # System is in chain, calculate jumps from home
@@ -387,24 +388,29 @@ defmodule EveDmv.Intelligence.WandererClient do
     # 1. Identify the home system (could be marked in system data or configured)
     # 2. Fetch connections data to build a graph
     # 3. Use pathfinding to calculate actual jump distance
-    
+
     # For now, estimate based on system position in the list
     # This is not accurate but provides a placeholder implementation
-    system_index = Enum.find_index(systems, fn system ->
-      Map.get(system, "solar_system_id") == system_id or
-      Map.get(system, "id") == system_id or
-      Map.get(system, "system_id") == system_id
-    end)
+    system_index =
+      Enum.find_index(systems, fn system ->
+        Map.get(system, "solar_system_id") == system_id or
+          Map.get(system, "id") == system_id or
+          Map.get(system, "system_id") == system_id
+      end)
 
     case system_index do
-      nil -> 0  # Should not happen since we already found the system
-      0 -> 0    # First system is likely home
-      index -> min(index, 10)  # Cap at 10 jumps for safety
+      # Should not happen since we already found the system
+      nil -> 0
+      # First system is likely home
+      0 -> 0
+      # Cap at 10 jumps for safety
+      index -> min(index, 10)
     end
   rescue
     error ->
       Logger.warning("Error calculating jumps for system #{system_id}: #{inspect(error)}")
-      5  # Default fallback distance
+      # Default fallback distance
+      5
   end
 
   defp fetch_with_retry(fetch_fn, retries \\ 0) do

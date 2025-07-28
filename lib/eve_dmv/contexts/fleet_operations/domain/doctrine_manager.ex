@@ -4,9 +4,10 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
 
   Handles creation, validation, and management of fleet doctrines,
   including compliance checking and doctrine optimization.
+
+  Converted from GenServer to simple module for stateless operations.
   """
 
-  use GenServer
   use EveDmv.ErrorHandler
 
   alias EveDmv.StaticData
@@ -15,86 +16,16 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
 
   # Note: Doctrine types and mass categories are defined inline where needed
 
-  def start_link(opts \\ []) do
-    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
-  end
-
   # Public API
 
   @doc """
   Create a new fleet doctrine.
+
+  In a real implementation, this would persist to database.
+  Currently returns a mock doctrine for development.
   """
   def create_doctrine(doctrine_data) do
-    GenServer.call(__MODULE__, {:create_doctrine, doctrine_data})
-  end
-
-  @doc """
-  Update an existing fleet doctrine.
-  """
-  def update_doctrine(doctrine_id, updates) do
-    GenServer.call(__MODULE__, {:update_doctrine, doctrine_id, updates})
-  end
-
-  @doc """
-  Get a doctrine by ID.
-  """
-  def get_doctrine(doctrine_id) do
-    GenServer.call(__MODULE__, {:get_doctrine, doctrine_id})
-  end
-
-  @doc """
-  Get a doctrine by name.
-  """
-  def get_doctrine_by_name(doctrine_name) do
-    GenServer.call(__MODULE__, {:get_doctrine_by_name, doctrine_name})
-  end
-
-  @doc """
-  List doctrines with filtering options.
-  """
-  def list_doctrines(opts \\ []) do
-    GenServer.call(__MODULE__, {:list_doctrines, opts})
-  end
-
-  @doc """
-  Check fleet compliance against a doctrine.
-  """
-  def check_compliance(fleet_data, doctrine) do
-    GenServer.call(__MODULE__, {:check_compliance, fleet_data, doctrine})
-  end
-
-  @doc """
-  Validate a fleet composition against a doctrine.
-  """
-  def validate_fleet_composition(fleet_data, doctrine) do
-    GenServer.call(__MODULE__, {:validate_fleet_composition, fleet_data, doctrine})
-  end
-
-  @doc """
-  Get doctrine statistics and usage metrics.
-  """
-  def get_doctrine_statistics(doctrine_id) do
-    GenServer.call(__MODULE__, {:get_doctrine_statistics, doctrine_id})
-  end
-
-  # GenServer implementation
-
-  @impl GenServer
-  def init(_opts) do
-    state = %{
-      doctrines: %{},
-      next_id: 1,
-      usage_statistics: %{},
-      compliance_cache: %{}
-    }
-
-    Logger.info("DoctrineManager started")
-    {:ok, state}
-  end
-
-  @impl GenServer
-  def handle_call({:create_doctrine, doctrine_data}, _from, state) do
-    doctrine_id = generate_doctrine_id(state.next_id)
+    doctrine_id = generate_doctrine_id()
 
     doctrine = %{
       id: doctrine_id,
@@ -115,161 +46,86 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
       last_used_at: nil
     }
 
-    new_doctrines = Map.put(state.doctrines, doctrine_id, doctrine)
-
-    # Initialize usage statistics
-    new_usage_statistics =
-      Map.put(state.usage_statistics, doctrine_id, %{
-        total_uses: 0,
-        compliance_scores: [],
-        last_used: nil,
-        average_compliance: 0.0
-      })
-
-    new_state = %{
-      state
-      | doctrines: new_doctrines,
-        usage_statistics: new_usage_statistics,
-        next_id: state.next_id + 1
-    }
-
     Logger.info("Created doctrine: #{doctrine.name} (#{doctrine_id})")
 
-    {:reply, {:ok, doctrine}, new_state}
+    # TODO: Persist to database
+    {:ok, doctrine}
   end
 
-  @impl GenServer
-  def handle_call({:update_doctrine, doctrine_id, updates}, _from, state) do
-    case Map.get(state.doctrines, doctrine_id) do
-      nil ->
-        {:reply, {:error, :doctrine_not_found}, state}
+  @doc """
+  Update an existing fleet doctrine.
 
-      existing_doctrine ->
-        # Update mass category if ship requirements changed
-        updated_doctrine =
-          if Map.has_key?(updates, :ship_requirements) do
-            new_mass_category =
-              determine_mass_category(%{ship_requirements: updates.ship_requirements})
-
-            Map.merge(existing_doctrine, Map.put(updates, :mass_category, new_mass_category))
-          else
-            Map.merge(existing_doctrine, updates)
-          end
-
-        updated_doctrine = Map.put(updated_doctrine, :updated_at, DateTime.utc_now())
-        new_doctrines = Map.put(state.doctrines, doctrine_id, updated_doctrine)
-
-        # Clear compliance cache for this doctrine
-        new_compliance_cache =
-          Map.reject(state.compliance_cache, fn {key, _} ->
-            case key do
-              {^doctrine_id, _} -> true
-              _ -> false
-            end
-          end)
-
-        new_state = %{
-          state
-          | doctrines: new_doctrines,
-            compliance_cache: new_compliance_cache
-        }
-
-        Logger.info("Updated doctrine: #{doctrine_id}")
-
-        {:reply, {:ok, updated_doctrine}, new_state}
-    end
+  In a real implementation, this would update the database.
+  """
+  def update_doctrine(doctrine_id, updates) do
+    # TODO: Load from database
+    # For now, return error as we don't have persistence
+    Logger.info("Attempted to update doctrine: #{doctrine_id}")
+    {:error, :not_implemented}
   end
 
-  @impl GenServer
-  def handle_call({:get_doctrine, doctrine_id}, _from, state) do
-    case Map.get(state.doctrines, doctrine_id) do
-      nil -> {:reply, {:error, :doctrine_not_found}, state}
-      doctrine -> {:reply, {:ok, doctrine}, state}
-    end
+  @doc """
+  Get a doctrine by ID.
+
+  In a real implementation, this would query the database.
+  """
+  def get_doctrine(doctrine_id) do
+    # TODO: Load from database
+    Logger.info("Attempted to get doctrine: #{doctrine_id}")
+    {:error, :not_implemented}
   end
 
-  @impl GenServer
-  def handle_call({:get_doctrine_by_name, doctrine_name}, _from, state) do
-    matching_doctrine =
-      state.doctrines
-      |> Map.values()
-      |> Enum.find(fn doctrine ->
-        doctrine.name == doctrine_name and doctrine.is_active
-      end)
+  @doc """
+  Get a doctrine by name.
 
-    case matching_doctrine do
-      nil -> {:reply, {:error, :doctrine_not_found}, state}
-      doctrine -> {:reply, {:ok, doctrine}, state}
-    end
+  In a real implementation, this would query the database.
+  """
+  def get_doctrine_by_name(doctrine_name) do
+    # TODO: Load from database
+    Logger.info("Attempted to get doctrine by name: #{doctrine_name}")
+    {:error, :not_implemented}
   end
 
-  @impl GenServer
-  def handle_call({:list_doctrines, opts}, _from, state) do
-    corporation_id = Keyword.get(opts, :corporation_id)
-    doctrine_type = Keyword.get(opts, :doctrine_type)
-    active_only = Keyword.get(opts, :active_only, true)
-    mass_category = Keyword.get(opts, :mass_category)
+  @doc """
+  List doctrines with filtering options.
 
-    filtered_doctrines =
-      state.doctrines
-      |> Map.values()
-      |> Enum.filter(fn doctrine ->
-        corporation_match = is_nil(corporation_id) or doctrine.corporation_id == corporation_id
-        type_match = is_nil(doctrine_type) or doctrine.doctrine_type == doctrine_type
-        active_match = not active_only or doctrine.is_active
-        mass_match = is_nil(mass_category) or doctrine.mass_category == mass_category
-
-        corporation_match and type_match and active_match and mass_match
-      end)
-      |> Enum.sort_by(& &1.updated_at, {:desc, DateTime})
-
-    {:reply, {:ok, filtered_doctrines}, state}
+  In a real implementation, this would query the database.
+  """
+  def list_doctrines(opts \\ []) do
+    # TODO: Query database with filters
+    Logger.info("Attempted to list doctrines with opts: #{inspect(opts)}")
+    {:ok, []}
   end
 
-  @impl GenServer
-  def handle_call({:check_compliance, fleet_data, doctrine}, _from, state) do
-    case calculate_doctrine_compliance(fleet_data, doctrine) do
-      {:ok, compliance_result} ->
-        # Update usage statistics
-        new_usage_statistics =
-          update_doctrine_usage_statistics(
-            state.usage_statistics,
-            doctrine.id,
-            compliance_result.compliance_score
-          )
-
-        new_state = %{state | usage_statistics: new_usage_statistics}
-
-        {:reply, {:ok, compliance_result}, new_state}
-
-      {:error, reason} ->
-        {:reply, {:error, reason}, state}
-    end
+  @doc """
+  Check fleet compliance against a doctrine.
+  """
+  def check_compliance(fleet_data, doctrine) do
+    calculate_doctrine_compliance(fleet_data, doctrine)
   end
 
-  @impl GenServer
-  def handle_call({:validate_fleet_composition, fleet_data, doctrine}, _from, state) do
-    case perform_fleet_validation(fleet_data, doctrine) do
-      {:ok, validation_result} ->
-        {:reply, {:ok, validation_result}, state}
-
-      {:error, reason} ->
-        {:reply, {:error, reason}, state}
-    end
+  @doc """
+  Validate a fleet composition against a doctrine.
+  """
+  def validate_fleet_composition(fleet_data, doctrine) do
+    perform_fleet_validation(fleet_data, doctrine)
   end
 
-  @impl GenServer
-  def handle_call({:get_doctrine_statistics, doctrine_id}, _from, state) do
-    case Map.get(state.usage_statistics, doctrine_id) do
-      nil -> {:reply, {:error, :doctrine_not_found}, state}
-      stats -> {:reply, {:ok, stats}, state}
-    end
+  @doc """
+  Get doctrine statistics and usage metrics.
+
+  In a real implementation, this would query aggregated data from the database.
+  """
+  def get_doctrine_statistics(doctrine_id) do
+    # TODO: Query statistics from database
+    Logger.info("Attempted to get doctrine statistics: #{doctrine_id}")
+    {:error, :not_implemented}
   end
 
   # Private functions
 
-  defp generate_doctrine_id(next_id) do
-    "doctrine_#{next_id}_#{System.unique_integer()}"
+  defp generate_doctrine_id do
+    "doctrine_#{System.unique_integer([:positive])}_#{:os.system_time(:millisecond)}"
   end
 
   defp determine_mass_category(doctrine_data) do
@@ -764,27 +620,5 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
         get_ship_mass(participant.ship_type_id)
       end)
     )
-  end
-
-  defp update_doctrine_usage_statistics(usage_statistics, doctrine_id, compliance_score) do
-    current_stats =
-      Map.get(usage_statistics, doctrine_id, %{
-        total_uses: 0,
-        compliance_scores: [],
-        last_used: nil,
-        average_compliance: 0.0
-      })
-
-    new_compliance_scores = [compliance_score | Enum.take(current_stats.compliance_scores, 99)]
-    new_average_compliance = Enum.sum(new_compliance_scores) / length(new_compliance_scores)
-
-    updated_stats = %{
-      total_uses: current_stats.total_uses + 1,
-      compliance_scores: new_compliance_scores,
-      last_used: DateTime.utc_now(),
-      average_compliance: Float.round(new_average_compliance, 3)
-    }
-
-    Map.put(usage_statistics, doctrine_id, updated_stats)
   end
 end

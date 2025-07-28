@@ -224,39 +224,37 @@ defmodule EveDmv.Contexts.BattleSharing do
     # In production, this would query the database for all reports of this battle
     # For now, simulate finding related battle reports
 
-    try do
-      # Generate sample reports for this battle
-      sample_reports = generate_sample_battle_reports(battle_id)
+    # Generate sample reports for this battle
+    sample_reports = generate_sample_battle_reports(battle_id)
 
-      # Transform to public format
-      public_reports =
-        Enum.map(sample_reports, fn report ->
-          %{
-            report_id: report.report_id,
-            battle_id: report.battle_id,
-            creator: %{
-              character_id: report.creator_character_id,
-              character_name: "Battle Analyst #{report.creator_character_id}"
-            },
-            title: report.title,
-            description: report.description,
-            ratings: %{
-              average: report.metrics.average_rating,
-              count: report.metrics.total_ratings
-            },
-            visibility: report.visibility,
-            tags: report.tags,
-            created_at: report.created_at,
-            updated_at: report.updated_at
-          }
-        end)
+    # Transform to public format
+    public_reports =
+      Enum.map(sample_reports, fn report ->
+        %{
+          report_id: report.report_id,
+          battle_id: report.battle_id,
+          creator: %{
+            character_id: report.creator_character_id,
+            character_name: "Battle Analyst #{report.creator_character_id}"
+          },
+          title: report.title,
+          description: report.description,
+          ratings: %{
+            average: report.metrics.average_rating,
+            count: report.metrics.total_ratings
+          },
+          visibility: report.visibility,
+          tags: report.tags,
+          created_at: report.created_at,
+          updated_at: report.updated_at
+        }
+      end)
 
-      {:ok, public_reports}
-    rescue
-      error ->
-        Logger.error("Failed to get reports for battle #{battle_id}: #{inspect(error)}")
-        {:error, :query_failed}
-    end
+    {:ok, public_reports}
+  rescue
+    error ->
+      Logger.error("Failed to get reports for battle #{battle_id}: #{inspect(error)}")
+      {:error, :query_failed}
   end
 
   defp generate_sample_battle_reports(battle_id) do
@@ -298,61 +296,59 @@ defmodule EveDmv.Contexts.BattleSharing do
     sort_by = Keyword.get(options, :sort_by, :created_at)
     visibility_filter = Keyword.get(options, :visibility)
 
-    try do
-      # In production, this would query the database
-      # For now, generate sample reports for this creator
-      sample_reports = generate_sample_creator_reports(character_id, limit, offset)
+    # In production, this would query the database
+    # For now, generate sample reports for this creator
+    sample_reports = generate_sample_creator_reports(character_id, limit, offset)
 
-      # Apply visibility filter if specified
-      filtered_reports =
-        if visibility_filter do
-          Enum.filter(sample_reports, fn report ->
-            report.visibility == visibility_filter
-          end)
-        else
-          sample_reports
-        end
-
-      # Apply sorting
-      sorted_reports =
-        case sort_by do
-          :created_at -> Enum.sort_by(filtered_reports, & &1.created_at, :desc)
-          :updated_at -> Enum.sort_by(filtered_reports, & &1.updated_at, :desc)
-          :rating -> Enum.sort_by(filtered_reports, & &1.metrics.average_rating, :desc)
-          :views -> Enum.sort_by(filtered_reports, & &1.metrics.views, :desc)
-          _ -> filtered_reports
-        end
-
-      # Transform to public format
-      public_reports =
-        sorted_reports
-        |> Enum.map(fn report ->
-          %{
-            report_id: report.report_id,
-            battle_id: report.battle_id,
-            title: report.title,
-            description: report.description,
-            ratings: %{
-              average: report.metrics.average_rating,
-              count: report.metrics.total_ratings
-            },
-            visibility: report.visibility,
-            tags: report.tags,
-            metrics: %{
-              views: report.metrics.views,
-              shares: report.metrics.shares
-            },
-            created_at: report.created_at,
-            updated_at: report.updated_at
-          }
+    # Apply visibility filter if specified
+    filtered_reports =
+      if visibility_filter do
+        Enum.filter(sample_reports, fn report ->
+          report.visibility == visibility_filter
         end)
+      else
+        sample_reports
+      end
 
-      {:ok, public_reports}
-    rescue
-      error ->
-        Logger.error("Failed to get reports by creator #{character_id}: #{inspect(error)}")
-        {:error, :query_failed}
-    end
+    # Apply sorting
+    sorted_reports =
+      case sort_by do
+        :created_at -> Enum.sort_by(filtered_reports, & &1.created_at, :desc)
+        :updated_at -> Enum.sort_by(filtered_reports, & &1.updated_at, :desc)
+        :rating -> Enum.sort_by(filtered_reports, & &1.metrics.average_rating, :desc)
+        :views -> Enum.sort_by(filtered_reports, & &1.metrics.views, :desc)
+        _ -> filtered_reports
+      end
+
+    # Transform to public format
+    public_reports =
+      sorted_reports
+      |> Enum.map(fn report ->
+        %{
+          report_id: report.report_id,
+          battle_id: report.battle_id,
+          title: report.title,
+          description: report.description,
+          ratings: %{
+            average: report.metrics.average_rating,
+            count: report.metrics.total_ratings
+          },
+          visibility: report.visibility,
+          tags: report.tags,
+          metrics: %{
+            views: report.metrics.views,
+            shares: report.metrics.shares
+          },
+          created_at: report.created_at,
+          updated_at: report.updated_at
+        }
+      end)
+
+    {:ok, public_reports}
+  rescue
+    error ->
+      Logger.error("Failed to get reports by creator #{character_id}: #{inspect(error)}")
+      {:error, :query_failed}
   end
 
   defp generate_sample_creator_reports(character_id, limit, offset) do

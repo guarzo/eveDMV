@@ -1,10 +1,16 @@
 defmodule EveDmvWeb.CharacterComparisonLive do
+  @moduledoc """
+  LiveView for comparing multiple EVE Online characters side-by-side.
+
+  Provides detailed comparison of combat statistics, ship preferences,
+  and engagement patterns between selected characters.
+  """
+
   use EveDmvWeb, :live_view
+  import EveDmvWeb.Components.PageHeaderComponent
 
   alias EveDmv.Analytics.CharacterComparisonService
   alias EveDmv.Presentation.Formatters
-
-  import EveDmvWeb.Components.PageHeaderComponent
 
   # Load current user from session (require auth for this analytical feature)
   on_mount({EveDmvWeb.AuthLive, :load_from_session})

@@ -673,13 +673,13 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
     note
     |> String.downcase()
     |> String.split(~r/\W+/)
-    |> Enum.filter(&(String.length(&1) > 3 && is_tactical_term(&1)))
+    |> Enum.filter(&(String.length(&1) > 3 && tactical_term?(&1)))
     |> Enum.take(3)
   end
 
   defp extract_tags_from_note(_note), do: []
 
-  defp is_tactical_term(term) do
+  defp tactical_term?(term) do
     tactical_terms = [
       "positioning",
       "flanking",

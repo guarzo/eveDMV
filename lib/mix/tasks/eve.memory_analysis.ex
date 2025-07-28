@@ -244,7 +244,8 @@ defmodule Mix.Tasks.Eve.MemoryAnalysis do
       Mix.shell().info("✅ Memory usage appears healthy")
     else
       Mix.shell().error("⚠️  Memory health concerns:")
-      |> Enum.each(issues, fn issue ->
+
+      Enum.each(issues, fn issue ->
         Mix.shell().error("  - #{issue}")
       end)
     end

@@ -1,9 +1,9 @@
 defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
   @moduledoc """
   Cache management for combat intelligence analysis results.
-  """
 
-  use GenServer
+  Simplified cache module that provides direct cache operations without GenServer overhead.
+  """
 
   alias EveDmv.Cache
 
@@ -11,16 +11,15 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
 
   @cache_type :analysis
 
-  def start_link(opts \\ []) do
-    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
-  end
-
   @doc """
   Invalidate cached analysis for a character.
   """
   @spec invalidate_character(integer()) :: :ok
   def invalidate_character(character_id) do
-    GenServer.cast(__MODULE__, {:invalidate_character, character_id})
+    cache_key = {:character_analysis, character_id}
+    Cache.delete(@cache_type, cache_key)
+    Logger.debug("Invalidated character analysis cache", character_id: character_id)
+    :ok
   end
 
   @doc """
@@ -72,7 +71,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
   """
   @spec invalidate_corporation(integer()) :: :ok
   def invalidate_corporation(corporation_id) do
-    GenServer.cast(__MODULE__, {:invalidate_corporation, corporation_id})
+    cache_key = {:corporation_analysis, corporation_id}
+    Cache.delete(@cache_type, cache_key)
+    Logger.debug("Invalidated corporation analysis cache", corporation_id: corporation_id)
+    :ok
   end
 
   @doc """
@@ -102,7 +104,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
   """
   @spec invalidate_threat_assessment(integer()) :: :ok
   def invalidate_threat_assessment(character_id) do
-    GenServer.cast(__MODULE__, {:invalidate_threat_assessment, character_id})
+    cache_key = {:threat_assessment, character_id}
+    Cache.delete(@cache_type, cache_key)
+    Logger.debug("Invalidated threat assessment cache", character_id: character_id)
+    :ok
   end
 
   @doc """
@@ -163,49 +168,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
   """
   @spec invalidate_intelligence_scores(integer()) :: :ok
   def invalidate_intelligence_scores(character_id) do
-    GenServer.cast(__MODULE__, {:invalidate_intelligence_scores, character_id})
-  end
-
-  # GenServer callbacks
-
-  @impl GenServer
-  def init(_opts) do
-    {:ok, %{invalidation_count: 0}}
-  end
-
-  @impl GenServer
-  def handle_cast({:invalidate_character, character_id}, state) do
-    cache_key = {:character_analysis, character_id}
-    Cache.delete(@cache_type, cache_key)
-
-    Logger.debug("Invalidated character analysis cache", character_id: character_id)
-
-    {:noreply, %{state | invalidation_count: state.invalidation_count + 1}}
-  end
-
-  @impl GenServer
-  def handle_cast({:invalidate_corporation, corporation_id}, state) do
-    cache_key = {:corporation_analysis, corporation_id}
-    Cache.delete(@cache_type, cache_key)
-
-    Logger.debug("Invalidated corporation analysis cache", corporation_id: corporation_id)
-
-    {:noreply, %{state | invalidation_count: state.invalidation_count + 1}}
-  end
-
-  @impl GenServer
-  def handle_cast({:invalidate_threat_assessment, character_id}, state) do
-    cache_key = {:threat_assessment, character_id}
-    Cache.delete(@cache_type, cache_key)
-
-    Logger.debug("Invalidated threat assessment cache", character_id: character_id)
-
-    {:noreply, %{state | invalidation_count: state.invalidation_count + 1}}
-  end
-
-  @impl GenServer
-  def handle_cast({:invalidate_intelligence_scores, character_id}, state) do
-    # Invalidate all score types for this character
     score_types = [
       :danger_rating,
       :hunter_score,
@@ -220,7 +182,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
     end)
 
     Logger.debug("Invalidated intelligence scores cache", character_id: character_id)
-
-    {:noreply, %{state | invalidation_count: state.invalidation_count + 1}}
+    :ok
   end
 end

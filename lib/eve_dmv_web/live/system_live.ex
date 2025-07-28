@@ -13,6 +13,8 @@ defmodule EveDmvWeb.SystemLive do
   alias EveDmv.Analytics.BattleDetector
   alias EveDmv.Cache.AnalysisCache
   alias EveDmv.Eve.SolarSystem
+  alias EveDmv.Repo
+  alias Ecto.Adapters.SQL
 
   @impl Phoenix.LiveView
   def mount(%{"system_id" => system_id}, _session, socket) do
@@ -147,7 +149,7 @@ defmodule EveDmvWeb.SystemLive do
       AND p.final_blow = true
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, killmail_query, [system_id, thirty_days_ago]) do
+    case SQL.query(Repo, killmail_query, [system_id, thirty_days_ago]) do
       {:ok, %{rows: [[total_kills, active_days, unique_pilots, unique_corps, unique_alliances]]}} ->
         {:ok,
          %{
@@ -197,7 +199,7 @@ defmodule EveDmvWeb.SystemLive do
     LIMIT 20
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, structure_query, [system_id, thirty_days_ago]) do
+    case SQL.query(Repo, structure_query, [system_id, thirty_days_ago]) do
       {:ok, %{rows: rows}} ->
         structures =
           Enum.map(rows, fn [type_name, type_id, count] ->
@@ -239,7 +241,7 @@ defmodule EveDmvWeb.SystemLive do
     LIMIT 20
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, presence_query, [system_id, thirty_days_ago]) do
+    case SQL.query(Repo, presence_query, [system_id, thirty_days_ago]) do
       {:ok, %{rows: rows}} ->
         corporations =
           Enum.map(rows, fn [
@@ -290,7 +292,7 @@ defmodule EveDmvWeb.SystemLive do
       AND p.final_blow = true
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, danger_query, [
+    case SQL.query(Repo, danger_query, [
            system_id,
            seven_days_ago,
            thirty_days_ago
@@ -347,7 +349,7 @@ defmodule EveDmvWeb.SystemLive do
     ORDER BY hour
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, heatmap_query, [system_id, thirty_days_ago]) do
+    case SQL.query(Repo, heatmap_query, [system_id, thirty_days_ago]) do
       {:ok, %{rows: rows}} ->
         heatmap_data = process_activity_heatmap_data(rows)
         {:ok, heatmap_data}

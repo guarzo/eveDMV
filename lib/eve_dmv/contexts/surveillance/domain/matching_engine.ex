@@ -10,7 +10,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
   use GenServer
   use EveDmv.ErrorHandler
-  alias EveDmv.Contexts.Surveillance.Infrastructure.MatchCache
+  alias EveDmv.Shared.Infrastructure.UnifiedCache
   alias EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository
   alias EveDmv.DomainEvents.SurveillanceMatch
   alias EveDmv.Infrastructure.EventBus
@@ -48,7 +48,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
     since = Keyword.get(opts, :since)
     profile_id = Keyword.get(opts, :profile_id)
 
-    MatchCache.get_recent_matches(limit, since, profile_id)
+    UnifiedCache.get_surveillance_matches(profile_id)
   end
 
   @doc """
@@ -58,21 +58,24 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
     limit = Keyword.get(opts, :limit, 50)
     since = Keyword.get(opts, :since)
 
-    MatchCache.get_profile_matches(profile_id, limit, since)
+    case UnifiedCache.get_surveillance_matches(profile_id) do
+      {:ok, matches} -> {:ok, Enum.take(matches, limit)}
+      error -> error
+    end
   end
 
   @doc """
   Get detailed information about a specific match.
   """
   def get_match_details(match_id) do
-    MatchCache.get_match_details(match_id)
+    UnifiedCache.get(:surveillance, {:match_details, match_id})
   end
 
   @doc """
   Get statistics for a profile's matches.
   """
   def get_match_statistics(profile_id, time_range \\ :last_30d) do
-    MatchCache.get_match_statistics(profile_id, time_range)
+    UnifiedCache.get(:surveillance, {:match_statistics, profile_id, time_range})
   end
 
   @doc """
@@ -153,7 +156,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
       # Store matches and trigger alerts
       |> Enum.each(fn match ->
-        MatchCache.store_match(match)
+        UnifiedCache.cache_surveillance_match(match.killmail_id, [match])
 
         EventBus.publish(%SurveillanceMatch{
           profile_id: match.profile_id,
@@ -720,7 +723,9 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
         inhabitant_character_ids =
           inhabitants
           |> Enum.map(&Map.get(&1, "character_id"))
-          |> Enum.filter(&(&1 != nil)) |> MapSet.new()
+          |> Enum.filter(&(&1 != nil))
+          |> MapSet.new()
+
         # Check victim
         victim_match = MapSet.member?(inhabitant_character_ids, killmail_data.victim.character_id)
 

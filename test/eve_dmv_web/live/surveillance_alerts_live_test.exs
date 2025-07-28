@@ -6,24 +6,25 @@ defmodule EveDmvWeb.SurveillanceAlertsLiveTest do
 
   alias EveDmv.Contexts.Surveillance.Domain.AlertService
 
-  describe "surveillance alerts live" do
-    setup do
-      user = create(:user)
+  # Common setup for all tests
+  setup do
+    user = create(:user)
 
-      conn =
-        Phoenix.ConnTest.build_conn()
-        |> Phoenix.ConnTest.init_test_session(%{})
-        |> Plug.Conn.put_session(:current_user_id, user.id)
+    conn =
+      Phoenix.ConnTest.build_conn()
+      |> Phoenix.ConnTest.init_test_session(%{})
+      |> Plug.Conn.put_session(:current_user_id, user.id)
 
-      # Ensure AlertService is started
-      case Process.whereis(AlertService) do
-        nil -> start_supervised!(AlertService)
-        pid when is_pid(pid) -> :ok
-      end
-
-      %{conn: conn, user: user}
+    # Ensure AlertService is started
+    case Process.whereis(AlertService) do
+      nil -> start_supervised!(AlertService)
+      pid when is_pid(pid) -> :ok
     end
 
+    %{conn: conn, user: user}
+  end
+
+  describe "surveillance alerts live" do
     test "displays alerts page", %{conn: conn} do
       {:ok, _index_live, html} = live(conn, ~p"/surveillance-alerts")
 
@@ -85,23 +86,6 @@ defmodule EveDmvWeb.SurveillanceAlertsLiveTest do
   end
 
   describe "alert display" do
-    setup do
-      user = create(:user)
-
-      conn =
-        Phoenix.ConnTest.build_conn()
-        |> Phoenix.ConnTest.init_test_session(%{})
-        |> Plug.Conn.put_session(:current_user_id, user.id)
-
-      # Ensure AlertService is started
-      case Process.whereis(AlertService) do
-        nil -> start_supervised!(AlertService)
-        pid when is_pid(pid) -> :ok
-      end
-
-      %{conn: conn, user: user}
-    end
-
     test "shows no alerts message when no alerts present", %{conn: conn} do
       {:ok, _index_live, html} = live(conn, ~p"/surveillance-alerts")
 
@@ -174,23 +158,6 @@ defmodule EveDmvWeb.SurveillanceAlertsLiveTest do
   end
 
   describe "real-time notifications" do
-    setup do
-      user = create(:user)
-
-      conn =
-        Phoenix.ConnTest.build_conn()
-        |> Phoenix.ConnTest.init_test_session(%{})
-        |> Plug.Conn.put_session(:current_user_id, user.id)
-
-      # Ensure AlertService is started
-      case Process.whereis(AlertService) do
-        nil -> start_supervised!(AlertService)
-        pid when is_pid(pid) -> :ok
-      end
-
-      %{conn: conn, user: user}
-    end
-
     test "receives real-time alert notifications", %{conn: conn} do
       {:ok, index_live, _html} = live(conn, ~p"/surveillance-alerts")
 
@@ -332,23 +299,6 @@ defmodule EveDmvWeb.SurveillanceAlertsLiveTest do
   end
 
   describe "bulk operations" do
-    setup do
-      user = create(:user)
-
-      conn =
-        Phoenix.ConnTest.build_conn()
-        |> Phoenix.ConnTest.init_test_session(%{})
-        |> Plug.Conn.put_session(:current_user_id, user.id)
-
-      # Ensure AlertService is started
-      case Process.whereis(AlertService) do
-        nil -> start_supervised!(AlertService)
-        pid when is_pid(pid) -> :ok
-      end
-
-      %{conn: conn, user: user}
-    end
-
     test "bulk acknowledge alerts", %{conn: conn} do
       # Generate multiple alerts
       for i <- 1..3 do
@@ -387,23 +337,6 @@ defmodule EveDmvWeb.SurveillanceAlertsLiveTest do
   end
 
   describe "alert details" do
-    setup do
-      user = create(:user)
-
-      conn =
-        Phoenix.ConnTest.build_conn()
-        |> Phoenix.ConnTest.init_test_session(%{})
-        |> Plug.Conn.put_session(:current_user_id, user.id)
-
-      # Ensure AlertService is started
-      case Process.whereis(AlertService) do
-        nil -> start_supervised!(AlertService)
-        pid when is_pid(pid) -> :ok
-      end
-
-      %{conn: conn, user: user}
-    end
-
     test "shows alert details when selected", %{conn: conn} do
       # Generate an alert
       alert_event = %{

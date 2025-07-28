@@ -49,7 +49,6 @@ defmodule EveDmv.ErrorCodes do
       String.contains?(error_code_lower, "rate_limit") -> :external_service
       String.contains?(error_code_lower, "oauth") -> :external_service
       String.contains?(error_code_lower, "sso") -> :external_service
-
       # Database errors
       String.contains?(error_code_lower, "db_") -> :database
       String.contains?(error_code_lower, "database") -> :database
@@ -61,14 +60,12 @@ defmodule EveDmv.ErrorCodes do
       String.contains?(error_code_lower, "transaction") -> :database
       String.contains?(error_code_lower, "constraint") -> :database
       String.contains?(error_code_lower, "migration") -> :database
-
       # Application logic errors
       String.contains?(error_code_lower, "validation") -> :application
       String.contains?(error_code_lower, "auth") -> :application
       String.contains?(error_code_lower, "permission") -> :application
       String.contains?(error_code_lower, "not_found") -> :application
       String.contains?(error_code_lower, "invalid") -> :application
-
       # Default to unknown
       true -> :unknown
     end
@@ -172,14 +169,14 @@ defmodule EveDmv.ErrorCodes do
       :external_service ->
         # Most external service errors are retryable except auth failures
         not String.contains?(error_string, "unauthorized") and
-        not String.contains?(error_string, "forbidden") and
-        not String.contains?(error_string, "invalid_token")
+          not String.contains?(error_string, "forbidden") and
+          not String.contains?(error_string, "invalid_token")
 
       :database ->
         # Database connection issues are retryable, but constraint violations are not
         String.contains?(error_string, "timeout") or
-        String.contains?(error_string, "connection") or
-        String.contains?(error_string, "pool")
+          String.contains?(error_string, "connection") or
+          String.contains?(error_string, "pool")
 
       :application ->
         # Most application errors are not retryable
@@ -212,10 +209,14 @@ defmodule EveDmv.ErrorCodes do
   """
   def retry_delay(error_code) do
     case category(error_code) do
-      :external_service -> 5000  # 5 seconds for external services
-      :database -> 1000          # 1 second for database issues
-      :application -> 2000       # 2 seconds for application errors
-      :unknown -> 3000           # 3 seconds for unknown errors
+      # 5 seconds for external services
+      :external_service -> 5000
+      # 1 second for database issues
+      :database -> 1000
+      # 2 seconds for application errors
+      :application -> 2000
+      # 3 seconds for unknown errors
+      :unknown -> 3000
     end
   end
 
@@ -246,7 +247,7 @@ defmodule EveDmv.ErrorCodes do
     case category do
       :database ->
         if String.contains?(error_string, "connection") or
-           String.contains?(error_string, "pool") do
+             String.contains?(error_string, "pool") do
           :critical
         else
           :warning
@@ -261,7 +262,7 @@ defmodule EveDmv.ErrorCodes do
 
       :application ->
         if String.contains?(error_string, "auth") or
-           String.contains?(error_string, "permission") do
+             String.contains?(error_string, "permission") do
           :warning
         else
           :info
@@ -291,7 +292,7 @@ defmodule EveDmv.ErrorCodes do
   def codes_in_category(:external_service) do
     [
       "esi_timeout",
-      "esi_rate_limit", 
+      "esi_rate_limit",
       "wanderer_connection_failed",
       "api_timeout",
       "http_502",
@@ -322,7 +323,7 @@ defmodule EveDmv.ErrorCodes do
     [
       "validation_error",
       "auth_failed",
-      "permission_denied", 
+      "permission_denied",
       "not_found",
       "invalid_input",
       "business_logic_error",

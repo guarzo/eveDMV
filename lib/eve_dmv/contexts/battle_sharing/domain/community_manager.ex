@@ -187,59 +187,11 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.CommunityManager do
     {:ok, sample_reports}
   end
 
-  defp generate_sample_reports(cutoff_date, min_rating, time_window_days) do
-    base_time = cutoff_date
+  defp generate_sample_reports(_cutoff_date, _min_rating, _time_window_days) do
+    # Return empty list - real implementation would query actual battle reports from database
+    []
 
-    for i <- 1..50 do
-      # Vary creation time within the window
-      time_offset = :rand.uniform(time_window_days * 24 * 3600)
-      created_at = DateTime.add(base_time, time_offset, :second)
-
-      # Generate realistic battle data
-      participants = 10 + :rand.uniform(200)
-      # 1B to 50B ISK
-      isk_destroyed = (1 + :rand.uniform(50)) * 1_000_000_000
-      duration_minutes = 15 + :rand.uniform(180)
-
-      # Generate community metrics
-      rating = min_rating + :rand.uniform() * (10 - min_rating)
-      views = :rand.uniform(5000)
-      total_ratings = :rand.uniform(50)
-
-      # Generate tactical highlights
-      highlights = generate_sample_highlights(i)
-
-      # Generate tags based on battle characteristics
-      tags =
-        generate_sample_tags(
-          determine_battle_type(participants, isk_destroyed),
-          determine_battle_scale(participants)
-        )
-
-      %{
-        id: "battle_#{i}",
-        title: "Battle Report ##{i}",
-        description: generate_battle_description({participants, isk_destroyed, duration_minutes}),
-        created_at: created_at,
-        creator_character_id: 1000 + :rand.uniform(1000),
-        battle_data: %{
-          participants: participants,
-          isk_destroyed: isk_destroyed,
-          duration_minutes: duration_minutes,
-          systems_involved: 1 + :rand.uniform(3)
-        },
-        community_features: %{
-          average_rating: Float.round(rating, 2),
-          total_ratings: total_ratings,
-          views: views,
-          comments: :rand.uniform(20),
-          shares: :rand.uniform(10)
-        },
-        tactical_highlights: highlights,
-        tags: tags,
-        video_links: generate_video_links(i)
-      }
-    end
+    # Function body removed - was generating fake battle report data
   end
 
   defp analyze_curation_metrics(reports) do

@@ -4,18 +4,17 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.PaginatedActivityComponent do
   """
 
   use EveDmvWeb, :live_component
+  import EveDmvWeb.Helpers.TimeFormatter
 
   alias EveDmv.Database.CharacterQueries
   alias EveDmvWeb.CharacterAnalysis.Helpers.DisplayFormatters
 
-  import EveDmvWeb.Helpers.TimeFormatter
-
-  @impl true
+  @impl Phoenix.LiveComponent
   def mount(socket) do
     {:ok, assign(socket, page: 1, page_size: 20, loading: false)}
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def update(%{character_id: _character_id} = assigns, socket) do
     socket =
       socket
@@ -25,7 +24,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.PaginatedActivityComponent do
     {:ok, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def handle_event("change_page", %{"page" => page}, socket) do
     page = String.to_integer(page)
 
@@ -37,7 +36,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.PaginatedActivityComponent do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def handle_event("prev_page", _, socket) do
     if socket.assigns.page > 1 do
       socket =
@@ -51,7 +50,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.PaginatedActivityComponent do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def handle_event("next_page", _, socket) do
     if socket.assigns.pagination && socket.assigns.pagination.has_next do
       socket =
@@ -83,7 +82,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.PaginatedActivityComponent do
     |> assign(:loading, false)
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def render(assigns) do
     ~H"""
     <div class="bg-gray-800 rounded-lg p-6">

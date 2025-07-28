@@ -6,7 +6,8 @@ defmodule EveDmv.Users.AccountManager do
   and account-level operations.
   """
 
-  alias EveDmv.Users.{Account, User}
+  alias EveDmv.Users.Account
+  alias EveDmv.Users.User
   alias EveDmv.Api
   require Logger
   require Ash.Query

@@ -294,13 +294,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ki
     base_value = assess_security_value(killmail)
     ship_value = assess_ship_strategic_value(killmail)
     system_value = assess_system_strategic_value(killmail)
-    
+
     # Combine factors with weights
-    weighted_score = 
+    weighted_score =
       base_value * 0.4 +
-      ship_value * 0.4 +
-      system_value * 0.2
-    
+        ship_value * 0.4 +
+        system_value * 0.2
+
     case weighted_score do
       score when score >= 4.0 -> :very_high
       score when score >= 3.0 -> :high
@@ -313,11 +313,16 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ki
   defp assess_security_value(killmail) do
     # Security status affects strategic value (lower sec = higher strategic value)
     security = Map.get(killmail, :security_status, 1.0)
+
     case security do
-      sec when sec >= 0.5 -> 1.0  # High sec - low strategic value
-      sec when sec > 0.0 -> 2.0   # Low sec - medium strategic value  
-      sec when sec == 0.0 -> 4.0  # Null sec - high strategic value
-      _ -> 5.0                    # Wormhole/unknown - very high strategic value
+      # High sec - low strategic value
+      sec when sec >= 0.5 -> 1.0
+      # Low sec - medium strategic value
+      sec when sec > 0.0 -> 2.0
+      # Null sec - high strategic value
+      sec when sec == 0.0 -> 4.0
+      # Wormhole/unknown - very high strategic value
+      _ -> 5.0
     end
   end
 
@@ -325,24 +330,35 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ki
     # Ship type affects strategic value (capitals = higher value)
     ship_type_id = Map.get(killmail, :victim_ship_type_id, 0)
     estimated_value = Map.get(killmail, :isk_value, 0)
-    
+
     # Base score on estimated ISK value
-    base_score = cond do
-      estimated_value >= 50_000_000_000 -> 5.0  # 50B+ ISK (super capitals)
-      estimated_value >= 10_000_000_000 -> 4.0  # 10B+ ISK (capitals)
-      estimated_value >= 1_000_000_000 -> 3.0   # 1B+ ISK (expensive ships)
-      estimated_value >= 100_000_000 -> 2.0     # 100M+ ISK (good ships)
-      estimated_value >= 10_000_000 -> 1.0      # 10M+ ISK (basic ships)
-      true -> 0.5                               # Low value ships
-    end
-    
+    base_score =
+      cond do
+        # 50B+ ISK (super capitals)
+        estimated_value >= 50_000_000_000 -> 5.0
+        # 10B+ ISK (capitals)
+        estimated_value >= 10_000_000_000 -> 4.0
+        # 1B+ ISK (expensive ships)
+        estimated_value >= 1_000_000_000 -> 3.0
+        # 100M+ ISK (good ships)
+        estimated_value >= 100_000_000 -> 2.0
+        # 10M+ ISK (basic ships)
+        estimated_value >= 10_000_000 -> 1.0
+        # Low value ships
+        true -> 0.5
+      end
+
     # Adjust for known strategic ship types
     if ship_type_id > 0 do
       case classify_ship_strategic_importance(ship_type_id) do
-        :critical -> base_score * 1.5    # Force auxiliaries, titans
-        :high -> base_score * 1.2        # Carriers, dreadnoughts
-        :medium -> base_score            # Battleships, strategic cruisers
-        :low -> base_score * 0.8         # Frigates, destroyers
+        # Force auxiliaries, titans
+        :critical -> base_score * 1.5
+        # Carriers, dreadnoughts
+        :high -> base_score * 1.2
+        # Battleships, strategic cruisers
+        :medium -> base_score
+        # Frigates, destroyers
+        :low -> base_score * 0.8
       end
     else
       base_score
@@ -352,28 +368,42 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ki
   defp assess_system_strategic_value(killmail) do
     # System strategic importance based on known strategic locations
     system_id = Map.get(killmail, :solar_system_id, 0)
-    
+
     # Base score on system characteristics we can infer
-    base_score = case system_id do
-      # Known major trade hubs (example IDs)
-      30000142 -> 4.0  # Jita
-      30002187 -> 3.0  # Amarr
-      30002659 -> 3.0  # Dodixie
-      30002510 -> 3.0  # Rens
-      30000144 -> 3.0  # Perimeter
-      _ -> 2.0         # Default system value
-    end
-    
+    base_score =
+      case system_id do
+        # Known major trade hubs (example IDs)
+        # Jita
+        30_000_142 -> 4.0
+        # Amarr
+        30_002_187 -> 3.0
+        # Dodixie
+        30_002_659 -> 3.0
+        # Rens
+        30_002_510 -> 3.0
+        # Perimeter
+        30_000_144 -> 3.0
+        # Default system value
+        _ -> 2.0
+      end
+
     # Adjust based on attacker count (more attackers = more strategic importance)
     attacker_count = Map.get(killmail, :attacker_count, 1)
-    participation_multiplier = case attacker_count do
-      count when count >= 100 -> 1.5   # Major fleet engagement
-      count when count >= 50 -> 1.3    # Large fleet engagement
-      count when count >= 20 -> 1.1    # Medium fleet engagement
-      count when count >= 10 -> 1.0    # Small fleet engagement
-      _ -> 0.8                         # Small skirmish
-    end
-    
+
+    participation_multiplier =
+      case attacker_count do
+        # Major fleet engagement
+        count when count >= 100 -> 1.5
+        # Large fleet engagement
+        count when count >= 50 -> 1.3
+        # Medium fleet engagement
+        count when count >= 20 -> 1.1
+        # Small fleet engagement
+        count when count >= 10 -> 1.0
+        # Small skirmish
+        _ -> 0.8
+      end
+
     base_score * participation_multiplier
   end
 
@@ -382,13 +412,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ki
     # For now, use ranges based on known ship type ID patterns
     cond do
       # Titans, supercarriers (rough ID ranges)
-      ship_type_id in [671, 3764, 11567, 23773, 23919, 42125] -> :critical
-      # Carriers, dreadnoughts, force auxiliaries  
-      ship_type_id >= 19720 and ship_type_id <= 19750 -> :high
-      ship_type_id >= 23757 and ship_type_id <= 23915 -> :high
+      ship_type_id in [671, 3764, 11_567, 23_773, 23_919, 42_125] -> :critical
+      # Carriers, dreadnoughts, force auxiliaries
+      ship_type_id >= 19_720 and ship_type_id <= 19_750 -> :high
+      ship_type_id >= 23_757 and ship_type_id <= 23_915 -> :high
       # Battleships, strategic cruisers
-      ship_type_id >= 16227 and ship_type_id <= 16253 -> :medium
-      ship_type_id >= 17918 and ship_type_id <= 17932 -> :medium
+      ship_type_id >= 16_227 and ship_type_id <= 16_253 -> :medium
+      ship_type_id >= 17_918 and ship_type_id <= 17_932 -> :medium
       # Most other ships
       true -> :low
     end

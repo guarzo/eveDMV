@@ -189,11 +189,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleCompari
   """
   def compare_effectiveness_trends(battle_analyses) do
     # Delegate to FleetComparisonEngine if available
-    try do
-      FleetComparisonEngine.compare_effectiveness_trends(battle_analyses)
-    rescue
-      _ -> perform_basic_effectiveness_comparison(battle_analyses)
-    end
+    FleetComparisonEngine.compare_effectiveness_trends(battle_analyses)
+  rescue
+    _ -> perform_basic_effectiveness_comparison(battle_analyses)
   end
 
   @doc """
@@ -765,10 +763,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleCompari
 
   defp identify_significant_composition_changes(prev_comp, curr_comp) do
     all_classes =
-      MapSet.union(
-        MapSet.new(Map.keys(prev_comp)),
-        MapSet.new(Map.keys(curr_comp))
-      )
+      prev_comp
+      |> Map.keys()
+      |> MapSet.new()
+      |> MapSet.union(MapSet.new(Map.keys(curr_comp)))
 
     all_classes
     |> Enum.map(fn ship_class ->
@@ -903,7 +901,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleCompari
     else
       hull_distributions
       |> Enum.chunk_every(2, 1, :discard)
-      |> Enum.map(fn [{prev_time, prev_hulls}, {curr_time, curr_hulls}] ->
+      |> Enum.map(fn [{_prev_time, prev_hulls}, {curr_time, curr_hulls}] ->
         prev_dominant = find_dominant_hull_type(prev_hulls)
         curr_dominant = find_dominant_hull_type(curr_hulls)
 

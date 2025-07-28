@@ -472,14 +472,14 @@ defmodule EveDmv.Performance.BatchNameResolver do
     end)
 
     # Cache all existing corporation names - ensure IDs are integers
-    |> Enum.each(corps, fn {id, name} ->
+    Enum.each(corps, fn {id, name} ->
       int_id = ensure_integer_id(id)
       Logger.debug("Caching corporation: ID=#{inspect(id)} -> #{inspect(int_id)}, name=#{name}")
       CacheManager.cache_result(:corporation, int_id, name)
     end)
 
     # Cache all existing alliance names - ensure IDs are integers
-    |> Enum.each(alliances, fn {id, name} ->
+    Enum.each(alliances, fn {id, name} ->
       int_id = ensure_integer_id(id)
       Logger.debug("Caching alliance: ID=#{inspect(id)} -> #{inspect(int_id)}, name=#{name}")
       CacheManager.cache_result(:alliance, int_id, name)
