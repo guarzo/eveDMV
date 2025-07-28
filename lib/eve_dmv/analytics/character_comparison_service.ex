@@ -13,14 +13,15 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
   All analysis is based on real killmail data from the database.
   """
 
+  import Ecto.Query
+
   # alias EveDmv.Api
-  alias EveDmv.Killmails.KillmailRaw
-  alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer
+  alias EveDmv.Intelligence.CharacterStats
+  alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Shared.Infrastructure.UnifiedCache
 
   require Logger
-  import Ecto.Query
 
   # 10 minutes
   @cache_ttl 600
@@ -193,27 +194,26 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
         metrics
       end
 
-    comparison = %{
+    base_comparison = %{
       characters: Enum.map(character_data, &extract_character_summary/1),
       metrics: %{},
       rankings: %{},
       insights: []
     }
 
-    # Calculate each metric
-    comparison =
-      Enum.reduce(comparison_metrics, comparison, fn metric, acc ->
+    # Calculate each metric and generate insights
+    final_comparison =
+      comparison_metrics
+      |> Enum.reduce(base_comparison, fn metric, acc ->
         metric_data = calculate_metric(metric, character_data)
 
         acc
         |> put_in([:metrics, metric], metric_data)
         |> update_in([:rankings], &Map.put(&1, metric, rank_characters(metric_data)))
       end)
+      |> then(&Map.put(&1, :insights, generate_comparison_insights(&1)))
 
-    # Generate insights
-    insights = generate_comparison_insights(comparison)
-
-    {:ok, Map.put(comparison, :insights, insights)}
+    {:ok, final_comparison}
   end
 
   defp extract_character_summary(char_data) do
@@ -369,18 +369,10 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
   end
 
   defp generate_comparison_insights(comparison) do
-    insights = []
-
-    # Find standout performers
-    insights = insights ++ identify_standout_performers(comparison)
-
-    # Identify similar playstyles
-    insights = insights ++ identify_similar_playstyles(comparison)
-
-    # Find interesting contrasts
-    insights = insights ++ identify_contrasts(comparison)
-
-    insights
+    []
+    |> Kernel.++(identify_standout_performers(comparison))
+    |> Kernel.++(identify_similar_playstyles(comparison))
+    |> Kernel.++(identify_contrasts(comparison))
   end
 
   defp identify_standout_performers(comparison) do
@@ -580,7 +572,7 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
     end)
   end
 
-  defp analyze_security_preference(killmails) do
+  defp analyze_security_preference(_killmails) do
     # Would need system security data
     %{
       highsec: 0,
@@ -670,7 +662,7 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
   end
 
   defp summarize_character(char_data) do
-    stats = char_data.stats
+    _stats = char_data.stats
 
     %{
       character_id: char_data.character_id,
@@ -748,41 +740,40 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
   end
 
   defp identify_strengths(char_data) do
-    strengths = []
     stats = char_data.stats
     patterns = char_data.behavioral_patterns
 
-    strengths = if calculate_kdr(stats) > 2.0, do: [:high_kill_ratio | strengths], else: strengths
-
-    strengths =
+    []
+    |> then(fn acc ->
+      if calculate_kdr(stats) > 2.0, do: [:high_kill_ratio | acc], else: acc
+    end)
+    |> then(fn acc ->
       if Map.get(stats, :isk_efficiency, 0) > 70,
-        do: [:isk_efficient | strengths],
-        else: strengths
-
-    strengths =
+        do: [:isk_efficient | acc],
+        else: acc
+    end)
+    |> then(fn acc ->
       if get_in(patterns, [:engagement_patterns, :solo_percentage]) > 50,
-        do: [:solo_capable | strengths],
-        else: strengths
-
-    strengths
+        do: [:solo_capable | acc],
+        else: acc
+    end)
   end
 
   defp identify_weaknesses(char_data) do
-    weaknesses = []
     stats = char_data.stats
 
-    weaknesses =
-      if calculate_kdr(stats) < 1.0, do: [:low_survival_rate | weaknesses], else: weaknesses
-
-    weaknesses =
+    []
+    |> then(fn acc ->
+      if calculate_kdr(stats) < 1.0, do: [:low_survival_rate | acc], else: acc
+    end)
+    |> then(fn acc ->
       if Map.get(stats, :isk_efficiency, 0) < 40,
-        do: [:isk_inefficient | weaknesses],
-        else: weaknesses
-
-    weaknesses
+        do: [:isk_inefficient | acc],
+        else: acc
+    end)
   end
 
-  defp analyze_encounters(encounters, char1_id, char2_id) do
+  defp analyze_encounters(encounters, _char1_id, char2_id) do
     char1_wins =
       Enum.count(encounters, fn km ->
         get_in(km.victim, ["character_id"]) == char2_id
@@ -852,20 +843,18 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
   end
 
   defp identify_key_factors(char1_data, char2_data) do
-    factors = []
-
     # Compare key metrics
     char1_kdr = calculate_kdr(char1_data.stats)
     char2_kdr = calculate_kdr(char2_data.stats)
 
-    factors =
+    []
+    |> then(fn acc ->
       if abs(char1_kdr - char2_kdr) > 1.0 do
-        [{:kill_death_ratio, "Significant K/D ratio difference"} | factors]
+        [{:kill_death_ratio, "Significant K/D ratio difference"} | acc]
       else
-        factors
+        acc
       end
-
-    factors
+    end)
   end
 
   defp identify_tactical_advantages(char1_data, char2_data) do
@@ -876,20 +865,18 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
   end
 
   defp find_advantages(char_data, opponent_data) do
-    advantages = []
-
     # Check engagement style advantage
     char_style = determine_preferred_size(char_data.behavioral_patterns)
     opp_style = determine_preferred_size(opponent_data.behavioral_patterns)
 
-    advantages =
+    []
+    |> then(fn acc ->
       if char_style == :solo and opp_style == :fleet do
-        ["More experienced in small-scale combat" | advantages]
+        ["More experienced in small-scale combat" | acc]
       else
-        advantages
+        acc
       end
-
-    advantages
+    end)
   end
 
   defp compare_historical_performance(char1_data, char2_data) do
@@ -1068,30 +1055,28 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
   end
 
   defp identify_matching_aspects(ref_profile, candidate) do
-    aspects = []
-
     # Check similar K/D ratio
     ref_kdr = ref_profile.combat_metrics.kill_death_ratio
     cand_kdr = candidate.combat_metrics.kill_death_ratio
-
-    aspects =
-      if abs(ref_kdr - cand_kdr) < 0.5 do
-        [:similar_combat_effectiveness | aspects]
-      else
-        aspects
-      end
 
     # Check similar danger rating
     ref_danger = ref_profile.combat_metrics.danger_rating
     cand_danger = candidate.combat_metrics.danger_rating
 
-    aspects =
-      if abs(ref_danger - cand_danger) < 10 do
-        [:similar_threat_level | aspects]
+    []
+    |> then(fn acc ->
+      if abs(ref_kdr - cand_kdr) < 0.5 do
+        [:similar_combat_effectiveness | acc]
       else
-        aspects
+        acc
       end
-
-    aspects
+    end)
+    |> then(fn acc ->
+      if abs(ref_danger - cand_danger) < 10 do
+        [:similar_threat_level | acc]
+      else
+        acc
+      end
+    end)
   end
 end
