@@ -164,26 +164,24 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
 
   # Query the actual static data system for ship information
   defp get_ship_info_from_static_data(ship_type_id) do
-    try do
-      case Ash.get(ItemType, ship_type_id, domain: EveDmv.Api) do
-        {:ok, item_type} ->
-          {:ok,
-           %{
-             group_name: item_type.group_name,
-             category_name: item_type.category_name,
-             type_name: item_type.type_name,
-             is_ship: item_type.is_ship,
-             is_capital_ship: item_type.is_capital_ship,
-             mass: item_type.mass,
-             volume: item_type.volume
-           }}
+    case Ash.get(ItemType, ship_type_id, domain: EveDmv.Api) do
+      {:ok, item_type} ->
+        {:ok,
+         %{
+           group_name: item_type.group_name,
+           category_name: item_type.category_name,
+           type_name: item_type.type_name,
+           is_ship: item_type.is_ship,
+           is_capital_ship: item_type.is_capital_ship,
+           mass: item_type.mass,
+           volume: item_type.volume
+         }}
 
-        {:error, reason} ->
-          {:error, reason}
-      end
-    rescue
-      _ -> {:error, :static_data_unavailable}
+      {:error, reason} ->
+        {:error, reason}
     end
+  rescue
+    _ -> {:error, :static_data_unavailable}
   end
 
   # Convert ship group to tactical role, enhanced with killmail fitting analysis
@@ -203,34 +201,32 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
   # Analyze ship role based on recent killmail fitting data
   defp get_role_from_killmail_analysis(ship_type_id) do
     # Query recent killmails for this ship type to analyze fitting patterns
-    try do
-      # Query killmails where this ship type was used
-      query = """
-      SELECT km.raw_data
-      FROM killmails_raw km
-      WHERE km.victim_ship_type_id = $1
-         OR EXISTS (
-           SELECT 1 FROM jsonb_array_elements(km.raw_data->'attackers') as attacker
-           WHERE (attacker->>'ship_type_id')::integer = $1
-         )
-      ORDER BY km.killmail_time DESC
-      LIMIT 20
-      """
+    # Query killmails where this ship type was used
+    query = """
+    SELECT km.raw_data
+    FROM killmails_raw km
+    WHERE km.victim_ship_type_id = $1
+       OR EXISTS (
+         SELECT 1 FROM jsonb_array_elements(km.raw_data->'attackers') as attacker
+         WHERE (attacker->>'ship_type_id')::integer = $1
+       )
+    ORDER BY km.killmail_time DESC
+    LIMIT 20
+    """
 
-      case SQL.query(EveDmv.Repo, query, [ship_type_id]) do
-        {:ok, %{rows: rows}} when rows != [] ->
-          # Analyze fitting patterns from killmail data
-          fittings = extract_fitting_data(rows)
-          role = classify_role_from_fittings(fittings)
-          confidence = calculate_fitting_role_confidence(fittings, length(rows))
-          {:ok, role, confidence}
+    case SQL.query(EveDmv.Repo, query, [ship_type_id]) do
+      {:ok, %{rows: rows}} when rows != [] ->
+        # Analyze fitting patterns from killmail data
+        fittings = extract_fitting_data(rows)
+        role = classify_role_from_fittings(fittings)
+        confidence = calculate_fitting_role_confidence(fittings, length(rows))
+        {:ok, role, confidence}
 
-        _ ->
-          {:ok, :unknown, 0.0}
-      end
-    rescue
-      _ -> {:ok, :unknown, 0.0}
+      _ ->
+        {:ok, :unknown, 0.0}
     end
+  rescue
+    _ -> {:ok, :unknown, 0.0}
   end
 
   # Helper functions to identify module types by type_id
