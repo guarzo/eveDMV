@@ -292,7 +292,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.
         case rem(system_id, 10) do
           # 40% C1
           n when n in [0, 1, 2, 3] -> "C1"
-          # 30% C2  
+          # 30% C2
           n when n in [4, 5, 6] -> "C2"
           # 20% C3
           n when n in [7, 8] -> "C3"
@@ -402,7 +402,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.
     depth_score = max(0, 10 - connection.depth) * 10
 
     # Check if it's a bottleneck (only connection between chain segments)
-    bottleneck_score = if is_bottleneck?(connection, chain_map), do: 30, else: 0
+    bottleneck_score = if bottleneck?(connection, chain_map), do: 30, else: 0
 
     # Higher class wormholes have more strategic value
     type_score =
@@ -418,7 +418,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.
     min(100, depth_score + bottleneck_score + type_score)
   end
 
-  defp is_bottleneck?(connection, chain_map) do
+  defp bottleneck?(connection, chain_map) do
     # Check if removing this connection would split the chain
     # Simplified check - in production would use graph algorithms
     connections_from_source =
@@ -486,7 +486,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.
     |> Enum.map(& &1.mass_capacity)
     |> Enum.sum()
   end
-
 
   defp calculate_collapse_confidence(connection_data) do
     # Confidence based on stability and data quality
