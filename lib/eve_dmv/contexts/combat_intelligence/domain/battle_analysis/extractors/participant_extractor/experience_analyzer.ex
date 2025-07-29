@@ -583,34 +583,34 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
   end
 
   defp get_veteran_indicators(participant) do
-    indicators = []
-
     security_status = Map.get(participant, :security_status, 0.0)
     ship_class = Map.get(participant, :ship_class, :unknown)
     damage_done = Map.get(participant, :damage_done, 0)
 
-    indicators =
+    base_indicators = []
+
+    security_indicators =
       if security_status < -5.0 do
-        ["Outlaw security status (#{Float.round(security_status, 1)})" | indicators]
+        ["Outlaw security status (#{Float.round(security_status, 1)})" | base_indicators]
       else
-        indicators
+        base_indicators
       end
 
-    indicators =
+    ship_indicators =
       if ship_class in [:capital, :battleship] do
-        ["Flies #{ship_class} class ships" | indicators]
+        ["Flies #{ship_class} class ships" | security_indicators]
       else
-        indicators
+        security_indicators
       end
 
-    indicators =
+    final_indicators =
       if damage_done > 30000 do
-        ["High damage output (#{damage_done})" | indicators]
+        ["High damage output (#{damage_done})" | ship_indicators]
       else
-        indicators
+        ship_indicators
       end
 
-    indicators
+    final_indicators
   end
 
   defp estimate_skill_points(participant) do
@@ -649,88 +649,88 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
   end
 
   defp get_rookie_indicators(participant) do
-    indicators = []
-
     security_status = Map.get(participant, :security_status, 0.0)
     ship_class = Map.get(participant, :ship_class, :unknown)
     damage_done = Map.get(participant, :damage_done, 0)
 
-    indicators =
+    base_indicators = []
+
+    security_indicators =
       if security_status > 4.0 do
-        ["High security status (#{Float.round(security_status, 1)})" | indicators]
+        ["High security status (#{Float.round(security_status, 1)})" | base_indicators]
       else
-        indicators
+        base_indicators
       end
 
-    indicators =
+    ship_indicators =
       if ship_class == :frigate do
-        ["Flying basic frigate" | indicators]
+        ["Flying basic frigate" | security_indicators]
       else
-        indicators
+        security_indicators
       end
 
-    indicators =
+    final_indicators =
       if damage_done < 5000 do
-        ["Low damage output (#{damage_done})" | indicators]
+        ["Low damage output (#{damage_done})" | ship_indicators]
       else
-        indicators
+        ship_indicators
       end
 
-    indicators
+    final_indicators
   end
 
   defp identify_learning_opportunities(participant) do
-    opportunities = []
-
     ship_class = Map.get(participant, :ship_class, :unknown)
     damage_done = Map.get(participant, :damage_done, 0)
     survived = Map.get(participant, :participant_type) == :attacker
 
-    opportunities =
+    base_opportunities = []
+
+    ship_opportunities =
       if ship_class == :frigate do
-        ["Progress to cruiser-class ships" | opportunities]
+        ["Progress to cruiser-class ships" | base_opportunities]
       else
-        opportunities
+        base_opportunities
       end
 
-    opportunities =
+    damage_opportunities =
       if damage_done < 5000 do
-        ["Improve weapon skills and fitting" | opportunities]
+        ["Improve weapon skills and fitting" | ship_opportunities]
       else
-        opportunities
+        ship_opportunities
       end
 
-    opportunities =
+    final_opportunities =
       if survived do
-        opportunities
+        damage_opportunities
       else
-        ["Focus on survival and positioning" | opportunities]
+        ["Focus on survival and positioning" | damage_opportunities]
       end
 
-    opportunities
+    final_opportunities
   end
 
   defp assess_rookie_risks(participant) do
-    risks = []
-
     security_status = Map.get(participant, :security_status, 0.0)
     ship_class = Map.get(participant, :ship_class, :unknown)
 
-    risks =
+    base_risks = []
+
+    security_risks =
       if security_status > 4.0 do
-        ["May lose security status quickly" | risks]
+        ["May lose security status quickly" | base_risks]
       else
-        risks
+        base_risks
       end
 
-    risks =
+    final_risks =
       if ship_class == :frigate do
-        ["Vulnerable to larger ships" | risks]
+        ["Vulnerable to larger ships" | security_risks]
       else
-        risks
+        security_risks
       end
 
-    risks
+    final_risks
   end
 
   defp determine_advantage_favor(advantage) do
@@ -856,30 +856,30 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
   end
 
   defp generate_gap_recommendations(gap, vet_count, rookie_count) do
-    recommendations = []
+    base_recommendations = []
 
-    recommendations =
+    matchmaking_recommendations =
       if gap > 40 do
-        ["Consider skill-based matchmaking" | recommendations]
+        ["Consider skill-based matchmaking" | base_recommendations]
       else
-        recommendations
+        base_recommendations
       end
 
-    recommendations =
+    pilot_recommendations =
       if rookie_count > vet_count * 2 do
-        ["Fleet needs more experienced pilots" | recommendations]
+        ["Fleet needs more experienced pilots" | matchmaking_recommendations]
       else
-        recommendations
+        matchmaking_recommendations
       end
 
-    recommendations =
+    final_recommendations =
       if vet_count > 0 and rookie_count > 0 do
-        ["Implement mentorship program" | recommendations]
+        ["Implement mentorship program" | pilot_recommendations]
       else
-        recommendations
+        pilot_recommendations
       end
 
-    recommendations
+    final_recommendations
   end
 
   defp identify_mentorship_pairs(veteran_players, rookie_players) do
