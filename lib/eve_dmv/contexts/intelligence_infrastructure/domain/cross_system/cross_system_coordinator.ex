@@ -386,10 +386,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
       |> Enum.sum()
 
     avg_changes =
-      if not Enum.empty?(migration_patterns) do
-        system_changes / length(migration_patterns)
-      else
+      if Enum.empty?(migration_patterns) do
         0
+      else
+        system_changes / length(migration_patterns)
       end
 
     migration_speed =
