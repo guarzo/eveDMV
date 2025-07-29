@@ -343,20 +343,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
     ship_class = Map.get(participant, :ship_class, :unknown)
     weapon_type = Map.get(participant, :weapon_type_id)
 
-    specializations = []
-
-    specializations =
-      if ship_class == :frigate, do: [:tackle | specializations], else: specializations
-
-    specializations =
-      if ship_class == :capital, do: [:capital_warfare | specializations], else: specializations
-
-    specializations =
-      if weapon_type && rem(weapon_type || 0, 7) == 0,
-        do: [:electronic_warfare | specializations],
-        else: specializations
-
-    specializations
+    []
+    |> (fn specs -> if ship_class == :frigate, do: [:tackle | specs], else: specs end).()
+    |> (fn specs -> if ship_class == :capital, do: [:capital_warfare | specs], else: specs end).()
+    |> (fn specs -> if weapon_type && rem(weapon_type || 0, 7) == 0, do: [:electronic_warfare | specs], else: specs end).()
   end
 
   defp analyze_activity_patterns(_participant) do

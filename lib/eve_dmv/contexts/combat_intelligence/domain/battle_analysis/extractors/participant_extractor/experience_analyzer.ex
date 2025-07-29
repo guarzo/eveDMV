@@ -525,23 +525,21 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
   end
 
   defp describe_advantages(group_skills) do
-    advantages = []
-
-    advantages =
+    []
+    |> (fn advs -> 
       if Map.get(group_skills, :veteran_ratio, 0) > 0.5 do
-        ["High veteran ratio (#{Map.get(group_skills, :veteran_ratio) * 100}%)" | advantages]
+        ["High veteran ratio (#{Map.get(group_skills, :veteran_ratio) * 100}%)" | advs]
       else
-        advantages
+        advs
       end
-
-    advantages =
+    end).()
+    |> (fn advs ->
       if Map.get(group_skills, :capital_pilots, 0) > 0 do
-        ["#{Map.get(group_skills, :capital_pilots)} capital pilots" | advantages]
+        ["#{Map.get(group_skills, :capital_pilots)} capital pilots" | advs]
       else
-        advantages
+        advs
       end
-
-    advantages
+    end).()
   end
 
   defp analyze_matchup(strongest, weakest) do

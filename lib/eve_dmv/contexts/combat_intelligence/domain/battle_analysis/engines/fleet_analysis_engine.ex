@@ -117,9 +117,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
         {classify_ship(ship_type_id), count}
       end)
       |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
-
-    ship_classes =
-      ship_classes
       |> Enum.map(fn {class, counts} -> {class, Enum.sum(counts)} end)
       |> Map.new()
 
@@ -138,18 +135,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
   end
 
   defp match_known_doctrines(ship_analysis) do
-    doctrines = []
-
     # Analyze for common doctrine patterns
-    doctrines =
-      doctrines
-      |> maybe_add_doctrine(:artillery_doctrine, detect_artillery_doctrine(ship_analysis))
-      |> maybe_add_doctrine(:logistics_heavy, detect_logistics_heavy(ship_analysis))
-      |> maybe_add_doctrine(:alpha_strike, detect_alpha_strike_doctrine(ship_analysis))
-      |> maybe_add_doctrine(:kiting_comp, detect_kiting_composition(ship_analysis))
-      |> maybe_add_doctrine(:brawling_comp, detect_brawling_composition(ship_analysis))
-
-    doctrines
+    []
+    |> maybe_add_doctrine(:artillery_doctrine, detect_artillery_doctrine(ship_analysis))
+    |> maybe_add_doctrine(:logistics_heavy, detect_logistics_heavy(ship_analysis))
+    |> maybe_add_doctrine(:alpha_strike, detect_alpha_strike_doctrine(ship_analysis))
+    |> maybe_add_doctrine(:kiting_comp, detect_kiting_composition(ship_analysis))
+    |> maybe_add_doctrine(:brawling_comp, detect_brawling_composition(ship_analysis))
   end
 
   defp calculate_doctrine_confidence(doctrine_matches, ship_analysis) do
