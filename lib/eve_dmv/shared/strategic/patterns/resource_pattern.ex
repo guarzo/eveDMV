@@ -276,12 +276,12 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
         |> Enum.group_by(& &1.timestamp.hour)
         |> Enum.map(fn {_, kms} -> length(kms) end)
 
-      if not Enum.empty?(hourly_distribution) do
+      if Enum.empty?(hourly_distribution) do
+        0.0
+      else
         max_hourly = Enum.max(hourly_distribution)
         total = Enum.sum(hourly_distribution)
         Float.round(max_hourly / total, 3)
-      else
-        0.0
       end
     end
   end
@@ -351,38 +351,39 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
   end
 
   defp identify_control_indicators(resource_metrics, _strategic_data) do
-    indicators = []
-
-    # Mining dominance
-    indicators =
+    []
+    |> then(fn indicators ->
+      # Mining dominance
       if resource_metrics.mining_activity.mining_intensity > 0.2 do
         indicators ++ [{:mining_dominance, resource_metrics.mining_activity.mining_intensity}]
       else
         indicators
       end
-
-    # Hauling control
-    indicators =
+    end)
+    |> then(fn indicators ->
+      # Hauling control
       if resource_metrics.hauling_activity.hauling_intensity > 0.1 do
         indicators ++ [{:hauling_control, resource_metrics.hauling_activity.hauling_intensity}]
       else
         indicators
       end
-
-    # Resource conflicts
-    indicators =
+    end)
+    |> then(fn indicators ->
+      # Resource conflicts
       if resource_metrics.resource_conflicts.conflict_count > 3 do
         indicators ++ [{:active_competition, resource_metrics.resource_conflicts.conflict_count}]
       else
         indicators
       end
-
-    # Time control
-    if resource_metrics.activity_concentration > 0.5 do
-      indicators ++ [{:time_dominance, resource_metrics.activity_concentration}]
-    else
-      indicators
-    end
+    end)
+    |> then(fn indicators ->
+      # Time control
+      if resource_metrics.activity_concentration > 0.5 do
+        indicators ++ [{:time_dominance, resource_metrics.activity_concentration}]
+      else
+        indicators
+      end
+    end)
   end
 
   defp calculate_control_confidence(indicators, resource_metrics) do
