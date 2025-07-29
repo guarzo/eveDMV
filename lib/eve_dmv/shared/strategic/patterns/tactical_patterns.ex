@@ -257,18 +257,18 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
               DateTime.compare(km.timestamp, DateTime.add(window, 3600, :second)) == :lt
           end)
 
-        if not Enum.empty?(window_kills) do
+        if Enum.empty?(window_kills) do
+          false
+        else
           window_controller = identify_dominant_controller(window_kills)
           window_controller == dominant_entity
-        else
-          false
         end
       end)
 
-    if not Enum.empty?(time_windows) do
-      Float.round(windows_with_control / length(time_windows), 3)
-    else
+    if Enum.empty?(time_windows) do
       0.0
+    else
+      Float.round(windows_with_control / length(time_windows), 3)
     end
   end
 
@@ -748,38 +748,39 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
   end
 
   defp identify_recon_indicators(metrics) do
-    base_indicators = []
-
-    # Scout activity
-    scout_indicators =
+    []
+    |> then(fn base_indicators ->
+      # Scout activity
       if metrics.scout_losses.count >= 3 do
         base_indicators ++ [{:scout_activity, metrics.scout_losses.count}]
       else
         base_indicators
       end
-
-    # System exploration
-    exploration_indicators =
+    end)
+    |> then(fn scout_indicators ->
+      # System exploration
       if metrics.exploration_patterns.systems_explored >= 5 do
         scout_indicators ++ [{:systematic_exploration, metrics.exploration_patterns.systems_explored}]
       else
         scout_indicators
       end
-
-    # Intelligence gathering
-    intelligence_indicators =
+    end)
+    |> then(fn exploration_indicators ->
+      # Intelligence gathering
       if metrics.intelligence_gathering.intelligence_indicators do
         exploration_indicators ++ [{:intelligence_collection, metrics.intelligence_gathering.probe_kills}]
       else
         exploration_indicators
       end
-
-    # Coverage
-    if metrics.coverage_analysis.coverage_ratio > 0.5 do
-      intelligence_indicators ++ [{:broad_coverage, metrics.coverage_analysis.coverage_ratio}]
-    else
-      intelligence_indicators
-    end
+    end)
+    |> then(fn intelligence_indicators ->
+      # Coverage
+      if metrics.coverage_analysis.coverage_ratio > 0.5 do
+        intelligence_indicators ++ [{:broad_coverage, metrics.coverage_analysis.coverage_ratio}]
+      else
+        intelligence_indicators
+      end
+    end)
   end
 
   defp describe_recon_pattern(indicators, _metrics) do
@@ -982,14 +983,14 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
           DateTime.diff(k2.timestamp, k1.timestamp, :hour)
         end)
 
-      if not Enum.empty?(intervals) do
+      if Enum.empty?(intervals) do
+        0.0
+      else
         avg_interval = average(intervals)
         variance = calculate_variance(intervals, avg_interval)
         cv = if avg_interval > 0, do: :math.sqrt(variance) / avg_interval, else: 1.0
 
         Float.round(max(0.0, min(1.0, 1.0 - cv)), 3)
-      else
-        0.0
       end
     end
   end
@@ -1030,39 +1031,40 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
   end
 
   defp identify_disruption_indicators(metrics) do
-    base_indicators = []
-
-    # Hauler interdiction
-    interdiction_indicators =
+    []
+    |> then(fn base_indicators ->
+      # Hauler interdiction
       if metrics.hauler_interdiction.count >= 5 do
         base_indicators ++ [{:active_interdiction, metrics.hauler_interdiction.count}]
       else
         base_indicators
       end
-
-    # High cargo value
-    value_indicators =
+    end)
+    |> then(fn interdiction_indicators ->
+      # High cargo value
       if metrics.hauler_interdiction.cargo_value_destroyed > 1_000_000_000 do
         interdiction_indicators ++
           [{:high_value_disruption, metrics.hauler_interdiction.cargo_value_destroyed}]
       else
         interdiction_indicators
       end
-
-    # Route coverage
-    route_indicators =
+    end)
+    |> then(fn value_indicators ->
+      # Route coverage
       if metrics.route_disruption.disruption_coverage > 0.3 do
         value_indicators ++ [{:route_coverage, metrics.route_disruption.disruption_coverage}]
       else
         value_indicators
       end
-
-    # Focused disruption
-    if metrics.effectiveness.focus_level in [:highly_focused, :focused] do
-      route_indicators ++ [{:focused_campaign, metrics.effectiveness.focus_level}]
-    else
-      route_indicators
-    end
+    end)
+    |> then(fn route_indicators ->
+      # Focused disruption
+      if metrics.effectiveness.focus_level in [:highly_focused, :focused] do
+        route_indicators ++ [{:focused_campaign, metrics.effectiveness.focus_level}]
+      else
+        route_indicators
+      end
+    end)
   end
 
   defp describe_disruption_pattern(indicators, _metrics) do
@@ -1268,12 +1270,12 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
   end
 
   defp calculate_max_concentration(system_concentrations) do
-    if not Enum.empty?(system_concentrations) do
+    if Enum.empty?(system_concentrations) do
+      0.0
+    else
       system_concentrations
       |> Enum.map(& &1.concentration)
       |> Enum.max()
-    else
-      0.0
     end
   end
 
@@ -1344,10 +1346,10 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
         Enum.any?(corp_attackers, &(&1 >= 3))
       end)
 
-    if not Enum.empty?(killmails) do
-      Float.round(coordinated_kills / length(killmails), 3)
-    else
+    if Enum.empty?(killmails) do
       0.0
+    else
+      Float.round(coordinated_kills / length(killmails), 3)
     end
   end
 
@@ -1429,38 +1431,39 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
   end
 
   defp identify_preparation_indicators(metrics) do
-    base_indicators = []
-
-    # Force buildup
-    buildup_indicators =
+    []
+    |> then(fn base_indicators ->
+      # Force buildup
       if metrics.force_buildup.force_trend in [:rapid_buildup, :steady_buildup] do
         base_indicators ++ [{:force_buildup, metrics.force_buildup.buildup_rate}]
       else
         base_indicators
       end
-
-    # Staging activity
-    staging_indicators =
+    end)
+    |> then(fn buildup_indicators ->
+      # Staging activity
       if metrics.staging_activity.concentration_level > 0.3 do
         buildup_indicators ++ [{:staging_concentration, metrics.staging_activity.concentration_level}]
       else
         buildup_indicators
       end
-
-    # Combat readiness
-    readiness_indicators =
+    end)
+    |> then(fn staging_indicators ->
+      # Combat readiness
       if metrics.combat_readiness.combat_ship_ratio > 0.5 do
         staging_indicators ++ [{:combat_ready, metrics.combat_readiness.combat_ship_ratio}]
       else
         staging_indicators
       end
-
-    # Coordination
-    if metrics.coordination_indicators.coordination_score > 0.5 do
-      readiness_indicators ++ [{:coordinated_activity, metrics.coordination_indicators.coordination_score}]
-    else
-      readiness_indicators
-    end
+    end)
+    |> then(fn readiness_indicators ->
+      # Coordination
+      if metrics.coordination_indicators.coordination_score > 0.5 do
+        readiness_indicators ++ [{:coordinated_activity, metrics.coordination_indicators.coordination_score}]
+      else
+        readiness_indicators
+      end
+    end)
   end
 
   defp describe_preparation_pattern(indicators, _metrics) do
