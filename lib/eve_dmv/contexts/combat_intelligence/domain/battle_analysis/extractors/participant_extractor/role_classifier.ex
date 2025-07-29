@@ -540,43 +540,43 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
   end
 
   defp generate_balance_recommendations(role_percentages, total_participants) do
-    recommendations = []
-
     dps_percent = Map.get(role_percentages, :dps, 0)
     logi_percent = Map.get(role_percentages, :logistics, 0)
     tackle_percent = Map.get(role_percentages, :tackle, 0)
 
-    recommendations =
+    base_recommendations = []
+
+    logi_recommendations =
       if logi_percent < 10 and total_participants > 10 do
         [
           "Add more logistics pilots (current: #{logi_percent}%, recommended: 15-20%)"
-          | recommendations
+          | base_recommendations
         ]
       else
-        recommendations
+        base_recommendations
       end
 
-    recommendations =
+    tackle_recommendations =
       if tackle_percent < 10 and total_participants > 10 do
         [
           "Add more tackle/interdiction (current: #{tackle_percent}%, recommended: 10-15%)"
-          | recommendations
+          | logi_recommendations
         ]
       else
-        recommendations
+        logi_recommendations
       end
 
-    recommendations =
+    final_recommendations =
       if dps_percent > 70 do
         [
           "Consider more balanced composition (current DPS: #{dps_percent}%, recommended: 50-60%)"
-          | recommendations
+          | tackle_recommendations
         ]
       else
-        recommendations
+        tackle_recommendations
       end
 
-    recommendations
+    final_recommendations
   end
 
   defp determine_fleet_composition_type(role_percentages) do
@@ -724,23 +724,23 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
       {:capital_no_support, "Capitals vulnerable without subcap support"}
     ]
 
-    conflicts = []
+    base_conflicts = []
 
-    conflicts =
+    dps_conflicts =
       if :dps in existing_roles and length(existing_roles) == 1 do
-        [{:all_dps, "No support roles - glass cannon fleet"} | conflicts]
+        [{:all_dps, "No support roles - glass cannon fleet"} | base_conflicts]
       else
-        conflicts
+        base_conflicts
       end
 
-    conflicts =
+    final_conflicts =
       if :capital in existing_roles and :subcap_support not in existing_roles do
-        [{:capital_no_support, "Capitals vulnerable without subcap support"} | conflicts]
+        [{:capital_no_support, "Capitals vulnerable without subcap support"} | dps_conflicts]
       else
-        conflicts
+        dps_conflicts
       end
 
-    Enum.map(conflicts, fn {type, description} ->
+    Enum.map(final_conflicts, fn {type, description} ->
       %{
         conflict_type: type,
         description: description,
