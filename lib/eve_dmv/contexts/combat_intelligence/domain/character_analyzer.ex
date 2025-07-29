@@ -153,41 +153,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
         # Calculate threat scores for each character
         search_results =
           character_ids
-          |> Enum.map(fn character_id ->
-            case ThreatScoringCoordinator.calculate_threat_score(character_id) do
-              {:ok, threat_data} ->
-                threat_score = threat_data.composite_score || 0.0
-
-                # Filter by threat level range
-                if threat_score >= threat_level_min and threat_score <= threat_level_max do
-                  %{
-                    character_id: character_id,
-                    threat_score: threat_score,
-                    threat_level: threat_data.threat_level,
-                    last_seen: get_last_activity_date(character_id, cutoff_date),
-                    combat_effectiveness: threat_data.combat_effectiveness || 0.0,
-                    matches_criteria: true
-                  }
-                else
-                  nil
-                end
-
-              {:error, _} ->
-                # Include characters without threat data if no threat filter
-                if threat_level_min == 0.0 and threat_level_max == 10.0 do
-                  %{
-                    character_id: character_id,
-                    threat_score: 0.0,
-                    threat_level: :unknown,
-                    last_seen: get_last_activity_date(character_id, cutoff_date),
-                    combat_effectiveness: 0.0,
-                    matches_criteria: true
-                  }
-                else
-                  nil
-                end
-            end
-          end)
+          |> Enum.map(&process_character_for_search(&1, threat_level_min, threat_level_max, cutoff_date))
           |> Enum.filter(&(&1 != nil))
           |> Enum.sort_by(& &1.threat_score, :desc)
           |> Enum.take(limit)
@@ -902,6 +868,49 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
         recommendation_type: :counter_strategy,
         strategy: :divide_and_conquer,
         tactical_advice: "Multiple high-threat targets detected - use divide and conquer tactics"
+      }
+    else
+      nil
+    end
+  end
+
+  defp process_character_for_search(character_id, threat_level_min, threat_level_max, cutoff_date) do
+    case ThreatScoringCoordinator.calculate_threat_score(character_id) do
+      {:ok, threat_data} ->
+        process_character_with_threat_data(character_id, threat_data, threat_level_min, threat_level_max, cutoff_date)
+
+      {:error, _} ->
+        process_character_without_threat_data(character_id, threat_level_min, threat_level_max, cutoff_date)
+    end
+  end
+
+  defp process_character_with_threat_data(character_id, threat_data, threat_level_min, threat_level_max, cutoff_date) do
+    threat_score = threat_data.composite_score || 0.0
+
+    if threat_score >= threat_level_min and threat_score <= threat_level_max do
+      %{
+        character_id: character_id,
+        threat_score: threat_score,
+        threat_level: threat_data.threat_level,
+        last_seen: get_last_activity_date(character_id, cutoff_date),
+        combat_effectiveness: threat_data.combat_effectiveness || 0.0,
+        matches_criteria: true
+      }
+    else
+      nil
+    end
+  end
+
+  defp process_character_without_threat_data(character_id, threat_level_min, threat_level_max, cutoff_date) do
+    # Include characters without threat data if no threat filter
+    if threat_level_min == 0.0 and threat_level_max == 10.0 do
+      %{
+        character_id: character_id,
+        threat_score: 0.0,
+        threat_level: :unknown,
+        last_seen: get_last_activity_date(character_id, cutoff_date),
+        combat_effectiveness: 0.0,
+        matches_criteria: true
       }
     else
       nil
