@@ -62,7 +62,9 @@ defmodule EveDmv.Surveillance.Matching.MatchEvaluator do
   Used for batch processing to improve performance.
   """
   def record_matches_batch(matches) when is_list(matches) do
-    if not Enum.empty?(matches) do
+    if Enum.empty?(matches) do
+      :ok
+    else
       Logger.info("Recording #{length(matches)} surveillance matches")
 
       # Prepare match records for bulk creation
@@ -103,8 +105,6 @@ defmodule EveDmv.Surveillance.Matching.MatchEvaluator do
           Logger.error("Exception recording matches: #{inspect(error)}")
           {:error, error}
       end
-    else
-      :ok
     end
   end
 
