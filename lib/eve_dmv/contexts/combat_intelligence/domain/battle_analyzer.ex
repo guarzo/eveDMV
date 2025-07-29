@@ -1108,41 +1108,41 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
          timing_analysis,
          formation_analysis
        ) do
-    strengths = []
+    base_strengths = []
 
     # Fleet effectiveness strengths
-    strengths =
+    fleet_strengths =
       if fleet_analysis.role_balance.score > 0.7 do
-        ["Strong role balance and fleet composition" | strengths]
+        ["Strong role balance and fleet composition" | base_strengths]
       else
-        strengths
+        base_strengths
       end
 
     # Target selection strengths
-    strengths =
+    target_strengths =
       if target_analysis.focus_fire.quality > 0.7 do
-        ["Excellent focus fire coordination" | strengths]
+        ["Excellent focus fire coordination" | fleet_strengths]
       else
-        strengths
+        fleet_strengths
       end
 
     # Timing strengths
-    strengths =
+    timing_strengths =
       if timing_analysis.coordination_timing.synchronization > 0.7 do
-        ["Superior timing coordination" | strengths]
+        ["Superior timing coordination" | target_strengths]
       else
-        strengths
+        target_strengths
       end
 
     # Formation strengths
-    strengths =
+    final_strengths =
       if formation_analysis.effectiveness > 0.7 do
-        ["Effective formation discipline" | strengths]
+        ["Effective formation discipline" | timing_strengths]
       else
-        strengths
+        timing_strengths
       end
 
-    strengths
+    final_strengths
   end
 
   defp identify_tactical_weaknesses(
@@ -1151,84 +1151,84 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
          timing_analysis,
          formation_analysis
        ) do
-    weaknesses = []
+    base_weaknesses = []
 
     # Fleet weaknesses
-    weaknesses =
+    fleet_weaknesses =
       if fleet_analysis.role_balance.score < 0.4 do
-        ["Poor role balance in fleet composition" | weaknesses]
+        ["Poor role balance in fleet composition" | base_weaknesses]
       else
-        weaknesses
+        base_weaknesses
       end
 
     # Target selection weaknesses
-    weaknesses =
+    target_weaknesses =
       if target_analysis.focus_fire.quality < 0.4 do
-        ["Weak focus fire coordination" | weaknesses]
+        ["Weak focus fire coordination" | fleet_weaknesses]
       else
-        weaknesses
+        fleet_weaknesses
       end
 
     # Timing weaknesses
-    weaknesses =
+    timing_weaknesses =
       if timing_analysis.coordination_timing.synchronization < 0.4 do
-        ["Poor timing coordination" | weaknesses]
+        ["Poor timing coordination" | target_weaknesses]
       else
-        weaknesses
+        target_weaknesses
       end
 
     # Formation weaknesses
-    weaknesses =
+    final_weaknesses =
       if formation_analysis.effectiveness < 0.4 do
-        ["Ineffective formation discipline" | weaknesses]
+        ["Ineffective formation discipline" | timing_weaknesses]
       else
-        weaknesses
+        timing_weaknesses
       end
 
-    weaknesses
+    final_weaknesses
   end
 
   defp generate_tactical_recommendations(strengths, weaknesses) do
-    recommendations = []
+    base_recommendations = []
 
     # Address weaknesses
-    recommendations =
+    balance_recommendations =
       if "Poor role balance in fleet composition" in weaknesses do
-        ["Add logistics and tackle support to improve fleet balance" | recommendations]
+        ["Add logistics and tackle support to improve fleet balance" | base_recommendations]
       else
-        recommendations
+        base_recommendations
       end
 
-    recommendations =
+    focus_recommendations =
       if "Weak focus fire coordination" in weaknesses do
-        ["Improve target calling and focus fire discipline" | recommendations]
+        ["Improve target calling and focus fire discipline" | balance_recommendations]
       else
-        recommendations
+        balance_recommendations
       end
 
-    recommendations =
+    timing_recommendations =
       if "Poor timing coordination" in weaknesses do
-        ["Practice coordinated engagement timing" | recommendations]
+        ["Practice coordinated engagement timing" | focus_recommendations]
       else
-        recommendations
+        focus_recommendations
       end
 
     # Leverage strengths
-    recommendations =
+    leverage_recommendations =
       if "Excellent focus fire coordination" in strengths do
-        ["Continue leveraging superior focus fire capability" | recommendations]
+        ["Continue leveraging superior focus fire capability" | timing_recommendations]
       else
-        recommendations
+        timing_recommendations
       end
 
-    recommendations =
+    final_recommendations =
       if "Superior timing coordination" in strengths do
-        ["Use timing advantage for alpha strike tactics" | recommendations]
+        ["Use timing advantage for alpha strike tactics" | leverage_recommendations]
       else
-        recommendations
+        leverage_recommendations
       end
 
-    recommendations
+    final_recommendations
   end
 
   defp calculate_overall_tactical_assessment(
