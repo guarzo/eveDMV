@@ -334,31 +334,36 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
     }
 
     # Add optional sections if requested
-    analysis =
-      analysis
-      |> then(fn analysis ->
-        if Map.has_key?(analysis_data, :threat_history) do
-          Map.put(analysis, :threat_history, analysis_data.threat_history)
-        else
-          analysis
-        end
-      end)
-      |> then(fn analysis ->
-        if Map.has_key?(analysis_data, :threat_predictions) do
-          Map.put(analysis, :threat_predictions, analysis_data.threat_predictions)
-        else
-          analysis
-        end
-      end)
-      |> then(fn analysis ->
-        if Map.has_key?(analysis_data, :threat_correlations) do
-          Map.put(analysis, :threat_correlations, analysis_data.threat_correlations)
-        else
-          analysis
-        end
-      end)
+    final_analysis = analysis
+    |> maybe_add_threat_history(analysis_data)
+    |> maybe_add_threat_predictions(analysis_data)
+    |> maybe_add_threat_correlations(analysis_data)
 
-    {:ok, analysis}
+    {:ok, final_analysis}
+  end
+
+  defp maybe_add_threat_history(analysis, analysis_data) do
+    if Map.has_key?(analysis_data, :threat_history) do
+      Map.put(analysis, :threat_history, analysis_data.threat_history)
+    else
+      analysis
+    end
+  end
+
+  defp maybe_add_threat_predictions(analysis, analysis_data) do
+    if Map.has_key?(analysis_data, :threat_predictions) do
+      Map.put(analysis, :threat_predictions, analysis_data.threat_predictions)
+    else
+      analysis
+    end
+  end
+
+  defp maybe_add_threat_correlations(analysis, analysis_data) do
+    if Map.has_key?(analysis_data, :threat_correlations) do
+      Map.put(analysis, :threat_correlations, analysis_data.threat_correlations)
+    else
+      analysis
+    end
   end
 
   # Helper functions
