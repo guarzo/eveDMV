@@ -1425,23 +1425,23 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   end
 
   defp generate_recent_activity_insights(recent_performance, activity_level) do
-    insights = []
+    base_insights = []
 
-    insights =
+    performance_insights =
       if recent_performance > 0.8 do
-        ["Currently in excellent form - recent performance above average" | insights]
+        ["Currently in excellent form - recent performance above average" | base_insights]
       else
-        insights
+        base_insights
       end
 
-    insights =
+    final_insights =
       if activity_level > 0.8 do
-        ["Highly active - regular combat engagement" | insights]
+        ["Highly active - regular combat engagement" | performance_insights]
       else
-        ["Limited recent activity - may be inactive or cautious" | insights]
+        ["Limited recent activity - may be inactive or cautious" | performance_insights]
       end
 
-    insights
+    final_insights
   end
 
   # Comparative analysis functions
