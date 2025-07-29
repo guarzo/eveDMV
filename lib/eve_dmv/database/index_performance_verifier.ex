@@ -299,19 +299,16 @@ defmodule EveDmv.Database.IndexPerformanceVerifier do
   end
 
   defp generate_recommendations(results) do
-    recommendations = []
-
     # Check for missing indexes
     failed_queries = Enum.filter(results, &(&1.status == :fail))
 
-    recommendations =
-      if not Enum.empty?(failed_queries) do
+    failed_recommendations =
+      if Enum.empty?(failed_queries) do
+        []
+      else
         [
           "#{length(failed_queries)} queries are not using expected indexes. Review query plans."
-          | recommendations
         ]
-      else
-        recommendations
       end
 
     # Check for slow queries
@@ -321,14 +318,14 @@ defmodule EveDmv.Database.IndexPerformanceVerifier do
         &(&1[:metrics] && &1.metrics[:total_time_ms] && &1.metrics.total_time_ms > 100)
       )
 
-    recommendations =
-      if not Enum.empty?(slow_queries) do
+    slow_recommendations =
+      if Enum.empty?(slow_queries) do
+        failed_recommendations
+      else
         [
           "#{length(slow_queries)} queries are taking over 100ms. Consider additional optimization."
-          | recommendations
+          | failed_recommendations
         ]
-      else
-        recommendations
       end
 
     # Check for sequential scans
@@ -336,20 +333,20 @@ defmodule EveDmv.Database.IndexPerformanceVerifier do
       results
       |> Enum.filter(&(&1[:metrics] && &1.metrics[:has_sequential_scan]))
 
-    recommendations =
-      if not Enum.empty?(seq_scan_queries) do
+    seq_scan_recommendations =
+      if Enum.empty?(seq_scan_queries) do
+        slow_recommendations
+      else
         [
           "#{length(seq_scan_queries)} queries are using sequential scans. May need additional indexes."
-          | recommendations
+          | slow_recommendations
         ]
-      else
-        recommendations
       end
 
-    if Enum.empty?(recommendations) do
+    if Enum.empty?(seq_scan_recommendations) do
       ["All indexes are performing optimally!"]
     else
-      recommendations
+      seq_scan_recommendations
     end
   end
 

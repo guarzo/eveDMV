@@ -209,21 +209,21 @@ defmodule EveDmv.Database.QueryHelpers do
     limit = Keyword.get(opts, :limit, 100)
     cursor = Keyword.get(opts, :cursor)
 
-    query = apply_safe_limit(query, limit: limit)
-
-    query =
-      case direction do
-        :asc -> order_by(query, [r], asc: field(r, ^cursor_field))
-        :desc -> order_by(query, [r], desc: field(r, ^cursor_field))
+    ordered_query =
+      query
+      |> apply_safe_limit(limit: limit)
+      |> case direction do
+        :asc -> order_by([r], asc: field(r, ^cursor_field))
+        :desc -> order_by([r], desc: field(r, ^cursor_field))
       end
 
     if cursor do
       case direction do
-        :asc -> where(query, [r], field(r, ^cursor_field) > ^cursor)
-        :desc -> where(query, [r], field(r, ^cursor_field) < ^cursor)
+        :asc -> where(ordered_query, [r], field(r, ^cursor_field) > ^cursor)
+        :desc -> where(ordered_query, [r], field(r, ^cursor_field) < ^cursor)
       end
     else
-      query
+      ordered_query
     end
   end
 
