@@ -735,12 +735,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
   end
 
   defp identify_force_multipliers(sides) do
-    # Analyze each side for force multipliers
-    multipliers = []
-
+    # Analyze each side for force multipliers using a chained pipeline
+    []
     # Check for logistics support
-    multipliers =
-      Enum.reduce(sides, multipliers, fn {side_id, data}, acc ->
+    |> then(fn acc ->
+      Enum.reduce(sides, acc, fn {side_id, data}, acc ->
         logistics_ratio = Map.get(data, :logistics_ratio, 0)
         # 15%+ logistics
         if logistics_ratio > 0.15 do
@@ -758,10 +757,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
           acc
         end
       end)
-
+    end)
     # Check for command ships
-    multipliers =
-      Enum.reduce(sides, multipliers, fn {side_id, data}, acc ->
+    |> then(fn acc ->
+      Enum.reduce(sides, acc, fn {side_id, data}, acc ->
         if Map.get(data, :command_ships, 0) > 0 do
           [
             %{
@@ -776,10 +775,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
           acc
         end
       end)
-
+    end)
     # Check for EWAR presence
-    multipliers =
-      Enum.reduce(sides, multipliers, fn {side_id, data}, acc ->
+    |> then(fn acc ->
+      Enum.reduce(sides, acc, fn {side_id, data}, acc ->
         ewar_ratio = Map.get(data, :ewar_ratio, 0)
         # 10%+ EWAR
         if ewar_ratio > 0.1 do
@@ -796,10 +795,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
           acc
         end
       end)
-
+    end)
     # Check for capital support
-    multipliers_with_capital =
-      Enum.reduce(sides, multipliers, fn {side_id, data}, acc ->
+    |> then(fn acc ->
+      Enum.reduce(sides, acc, fn {side_id, data}, acc ->
         if Map.get(data, :capital_ships, 0) > 0 do
           [
             %{
@@ -814,9 +813,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
           acc
         end
       end)
-
+    end)
     # Sort by impact factor
-    Enum.sort_by(multipliers_with_capital, & &1.factor, :desc)
+    |> Enum.sort_by(& &1.factor, :desc)
   end
 
   defp analyze_coordination_effectiveness(coordination_data, tactical_patterns) do
@@ -921,53 +920,49 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
   end
 
   defp identify_tactical_innovations(tactical_patterns) do
-    innovations = []
-
-    # Check for split fleet maneuvers
+    # Check for various tactical innovations using a pipeline
     fleet_splits = Map.get(tactical_patterns, :fleet_splits, [])
+    alpha_strikes = Map.get(tactical_patterns, :alpha_strikes, [])
+    feints = Map.get(tactical_patterns, :tactical_feints, [])
+    ewar_coordination = Map.get(tactical_patterns, :ewar_coordination, [])
 
-    innovations =
+    []
+    # Check for split fleet maneuvers
+    |> then(fn innovations ->
       if Enum.empty?(fleet_splits) do
         innovations
       else
         effectiveness = calculate_split_effectiveness(fleet_splits)
         [%{innovation: :split_fleet_maneuver, effectiveness: effectiveness} | innovations]
       end
-
+    end)
     # Check for coordinated alpha strikes
-    alpha_strikes = Map.get(tactical_patterns, :alpha_strikes, [])
-
-    innovations =
+    |> then(fn innovations ->
       if Enum.empty?(alpha_strikes) do
         innovations
       else
         effectiveness = calculate_alpha_strike_effectiveness(alpha_strikes)
         [%{innovation: :coordinated_alpha_strike, effectiveness: effectiveness} | innovations]
       end
-
+    end)
     # Check for tactical feints
-    feints = Map.get(tactical_patterns, :tactical_feints, [])
-
-    innovations =
+    |> then(fn innovations ->
       if Enum.empty?(feints) do
         innovations
       else
         effectiveness = calculate_feint_effectiveness(feints)
         [%{innovation: :tactical_feint, effectiveness: effectiveness} | innovations]
       end
-
+    end)
     # Check for electronic warfare coordination
-    ewar_coordination = Map.get(tactical_patterns, :ewar_coordination, [])
-
-    innovations =
+    |> then(fn innovations ->
       if Enum.empty?(ewar_coordination) do
         innovations
       else
         effectiveness = calculate_ewar_coordination_effectiveness(ewar_coordination)
         [%{innovation: :ewar_coordination, effectiveness: effectiveness} | innovations]
       end
-
-    innovations
+    end)
   end
 
   defp analyze_performance_trends(_battle_results, _historical_data) do
