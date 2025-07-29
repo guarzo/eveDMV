@@ -629,35 +629,35 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CharacterAnalysisEngine do
   end
 
   defp generate_threat_recommendations(character_id, time_range) do
-    recommendations = []
-
     aggression = assess_combat_aggression(character_id, time_range)
     activity = calculate_activity_intensity(character_id, time_range)
 
-    recommendations =
+    base_recommendations = []
+
+    aggression_recommendations =
       if aggression > 0.7 do
-        ["High aggression - monitor closely" | recommendations]
+        ["High aggression - monitor closely" | base_recommendations]
       else
-        recommendations
+        base_recommendations
       end
 
-    recommendations =
+    activity_recommendations =
       if activity > 0.8 do
-        ["Very active - frequent engagement" | recommendations]
+        ["Very active - frequent engagement" | aggression_recommendations]
       else
-        recommendations
+        aggression_recommendations
       end
 
     solo_pct = calculate_solo_percentage(character_id, time_range)
 
-    recommendations =
+    final_recommendations =
       if solo_pct > 50 do
-        ["Prefers solo operations" | recommendations]
+        ["Prefers solo operations" | activity_recommendations]
       else
-        recommendations
+        activity_recommendations
       end
 
-    recommendations
+    final_recommendations
   end
 
   defp analyze_ship_usage_patterns(character_id, time_range) do
