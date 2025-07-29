@@ -116,57 +116,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ExternalGroupAnalyzer do
                character_id
              ]) do
           {:ok, %{rows: rows}} ->
-            groups =
-              rows
-              |> Enum.map(fn [
-                               corp_id,
-                               corp_name,
-                               alliance_id,
-                               alliance_name,
-                               kills_together,
-                               unique_pilots,
-                               systems_active,
-                               total_isk,
-                               avg_kill_value,
-                               last_seen,
-                               first_seen
-                             ] ->
-                collaboration_strength =
-                  calculate_collaboration_strength(kills_together, unique_pilots, systems_active)
-
-                relationship_type =
-                  determine_relationship_type(
-                    kills_together,
-                    unique_pilots,
-                    first_seen,
-                    last_seen
-                  )
-
-                days_since_last =
-                  if last_seen do
-                    Date.diff(Date.utc_today(), Date.from_iso8601!(Date.to_iso8601(last_seen)))
-                  else
-                    nil
-                  end
-
-                %{
-                  corporation_id: corp_id,
-                  corporation_name: corp_name || "Unknown Corporation",
-                  alliance_id: alliance_id,
-                  alliance_name: alliance_name,
-                  kills_together: kills_together,
-                  unique_pilots: unique_pilots,
-                  systems_active: systems_active,
-                  total_isk_destroyed: Decimal.to_float(total_isk || Decimal.new(0)),
-                  avg_kill_value: Decimal.to_float(avg_kill_value || Decimal.new(0)),
-                  last_seen: last_seen,
-                  first_seen: first_seen,
-                  days_since_last: days_since_last,
-                  collaboration_strength: collaboration_strength,
-                  relationship_type: relationship_type,
-                  trust_level: calculate_trust_level(kills_together, days_since_last)
-                }
-              end)
+            groups = Enum.map(rows, &process_external_group_row/1)
 
             {:ok, groups}
 
@@ -180,6 +130,59 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ExternalGroupAnalyzer do
       end,
       ttl: @external_groups_ttl
     )
+  end
+
+  defp process_external_group_row([
+         corp_id,
+         corp_name,
+         alliance_id,
+         alliance_name,
+         kills_together,
+         unique_pilots,
+         systems_active,
+         total_isk,
+         avg_kill_value,
+         last_seen,
+         first_seen
+       ]) do
+    collaboration_strength =
+      calculate_collaboration_strength(kills_together, unique_pilots, systems_active)
+
+    relationship_type =
+      determine_relationship_type(
+        kills_together,
+        unique_pilots,
+        first_seen,
+        last_seen
+      )
+
+    days_since_last = calculate_days_since_last(last_seen)
+
+    %{
+      corporation_id: corp_id,
+      corporation_name: corp_name || "Unknown Corporation",
+      alliance_id: alliance_id,
+      alliance_name: alliance_name,
+      kills_together: kills_together,
+      unique_pilots: unique_pilots,
+      systems_active: systems_active,
+      total_isk_destroyed: Decimal.to_float(total_isk || Decimal.new(0)),
+      avg_kill_value: Decimal.to_float(avg_kill_value || Decimal.new(0)),
+      last_seen: last_seen,
+      first_seen: first_seen,
+      days_since_last: days_since_last,
+      collaboration_strength: collaboration_strength,
+      relationship_type: relationship_type,
+      trust_level: calculate_trust_level(kills_together, days_since_last)
+    }
+  end
+
+  defp calculate_days_since_last(last_seen) do
+    if last_seen do
+      Date.diff(Date.utc_today(), Date.from_iso8601!(Date.to_iso8601(last_seen)))
+    else
+      nil
+    end
   end
 
   defp calculate_collaboration_strength(kills_together, unique_pilots, systems_active) do
