@@ -374,9 +374,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ProfileManagementService do
   end
 
   defp format_validation_errors(%Ash.Error.Invalid{errors: errors}) do
-    errors
-    |> Enum.map(&format_error/1)
-    |> Enum.join(", ")
+    Enum.map_join(errors, ", ", &format_error/1)
   end
 
   defp format_error(%{field: field, message: message}) do
