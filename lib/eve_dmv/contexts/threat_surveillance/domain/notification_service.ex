@@ -7,10 +7,11 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.NotificationService do
   """
 
   use GenServer
-  require Logger
 
   alias EveDmv.Shared.Infrastructure.UnifiedCache
   alias Phoenix.PubSub
+
+  require Logger
 
   # Notification channels
   @channels [:in_app, :webhook, :email, :push, :discord]

@@ -18,10 +18,11 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedEventProcessor do
   """
 
   use GenServer
-  require Logger
 
   alias EveDmv.Infrastructure.EventBus
   alias EveDmv.DomainEvents.{KillmailEnriched, KillmailReceived, StaticDataUpdated}
+
+  require Logger
 
   @default_batch_size 10
   # 5 seconds

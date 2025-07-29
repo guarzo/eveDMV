@@ -7,11 +7,12 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CharacterAnalysisEngine do
   """
 
   use GenServer
-  require Logger
 
   alias EveDmv.DomainEvents.KillmailEnriched
   alias EveDmv.Shared.Infrastructure.UnifiedCache
   alias EveDmv.Shared.Infrastructure.UnifiedRepository
+
+  require Logger
 
   # Analysis time ranges
   @time_ranges %{

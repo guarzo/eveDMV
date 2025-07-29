@@ -7,9 +7,10 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleSharingService do
   """
 
   use GenServer
-  require Logger
 
   alias EveDmv.Shared.Infrastructure.UnifiedCache
+
+  require Logger
 
   # Public API
 

@@ -7,9 +7,10 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.FleetAnalysisEngine do
   """
 
   use GenServer
-  require Logger
 
   alias EveDmv.Shared.Infrastructure.UnifiedCache
+
+  require Logger
 
   # Ship class categories for analysis
   @ship_classes %{

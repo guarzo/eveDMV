@@ -7,11 +7,12 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngine d
   """
 
   use GenServer
-  require Logger
 
   alias EveDmv.Shared.Infrastructure.{UnifiedCache, UnifiedRepository}
   alias EveDmv.DomainEvents.{KillmailEnriched, SurveillanceMatch}
   alias EveDmv.Infrastructure.EventBus
+
+  require Logger
 
   # Public API
 

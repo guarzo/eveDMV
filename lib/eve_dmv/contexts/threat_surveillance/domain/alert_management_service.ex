@@ -7,11 +7,12 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.AlertManagementService do
   """
 
   use GenServer
-  require Logger
 
   alias EveDmv.Contexts.ThreatSurveillance.Domain.NotificationService
   alias EveDmv.Shared.Infrastructure.UnifiedCache
   alias EveDmv.Shared.Infrastructure.UnifiedRepository
+
+  require Logger
 
   # Public API
 

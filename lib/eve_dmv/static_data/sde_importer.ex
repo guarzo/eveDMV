@@ -4,8 +4,9 @@ defmodule EveDmv.StaticData.SdeImporter do
   Downloads and processes ship attributes and other static data.
   """
 
-  require Logger
   alias EveDmv.Repo
+
+  require Logger
 
   @fuzzwork_base_url "https://www.fuzzwork.co.uk/dump/latest"
 
