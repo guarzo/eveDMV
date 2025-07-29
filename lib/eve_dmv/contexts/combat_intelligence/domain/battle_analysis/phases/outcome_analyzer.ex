@@ -1548,12 +1548,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
 
   # Analysis functions
   defp identify_critical_weaknesses(outcome_analysis) do
-    weaknesses = []
-
     # Check primary factors for poor performance
     primary_factors = Map.get(outcome_analysis, :primary_factors, [])
 
-    weaknesses =
+    []
+    |> then(fn weaknesses ->
       if Enum.any?(
            primary_factors,
            &(Map.get(&1, :factor) == :logistics_advantage and Map.get(&1, :impact, 0) < 0.3)
@@ -1562,8 +1561,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
       else
         weaknesses
       end
-
-    weaknesses =
+    end)
+    |> then(fn weaknesses ->
       if Enum.any?(
            primary_factors,
            &(Map.get(&1, :factor) == :target_selection and Map.get(&1, :impact, 0) < 0.4)
@@ -1572,8 +1571,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
       else
         weaknesses
       end
-
-    weaknesses =
+    end)
+    |> then(fn weaknesses ->
       if Enum.any?(
            primary_factors,
            &(Map.get(&1, :factor) == :coordination and Map.get(&1, :impact, 0) < 0.5)
@@ -1582,16 +1581,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
       else
         weaknesses
       end
-
-    weaknesses
+    end)
   end
 
   defp identify_key_strengths(outcome_analysis) do
-    strengths = []
-
     primary_factors = Map.get(outcome_analysis, :primary_factors, [])
 
-    strengths =
+    []
+    |> then(fn strengths ->
       if Enum.any?(
            primary_factors,
            &(Map.get(&1, :factor) == :numerical_superiority and Map.get(&1, :impact, 0) > 0.7)
@@ -1600,8 +1597,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
       else
         strengths
       end
-
-    strengths =
+    end)
+    |> then(fn strengths ->
       if Enum.any?(
            primary_factors,
            &(Map.get(&1, :factor) == :combat_efficiency and Map.get(&1, :impact, 0) > 0.8)
@@ -1610,16 +1607,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
       else
         strengths
       end
-
-    strengths
+    end)
   end
 
   defp identify_improvement_opportunities(outcome_analysis) do
-    opportunities = []
-
     secondary_factors = Map.get(outcome_analysis, :secondary_factors, [])
 
-    opportunities =
+    []
+    |> then(fn opportunities ->
       if Enum.any?(
            secondary_factors,
            &(Map.get(&1, :factor) == :positioning and Map.get(&1, :impact, 0) < 0.6)
@@ -1628,8 +1623,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
       else
         opportunities
       end
-
-    opportunities =
+    end)
+    |> then(fn opportunities ->
       if Enum.any?(
            secondary_factors,
            &(Map.get(&1, :factor) == :timing and Map.get(&1, :impact, 0) < 0.7)
@@ -1638,8 +1633,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
       else
         opportunities
       end
-
-    opportunities
+    end)
   end
 
   defp prioritize_recommendations(immediate_actions) do

@@ -234,44 +234,44 @@ defmodule EveDmv.Shared.Monitoring.Facade do
          alert_thresholds,
          monitoring_focus
        ) do
-    validation_errors = []
+    base_errors = []
 
     # Validate systems
-    validation_errors =
+    system_errors =
       if Enum.empty?(monitored_systems) do
-        ["No systems specified for monitoring" | validation_errors]
+        ["No systems specified for monitoring" | base_errors]
       else
-        validation_errors
+        base_errors
       end
 
     # Validate baseline
-    validation_errors =
+    baseline_errors =
       if baseline.baseline_validation.validation_status == :invalid do
-        ["Baseline validation failed" | validation_errors]
+        ["Baseline validation failed" | system_errors]
       else
-        validation_errors
+        system_errors
       end
 
     # Validate monitoring interval
-    validation_errors =
+    interval_errors =
       if monitoring_interval < 1 or monitoring_interval > 60 do
-        ["Invalid monitoring interval (must be 1-60 minutes)" | validation_errors]
+        ["Invalid monitoring interval (must be 1-60 minutes)" | baseline_errors]
       else
-        validation_errors
+        baseline_errors
       end
 
     # Validate monitoring focus
     valid_focus_areas = [:activity, :patterns, :threats, :predictive]
     invalid_focus = monitoring_focus -- valid_focus_areas
 
-    validation_errors =
-      if not Enum.empty?(invalid_focus) do
-        ["Invalid monitoring focus areas: #{Enum.join(invalid_focus, ", ")}" | validation_errors]
+    final_errors =
+      if Enum.empty?(invalid_focus) do
+        interval_errors
       else
-        validation_errors
+        ["Invalid monitoring focus areas: #{Enum.join(invalid_focus, ", ")}" | interval_errors]
       end
 
-    if Enum.empty?(validation_errors) do
+    if Enum.empty?(final_errors) do
       {:ok,
        %{
          monitored_systems: monitored_systems,
@@ -282,7 +282,7 @@ defmodule EveDmv.Shared.Monitoring.Facade do
          validation_timestamp: DateTime.utc_now()
        }}
     else
-      {:error, {:validation_failed, validation_errors}}
+      {:error, {:validation_failed, final_errors}}
     end
   end
 

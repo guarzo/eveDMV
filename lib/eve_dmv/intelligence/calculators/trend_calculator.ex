@@ -39,12 +39,12 @@ defmodule EveDmv.Intelligence.Calculators.TrendCalculator do
         second_half = Enum.drop(activity_data, mid_point)
 
         first_avg =
-          if not Enum.empty?(first_half), do: Enum.sum(first_half) / length(first_half), else: 0
+          if Enum.empty?(first_half), do: 0, else: Enum.sum(first_half) / length(first_half)
 
         second_avg =
-          if not Enum.empty?(second_half),
-            do: Enum.sum(second_half) / length(second_half),
-            else: 0
+          if Enum.empty?(second_half),
+            do: 0,
+            else: Enum.sum(second_half) / length(second_half)
 
         change_percent = if first_avg > 0, do: (second_avg - first_avg) / first_avg * 100, else: 0
 
