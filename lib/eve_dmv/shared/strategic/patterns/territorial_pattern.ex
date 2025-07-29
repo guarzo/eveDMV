@@ -337,7 +337,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
         expansion_metrics
         |> Enum.map(& &1.entity_spread)
         |> then(fn spreads ->
-          if not Enum.empty?(spreads), do: Enum.sum(spreads) / length(spreads), else: 0.0
+          if Enum.empty?(spreads), do: 0.0, else: Enum.sum(spreads) / length(spreads)
         end),
       peak_activity:
         expansion_metrics
@@ -429,10 +429,10 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
         length(km.attackers) >= 5
       end)
 
-    if not Enum.empty?(killmails) do
-      Float.round(defensive_kills / length(killmails), 3)
-    else
+    if Enum.empty?(killmails) do
       0.0
+    else
+      Float.round(defensive_kills / length(killmails), 3)
     end
   end
 
@@ -467,12 +467,12 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
       # Responses within 30 minutes
       |> Enum.filter(&(&1 <= 30))
 
-    if not Enum.empty?(response_intervals) do
+    if Enum.empty?(response_intervals) do
+      0.0
+    else
       avg_response = Enum.sum(response_intervals) / length(response_intervals)
       # Convert to score (lower is better)
       Float.round(1.0 - min(avg_response / 30, 1.0), 3)
-    else
-      0.0
     end
   end
 
@@ -493,7 +493,9 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
         {data.system_id, unique_pilots}
       end)
 
-    if not Enum.empty?(system_forces) do
+    if Enum.empty?(system_forces) do
+      0.0
+    else
       total_pilots = Enum.sum(Enum.map(system_forces, fn {_, pilots} -> pilots end))
       max_concentration = Enum.max(Enum.map(system_forces, fn {_, pilots} -> pilots end))
 
@@ -502,8 +504,6 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
       else
         0.0
       end
-    else
-      0.0
     end
   end
 
@@ -675,10 +675,10 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
           calculate_zone_stability(system, killmail_data, time_windows)
         end)
 
-      if not Enum.empty?(stability_scores) do
-        Float.round(Enum.sum(stability_scores) / length(stability_scores), 3)
-      else
+      if Enum.empty?(stability_scores) do
         0.0
+      else
+        Float.round(Enum.sum(stability_scores) / length(stability_scores), 3)
       end
     end
   end
