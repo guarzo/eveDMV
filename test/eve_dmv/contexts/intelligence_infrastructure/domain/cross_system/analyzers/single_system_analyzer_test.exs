@@ -230,7 +230,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
             # Will match system_id modulo
             character_id: 30_000_142 * 10 + i,
             corporation_id: 1000 + i,
-            alliance_id: if(i > 5, do: 99999, else: nil),
+            alliance_id: if(i > 5, do: 99_999, else: nil),
             ship_type_id: 587,
             final_blow: false,
             damage_done: 1000,
