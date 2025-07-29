@@ -1,4 +1,4 @@
-defmodule EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting do
+defmodule EveDmv.Contexts.Combat.Resources.ShipFitting do
   @moduledoc """
   Resource for storing ship fittings for performance analysis.
 
@@ -10,7 +10,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting do
   """
 
   use Ash.Resource,
-    domain: EveDmv.Contexts.BattleAnalysis.Api,
+    domain: EveDmv.Contexts.Combat.Api,
     data_layer: AshPostgres.DataLayer
 
   postgres do

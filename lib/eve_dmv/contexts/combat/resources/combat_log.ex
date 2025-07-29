@@ -1,10 +1,10 @@
-defmodule EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
+defmodule EveDmv.Contexts.Combat.Resources.CombatLog do
   @moduledoc """
   Resource for storing uploaded combat logs and their parsed data.
   """
 
   use Ash.Resource,
-    domain: EveDmv.Contexts.BattleAnalysis.Api,
+    domain: EveDmv.Contexts.Combat.Api,
     data_layer: AshPostgres.DataLayer
 
   alias EveDmv.Contexts.BattleAnalysis.Domain.CombatLogHelper

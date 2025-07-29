@@ -1,4 +1,4 @@
-defmodule EveDmv.Contexts.BattleAnalysis.Resources.Battle do
+defmodule EveDmv.Contexts.Combat.Resources.Battle do
   @moduledoc """
   Battle resource for persistent battle storage.
 
@@ -6,7 +6,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.Battle do
   """
 
   use Ash.Resource,
-    domain: EveDmv.Contexts.BattleAnalysis.Api,
+    domain: EveDmv.Contexts.Combat.Api,
     data_layer: AshPostgres.DataLayer,
     extensions: [AshJsonApi.Resource]
 
