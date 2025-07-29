@@ -100,36 +100,36 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Coo
 
   defp infer_coordination_methods(timeline, _participants) do
     # Infer coordination methods from patterns
-    methods = []
+    base_methods = []
 
     # Check for voice comms indicators (tight timing)
-    methods =
+    voice_methods =
       if has_tight_timing_coordination?(timeline) do
-        [:voice_comms | methods]
+        [:voice_comms | base_methods]
       else
-        methods
+        base_methods
       end
 
     # Check for FC-directed patterns
-    methods =
+    fc_methods =
       if has_fc_directed_patterns?(timeline) do
-        [:fleet_commander | methods]
+        [:fleet_commander | voice_methods]
       else
-        methods
+        voice_methods
       end
 
     # Check for broadcast patterns
-    methods =
+    final_methods =
       if has_broadcast_patterns?(timeline) do
-        [:broadcasts | methods]
+        [:broadcasts | fc_methods]
       else
-        methods
+        fc_methods
       end
 
-    if Enum.empty?(methods) do
+    if Enum.empty?(final_methods) do
       [:uncoordinated]
     else
-      methods
+      final_methods
     end
   end
 
@@ -154,13 +154,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Coo
 
   defp identify_coordination_breakdowns(timeline, _participants) do
     # Identify coordination failures
-    breakdowns = []
+    base_breakdowns = []
 
     # Check for split damage
     split_damage_events = identify_split_damage(timeline)
 
-    breakdowns =
-      breakdowns ++
+    split_damage_breakdowns =
+      base_breakdowns ++
         Enum.map(split_damage_events, fn event ->
           %{
             type: :split_damage,
@@ -172,8 +172,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Coo
     # Check for mistimed attacks
     mistimed_attacks = identify_mistimed_attacks(timeline)
 
-    breakdowns =
-      breakdowns ++
+    final_breakdowns =
+      split_damage_breakdowns ++
         Enum.map(mistimed_attacks, fn event ->
           %{
             type: :mistimed_attack,
@@ -183,7 +183,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Coo
         end)
 
     # Sort by timestamp
-    Enum.sort_by(breakdowns, & &1.timestamp)
+    Enum.sort_by(final_breakdowns, & &1.timestamp)
   end
 
   defp identify_coordination_improvements(_timeline, breakdowns) do

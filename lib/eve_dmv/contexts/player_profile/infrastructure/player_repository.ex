@@ -598,11 +598,9 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   defp safe_to_atom("", default), do: default
 
   defp safe_to_atom(value, default) when is_binary(value) do
-    try do
-      String.to_existing_atom(value)
-    rescue
-      ArgumentError -> default
-    end
+    String.to_existing_atom(value)
+  rescue
+    ArgumentError -> default
   end
 
   defp safe_to_atom(value, _default) when is_atom(value), do: value

@@ -379,17 +379,15 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
   defp get_character_threat_alerts(cutoff_time) do
     # Get character intelligence alerts from recent analyses
     # This would integrate with character intelligence database
-    try do
-      # For now, check for recent high-risk character analyses
-      _cutoff_naive = DateTime.to_naive(cutoff_time)
+    # For now, check for recent high-risk character analyses
+    _cutoff_naive = DateTime.to_naive(cutoff_time)
 
-      # Query would be something like:
-      # SELECT * FROM character_analyses WHERE risk_score > 80 AND created_at > cutoff
-      # For now, return empty as we don't have this table yet
-      []
-    rescue
-      _error -> []
-    end
+    # Query would be something like:
+    # SELECT * FROM character_analyses WHERE risk_score > 80 AND created_at > cutoff
+    # For now, return empty as we don't have this table yet
+    []
+  rescue
+    _error -> []
   end
 
   defp get_system_activity_alerts(cutoff_time) do
@@ -471,13 +469,11 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
     # Get recent character intelligence analyses
     # This would query a character_analyses table when it exists
 
-    try do
-      # For now, return limited sample data
-      # In production, this would be a real database query
-      []
-    rescue
-      _error -> []
-    end
+    # For now, return limited sample data
+    # In production, this would be a real database query
+    []
+  rescue
+    _error -> []
   end
 
   defp get_recent_battle_analyses(cutoff_time, limit) do

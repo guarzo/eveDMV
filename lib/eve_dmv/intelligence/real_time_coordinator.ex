@@ -141,33 +141,31 @@ defmodule EveDmv.Intelligence.RealTimeCoordinator do
   @impl GenServer
   def handle_cast({:process_killmail, killmail}, state) do
     # Extract intelligence from killmail
-    try do
-      # Check if this killmail indicates a battle
-      battle_analysis = analyze_killmail_for_battle(killmail)
+    # Check if this killmail indicates a battle
+    battle_analysis = analyze_killmail_for_battle(killmail)
 
-      if battle_analysis[:is_battle] do
-        EventPublisher.publish_battle_detected(
-          battle_analysis[:battle_id],
-          killmail.solar_system_id,
-          battle_analysis[:participant_count],
-          battle_analysis[:opts]
-        )
-      end
-
-      # Update character threat assessments for participants
-      participants = extract_participants(killmail)
-      update_participant_threats(participants, killmail.solar_system_id)
-
-      # Check for activity spikes
-      update_system_activity_from_killmail(killmail)
-
-      new_stats = %{state.stats | killmails_processed: state.stats.killmails_processed + 1}
-      {:noreply, %{state | stats: new_stats}}
-    rescue
-      error ->
-        Logger.error("Error processing killmail for intelligence: #{inspect(error)}")
-        {:noreply, state}
+    if battle_analysis[:is_battle] do
+      EventPublisher.publish_battle_detected(
+        battle_analysis[:battle_id],
+        killmail.solar_system_id,
+        battle_analysis[:participant_count],
+        battle_analysis[:opts]
+      )
     end
+
+    # Update character threat assessments for participants
+    participants = extract_participants(killmail)
+    update_participant_threats(participants, killmail.solar_system_id)
+
+    # Check for activity spikes
+    update_system_activity_from_killmail(killmail)
+
+    new_stats = %{state.stats | killmails_processed: state.stats.killmails_processed + 1}
+    {:noreply, %{state | stats: new_stats}}
+  rescue
+    error ->
+      Logger.error("Error processing killmail for intelligence: #{inspect(error)}")
+      {:noreply, state}
   end
 
   @impl GenServer

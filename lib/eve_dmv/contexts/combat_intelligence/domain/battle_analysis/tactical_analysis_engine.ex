@@ -183,11 +183,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.TacticalAnaly
   """
   def identify_battle_phases(timeline) do
     # Delegate to BattlePhaseAnalyzer if available
-    try do
-      BattlePhaseAnalyzer.identify_battle_phases(timeline)
-    rescue
-      _ -> perform_basic_phase_analysis(timeline)
-    end
+    BattlePhaseAnalyzer.identify_battle_phases(timeline)
+  rescue
+    _ -> perform_basic_phase_analysis(timeline)
   end
 
   @doc """

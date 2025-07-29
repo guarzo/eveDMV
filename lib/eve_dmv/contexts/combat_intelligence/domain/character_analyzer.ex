@@ -522,39 +522,37 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   end
 
   defp compare_characters_implementation(character_ids) do
-    try do
-      if length(character_ids) < 2 do
-        {:error, :insufficient_characters}
-      else
-        # Get threat scores and analysis data for all characters
-        character_data =
-          character_ids
-          |> Enum.map(fn character_id ->
-            {character_id, get_character_comparison_data(character_id)}
-          end)
-          |> Map.new()
+    if length(character_ids) < 2 do
+      {:error, :insufficient_characters}
+    else
+      # Get threat scores and analysis data for all characters
+      character_data =
+        character_ids
+        |> Enum.map(fn character_id ->
+          {character_id, get_character_comparison_data(character_id)}
+        end)
+        |> Map.new()
 
-        # Perform comparative analysis
-        comparison_results = %{
-          characters: character_ids,
-          comparison_date: DateTime.utc_now(),
-          threat_score_comparison: compare_threat_scores(character_data),
-          activity_level_comparison: compare_activity_levels(character_data),
-          combat_effectiveness_comparison: compare_combat_effectiveness(character_data),
-          engagement_style_comparison: compare_engagement_styles(character_data),
-          risk_assessment_comparison: compare_risk_assessments(character_data),
-          relative_rankings: generate_relative_rankings(character_data),
-          tactical_recommendations:
-            generate_tactical_recommendations_for_comparison(character_data)
-        }
+      # Perform comparative analysis
+      comparison_results = %{
+        characters: character_ids,
+        comparison_date: DateTime.utc_now(),
+        threat_score_comparison: compare_threat_scores(character_data),
+        activity_level_comparison: compare_activity_levels(character_data),
+        combat_effectiveness_comparison: compare_combat_effectiveness(character_data),
+        engagement_style_comparison: compare_engagement_styles(character_data),
+        risk_assessment_comparison: compare_risk_assessments(character_data),
+        relative_rankings: generate_relative_rankings(character_data),
+        tactical_recommendations:
+          generate_tactical_recommendations_for_comparison(character_data)
+      }
 
-        {:ok, comparison_results}
-      end
-    rescue
-      error ->
-        Logger.error("Character comparison failed: #{inspect(error)}")
-        {:error, :comparison_failed}
+      {:ok, comparison_results}
     end
+  rescue
+    error ->
+      Logger.error("Character comparison failed: #{inspect(error)}")
+      {:error, :comparison_failed}
   end
 
   defp get_character_comparison_data(character_id) do

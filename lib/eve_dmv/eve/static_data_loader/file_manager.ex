@@ -201,14 +201,12 @@ defmodule EveDmv.Eve.StaticDataLoader.FileManager do
   end
 
   defp decompress_bz2(compressed_data) when is_binary(compressed_data) do
-    try do
-      decompressed = Bzip2.decompress!(compressed_data)
-      {:ok, decompressed}
-    rescue
-      error ->
-        Logger.error("bzip2 decompression failed: #{inspect(error)}")
-        {:error, "bzip2 decompression failed: #{inspect(error)}"}
-    end
+    decompressed = Bzip2.decompress!(compressed_data)
+    {:ok, decompressed}
+  rescue
+    error ->
+      Logger.error("bzip2 decompression failed: #{inspect(error)}")
+      {:error, "bzip2 decompression failed: #{inspect(error)}"}
   end
 
   defp decompress_bz2(invalid_data) do

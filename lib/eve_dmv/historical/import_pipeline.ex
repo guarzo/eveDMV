@@ -304,41 +304,37 @@ defmodule EveDmv.Historical.ImportPipeline do
   end
 
   defp initialize_source(path, :jsonl_file, opts) do
-    try do
-      # Count total lines for progress tracking
-      line_count = count_file_lines(path)
+    # Count total lines for progress tracking
+    line_count = count_file_lines(path)
 
-      # Create batch queue
-      resume_from = Keyword.get(opts, :resume_from, 0)
-      batch_queue = create_file_batch_queue(path, resume_from, @batch_size)
+    # Create batch queue
+    resume_from = Keyword.get(opts, :resume_from, 0)
+    batch_queue = create_file_batch_queue(path, resume_from, @batch_size)
 
-      {:ok, line_count - resume_from, batch_queue}
-    catch
-      _, error ->
-        {:error, error}
-    end
+    {:ok, line_count - resume_from, batch_queue}
+  catch
+    _, error ->
+      {:error, error}
   end
 
   defp initialize_source(path, :json_file, _opts) do
-    try do
-      # Load and parse JSON file
-      data = path |> File.read!() |> Jason.decode!()
+    # Load and parse JSON file
+    data = path |> File.read!() |> Jason.decode!()
 
-      killmails =
-        case data do
-          %{"killmails" => km} when is_list(km) -> km
-          list when is_list(list) -> list
-          _ -> []
-        end
+    killmails =
+      case data do
+        %{"killmails" => km} when is_list(km) -> km
+        list when is_list(list) -> list
+        _ -> []
+      end
 
-      # Create batches
-      batch_queue = create_memory_batch_queue(killmails, @batch_size)
+    # Create batches
+    batch_queue = create_memory_batch_queue(killmails, @batch_size)
 
-      {:ok, length(killmails), batch_queue}
-    catch
-      _, error ->
-        {:error, error}
-    end
+    {:ok, length(killmails), batch_queue}
+  catch
+    _, error ->
+      {:error, error}
   end
 
   defp initialize_source(_path, type, _opts) do
