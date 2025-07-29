@@ -125,14 +125,12 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngine d
 
   @impl GenServer
   def handle_call({:test_criteria, criteria, sample_data}, _from, state) do
-    try do
-      result = evaluate_criteria_against_data(criteria, sample_data)
-      {:reply, {:ok, result}, state}
-    rescue
-      error ->
-        Logger.error("Failed to test surveillance criteria: #{inspect(error)}")
-        {:reply, {:error, :test_failed}, state}
-    end
+    result = evaluate_criteria_against_data(criteria, sample_data)
+    {:reply, {:ok, result}, state}
+  rescue
+    error ->
+      Logger.error("Failed to test surveillance criteria: #{inspect(error)}")
+      {:reply, {:error, :test_failed}, state}
   end
 
   @impl GenServer
@@ -190,43 +188,41 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngine d
   end
 
   defp evaluate_profile_against_killmail(profile, killmail) do
-    try do
-      criteria = profile[:criteria] || profile.criteria
+    criteria = profile[:criteria] || profile.criteria
 
-      # Check if killmail matches all criteria
-      match_results =
-        Enum.map(criteria, fn criterion ->
-          evaluate_single_criterion(criterion, killmail)
-        end)
+    # Check if killmail matches all criteria
+    match_results =
+      Enum.map(criteria, fn criterion ->
+        evaluate_single_criterion(criterion, killmail)
+      end)
 
-      # Calculate overall match
-      if Enum.all?(match_results, & &1.matches) do
-        confidence_score = calculate_confidence_score(match_results)
-        matched_criteria = Enum.filter(match_results, & &1.matches)
+    # Calculate overall match
+    if Enum.all?(match_results, & &1.matches) do
+      confidence_score = calculate_confidence_score(match_results)
+      matched_criteria = Enum.filter(match_results, & &1.matches)
 
-        match_data = %{
-          profile_id: profile[:id] || profile.id,
-          killmail_id: killmail.killmail_id,
-          matched_criteria: matched_criteria,
-          confidence_score: confidence_score,
-          matched_at: DateTime.utc_now(),
-          match_details: %{
-            victim: extract_match_details(killmail.victim),
-            attackers: Enum.map(killmail.attackers, &extract_match_details/1),
-            system_id: killmail.solar_system_id,
-            total_value: killmail.zkb_total_value
-          }
+      match_data = %{
+        profile_id: profile[:id] || profile.id,
+        killmail_id: killmail.killmail_id,
+        matched_criteria: matched_criteria,
+        confidence_score: confidence_score,
+        matched_at: DateTime.utc_now(),
+        match_details: %{
+          victim: extract_match_details(killmail.victim),
+          attackers: Enum.map(killmail.attackers, &extract_match_details/1),
+          system_id: killmail.solar_system_id,
+          total_value: killmail.zkb_total_value
         }
+      }
 
-        {:match, match_data}
-      else
-        :no_match
-      end
-    rescue
-      error ->
-        Logger.error("Failed to evaluate profile against killmail: #{inspect(error)}")
-        :no_match
+      {:match, match_data}
+    else
+      :no_match
     end
+  rescue
+    error ->
+      Logger.error("Failed to evaluate profile against killmail: #{inspect(error)}")
+      :no_match
   end
 
   defp evaluate_single_criterion(criterion, killmail) do

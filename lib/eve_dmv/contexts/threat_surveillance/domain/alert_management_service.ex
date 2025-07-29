@@ -115,100 +115,94 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.AlertManagementService do
 
   @impl GenServer
   def handle_cast({:process_surveillance_match, match_event}, state) do
-    try do
-      # Get users who should be alerted about this match
-      interested_users = find_interested_users(match_event)
+    # Get users who should be alerted about this match
+    interested_users = find_interested_users(match_event)
 
-      # Generate alerts for each interested user
-      alerts_generated =
-        Enum.map(interested_users, fn user_id ->
-          case generate_surveillance_alert(user_id, match_event) do
-            {:ok, alert} ->
-              # Send notification
-              NotificationService.send_match_notification(alert)
-              alert
+    # Generate alerts for each interested user
+    alerts_generated =
+      Enum.map(interested_users, fn user_id ->
+        case generate_surveillance_alert(user_id, match_event) do
+          {:ok, alert} ->
+            # Send notification
+            NotificationService.send_match_notification(alert)
+            alert
 
-            {:error, reason} ->
-              Logger.error("Failed to generate alert for user #{user_id}: #{inspect(reason)}")
-              nil
-          end
-        end)
-        |> Enum.filter(& &1)
+          {:error, reason} ->
+            Logger.error("Failed to generate alert for user #{user_id}: #{inspect(reason)}")
+            nil
+        end
+      end)
+      |> Enum.filter(& &1)
 
-      new_state = %{
-        state
-        | alerts_processed: state.alerts_processed + length(alerts_generated),
-          notifications_sent: state.notifications_sent + length(alerts_generated)
-      }
+    new_state = %{
+      state
+      | alerts_processed: state.alerts_processed + length(alerts_generated),
+        notifications_sent: state.notifications_sent + length(alerts_generated)
+    }
 
-      {:noreply, new_state}
-    rescue
-      error ->
-        Logger.error("Failed to process surveillance match for alerts: #{inspect(error)}")
-        {:noreply, state}
-    end
+    {:noreply, new_state}
+  rescue
+    error ->
+      Logger.error("Failed to process surveillance match for alerts: #{inspect(error)}")
+      {:noreply, state}
   end
 
   @impl GenServer
   def handle_cast({:process_threat_level_change, threat_event}, state) do
-    try do
-      # Get users who should be alerted about threat level changes
-      interested_users = find_users_interested_in_threat_changes(threat_event)
+    # Get users who should be alerted about threat level changes
+    interested_users = find_users_interested_in_threat_changes(threat_event)
 
-      # Generate threat alerts
-      alerts_generated =
-        Enum.map(interested_users, fn user_id ->
-          case generate_threat_alert(user_id, threat_event) do
-            {:ok, alert} ->
-              # Send notification
-              NotificationService.send_threat_alert(alert)
-              alert
+    # Generate threat alerts
+    alerts_generated =
+      Enum.map(interested_users, fn user_id ->
+        case generate_threat_alert(user_id, threat_event) do
+          {:ok, alert} ->
+            # Send notification
+            NotificationService.send_threat_alert(alert)
+            alert
 
-            {:error, reason} ->
-              Logger.error(
-                "Failed to generate threat alert for user #{user_id}: #{inspect(reason)}"
-              )
+          {:error, reason} ->
+            Logger.error(
+              "Failed to generate threat alert for user #{user_id}: #{inspect(reason)}"
+            )
 
-              nil
-          end
-        end)
-        |> Enum.filter(& &1)
+            nil
+        end
+      end)
+      |> Enum.filter(& &1)
 
-      new_state = %{
-        state
-        | alerts_processed: state.alerts_processed + length(alerts_generated),
-          notifications_sent: state.notifications_sent + length(alerts_generated)
-      }
+    new_state = %{
+      state
+      | alerts_processed: state.alerts_processed + length(alerts_generated),
+        notifications_sent: state.notifications_sent + length(alerts_generated)
+    }
 
-      {:noreply, new_state}
-    rescue
-      error ->
-        Logger.error("Failed to process threat level change for alerts: #{inspect(error)}")
-        {:noreply, state}
-    end
+    {:noreply, new_state}
+  rescue
+    error ->
+      Logger.error("Failed to process threat level change for alerts: #{inspect(error)}")
+      {:noreply, state}
   end
 
   # Private functions
 
   defp update_alert_configuration(user_id, alert_settings) do
-    try do
-      # Validate alert settings
-      validated_settings = validate_alert_settings(alert_settings)
+    # Validate alert settings
+    validated_settings = validate_alert_settings(alert_settings)
 
-      configuration = %{
-        user_id: user_id,
-        updated_at: DateTime.utc_now(),
-        settings: validated_settings,
-        channels: extract_notification_channels(alert_settings),
-        filters: extract_alert_filters(alert_settings)
-      }
+    configuration = %{
+      user_id: user_id,
+      updated_at: DateTime.utc_now(),
+      settings: validated_settings,
+      channels: extract_notification_channels(alert_settings),
+      filters: extract_alert_filters(alert_settings)
+    }
 
-      {:ok, configuration}
-    rescue
-      error ->
-        Logger.error("Failed to update alert configuration: #{inspect(error)}")
-        {:error, :invalid_configuration}
-    end
+    {:ok, configuration}
+  rescue
+    error ->
+      Logger.error("Failed to update alert configuration: #{inspect(error)}")
+      {:error, :invalid_configuration}
   end
 
   defp find_interested_users(match_event) do
@@ -233,49 +227,45 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.AlertManagementService do
   end
 
   defp generate_surveillance_alert(user_id, match_event) do
-    try do
-      alert = %{
-        id: generate_alert_id(),
-        user_id: user_id,
-        type: :surveillance_match,
-        profile_id: match_event[:profile_id] || match_event.profile_id,
-        killmail_id: match_event[:killmail_id] || match_event.killmail_id,
-        match_details: extract_match_details(match_event),
-        severity: determine_alert_severity(match_event),
-        generated_at: DateTime.utc_now(),
-        status: :pending
-      }
+    alert = %{
+      id: generate_alert_id(),
+      user_id: user_id,
+      type: :surveillance_match,
+      profile_id: match_event[:profile_id] || match_event.profile_id,
+      killmail_id: match_event[:killmail_id] || match_event.killmail_id,
+      match_details: extract_match_details(match_event),
+      severity: determine_alert_severity(match_event),
+      generated_at: DateTime.utc_now(),
+      status: :pending
+    }
 
-      {:ok, alert}
-    rescue
-      error ->
-        Logger.error("Failed to generate surveillance alert: #{inspect(error)}")
-        {:error, :generation_failed}
-    end
+    {:ok, alert}
+  rescue
+    error ->
+      Logger.error("Failed to generate surveillance alert: #{inspect(error)}")
+      {:error, :generation_failed}
   end
 
   defp generate_threat_alert(user_id, threat_event) do
-    try do
-      alert = %{
-        id: generate_alert_id(),
-        user_id: user_id,
-        type: :threat_level_change,
-        entity_id: threat_event[:entity_id] || threat_event.entity_id,
-        entity_type: threat_event[:entity_type] || threat_event.entity_type,
-        old_threat_level: threat_event[:old_level] || threat_event.old_level,
-        new_threat_level: threat_event[:new_level] || threat_event.new_level,
-        threat_details: extract_threat_details(threat_event),
-        severity: determine_threat_alert_severity(threat_event),
-        generated_at: DateTime.utc_now(),
-        status: :pending
-      }
+    alert = %{
+      id: generate_alert_id(),
+      user_id: user_id,
+      type: :threat_level_change,
+      entity_id: threat_event[:entity_id] || threat_event.entity_id,
+      entity_type: threat_event[:entity_type] || threat_event.entity_type,
+      old_threat_level: threat_event[:old_level] || threat_event.old_level,
+      new_threat_level: threat_event[:new_level] || threat_event.new_level,
+      threat_details: extract_threat_details(threat_event),
+      severity: determine_threat_alert_severity(threat_event),
+      generated_at: DateTime.utc_now(),
+      status: :pending
+    }
 
-      {:ok, alert}
-    rescue
-      error ->
-        Logger.error("Failed to generate threat alert: #{inspect(error)}")
-        {:error, :generation_failed}
-    end
+    {:ok, alert}
+  rescue
+    error ->
+      Logger.error("Failed to generate threat alert: #{inspect(error)}")
+      {:error, :generation_failed}
   end
 
   defp validate_alert_settings(settings) do

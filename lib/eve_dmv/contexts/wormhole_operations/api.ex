@@ -441,13 +441,13 @@ defmodule EveDmv.Contexts.WormholeOperations.Api do
   defp validate_optional_field(field, _value), do: {:error, {:invalid_field_type, field}}
 
   defp validate_participants(participants) when is_list(participants) do
-    if not Enum.empty?(participants) do
+    if Enum.empty?(participants) do
+      {:error, :no_participants}
+    else
       case validate_participant_structure(participants) do
         :ok -> :ok
         {:error, reason} -> {:error, {:invalid_participants, reason}}
       end
-    else
-      {:error, :no_participants}
     end
   end
 
@@ -495,13 +495,13 @@ defmodule EveDmv.Contexts.WormholeOperations.Api do
   defp validate_constraint_value(field, _value), do: {:error, {:invalid_constraint_value, field}}
 
   defp validate_chain_systems(systems) when is_list(systems) do
-    if not Enum.empty?(systems) do
+    if Enum.empty?(systems) do
+      {:error, :no_systems}
+    else
       case validate_system_structure(systems) do
         :ok -> :ok
         {:error, reason} -> {:error, {:invalid_systems, reason}}
       end
-    else
-      {:error, :no_systems}
     end
   end
 

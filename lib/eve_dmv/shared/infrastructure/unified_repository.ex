@@ -715,21 +715,19 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   """
   @spec health_check() :: :ok | {:error, term()}
   def health_check() do
-    try do
-      # Test basic cache functionality
-      test_key = {:health_check, System.system_time(:second)}
-      UnifiedCache.put(:threat, test_key, :test_value, 1)
+    # Test basic cache functionality
+    test_key = {:health_check, System.system_time(:second)}
+    UnifiedCache.put(:threat, test_key, :test_value, 1)
 
-      case UnifiedCache.get(:threat, test_key) do
-        {:ok, :test_value} ->
-          UnifiedCache.delete(:threat, test_key)
-          :ok
+    case UnifiedCache.get(:threat, test_key) do
+      {:ok, :test_value} ->
+        UnifiedCache.delete(:threat, test_key)
+        :ok
 
-        error ->
-          {:error, {:cache_test_failed, error}}
-      end
-    rescue
-      error -> {:error, error}
+      error ->
+        {:error, {:cache_test_failed, error}}
     end
+  rescue
+    error -> {:error, error}
   end
 end

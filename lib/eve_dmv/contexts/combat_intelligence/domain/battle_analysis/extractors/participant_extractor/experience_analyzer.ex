@@ -339,7 +339,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
 
     %{
       total_damage: total_damage,
-      average_damage: if(not Enum.empty?(pilots), do: total_damage / length(pilots), else: 0),
+      average_damage: if(Enum.empty?(pilots), do: 0, else: total_damage / length(pilots)),
       survival_rate: Float.round(survival_rate, 2)
     }
   end
@@ -469,10 +469,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
   defp calculate_veteran_ratio(members) do
     veterans = Enum.count(members, &is_veteran?/1)
 
-    if not Enum.empty?(members) do
-      Float.round(veterans / length(members), 2)
-    else
+    if Enum.empty?(members) do
       0.0
+    else
+      Float.round(veterans / length(members), 2)
     end
   end
 
@@ -703,10 +703,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
       end
 
     opportunities =
-      if not survived do
-        ["Focus on survival and positioning" | opportunities]
-      else
+      if survived do
         opportunities
+      else
+        ["Focus on survival and positioning" | opportunities]
       end
 
     opportunities

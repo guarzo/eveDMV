@@ -139,15 +139,15 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.CommunityManager do
         |> Enum.map(&Map.get(&1.category_ratings, category))
         |> Enum.filter(& &1)
 
-      if not Enum.empty?(category_ratings) do
+      if Enum.empty?(category_ratings) do
+        acc
+      else
         average = Enum.sum(category_ratings) / length(category_ratings)
 
         Map.put(acc, category, %{
           average: Float.round(average, 2),
           count: length(category_ratings)
         })
-      else
-        acc
       end
     end)
   end

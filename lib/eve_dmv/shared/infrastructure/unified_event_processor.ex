@@ -185,13 +185,13 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedEventProcessor do
 
   @impl GenServer
   def handle_info(:process_batch, state) do
-    if not Enum.empty?(state.event_queue) do
+    if Enum.empty?(state.event_queue) do
+      schedule_batch_processing(state.batch_timeout)
+      {:noreply, state}
+    else
       {updated_state, _batch_result} = process_event_batch(state.event_queue, state)
       schedule_batch_processing(state.batch_timeout)
       {:noreply, %{updated_state | event_queue: []}}
-    else
-      schedule_batch_processing(state.batch_timeout)
-      {:noreply, state}
     end
   end
 
@@ -253,44 +253,40 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedEventProcessor do
   end
 
   defp process_with_handler(event, {module, function}) do
-    try do
-      apply(module, function, [event])
-      :ok
-    rescue
-      error ->
-        Logger.error("Event processing failed", %{
-          handler: {module, function},
-          event_type: get_event_type(event),
-          error: inspect(error)
-        })
+    apply(module, function, [event])
+    :ok
+  rescue
+    error ->
+      Logger.error("Event processing failed", %{
+        handler: {module, function},
+        event_type: get_event_type(event),
+        error: inspect(error)
+      })
 
-        {:error, error}
-    catch
-      :exit, reason ->
-        Logger.error("Event handler exited", %{
-          handler: {module, function},
-          event_type: get_event_type(event),
-          reason: inspect(reason)
-        })
+      {:error, error}
+  catch
+    :exit, reason ->
+      Logger.error("Event handler exited", %{
+        handler: {module, function},
+        event_type: get_event_type(event),
+        reason: inspect(reason)
+      })
 
-        {:error, {:exit, reason}}
-    end
+      {:error, {:exit, reason}}
   end
 
   defp process_with_handler(event, handler) when is_function(handler) do
-    try do
-      handler.(event)
-      :ok
-    rescue
-      error ->
-        Logger.error("Event processing failed with function handler", %{
-          handler: inspect(handler),
-          event_type: get_event_type(event),
-          error: inspect(error)
-        })
+    handler.(event)
+    :ok
+  rescue
+    error ->
+      Logger.error("Event processing failed with function handler", %{
+        handler: inspect(handler),
+        event_type: get_event_type(event),
+        error: inspect(error)
+      })
 
-        {:error, error}
-    end
+      {:error, error}
   end
 
   defp process_event_batch(events, state) do
@@ -482,20 +478,18 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedEventProcessor do
   """
   @spec health_check() :: :ok | {:error, term()}
   def health_check() do
-    try do
-      stats = get_stats()
+    stats = get_stats()
 
-      # Check if processor is responsive
-      if stats.total_events_processed >= 0 do
-        :ok
-      else
-        {:error, :invalid_stats}
-      end
-    rescue
-      error -> {:error, error}
-    catch
-      :exit, reason -> {:error, {:exit, reason}}
+    # Check if processor is responsive
+    if stats.total_events_processed >= 0 do
+      :ok
+    else
+      {:error, :invalid_stats}
     end
+  rescue
+    error -> {:error, error}
+  catch
+    :exit, reason -> {:error, {:exit, reason}}
   end
 
   @doc """

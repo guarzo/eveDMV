@@ -142,31 +142,29 @@ defmodule EveDmv.Shared.ChainIntelligence do
   """
   @spec calculate_chain_mass_usage(integer(), map()) :: {:ok, map()} | {:error, term()}
   def calculate_chain_mass_usage(chain_id, fleet_data) do
-    try do
-      # Get chain topology
-      {:ok, topology} = get_chain_topology(chain_id)
+    # Get chain topology
+    {:ok, topology} = get_chain_topology(chain_id)
 
-      # Calculate mass for each connection
-      mass_usage =
-        Enum.map(topology.connections, fn connection ->
-          calculate_connection_mass_usage(connection, fleet_data)
-        end)
+    # Calculate mass for each connection
+    mass_usage =
+      Enum.map(topology.connections, fn connection ->
+        calculate_connection_mass_usage(connection, fleet_data)
+      end)
 
-      total_mass = Enum.sum(Enum.map(mass_usage, & &1.mass_used))
+    total_mass = Enum.sum(Enum.map(mass_usage, & &1.mass_used))
 
-      {:ok,
-       %{
-         chain_id: chain_id,
-         connections: mass_usage,
-         total_mass_used: total_mass,
-         critical_connections: find_critical_mass_connections(mass_usage),
-         calculated_at: DateTime.utc_now()
-       }}
-    rescue
-      error ->
-        Logger.error("Error calculating chain mass usage: #{inspect(error)}")
-        {:error, :calculation_failed}
-    end
+    {:ok,
+     %{
+       chain_id: chain_id,
+       connections: mass_usage,
+       total_mass_used: total_mass,
+       critical_connections: find_critical_mass_connections(mass_usage),
+       calculated_at: DateTime.utc_now()
+     }}
+  rescue
+    error ->
+      Logger.error("Error calculating chain mass usage: #{inspect(error)}")
+      {:error, :calculation_failed}
   end
 
   # Private helper functions
@@ -239,38 +237,36 @@ defmodule EveDmv.Shared.ChainIntelligence do
     # Get system connections based on killmail activity patterns
     # Real wormhole connections would require integration with mapping tools
 
-    try do
-      # Get recent killmails to analyze movement patterns
-      since = DateTime.add(DateTime.utc_now(), -24 * 3600, :second)
+    # Get recent killmails to analyze movement patterns
+    since = DateTime.add(DateTime.utc_now(), -24 * 3600, :second)
 
-      killmails =
-        EveDmv.Api.read!(
-          EveDmv.Killmails.KillmailRaw,
-          filter: [
-            solar_system_id: system_id,
-            occurred_at: [greater_than: since]
-          ],
-          limit: 500
-        )
+    killmails =
+      EveDmv.Api.read!(
+        EveDmv.Killmails.KillmailRaw,
+        filter: [
+          solar_system_id: system_id,
+          occurred_at: [greater_than: since]
+        ],
+        limit: 500
+      )
 
-      # Analyze participant movements to infer connections
-      # Group by adjacent killmail locations for the same characters
-      connections = analyze_movement_patterns(killmails, system_id)
+    # Analyze participant movements to infer connections
+    # Group by adjacent killmail locations for the same characters
+    connections = analyze_movement_patterns(killmails, system_id)
 
+    %{
+      # Would require static data import
+      static_connections: [],
+      wormhole_connections: connections,
+      total_connections: length(connections)
+    }
+  rescue
+    _ ->
       %{
-        # Would require static data import
         static_connections: [],
-        wormhole_connections: connections,
-        total_connections: length(connections)
+        wormhole_connections: [],
+        total_connections: 0
       }
-    rescue
-      _ ->
-        %{
-          static_connections: [],
-          wormhole_connections: [],
-          total_connections: 0
-        }
-    end
   end
 
   defp analyze_movement_patterns(killmails, target_system_id) do
@@ -400,25 +396,23 @@ defmodule EveDmv.Shared.ChainIntelligence do
   """
   @spec analyze_chain_topology(integer(), keyword()) :: {:ok, map()} | {:error, term()}
   def analyze_chain_topology(chain_id, _opts \\ []) do
-    try do
-      {:ok, topology} = get_chain_topology(chain_id)
+    {:ok, topology} = get_chain_topology(chain_id)
 
-      analysis = %{
-        chain_id: chain_id,
-        system_count: length(topology.systems),
-        connection_count: length(topology.connections),
-        depth: calculate_chain_depth(topology),
-        branches: identify_branches(topology),
-        chokepoints: find_chokepoints(topology),
-        analyzed_at: DateTime.utc_now()
-      }
+    analysis = %{
+      chain_id: chain_id,
+      system_count: length(topology.systems),
+      connection_count: length(topology.connections),
+      depth: calculate_chain_depth(topology),
+      branches: identify_branches(topology),
+      chokepoints: find_chokepoints(topology),
+      analyzed_at: DateTime.utc_now()
+    }
 
-      {:ok, analysis}
-    rescue
-      error ->
-        Logger.error("Error analyzing chain topology: #{inspect(error)}")
-        {:error, :analysis_failed}
-    end
+    {:ok, analysis}
+  rescue
+    error ->
+      Logger.error("Error analyzing chain topology: #{inspect(error)}")
+      {:error, :analysis_failed}
   end
 
   @doc """
@@ -429,26 +423,24 @@ defmodule EveDmv.Shared.ChainIntelligence do
   def analyze_chain_activity(chain_id, opts \\ []) do
     time_range = Keyword.get(opts, :hours, 24)
 
-    try do
-      activity_data = get_chain_activity_data(chain_id, time_range)
+    activity_data = get_chain_activity_data(chain_id, time_range)
 
-      analysis = %{
-        chain_id: chain_id,
-        time_range_hours: time_range,
-        total_jumps: calculate_total_jumps(activity_data),
-        unique_pilots: count_unique_pilots(activity_data),
-        peak_activity: identify_peak_times(activity_data),
-        hostile_activity: analyze_hostile_presence(activity_data),
-        activity_score: calculate_activity_score(activity_data),
-        analyzed_at: DateTime.utc_now()
-      }
+    analysis = %{
+      chain_id: chain_id,
+      time_range_hours: time_range,
+      total_jumps: calculate_total_jumps(activity_data),
+      unique_pilots: count_unique_pilots(activity_data),
+      peak_activity: identify_peak_times(activity_data),
+      hostile_activity: analyze_hostile_presence(activity_data),
+      activity_score: calculate_activity_score(activity_data),
+      analyzed_at: DateTime.utc_now()
+    }
 
-      {:ok, analysis}
-    rescue
-      error ->
-        Logger.error("Error analyzing chain activity: #{inspect(error)}")
-        {:error, :analysis_failed}
-    end
+    {:ok, analysis}
+  rescue
+    error ->
+      Logger.error("Error analyzing chain activity: #{inspect(error)}")
+      {:error, :analysis_failed}
   end
 
   @doc """
@@ -457,32 +449,30 @@ defmodule EveDmv.Shared.ChainIntelligence do
   """
   @spec assess_chain_security(integer(), integer()) :: {:ok, map()} | {:error, term()}
   def assess_chain_security(chain_id, corporation_id) do
-    try do
-      # Get chain data
-      {:ok, topology} = get_chain_topology(chain_id)
-      {:ok, activity} = analyze_chain_activity(chain_id, hours: 48)
+    # Get chain data
+    {:ok, topology} = get_chain_topology(chain_id)
+    {:ok, activity} = analyze_chain_activity(chain_id, hours: 48)
 
-      # Assess various security factors
-      threat_level = calculate_threat_level(activity)
-      vulnerability = assess_vulnerability(topology)
-      hostile_presence = detect_hostile_presence(activity, corporation_id)
+    # Assess various security factors
+    threat_level = calculate_threat_level(activity)
+    vulnerability = assess_vulnerability(topology)
+    hostile_presence = detect_hostile_presence(activity, corporation_id)
 
-      assessment = %{
-        chain_id: chain_id,
-        corporation_id: corporation_id,
-        threat_level: threat_level,
-        vulnerability_score: vulnerability,
-        hostile_presence: hostile_presence,
-        security_recommendations: generate_security_recommendations(threat_level, vulnerability),
-        assessed_at: DateTime.utc_now()
-      }
+    assessment = %{
+      chain_id: chain_id,
+      corporation_id: corporation_id,
+      threat_level: threat_level,
+      vulnerability_score: vulnerability,
+      hostile_presence: hostile_presence,
+      security_recommendations: generate_security_recommendations(threat_level, vulnerability),
+      assessed_at: DateTime.utc_now()
+    }
 
-      {:ok, assessment}
-    rescue
-      error ->
-        Logger.error("Error assessing chain security: #{inspect(error)}")
-        {:error, :assessment_failed}
-    end
+    {:ok, assessment}
+  rescue
+    error ->
+      Logger.error("Error assessing chain security: #{inspect(error)}")
+      {:error, :assessment_failed}
   end
 
   # Additional private helper functions

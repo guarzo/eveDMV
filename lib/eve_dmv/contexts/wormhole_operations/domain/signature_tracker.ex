@@ -351,13 +351,13 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
 
     # K162 recommendations
     k162_recommendations =
-      if not Enum.empty?(new_k162s) do
+      if Enum.empty?(new_k162s) do
+        initial_recommendations
+      else
         [
           "#{length(new_k162s)} new K162(s) detected - check for hostiles"
           | initial_recommendations
         ]
-      else
-        initial_recommendations
       end
 
     # Threat level recommendations
@@ -498,35 +498,12 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
   end
 
   defp activity_recommendations(patterns) do
-    recommendations = []
-
     recommendations =
-      if patterns.rage_rolling.detected do
-        ["Rage rolling detected - hostile fleet likely seeking targets" | recommendations]
-      else
-        recommendations
-      end
-
-    recommendations =
-      if patterns.active_farming.detected do
-        ["Active farming detected - potential targets in system" | recommendations]
-      else
-        recommendations
-      end
-
-    recommendations =
-      if patterns.chain_rolling.detected do
-        ["Chain rolling detected - someone controlling connections" | recommendations]
-      else
-        recommendations
-      end
-
-    recommendations =
-      case patterns.scanning_activity.efficiency do
-        :excellent -> ["Very high scan rate - multiple scanners active" | recommendations]
-        :slow -> ["Low scan activity - possibly safe to operate" | recommendations]
-        _ -> recommendations
-      end
+      []
+      |> add_recommendation_if(patterns.rage_rolling.detected, "Rage rolling detected - hostile fleet likely seeking targets")
+      |> add_recommendation_if(patterns.active_farming.detected, "Active farming detected - potential targets in system")
+      |> add_recommendation_if(patterns.chain_rolling.detected, "Chain rolling detected - someone controlling connections")
+      |> add_scanning_activity_recommendation(patterns.scanning_activity.efficiency)
 
     if Enum.empty?(recommendations) do
       ["Normal signature activity detected"]
@@ -538,42 +515,15 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
   defp calculate_priority_score(signature, priorities) do
     base_priority = Map.get(priorities, signature.sig_type, 0)
 
-    # Adjust based on signature properties
-    adjustments = 0
+    # Calculate adjustments based on signature properties
+    k162_boost = if get_in(signature, [:metadata, :wormhole_type]) == "K162", do: 50, else: 0
+    unscanned_boost = if signature.status == :unscanned, do: 20, else: 0
+    cleared_penalty = if get_in(signature, [:metadata, :cleared]), do: -30, else: 0
+    critical_boost = if signature.status == :critical, do: 30, else: 0
 
-    # Boost K162 priority
-    adjustments =
-      if get_in(signature, [:metadata, :wormhole_type]) == "K162" do
-        adjustments + 50
-      else
-        adjustments
-      end
+    total_adjustments = k162_boost + unscanned_boost + cleared_penalty + critical_boost
 
-    # Boost unscanned signatures
-    adjustments =
-      if signature.status == :unscanned do
-        adjustments + 20
-      else
-        adjustments
-      end
-
-    # Reduce priority for cleared sites
-    adjustments =
-      if get_in(signature, [:metadata, :cleared]) do
-        adjustments - 30
-      else
-        adjustments
-      end
-
-    # Boost critical wormholes
-    adjustments =
-      if signature.status == :critical do
-        adjustments + 30
-      else
-        adjustments
-      end
-
-    max(0, min(100, base_priority + adjustments))
+    max(0, min(100, base_priority + total_adjustments))
   end
 
   defp estimate_scan_time(signatures) do
@@ -628,6 +578,18 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
       DateTime.diff(last.created_at, first.created_at, :minute)
     else
       0
+    end
+  end
+
+  defp add_recommendation_if(recommendations, condition, recommendation) do
+    if condition, do: [recommendation | recommendations], else: recommendations
+  end
+
+  defp add_scanning_activity_recommendation(recommendations, efficiency) do
+    case efficiency do
+      :excellent -> ["Very high scan rate - multiple scanners active" | recommendations]
+      :slow -> ["Low scan activity - possibly safe to operate" | recommendations]
+      _ -> recommendations
     end
   end
 end

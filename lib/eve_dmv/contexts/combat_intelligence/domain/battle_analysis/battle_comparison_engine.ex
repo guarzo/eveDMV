@@ -750,14 +750,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleCompari
     significant_changes =
       identify_significant_composition_changes(prev_comp, curr_comp)
 
-    if not Enum.empty?(significant_changes) do
+    if Enum.empty?(significant_changes) do
+      nil
+    else
       %{
         type: :composition_adaptation,
         description: "Significant fleet composition changes",
         changes: significant_changes
       }
-    else
-      nil
     end
   end
 

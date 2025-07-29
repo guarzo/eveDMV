@@ -221,7 +221,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.ExternalPriceClient 
         "battlecruiser" -> 25.0
         "battleship" -> 80.0
         "capital" -> 600.0
-        "supercapital" -> 15000.0
+        "supercapital" -> 15_000.0
         _ -> 5.0
       end
 

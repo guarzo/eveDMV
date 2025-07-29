@@ -542,7 +542,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
       logi_count: length(logi_ships),
       total_rep_power: total_rep_power,
       rep_per_logi:
-        if(not Enum.empty?(logi_ships), do: total_rep_power / length(logi_ships), else: 0),
+        if(Enum.empty?(logi_ships), do: 0, else: total_rep_power / length(logi_ships)),
       sustainability_rating:
         rate_logistics_sustainability(length(logi_ships), length(ship_analyses))
     }

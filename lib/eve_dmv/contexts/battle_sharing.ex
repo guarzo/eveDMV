@@ -271,15 +271,13 @@ defmodule EveDmv.Contexts.BattleSharing do
   end
 
   defp get_battle_reports_from_db(battle_id) do
-    try do
-      # This would query actual battle reports from database
-      # For now, return empty to avoid fake data
-      {:ok, []}
-    rescue
-      error ->
-        Logger.error("Failed to fetch battle reports for #{battle_id}: #{inspect(error)}")
-        {:error, :query_failed}
-    end
+    # This would query actual battle reports from database
+    # For now, return empty to avoid fake data
+    {:ok, []}
+  rescue
+    error ->
+      Logger.error("Failed to fetch battle reports for #{battle_id}: #{inspect(error)}")
+      {:error, :query_failed}
   end
 
   @doc """
@@ -359,16 +357,14 @@ defmodule EveDmv.Contexts.BattleSharing do
   end
 
   defp query_character_battle_reports(_character_id, _offset, _limit) do
-    try do
-      # This would query the actual database for battle reports
-      # created by the specified character with pagination
-      {:ok, []}
-    rescue
-      error ->
-        Logger.error("Failed to query battle reports: #{inspect(error)}")
+    # This would query the actual database for battle reports
+    # created by the specified character with pagination
+    {:ok, []}
+  rescue
+    error ->
+      Logger.error("Failed to query battle reports: #{inspect(error)}")
 
-        {:error, :query_failed}
-    end
+      {:error, :query_failed}
   end
 
   # Helper function to fetch battle report from BattleCurator
@@ -391,14 +387,12 @@ defmodule EveDmv.Contexts.BattleSharing do
   end
 
   defp fetch_battle_report_from_service(_report_id) do
-    try do
-      # This would integrate with the actual BattleCurator service
-      # For now, return not found to avoid fake data
-      {:error, :not_found}
-    rescue
-      error ->
-        Logger.error("Error accessing battle curator service: #{inspect(error)}")
-        {:error, :service_error}
-    end
+    # This would integrate with the actual BattleCurator service
+    # For now, return not found to avoid fake data
+    {:error, :not_found}
+  rescue
+    error ->
+      Logger.error("Error accessing battle curator service: #{inspect(error)}")
+      {:error, :service_error}
   end
 end

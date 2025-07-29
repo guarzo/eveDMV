@@ -805,11 +805,11 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
   end
 
   defp calculate_average_corp_tenure(corp_history) do
-    if not Enum.empty?(corp_history) do
+    if Enum.empty?(corp_history) do
+      0.0
+    else
       total_tenure = Enum.sum(Enum.map(corp_history, & &1.tenure_days))
       Float.round(total_tenure / length(corp_history), 1)
-    else
-      0.0
     end
   end
 
@@ -964,7 +964,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
       # Convert to proportions
       |> Enum.map(&(&1 / 100))
 
-    if not Enum.empty?(non_zero_percentages) do
+    if Enum.empty?(non_zero_percentages) do
+      0.0
+    else
       entropy =
         -Enum.sum(
           Enum.map(non_zero_percentages, fn p ->
@@ -979,8 +981,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
       else
         0.0
       end
-    else
-      0.0
     end
   end
 
@@ -1107,7 +1107,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
         corp.reputation == :suspicious or corp.tenure_days < 3
       end)
 
-    if not Enum.empty?(spy_corps) do
+    if Enum.empty?(spy_corps) do
+      []
+    else
       [
         %{
           type: :spy_corp_history,
@@ -1115,8 +1117,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
           description: "History with suspicious corporations"
         }
       ]
-    else
-      []
     end
   end
 

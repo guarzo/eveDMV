@@ -485,10 +485,10 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CharacterAnalysisEngine do
             end
           end)
 
-        if not Enum.empty?(gang_sizes) do
-          Float.round(Enum.sum(gang_sizes) / length(gang_sizes), 1)
-        else
+        if Enum.empty?(gang_sizes) do
           1.0
+        else
+          Float.round(Enum.sum(gang_sizes) / length(gang_sizes), 1)
         end
 
       _ ->

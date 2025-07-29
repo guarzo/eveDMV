@@ -409,40 +409,38 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   # Participant analysis integration
 
   defp enhance_participant_analysis(participants) do
-    try do
-      # Analyze participant affiliations using ParticipantExtractor
-      affiliations = ParticipantExtractor.analyze_participant_affiliations(participants)
+    # Analyze participant affiliations using ParticipantExtractor
+    affiliations = ParticipantExtractor.analyze_participant_affiliations(participants)
 
-      # Analyze participant roles
-      roles = ParticipantExtractor.analyze_participant_roles(participants)
+    # Analyze participant roles
+    roles = ParticipantExtractor.analyze_participant_roles(participants)
 
-      # Analyze participant experience
-      experience = ParticipantExtractor.analyze_participant_experience(participants)
+    # Analyze participant experience
+    experience = ParticipantExtractor.analyze_participant_experience(participants)
 
-      # Track participant activity (requires killmails, so we'll skip for now)
-      # activity = ParticipantExtractor.track_participant_activity(participants, killmails)
+    # Track participant activity (requires killmails, so we'll skip for now)
+    # activity = ParticipantExtractor.track_participant_activity(participants, killmails)
 
-      # Enhance each participant with additional analysis
-      enhanced_participants =
-        participants
-        |> Enum.map(fn {participant_id, participant_data} ->
-          enhanced_data =
-            participant_data
-            |> Map.put(:affiliation_analysis, Map.get(affiliations, participant_id, %{}))
-            |> Map.put(:role_analysis, Map.get(roles, participant_id, %{}))
-            |> Map.put(:experience_analysis, Map.get(experience, participant_id, %{}))
+    # Enhance each participant with additional analysis
+    enhanced_participants =
+      participants
+      |> Enum.map(fn {participant_id, participant_data} ->
+        enhanced_data =
+          participant_data
+          |> Map.put(:affiliation_analysis, Map.get(affiliations, participant_id, %{}))
+          |> Map.put(:role_analysis, Map.get(roles, participant_id, %{}))
+          |> Map.put(:experience_analysis, Map.get(experience, participant_id, %{}))
 
-          {participant_id, enhanced_data}
-        end)
-        |> Enum.into(%{})
+        {participant_id, enhanced_data}
+      end)
+      |> Enum.into(%{})
 
-      {:ok, enhanced_participants}
-    rescue
-      error ->
-        Logger.error("Participant analysis enhancement failed: #{inspect(error)}")
-        # Return original participants if enhancement fails
-        {:ok, participants}
-    end
+    {:ok, enhanced_participants}
+  rescue
+    error ->
+      Logger.error("Participant analysis enhancement failed: #{inspect(error)}")
+      # Return original participants if enhancement fails
+      {:ok, participants}
   end
 
   # Tactical analysis integration

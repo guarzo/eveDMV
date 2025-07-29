@@ -338,7 +338,9 @@ defmodule EveDmv.Intelligence.Analyzers.FleetSkillAnalyzer do
   def calculate_pilot_skill_readiness(pilot, required_skills) do
     # Calculate how ready the pilot is skill-wise (0.0-1.0)
     # Based on ship usage patterns as proxy for skill levels
-    if not Enum.empty?(required_skills) do
+    if Enum.empty?(required_skills) do
+      1.0
+    else
       pilot_ship_usage = Map.get(pilot, :ship_usage, %{})
       ship_usage_values = Map.values(pilot_ship_usage)
       total_experience = Enum.sum(ship_usage_values)
@@ -352,8 +354,6 @@ defmodule EveDmv.Intelligence.Analyzers.FleetSkillAnalyzer do
 
       avg_readiness = Enum.sum(skill_readiness) / length(skill_readiness)
       Float.round(avg_readiness, 2)
-    else
-      1.0
     end
   end
 

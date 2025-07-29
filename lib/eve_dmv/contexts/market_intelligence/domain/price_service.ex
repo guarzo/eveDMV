@@ -173,10 +173,10 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
     missing_type_ids = Enum.map(missing, fn {:missing, type_id} -> type_id end)
 
     fetched_result =
-      if not Enum.empty?(missing_type_ids) do
-        fetch_and_cache_prices(missing_type_ids, Keyword.get(options, :source, :best))
-      else
+      if Enum.empty?(missing_type_ids) do
         {:ok, %{}}
+      else
+        fetch_and_cache_prices(missing_type_ids, Keyword.get(options, :source, :best))
       end
 
     case fetched_result do

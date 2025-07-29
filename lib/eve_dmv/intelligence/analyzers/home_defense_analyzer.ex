@@ -355,10 +355,10 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
   end
 
   defp assess_rolling_effectiveness(rolling_indicators) do
-    if not Enum.empty?(rolling_indicators) do
-      :effective
-    else
+    if Enum.empty?(rolling_indicators) do
       :minimal
+    else
+      :effective
     end
   end
 
@@ -399,7 +399,9 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
   end
 
   defp calculate_response_effectiveness(response_events) do
-    if not Enum.empty?(response_events) do
+    if Enum.empty?(response_events) do
+      0.0
+    else
       avg_participants =
         response_events
         |> Enum.map(& &1.participants)
@@ -408,8 +410,6 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
 
       # Normalize to 0-1
       min(1.0, avg_participants / 10)
-    else
-      0.0
     end
   end
 
@@ -417,13 +417,13 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
     %{
       total_responses: length(response_events),
       avg_participants:
-        if(not Enum.empty?(response_events),
-          do:
+        if(Enum.empty?(response_events),
+          do: 0,
+          else:
             response_events
             |> Enum.map(& &1.participants)
             |> Enum.sum()
-            |> Kernel./(length(response_events)),
-          else: 0
+            |> Kernel./(length(response_events))
         )
     }
   end

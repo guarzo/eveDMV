@@ -197,7 +197,9 @@ defmodule EveDmv.Intelligence.AnalysisScheduler do
       |> Map.values()
       |> Enum.filter(&should_run_task?(&1, now))
 
-    if not Enum.empty?(tasks_to_run) do
+    if Enum.empty?(tasks_to_run) do
+      %{completed: 0, failed: 0}
+    else
       Logger.debug("Executing #{length(tasks_to_run)} scheduled analysis tasks")
 
       # Execute tasks with concurrency control
@@ -213,8 +215,6 @@ defmodule EveDmv.Intelligence.AnalysisScheduler do
           failed: acc.failed + batch_results.failed
         }
       end)
-    else
-      %{completed: 0, failed: 0}
     end
   end
 

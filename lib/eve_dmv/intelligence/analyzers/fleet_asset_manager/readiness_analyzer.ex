@@ -191,13 +191,13 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.ReadinessAnalyzer do
   # Private functions
 
   defp calculate_overall_readiness(ship_readiness) do
-    if not Enum.empty?(ship_readiness) do
+    if Enum.empty?(ship_readiness) do
+      0
+    else
       avg_readiness =
         Enum.sum(Enum.map(ship_readiness, & &1.readiness_ratio)) / length(ship_readiness)
 
       round(avg_readiness * 100)
-    else
-      0
     end
   end
 

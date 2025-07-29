@@ -1375,32 +1375,10 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
 
   defp generate_system_defense_recommendations(vulnerabilities, defensive_assets) do
     # Generate system-wide defense recommendations
-    recommendations = []
-
-    # Recommendations based on vulnerabilities
-    recommendations =
-      if length(vulnerabilities) > 3 do
-        ["Address critical system vulnerabilities" | recommendations]
-      else
-        recommendations
-      end
-
-    # Recommendations based on defensive assets
-    recommendations =
-      if defensive_assets.active_members < 10 do
-        ["Increase active member participation" | recommendations]
-      else
-        recommendations
-      end
-
-    recommendations =
-      if defensive_assets.available_ships < 20 do
-        ["Expand available ship inventory" | recommendations]
-      else
-        recommendations
-      end
-
-    recommendations
+    []
+    |> add_recommendation_if(length(vulnerabilities) > 3, "Address critical system vulnerabilities")
+    |> add_recommendation_if(defensive_assets.active_members < 10, "Increase active member participation")
+    |> add_recommendation_if(defensive_assets.available_ships < 20, "Expand available ship inventory")
   end
 
   defp summarize_system_activity(system_activity) do
@@ -1494,11 +1472,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
 
   defp generate_fleet_recommendations(defensive_doctrines) do
     # Generate recommendations for fleet improvements
-    recommendations = []
-
     coherence = defensive_doctrines.doctrine_coherence
 
-    recommendations =
+    coherence_recommendations =
       if coherence < 0.5 do
         [
           %{
@@ -1507,13 +1483,12 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
             description: "Fleet doctrine lacks coherence (#{coherence})",
             action: "Standardize around core ship doctrines"
           }
-          | recommendations
         ]
       else
-        recommendations
+        []
       end
 
-    (recommendations ++ defensive_doctrines.doctrine_recommendations)
+    (coherence_recommendations ++ defensive_doctrines.doctrine_recommendations)
     |> Enum.map(fn rec ->
       if is_binary(rec) do
         %{
@@ -1530,24 +1505,18 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
 
   defp generate_response_recommendations(response_time_estimate) do
     # Generate recommendations for response time improvements
-    recommendations = []
-
-    recommendations =
-      if response_time_estimate > 45 do
-        [
-          %{
-            type: :response_time,
-            priority: :high,
-            description: "Response time estimate: #{response_time_estimate} minutes",
-            action: "Improve member readiness and communication protocols"
-          }
-          | recommendations
-        ]
-      else
-        recommendations
-      end
-
-    recommendations
+    if response_time_estimate > 45 do
+      [
+        %{
+          type: :response_time,
+          priority: :high,
+          description: "Response time estimate: #{response_time_estimate} minutes",
+          action: "Improve member readiness and communication protocols"
+        }
+      ]
+    else
+      []
+    end
   end
 
   defp generate_vulnerability_recommendations(vulnerabilities) do
@@ -1564,24 +1533,18 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
 
   defp generate_activity_recommendations(active_members) do
     # Generate recommendations for member activity
-    recommendations = []
-
-    recommendations =
-      if active_members < 15 do
-        [
-          %{
-            type: :member_activity,
-            priority: :high,
-            description: "Low active member count: #{active_members}",
-            action: "Increase member engagement and recruitment"
-          }
-          | recommendations
-        ]
-      else
-        recommendations
-      end
-
-    recommendations
+    if active_members < 15 do
+      [
+        %{
+          type: :member_activity,
+          priority: :high,
+          description: "Low active member count: #{active_members}",
+          action: "Increase member engagement and recruitment"
+        }
+      ]
+    else
+      []
+    end
   end
 
   defp priority_weight(priority) do
@@ -1635,12 +1598,11 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
 
   defp generate_tactical_recommendations(defense_analysis, _threat_event) do
     # Generate tactical recommendations based on defense analysis
-    recommendations = []
+    fleet_strength = defense_analysis.fleet_strength.strength_rating
+    response_time = defense_analysis.response_time_estimate
 
     # Recommendations based on fleet strength
-    fleet_strength = defense_analysis.fleet_strength.strength_rating
-
-    recommendations =
+    fleet_recommendations =
       case fleet_strength do
         :minimal ->
           [
@@ -1650,7 +1612,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
               description: "Fleet strength insufficient for threat",
               action: "Request allied support or consider evacuation"
             }
-            | recommendations
           ]
 
         :weak ->
@@ -1661,17 +1622,14 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
               description: "Adopt defensive posture due to limited fleet",
               action: "Focus on evasion and intelligence gathering"
             }
-            | recommendations
           ]
 
         _ ->
-          recommendations
+          []
       end
 
     # Recommendations based on response time
-    response_time = defense_analysis.response_time_estimate
-
-    recommendations =
+    response_recommendations =
       if response_time > 60 do
         [
           %{
@@ -1680,23 +1638,20 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
             description: "Slow response time (#{response_time} min)",
             action: "Pre-position defensive assets and improve readiness"
           }
-          | recommendations
         ]
       else
-        recommendations
+        []
       end
 
-    recommendations
+    fleet_recommendations ++ response_recommendations
   end
 
   defp generate_strategic_recommendations(defense_analysis, threat_type) do
     # Generate strategic long-term recommendations
-    recommendations = []
-
-    # Recommendations based on timezone coverage
     tz_coverage = defense_analysis.timezone_coverage.coverage_percentage
 
-    recommendations =
+    # Recommendations based on timezone coverage
+    coverage_recommendations =
       if tz_coverage < 60 do
         [
           %{
@@ -1705,14 +1660,13 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
             description: "Limited timezone coverage (#{tz_coverage}%)",
             action: "Develop 24/7 coverage strategy and recruit internationally"
           }
-          | recommendations
         ]
       else
-        recommendations
+        []
       end
 
     # Recommendations based on threat type
-    recommendations =
+    threat_recommendations =
       case threat_type do
         :capital_escalation ->
           [
@@ -1722,7 +1676,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
               description: "Capital threat requires specialized response",
               action: "Develop capital defense doctrine and acquire countermeasures"
             }
-            | recommendations
           ]
 
         :structure_warfare ->
@@ -1733,24 +1686,22 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
               description: "Structure warfare threat detected",
               action: "Improve structure defenses and monitoring"
             }
-            | recommendations
           ]
 
         _ ->
-          recommendations
+          []
       end
 
-    recommendations
+    coverage_recommendations ++ threat_recommendations
   end
 
   defp generate_resource_recommendations(defense_analysis, threat_event) do
     # Generate resource allocation recommendations
-    recommendations = []
+    available_ships = defense_analysis.available_ships
+    threat_value = Map.get(threat_event, :estimated_value, 0)
 
     # Recommendations based on available ships
-    available_ships = defense_analysis.available_ships
-
-    recommendations =
+    ship_recommendations =
       if available_ships < 30 do
         [
           %{
@@ -1759,16 +1710,13 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
             description: "Limited ship inventory (#{available_ships})",
             action: "Increase ship procurement and member ship programs"
           }
-          | recommendations
         ]
       else
-        recommendations
+        []
       end
 
     # Recommendations based on threat event
-    threat_value = Map.get(threat_event, :estimated_value, 0)
-
-    recommendations =
+    value_recommendations =
       if threat_value > 1_000_000_000 do
         [
           %{
@@ -1777,21 +1725,20 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
             description: "High-value threat requires significant resources",
             action: "Allocate premium defensive assets and consider allied support"
           }
-          | recommendations
         ]
       else
-        recommendations
+        []
       end
 
-    recommendations
+    ship_recommendations ++ value_recommendations
   end
 
   defp generate_communication_recommendations(threat_severity, defense_analysis) do
     # Generate communication and coordination recommendations
-    recommendations = []
+    active_members = defense_analysis.active_members
 
     # Recommendations based on threat severity
-    recommendations =
+    severity_recommendations =
       case threat_severity do
         :critical ->
           [
@@ -1801,7 +1748,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
               description: "Critical threat requires immediate coordination",
               action: "Activate emergency communication channels and leadership"
             }
-            | recommendations
           ]
 
         :high ->
@@ -1812,17 +1758,14 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
               description: "High threat requires enhanced coordination",
               action: "Increase communication frequency and situational updates"
             }
-            | recommendations
           ]
 
         _ ->
-          recommendations
+          []
       end
 
     # Recommendations based on active members
-    active_members = defense_analysis.active_members
-
-    recommendations =
+    scale_recommendations =
       if active_members > 50 do
         [
           %{
@@ -1831,12 +1774,11 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
             description: "Large member count requires structured coordination",
             action: "Implement command structure and clear communication protocols"
           }
-          | recommendations
         ]
       else
-        recommendations
+        []
       end
 
-    recommendations
+    severity_recommendations ++ scale_recommendations
   end
 end

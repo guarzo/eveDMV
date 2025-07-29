@@ -29,7 +29,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
   def identify_key_moments(timeline) do
     # Find high-value kills (top 10% by ISK value)
     high_value_moments =
-      if not Enum.empty?(timeline) do
+      if Enum.empty?(timeline) do
+        []
+      else
         isk_values = Enum.map(timeline, & &1.isk_value)
         threshold = Enum.max(isk_values) * 0.9
 
@@ -43,8 +45,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
             victim: event.victim
           }
         end)
-      else
-        []
       end
 
     # Find first blood
@@ -211,10 +211,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
         end)
 
       priority_ratio =
-        if not Enum.empty?(timeline) do
-          Float.round(length(priority_kills) / length(timeline), 3)
-        else
+        if Enum.empty?(timeline) do
           0.0
+        else
+          Float.round(length(priority_kills) / length(timeline), 3)
         end
 
       # Calculate target switching rate

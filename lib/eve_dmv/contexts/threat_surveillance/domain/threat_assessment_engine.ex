@@ -163,86 +163,78 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAssessmentEngine do
 
   @impl GenServer
   def handle_cast({:process_killmail, killmail}, state) do
-    try do
-      # Update threat assessments for all involved entities
-      update_threat_from_killmail(killmail)
+    # Update threat assessments for all involved entities
+    update_threat_from_killmail(killmail)
 
-      {:noreply, %{state | processed_killmails: state.processed_killmails + 1}}
-    rescue
-      error ->
-        Logger.error("Failed to process killmail for threat assessment: #{inspect(error)}")
-        {:noreply, state}
-    end
+    {:noreply, %{state | processed_killmails: state.processed_killmails + 1}}
+  rescue
+    error ->
+      Logger.error("Failed to process killmail for threat assessment: #{inspect(error)}")
+      {:noreply, state}
   end
 
   @impl GenServer
   def handle_cast({:process_surveillance_match, match_event}, state) do
-    try do
-      # Increase threat scores for entities involved in surveillance matches
-      update_threat_from_surveillance_match(match_event)
+    # Increase threat scores for entities involved in surveillance matches
+    update_threat_from_surveillance_match(match_event)
+
+    {:noreply, state}
+  rescue
+    error ->
+      Logger.error(
+        "Failed to process surveillance match for threat assessment: #{inspect(error)}"
+      )
 
       {:noreply, state}
-    rescue
-      error ->
-        Logger.error(
-          "Failed to process surveillance match for threat assessment: #{inspect(error)}"
-        )
-
-        {:noreply, state}
-    end
   end
 
   # Private functions
 
   defp perform_character_threat_assessment(character_id, options) do
-    try do
-      time_range = Keyword.get(options, :time_range, :last_30_days)
+    time_range = Keyword.get(options, :time_range, :last_30_days)
 
-      assessment = %{
-        character_id: character_id,
-        assessed_at: DateTime.utc_now(),
-        time_range: time_range,
-        threat_score: calculate_character_threat_score(character_id, time_range),
-        threat_level: calculate_character_threat_level(character_id, time_range),
-        risk_factors: identify_character_risk_factors(character_id, time_range),
-        behavioral_analysis: analyze_character_behavior(character_id, time_range),
-        activity_patterns: get_character_activity_patterns(character_id, time_range),
-        alliance_threat_modifier: get_alliance_threat_modifier(character_id),
-        recommendations: generate_character_threat_recommendations(character_id, time_range)
-      }
+    assessment = %{
+      character_id: character_id,
+      assessed_at: DateTime.utc_now(),
+      time_range: time_range,
+      threat_score: calculate_character_threat_score(character_id, time_range),
+      threat_level: calculate_character_threat_level(character_id, time_range),
+      risk_factors: identify_character_risk_factors(character_id, time_range),
+      behavioral_analysis: analyze_character_behavior(character_id, time_range),
+      activity_patterns: get_character_activity_patterns(character_id, time_range),
+      alliance_threat_modifier: get_alliance_threat_modifier(character_id),
+      recommendations: generate_character_threat_recommendations(character_id, time_range)
+    }
 
-      {:ok, assessment}
-    rescue
-      error ->
-        Logger.error("Failed to assess character threat: #{inspect(error)}")
-        {:error, :assessment_failed}
-    end
+    {:ok, assessment}
+  rescue
+    error ->
+      Logger.error("Failed to assess character threat: #{inspect(error)}")
+      {:error, :assessment_failed}
   end
 
   defp perform_corporation_threat_assessment(corp_id, options) do
-    try do
-      time_range = Keyword.get(options, :time_range, :last_30_days)
+    time_range = Keyword.get(options, :time_range, :last_30_days)
 
-      assessment = %{
-        corporation_id: corp_id,
-        assessed_at: DateTime.utc_now(),
-        time_range: time_range,
-        threat_score: calculate_corporation_threat_score(corp_id, time_range),
-        threat_level: calculate_corporation_threat_level(corp_id, time_range),
-        member_threat_distribution: get_member_threat_distribution(corp_id),
-        activity_metrics: get_corporation_activity_metrics(corp_id, time_range),
-        fleet_capabilities: assess_fleet_capabilities(corp_id),
-        territorial_influence: assess_territorial_influence(corp_id),
-        alliance_relationships: get_alliance_relationships(corp_id),
-        recommendations: generate_corporation_threat_recommendations(corp_id, time_range)
-      }
+    assessment = %{
+      corporation_id: corp_id,
+      assessed_at: DateTime.utc_now(),
+      time_range: time_range,
+      threat_score: calculate_corporation_threat_score(corp_id, time_range),
+      threat_level: calculate_corporation_threat_level(corp_id, time_range),
+      member_threat_distribution: get_member_threat_distribution(corp_id),
+      activity_metrics: get_corporation_activity_metrics(corp_id, time_range),
+      fleet_capabilities: assess_fleet_capabilities(corp_id),
+      territorial_influence: assess_territorial_influence(corp_id),
+      alliance_relationships: get_alliance_relationships(corp_id),
+      recommendations: generate_corporation_threat_recommendations(corp_id, time_range)
+    }
 
-      {:ok, assessment}
-    rescue
-      error ->
-        Logger.error("Failed to assess corporation threat: #{inspect(error)}")
-        {:error, :assessment_failed}
-    end
+    {:ok, assessment}
+  rescue
+    error ->
+      Logger.error("Failed to assess corporation threat: #{inspect(error)}")
+      {:error, :assessment_failed}
   end
 
   defp update_threat_assessment(entity_id, entity_type, intelligence_data) do

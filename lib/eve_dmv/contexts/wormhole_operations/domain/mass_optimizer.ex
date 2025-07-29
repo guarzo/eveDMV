@@ -218,7 +218,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
 
     # Check individual ship violations
     individual_viol_list =
-      if not Enum.empty?(individual_violations) do
+      if Enum.empty?(individual_violations) do
+        mass_violations
+      else
         [
           %{
             type: :individual_ship_violations,
@@ -228,8 +230,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
           }
           | mass_violations
         ]
-      else
-        mass_violations
       end
 
     # Check utilization warning
@@ -728,7 +728,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
         t1_ship?(ship_name)
       end)
 
-    if not Enum.empty?(t1_ships) do
+    if Enum.empty?(t1_ships) do
+      []
+    else
       [
         %{
           type: :upgrade,
@@ -738,8 +740,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer do
           action: "Consider upgrading to T2 or faction variants"
         }
       ]
-    else
-      []
     end
   end
 

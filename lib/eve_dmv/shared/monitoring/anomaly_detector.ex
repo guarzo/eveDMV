@@ -24,34 +24,32 @@ defmodule EveDmv.Shared.Monitoring.AnomalyDetector do
 
     Logger.debug("Detecting activity anomalies with sensitivity: #{sensitivity}")
 
-    anomalies = []
-
-    # Statistical anomaly detection
     anomalies =
-      if :statistical in detection_methods do
-        statistical_anomalies = detect_statistical_anomalies(current_data, baseline, sensitivity)
-        anomalies ++ statistical_anomalies
-      else
-        anomalies
-      end
-
-    # Pattern-based anomaly detection
-    anomalies =
-      if :pattern in detection_methods do
-        pattern_anomalies = detect_pattern_anomalies(current_data, baseline, sensitivity)
-        anomalies ++ pattern_anomalies
-      else
-        anomalies
-      end
-
-    # Trend-based anomaly detection
-    anomalies =
-      if :trend in detection_methods do
-        trend_anomalies = detect_trend_anomalies(current_data, baseline, sensitivity)
-        anomalies ++ trend_anomalies
-      else
-        anomalies
-      end
+      []
+      |> then(fn acc ->
+        if :statistical in detection_methods do
+          statistical_anomalies = detect_statistical_anomalies(current_data, baseline, sensitivity)
+          acc ++ statistical_anomalies
+        else
+          acc
+        end
+      end)
+      |> then(fn acc ->
+        if :pattern in detection_methods do
+          pattern_anomalies = detect_pattern_anomalies(current_data, baseline, sensitivity)
+          acc ++ pattern_anomalies
+        else
+          acc
+        end
+      end)
+      |> then(fn acc ->
+        if :trend in detection_methods do
+          trend_anomalies = detect_trend_anomalies(current_data, baseline, sensitivity)
+          acc ++ trend_anomalies
+        else
+          acc
+        end
+      end)
 
     classified_anomalies = classify_anomalies(anomalies)
 

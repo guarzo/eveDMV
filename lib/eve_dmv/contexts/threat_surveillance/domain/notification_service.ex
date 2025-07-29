@@ -98,123 +98,115 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.NotificationService do
 
   @impl GenServer
   def handle_cast({:send_match_notification, match_data}, state) do
-    try do
-      user_id = match_data[:user_id] || match_data.user_id
+    user_id = match_data[:user_id] || match_data.user_id
 
-      notification = %{
-        id: generate_notification_id(),
-        type: :surveillance_match,
-        user_id: user_id,
-        title: "Surveillance Match Detected",
-        message: format_match_message(match_data),
-        data: sanitize_match_data(match_data),
-        priority: determine_match_priority(match_data),
-        created_at: DateTime.utc_now()
-      }
+    notification = %{
+      id: generate_notification_id(),
+      type: :surveillance_match,
+      user_id: user_id,
+      title: "Surveillance Match Detected",
+      message: format_match_message(match_data),
+      data: sanitize_match_data(match_data),
+      priority: determine_match_priority(match_data),
+      created_at: DateTime.utc_now()
+    }
 
-      channels = get_user_notification_channels(user_id, :surveillance_match)
+    channels = get_user_notification_channels(user_id, :surveillance_match)
 
-      case deliver_notification(notification, channels, state) do
-        {:ok, _delivery_results, updated_state} ->
-          Logger.info("Sent surveillance match notification to user #{user_id}")
-          {:noreply, updated_state}
+    case deliver_notification(notification, channels, state) do
+      {:ok, _delivery_results, updated_state} ->
+        Logger.info("Sent surveillance match notification to user #{user_id}")
+        {:noreply, updated_state}
 
-        {:error, reason, updated_state} ->
-          Logger.error("Failed to send surveillance match notification: #{inspect(reason)}")
-          {:noreply, %{updated_state | failed_deliveries: updated_state.failed_deliveries + 1}}
-      end
-    rescue
-      error ->
-        Logger.error("Failed to process surveillance match notification: #{inspect(error)}")
-        {:noreply, %{state | failed_deliveries: state.failed_deliveries + 1}}
+      {:error, reason, updated_state} ->
+        Logger.error("Failed to send surveillance match notification: #{inspect(reason)}")
+        {:noreply, %{updated_state | failed_deliveries: updated_state.failed_deliveries + 1}}
     end
+  rescue
+    error ->
+      Logger.error("Failed to process surveillance match notification: #{inspect(error)}")
+      {:noreply, %{state | failed_deliveries: state.failed_deliveries + 1}}
   end
 
   @impl GenServer
   def handle_cast({:send_threat_alert, threat_data}, state) do
-    try do
-      user_id = threat_data[:user_id] || threat_data.user_id
+    user_id = threat_data[:user_id] || threat_data.user_id
 
-      notification = %{
-        id: generate_notification_id(),
-        type: :threat_alert,
-        user_id: user_id,
-        title: "Threat Level Alert",
-        message: format_threat_message(threat_data),
-        data: sanitize_threat_data(threat_data),
-        priority: determine_threat_priority(threat_data),
-        created_at: DateTime.utc_now()
-      }
+    notification = %{
+      id: generate_notification_id(),
+      type: :threat_alert,
+      user_id: user_id,
+      title: "Threat Level Alert",
+      message: format_threat_message(threat_data),
+      data: sanitize_threat_data(threat_data),
+      priority: determine_threat_priority(threat_data),
+      created_at: DateTime.utc_now()
+    }
 
-      channels = get_user_notification_channels(user_id, :threat_alert)
+    channels = get_user_notification_channels(user_id, :threat_alert)
 
-      case deliver_notification(notification, channels, state) do
-        {:ok, _delivery_results, updated_state} ->
-          Logger.info("Sent threat alert notification to user #{user_id}")
-          {:noreply, updated_state}
+    case deliver_notification(notification, channels, state) do
+      {:ok, _delivery_results, updated_state} ->
+        Logger.info("Sent threat alert notification to user #{user_id}")
+        {:noreply, updated_state}
 
-        {:error, reason, updated_state} ->
-          Logger.error("Failed to send threat alert notification: #{inspect(reason)}")
-          {:noreply, %{updated_state | failed_deliveries: updated_state.failed_deliveries + 1}}
-      end
-    rescue
-      error ->
-        Logger.error("Failed to process threat alert notification: #{inspect(error)}")
-        {:noreply, %{state | failed_deliveries: state.failed_deliveries + 1}}
+      {:error, reason, updated_state} ->
+        Logger.error("Failed to send threat alert notification: #{inspect(reason)}")
+        {:noreply, %{updated_state | failed_deliveries: updated_state.failed_deliveries + 1}}
     end
+  rescue
+    error ->
+      Logger.error("Failed to process threat alert notification: #{inspect(error)}")
+      {:noreply, %{state | failed_deliveries: state.failed_deliveries + 1}}
   end
 
   @impl GenServer
   def handle_cast({:send_notification, user_id, notification_data, channels}, state) do
-    try do
-      notification = %{
-        id: generate_notification_id(),
-        type: :custom,
-        user_id: user_id,
-        title: notification_data[:title] || "Notification",
-        message: notification_data[:message] || "",
-        data: notification_data[:data] || %{},
-        priority: notification_data[:priority] || :normal,
-        created_at: DateTime.utc_now()
-      }
+    notification = %{
+      id: generate_notification_id(),
+      type: :custom,
+      user_id: user_id,
+      title: notification_data[:title] || "Notification",
+      message: notification_data[:message] || "",
+      data: notification_data[:data] || %{},
+      priority: notification_data[:priority] || :normal,
+      created_at: DateTime.utc_now()
+    }
 
-      case deliver_notification(notification, channels, state) do
-        {:ok, _delivery_results, updated_state} ->
-          Logger.debug("Sent custom notification to user #{user_id}")
-          {:noreply, updated_state}
+    case deliver_notification(notification, channels, state) do
+      {:ok, _delivery_results, updated_state} ->
+        Logger.debug("Sent custom notification to user #{user_id}")
+        {:noreply, updated_state}
 
-        {:error, reason, updated_state} ->
-          Logger.error("Failed to send custom notification: #{inspect(reason)}")
-          {:noreply, %{updated_state | failed_deliveries: updated_state.failed_deliveries + 1}}
-      end
-    rescue
-      error ->
-        Logger.error("Failed to process custom notification: #{inspect(error)}")
-        {:noreply, %{state | failed_deliveries: state.failed_deliveries + 1}}
+      {:error, reason, updated_state} ->
+        Logger.error("Failed to send custom notification: #{inspect(reason)}")
+        {:noreply, %{updated_state | failed_deliveries: updated_state.failed_deliveries + 1}}
     end
+  rescue
+    error ->
+      Logger.error("Failed to process custom notification: #{inspect(error)}")
+      {:noreply, %{state | failed_deliveries: state.failed_deliveries + 1}}
   end
 
   @impl GenServer
   def handle_call({:configure_user_preferences, user_id, preferences}, _from, state) do
-    try do
-      validated_preferences = validate_user_preferences(preferences)
+    validated_preferences = validate_user_preferences(preferences)
 
-      # Cache preferences
-      cache_key = {:notification_preferences, user_id}
-      # 1 hour
-      UnifiedCache.put(:surveillance, cache_key, validated_preferences, 3600)
+    # Cache preferences
+    cache_key = {:notification_preferences, user_id}
+    # 1 hour
+    UnifiedCache.put(:surveillance, cache_key, validated_preferences, 3600)
 
-      updated_state = %{
-        state
-        | user_preferences: Map.put(state.user_preferences, user_id, validated_preferences)
-      }
+    updated_state = %{
+      state
+      | user_preferences: Map.put(state.user_preferences, user_id, validated_preferences)
+    }
 
-      {:reply, {:ok, validated_preferences}, updated_state}
-    rescue
-      error ->
-        Logger.error("Failed to configure user preferences: #{inspect(error)}")
-        {:reply, {:error, :configuration_failed}, state}
-    end
+    {:reply, {:ok, validated_preferences}, updated_state}
+  rescue
+    error ->
+      Logger.error("Failed to configure user preferences: #{inspect(error)}")
+      {:reply, {:error, :configuration_failed}, state}
   end
 
   @impl GenServer
@@ -299,23 +291,21 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.NotificationService do
   end
 
   defp deliver_in_app_notification(notification) do
-    try do
-      # Publish to PubSub for real-time delivery
-      PubSub.broadcast(
-        EveDmv.PubSub,
-        "user:#{notification.user_id}:notifications",
-        {:new_notification, notification}
-      )
+    # Publish to PubSub for real-time delivery
+    PubSub.broadcast(
+      EveDmv.PubSub,
+      "user:#{notification.user_id}:notifications",
+      {:new_notification, notification}
+    )
 
-      # Store in database for persistence
-      store_notification_in_database(notification)
+    # Store in database for persistence
+    store_notification_in_database(notification)
 
-      {:ok, :delivered}
-    rescue
-      error ->
-        Logger.error("Failed to deliver in-app notification: #{inspect(error)}")
-        {:error, :delivery_failed}
-    end
+    {:ok, :delivered}
+  rescue
+    error ->
+      Logger.error("Failed to deliver in-app notification: #{inspect(error)}")
+      {:error, :delivery_failed}
   end
 
   defp deliver_webhook_notification(notification) do

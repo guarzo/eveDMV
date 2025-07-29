@@ -1125,7 +1125,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
         end
       end)
 
-    solo_rate = if not Enum.empty?(killmails), do: solo_kills / length(killmails), else: 0
+    solo_rate = if Enum.empty?(killmails), do: 0, else: solo_kills / length(killmails)
     # 60%+ solo activity
     solo_rate > 0.6
   end
@@ -1143,7 +1143,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
         end
       end)
 
-    fleet_rate = if not Enum.empty?(killmails), do: fleet_kills / length(killmails), else: 0
+    fleet_rate = if Enum.empty?(killmails), do: 0, else: fleet_kills / length(killmails)
     # 70%+ fleet activity
     fleet_rate > 0.7
   end
@@ -1157,7 +1157,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
       end)
 
     opportunist_rate =
-      if not Enum.empty?(killmails), do: high_value_kills / length(killmails), else: 0
+      if Enum.empty?(killmails), do: 0, else: high_value_kills / length(killmails)
 
     # 30%+ high value targets
     opportunist_rate > 0.3

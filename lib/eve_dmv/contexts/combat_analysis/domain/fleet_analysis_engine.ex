@@ -149,130 +149,122 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.FleetAnalysisEngine do
   # Private functions
 
   defp perform_composition_analysis(participants, options) do
-    try do
-      analysis_type = Keyword.get(options, :analysis_type, :comprehensive)
+    analysis_type = Keyword.get(options, :analysis_type, :comprehensive)
 
-      composition = analyze_ship_composition(participants)
-      doctrine = identify_fleet_doctrine(composition)
-      effectiveness = calculate_fleet_effectiveness(composition, doctrine)
-      roles = analyze_tactical_roles(participants)
-      balance = assess_fleet_balance(composition)
+    composition = analyze_ship_composition(participants)
+    doctrine = identify_fleet_doctrine(composition)
+    effectiveness = calculate_fleet_effectiveness(composition, doctrine)
+    roles = analyze_tactical_roles(participants)
+    balance = assess_fleet_balance(composition)
 
-      analysis = %{
-        analysis_type: analysis_type,
-        analyzed_at: DateTime.utc_now(),
-        total_participants: length(participants),
-        composition: composition,
-        doctrine: doctrine,
-        effectiveness: effectiveness,
-        tactical_roles: roles,
-        fleet_balance: balance,
-        strengths: identify_fleet_strengths(composition, doctrine),
-        weaknesses: identify_fleet_weaknesses(composition, doctrine),
-        recommendations: generate_composition_recommendations(composition, doctrine)
-      }
+    analysis = %{
+      analysis_type: analysis_type,
+      analyzed_at: DateTime.utc_now(),
+      total_participants: length(participants),
+      composition: composition,
+      doctrine: doctrine,
+      effectiveness: effectiveness,
+      tactical_roles: roles,
+      fleet_balance: balance,
+      strengths: identify_fleet_strengths(composition, doctrine),
+      weaknesses: identify_fleet_weaknesses(composition, doctrine),
+      recommendations: generate_composition_recommendations(composition, doctrine)
+    }
 
-      # Cache the analysis
-      cache_key = {:fleet_analysis, :composition, generate_composition_hash(participants)}
-      # 30 minutes
-      UnifiedCache.cache_combat_analysis(cache_key, analysis, 1800)
+    # Cache the analysis
+    cache_key = {:fleet_analysis, :composition, generate_composition_hash(participants)}
+    # 30 minutes
+    UnifiedCache.cache_combat_analysis(cache_key, analysis, 1800)
 
-      {:ok, analysis}
-    rescue
-      error ->
-        Logger.error("Failed to analyze fleet composition: #{inspect(error)}")
-        {:error, :analysis_failed}
-    end
+    {:ok, analysis}
+  rescue
+    error ->
+      Logger.error("Failed to analyze fleet composition: #{inspect(error)}")
+      {:error, :analysis_failed}
   end
 
   defp perform_fleet_comparison(fleet_a, fleet_b, options) do
-    try do
-      comparison_type = Keyword.get(options, :comparison_type, :effectiveness)
+    comparison_type = Keyword.get(options, :comparison_type, :effectiveness)
 
-      analysis_a = perform_composition_analysis(fleet_a, [])
-      analysis_b = perform_composition_analysis(fleet_b, [])
+    analysis_a = perform_composition_analysis(fleet_a, [])
+    analysis_b = perform_composition_analysis(fleet_b, [])
 
-      case {analysis_a, analysis_b} do
-        {{:ok, comp_a}, {:ok, comp_b}} ->
-          comparison = %{
-            comparison_type: comparison_type,
-            compared_at: DateTime.utc_now(),
-            fleet_a: comp_a,
-            fleet_b: comp_b,
-            effectiveness_comparison:
-              compare_effectiveness(comp_a.effectiveness, comp_b.effectiveness),
-            doctrine_matchup: analyze_doctrine_matchup(comp_a.doctrine, comp_b.doctrine),
-            tactical_advantage: determine_tactical_advantage(comp_a, comp_b),
-            recommendations: generate_comparison_recommendations(comp_a, comp_b)
-          }
+    case {analysis_a, analysis_b} do
+      {{:ok, comp_a}, {:ok, comp_b}} ->
+        comparison = %{
+          comparison_type: comparison_type,
+          compared_at: DateTime.utc_now(),
+          fleet_a: comp_a,
+          fleet_b: comp_b,
+          effectiveness_comparison:
+            compare_effectiveness(comp_a.effectiveness, comp_b.effectiveness),
+          doctrine_matchup: analyze_doctrine_matchup(comp_a.doctrine, comp_b.doctrine),
+          tactical_advantage: determine_tactical_advantage(comp_a, comp_b),
+          recommendations: generate_comparison_recommendations(comp_a, comp_b)
+        }
 
-          {:ok, comparison}
+        {:ok, comparison}
 
-        {error_a, _} ->
-          error_a
-      end
-    rescue
-      error ->
-        Logger.error("Failed to compare fleets: #{inspect(error)}")
-        {:error, :comparison_failed}
+      {error_a, _} ->
+        error_a
     end
+  rescue
+    error ->
+      Logger.error("Failed to compare fleets: #{inspect(error)}")
+      {:error, :comparison_failed}
   end
 
   defp generate_improvement_suggestions(composition, constraints) do
-    try do
-      current_analysis = analyze_ship_composition(composition)
-      current_doctrine = identify_fleet_doctrine(current_analysis)
+    current_analysis = analyze_ship_composition(composition)
+    current_doctrine = identify_fleet_doctrine(current_analysis)
 
-      suggestions = %{
-        generated_at: DateTime.utc_now(),
-        current_composition: current_analysis,
-        current_doctrine: current_doctrine,
-        constraints: constraints,
-        improvements: []
-      }
+    suggestions = %{
+      generated_at: DateTime.utc_now(),
+      current_composition: current_analysis,
+      current_doctrine: current_doctrine,
+      constraints: constraints,
+      improvements: []
+    }
 
-      # Analyze different improvement areas
-      role_improvements = suggest_role_improvements(current_analysis)
-      doctrine_improvements = suggest_doctrine_improvements(current_doctrine)
-      balance_improvements = suggest_balance_improvements(current_analysis)
+    # Analyze different improvement areas
+    role_improvements = suggest_role_improvements(current_analysis)
+    doctrine_improvements = suggest_doctrine_improvements(current_doctrine)
+    balance_improvements = suggest_balance_improvements(current_analysis)
 
-      all_improvements = role_improvements ++ doctrine_improvements ++ balance_improvements
+    all_improvements = role_improvements ++ doctrine_improvements ++ balance_improvements
 
-      # Filter by constraints and prioritize
-      filtered_improvements = filter_suggestions_by_constraints(all_improvements, constraints)
-      prioritized_improvements = prioritize_suggestions(filtered_improvements)
+    # Filter by constraints and prioritize
+    filtered_improvements = filter_suggestions_by_constraints(all_improvements, constraints)
+    prioritized_improvements = prioritize_suggestions(filtered_improvements)
 
-      suggestions = %{suggestions | improvements: prioritized_improvements}
+    suggestions = %{suggestions | improvements: prioritized_improvements}
 
-      {:ok, suggestions}
-    rescue
-      error ->
-        Logger.error("Failed to generate improvement suggestions: #{inspect(error)}")
-        {:error, :suggestion_failed}
-    end
+    {:ok, suggestions}
+  rescue
+    error ->
+      Logger.error("Failed to generate improvement suggestions: #{inspect(error)}")
+      {:error, :suggestion_failed}
   end
 
   defp analyze_fleet_performance(fleet_data, _battle_results) do
-    try do
-      # Simplified performance analysis using only composition data
-      composition = analyze_ship_composition(fleet_data)
+    # Simplified performance analysis using only composition data
+    composition = analyze_ship_composition(fleet_data)
 
-      performance = %{
-        analyzed_at: DateTime.utc_now(),
-        fleet_composition: composition,
-        performance_summary: %{
-          note: "Detailed battle performance analysis requires battle data infrastructure",
-          composition_score: calculate_base_effectiveness(composition)
-        },
-        recommendations: ["Implement battle data collection for detailed performance analysis"]
-      }
+    performance = %{
+      analyzed_at: DateTime.utc_now(),
+      fleet_composition: composition,
+      performance_summary: %{
+        note: "Detailed battle performance analysis requires battle data infrastructure",
+        composition_score: calculate_base_effectiveness(composition)
+      },
+      recommendations: ["Implement battle data collection for detailed performance analysis"]
+    }
 
-      {:ok, performance}
-    rescue
-      error ->
-        Logger.error("Failed to analyze fleet performance: #{inspect(error)}")
-        {:error, :performance_analysis_failed}
-    end
+    {:ok, performance}
+  rescue
+    error ->
+      Logger.error("Failed to analyze fleet performance: #{inspect(error)}")
+      {:error, :performance_analysis_failed}
   end
 
   # Analysis helper functions
@@ -502,115 +494,115 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.FleetAnalysisEngine do
   end
 
   defp identify_fleet_strengths(composition, doctrine) do
-    strengths = []
-
     role_dist = composition[:role_distribution] || %{}
     size_dist = composition[:size_distribution] || %{}
 
-    strengths =
+    base_strengths = []
+
+    dps_strengths =
       if Map.get(role_dist, :dps, 0) > 0.7 do
-        ["High damage potential" | strengths]
+        ["High damage potential" | base_strengths]
       else
-        strengths
+        base_strengths
       end
 
-    strengths =
+    logistics_strengths =
       if Map.get(role_dist, :logistics, 0) > 0.1 do
-        ["Good logistics support" | strengths]
+        ["Good logistics support" | dps_strengths]
       else
-        strengths
+        dps_strengths
       end
 
-    strengths =
+    mobility_strengths =
       if Map.get(size_dist, :small, 0) > 0.5 do
-        ["High mobility" | strengths]
+        ["High mobility" | logistics_strengths]
       else
-        strengths
+        logistics_strengths
       end
 
-    strengths =
+    final_strengths =
       if doctrine[:confidence] && doctrine[:confidence] > 0.8 do
-        ["Clear tactical doctrine" | strengths]
+        ["Clear tactical doctrine" | mobility_strengths]
       else
-        strengths
+        mobility_strengths
       end
 
-    if Enum.empty?(strengths), do: ["Balanced composition"], else: strengths
+    if Enum.empty?(final_strengths), do: ["Balanced composition"], else: final_strengths
   end
 
   defp identify_fleet_weaknesses(composition, doctrine) do
-    weaknesses = []
-
     role_dist = composition[:role_distribution] || %{}
     size_dist = composition[:size_distribution] || %{}
 
-    weaknesses =
+    base_weaknesses = []
+
+    logistics_weaknesses =
       if Map.get(role_dist, :logistics, 0) < 0.05 do
-        ["Limited logistics support" | weaknesses]
+        ["Limited logistics support" | base_weaknesses]
       else
-        weaknesses
+        base_weaknesses
       end
 
-    weaknesses =
+    tackle_weaknesses =
       if Map.get(role_dist, :tackle, 0) < 0.1 do
-        ["Insufficient tackle" | weaknesses]
+        ["Insufficient tackle" | logistics_weaknesses]
       else
-        weaknesses
+        logistics_weaknesses
       end
 
-    weaknesses =
+    mobility_weaknesses =
       if Map.get(size_dist, :large, 0) > 0.8 do
-        ["Low mobility due to heavy ships" | weaknesses]
+        ["Low mobility due to heavy ships" | tackle_weaknesses]
       else
-        weaknesses
+        tackle_weaknesses
       end
 
-    weaknesses =
+    final_weaknesses =
       if doctrine[:confidence] && doctrine[:confidence] < 0.6 do
-        ["Unclear tactical doctrine" | weaknesses]
+        ["Unclear tactical doctrine" | mobility_weaknesses]
       else
-        weaknesses
+        mobility_weaknesses
       end
 
-    if Enum.empty?(weaknesses), do: ["No major weaknesses identified"], else: weaknesses
+    if Enum.empty?(final_weaknesses), do: ["No major weaknesses identified"], else: final_weaknesses
   end
 
   defp generate_composition_recommendations(composition, doctrine) do
-    recommendations = []
-
     role_dist = composition[:role_distribution] || %{}
 
-    recommendations =
+    base_recommendations = []
+
+    logistics_recommendations =
       if Map.get(role_dist, :logistics, 0) < 0.05 do
-        ["Add logistics ships for sustainability" | recommendations]
+        ["Add logistics ships for sustainability" | base_recommendations]
       else
-        recommendations
+        base_recommendations
       end
 
-    recommendations =
+    tackle_recommendations =
       if Map.get(role_dist, :tackle, 0) < 0.1 do
-        ["Add tackle ships for engagement control" | recommendations]
+        ["Add tackle ships for engagement control" | logistics_recommendations]
       else
-        recommendations
+        logistics_recommendations
       end
 
-    recommendations =
+    support_recommendations =
       if Map.get(role_dist, :support, 0) < 0.1 do
-        ["Consider adding EWAR support ships" | recommendations]
+        ["Consider adding EWAR support ships" | tackle_recommendations]
       else
-        recommendations
+        tackle_recommendations
       end
 
-    recommendations =
+    final_recommendations =
       if doctrine[:confidence] && doctrine[:confidence] < 0.7 do
-        ["Standardize ship types for better doctrine cohesion" | recommendations]
+        ["Standardize ship types for better doctrine cohesion" | support_recommendations]
       else
-        recommendations
+        support_recommendations
       end
 
-    if Enum.empty?(recommendations),
+    if Enum.empty?(final_recommendations),
       do: ["Composition appears well-balanced"],
-      else: recommendations
+      else: final_recommendations
   end
 
   defp compare_effectiveness(eff_a, eff_b) do
@@ -664,24 +656,24 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.FleetAnalysisEngine do
   end
 
   defp determine_tactical_advantage(comp_a, comp_b) do
-    advantages = []
-
     # Compare role distributions
     role_a = comp_a[:tactical_roles][:role_percentages] || %{}
     role_b = comp_b[:tactical_roles][:role_percentages] || %{}
 
-    advantages =
+    base_advantages = []
+
+    logistics_advantages =
       if Map.get(role_a, :logistics, 0) > Map.get(role_b, :logistics, 0) + 5 do
-        ["Better logistics support" | advantages]
+        ["Better logistics support" | base_advantages]
       else
-        advantages
+        base_advantages
       end
 
-    advantages =
+    final_advantages =
       if Map.get(role_a, :tackle, 0) > Map.get(role_b, :tackle, 0) + 5 do
-        ["Superior tackle capability" | advantages]
+        ["Superior tackle capability" | logistics_advantages]
       else
-        advantages
+        logistics_advantages
       end
 
     # Compare effectiveness scores
@@ -701,51 +693,51 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.FleetAnalysisEngine do
 
     %{
       advantage: winner,
-      factors: if(Enum.empty?(advantages), do: ["No clear advantages"], else: advantages),
+      factors: if(Enum.empty?(final_advantages), do: ["No clear advantages"], else: final_advantages),
       magnitude: abs(eff_a - eff_b)
     }
   end
 
   defp generate_comparison_recommendations(comp_a, comp_b) do
-    recommendations = []
-
     advantage = determine_tactical_advantage(comp_a, comp_b)
     doctrine_matchup = analyze_doctrine_matchup(comp_a[:doctrine], comp_b[:doctrine])
 
-    recommendations =
+    base_recommendations = []
+
+    advantage_recommendations =
       case advantage[:advantage] do
         :fleet_a ->
-          ["Leverage #{Enum.join(advantage[:factors], ", ")}" | recommendations]
+          ["Leverage #{Enum.join(advantage[:factors], ", ")}" | base_recommendations]
 
         :fleet_b ->
-          ["Counter opponent's #{Enum.join(advantage[:factors], ", ")}" | recommendations]
+          ["Counter opponent's #{Enum.join(advantage[:factors], ", ")}" | base_recommendations]
 
         :even ->
-          ["Focus on execution and coordination" | recommendations]
+          ["Focus on execution and coordination" | base_recommendations]
       end
 
-    recommendations =
+    final_recommendations =
       case doctrine_matchup[:matchup] do
         :favorable ->
-          ["Exploit doctrine advantage: #{doctrine_matchup[:description]}" | recommendations]
+          ["Exploit doctrine advantage: #{doctrine_matchup[:description]}" | advantage_recommendations]
 
         :unfavorable ->
-          ["Mitigate doctrine disadvantage: #{doctrine_matchup[:description]}" | recommendations]
+          ["Mitigate doctrine disadvantage: #{doctrine_matchup[:description]}" | advantage_recommendations]
 
         _ ->
-          recommendations
+          advantage_recommendations
       end
 
-    if Enum.empty?(recommendations),
+    if Enum.empty?(final_recommendations),
       do: ["Evenly matched - focus on tactical execution"],
-      else: recommendations
+      else: final_recommendations
   end
 
   defp suggest_role_improvements(analysis) do
     role_dist = analysis[:role_distribution] || %{}
-    suggestions = []
+    base_suggestions = []
 
-    suggestions =
+    logistics_suggestions =
       if Map.get(role_dist, :logistics, 0) < 0.05 do
         [
           %{
@@ -753,12 +745,12 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.FleetAnalysisEngine do
             priority: :high,
             description: "Add logistics ships for fleet sustainability"
           }
-        ] ++ suggestions
+        ] ++ base_suggestions
       else
-        suggestions
+        base_suggestions
       end
 
-    suggestions =
+    final_suggestions =
       if Map.get(role_dist, :tackle, 0) < 0.1 do
         [
           %{
@@ -766,18 +758,18 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.FleetAnalysisEngine do
             priority: :medium,
             description: "Add tackle ships for engagement control"
           }
-        ] ++ suggestions
+        ] ++ logistics_suggestions
       else
-        suggestions
+        logistics_suggestions
       end
 
-    suggestions
+    final_suggestions
   end
 
   defp suggest_doctrine_improvements(doctrine) do
-    suggestions = []
+    base_suggestions = []
 
-    suggestions =
+    final_suggestions =
       if doctrine[:confidence] && doctrine[:confidence] < 0.7 do
         [
           %{
@@ -785,12 +777,12 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.FleetAnalysisEngine do
             priority: :high,
             description: "Standardize ship types for clearer doctrine"
           }
-        ] ++ suggestions
+        ] ++ base_suggestions
       else
-        suggestions
+        base_suggestions
       end
 
-    suggestions
+    final_suggestions
   end
 
   defp suggest_balance_improvements(analysis) do
@@ -854,34 +846,34 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.FleetAnalysisEngine do
   end
 
   defp generate_balance_recommendations(balance_scores, role_dist) do
-    recommendations = []
+    base_recommendations = []
 
-    recommendations =
+    logistics_recommendations =
       if Map.get(balance_scores, :logistics, 1.0) < 0.5 do
         [
           "Add more logistics ships (current: #{Float.round(Map.get(role_dist, :logistics, 0) * 100, 1)}%)"
-        ] ++ recommendations
+        ] ++ base_recommendations
       else
-        recommendations
+        base_recommendations
       end
 
-    recommendations =
+    tackle_recommendations =
       if Map.get(balance_scores, :tackle, 1.0) < 0.5 do
         [
           "Add more tackle ships (current: #{Float.round(Map.get(role_dist, :tackle, 0) * 100, 1)}%)"
-        ] ++ recommendations
+        ] ++ logistics_recommendations
       else
-        recommendations
+        logistics_recommendations
       end
 
-    recommendations =
+    final_recommendations =
       if Map.get(balance_scores, :dps, 1.0) < 0.7 do
-        ["Consider adding more DPS ships"] ++ recommendations
+        ["Consider adding more DPS ships"] ++ tackle_recommendations
       else
-        recommendations
+        tackle_recommendations
       end
 
-    if Enum.empty?(recommendations), do: ["Fleet balance appears good"], else: recommendations
+    if Enum.empty?(final_recommendations), do: ["Fleet balance appears good"], else: final_recommendations
   end
 
   defp generate_composition_hash(participants) do

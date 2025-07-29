@@ -379,9 +379,9 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository do
           active_members: length(unique_members),
           total_engagements: length(killmails),
           average_kills_per_member:
-            if(not Enum.empty?(unique_members),
-              do: length(killmails) / length(unique_members),
-              else: 0
+            if(Enum.empty?(unique_members),
+              do: 0,
+              else: length(killmails) / length(unique_members)
             )
         }
 

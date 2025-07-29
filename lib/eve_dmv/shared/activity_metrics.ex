@@ -237,7 +237,9 @@ defmodule EveDmv.Shared.ActivityMetrics do
   end
 
   defp average_activity(activity_list) do
-    if not Enum.empty?(activity_list) do
+    if Enum.empty?(activity_list) do
+      0.0
+    else
       total =
         activity_list
         |> Enum.map(fn item ->
@@ -246,8 +248,6 @@ defmodule EveDmv.Shared.ActivityMetrics do
         |> Enum.sum()
 
       total / length(activity_list)
-    else
-      0.0
     end
   end
 

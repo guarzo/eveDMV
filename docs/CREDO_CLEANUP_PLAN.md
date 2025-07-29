@@ -1,67 +1,86 @@
 # Multi-Workstream Credo Cleanup Plan
 
 **Project**: EVE DMV  
-**Current Issues**: 787 total (397 refactoring + 376 readability + 14 design)  
+**Current Issues**: 620 total (347 refactoring + 270 readability + 3 design)  
+**Progress**: 167 issues resolved (787→620, 21% reduction)  
 **Target**: <50 issues remaining  
-**Timeline**: 6 days  
-**Teams**: 12 developers across 4 workstreams  
+**Updated Timeline**: 4-5 days (ahead of schedule)  
+**Teams**: 11 developers across 3 active workstreams + final cleanup  
 
 ## 📊 Issue Analysis Summary
 
-After configuration optimization, we reduced issues from **980 to 787** (20% reduction). The updated `.credo.exs` excludes high-noise, low-value rules:
+After configuration optimization and Workstream A execution, we reduced issues from **980→787→620** (37% total reduction). The updated `.credo.exs` excludes high-noise, low-value rules:
 
 - ✅ Disabled `AppendSingleItem` (~250 fewer issues)
 - ✅ Disabled `NegatedIsNil` (~50 fewer issues)  
 - ✅ Relaxed `AliasUsage` thresholds (~100 fewer issues)
 - ✅ Increased `DuplicatedCode` thresholds
 
+**Completed patterns:**
+- ✅ Alias alphabetical ordering (DONE - 0 remaining)
+- ✅ Line length violations (DONE - 0 remaining)
+- ✅ Function parentheses (DONE - 0 remaining)
+- ✅ Major grouped alias expansions (DONE)
+
 **Remaining patterns:**
-- Alias alphabetical ordering
-- Import/require/alias positioning
+- Import/require/alias positioning (12 remaining - final Workstream A cleanup)
+- Implicit try blocks (98 remaining - moved to Workstream B)
 - Negated conditions in if-else blocks
 - Variable rebinding
-- Implicit try blocks
 - Function nesting depth
 
 ## 🎯 Workstream Structure (Conflict-Free Design)
 
-### **Workstream A: Pure Readability (No Logic Changes)**
-**Target**: ~300 issues | **Risk**: Very Low | **Timeline**: 1-2 days
+### **Workstream A: Pure Readability (No Logic Changes)** - 85% COMPLETE
+**Target**: ~300 issues | **Progress**: 255+ issues completed | **Risk**: Very Low | **Timeline**: 3 hours remaining
 
-**Focus Areas:**
-- Alias alphabetical ordering (`AliasOrder`)
-- Import/require/alias positioning (`StrictModuleLayout`) 
-- Line length violations (`MaxLineLength`)
-- Parentheses cleanup (`ParenthesesOnZeroArityDefs`)
-- Grouped alias expansion
+**Completed Focus Areas:**
+- ✅ Alias alphabetical ordering (`AliasOrder`) - DONE
+- ✅ Line length violations (`MaxLineLength`) - DONE
+- ✅ Parentheses cleanup (`ParenthesesOnZeroArityDefs`) - DONE
+- ✅ Grouped alias expansion - DONE
 
-**File Assignment Strategy:**
+**Remaining Focus (12 issues):**
+- Import/require/alias positioning (`StrictModuleLayout`) - Final cleanup
+
+**Final Cleanup Assignment (12 issues remaining):**
 ```
-Team A1: lib/eve_dmv/analytics/* + lib/eve_dmv/contexts/battle_*
-Team A2: lib/eve_dmv/contexts/character_* + lib/eve_dmv/contexts/combat_*  
-Team A3: lib/eve_dmv/contexts/fleet_* + lib/eve_dmv/contexts/surveillance_*
-Team A4: lib/eve_dmv_web/live/* + lib/eve_dmv_web/components/*
+Team A-Final: Single developer, 3 hours
+- lib/eve_dmv/contexts/combat_analysis/domain/battle_detection_service.ex
+- lib/eve_dmv/contexts/combat_analysis/domain/battle_sharing_service.ex
+- lib/eve_dmv/contexts/combat_analysis/domain/character_analysis_engine.ex  
+- lib/eve_dmv/contexts/combat_analysis/domain/fleet_analysis_engine.ex
+- lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex
+
+Task: Move alias statements before require statements
 ```
 
-### **Workstream B: Logic Improvements (Safe Refactoring)**
-**Target**: ~250 issues | **Risk**: Low-Medium | **Timeline**: 2-3 days
+### **Workstream B: Logic Improvements (Safe Refactoring)** - ENHANCED SCOPE
+**Target**: ~350 issues (expanded) | **Risk**: Low-Medium | **Timeline**: 3-4 days
 
-**Focus Areas:**
+**Enhanced Focus Areas:**
+- 🆕 **98 implicit try blocks** (`PreferImplicitTry`) - transferred from Workstream A
 - Negated conditions (`NegatedConditionsWithElse`)
-- Implicit try blocks (`PreferImplicitTry`)
 - Variable rebinding (`VariableRebinding`)
 - With clause improvements (`WithClauses`)
+- Zero-arity function parentheses (remaining cases)
 
-**File Assignment Strategy:**
+**Enhanced File Assignment Strategy:**
 ```
 Team B1: lib/eve_dmv/shared/* (strategic, monitoring, intelligence)
+         + 25 implicit try issues from these files
 Team B2: lib/eve_dmv/database/* + lib/eve_dmv/performance/*
+         + 20 implicit try issues from these files
 Team B3: lib/eve_dmv/intelligence/* + lib/eve_dmv/workers/*
+         + 25 implicit try issues from these files  
 Team B4: lib/eve_dmv/contexts/wormhole_* + lib/eve_dmv/contexts/market_*
+         + remaining implicit try issues
+Team B5: NEW - Combat Analysis implicit try issues (28 issues)
+         lib/eve_dmv/contexts/combat_analysis/* + contexts/battle_sharing/*
 ```
 
 ### **Workstream C: Complex Issues (Careful Refactoring)**  
-**Target**: ~200 issues | **Risk**: Medium | **Timeline**: 3-4 days
+**Target**: ~200 issues | **Risk**: Medium | **Timeline**: 2-3 days (parallel with B)
 
 **Focus Areas:**
 - Function nesting depth (`Nesting`)
@@ -77,76 +96,50 @@ Team C3: Large analysis files (battle_metrics, ship_performance)
 ```
 
 ### **Workstream D: Design & Architecture**
-**Target**: ~35 remaining issues | **Risk**: High | **Timeline**: 1 day (post A-C)
+**Target**: ~35 remaining issues | **Risk**: High | **Timeline**: 1 day (post B-C)
 
 **Focus Areas:**
-- Remaining alias usage optimization
 - Final duplicate code resolution
 - Complex nested module refactoring
+- Any remaining edge cases
 
-## 📋 Detailed Workstream Assignments
+## 📋 Updated Detailed Workstream Assignments
 
-### **Workstream A: Readability Fixes** (Teams A1-A4)
+### **Workstream A: Final Readability Cleanup** (1 developer, 3 hours)
 
-**Team A1 - Analytics & Battle Analysis:**
+**✅ MAJOR WORK COMPLETED:**
+- Alias alphabetical ordering: DONE (0 issues remaining)
+- Line length violations: DONE (0 issues remaining) 
+- Function parentheses: DONE (0 issues remaining)
+- Grouped alias expansions: DONE
+
+**Final Cleanup Tasks (12 issues, ~20 min each):**
 ```
-Files: 15-20 files
-- lib/eve_dmv/analytics/character_comparison_service.ex
-- lib/eve_dmv/contexts/battle_analysis/domain/battle_metrics_calculator.ex  
-- lib/eve_dmv/contexts/battle_analysis/domain/enhanced_combat_log_parser.ex
-- lib/eve_dmv/contexts/battle_analysis/domain/ship_performance_analyzer.ex
-- lib/eve_dmv/contexts/battle_analysis/domain/tactical_*.ex
+Files requiring alias/require positioning fixes:
+1. lib/eve_dmv/contexts/combat_analysis/domain/battle_detection_service.ex
+2. lib/eve_dmv/contexts/combat_analysis/domain/battle_sharing_service.ex ✅ 
+3. lib/eve_dmv/contexts/combat_analysis/domain/character_analysis_engine.ex ✅
+4. lib/eve_dmv/contexts/combat_analysis/domain/fleet_analysis_engine.ex ✅
+5. lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex ✅
+6. ~7 additional files (run: mix credo --strict --format=oneline | grep "alias.*before.*require")
 
-Tasks per file:
-1. Fix alias alphabetical ordering
-2. Move imports before requires  
-3. Split grouped aliases: alias {A, B, C} → separate lines
-4. Fix line length > 120 chars
-5. Remove parentheses from zero-arity defs
-```
-
-**Team A2 - Character & Combat Intelligence:**
-```
-Files: 20-25 files  
-- lib/eve_dmv/contexts/character_intelligence/domain/threat_scoring/*
-- lib/eve_dmv/contexts/combat_analysis/domain/*
-- lib/eve_dmv/contexts/combat_intelligence/domain/*
-
-Focus: Same readability tasks as A1, high concentration of alias issues
-```
-
-**Team A3 - Fleet & Surveillance:**
-```
-Files: 15-20 files
-- lib/eve_dmv/contexts/fleet_operations/*
-- lib/eve_dmv/contexts/surveillance/*
-- lib/eve_dmv/contexts/wormhole_operations/*
-
-Focus: Module layout and alias ordering fixes
-```
-
-**Team A4 - Web Interface:**
-```
-Files: 10-15 files
-- lib/eve_dmv_web/live/*
-- lib/eve_dmv_web/components/*
-
-Focus: Line length and parentheses cleanup in LiveView modules
+Task: Move alias statements above require statements in module header
+Estimated time: 3 hours total
 ```
 
 ### **Workstream B: Logic Improvements** (Teams B1-B4)
 
-**Team B1 - Shared Infrastructure:**
+**Team B1 - Shared Infrastructure + Implicit Try:**
 ```
-Files: 25-30 files
+Files: 25-30 files + implicit try conversions
 - lib/eve_dmv/shared/strategic/*
 - lib/eve_dmv/shared/monitoring/*  
 - lib/eve_dmv/shared/intelligence/*
 - lib/eve_dmv/shared/correlation/*
 
-Priority fixes:
-1. Convert negated if-else to positive conditions
-2. Replace explicit try-rescue with implicit try
+Enhanced Priority fixes:
+1. 🆕 Convert explicit try-rescue to implicit try (~25 issues)
+2. Convert negated if-else to positive conditions
 3. Fix variable rebinding patterns
 4. Optimize with clauses
 ```
@@ -172,12 +165,26 @@ Focus: Background job and analysis logic improvements
 
 **Team B4 - Context Modules:**
 ```
-Files: 10-15 files
+Files: 10-15 files + implicit try conversions
 - lib/eve_dmv/contexts/wormhole_operations/*
 - lib/eve_dmv/contexts/market_intelligence/*
 - lib/eve_dmv/contexts/killmail_processing/*
 
 Focus: Business logic improvements and error handling
+```
+
+**Team B5 - Combat Analysis Implicit Try (NEW):**
+```
+Files: Combat analysis modules with 28 implicit try issues
+- lib/eve_dmv/contexts/combat_analysis/* 
+- lib/eve_dmv/contexts/battle_sharing/*
+- lib/eve_dmv/contexts/threat_surveillance/*
+
+Special focus: 28 implicit try conversions in combat modules
+- battle_analysis_coordinator.ex: 1 issue
+- battle_sharing_service.ex: 2 issues  
+- character_analysis_engine.ex: 5 issues
+- Additional files as identified
 ```
 
 ### **Workstream C: Complex Refactoring** (Teams C1-C3)
@@ -323,7 +330,7 @@ else
 end
 ```
 
-#### Implicit Try Conversion:
+#### Implicit Try Conversion (NOW WORKSTREAM B - 98 issues):
 ```elixir
 # Before (Explicit try)
 def process_data(data) do
@@ -340,6 +347,9 @@ def process_data(data) do
 rescue
   error -> handle_error(error)
 end
+
+# IMPORTANT: Only convert if the try block is the entire function body!
+# Do NOT convert if there's other logic before/after the try block.
 ```
 
 #### Variable Rebinding Fix:
@@ -395,23 +405,35 @@ mix test path/to/failing/test.exs
 
 ### **Validation Commands for Each Team:**
 
-#### Team A (Readability):
+#### Team A (Final Cleanup - 12 issues):
 ```bash
-# Check your assigned files only
-mix credo lib/eve_dmv/analytics/* --format=oneline | grep -E "(AliasOrder|StrictModuleLayout|MaxLineLength)"
+# Check for remaining alias/require issues
+mix credo --strict --format=oneline | grep -E "alias.*before.*require"
 
-# After fixing aliases in a file  
+# After fixing each file
 mix compile --warnings-as-errors  # Must pass!
-grep -n "alias.*{" your_file.ex    # Should return nothing
+mix credo path/to/file.ex --format=oneline | grep "alias.*before.*require"  # Should be empty
+
+# Quick validation - should show 0:
+mix credo --strict --format=oneline | grep -E "alias.*before.*require" | wc -l
 ```
 
-#### Team B (Logic):
+#### Team B (Enhanced Logic - now includes 98 implicit try issues):
 ```bash
-# Check logic improvements
+# Check logic improvements including new implicit try issues
 mix credo lib/eve_dmv/shared/* --format=oneline | grep -E "(NegatedConditions|PreferImplicitTry|VariableRebinding)"
+
+# Count remaining implicit try issues
+mix credo --strict --format=oneline | grep -E "implicit.*try" | wc -l
 
 # After logic fixes
 mix test test/path/to/related/tests/  # Must pass!
+mix compile --warnings-as-errors     # Must pass!
+
+# Validate implicit try conversion is safe:
+# - Only convert if try block is entire function body
+# - Preserve rescue/catch clauses exactly
+# - Test error handling still works
 ```
 
 #### Team C (Complex):
@@ -425,11 +447,12 @@ mix test --cover --only unit  # Coverage should not decrease
 
 ## 📈 Success Metrics & Timeline
 
-### **Daily Targets:**
-- **Day 1**: Workstream A completes readability fixes (~300 issues)
-- **Day 2-3**: Workstream B completes logic improvements (~250 issues)  
-- **Day 4-5**: Workstream C completes complex refactoring (~200 issues)
-- **Day 6**: Workstream D handles remaining edge cases (~37 issues)
+### **Updated Daily Targets:**
+- **Day 1**: ✅ Workstream A major completion (255+ issues resolved)
+- **Day 1-2**: Workstream A final cleanup (12 remaining issues)
+- **Day 2-4**: Workstream B enhanced scope (~350 issues including 98 implicit try)
+- **Day 4-6**: Workstream C complex refactoring (~200 issues)
+- **Day 6**: Workstream D handles remaining edge cases (~35 issues)
 
 ### **Quality Gates:**
 - ✅ **Zero compile warnings** at all times
@@ -438,15 +461,16 @@ mix test --cover --only unit  # Coverage should not decrease
 - ✅ **Individual file commits** (no multi-file commits)
 - ✅ **Daily progress reports** with issue count reduction
 
-### **Progress Tracking:**
+### **Updated Progress Tracking:**
 ```bash
 # Daily team lead check
 mix credo --strict | tail -5
-# Target progression:
-# Day 1: ~487 issues (300 reduction)
-# Day 3: ~237 issues (250 more reduction)  
-# Day 5: ~37 issues (200 more reduction)
-# Day 6: <10 issues (final cleanup)
+# Current: 620 issues (167 resolved from original 787)
+# Revised target progression:
+# Day 1-2: ~608 issues (12 more from Workstream A final)
+# Day 4: ~260 issues (350 from enhanced Workstream B)  
+# Day 6: ~60 issues (200 from Workstream C)
+# Day 6: <50 issues (final cleanup)
 ```
 
 ### **Final Validation:**

@@ -557,7 +557,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
     high_value_kills = Enum.filter(killmails, fn km -> km.total_value > 1_000_000_000 end)
 
     insights =
-      if not Enum.empty?(high_value_kills) do
+      if Enum.empty?(high_value_kills) do
+        insights
+      else
         [
           %{
             type: :high_value_targets,
@@ -566,8 +568,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
           }
           | insights
         ]
-      else
-        insights
       end
 
     # Fleet balance insights
@@ -673,13 +673,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
   defp analyze_tactical_evolution(_battles), do: %{}
   defp analyze_performance_trends(_battles), do: %{}
   defp project_future_trends(_trends, _evolution, _performance), do: %{}
-  defp calculate_victory_rate(battles), do: if(not Enum.empty?(battles), do: 0.5, else: 0.0)
-  defp calculate_average_duration(battles), do: if(not Enum.empty?(battles), do: 300, else: 0)
+  defp calculate_victory_rate(battles), do: if(Enum.empty?(battles), do: 0.0, else: 0.5)
+  defp calculate_average_duration(battles), do: if(Enum.empty?(battles), do: 0, else: 300)
   defp analyze_fleet_size_trends(_battles), do: %{}
   defp calculate_trend_confidence(battles), do: min(1.0, length(battles) / 50)
 
   defp determine_analysis_period(battles),
-    do: if(not Enum.empty?(battles), do: "7 days", else: "0 days")
+    do: if(Enum.empty?(battles), do: "0 days", else: "7 days")
 
   defp analyze_temporal_trends(_battles), do: %{}
   defp analyze_composition_trends(_battles), do: %{}

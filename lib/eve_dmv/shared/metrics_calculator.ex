@@ -28,10 +28,10 @@ defmodule EveDmv.Shared.MetricsCalculator do
   """
   def calculate_current_metrics(state) do
     avg_time =
-      if not Enum.empty?(state.recent_analysis_times) do
-        Enum.sum(state.recent_analysis_times) / length(state.recent_analysis_times)
-      else
+      if Enum.empty?(state.recent_analysis_times) do
         0.0
+      else
+        Enum.sum(state.recent_analysis_times) / length(state.recent_analysis_times)
       end
 
     %{state.metrics | average_analysis_time_ms: Float.round(avg_time, 2)}
@@ -54,10 +54,10 @@ defmodule EveDmv.Shared.MetricsCalculator do
       0.0
   """
   def calculate_average(values) when is_list(values) do
-    if not Enum.empty?(values) do
-      Float.round(Enum.sum(values) / length(values), 2)
-    else
+    if Enum.empty?(values) do
       0.0
+    else
+      Float.round(Enum.sum(values) / length(values), 2)
     end
   end
 

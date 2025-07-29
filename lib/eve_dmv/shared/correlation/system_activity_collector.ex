@@ -192,22 +192,20 @@ defmodule EveDmv.Shared.Correlation.SystemActivityCollector do
   # Private functions
 
   defp get_system_killmails(system_id, since) do
-    try do
-      killmails =
-        Api.read!(KillmailRaw,
-          filter: [
-            solar_system_id: system_id,
-            timestamp: [greater_than: since]
-          ],
-          limit: 1000
-        )
+    killmails =
+      Api.read!(KillmailRaw,
+        filter: [
+          solar_system_id: system_id,
+          timestamp: [greater_than: since]
+        ],
+        limit: 1000
+      )
 
-      {:ok, killmails}
-    rescue
-      e ->
-        Logger.error("Failed to fetch killmails for system #{system_id}: #{inspect(e)}")
-        {:error, :fetch_failed}
-    end
+    {:ok, killmails}
+  rescue
+    e ->
+      Logger.error("Failed to fetch killmails for system #{system_id}: #{inspect(e)}")
+      {:error, :fetch_failed}
   end
 
   defp classify_activity_type(killmail) do
@@ -593,9 +591,9 @@ defmodule EveDmv.Shared.Correlation.SystemActivityCollector do
         as_victim: victim_count,
         as_attacker: attacker_count,
         survival_rate:
-          if(not Enum.empty?(pilot_activities),
-            do: attacker_count / length(pilot_activities),
-            else: 0
+          if(Enum.empty?(pilot_activities),
+            do: 0,
+            else: attacker_count / length(pilot_activities)
           ),
         activity_span_hours:
           calculate_time_span_hours(Enum.map(pilot_activities, & &1.timestamp)),

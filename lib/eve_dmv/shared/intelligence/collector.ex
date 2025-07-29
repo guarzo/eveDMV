@@ -184,35 +184,33 @@ defmodule EveDmv.Shared.Intelligence.Collector do
   end
 
   defp collect_killmail_data(system_ids, since) do
-    try do
-      # Query actual killmail data
-      killmails =
-        system_ids
-        |> Enum.flat_map(fn system_id ->
-          case Api.read!(KillmailRaw,
-                 filter: [
-                   solar_system_id: system_id,
-                   occurred_at: [greater_than: since]
-                 ],
-                 limit: 100
-               ) do
-            {:ok, kills} -> kills
-            _ -> []
-          end
-        end)
+    # Query actual killmail data
+    killmails =
+      system_ids
+      |> Enum.flat_map(fn system_id ->
+        case Api.read!(KillmailRaw,
+               filter: [
+                 solar_system_id: system_id,
+                 occurred_at: [greater_than: since]
+               ],
+               limit: 100
+             ) do
+          {:ok, kills} -> kills
+          _ -> []
+        end
+      end)
 
-      {:ok,
-       %{
-         killmails: killmails,
-         count: length(killmails),
-         systems_queried: system_ids,
-         time_range: %{since: since, until: DateTime.utc_now()}
-       }}
-    rescue
-      error ->
-        Logger.error("Failed to collect killmail data: #{inspect(error)}")
-        {:error, :collection_failed}
-    end
+    {:ok,
+     %{
+       killmails: killmails,
+       count: length(killmails),
+       systems_queried: system_ids,
+       time_range: %{since: since, until: DateTime.utc_now()}
+     }}
+  rescue
+    error ->
+      Logger.error("Failed to collect killmail data: #{inspect(error)}")
+      {:error, :collection_failed}
   end
 
   # Helper functions
