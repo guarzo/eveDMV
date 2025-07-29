@@ -31,8 +31,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
       killmails
       |> Enum.flat_map(&Core.extract_participants_from_killmail/1)
       |> Enum.uniq_by(& &1.character_id)
-      |> Enum.map(&Core.enrich_participant_data/1)
-      |> Enum.map(&Core.calculate_participant_metrics/1)
+      |> Enum.map(fn participant ->
+        participant
+        |> Core.enrich_participant_data()
+        |> Core.calculate_participant_metrics()
+      end)
 
     %{
       participants: participants,
