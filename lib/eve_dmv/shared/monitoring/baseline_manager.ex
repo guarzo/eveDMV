@@ -256,12 +256,12 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
       total_participants: length(participants),
       unique_participants: length(unique_participants),
       participation_ratio:
-        if(not Enum.empty?(participants),
-          do: length(unique_participants) / length(participants),
-          else: 0
+        if(Enum.empty?(participants),
+          do: 0,
+          else: length(unique_participants) / length(participants)
         ),
       average_participants_per_kill:
-        if(not Enum.empty?(killmails), do: length(participants) / length(killmails), else: 0)
+        if(Enum.empty?(killmails), do: 0, else: length(participants) / length(killmails))
     }
   end
 
@@ -329,9 +329,9 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
         clustering_detected: not Enum.empty?(clusters),
         cluster_count: length(clusters),
         average_cluster_size:
-          if(not Enum.empty?(clusters),
-            do: Enum.sum(Enum.map(clusters, &length/1)) / length(clusters),
-            else: 0
+          if(Enum.empty?(clusters),
+            do: 0,
+            else: Enum.sum(Enum.map(clusters, &length/1)) / length(clusters)
           )
       }
     end
@@ -795,9 +795,9 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
 
   defp identify_missing_components(activity_ready, threat_ready, thresholds_set) do
     []
-    |> then(fn missing -> if !activity_ready, do: missing ++ [:activity_baseline], else: missing end)
-    |> then(fn missing -> if !threat_ready, do: missing ++ [:threat_baseline], else: missing end)
-    |> then(fn missing -> if !thresholds_set, do: missing ++ [:anomaly_thresholds], else: missing end)
+    |> then(fn missing -> if activity_ready, do: missing, else: missing ++ [:activity_baseline] end)
+    |> then(fn missing -> if threat_ready, do: missing, else: missing ++ [:threat_baseline] end)
+    |> then(fn missing -> if thresholds_set, do: missing, else: missing ++ [:anomaly_thresholds] end)
   end
 
   defp validate_baseline_quality(baseline_metrics, confidence_threshold) do
@@ -830,17 +830,17 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
         end
       end)
       |> then(fn recommendations ->
-        if !baseline_metrics.completeness.is_complete do
-          recommendations ++ ["Ensure all baseline components are collected"]
-        else
+        if baseline_metrics.completeness.is_complete do
           recommendations
+        else
+          recommendations ++ ["Ensure all baseline components are collected"]
         end
       end)
       |> then(fn recommendations ->
-        if !baseline_metrics.anomaly_detection_readiness.ready do
-          recommendations ++ ["Configure anomaly detection thresholds"]
-        else
+        if baseline_metrics.anomaly_detection_readiness.ready do
           recommendations
+        else
+          recommendations ++ ["Configure anomaly detection thresholds"]
         end
       end)
 
