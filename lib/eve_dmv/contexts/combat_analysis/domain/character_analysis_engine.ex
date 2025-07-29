@@ -128,126 +128,116 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CharacterAnalysisEngine do
 
   @impl GenServer
   def handle_cast({:process_killmail, killmail}, state) do
-    try do
-      # Update character analysis for all involved characters
-      involved_characters = extract_character_ids_from_killmail(killmail)
+    # Update character analysis for all involved characters
+    involved_characters = extract_character_ids_from_killmail(killmail)
 
-      Enum.each(involved_characters, fn character_id ->
-        invalidate_character_cache(character_id)
-      end)
+    Enum.each(involved_characters, fn character_id ->
+      invalidate_character_cache(character_id)
+    end)
 
-      {:noreply, %{state | killmails_processed: state.killmails_processed + 1}}
-    rescue
-      error ->
-        Logger.error("Failed to process killmail for character analysis: #{inspect(error)}")
-        {:noreply, state}
-    end
+    {:noreply, %{state | killmails_processed: state.killmails_processed + 1}}
+  rescue
+    error ->
+      Logger.error("Failed to process killmail for character analysis: #{inspect(error)}")
+      {:noreply, state}
   end
 
   # Private functions
 
   defp perform_combat_patterns_analysis(character_id, options) do
-    try do
-      time_range = Keyword.get(options, :time_range, :last_30_days)
-      cache_key = {:combat_patterns, character_id, time_range}
+    time_range = Keyword.get(options, :time_range, :last_30_days)
+    cache_key = {:combat_patterns, character_id, time_range}
 
-      case UnifiedCache.get_combat_analysis(cache_key) do
-        {:ok, cached_analysis} ->
-          {:ok, cached_analysis}
+    case UnifiedCache.get_combat_analysis(cache_key) do
+      {:ok, cached_analysis} ->
+        {:ok, cached_analysis}
 
-        {:error, :not_found} ->
-          analysis = %{
-            character_id: character_id,
-            analyzed_at: DateTime.utc_now(),
-            time_range: time_range,
-            combat_statistics: get_combat_statistics(character_id, time_range),
-            engagement_patterns: analyze_engagement_patterns(character_id, time_range),
-            tactical_behavior: analyze_tactical_behavior(character_id, time_range),
-            fleet_participation: analyze_fleet_participation(character_id, time_range),
-            risk_assessment: assess_combat_risk_taking(character_id, time_range),
-            effectiveness_metrics: calculate_combat_effectiveness(character_id, time_range),
-            behavioral_analysis: analyze_behavioral_patterns(character_id, time_range),
-            predictions: generate_behavior_predictions(character_id, time_range)
-          }
+      {:error, :not_found} ->
+        analysis = %{
+          character_id: character_id,
+          analyzed_at: DateTime.utc_now(),
+          time_range: time_range,
+          combat_statistics: get_combat_statistics(character_id, time_range),
+          engagement_patterns: analyze_engagement_patterns(character_id, time_range),
+          tactical_behavior: analyze_tactical_behavior(character_id, time_range),
+          fleet_participation: analyze_fleet_participation(character_id, time_range),
+          risk_assessment: assess_combat_risk_taking(character_id, time_range),
+          effectiveness_metrics: calculate_combat_effectiveness(character_id, time_range),
+          behavioral_analysis: analyze_behavioral_patterns(character_id, time_range),
+          predictions: generate_behavior_predictions(character_id, time_range)
+        }
 
-          # Cache the analysis
-          # 30 minutes
-          UnifiedCache.cache_combat_analysis(cache_key, analysis, 1800)
-          {:ok, analysis}
-      end
-    rescue
-      error ->
-        Logger.error("Failed to analyze combat patterns: #{inspect(error)}")
-        {:error, :analysis_failed}
+        # Cache the analysis
+        # 30 minutes
+        UnifiedCache.cache_combat_analysis(cache_key, analysis, 1800)
+        {:ok, analysis}
     end
+  rescue
+    error ->
+      Logger.error("Failed to analyze combat patterns: #{inspect(error)}")
+      {:error, :analysis_failed}
   end
 
   defp perform_character_threat_assessment(character_id, options) do
-    try do
-      time_range = Keyword.get(options, :time_range, :last_30_days)
+    time_range = Keyword.get(options, :time_range, :last_30_days)
 
-      threat_assessment = %{
-        character_id: character_id,
-        assessed_at: DateTime.utc_now(),
-        time_range: time_range,
-        threat_score: calculate_threat_score(character_id, time_range),
-        threat_level: determine_threat_level(character_id, time_range),
-        threat_factors: identify_threat_factors(character_id, time_range),
-        activity_intensity: calculate_activity_intensity(character_id, time_range),
-        combat_aggression: assess_combat_aggression(character_id, time_range),
-        unpredictability: assess_unpredictability(character_id, time_range),
-        alliance_influence: assess_alliance_influence(character_id),
-        recommendations: generate_threat_recommendations(character_id, time_range)
-      }
+    threat_assessment = %{
+      character_id: character_id,
+      assessed_at: DateTime.utc_now(),
+      time_range: time_range,
+      threat_score: calculate_threat_score(character_id, time_range),
+      threat_level: determine_threat_level(character_id, time_range),
+      threat_factors: identify_threat_factors(character_id, time_range),
+      activity_intensity: calculate_activity_intensity(character_id, time_range),
+      combat_aggression: assess_combat_aggression(character_id, time_range),
+      unpredictability: assess_unpredictability(character_id, time_range),
+      alliance_influence: assess_alliance_influence(character_id),
+      recommendations: generate_threat_recommendations(character_id, time_range)
+    }
 
-      {:ok, threat_assessment}
-    rescue
-      error ->
-        Logger.error("Failed to assess character threat: #{inspect(error)}")
-        {:error, :assessment_failed}
-    end
+    {:ok, threat_assessment}
+  rescue
+    error ->
+      Logger.error("Failed to assess character threat: #{inspect(error)}")
+      {:error, :assessment_failed}
   end
 
   defp perform_ship_preferences_analysis(character_id, options) do
-    try do
-      time_range = Keyword.get(options, :time_range, :last_90_days)
+    time_range = Keyword.get(options, :time_range, :last_90_days)
 
-      preferences = %{
-        character_id: character_id,
-        analyzed_at: DateTime.utc_now(),
-        time_range: time_range,
-        ship_usage: analyze_ship_usage_patterns(character_id, time_range),
-        preferred_ships: identify_preferred_ships(character_id, time_range)
-      }
+    preferences = %{
+      character_id: character_id,
+      analyzed_at: DateTime.utc_now(),
+      time_range: time_range,
+      ship_usage: analyze_ship_usage_patterns(character_id, time_range),
+      preferred_ships: identify_preferred_ships(character_id, time_range)
+    }
 
-      {:ok, preferences}
-    rescue
-      error ->
-        Logger.error("Failed to analyze ship preferences: #{inspect(error)}")
-        {:error, :analysis_failed}
-    end
+    {:ok, preferences}
+  rescue
+    error ->
+      Logger.error("Failed to analyze ship preferences: #{inspect(error)}")
+      {:error, :analysis_failed}
   end
 
   defp perform_activity_patterns_analysis(character_id, options) do
-    try do
-      time_range = Keyword.get(options, :time_range, :last_90_days)
+    time_range = Keyword.get(options, :time_range, :last_90_days)
 
-      patterns = %{
-        character_id: character_id,
-        analyzed_at: DateTime.utc_now(),
-        time_range: time_range,
-        engagement_frequency: calculate_engagement_frequency(character_id, time_range),
-        activity_intensity: calculate_activity_intensity(character_id, time_range),
-        total_kills: get_character_kills_count(character_id, time_range),
-        total_losses: get_character_losses_count(character_id, time_range)
-      }
+    patterns = %{
+      character_id: character_id,
+      analyzed_at: DateTime.utc_now(),
+      time_range: time_range,
+      engagement_frequency: calculate_engagement_frequency(character_id, time_range),
+      activity_intensity: calculate_activity_intensity(character_id, time_range),
+      total_kills: get_character_kills_count(character_id, time_range),
+      total_losses: get_character_losses_count(character_id, time_range)
+    }
 
-      {:ok, patterns}
-    rescue
-      error ->
-        Logger.error("Failed to analyze activity patterns: #{inspect(error)}")
-        {:error, :analysis_failed}
-    end
+    {:ok, patterns}
+  rescue
+    error ->
+      Logger.error("Failed to analyze activity patterns: #{inspect(error)}")
+      {:error, :analysis_failed}
   end
 
   # Analysis helper functions

@@ -5,10 +5,11 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleAnalysisCoordinator do
   """
 
   use GenServer
-  require Logger
 
   alias EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService
   alias EveDmv.Shared.Infrastructure.UnifiedCache
+
+  require Logger
 
   # Public API
 
@@ -118,29 +119,27 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleAnalysisCoordinator do
   # Private functions
 
   defp perform_battle_analysis(battle_data, options) do
-    try do
-      analysis_depth = Keyword.get(options, :depth, :comprehensive)
+    analysis_depth = Keyword.get(options, :depth, :comprehensive)
 
-      analysis = %{
-        battle_id: battle_data[:id] || battle_data.id,
-        analyzed_at: DateTime.utc_now(),
-        analysis_depth: analysis_depth,
-        battle_overview: generate_battle_overview(battle_data),
-        timeline: construct_battle_timeline(battle_data),
-        tactical_phases: identify_tactical_phases(battle_data),
-        fleet_analysis: analyze_fleet_composition(battle_data),
-        effectiveness_metrics: calculate_battle_effectiveness(battle_data),
-        key_moments: identify_key_moments(battle_data),
-        outcome_analysis: analyze_battle_outcome(battle_data),
-        recommendations: generate_tactical_recommendations(battle_data)
-      }
+    analysis = %{
+      battle_id: battle_data[:id] || battle_data.id,
+      analyzed_at: DateTime.utc_now(),
+      analysis_depth: analysis_depth,
+      battle_overview: generate_battle_overview(battle_data),
+      timeline: construct_battle_timeline(battle_data),
+      tactical_phases: identify_tactical_phases(battle_data),
+      fleet_analysis: analyze_fleet_composition(battle_data),
+      effectiveness_metrics: calculate_battle_effectiveness(battle_data),
+      key_moments: identify_key_moments(battle_data),
+      outcome_analysis: analyze_battle_outcome(battle_data),
+      recommendations: generate_tactical_recommendations(battle_data)
+    }
 
-      {:ok, analysis}
-    rescue
-      error ->
-        Logger.error("Failed to perform battle analysis: #{inspect(error)}")
-        {:error, :analysis_failed}
-    end
+    {:ok, analysis}
+  rescue
+    error ->
+      Logger.error("Failed to perform battle analysis: #{inspect(error)}")
+      {:error, :analysis_failed}
   end
 
   defp get_cached_or_generate_timeline(battle_id) do

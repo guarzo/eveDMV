@@ -112,76 +112,72 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleSharingService do
   # Private functions
 
   defp create_battle_report_impl(battle_id, creator_id, options) do
-    try do
-      # Get battle data
-      case get_battle_data(battle_id) do
-        {:ok, battle_data} ->
-          report_data = %{
-            id: generate_report_id(),
-            battle_id: battle_id,
-            creator_id: creator_id,
-            title: Keyword.get(options, :title, generate_default_title(battle_data)),
-            description: Keyword.get(options, :description, ""),
-            video_urls: Keyword.get(options, :video_urls, []),
-            visibility: Keyword.get(options, :visibility, :public),
-            created_at: DateTime.utc_now(),
-            rating: 0.0,
-            rating_count: 0,
-            view_count: 0,
-            share_url: generate_share_url(battle_id)
+    # Get battle data
+    case get_battle_data(battle_id) do
+      {:ok, battle_data} ->
+        report_data = %{
+          id: generate_report_id(),
+          battle_id: battle_id,
+          creator_id: creator_id,
+          title: Keyword.get(options, :title, generate_default_title(battle_data)),
+          description: Keyword.get(options, :description, ""),
+          video_urls: Keyword.get(options, :video_urls, []),
+          visibility: Keyword.get(options, :visibility, :public),
+          created_at: DateTime.utc_now(),
+          rating: 0.0,
+          rating_count: 0,
+          view_count: 0,
+          share_url: generate_share_url(battle_id)
+        }
+
+        # Cache the report
+        cache_key = {:battle_report, report_data.id}
+        # 1 hour
+        UnifiedCache.cache_combat_analysis(cache_key, report_data, 3600)
+
+        {:ok, report_data}
+
+      error ->
+        error
+    end
+  rescue
+    e ->
+      Logger.error("Failed to create battle report: #{inspect(e)}")
+      {:error, :creation_failed}
+  end
+
+  defp rate_battle_report_impl(report_id, _user_id, rating) do
+    # Validate rating
+    if rating < 1 or rating > 5 do
+      {:error, :invalid_rating}
+    else
+      case get_battle_report(report_id) do
+        {:ok, report} ->
+          # Update rating (simplified implementation)
+          new_rating_count = report.rating_count + 1
+          new_total_rating = report.rating * report.rating_count + rating
+          new_average_rating = new_total_rating / new_rating_count
+
+          updated_report = %{
+            report
+            | rating: Float.round(new_average_rating, 2),
+              rating_count: new_rating_count
           }
 
-          # Cache the report
-          cache_key = {:battle_report, report_data.id}
-          # 1 hour
-          UnifiedCache.cache_combat_analysis(cache_key, report_data, 3600)
+          # Update cache
+          cache_key = {:battle_report, report_id}
+          UnifiedCache.cache_combat_analysis(cache_key, updated_report, 3600)
 
-          {:ok, report_data}
+          {:ok, updated_report}
 
         error ->
           error
       end
-    rescue
-      e ->
-        Logger.error("Failed to create battle report: #{inspect(e)}")
-        {:error, :creation_failed}
     end
-  end
-
-  defp rate_battle_report_impl(report_id, _user_id, rating) do
-    try do
-      # Validate rating
-      if rating < 1 or rating > 5 do
-        {:error, :invalid_rating}
-      else
-        case get_battle_report(report_id) do
-          {:ok, report} ->
-            # Update rating (simplified implementation)
-            new_rating_count = report.rating_count + 1
-            new_total_rating = report.rating * report.rating_count + rating
-            new_average_rating = new_total_rating / new_rating_count
-
-            updated_report = %{
-              report
-              | rating: Float.round(new_average_rating, 2),
-                rating_count: new_rating_count
-            }
-
-            # Update cache
-            cache_key = {:battle_report, report_id}
-            UnifiedCache.cache_combat_analysis(cache_key, updated_report, 3600)
-
-            {:ok, updated_report}
-
-          error ->
-            error
-        end
-      end
-    rescue
-      e ->
-        Logger.error("Failed to rate battle report: #{inspect(e)}")
-        {:error, :rating_failed}
-    end
+  rescue
+    e ->
+      Logger.error("Failed to rate battle report: #{inspect(e)}")
+      {:error, :rating_failed}
   end
 
   defp should_auto_share_battle?(battle_id) do
@@ -225,7 +221,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleSharingService do
     end
   end
 
-  defp generate_report_id() do
+  defp generate_report_id do
     # Generate a proper UUID for battle report ID
     timestamp = System.system_time(:second)
     uuid_bytes = :crypto.strong_rand_bytes(8)
