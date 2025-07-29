@@ -536,39 +536,40 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
   end
 
   defp identify_harassment_indicators(metrics) do
-    indicators = []
-
-    # Frequent attacks
-    indicators =
+    []
+    |> then(fn indicators ->
+      # Frequent attacks
       if metrics.timing_patterns.attack_frequency > 0.5 do
         indicators ++ [{:high_frequency_attacks, metrics.timing_patterns.attack_frequency}]
       else
         indicators
       end
-
-    # Multiple targets
-    indicators =
+    end)
+    |> then(fn indicators ->
+      # Multiple targets
       if metrics.target_distribution.unique_targets >= 5 do
         indicators ++ [{:multiple_targets, metrics.target_distribution.unique_targets}]
       else
         indicators
       end
-
-    # Small gang activity
-    indicators =
+    end)
+    |> then(fn indicators ->
+      # Small gang activity
       if metrics.hit_and_run_attacks.average_gang_size <= 10 &&
            metrics.hit_and_run_attacks.count >= 5 do
         indicators ++ [{:small_gang_activity, metrics.hit_and_run_attacks.count}]
       else
         indicators
       end
-
-    # High effectiveness
-    if metrics.effectiveness.success_rate > 0.7 do
-      indicators ++ [{:effective_harassment, metrics.effectiveness.success_rate}]
-    else
-      indicators
-    end
+    end)
+    |> then(fn indicators ->
+      # High effectiveness
+      if metrics.effectiveness.success_rate > 0.7 do
+        indicators ++ [{:effective_harassment, metrics.effectiveness.success_rate}]
+      else
+        indicators
+      end
+    end)
   end
 
   defp describe_harassment_pattern(indicators, _metrics) do
@@ -747,37 +748,37 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
   end
 
   defp identify_recon_indicators(metrics) do
-    indicators = []
+    base_indicators = []
 
     # Scout activity
-    indicators =
+    scout_indicators =
       if metrics.scout_losses.count >= 3 do
-        indicators ++ [{:scout_activity, metrics.scout_losses.count}]
+        base_indicators ++ [{:scout_activity, metrics.scout_losses.count}]
       else
-        indicators
+        base_indicators
       end
 
     # System exploration
-    indicators =
+    exploration_indicators =
       if metrics.exploration_patterns.systems_explored >= 5 do
-        indicators ++ [{:systematic_exploration, metrics.exploration_patterns.systems_explored}]
+        scout_indicators ++ [{:systematic_exploration, metrics.exploration_patterns.systems_explored}]
       else
-        indicators
+        scout_indicators
       end
 
     # Intelligence gathering
-    indicators =
+    intelligence_indicators =
       if metrics.intelligence_gathering.intelligence_indicators do
-        indicators ++ [{:intelligence_collection, metrics.intelligence_gathering.probe_kills}]
+        exploration_indicators ++ [{:intelligence_collection, metrics.intelligence_gathering.probe_kills}]
       else
-        indicators
+        exploration_indicators
       end
 
     # Coverage
     if metrics.coverage_analysis.coverage_ratio > 0.5 do
-      indicators ++ [{:broad_coverage, metrics.coverage_analysis.coverage_ratio}]
+      intelligence_indicators ++ [{:broad_coverage, metrics.coverage_analysis.coverage_ratio}]
     else
-      indicators
+      intelligence_indicators
     end
   end
 
@@ -1029,38 +1030,38 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
   end
 
   defp identify_disruption_indicators(metrics) do
-    indicators = []
+    base_indicators = []
 
     # Hauler interdiction
-    indicators =
+    interdiction_indicators =
       if metrics.hauler_interdiction.count >= 5 do
-        indicators ++ [{:active_interdiction, metrics.hauler_interdiction.count}]
+        base_indicators ++ [{:active_interdiction, metrics.hauler_interdiction.count}]
       else
-        indicators
+        base_indicators
       end
 
     # High cargo value
-    indicators =
+    value_indicators =
       if metrics.hauler_interdiction.cargo_value_destroyed > 1_000_000_000 do
-        indicators ++
+        interdiction_indicators ++
           [{:high_value_disruption, metrics.hauler_interdiction.cargo_value_destroyed}]
       else
-        indicators
+        interdiction_indicators
       end
 
     # Route coverage
-    indicators =
+    route_indicators =
       if metrics.route_disruption.disruption_coverage > 0.3 do
-        indicators ++ [{:route_coverage, metrics.route_disruption.disruption_coverage}]
+        value_indicators ++ [{:route_coverage, metrics.route_disruption.disruption_coverage}]
       else
-        indicators
+        value_indicators
       end
 
     # Focused disruption
     if metrics.effectiveness.focus_level in [:highly_focused, :focused] do
-      indicators ++ [{:focused_campaign, metrics.effectiveness.focus_level}]
+      route_indicators ++ [{:focused_campaign, metrics.effectiveness.focus_level}]
     else
-      indicators
+      route_indicators
     end
   end
 
@@ -1428,37 +1429,37 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
   end
 
   defp identify_preparation_indicators(metrics) do
-    indicators = []
+    base_indicators = []
 
     # Force buildup
-    indicators =
+    buildup_indicators =
       if metrics.force_buildup.force_trend in [:rapid_buildup, :steady_buildup] do
-        indicators ++ [{:force_buildup, metrics.force_buildup.buildup_rate}]
+        base_indicators ++ [{:force_buildup, metrics.force_buildup.buildup_rate}]
       else
-        indicators
+        base_indicators
       end
 
     # Staging activity
-    indicators =
+    staging_indicators =
       if metrics.staging_activity.concentration_level > 0.3 do
-        indicators ++ [{:staging_concentration, metrics.staging_activity.concentration_level}]
+        buildup_indicators ++ [{:staging_concentration, metrics.staging_activity.concentration_level}]
       else
-        indicators
+        buildup_indicators
       end
 
     # Combat readiness
-    indicators =
+    readiness_indicators =
       if metrics.combat_readiness.combat_ship_ratio > 0.5 do
-        indicators ++ [{:combat_ready, metrics.combat_readiness.combat_ship_ratio}]
+        staging_indicators ++ [{:combat_ready, metrics.combat_readiness.combat_ship_ratio}]
       else
-        indicators
+        staging_indicators
       end
 
     # Coordination
     if metrics.coordination_indicators.coordination_score > 0.5 do
-      indicators ++ [{:coordinated_activity, metrics.coordination_indicators.coordination_score}]
+      readiness_indicators ++ [{:coordinated_activity, metrics.coordination_indicators.coordination_score}]
     else
-      indicators
+      readiness_indicators
     end
   end
 

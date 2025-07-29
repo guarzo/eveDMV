@@ -373,13 +373,13 @@ defmodule EveDmvWeb.SystemActivityLive do
   end
 
   defp classify_system_activity(killmails) do
-    classifications = []
+    base_classifications = []
 
     # High value activity
     high_value_kills = Enum.count(killmails, fn km -> (km.zkb_total_value || 0) > 100_000_000 end)
 
-    classifications =
-      if high_value_kills > 0, do: ["High Value Targets" | classifications], else: classifications
+    value_classifications =
+      if high_value_kills > 0, do: ["High Value Targets" | base_classifications], else: base_classifications
 
     # Capital activity
     capital_kills =
@@ -388,21 +388,21 @@ defmodule EveDmvWeb.SystemActivityLive do
         ship_class in [:dreadnought, :carrier, :supercarrier, :titan]
       end)
 
-    classifications =
-      if capital_kills > 0, do: ["Capital Warfare" | classifications], else: classifications
+    capital_classifications =
+      if capital_kills > 0, do: ["Capital Warfare" | value_classifications], else: value_classifications
 
     # Gang activity (multiple attackers)
     gang_kills = Enum.count(killmails, fn km -> length(km.attackers) > 5 end)
     total_kills = length(killmails)
 
-    classifications =
+    final_classifications =
       if gang_kills / total_kills > 0.5 do
-        ["Fleet Operations" | classifications]
+        ["Fleet Operations" | capital_classifications]
       else
-        classifications
+        capital_classifications
       end
 
-    classifications
+    final_classifications
   end
 
   defp calculate_peak_hours(killmails) do

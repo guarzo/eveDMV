@@ -329,9 +329,8 @@ defmodule EveDmv.Shared.Strategic.OpportunityIdentifier do
   end
 
   defp identify_risk_factors(opportunity) do
-    factors = []
-
-    factors =
+    []
+    |> then(fn factors ->
       case Map.get(opportunity, :type) do
         :contested_control -> factors ++ [:active_competition]
         :supply_disruption -> factors ++ [:retaliation_risk]
@@ -339,15 +338,14 @@ defmodule EveDmv.Shared.Strategic.OpportunityIdentifier do
         :defensive_weakness -> factors ++ [:window_closing]
         _ -> factors
       end
-
-    factors =
+    end)
+    |> then(fn factors ->
       if Map.get(opportunity, :risk_level) == :high do
         factors ++ [:high_stakes]
       else
         factors
       end
-
-    factors
+    end)
   end
 
   defp suggest_risk_mitigation(risk_level, category) do
@@ -520,28 +518,29 @@ defmodule EveDmv.Shared.Strategic.OpportunityIdentifier do
   end
 
   defp identify_key_advantages(opportunity) do
-    advantages = []
-
     advantages =
-      if opportunity.risk_assessment.risk_level == :low do
-        advantages ++ ["Low risk profile"]
-      else
-        advantages
-      end
-
-    advantages =
-      if opportunity.viability_score > 0.8 do
-        advantages ++ ["High success probability"]
-      else
-        advantages
-      end
-
-    advantages =
-      if opportunity.timing_assessment.urgency == :low do
-        advantages ++ ["Flexible timing"]
-      else
-        advantages
-      end
+      []
+      |> then(fn advantages ->
+        if opportunity.risk_assessment.risk_level == :low do
+          advantages ++ ["Low risk profile"]
+        else
+          advantages
+        end
+      end)
+      |> then(fn advantages ->
+        if opportunity.viability_score > 0.8 do
+          advantages ++ ["High success probability"]
+        else
+          advantages
+        end
+      end)
+      |> then(fn advantages ->
+        if opportunity.timing_assessment.urgency == :low do
+          advantages ++ ["Flexible timing"]
+        else
+          advantages
+        end
+      end)
 
     if Enum.empty?(advantages) do
       ["Strategic value"]
