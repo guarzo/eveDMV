@@ -728,53 +728,55 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
 
   # Generate capabilities based on tactical preferences data
   defp generate_capabilities_from_data(tactical_prefs) do
-    capabilities = []
-
-    capabilities =
+    []
+    |> then(fn capabilities ->
       if Map.get(tactical_prefs, :combat_efficiency, 0) > 80 do
         ["High combat effectiveness" | capabilities]
       else
         capabilities
       end
-
-    capabilities =
+    end)
+    |> then(fn capabilities ->
       case Map.get(tactical_prefs, :activity_level) do
         "High Activity" -> ["Frequent operations" | capabilities]
         "Moderate Activity" -> ["Regular operations" | capabilities]
         _ -> capabilities
       end
-
-    capabilities =
+    end)
+    |> then(fn capabilities ->
       if length(Map.get(tactical_prefs, :preferred_ships, [])) > 2 do
         ["Diverse ship usage" | capabilities]
       else
         ["Focused ship preferences" | capabilities]
       end
-
-    if Enum.empty?(capabilities), do: ["Limited intelligence available"], else: capabilities
+    end)
+    |> then(fn capabilities ->
+      if Enum.empty?(capabilities), do: ["Limited intelligence available"], else: capabilities
+    end)
   end
 
   # Generate vulnerabilities based on tactical preferences data
   defp generate_vulnerabilities_from_data(tactical_prefs) do
-    vulnerabilities = []
-
-    vulnerabilities =
+    []
+    |> then(fn vulnerabilities ->
       case Map.get(tactical_prefs, :activity_level) do
         "Very Low Activity" -> ["Irregular presence" | vulnerabilities]
         "Minimal Activity" -> ["Limited engagement" | vulnerabilities]
         _ -> vulnerabilities
       end
-
-    vulnerabilities =
+    end)
+    |> then(fn vulnerabilities ->
       if Map.get(tactical_prefs, :combat_efficiency, 0) < 50 do
         ["Poor combat record" | vulnerabilities]
       else
         vulnerabilities
       end
-
-    if Enum.empty?(vulnerabilities),
-      do: ["Analysis requires more data"],
-      else: vulnerabilities
+    end)
+    |> then(fn vulnerabilities ->
+      if Enum.empty?(vulnerabilities),
+        do: ["Analysis requires more data"],
+        else: vulnerabilities
+    end)
   end
 
   # Generate tactical recommendations based on available data

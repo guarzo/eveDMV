@@ -445,48 +445,48 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
   end
 
   defp identify_strengths(ship_name, ewar_types) do
-    strengths = []
-
     normalized = String.downcase(ship_name)
 
+    base_strengths = []
+
     # Ship-specific strengths
-    strengths =
+    ship_strengths =
       cond do
         String.contains?(normalized, "falcon") ->
-          ["Covert ops cloak", "High jam strength" | strengths]
+          ["Covert ops cloak", "High jam strength" | base_strengths]
 
         String.contains?(normalized, "rook") ->
-          ["Extreme range", "High jam strength" | strengths]
+          ["Extreme range", "High jam strength" | base_strengths]
 
         String.contains?(normalized, "curse") ->
-          ["Massive neut range", "Tracking disruption" | strengths]
+          ["Massive neut range", "Tracking disruption" | base_strengths]
 
         String.contains?(normalized, "lachesis") ->
-          ["Long point range", "Tanky" | strengths]
+          ["Long point range", "Tanky" | base_strengths]
 
         String.contains?(normalized, "huginn") ->
-          ["Fast", "Long web range" | strengths]
+          ["Fast", "Long web range" | base_strengths]
 
         true ->
-          strengths
+          base_strengths
       end
 
     # Type-based strengths
-    strengths =
+    ecm_strengths =
       if :ecm in ewar_types do
-        ["Can break all locks" | strengths]
+        ["Can break all locks" | ship_strengths]
       else
-        strengths
+        ship_strengths
       end
 
-    strengths =
+    final_strengths =
       if :neuts in ewar_types do
-        ["Capacitor warfare" | strengths]
+        ["Capacitor warfare" | ecm_strengths]
       else
-        strengths
+        ecm_strengths
       end
 
-    Enum.uniq(strengths)
+    Enum.uniq(final_strengths)
   end
 
   defp identify_weaknesses(ship_name, _ewar_types) do
@@ -704,45 +704,45 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
   end
 
   defp generate_counter_recommendations(ewar_ships) do
-    recommendations = []
-
     ewar_types =
       ewar_ships
       |> Enum.flat_map(& &1.ewar_types)
       |> Enum.uniq()
 
-    recommendations =
+    base_recommendations = []
+
+    ecm_recommendations =
       if :ecm in ewar_types do
-        ["Use ECCM or sensor boosters", "Spread out to avoid multi-jams" | recommendations]
+        ["Use ECCM or sensor boosters", "Spread out to avoid multi-jams" | base_recommendations]
       else
-        recommendations
+        base_recommendations
       end
 
-    recommendations =
+    damps_recommendations =
       if :damps in ewar_types do
-        ["Fit sensor boosters", "Use long-range weapons" | recommendations]
+        ["Fit sensor boosters", "Use long-range weapons" | ecm_recommendations]
       else
-        recommendations
+        ecm_recommendations
       end
 
-    recommendations =
+    tracking_recommendations =
       if :tracking_disruptors in ewar_types do
-        ["Use missiles or drones", "Fit tracking computers" | recommendations]
+        ["Use missiles or drones", "Fit tracking computers" | damps_recommendations]
       else
-        recommendations
+        damps_recommendations
       end
 
-    recommendations =
+    final_recommendations =
       if :neuts in ewar_types do
-        ["Fit cap boosters", "Use cap-independent weapons" | recommendations]
+        ["Fit cap boosters", "Use cap-independent weapons" | tracking_recommendations]
       else
-        recommendations
+        tracking_recommendations
       end
 
-    if Enum.empty?(recommendations) do
+    if Enum.empty?(final_recommendations) do
       ["Primary EWAR ships quickly", "Use fast tackle"]
     else
-      ["Primary EWAR ships quickly" | recommendations]
+      ["Primary EWAR ships quickly" | final_recommendations]
     end
   end
 
@@ -833,27 +833,27 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
     base = Map.get(ship_analysis, :effectiveness, 0)
 
     # Modifiers
-    multipliers = []
+    base_multipliers = []
 
-    multipliers =
+    ship_multipliers =
       if ship_analysis[:ship_category] in [:t2_cruiser, :black_ops] do
-        [1.5 | multipliers]
+        [1.5 | base_multipliers]
       else
-        multipliers
+        base_multipliers
       end
 
-    multipliers =
+    final_multipliers =
       if :ecm in Map.get(ship_analysis, :ewar_types, []) do
-        [1.2 | multipliers]
+        [1.2 | ship_multipliers]
       else
-        multipliers
+        ship_multipliers
       end
 
     final_multiplier =
-      if Enum.empty?(multipliers) do
+      if Enum.empty?(final_multipliers) do
         1.0
       else
-        Enum.reduce(multipliers, 1.0, &*/2)
+        Enum.reduce(final_multipliers, 1.0, &*/2)
       end
 
     round(base * final_multiplier)
@@ -884,24 +884,24 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
   end
 
   defp generate_tactical_notes(ship_analysis) do
-    notes = []
+    base_notes = []
 
-    notes =
+    ewar_notes =
       case ship_analysis[:primary_ewar_type] do
-        :ecm -> ["Jam strength varies by race", "Multi-spectral less effective" | notes]
-        :damps -> ["Can switch scripts mid-fight", "Very long range" | notes]
-        :tracking_disruptors -> ["Useless vs missiles/drones" | notes]
-        :neuts -> ["Range typically 10-25km", "Cap dependent" | notes]
-        _ -> notes
+        :ecm -> ["Jam strength varies by race", "Multi-spectral less effective" | base_notes]
+        :damps -> ["Can switch scripts mid-fight", "Very long range" | base_notes]
+        :tracking_disruptors -> ["Useless vs missiles/drones" | base_notes]
+        :neuts -> ["Range typically 10-25km", "Cap dependent" | base_notes]
+        _ -> base_notes
       end
 
-    notes =
+    final_notes =
       if ship_analysis[:ship_category] == :t2_frigate do
-        ["Fast but fragile" | notes]
+        ["Fast but fragile" | ewar_notes]
       else
-        notes
+        ewar_notes
       end
 
-    notes
+    final_notes
   end
 end
