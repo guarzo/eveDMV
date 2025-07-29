@@ -872,16 +872,34 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleCompari
       # Calculate variance for each class
       all_classes
       |> Enum.map(fn ship_class ->
-        percentages =
-          composition_timeline
-          |> Enum.map(fn entry ->
-            count = Map.get(entry.ship_classes, ship_class, 0)
-            if entry.total_ships > 0, do: count / entry.total_ships, else: 0
-          end)
-
+        percentages = calculate_ship_class_percentages(composition_timeline, ship_class)
         {ship_class, calculate_variance(percentages)}
       end)
       |> Map.new()
+    end
+  end
+
+  defp calculate_ship_class_percentages(composition_timeline, ship_class) do
+    composition_timeline
+    |> Enum.map(fn entry ->
+      count = Map.get(entry.ship_classes, ship_class, 0)
+      if entry.total_ships > 0, do: count / entry.total_ships, else: 0
+    end)
+  end
+
+  defp calculate_shannon_diversity(hulls) do
+    total = Enum.sum(Map.values(hulls))
+
+    if total > 0 do
+      # Shannon diversity index
+      hulls
+      |> Map.values()
+      |> Enum.map(fn count -> count / total end)
+      |> Enum.filter(&(&1 > 0))
+      |> Enum.map(fn p -> -p * :math.log(p) end)
+      |> Enum.sum()
+    else
+      0
     end
   end
 
@@ -934,19 +952,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleCompari
       diversity_scores =
         hull_distributions
         |> Enum.map(fn {_time, hulls} ->
-          total = Enum.sum(Map.values(hulls))
-
-          if total > 0 do
-            # Shannon diversity index
-            hulls
-            |> Map.values()
-            |> Enum.map(fn count -> count / total end)
-            |> Enum.filter(&(&1 > 0))
-            |> Enum.map(fn p -> -p * :math.log(p) end)
-            |> Enum.sum()
-          else
-            0
-          end
+          calculate_shannon_diversity(hulls)
         end)
 
       trend = analyze_trend(diversity_scores)
