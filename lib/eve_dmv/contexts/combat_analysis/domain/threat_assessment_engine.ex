@@ -193,7 +193,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
       threat_level = classify_threat_level(threat_score)
 
       # Generate threat assessment
-      assessment = %{
+      base_assessment = %{
         entity_id: entity_id,
         entity_type: entity_type,
         assessment_time: DateTime.utc_now(),
@@ -221,18 +221,18 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
       }
 
       # Add fleet threat if requested
-      assessment =
+      final_assessment =
         if Keyword.get(options, :include_fleet_threat, false) do
           Map.put(
-            assessment,
+            base_assessment,
             :fleet_threat_assessment,
             assess_fleet_threat(entity_id, entity_type)
           )
         else
-          assessment
+          base_assessment
         end
 
-      {:ok, assessment}
+      {:ok, final_assessment}
     end
   end
 
@@ -723,89 +723,89 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
   end
 
   defp identify_risk_factors(combat_stats, recent_activity, combat_patterns) do
-    risk_factors = []
+    base_risk_factors = []
 
     # High K/D ratio = dangerous opponent
-    risk_factors =
+    kdr_risk_factors =
       if combat_stats.kill_death_ratio > 3.0 do
         [
           %{factor: :high_kdr, severity: :high, description: "Very high kill/death ratio"}
-          | risk_factors
+          | base_risk_factors
         ]
       else
-        risk_factors
+        base_risk_factors
       end
 
     # High activity = unpredictable threat
-    risk_factors =
+    activity_risk_factors =
       if recent_activity.total_engagements > 100 do
         [
           %{factor: :high_activity, severity: :medium, description: "Very active in combat"}
-          | risk_factors
+          | kdr_risk_factors
         ]
       else
-        risk_factors
+        kdr_risk_factors
       end
 
     # Solo preference = skilled pilot
-    risk_factors =
+    final_risk_factors =
       if combat_patterns.preferred_engagement_type == :solo do
         [
           %{factor: :solo_specialist, severity: :high, description: "Skilled solo pilot"}
-          | risk_factors
+          | activity_risk_factors
         ]
       else
-        risk_factors
+        activity_risk_factors
       end
 
-    risk_factors
+    final_risk_factors
   end
 
   defp identify_tactical_strengths(combat_patterns, capability_assessment) do
-    strengths = []
+    base_strengths = []
 
-    strengths =
+    solo_strengths =
       if combat_patterns.preferred_engagement_type == :solo do
-        [:independent_operator | strengths]
+        [:independent_operator | base_strengths]
       else
-        strengths
+        base_strengths
       end
 
-    strengths =
+    capital_strengths =
       if capability_assessment.capital_capable do
-        [:capital_pilot | strengths]
+        [:capital_pilot | solo_strengths]
       else
-        strengths
+        solo_strengths
       end
 
-    strengths =
+    final_strengths =
       if capability_assessment.ship_diversity_index > 2.0 do
-        [:versatile_pilot | strengths]
+        [:versatile_pilot | capital_strengths]
       else
-        strengths
+        capital_strengths
       end
 
-    strengths
+    final_strengths
   end
 
   defp identify_tactical_weaknesses(combat_patterns, combat_stats) do
-    weaknesses = []
+    base_weaknesses = []
 
-    weaknesses =
+    survival_weaknesses =
       if combat_stats.kill_death_ratio < 1.0 do
-        [:poor_survival_rate | weaknesses]
+        [:poor_survival_rate | base_weaknesses]
       else
-        weaknesses
+        base_weaknesses
       end
 
-    weaknesses =
+    final_weaknesses =
       if combat_patterns.preferred_engagement_type == :fleet do
-        [:dependent_on_numbers | weaknesses]
+        [:dependent_on_numbers | survival_weaknesses]
       else
-        weaknesses
+        survival_weaknesses
       end
 
-    weaknesses
+    final_weaknesses
   end
 
   defp generate_engagement_recommendations(threat_level, combat_patterns) do
@@ -850,20 +850,20 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
   end
 
   defp extract_entities_from_killmail(event) do
-    entities = []
+    base_entities = []
 
     # Extract victim
     victim = event.victim
 
-    entities =
+    victim_char_entities =
       if victim["character_id"],
-        do: [{victim["character_id"], :character} | entities],
-        else: entities
+        do: [{victim["character_id"], :character} | base_entities],
+        else: base_entities
 
-    entities =
+    victim_corp_entities =
       if victim["corporation_id"],
-        do: [{victim["corporation_id"], :corporation} | entities],
-        else: entities
+        do: [{victim["corporation_id"], :corporation} | victim_char_entities],
+        else: victim_char_entities
 
     # Extract attackers
     attacker_entities =
@@ -881,7 +881,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
       end)
       |> Enum.uniq()
 
-    entities ++ attacker_entities
+    victim_corp_entities ++ attacker_entities
   end
 
   defp update_realtime_threat_indicators(_event, _entities) do
