@@ -595,11 +595,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
           |> Enum.max()
         end)
 
-      if not Enum.empty?(max_correlations) do
+      if Enum.empty?(max_correlations) do
+        0.0
+      else
         avg_max = Enum.sum(max_correlations) / length(max_correlations)
         Float.round(avg_max, 2)
-      else
-        0.0
       end
     end
   end

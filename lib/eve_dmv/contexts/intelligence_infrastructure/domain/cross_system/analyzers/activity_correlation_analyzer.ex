@@ -192,7 +192,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   """
   def generate_movement_insights(movement_patterns) do
     corridor_insights =
-      if not Enum.empty?(movement_patterns.movement_corridors) do
+      if Enum.empty?(movement_patterns.movement_corridors) do
+        []
+      else
         primary_corridors =
           Enum.count(movement_patterns.movement_corridors, fn c -> c.corridor_type == :primary end)
 
@@ -201,13 +203,13 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
         else
           []
         end
-      else
-        []
       end
 
     # Choke point insights
     choke_insights =
-      if not Enum.empty?(movement_patterns.choke_points) do
+      if Enum.empty?(movement_patterns.choke_points) do
+        []
+      else
         top_choke = List.first(movement_patterns.choke_points)
 
         if top_choke && top_choke.choke_score > 50 do
@@ -215,8 +217,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
         else
           []
         end
-      else
-        []
       end
 
     # Travel pattern insights
@@ -256,7 +256,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     kill_counts = Map.values(system_kills)
 
     avg_kills =
-      if not Enum.empty?(kill_counts), do: Enum.sum(kill_counts) / length(kill_counts), else: 0
+      if Enum.empty?(kill_counts), do: 0, else: Enum.sum(kill_counts) / length(kill_counts)
 
     std_dev = calculate_std_deviation(kill_counts)
 
@@ -624,10 +624,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
           end
         end)
 
-      if not Enum.empty?(similarities) do
-        Enum.sum(similarities) / length(similarities)
-      else
+      if Enum.empty?(similarities) do
         0.0
+      else
+        Enum.sum(similarities) / length(similarities)
       end
     end
   end
@@ -762,10 +762,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
         |> Enum.map(fn {_hour, kills} -> length(kills) end)
 
       avg_activity =
-        if not Enum.empty?(hourly_activity) do
-          Enum.sum(hourly_activity) / length(hourly_activity)
-        else
+        if Enum.empty?(hourly_activity) do
           0
+        else
+          Enum.sum(hourly_activity) / length(hourly_activity)
         end
 
       {system_id, %{average_hourly_activity: avg_activity, sample_size: length(hourly_activity)}}
