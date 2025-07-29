@@ -635,42 +635,26 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
   end
 
   defp extract_entities_from_killmail(event) do
-    # Add victim
-    victim = event.victim
+    victim_entities = extract_entities_from_actor(event.victim)
+    attacker_entities = 
+      event.attackers
+      |> Enum.flat_map(&extract_entities_from_actor/1)
+      |> Enum.uniq()
 
-    []
-    |> then(fn entities ->
-      if victim["character_id"],
-        do: [{victim["character_id"], :character} | entities],
-        else: entities
-    end)
-    |> then(fn entities ->
-      if victim["corporation_id"],
-        do: [{victim["corporation_id"], :corporation} | entities],
-        else: entities
-    end)
-    |> then(fn victim_entities ->
-      # Add attackers
-      attacker_entities =
-        event.attackers
-        |> Enum.flat_map(fn attacker ->
-          []
-          |> then(fn entities ->
-            if attacker["character_id"],
-              do: [{attacker["character_id"], :character} | entities],
-              else: entities
-          end)
-          |> then(fn entities ->
-            if attacker["corporation_id"],
-              do: [{attacker["corporation_id"], :corporation} | entities],
-              else: entities
-          end)
-        end)
-        |> Enum.uniq()
-
-      victim_entities ++ attacker_entities
-    end)
+    victim_entities ++ attacker_entities
   end
+
+  defp extract_entities_from_actor(actor) do
+    entities = []
+    entities = maybe_add_character_entity(entities, actor["character_id"])
+    maybe_add_corporation_entity(entities, actor["corporation_id"])
+  end
+
+  defp maybe_add_character_entity(entities, nil), do: entities
+  defp maybe_add_character_entity(entities, character_id), do: [{character_id, :character} | entities]
+
+  defp maybe_add_corporation_entity(entities, nil), do: entities
+  defp maybe_add_corporation_entity(entities, corporation_id), do: [{corporation_id, :corporation} | entities]
 
   # Metrics functions
 
