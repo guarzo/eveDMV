@@ -282,85 +282,77 @@ defmodule EveDmv.IntelligenceMigrationAdapter do
   # Private cache invalidation functions
 
   defp invalidate_character_cache(character_id) do
-    try do
-      # Invalidate cache in Combat Intelligence context
-      if Code.ensure_loaded?(AnalysisCache) do
-        AnalysisCache.invalidate_character(character_id)
+    # Invalidate cache in Combat Intelligence context
+    if Code.ensure_loaded?(AnalysisCache) do
+      AnalysisCache.invalidate_character(character_id)
 
-        AnalysisCache.invalidate_threat_assessment(character_id)
+      AnalysisCache.invalidate_threat_assessment(character_id)
 
-        AnalysisCache.invalidate_intelligence_scores(character_id)
-      end
-
-      # Invalidate cache in Threat Assessment context
-      if Code.ensure_loaded?(ThreatCache) do
-        ThreatCache.invalidate_entity(
-          character_id,
-          :character
-        )
-      end
-
-      Logger.debug("Invalidated character cache for #{character_id}")
-      :ok
-    rescue
-      exception ->
-        Logger.error("Failed to invalidate character cache: #{inspect(exception)}")
-        {:error, :cache_invalidation_failed}
+      AnalysisCache.invalidate_intelligence_scores(character_id)
     end
+
+    # Invalidate cache in Threat Assessment context
+    if Code.ensure_loaded?(ThreatCache) do
+      ThreatCache.invalidate_entity(
+        character_id,
+        :character
+      )
+    end
+
+    Logger.debug("Invalidated character cache for #{character_id}")
+    :ok
+  rescue
+    exception ->
+      Logger.error("Failed to invalidate character cache: #{inspect(exception)}")
+      {:error, :cache_invalidation_failed}
   end
 
   defp invalidate_corporation_cache(corporation_id) do
-    try do
-      # Invalidate cache in Combat Intelligence context
-      if Code.ensure_loaded?(AnalysisCache) do
-        AnalysisCache.invalidate_corporation(corporation_id)
-      end
-
-      # Invalidate cache in Threat Assessment context
-      if Code.ensure_loaded?(ThreatCache) do
-        ThreatCache.invalidate_entity(
-          corporation_id,
-          :corporation
-        )
-      end
-
-      Logger.debug("Invalidated corporation cache for #{corporation_id}")
-      :ok
-    rescue
-      exception ->
-        Logger.error("Failed to invalidate corporation cache: #{inspect(exception)}")
-        {:error, :cache_invalidation_failed}
+    # Invalidate cache in Combat Intelligence context
+    if Code.ensure_loaded?(AnalysisCache) do
+      AnalysisCache.invalidate_corporation(corporation_id)
     end
+
+    # Invalidate cache in Threat Assessment context
+    if Code.ensure_loaded?(ThreatCache) do
+      ThreatCache.invalidate_entity(
+        corporation_id,
+        :corporation
+      )
+    end
+
+    Logger.debug("Invalidated corporation cache for #{corporation_id}")
+    :ok
+  rescue
+    exception ->
+      Logger.error("Failed to invalidate corporation cache: #{inspect(exception)}")
+      {:error, :cache_invalidation_failed}
   end
 
   defp invalidate_fleet_cache(fleet_id) do
-    try do
-      # Fleet operations don't have a dedicated cache yet, so just log for now
-      Logger.debug("Fleet cache invalidation requested for #{fleet_id} (no-op)")
-      :ok
-    rescue
-      exception ->
-        Logger.error("Failed to invalidate fleet cache: #{inspect(exception)}")
-        {:error, :cache_invalidation_failed}
-    end
+    # Fleet operations don't have a dedicated cache yet, so just log for now
+    Logger.debug("Fleet cache invalidation requested for #{fleet_id} (no-op)")
+    :ok
+  rescue
+    exception ->
+      Logger.error("Failed to invalidate fleet cache: #{inspect(exception)}")
+      {:error, :cache_invalidation_failed}
   end
 
   defp invalidate_threat_cache(entity_id) do
-    try do
-      # Invalidate cache in Threat Assessment context
-      if Code.ensure_loaded?(ThreatCache) do
-        ThreatCache.invalidate_entity(
-          entity_id,
-          :character
-        )
-      end
-
-      Logger.debug("Invalidated threat cache for #{entity_id}")
-      :ok
-    rescue
-      exception ->
-        Logger.error("Failed to invalidate threat cache: #{inspect(exception)}")
-        {:error, :cache_invalidation_failed}
+    # Invalidate cache in Threat Assessment context
+    if Code.ensure_loaded?(ThreatCache) do
+      ThreatCache.invalidate_entity(
+        entity_id,
+        :character
+      )
     end
+
+    Logger.debug("Invalidated threat cache for #{entity_id}")
+    :ok
+  rescue
+    exception ->
+      Logger.error("Failed to invalidate threat cache: #{inspect(exception)}")
+      {:error, :cache_invalidation_failed}
   end
 end

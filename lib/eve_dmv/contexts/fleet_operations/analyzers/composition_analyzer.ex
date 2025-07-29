@@ -1107,49 +1107,49 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
       |> Enum.frequencies()
 
     # Generate specific insights based on composition
-    insights = []
+    base_insights = []
 
     # Strategic Cruiser heavy fleet analysis
-    insights =
+    strategic_insights =
       if Map.get(ship_groups, "Strategic Cruiser", 0) > total_pilots * 0.5 do
         [
           "This is a Strategic Cruiser heavy fleet, indicating high ISK investment and tactical flexibility. T3 Cruisers can adapt to multiple engagement profiles."
-          | insights
+          | base_insights
         ]
       else
-        insights
+        base_insights
       end
 
     # EDENCOM ship analysis
-    insights =
+    precursor_insights =
       if Map.get(ship_groups, "Precursor Cruiser", 0) > 0 do
         [
           "EDENCOM ships present - these provide unique arc damage that can hit multiple targets simultaneously, excellent against drone/fighter swarms."
-          | insights
+          | strategic_insights
         ]
       else
-        insights
+        strategic_insights
       end
 
     # Tactical Destroyer analysis
-    insights =
+    tactical_insights =
       if Map.get(ship_groups, "Tactical Destroyer", 0) > 0 do
         [
           "Tactical Destroyers can switch between defense, speed, and damage modes - highly adaptable for changing battlefield conditions."
-          | insights
+          | precursor_insights
         ]
       else
-        insights
+        precursor_insights
       end
 
     # Role balance analysis
     logistics_count = Map.get(role_distribution, :logistics, %{}) |> get_role_count()
     flexible_count = Map.get(role_distribution, :flexible, %{}) |> get_role_count()
 
-    insights =
+    logistics_insights =
       cond do
         logistics_count == 0 and total_pilots > 5 ->
-          ["⚠️ No logistics support detected - fleet vulnerable to attrition warfare." | insights]
+          ["⚠️ No logistics support detected - fleet vulnerable to attrition warfare." | tactical_insights]
 
         logistics_count > 0 and total_pilots > 0 ->
           logi_ratio = logistics_count / total_pilots
@@ -1157,28 +1157,28 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
           if logi_ratio > 0.15 do
             [
               "✓ Strong logistics ratio (#{Float.round(logi_ratio * 100, 1)}%) - fleet has good sustainability."
-              | insights
+              | tactical_insights
             ]
           else
             [
               "Minimal logistics support - suitable for hit-and-run tactics but vulnerable in prolonged engagements."
-              | insights
+              | tactical_insights
             ]
           end
 
         true ->
-          insights
+          tactical_insights
       end
 
     # Flexibility analysis
-    insights =
+    final_insights =
       if flexible_count > total_pilots * 0.3 do
         [
           "High tactical flexibility with T3 ships - can adapt doctrine mid-fight based on enemy composition."
-          | insights
+          | logistics_insights
         ]
       else
-        insights
+        logistics_insights
       end
 
     # Fleet size and ISK assessment
@@ -1190,19 +1190,19 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
         avg_ship_value > 100_000_000 ->
           [
             "💰 High-value fleet (#{format_isk(avg_ship_value)} avg) - indicates experienced pilots with significant ISK investment."
-            | insights
+            | final_insights
           ]
 
         avg_ship_value > 50_000_000 ->
           [
             "Moderate investment fleet - good balance of capability and ISK efficiency."
-            | insights
+            | final_insights
           ]
 
         true ->
           [
             "Cost-effective composition - suitable for volume warfare and learning environments."
-            | insights
+            | final_insights
           ]
       end
 

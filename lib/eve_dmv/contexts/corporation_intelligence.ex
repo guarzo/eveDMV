@@ -781,31 +781,31 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
 
   # Generate tactical recommendations based on available data
   defp generate_recommendations_from_data(tactical_prefs) do
-    recommendations = []
+    base_recommendations = []
 
-    recommendations =
+    activity_recommendations =
       case Map.get(tactical_prefs, :activity_level) do
-        "High Activity" -> ["Expect frequent engagements" | recommendations]
-        "Moderate Activity" -> ["Prepare for regular conflicts" | recommendations]
-        "Low Activity" -> ["Monitor for activity spikes" | recommendations]
-        _ -> ["Exploit low activity windows" | recommendations]
+        "High Activity" -> ["Expect frequent engagements" | base_recommendations]
+        "Moderate Activity" -> ["Prepare for regular conflicts" | base_recommendations]
+        "Low Activity" -> ["Monitor for activity spikes" | base_recommendations]
+        _ -> ["Exploit low activity windows" | base_recommendations]
       end
 
-    recommendations =
+    efficiency_recommendations =
       if Map.get(tactical_prefs, :combat_efficiency, 0) > 80 do
-        ["Exercise caution - effective pilots" | recommendations]
+        ["Exercise caution - effective pilots" | activity_recommendations]
       else
-        ["Exploit poor combat record" | recommendations]
+        ["Exploit poor combat record" | activity_recommendations]
       end
 
-    recommendations =
+    final_recommendations =
       if length(Map.get(tactical_prefs, :preferred_ships, [])) > 2 do
-        ["Prepare for varied ship types" | recommendations]
+        ["Prepare for varied ship types" | efficiency_recommendations]
       else
-        ["Counter specific ship preferences" | recommendations]
+        ["Counter specific ship preferences" | efficiency_recommendations]
       end
 
-    if Enum.empty?(recommendations), do: ["Gather more tactical data"], else: recommendations
+    if Enum.empty?(final_recommendations), do: ["Gather more tactical data"], else: final_recommendations
   end
 
   # Generate fallback doctrine evolution showing activity patterns instead of doctrine changes

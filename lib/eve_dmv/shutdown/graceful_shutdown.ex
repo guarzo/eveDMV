@@ -344,39 +344,33 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
   end
 
   defp stop_broadway_pipeline(pipeline, timeout) do
-    try do
-      if Process.whereis(pipeline) do
-        # Broadway.stop with graceful shutdown
-        GenServer.call(pipeline, :graceful_shutdown, timeout)
-      else
-        :ok
-      end
-    rescue
-      _ -> :ok
+    if Process.whereis(pipeline) do
+      # Broadway.stop with graceful shutdown
+      GenServer.call(pipeline, :graceful_shutdown, timeout)
+    else
+      :ok
     end
+  rescue
+    _ -> :ok
   end
 
   defp cleanup_sse_connections(timeout) do
     # Close SSE connections gracefully
-    try do
-      if Process.whereis(EveDmv.Intelligence.WandererSSE) do
-        GenServer.call(EveDmv.Intelligence.WandererSSE, :close_connections, timeout)
-      else
-        :ok
-      end
-    rescue
-      _ -> :ok
+    if Process.whereis(EveDmv.Intelligence.WandererSSE) do
+      GenServer.call(EveDmv.Intelligence.WandererSSE, :close_connections, timeout)
+    else
+      :ok
     end
+  rescue
+    _ -> :ok
   end
 
   defp cleanup_database_connections(_timeout) do
     # Ensure database connections are properly closed
-    try do
-      Ecto.Adapters.SQL.Sandbox.checkin(EveDmv.Repo)
-      :ok
-    rescue
-      _ -> :ok
-    end
+    Ecto.Adapters.SQL.Sandbox.checkin(EveDmv.Repo)
+    :ok
+  rescue
+    _ -> :ok
   end
 
   defp cleanup_cache_operations(_timeout) do
@@ -386,12 +380,10 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
 
   defp stop_remaining_processes(_timeout) do
     # Stop any remaining processes that weren't handled in previous phases
-    try do
-      # This would typically involve supervisor shutdown
-      :ok
-    rescue
-      _ -> {:error, :failed_to_stop_processes}
-    end
+    # This would typically involve supervisor shutdown
+    :ok
+  rescue
+    _ -> {:error, :failed_to_stop_processes}
   end
 
   defp complete_shutdown(state) do
