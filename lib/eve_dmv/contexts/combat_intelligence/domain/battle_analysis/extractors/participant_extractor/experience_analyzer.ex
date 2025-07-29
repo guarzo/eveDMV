@@ -768,34 +768,40 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
   defp measure_experience_diversity(experience_distribution) do
     levels = Map.keys(experience_distribution)
 
-    if Enum.empty?(levels) do
+    cond do
+      Enum.empty?(levels) -> 0.0
+      true -> calculate_shannon_diversity_index(experience_distribution, levels)
+    end
+  end
+
+  defp calculate_shannon_diversity_index(experience_distribution, levels) do
+    total_count =
+      experience_distribution
+      |> Map.values()
+      |> Enum.map(&Map.get(&1, :count, 0))
+      |> Enum.sum()
+
+    if total_count == 0 do
       0.0
     else
-      # Calculate Shannon diversity index
-      total_count =
+      shannon_entropy =
         experience_distribution
         |> Map.values()
-        |> Enum.map(&Map.get(&1, :count, 0))
+        |> Enum.map(&calculate_entropy_contribution(&1, total_count))
         |> Enum.sum()
 
-      if total_count == 0 do
-        0.0
-      else
-        experience_distribution
-        |> Map.values()
-        |> Enum.map(fn data ->
-          count = Map.get(data, :count, 0)
+      shannon_entropy / :math.log(length(levels))
+    end
+  end
 
-          if count > 0 do
-            p = count / total_count
-            -p * :math.log(p)
-          else
-            0
-          end
-        end)
-        |> Enum.sum()
-        |> (fn h -> h / :math.log(length(levels)) end).()
-      end
+  defp calculate_entropy_contribution(data, total_count) do
+    count = Map.get(data, :count, 0)
+
+    if count > 0 do
+      p = count / total_count
+      -p * :math.log(p)
+    else
+      0
     end
   end
 
