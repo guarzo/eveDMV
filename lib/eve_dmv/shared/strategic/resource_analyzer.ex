@@ -319,30 +319,30 @@ defmodule EveDmv.Shared.Strategic.ResourceAnalyzer do
   end
 
   defp identify_risk_factors(competition_level, control_changes, conflict_intensity) do
-    factors = []
+    base_factors = []
 
-    factors =
+    competition_factors =
       if competition_level > 0.5 do
-        factors ++ [:high_competition]
+        base_factors ++ [:high_competition]
       else
-        factors
+        base_factors
       end
 
-    factors =
+    control_factors =
       if length(control_changes) > 2 do
-        factors ++ [:unstable_control]
+        competition_factors ++ [:unstable_control]
       else
-        factors
+        competition_factors
       end
 
-    factors =
+    final_factors =
       if conflict_intensity > 5 do
-        factors ++ [:active_conflicts]
+        control_factors ++ [:active_conflicts]
       else
-        factors
+        control_factors
       end
 
-    factors
+    final_factors
   end
 
   defp suggest_risk_mitigation(risk_score) do
@@ -565,45 +565,45 @@ defmodule EveDmv.Shared.Strategic.ResourceAnalyzer do
   end
 
   defp generate_resource_recommendations(competition_analysis, control_stability) do
-    recommendations = []
+    base_recommendations = []
 
     # Competition-based recommendations
-    recommendations =
+    competition_recommendations =
       if competition_analysis.competition_intensity > 0.7 do
-        recommendations ++
+        base_recommendations ++
           [
             "High competition detected - consider defensive mining operations",
             "Coordinate with allies to secure resource extraction"
           ]
       else
-        recommendations
+        base_recommendations
       end
 
     # Stability-based recommendations
-    recommendations =
+    stability_recommendations =
       case control_stability.stability_trend do
         :increasing_competition ->
-          recommendations ++ ["Competition increasing - prepare for resource conflicts"]
+          competition_recommendations ++ ["Competition increasing - prepare for resource conflicts"]
 
         :consolidating_control ->
-          recommendations ++ ["Control consolidating - opportunity to expand operations"]
+          competition_recommendations ++ ["Control consolidating - opportunity to expand operations"]
 
         _ ->
-          recommendations
+          competition_recommendations
       end
 
     # Risk-based recommendations
-    recommendations =
+    final_recommendations =
       if control_stability.risk_assessment.risk_level in [:high, :medium] do
-        recommendations ++ control_stability.risk_assessment.mitigation_recommendations
+        stability_recommendations ++ control_stability.risk_assessment.mitigation_recommendations
       else
-        recommendations
+        stability_recommendations
       end
 
-    if Enum.empty?(recommendations) do
+    if Enum.empty?(final_recommendations) do
       ["Maintain current resource extraction operations"]
     else
-      recommendations
+      final_recommendations
     end
   end
 

@@ -76,21 +76,21 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
 
     # Get all published ship types
     # Query for all ships
-    query =
+    base_query =
       ItemType
       |> Ash.Query.new()
       |> Ash.Query.filter(expr(is_ship == true and published == true))
       |> Ash.Query.select([:type_id, :type_name, :group_name, :category_name, :mass, :volume])
 
     # Apply limit if specified
-    query =
+    final_query =
       if limit do
-        Ash.Query.limit(query, limit)
+        Ash.Query.limit(base_query, limit)
       else
-        query
+        base_query
       end
 
-    case Ash.read(query, domain: EveDmv.Api) do
+    case Ash.read(final_query, domain: EveDmv.Api) do
       {:ok, ships} ->
         # Filter out existing attributes if not forcing
         ships_to_import =

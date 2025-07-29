@@ -273,10 +273,9 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ProfileManagementService do
   end
 
   defp process_profile_updates(profile, updates) do
-    processed = updates
-
-    # Optimize criteria if being updated
-    processed =
+    updates
+    |> then(fn processed ->
+      # Optimize criteria if being updated
       if Map.has_key?(updates, :criteria) do
         case optimize_criteria(updates[:criteria]) do
           {:ok, optimized} -> Map.put(processed, :criteria, optimized)
@@ -285,17 +284,18 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ProfileManagementService do
       else
         processed
       end
+    end)
+    |> then(fn processed ->
+      # Add metadata about update
+      metadata =
+        Map.merge(profile.metadata || %{}, %{
+          last_updated: DateTime.utc_now(),
+          update_count: (profile.metadata["update_count"] || 0) + 1
+        })
 
-    # Add metadata about update
-    metadata =
-      Map.merge(profile.metadata || %{}, %{
-        last_updated: DateTime.utc_now(),
-        update_count: (profile.metadata["update_count"] || 0) + 1
-      })
-
-    processed = Map.put(processed, :metadata, metadata)
-
-    {:ok, processed}
+      Map.put(processed, :metadata, metadata)
+    end)
+    |> then(fn processed -> {:ok, processed} end)
   end
 
   defp find_threat_dependent_profiles(entity_id, entity_type) do

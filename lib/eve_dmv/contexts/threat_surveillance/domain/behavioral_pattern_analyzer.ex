@@ -508,21 +508,23 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
   end
 
   defp compare_patterns(baseline, recent) do
-    anomalies = []
-
-    # Check for timezone anomalies
-    anomalies = detect_timezone_anomaly(baseline, recent, anomalies)
-
-    # Check for system anomalies
-    anomalies = detect_system_anomaly(baseline, recent, anomalies)
-
-    # Check for ship type anomalies
-    anomalies = detect_ship_anomaly(baseline, recent, anomalies)
-
-    # Check for engagement pattern anomalies
-    anomalies = detect_engagement_anomaly(baseline, recent, anomalies)
-
-    anomalies
+    []
+    |> then(fn anomalies ->
+      # Check for timezone anomalies
+      detect_timezone_anomaly(baseline, recent, anomalies)
+    end)
+    |> then(fn anomalies ->
+      # Check for system anomalies
+      detect_system_anomaly(baseline, recent, anomalies)
+    end)
+    |> then(fn anomalies ->
+      # Check for ship type anomalies
+      detect_ship_anomaly(baseline, recent, anomalies)
+    end)
+    |> then(fn anomalies ->
+      # Check for engagement pattern anomalies
+      detect_engagement_anomaly(baseline, recent, anomalies)
+    end)
   end
 
   defp detect_timezone_anomaly(baseline, recent, anomalies) do
@@ -633,42 +635,41 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
   end
 
   defp extract_entities_from_killmail(event) do
-    entities = []
-
     # Add victim
     victim = event.victim
 
-    entities =
+    []
+    |> then(fn entities ->
       if victim["character_id"],
         do: [{victim["character_id"], :character} | entities],
         else: entities
-
-    entities =
+    end)
+    |> then(fn entities ->
       if victim["corporation_id"],
         do: [{victim["corporation_id"], :corporation} | entities],
         else: entities
+    end)
+    |> then(fn victim_entities ->
+      # Add attackers
+      attacker_entities =
+        event.attackers
+        |> Enum.flat_map(fn attacker ->
+          []
+          |> then(fn entities ->
+            if attacker["character_id"],
+              do: [{attacker["character_id"], :character} | entities],
+              else: entities
+          end)
+          |> then(fn entities ->
+            if attacker["corporation_id"],
+              do: [{attacker["corporation_id"], :corporation} | entities],
+              else: entities
+          end)
+        end)
+        |> Enum.uniq()
 
-    # Add attackers
-    attacker_entities =
-      event.attackers
-      |> Enum.flat_map(fn attacker ->
-        entities = []
-
-        entities =
-          if attacker["character_id"],
-            do: [{attacker["character_id"], :character} | entities],
-            else: entities
-
-        entities =
-          if attacker["corporation_id"],
-            do: [{attacker["corporation_id"], :corporation} | entities],
-            else: entities
-
-        entities
-      end)
-      |> Enum.uniq()
-
-    entities ++ attacker_entities
+      victim_entities ++ attacker_entities
+    end)
   end
 
   # Metrics functions

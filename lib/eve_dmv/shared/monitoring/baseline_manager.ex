@@ -648,28 +648,29 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
   end
 
   defp identify_primary_threat_types(threat_indicators) do
-    threats = []
-
     threats =
-      if threat_indicators.high_value_threats > 2 do
-        threats ++ [:high_value_targets]
-      else
-        threats
-      end
-
-    threats =
-      if threat_indicators.capital_ship_threats > 1 do
-        threats ++ [:capital_ships]
-      else
-        threats
-      end
-
-    threats =
-      if threat_indicators.fleet_threats > 3 do
-        threats ++ [:fleet_operations]
-      else
-        threats
-      end
+      []
+      |> then(fn threats ->
+        if threat_indicators.high_value_threats > 2 do
+          threats ++ [:high_value_targets]
+        else
+          threats
+        end
+      end)
+      |> then(fn threats ->
+        if threat_indicators.capital_ship_threats > 1 do
+          threats ++ [:capital_ships]
+        else
+          threats
+        end
+      end)
+      |> then(fn threats ->
+        if threat_indicators.fleet_threats > 3 do
+          threats ++ [:fleet_operations]
+        else
+          threats
+        end
+      end)
 
     if Enum.empty?(threats), do: [:minimal_threats], else: threats
   end
@@ -793,13 +794,10 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
   end
 
   defp identify_missing_components(activity_ready, threat_ready, thresholds_set) do
-    missing = []
-
-    missing = if !activity_ready, do: missing ++ [:activity_baseline], else: missing
-    missing = if !threat_ready, do: missing ++ [:threat_baseline], else: missing
-    missing = if !thresholds_set, do: missing ++ [:anomaly_thresholds], else: missing
-
-    missing
+    []
+    |> then(fn missing -> if !activity_ready, do: missing ++ [:activity_baseline], else: missing end)
+    |> then(fn missing -> if !threat_ready, do: missing ++ [:threat_baseline], else: missing end)
+    |> then(fn missing -> if !thresholds_set, do: missing ++ [:anomaly_thresholds], else: missing end)
   end
 
   defp validate_baseline_quality(baseline_metrics, confidence_threshold) do
@@ -822,28 +820,29 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
   end
 
   defp generate_quality_recommendations(baseline_metrics, quality_score, threshold) do
-    recommendations = []
-
     recommendations =
-      if quality_score < threshold do
-        recommendations ++ ["Increase baseline data collection window"]
-      else
-        recommendations
-      end
-
-    recommendations =
-      if !baseline_metrics.completeness.is_complete do
-        recommendations ++ ["Ensure all baseline components are collected"]
-      else
-        recommendations
-      end
-
-    recommendations =
-      if !baseline_metrics.anomaly_detection_readiness.ready do
-        recommendations ++ ["Configure anomaly detection thresholds"]
-      else
-        recommendations
-      end
+      []
+      |> then(fn recommendations ->
+        if quality_score < threshold do
+          recommendations ++ ["Increase baseline data collection window"]
+        else
+          recommendations
+        end
+      end)
+      |> then(fn recommendations ->
+        if !baseline_metrics.completeness.is_complete do
+          recommendations ++ ["Ensure all baseline components are collected"]
+        else
+          recommendations
+        end
+      end)
+      |> then(fn recommendations ->
+        if !baseline_metrics.anomaly_detection_readiness.ready do
+          recommendations ++ ["Configure anomaly detection thresholds"]
+        else
+          recommendations
+        end
+      end)
 
     if Enum.empty?(recommendations) do
       ["Baseline quality meets requirements"]

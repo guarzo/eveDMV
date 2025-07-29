@@ -1810,37 +1810,33 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
 
   # Tactical analysis functions
   defp identify_tactical_mistakes(tactical_patterns) do
-    mistakes = []
-
     # Check for common tactical errors
     target_switches = Map.get(tactical_patterns, :target_switches, [])
+    positioning_errors = Map.get(tactical_patterns, :positioning_errors, [])
+    coordination_failures = Map.get(tactical_patterns, :coordination_failures, [])
 
-    mistakes =
+    []
+    |> then(fn mistakes ->
       if length(target_switches) > 5 do
         [%{mistake: :excessive_target_switching, severity: :medium, impact: 0.3} | mistakes]
       else
         mistakes
       end
-
-    positioning_errors = Map.get(tactical_patterns, :positioning_errors, [])
-
-    mistakes =
+    end)
+    |> then(fn mistakes ->
       if length(positioning_errors) > 3 do
         [%{mistake: :poor_positioning, severity: :high, impact: 0.6} | mistakes]
       else
         mistakes
       end
-
-    coordination_failures = Map.get(tactical_patterns, :coordination_failures, [])
-
-    mistakes =
+    end)
+    |> then(fn mistakes ->
       if length(coordination_failures) > 2 do
         [%{mistake: :coordination_breakdown, severity: :critical, impact: 0.8} | mistakes]
       else
         mistakes
       end
-
-    mistakes
+    end)
   end
 
   defp measure_tactical_adaptation(tactical_patterns) do

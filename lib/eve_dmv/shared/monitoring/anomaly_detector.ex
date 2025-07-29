@@ -68,16 +68,25 @@ defmodule EveDmv.Shared.Monitoring.AnomalyDetector do
   """
   def detect_statistical_anomalies(current_data, baseline, sensitivity) do
     threshold_multiplier = get_threshold_multiplier(sensitivity)
-    anomalies = []
 
     # Check killmail rate anomalies
     current_rate = Map.get(current_data, :killmail_rate, 0)
     baseline_rate = baseline.activity_baseline.aggregate_baseline.total_average_killmails_per_hour
     baseline_variance = calculate_activity_variance(baseline.activity_baseline.system_baselines)
-
     rate_threshold = baseline_rate + threshold_multiplier * :math.sqrt(baseline_variance)
 
-    anomalies =
+    # Check participant count anomalies
+    current_participants = Map.get(current_data, :average_participants, 0)
+    baseline_participants = baseline.activity_baseline.aggregate_baseline.average_participants_per_system
+    participant_threshold = baseline_participants * threshold_multiplier
+
+    # Check value anomalies
+    current_total_value = Map.get(current_data, :total_value, 0)
+    baseline_total_value = baseline.activity_baseline.aggregate_baseline.total_baseline_value
+    value_threshold = baseline_total_value * threshold_multiplier
+
+    []
+    |> then(fn anomalies ->
       if current_rate > rate_threshold do
         anomaly = %{
           type: :statistical_anomaly,
@@ -94,16 +103,8 @@ defmodule EveDmv.Shared.Monitoring.AnomalyDetector do
       else
         anomalies
       end
-
-    # Check participant count anomalies
-    current_participants = Map.get(current_data, :average_participants, 0)
-
-    baseline_participants =
-      baseline.activity_baseline.aggregate_baseline.average_participants_per_system
-
-    participant_threshold = baseline_participants * threshold_multiplier
-
-    anomalies =
+    end)
+    |> then(fn anomalies ->
       if current_participants > participant_threshold do
         anomaly = %{
           type: :statistical_anomaly,
@@ -121,14 +122,8 @@ defmodule EveDmv.Shared.Monitoring.AnomalyDetector do
       else
         anomalies
       end
-
-    # Check value anomalies
-    current_total_value = Map.get(current_data, :total_value, 0)
-    baseline_total_value = baseline.activity_baseline.aggregate_baseline.total_baseline_value
-
-    value_threshold = baseline_total_value * threshold_multiplier
-
-    anomalies =
+    end)
+    |> then(fn anomalies ->
       if current_total_value > value_threshold do
         anomaly = %{
           type: :statistical_anomaly,
@@ -146,24 +141,26 @@ defmodule EveDmv.Shared.Monitoring.AnomalyDetector do
       else
         anomalies
       end
-
-    anomalies
+    end)
   end
 
   @doc """
   Detects pattern-based anomalies by comparing current patterns to baseline.
   """
   def detect_pattern_anomalies(current_data, baseline, sensitivity) do
-    anomalies = []
-
     # Check for engagement pattern deviations
     current_patterns = Map.get(current_data, :engagement_patterns, %{})
     baseline_patterns = baseline.pattern_baseline.common_patterns
-
-    # Simplified pattern deviation detection
     pattern_deviations = compare_engagement_patterns(current_patterns, baseline_patterns)
 
-    anomalies =
+    # Check for temporal pattern anomalies
+    current_temporal = Map.get(current_data, :temporal_patterns, %{})
+    baseline_temporal = extract_baseline_temporal_patterns(baseline)
+    temporal_deviations = compare_temporal_patterns(current_temporal, baseline_temporal)
+
+    []
+    |> then(fn anomalies ->
+      # Process engagement pattern deviations
       Enum.reduce(pattern_deviations, anomalies, fn deviation, acc ->
         if deviation.deviation_score > get_pattern_threshold(sensitivity) do
           anomaly = %{
@@ -182,14 +179,9 @@ defmodule EveDmv.Shared.Monitoring.AnomalyDetector do
           acc
         end
       end)
-
-    # Check for temporal pattern anomalies
-    current_temporal = Map.get(current_data, :temporal_patterns, %{})
-    baseline_temporal = extract_baseline_temporal_patterns(baseline)
-
-    temporal_deviations = compare_temporal_patterns(current_temporal, baseline_temporal)
-
-    anomalies =
+    end)
+    |> then(fn anomalies ->
+      # Process temporal pattern deviations
       Enum.reduce(temporal_deviations, anomalies, fn deviation, acc ->
         if deviation.significance > get_temporal_threshold(sensitivity) do
           anomaly = %{
@@ -208,21 +200,24 @@ defmodule EveDmv.Shared.Monitoring.AnomalyDetector do
           acc
         end
       end)
-
-    anomalies
+    end)
   end
 
   @doc """
   Detects trend-based anomalies by analyzing activity trends.
   """
   def detect_trend_anomalies(current_data, baseline, sensitivity) do
-    anomalies = []
-
     # Check for sudden trend reversals
     current_trend = Map.get(current_data, :activity_trend, :stable)
     baseline_trend = get_baseline_trend(baseline)
 
-    anomalies =
+    # Check for acceleration anomalies
+    current_acceleration = Map.get(current_data, :trend_acceleration, 0)
+    baseline_acceleration = get_baseline_acceleration(baseline)
+    acceleration_threshold = get_acceleration_threshold(sensitivity)
+
+    []
+    |> then(fn anomalies ->
       if is_trend_reversal(current_trend, baseline_trend) do
         severity = assess_trend_reversal_severity(current_trend, baseline_trend, sensitivity)
 
@@ -244,14 +239,8 @@ defmodule EveDmv.Shared.Monitoring.AnomalyDetector do
       else
         anomalies
       end
-
-    # Check for acceleration anomalies
-    current_acceleration = Map.get(current_data, :trend_acceleration, 0)
-    baseline_acceleration = get_baseline_acceleration(baseline)
-
-    acceleration_threshold = get_acceleration_threshold(sensitivity)
-
-    anomalies =
+    end)
+    |> then(fn anomalies ->
       if abs(current_acceleration - baseline_acceleration) > acceleration_threshold do
         anomaly = %{
           type: :trend_anomaly,
@@ -267,8 +256,7 @@ defmodule EveDmv.Shared.Monitoring.AnomalyDetector do
       else
         anomalies
       end
-
-    anomalies
+    end)
   end
 
   @doc """
@@ -316,8 +304,6 @@ defmodule EveDmv.Shared.Monitoring.AnomalyDetector do
   Calculates anomaly confidence score based on multiple detection methods.
   """
   def calculate_anomaly_confidence(anomaly, baseline, historical_data) do
-    confidence_factors = []
-
     # Statistical confidence
     statistical_confidence =
       if anomaly.type == :statistical_anomaly do
@@ -325,8 +311,6 @@ defmodule EveDmv.Shared.Monitoring.AnomalyDetector do
       else
         0.5
       end
-
-    confidence_factors = [statistical_confidence | confidence_factors]
 
     # Pattern confidence
     pattern_confidence =
@@ -336,13 +320,11 @@ defmodule EveDmv.Shared.Monitoring.AnomalyDetector do
         0.5
       end
 
-    confidence_factors = [pattern_confidence | confidence_factors]
-
     # Historical confidence
     historical_confidence = calculate_historical_confidence(anomaly, historical_data)
-    confidence_factors = [historical_confidence | confidence_factors]
 
     # Combine confidence factors
+    confidence_factors = [statistical_confidence, pattern_confidence, historical_confidence]
     overall_confidence = Enum.sum(confidence_factors) / length(confidence_factors)
 
     %{

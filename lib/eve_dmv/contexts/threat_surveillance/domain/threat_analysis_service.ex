@@ -67,34 +67,35 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
   defp perform_comprehensive_analysis(entity_id, entity_type, options) do
     timeframe = Keyword.get(options, :timeframe, 90)
 
-    tasks = [
-      Task.async(fn -> get_current_threat_assessment(entity_id, entity_type) end),
-      Task.async(fn -> get_behavioral_analysis(entity_id, entity_type, timeframe) end),
-      Task.async(fn -> get_combat_statistics(entity_id, entity_type, timeframe) end),
-      Task.async(fn -> get_engagement_patterns(entity_id, entity_type, timeframe) end)
-    ]
-
-    # Add optional analyses
     tasks =
-      if Keyword.get(options, :include_history, true) do
-        [Task.async(fn -> get_threat_history(entity_id, entity_type) end) | tasks]
-      else
-        tasks
-      end
-
-    tasks =
-      if Keyword.get(options, :include_predictions, true) do
-        [Task.async(fn -> get_threat_predictions(entity_id, entity_type) end) | tasks]
-      else
-        tasks
-      end
-
-    tasks =
-      if Keyword.get(options, :include_correlations, true) do
-        [Task.async(fn -> get_threat_correlations(entity_id, entity_type) end) | tasks]
-      else
-        tasks
-      end
+      [
+        Task.async(fn -> get_current_threat_assessment(entity_id, entity_type) end),
+        Task.async(fn -> get_behavioral_analysis(entity_id, entity_type, timeframe) end),
+        Task.async(fn -> get_combat_statistics(entity_id, entity_type, timeframe) end),
+        Task.async(fn -> get_engagement_patterns(entity_id, entity_type, timeframe) end)
+      ]
+      |> then(fn tasks ->
+        # Add optional analyses
+        if Keyword.get(options, :include_history, true) do
+          [Task.async(fn -> get_threat_history(entity_id, entity_type) end) | tasks]
+        else
+          tasks
+        end
+      end)
+      |> then(fn tasks ->
+        if Keyword.get(options, :include_predictions, true) do
+          [Task.async(fn -> get_threat_predictions(entity_id, entity_type) end) | tasks]
+        else
+          tasks
+        end
+      end)
+      |> then(fn tasks ->
+        if Keyword.get(options, :include_correlations, true) do
+          [Task.async(fn -> get_threat_correlations(entity_id, entity_type) end) | tasks]
+        else
+          tasks
+        end
+      end)
 
     # Await all tasks with timeout
     results = Task.await_many(tasks, 10_000)
@@ -334,25 +335,28 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
 
     # Add optional sections if requested
     analysis =
-      if Map.has_key?(analysis_data, :threat_history) do
-        Map.put(analysis, :threat_history, analysis_data.threat_history)
-      else
-        analysis
-      end
-
-    analysis =
-      if Map.has_key?(analysis_data, :threat_predictions) do
-        Map.put(analysis, :threat_predictions, analysis_data.threat_predictions)
-      else
-        analysis
-      end
-
-    analysis =
-      if Map.has_key?(analysis_data, :threat_correlations) do
-        Map.put(analysis, :threat_correlations, analysis_data.threat_correlations)
-      else
-        analysis
-      end
+      analysis
+      |> then(fn analysis ->
+        if Map.has_key?(analysis_data, :threat_history) do
+          Map.put(analysis, :threat_history, analysis_data.threat_history)
+        else
+          analysis
+        end
+      end)
+      |> then(fn analysis ->
+        if Map.has_key?(analysis_data, :threat_predictions) do
+          Map.put(analysis, :threat_predictions, analysis_data.threat_predictions)
+        else
+          analysis
+        end
+      end)
+      |> then(fn analysis ->
+        if Map.has_key?(analysis_data, :threat_correlations) do
+          Map.put(analysis, :threat_correlations, analysis_data.threat_correlations)
+        else
+          analysis
+        end
+      end)
 
     {:ok, analysis}
   end
@@ -613,12 +617,13 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
   end
 
   defp compile_risk_factors(analysis_data) do
-    risk_factors = []
-
     # Check combat statistics for risk indicators
     combat_stats = Map.get(analysis_data, :combat_statistics, %{})
+    # Check behavioral patterns
+    behavioral = Map.get(analysis_data, :behavioral_patterns, %{})
 
-    risk_factors =
+    []
+    |> then(fn risk_factors ->
       if Map.get(combat_stats, :kill_death_ratio, 0) > 3.0 do
         [
           %{
@@ -631,8 +636,8 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
       else
         risk_factors
       end
-
-    risk_factors =
+    end)
+    |> then(fn risk_factors ->
       if Map.get(combat_stats, :danger_rating, 0) > 80 do
         [
           %{
@@ -645,11 +650,8 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
       else
         risk_factors
       end
-
-    # Check behavioral patterns
-    behavioral = Map.get(analysis_data, :behavioral_patterns, %{})
-
-    risk_factors =
+    end)
+    |> then(fn risk_factors ->
       if get_in(behavioral, [:engagement_patterns, :solo_percentage]) > 70 do
         [
           %{
@@ -662,8 +664,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
       else
         risk_factors
       end
-
-    risk_factors
+    end)
   end
 
   defp classify_threat_type(analysis_data) do
@@ -690,11 +691,11 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
   end
 
   defp generate_threat_recommendations(analysis_data) do
-    recommendations = []
-
     threat_type = classify_threat_type(analysis_data)
+    behavioral = Map.get(analysis_data, :behavioral_patterns, %{})
 
-    recommendations =
+    []
+    |> then(fn recommendations ->
       case threat_type do
         :solo_hunter ->
           ["Avoid isolated travel in their active systems" | recommendations]
@@ -708,18 +709,15 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
         _ ->
           recommendations
       end
-
-    # Add specific recommendations based on patterns
-    behavioral = Map.get(analysis_data, :behavioral_patterns, %{})
-
-    recommendations =
+    end)
+    |> then(fn recommendations ->
+      # Add specific recommendations based on patterns
       if get_in(behavioral, [:activity_patterns, :peak_hours]) != [] do
         peak_hours = get_in(behavioral, [:activity_patterns, :peak_hours])
         ["Highest threat during hours: #{Enum.join(peak_hours, ", ")}" | recommendations]
       else
         recommendations
       end
-
-    recommendations
+    end)
   end
 end

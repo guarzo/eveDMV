@@ -508,37 +508,37 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
   end
 
   defp identify_consolidation_indicators(_strategic_data, metrics) do
-    indicators = []
+    base_indicators = []
 
     # High system concentration
-    indicators =
+    concentration_indicators =
       if metrics.system_concentration > @territorial_control_threshold do
-        indicators ++ [{:high_concentration, metrics.system_concentration}]
+        base_indicators ++ [{:high_concentration, metrics.system_concentration}]
       else
-        indicators
+        base_indicators
       end
 
     # Defensive activity
-    indicators =
+    defensive_indicators =
       if metrics.defensive_activity > 0.3 do
-        indicators ++ [{:defensive_operations, metrics.defensive_activity}]
+        concentration_indicators ++ [{:defensive_operations, metrics.defensive_activity}]
       else
-        indicators
+        concentration_indicators
       end
 
     # Quick response times
-    indicators =
+    response_indicators =
       if metrics.response_times > 0.5 do
-        indicators ++ [{:rapid_response, metrics.response_times}]
+        defensive_indicators ++ [{:rapid_response, metrics.response_times}]
       else
-        indicators
+        defensive_indicators
       end
 
     # Force concentration
     if metrics.force_concentration > 0.6 do
-      indicators ++ [{:concentrated_forces, metrics.force_concentration}]
+      response_indicators ++ [{:concentrated_forces, metrics.force_concentration}]
     else
-      indicators
+      response_indicators
     end
   end
 
