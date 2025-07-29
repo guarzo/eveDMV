@@ -238,14 +238,12 @@ defmodule EveDmv.Database.PartitionAutomation do
   end
 
   defp drop_partition(partition_name) do
-    try do
-      Repo.query!("DROP TABLE #{partition_name}")
-      Logger.info("Dropped partition #{partition_name}")
-      {:ok, partition_name}
-    rescue
-      error ->
-        Logger.warning("Failed to drop partition #{partition_name}: #{inspect(error)}")
-        {:error, error}
-    end
+    Repo.query!("DROP TABLE #{partition_name}")
+    Logger.info("Dropped partition #{partition_name}")
+    {:ok, partition_name}
+  rescue
+    error ->
+      Logger.warning("Failed to drop partition #{partition_name}: #{inspect(error)}")
+      {:error, error}
   end
 end

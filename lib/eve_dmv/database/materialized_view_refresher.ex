@@ -137,33 +137,31 @@ defmodule EveDmv.Database.MaterializedViewRefresher do
   # Private functions
 
   defp refresh_all_views do
-    try do
-      # Use a transaction to ensure consistency
-      Repo.transaction(fn ->
-        # First refresh character activity (base view)
-        case Repo.query(@character_activity_refresh) do
-          {:ok, _} ->
-            Logger.debug("✓ character_activity_summary refreshed")
+    # Use a transaction to ensure consistency
+    Repo.transaction(fn ->
+      # First refresh character activity (base view)
+      case Repo.query(@character_activity_refresh) do
+        {:ok, _} ->
+          Logger.debug("✓ character_activity_summary refreshed")
 
-          {:error, error} ->
-            Logger.error("Failed to refresh character_activity_summary: #{inspect(error)}")
-            Repo.rollback(error)
-        end
+        {:error, error} ->
+          Logger.error("Failed to refresh character_activity_summary: #{inspect(error)}")
+          Repo.rollback(error)
+      end
 
-        # Then refresh corporation summary (depends on character activity)
-        case Repo.query(@corporation_summary_refresh) do
-          {:ok, _} ->
-            Logger.debug("✓ corporation_member_summary refreshed")
+      # Then refresh corporation summary (depends on character activity)
+      case Repo.query(@corporation_summary_refresh) do
+        {:ok, _} ->
+          Logger.debug("✓ corporation_member_summary refreshed")
 
-          {:error, error} ->
-            Logger.error("Failed to refresh corporation_member_summary: #{inspect(error)}")
-            Repo.rollback(error)
-        end
-      end)
-    rescue
-      e ->
-        {:error, e}
-    end
+        {:error, error} ->
+          Logger.error("Failed to refresh corporation_member_summary: #{inspect(error)}")
+          Repo.rollback(error)
+      end
+    end)
+  rescue
+    e ->
+      {:error, e}
   end
 
   defp schedule_next_refresh do
