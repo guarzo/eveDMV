@@ -808,30 +808,30 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
 
   defp identify_targeting_mistakes(events, _fleet_analysis) do
     # Identify potential targeting mistakes
-    mistakes = []
-
     # Check for ignoring logistics
     logistics_kills = Enum.filter(events, &(&1.tactical_significance == :logistics_kill))
 
-    mistakes =
+    base_mistakes = []
+
+    logistics_mistakes =
       if Enum.empty?(logistics_kills) and length(events) > 10 do
-        [%{type: :ignored_logistics, severity: :high} | mistakes]
+        [%{type: :ignored_logistics, severity: :high} | base_mistakes]
       else
-        mistakes
+        base_mistakes
       end
 
     # Check for poor target prioritization
     first_quarter = Enum.take(events, div(length(events), 4))
     priority_in_first = Enum.count(first_quarter, &(&1.tactical_significance != :standard_kill))
 
-    mistakes =
+    final_mistakes =
       if priority_in_first < length(first_quarter) * 0.3 do
-        [%{type: :poor_prioritization, severity: :medium} | mistakes]
+        [%{type: :poor_prioritization, severity: :medium} | logistics_mistakes]
       else
-        mistakes
+        logistics_mistakes
       end
 
-    mistakes
+    final_mistakes
   end
 
   defp suggest_optimal_target_sequence(events, _fleet_analysis) do
