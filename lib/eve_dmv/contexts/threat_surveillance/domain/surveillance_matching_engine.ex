@@ -8,9 +8,11 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngine d
 
   use GenServer
 
-  alias EveDmv.Shared.Infrastructure.{UnifiedCache, UnifiedRepository}
-  alias EveDmv.DomainEvents.{KillmailEnriched, SurveillanceMatch}
+  alias EveDmv.DomainEvents.KillmailEnriched
+  alias EveDmv.DomainEvents.SurveillanceMatch
   alias EveDmv.Infrastructure.EventBus
+  alias EveDmv.Shared.Infrastructure.UnifiedCache
+  alias EveDmv.Shared.Infrastructure.UnifiedRepository
 
   require Logger
 
@@ -51,7 +53,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngine d
   @doc """
   Get surveillance matching metrics.
   """
-  def get_metrics() do
+  def get_metrics do
     GenServer.call(__MODULE__, :get_metrics)
   end
 
@@ -368,7 +370,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngine d
 
   defp extract_match_details(_), do: %{}
 
-  defp load_active_profiles() do
+  defp load_active_profiles do
     # Load active surveillance profiles from repository
     case UnifiedRepository.get_active_surveillance_profiles() do
       {:ok, profiles} -> {:ok, profiles}

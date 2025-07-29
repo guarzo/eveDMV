@@ -44,7 +44,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.AlertManagementService do
   @doc """
   Get alert metrics.
   """
-  def get_metrics() do
+  def get_metrics do
     GenServer.call(__MODULE__, :get_metrics)
   end
 
@@ -346,7 +346,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.AlertManagementService do
     end
   end
 
-  defp generate_alert_id() do
+  defp generate_alert_id do
     "alert_#{System.system_time(:second)}_#{:rand.uniform(10000)}"
   end
 end

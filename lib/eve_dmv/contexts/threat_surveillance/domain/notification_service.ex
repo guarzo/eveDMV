@@ -59,7 +59,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.NotificationService do
   @doc """
   Get notification statistics.
   """
-  def get_stats() do
+  def get_stats do
     GenServer.call(__MODULE__, :get_stats)
   end
 
@@ -523,7 +523,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.NotificationService do
     end
   end
 
-  defp generate_notification_id() do
+  defp generate_notification_id do
     "notification_#{System.system_time(:second)}_#{:rand.uniform(10000)}"
   end
 

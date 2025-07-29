@@ -13,6 +13,8 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
   and threat scoring from the ThreatAssessmentEngine.
   """
 
+  import Ecto.Query
+
   alias EveDmv.Api
   alias EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer
   alias EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAssessmentEngine
@@ -21,7 +23,6 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
   alias EveDmv.Shared.Infrastructure.UnifiedCache
 
   require Logger
-  import Ecto.Query
 
   # 5 minutes
   @cache_ttl 300

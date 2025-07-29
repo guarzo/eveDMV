@@ -13,13 +13,14 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
   All analysis is based on real killmail data from the database.
   """
 
+  import Ecto.Query
+
   # alias EveDmv.Api
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Shared.Infrastructure.UnifiedCache
   alias EveDmv.StaticData
 
   require Logger
-  import Ecto.Query
 
   # 5 minutes
   @cache_ttl 300
@@ -636,7 +637,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
 
   defp extract_entities_from_killmail(event) do
     victim_entities = extract_entities_from_actor(event.victim)
-    attacker_entities = 
+    attacker_entities =
       event.attackers
       |> Enum.flat_map(&extract_entities_from_actor/1)
       |> Enum.uniq()
@@ -645,9 +646,9 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
   end
 
   defp extract_entities_from_actor(actor) do
-    entities = []
-    entities = maybe_add_character_entity(entities, actor["character_id"])
-    maybe_add_corporation_entity(entities, actor["corporation_id"])
+    []
+    |> maybe_add_character_entity(actor["character_id"])
+    |> maybe_add_corporation_entity(actor["corporation_id"])
   end
 
   defp maybe_add_character_entity(entities, nil), do: entities
