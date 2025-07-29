@@ -86,8 +86,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Mov
     else
       synchronized_movements =
         movement_events
-        |> Enum.filter(& &1.location_change)
-        |> Enum.filter(&(&1.time_delta < 120))
+        |> Enum.filter(&(&1.location_change && &1.time_delta < 120))
         |> length()
 
       (synchronized_movements / (length(movement_events) * 0.5)) |> min(1.0)
@@ -155,12 +154,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Mov
 
     timeline.events
     |> Enum.filter(fn e ->
-      e.timestamp >= window_start - 120 && e.timestamp < window_start
-    end)
-    |> Enum.filter(fn _e ->
-      # Check if it's a loss for the moving side
+      # Check time window and if it's a loss for the moving side
       # Simplified logic - would need participant tracking
-      true
+      e.timestamp >= window_start - 120 && e.timestamp < window_start
     end)
     |> length()
   end
