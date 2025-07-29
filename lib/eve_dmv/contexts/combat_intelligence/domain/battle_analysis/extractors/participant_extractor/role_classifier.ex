@@ -812,34 +812,40 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
   defp calculate_role_diversity(role_distribution) do
     role_count = map_size(role_distribution)
 
-    if role_count == 0 do
+    cond do
+      role_count == 0 -> 0.0
+      true -> calculate_role_shannon_diversity(role_distribution, role_count)
+    end
+  end
+
+  defp calculate_role_shannon_diversity(role_distribution, role_count) do
+    total_participants =
+      role_distribution
+      |> Map.values()
+      |> Enum.map(&Map.get(&1, :count, 0))
+      |> Enum.sum()
+
+    if total_participants == 0 do
       0.0
     else
-      # Shannon diversity index for roles
-      total_participants =
+      shannon_entropy =
         role_distribution
         |> Map.values()
-        |> Enum.map(&Map.get(&1, :count, 0))
+        |> Enum.map(&calculate_role_entropy_contribution(&1, total_participants))
         |> Enum.sum()
 
-      if total_participants == 0 do
-        0.0
-      else
-        role_distribution
-        |> Map.values()
-        |> Enum.map(fn data ->
-          count = Map.get(data, :count, 0)
+      shannon_entropy / :math.log(role_count)
+    end
+  end
 
-          if count > 0 do
-            p = count / total_participants
-            -p * :math.log(p)
-          else
-            0
-          end
-        end)
-        |> Enum.sum()
-        |> (fn h -> h / :math.log(role_count) end).()
-      end
+  defp calculate_role_entropy_contribution(data, total_participants) do
+    count = Map.get(data, :count, 0)
+
+    if count > 0 do
+      p = count / total_participants
+      -p * :math.log(p)
+    else
+      0
     end
   end
 
