@@ -674,12 +674,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
             DateTime.compare(end1, start2) != :lt,
             do: calculate_overlap_duration(start1, end1, start2, end2)
 
-      if not Enum.empty?(overlaps) do
+      if Enum.empty?(overlaps) do
+        0.0
+      else
         avg_overlap = Enum.sum(overlaps) / length(overlaps)
         # Normalize to 0-1 based on 24 hour overlap
         min(1.0, avg_overlap / 24)
-      else
-        0.0
       end
     end
   end
