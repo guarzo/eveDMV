@@ -524,15 +524,17 @@ defmodule EveDmv.Shared.Correlation.SystemActivityCollector do
         entropy =
           distribution
           |> Map.values()
-          |> Enum.map(fn count ->
-            p = count / total
-            if p > 0, do: -p * :math.log2(p), else: 0
-          end)
+          |> Enum.map(&calculate_entropy_component(&1, total))
           |> Enum.sum()
 
         Float.round(entropy, 3)
       end
     end
+  end
+
+  defp calculate_entropy_component(count, total) do
+    p = count / total
+    if p > 0, do: -p * :math.log2(p), else: 0
   end
 
   defp group_timestamps_into_windows(timestamps, window_minutes) do

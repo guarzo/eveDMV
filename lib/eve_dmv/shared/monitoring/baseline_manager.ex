@@ -379,17 +379,16 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
         if mean_interval == 0 do
           1.0
         else
-          variance =
-            intervals
-            |> Enum.map(fn i -> :math.pow(i - mean_interval, 2) end)
-            |> Enum.sum()
-            |> Kernel./(length(intervals))
-
-          cv = :math.sqrt(variance) / mean_interval
-          Float.round(max(0.0, 1.0 - cv), 3)
+          calculate_consistency_score(intervals, mean_interval)
         end
       end
     end
+  end
+
+  defp calculate_consistency_score(intervals, mean_interval) do
+    variance = calculate_variance(intervals, mean_interval)
+    cv = :math.sqrt(variance) / mean_interval
+    Float.round(max(0.0, 1.0 - cv), 3)
   end
 
   defp group_killmails_by_hour(killmails) do
@@ -849,5 +848,12 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
     else
       recommendations
     end
+  end
+
+  defp calculate_variance(intervals, mean_interval) do
+    intervals
+    |> Enum.map(fn i -> :math.pow(i - mean_interval, 2) end)
+    |> Enum.sum()
+    |> Kernel./(length(intervals))
   end
 end
