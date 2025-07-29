@@ -501,40 +501,40 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
 
   defp identify_fitting_patterns(ship_usage) do
     # Identify common fitting patterns from ship usage
-    patterns = []
+    base_patterns = []
 
     # Check for logistics patterns
     logistics_usage = count_ships_by_role(ship_usage, :logistics)
 
-    patterns =
+    logistics_patterns =
       if logistics_usage > 0 do
-        ["Logistics Support" | patterns]
+        ["Logistics Support" | base_patterns]
       else
-        patterns
+        base_patterns
       end
 
     # Check for EWAR patterns
     ewar_usage = count_ships_by_role(ship_usage, :ewar)
 
-    patterns =
+    ewar_patterns =
       if ewar_usage > 0 do
-        ["Electronic Warfare" | patterns]
+        ["Electronic Warfare" | logistics_patterns]
       else
-        patterns
+        logistics_patterns
       end
 
     # Check for capital patterns
     capital_usage =
       count_ships_by_class(ship_usage, [:dreadnought, :carrier, :supercarrier, :titan])
 
-    patterns =
+    final_patterns =
       if capital_usage > 0 do
-        ["Capital Operations" | patterns]
+        ["Capital Operations" | ewar_patterns]
       else
-        patterns
+        ewar_patterns
       end
 
-    patterns
+    final_patterns
   end
 
   defp count_ships_by_role(ship_usage, target_role) do

@@ -395,7 +395,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
         |> Enum.filter(fn chunk -> length(chunk) > 3 end)
       end)
 
-    if not Enum.empty?(fleet_indicators) do
+    if Enum.empty?(fleet_indicators) do
+      %{detected: false, confidence: 0.0, avg_fleet_size: 0, pattern: :none}
+    else
       avg_fleet_size =
         fleet_indicators
         |> Enum.map(&length/1)
@@ -417,8 +419,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
         pattern: pattern,
         fleet_count: length(fleet_indicators)
       }
-    else
-      %{detected: false, confidence: 0.0, avg_fleet_size: 0, pattern: :none}
     end
   end
 
@@ -433,7 +433,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
           kill.victim_ship_type_id < 30_000
       end)
 
-    if not Enum.empty?(capital_kills) do
+    if Enum.empty?(capital_kills) do
+      %{detected: false, confidence: 0.0, ship_types: []}
+    else
       ship_types = capital_kills |> Enum.map(& &1.victim_ship_type_id) |> Enum.uniq()
 
       %{
@@ -442,8 +444,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
         ship_types: ship_types,
         capital_count: length(capital_kills)
       }
-    else
-      %{detected: false, confidence: 0.0, ship_types: []}
     end
   end
 
