@@ -268,22 +268,22 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Coo
       # Good synchronization = consistent small gaps
       avg_gap = Enum.sum(gaps) / length(gaps)
 
-      if avg_gap < 30 do
-        # Very tight timing
-        0.9
-      else
-        if avg_gap < 60 do
+      cond do
+        avg_gap < 30 ->
+          # Very tight timing
+          0.9
+
+        avg_gap < 60 ->
           # Good timing
           0.7
-        else
-          if avg_gap < 120 do
-            # Moderate timing
-            0.5
-          else
-            # Poor timing
-            0.3
-          end
-        end
+
+        avg_gap < 120 ->
+          # Moderate timing
+          0.5
+
+        true ->
+          # Poor timing
+          0.3
       end
     end
   end
