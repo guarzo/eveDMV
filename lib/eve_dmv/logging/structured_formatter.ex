@@ -63,33 +63,31 @@ defmodule EveDmv.Logging.StructuredFormatter do
 
   defp format_timestamp(timestamp) do
     # Convert erlang timestamp to ISO8601 format
-    try do
-      case timestamp do
-        {mega, sec, micro} ->
-          # Legacy erlang timestamp format
-          unix_timestamp = mega * 1_000_000 + sec
+    case timestamp do
+      {mega, sec, micro} ->
+        # Legacy erlang timestamp format
+        unix_timestamp = mega * 1_000_000 + sec
 
-          unix_timestamp
-          |> DateTime.from_unix!(:second)
-          |> DateTime.add(micro, :microsecond)
-          |> DateTime.to_iso8601()
+        unix_timestamp
+        |> DateTime.from_unix!(:second)
+        |> DateTime.add(micro, :microsecond)
+        |> DateTime.to_iso8601()
 
-        timestamp when is_integer(timestamp) ->
-          # Modern system timestamp
-          timestamp
-          |> System.convert_time_unit(:native, :microsecond)
-          |> DateTime.from_unix!(:microsecond)
-          |> DateTime.to_iso8601()
+      timestamp when is_integer(timestamp) ->
+        # Modern system timestamp
+        timestamp
+        |> System.convert_time_unit(:native, :microsecond)
+        |> DateTime.from_unix!(:microsecond)
+        |> DateTime.to_iso8601()
 
-        _ ->
-          # Fallback to current time
-          DateTime.utc_now() |> DateTime.to_iso8601()
-      end
-    rescue
       _ ->
-        # If all else fails, use current time
+        # Fallback to current time
         DateTime.utc_now() |> DateTime.to_iso8601()
     end
+  rescue
+    _ ->
+      # If all else fails, use current time
+      DateTime.utc_now() |> DateTime.to_iso8601()
   end
 
   defp format_message({:string, message}) when is_binary(message), do: message
