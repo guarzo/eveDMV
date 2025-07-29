@@ -126,10 +126,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
         coalitions
         |> Enum.with_index(1)
         |> Enum.map(fn {alliance_list, index} ->
-          coalition_participants =
-            alliance_list
-            |> Enum.flat_map(fn alliance_id -> Map.get(alliances, alliance_id, []) end)
-
+          coalition_participants = get_coalition_participants(alliance_list, alliances)
           total_strength = length(coalition_participants)
 
           {"coalition_#{index}",
@@ -146,6 +143,24 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
         |> Enum.into(%{})
       end
     end
+  end
+
+  defp get_coalition_participants(alliance_list, alliances) do
+    alliance_list
+    |> Enum.flat_map(fn alliance_id -> Map.get(alliances, alliance_id, []) end)
+  end
+
+  defp calculate_diversity_score(sizes, total) do
+    sizes
+    |> Enum.map(fn size ->
+      if size > 0 do
+        p = size / total
+        -p * :math.log(p)
+      else
+        0
+      end
+    end)
+    |> Enum.sum()
   end
 
   @doc """
@@ -840,16 +855,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
         0.0
       else
         # Shannon diversity index normalized to 0-1
-        sizes
-        |> Enum.map(fn size ->
-          if size > 0 do
-            p = size / total
-            -p * :math.log(p)
-          else
-            0
-          end
-        end)
-        |> Enum.sum()
+        calculate_diversity_score(sizes, total)
         |> (fn h -> h / :math.log(length(sizes)) end).()
         |> min(1.0)
       end
