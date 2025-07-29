@@ -130,31 +130,29 @@ defmodule EveDmvWeb.KillmailLive do
   end
 
   defp fetch_killmail_details(killmail_id) do
-    try do
-      query =
-        KillmailRaw
-        |> new()
-        |> filter(killmail_id: killmail_id)
-        |> limit(1)
+    query =
+      KillmailRaw
+      |> new()
+      |> filter(killmail_id: killmail_id)
+      |> limit(1)
 
-      case Ash.read(query, domain: Api) do
-        {:ok, [killmail]} ->
-          # Enrich killmail with additional data
-          enriched_killmail = enrich_killmail_data(killmail)
-          {:ok, enriched_killmail}
+    case Ash.read(query, domain: Api) do
+      {:ok, [killmail]} ->
+        # Enrich killmail with additional data
+        enriched_killmail = enrich_killmail_data(killmail)
+        {:ok, enriched_killmail}
 
-        {:ok, []} ->
-          {:error, "Killmail not found"}
+      {:ok, []} ->
+        {:error, "Killmail not found"}
 
-        {:error, error} ->
-          Logger.error("Failed to fetch killmail #{killmail_id}: #{inspect(error)}")
-          {:error, "Database error"}
-      end
-    rescue
-      error ->
-        Logger.error("Exception fetching killmail #{killmail_id}: #{inspect(error)}")
-        {:error, "Failed to load killmail"}
+      {:error, error} ->
+        Logger.error("Failed to fetch killmail #{killmail_id}: #{inspect(error)}")
+        {:error, "Database error"}
     end
+  rescue
+    error ->
+      Logger.error("Exception fetching killmail #{killmail_id}: #{inspect(error)}")
+      {:error, "Failed to load killmail"}
   end
 
   defp enrich_killmail_data(killmail) do
@@ -289,7 +287,6 @@ defmodule EveDmvWeb.KillmailLive do
   end
 
   defp generate_csv_export(killmail) do
-    try do
       # Create CSV with killmail summary and attackers
       headers = [
         "killmail_id",
@@ -350,11 +347,10 @@ defmodule EveDmvWeb.KillmailLive do
         end)
 
       {:ok, content}
-    rescue
-      error ->
-        Logger.error("CSV export failed: #{inspect(error)}")
-        {:error, "CSV generation failed"}
-    end
+  rescue
+    error ->
+      Logger.error("CSV export failed: #{inspect(error)}")
+      {:error, "CSV generation failed"}
   end
 
   defp escape_csv_field(field) do

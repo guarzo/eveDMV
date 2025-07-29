@@ -66,7 +66,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
     fleet_duration = calculate_fleet_duration(fleet_data)
 
     total_fleet_value =
-      Enum.sum(Enum.map(participant_data, fn participant -> participant.ship_value || 0 end))
+      Enum.sum(Enum.map(participant_data, &(&1.ship_value || 0)))
 
     average_ship_value = safe_divide(total_fleet_value, total_participants)
 

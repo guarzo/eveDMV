@@ -228,7 +228,7 @@ defmodule EveDmv.StaticData.ShipAttributesTest do
 
       assert {:ok, ehp} = ShipTypes.get_ship_ehp(999)
       # Frigate fallback value
-      assert ehp == 15000
+      assert ehp == 15_000
     end
 
     test "returns error for non-existent ships" do
@@ -246,7 +246,7 @@ defmodule EveDmv.StaticData.ShipAttributesTest do
         {102, "Test Frigate 2", "Assault Frigate", 220.0, 1800.0, "dps", "frigate"},
         {201, "Test Cruiser 1", "Cruiser", 400.0, 4000.0, "dps", "cruiser"},
         {202, "Test Cruiser 2", "Logistics Cruiser", 50.0, 5000.0, "logistics", "cruiser"},
-        {301, "Test Battleship", "Battleship", 800.0, 15000.0, "dps", "battleship"}
+        {301, "Test Battleship", "Battleship", 800.0, 15_000.0, "dps", "battleship"}
       ]
 
       for {type_id, name, group, dps, ehp, role, size} <- ships_data do

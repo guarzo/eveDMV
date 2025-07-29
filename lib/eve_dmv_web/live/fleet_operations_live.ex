@@ -159,7 +159,6 @@ defmodule EveDmvWeb.FleetOperationsLive do
   # Analysis functions
 
   defp analyze_fleet_composition(fleet_data) do
-    try do
       # CompositionAnalyzer expects fleet_id as integer and base_data structure
       # Convert string to integer
       fleet_id_hash = :erlang.phash2(fleet_data.fleet_id)
@@ -189,14 +188,12 @@ defmodule EveDmvWeb.FleetOperationsLive do
         %EveDmv.Error{} = error ->
           %{type: "composition", success: false, error: error.message}
       end
-    rescue
-      error ->
-        %{type: "composition", success: false, error: "Analysis failed: #{inspect(error)}"}
-    end
+  rescue
+    error ->
+      %{type: "composition", success: false, error: "Analysis failed: #{inspect(error)}"}
   end
 
   defp analyze_fleet_effectiveness(fleet_data) do
-    try do
       participant_data = Map.get(fleet_data, :fleet_participants, %{})
       participants = Map.get(participant_data, fleet_data.fleet_id, [])
 
@@ -220,14 +217,12 @@ defmodule EveDmvWeb.FleetOperationsLive do
         },
         summary: generate_effectiveness_summary(effectiveness)
       }
-    rescue
-      error ->
-        %{type: "effectiveness", success: false, error: "Analysis failed: #{inspect(error)}"}
-    end
+  rescue
+    error ->
+      %{type: "effectiveness", success: false, error: "Analysis failed: #{inspect(error)}"}
   end
 
   defp analyze_pilot_performance(fleet_data) do
-    try do
       participant_data = Map.get(fleet_data, :fleet_participants, %{})
       participants = Map.get(participant_data, fleet_data.fleet_id, [])
 
@@ -240,10 +235,9 @@ defmodule EveDmvWeb.FleetOperationsLive do
         data: performance_metrics,
         summary: generate_performance_summary(performance_metrics)
       }
-    rescue
-      error ->
-        %{type: "performance", success: false, error: "Analysis failed: #{inspect(error)}"}
-    end
+  rescue
+    error ->
+      %{type: "performance", success: false, error: "Analysis failed: #{inspect(error)}"}
   end
 
   # Calculate pilot performance metrics from battle data
@@ -609,7 +603,9 @@ defmodule EveDmvWeb.FleetOperationsLive do
         </div>
 
         <!-- Most Common Ships -->
-        #{if not Enum.empty?(most_common_ships) do
+        #{if Enum.empty?(most_common_ships) do
+      ""
+    else
       """
       <div>
         <h4 class="font-medium text-gray-900 dark:text-white mb-2">Most Common Ships</h4>
@@ -628,8 +624,6 @@ defmodule EveDmvWeb.FleetOperationsLive do
         </div>
       </div>
       """
-    else
-      ""
     end}
 
         <!-- Ship Classes Overview -->
@@ -879,12 +873,12 @@ defmodule EveDmvWeb.FleetOperationsLive do
         </div>
       </div>
       """
-    else
-      ""
     end}
 
         <!-- Top Performers -->
-        #{if not Enum.empty?(top_performers) do
+        #{if Enum.empty?(top_performers) do
+      ""
+    else
       """
       <div>
         <h4 class="font-medium text-gray-900 dark:text-white mb-3">Top Performers</h4>
@@ -914,8 +908,6 @@ defmodule EveDmvWeb.FleetOperationsLive do
         </div>
       </div>
       """
-    else
-      ""
     end}
 
         <!-- Battle Statistics -->
@@ -992,7 +984,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
 
   defp calculate_average_ship_value(participants) do
     total_value = Enum.sum(Enum.map(participants, &Map.get(&1, :ship_value, 0)))
-    if not Enum.empty?(participants), do: round(total_value / length(participants)), else: 0
+    if Enum.empty?(participants), do: 0, else: round(total_value / length(participants))
   end
 
   defp get_most_common_ship(ship_distribution) do
@@ -1037,7 +1029,6 @@ defmodule EveDmvWeb.FleetOperationsLive do
   end
 
   defp extract_side_participants(battle, side) do
-    try do
       killmails = Map.get(battle, :killmails, [])
       participants = extract_participants_from_killmails(killmails)
       fleet_sides = group_participants_into_sides(participants)
@@ -1086,10 +1077,9 @@ defmodule EveDmvWeb.FleetOperationsLive do
 
           {:ok, Map.get(side_data, :pilots, [])}
       end
-    rescue
-      error ->
-        {:error, "Failed to extract side participants: #{inspect(error)}"}
-    end
+  rescue
+    error ->
+      {:error, "Failed to extract side participants: #{inspect(error)}"}
   end
 
   defp convert_pilot_to_fleet_member(pilot) do

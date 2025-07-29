@@ -783,7 +783,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       all_sides = (pilot_sides ++ battle_sides) |> Enum.uniq() |> Enum.sort()
 
       # Use detected sides or default to side_1, side_2
-      custom_sides = if not Enum.empty?(all_sides), do: all_sides, else: ["side_1", "side_2"]
+      custom_sides = if Enum.empty?(all_sides), do: ["side_1", "side_2"], else: all_sides
 
       # Calculate corporation summaries
       corp_summaries = calculate_corp_summaries(battle)
@@ -800,65 +800,69 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   defp calculate_corp_summaries(battle) do
     if battle && battle.timeline && battle.timeline.events do
       battle.timeline.events
-      |> Enum.reduce(%{}, fn event, acc ->
-        # Process victim corporation
-        victim_corp = event.victim.corporation_id
-        victim_value = event[:isk_value] || 0
-
-        acc =
-          if victim_corp do
-            Map.update(
-              acc,
-              victim_corp,
-              %{
-                kills: 0,
-                losses: 1,
-                isk_destroyed: 0,
-                isk_lost: victim_value,
-                name: event.victim.corporation_name
-              },
-              fn stats ->
-                %{stats | losses: stats.losses + 1, isk_lost: stats.isk_lost + victim_value}
-              end
-            )
-          else
-            acc
-          end
-
-        # Process attacker corporations - accumulate in acc properly
-        event.attackers
-        |> Enum.filter(& &1.corporation_id)
-        |> Enum.reduce(acc, fn attacker, acc2 ->
-          # Distribute victim value among all attackers
-          attacker_share =
-            if not Enum.empty?(event.attackers) do
-              victim_value / length(event.attackers)
-            else
-              0
-            end
-
-          Map.update(
-            acc2,
-            attacker.corporation_id,
-            %{
-              kills: if(attacker.final_blow, do: 1, else: 0),
-              losses: 0,
-              isk_destroyed: attacker_share,
-              isk_lost: 0,
-              name: attacker.corporation_name
-            },
-            fn stats ->
-              %{
-                stats
-                | kills: stats.kills + if(attacker.final_blow, do: 1, else: 0),
-                  isk_destroyed: stats.isk_destroyed + attacker_share
-              }
-            end
-          )
-        end)
-      end)
+      |> Enum.reduce(%{}, &process_event_for_corp_stats/2)
     else
       %{}
+    end
+  end
+
+  defp process_event_for_corp_stats(event, acc) do
+    acc = process_victim_corporation(event, acc)
+    process_attacker_corporations(event, acc)
+  end
+
+  defp process_victim_corporation(event, acc) do
+    victim_corp = event.victim.corporation_id
+    victim_value = event[:isk_value] || 0
+
+    if victim_corp do
+      Map.update(
+        acc,
+        victim_corp,
+        %{
+          kills: 0,
+          losses: 1,
+          isk_destroyed: 0,
+          isk_lost: victim_value,
+          name: event.victim.corporation_name
+        },
+        fn stats ->
+          %{stats | losses: stats.losses + 1, isk_lost: stats.isk_lost + victim_value}
+        end
+      )
+    else
+      acc
+    end
+  end
+
+  defp process_attacker_corporations(event, acc) do
+    victim_value = event[:isk_value] || 0
+    event.attackers
+    |> Enum.filter(& &1.corporation_id)
+    |> Enum.reduce(acc, fn attacker, acc2 ->
+      attacker_share = calculate_attacker_share(event.attackers, victim_value)
+      Map.update(
+        acc2,
+        attacker.corporation_id,
+        %{
+          kills: if(attacker.final_blow, do: 1, else: 0),
+          losses: 0,
+          isk_destroyed: attacker_share,
+          isk_lost: 0,
+          name: attacker.corporation_name
+        },
+        fn stats ->
+          update_attacker_stats(stats, attacker, attacker_share)
+        end
+      )
+    end)
+  end
+
+  defp calculate_attacker_share(attackers, victim_value) do
+    if Enum.empty?(attackers) do
+      0
+    else
+      victim_value / length(attackers)
     end
   end
 
@@ -1269,5 +1273,13 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   defp has_valid_character_data?(participant) do
     participant.character_id && participant.character_name
+  end
+
+  defp update_attacker_stats(stats, attacker, attacker_share) do
+    %{
+      stats
+      | kills: stats.kills + if(attacker.final_blow, do: 1, else: 0),
+        isk_destroyed: stats.isk_destroyed + attacker_share
+    }
   end
 end

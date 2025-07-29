@@ -12,11 +12,12 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
   use GenServer
 
   import Ash.Expr
-  require Ash.Query
-  require Logger
 
   alias EveDmv.Eve.ItemType
   alias EveDmv.StaticData.ShipAttributes
+
+  require Ash.Query
+  require Logger
 
   @doc """
   Start the importer service.
@@ -629,7 +630,7 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
       "cruiser" -> %{shield_hp: 2500, armor_hp: 2000, structure_hp: 1500, dps: 400}
       "battlecruiser" -> %{shield_hp: 4000, armor_hp: 3500, structure_hp: 3000, dps: 600}
       "battleship" -> %{shield_hp: 8000, armor_hp: 7000, structure_hp: 6000, dps: 800}
-      "capital" -> %{shield_hp: 50000, armor_hp: 45000, structure_hp: 40000, dps: 2000}
+      "capital" -> %{shield_hp: 50_000, armor_hp: 45_000, structure_hp: 40_000, dps: 2000}
       "supercapital" -> %{shield_hp: 150_000, armor_hp: 120_000, structure_hp: 100_000, dps: 5000}
       _ -> %{shield_hp: 1000, armor_hp: 1000, structure_hp: 1000, dps: 200}
     end
@@ -730,7 +731,7 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
         "battlecruiser" -> 1200
         "battleship" -> 1500
         "capital" -> 5000
-        "supercapital" -> 10000
+        "supercapital" -> 10_000
         _ -> 1000
       end
 
@@ -743,12 +744,12 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
       case size_class do
         "frigate" -> 5000
         "destroyer" -> 8000
-        "cruiser" -> 15000
-        "battlecruiser" -> 25000
-        "battleship" -> 40000
+        "cruiser" -> 15_000
+        "battlecruiser" -> 25_000
+        "battleship" -> 40_000
         "capital" -> 200_000
         "supercapital" -> 500_000
-        _ -> 20000
+        _ -> 20_000
       end
 
     min(ehp / max_ehp, 1.0)

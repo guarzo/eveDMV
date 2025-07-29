@@ -121,22 +121,22 @@ defmodule EveDmv.StaticData.ShipTypesPerformanceTest do
       end
     end
 
-    test "is_support_ship? with combined queries" do
-      # This function calls both is_logistics? and is_ewar?
+    test "support_ship? with combined queries" do
+      # This function calls both logistics? and ewar?
       # Logistics, EWAR, Frigate, Battleship
       test_ids = [521, 541, 1, 301]
 
       {time_micro, results} =
         :timer.tc(fn ->
           for id <- test_ids do
-            {id, ShipTypes.is_support_ship?(id)}
+            {id, ShipTypes.support_ship?(id)}
           end
         end)
 
       time_ms = time_micro / 1000
       avg_time_ms = time_ms / length(test_ids)
 
-      # Performance metrics for is_support_ship? (combined query)
+      # Performance metrics for support_ship? (combined query)
       # Total time for #{length(test_ids)} checks: #{Float.round(time_ms, 2)}ms
       # Average time per check: #{Float.round(avg_time_ms, 2)}ms
 
@@ -166,7 +166,7 @@ defmodule EveDmv.StaticData.ShipTypesPerformanceTest do
 
             # Mix of different query types
             ShipTypes.classify_ship_type(i * 10)
-            ShipTypes.is_tackle_ship?(i * 10)
+            ShipTypes.tackle_ship?(i * 10)
             ShipTypes.is_interceptor?(500 + i)
 
             end_time = System.monotonic_time(:microsecond)

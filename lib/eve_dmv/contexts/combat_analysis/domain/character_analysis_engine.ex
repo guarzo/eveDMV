@@ -741,7 +741,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CharacterAnalysisEngine do
         # Calculate influence based on alliance size and activity
         base_influence =
           case member_count do
-            count when count > 10000 -> 0.9
+            count when count > 10_000 -> 0.9
             count when count > 5000 -> 0.7
             count when count > 1000 -> 0.5
             count when count > 100 -> 0.3

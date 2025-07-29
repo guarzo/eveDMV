@@ -8,8 +8,9 @@ defmodule SearchSuggestionService do
 
   import Ash.Query
   alias EveDmv.Api
+  alias EveDmv.Eve.ItemType
+  alias EveDmv.Eve.SolarSystem
   alias EveDmv.Killmails.Participant
-  alias EveDmv.Eve.{ItemType, SolarSystem}
 
   @doc """
   Get character name suggestions based on a search query.

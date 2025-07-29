@@ -26,7 +26,9 @@ defmodule CredoCustomChecks.NoModuloClassification do
       allow_in_tests: true
     ]
 
+  alias Credo.Check.Params
   alias Credo.Code
+  alias Credo.IssueMeta
 
   @doc false
   def run(source_file, params \\ []) do
@@ -110,7 +112,7 @@ defmodule CredoCustomChecks.NoModuloClassification do
   end
 
   defp issue_for(issue_meta, line_no, message) do
-    format_issue(issue_meta,
+    Credo.Check.format_issue(__MODULE__, issue_meta,
       message: message,
       line_no: line_no || 1
     )

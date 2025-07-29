@@ -167,19 +167,19 @@ defmodule EveDmvWeb.SurveillanceLive.ProfileService do
       Logger.warning("Failed to reload matching engine: #{inspect(error)}")
   end
 
+  defp format_error_message(error) when is_exception(error) do
+    Exception.message(error)
+  end
+
+  defp format_error_message(error) when is_binary(error) do
+    error
+  end
+
+  defp format_error_message(error) when is_atom(error) do
+    Atom.to_string(error)
+  end
+
   defp format_error_message(error) do
-    cond do
-      is_exception(error) ->
-        Exception.message(error)
-
-      is_binary(error) ->
-        error
-
-      is_atom(error) ->
-        Atom.to_string(error)
-
-      true ->
-        inspect(error)
-    end
+    inspect(error)
   end
 end

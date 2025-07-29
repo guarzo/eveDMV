@@ -7,6 +7,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
     domain: EveDmv.Contexts.BattleAnalysis.Api,
     data_layer: AshPostgres.DataLayer
 
+  alias EveDmv.Contexts.BattleAnalysis.Domain.CombatLogHelper
+
   require Logger
 
   postgres do
@@ -121,7 +123,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
         # Parse the log using helper module
         Logger.info("🔍 PARSING COMBAT LOG #{log.id}")
 
-        case EveDmv.Contexts.BattleAnalysis.Domain.CombatLogHelper.parse_combat_log_content(
+        case CombatLogHelper.parse_combat_log_content(
                content,
                pilot_name: log.pilot_name
              ) do
@@ -156,7 +158,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
         log = changeset.data
 
         if log.parse_status == :completed && log.parsed_data[:events] do
-          case EveDmv.Contexts.BattleAnalysis.Domain.CombatLogHelper.analyze_performance_metrics(
+          case CombatLogHelper.analyze_performance_metrics(
                  log.parsed_data,
                  log.pilot_name
                ) do
@@ -183,7 +185,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
         if log.parse_status == :completed && log.parsed_data[:events] do
           events = log.parsed_data.events
 
-          case EveDmv.Contexts.BattleAnalysis.Domain.CombatLogHelper.correlate_with_battle(
+          case CombatLogHelper.correlate_with_battle(
                  events,
                  battle.killmails
                ) do

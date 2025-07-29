@@ -346,11 +346,11 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
             DateTime.compare(alert.created_at, cutoff_time) == :gt
           end)
 
-        if not Enum.empty?(recent_alerts) do
+        if Enum.empty?(recent_alerts) do
+          0.0
+        else
           total_confidence = Enum.sum(Enum.map(recent_alerts, & &1.confidence_score))
           Float.round(total_confidence / length(recent_alerts), 3)
-        else
-          0.0
         end
 
       _ ->
@@ -478,7 +478,9 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
     inactive_profiles = Enum.filter(profiles, &(!&1.enabled))
 
     inactive_rec =
-      if not Enum.empty?(inactive_profiles) do
+      if Enum.empty?(inactive_profiles) do
+        []
+      else
         [
           %{
             type: :inactive_profiles,
@@ -489,15 +491,15 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
             action: "Review and enable relevant profiles"
           }
         ]
-      else
-        []
       end
 
     # Check for low-performing profiles
     low_performers = Enum.filter(profile_metrics, &(&1.performance_score < 30))
 
     low_perf_rec =
-      if not Enum.empty?(low_performers) do
+      if Enum.empty?(low_performers) do
+        []
+      else
         [
           %{
             type: :low_performance,
@@ -507,15 +509,15 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
             action: "Optimize criteria or disable underperforming profiles"
           }
         ]
-      else
-        []
       end
 
     # Check for high false positive rates
     high_fp_profiles = Enum.filter(profile_metrics, &(&1.false_positive_rate > 15))
 
     high_fp_rec =
-      if not Enum.empty?(high_fp_profiles) do
+      if Enum.empty?(high_fp_profiles) do
+        []
+      else
         [
           %{
             type: :high_false_positives,
@@ -526,8 +528,6 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
             action: "Refine criteria to improve accuracy"
           }
         ]
-      else
-        []
       end
 
     # Check system performance

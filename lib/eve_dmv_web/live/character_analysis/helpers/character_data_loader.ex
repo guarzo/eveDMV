@@ -24,7 +24,6 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
   Analyze character data for the character analysis LiveView.
   """
   def analyze_character(character_id) do
-    try do
       Logger.info("Starting analysis for character #{character_id}")
 
       # Use optimized queries from CharacterQueries module
@@ -137,10 +136,9 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
       }
 
       {:ok, analysis}
-    rescue
-      error ->
-        Logger.error("Analysis failed for character #{character_id}: #{inspect(error)}")
-        {:error, "Failed to analyze character: #{inspect(error)}"}
-    end
+  rescue
+    error ->
+      Logger.error("Analysis failed for character #{character_id}: #{inspect(error)}")
+      {:error, "Failed to analyze character: #{inspect(error)}"}
   end
 end

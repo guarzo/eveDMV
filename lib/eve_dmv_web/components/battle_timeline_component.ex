@@ -295,7 +295,9 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
   defp render_intensity_curve(assigns) do
     intensity_data = Map.get(assigns.timeline_data, :intensity_curve, [])
 
-    if not Enum.empty?(intensity_data) do
+    if Enum.empty?(intensity_data) do
+      ~H""
+    else
       # Convert intensity data to SVG path
       assigns = assign(assigns, :intensity_path, build_intensity_path(intensity_data))
 
@@ -315,8 +317,6 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
         />
       </svg>
       """
-    else
-      ~H""
     end
   end
 

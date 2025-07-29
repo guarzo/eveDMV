@@ -13,15 +13,15 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisServiceTest do
           character_id: 1001,
           corporation_id: 2001,
           alliance_id: 3001,
-          ship_type_id: 34562,
-          damage_taken: 15000
+          ship_type_id: 34_562,
+          damage_taken: 15_000
         },
         attackers: [
           %{
             character_id: 1002,
             corporation_id: 2002,
             alliance_id: 3002,
-            ship_type_id: 17932,
+            ship_type_id: 17_932,
             damage_done: 8000,
             final_blow: true
           }
@@ -36,14 +36,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisServiceTest do
         character_id: 1001,
         corporation_id: 2001,
         alliance_id: 3001,
-        ship_type_id: 34562,
+        ship_type_id: 34_562,
         side: :side_a
       },
       1002 => %{
         character_id: 1002,
         corporation_id: 2002,
         alliance_id: 3002,
-        ship_type_id: 17932,
+        ship_type_id: 17_932,
         side: :side_b
       }
     }
@@ -430,7 +430,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisServiceTest do
         character_id: 1001,
         corporation_id: 2001,
         alliance_id: 3001,
-        ship_type_id: 34562,
+        ship_type_id: 34_562,
         side: :side_a
       }
 

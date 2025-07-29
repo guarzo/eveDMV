@@ -137,12 +137,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
         # Capital escalation - new phase
         %{
           timestamp: ~U[2024-01-01 12:02:00Z],
-          victim_ship_type_id: 25000,
+          victim_ship_type_id: 25_000,
           solar_system_id: 30_000_142
         },
         %{
           timestamp: ~U[2024-01-01 12:03:00Z],
-          victim_ship_type_id: 25001,
+          victim_ship_type_id: 25_001,
           solar_system_id: 30_000_142
         }
       ]
@@ -205,14 +205,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
         # Capital
         %{
           timestamp: ~U[2024-01-01 12:01:00Z],
-          victim_ship_type_id: 25000,
+          victim_ship_type_id: 25_000,
           solar_system_id: 30_000_142,
           total_value: 2_000_000_000
         },
         # T3C
         %{
           timestamp: ~U[2024-01-01 12:02:00Z],
-          victim_ship_type_id: 29984,
+          victim_ship_type_id: 29_984,
           solar_system_id: 30_000_142,
           total_value: 1_500_000_000
         },

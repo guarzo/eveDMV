@@ -14,13 +14,14 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
 
   use GenServer
 
+  import Ecto.Query
+
   alias EveDmv.Api
   alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Shared.Infrastructure.UnifiedCache
   alias EveDmv.StaticData
 
-  import Ecto.Query
   require Logger
 
   # Threat scoring weights for combat analysis

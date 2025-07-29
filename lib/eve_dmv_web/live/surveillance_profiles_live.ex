@@ -785,115 +785,74 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   end
 
   defp test_profile_against_killmails(profile) do
-    try do
-      # Get recent killmails for testing (simplified - would normally query database)
-      test_killmails = get_recent_killmails_for_testing(@preview_killmail_limit)
+    # Get recent killmails for testing (simplified - would normally query database)
+    test_killmails = get_recent_killmails_for_testing(@preview_killmail_limit)
 
-      # Use the advanced filter engine for enhanced matching
-      # alias EveDmv.Contexts.ThreatSurveillance - not currently used
+    # Use the advanced filter engine for enhanced matching
+    # alias EveDmv.Contexts.ThreatSurveillance - not currently used
 
-      # Test criteria against killmails
-      matches =
-        test_killmails
-        |> Enum.map(fn killmail ->
-          # Convert killmail to format expected by advanced engine
-          killmail_data = format_killmail_for_engine(killmail)
+    # Test criteria against killmails
+    matches =
+      test_killmails
+      |> Enum.map(fn killmail ->
+        # Convert killmail to format expected by advanced engine
+        killmail_data = format_killmail_for_engine(killmail)
 
-          # Try advanced filter engine first if criteria structure supports it
-          match_result =
-            if has_advanced_criteria?(profile.criteria) do
-              case EveDmv.Contexts.Surveillance.Domain.AdvancedFilterEngine.evaluate_complex_criteria(
-                     profile.criteria,
-                     killmail_data
-                   ) do
-                %{matches: true} = result -> {:advanced, result}
-                %{matches: false} -> {:no_match, nil}
-                _ -> {:fallback, nil}
-              end
-            else
-              {:fallback, nil}
+        # Try advanced filter engine first if criteria structure supports it
+        match_result =
+          if has_advanced_criteria?(profile.criteria) do
+            case EveDmv.Contexts.Surveillance.Domain.AdvancedFilterEngine.evaluate_complex_criteria(
+                   profile.criteria,
+                   killmail_data
+                 ) do
+              %{matches: true} = result -> {:advanced, result}
+              %{matches: false} -> {:no_match, nil}
+              _ -> {:fallback, nil}
             end
-
-          # Use result or fallback to original matching engine
-          case match_result do
-            {:advanced, _result} ->
-              %{
-                killmail_id: killmail.killmail_id,
-                victim_name: killmail.victim_character_name,
-                victim_ship: killmail.victim_ship_name,
-                isk_value: killmail.zkb_total_value,
-                timestamp: killmail.killmail_time,
-                filter_type: "Advanced"
-              }
-
-            {:fallback, _} ->
-              # Fallback to original matching engine
-              case EveDmv.Contexts.Surveillance.Domain.MatchingEngine.test_criteria(
-                     profile.criteria,
-                     killmail
-                   ) do
-                {:ok, result} ->
-                  if result.matches do
-                    %{
-                      killmail_id: killmail.killmail_id,
-                      victim_name: killmail.victim_character_name,
-                      victim_ship: killmail.victim_ship_name,
-                      isk_value: killmail.zkb_total_value,
-                      timestamp: killmail.killmail_time,
-                      filter_type: "Legacy"
-                    }
-                  else
-                    nil
-                  end
-
-                _ ->
-                  nil
-              end
-
-            {:no_match, _} ->
-              nil
+          else
+            {:fallback, nil}
           end
-        end)
-        |> Enum.reject(&is_nil/1)
-        # Show top 10 matches
-        |> Enum.take(10)
 
-      %{
-        matches: matches,
-        count: length(matches),
-        testing: false,
-        total_tested: length(test_killmails)
-      }
-    rescue
-      error ->
-        Logger.error("Preview testing failed: #{inspect(error)}")
-        %{matches: [], count: 0, testing: false, error: "Testing failed"}
-    end
+        # Use result or fallback to original matching engine
+        process_match_result(match_result, profile.criteria, killmail)
+      end)
+      |> Enum.reject(&is_nil/1)
+      # Show top 10 matches
+      |> Enum.take(10)
+
+    %{
+      matches: matches,
+      count: length(matches),
+      testing: false,
+      total_tested: length(test_killmails)
+    }
+  rescue
+    error ->
+      Logger.error("Preview testing failed: #{inspect(error)}")
+      %{matches: [], count: 0, testing: false, error: "Testing failed"}
   end
 
   defp get_recent_killmails_for_testing(limit) do
     # Query recent killmails from the database for testing
-    try do
-      query =
-        KillmailRaw
-        |> Ash.Query.new()
-        |> Ash.Query.limit(limit)
-        |> Ash.Query.sort(killmail_time: :desc)
+    query =
+      KillmailRaw
+      |> Ash.Query.new()
+      |> Ash.Query.limit(limit)
+      |> Ash.Query.sort(killmail_time: :desc)
 
-      case Ash.read(query) do
-        {:ok, killmails} ->
-          # Convert to format expected by matching engine
-          Enum.map(killmails, &format_killmail_for_testing/1)
+    case Ash.read(query) do
+      {:ok, killmails} ->
+        # Convert to format expected by matching engine
+        Enum.map(killmails, &format_killmail_for_testing/1)
 
-        {:error, reason} ->
-          Logger.warning("Failed to fetch test killmails: #{inspect(reason)}")
-          []
-      end
-    rescue
-      error ->
-        Logger.error("Error fetching test killmails: #{inspect(error)}")
+      {:error, reason} ->
+        Logger.warning("Failed to fetch test killmails: #{inspect(reason)}")
         []
     end
+  rescue
+    error ->
+      Logger.error("Error fetching test killmails: #{inspect(error)}")
+      []
   end
 
   defp format_killmail_for_testing(killmail) do
@@ -1049,17 +1008,15 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
   # Safe call helper for surveillance and other services
   defp safe_call(fun) when is_function(fun, 0) do
-    try do
-      fun.()
-    rescue
-      error ->
-        Logger.error("Service call failed: #{inspect(error)}")
-        {:error, :service_unavailable}
-    catch
-      :exit, reason ->
-        Logger.error("Service process not available: #{inspect(reason)}")
-        {:error, :service_unavailable}
-    end
+    fun.()
+  rescue
+    error ->
+      Logger.error("Service call failed: #{inspect(error)}")
+      {:error, :service_unavailable}
+  catch
+    :exit, reason ->
+      Logger.error("Service process not available: #{inspect(reason)}")
+      {:error, :service_unavailable}
   end
 
   # Helper functions for template rendering
@@ -1391,5 +1348,40 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
         "points" => killmail.zkb_points || 0
       }
     }
+  end
+
+  defp process_match_result(match_result, criteria, killmail) do
+    case match_result do
+      {:advanced, _result} ->
+        create_killmail_result(killmail, "Advanced")
+
+      {:fallback, _} ->
+        process_legacy_match(criteria, killmail)
+
+      {:no_match, _} ->
+        nil
+    end
+  end
+
+  defp create_killmail_result(killmail, filter_type) do
+    %{
+      killmail_id: killmail.killmail_id,
+      victim_name: killmail.victim_character_name,
+      victim_ship: killmail.victim_ship_name,
+      isk_value: killmail.zkb_total_value,
+      timestamp: killmail.killmail_time,
+      filter_type: filter_type
+    }
+  end
+
+  defp process_legacy_match(criteria, killmail) do
+    case EveDmv.Contexts.Surveillance.Domain.MatchingEngine.test_criteria(criteria, killmail) do
+      {:ok, result} ->
+        if result.matches do
+          create_killmail_result(killmail, "Legacy")
+        else
+          nil
+        end
+    end
   end
 end

@@ -44,7 +44,7 @@ defmodule EveDmv.StaticData.ShipTypesTest do
 
       {:ok, _ares} =
         ItemType.create(%{
-          type_id: 11202,
+          type_id: 11_202,
           type_name: "Ares",
           group_name: "Interceptor",
           is_ship: true,
@@ -53,7 +53,7 @@ defmodule EveDmv.StaticData.ShipTypesTest do
 
       {:ok, _scimitar} =
         ItemType.create(%{
-          type_id: 11978,
+          type_id: 11_978,
           type_name: "Scimitar",
           group_name: "Logistics Cruiser",
           is_ship: true,
@@ -62,7 +62,7 @@ defmodule EveDmv.StaticData.ShipTypesTest do
 
       {:ok, _archon} =
         ItemType.create(%{
-          type_id: 23757,
+          type_id: 23_757,
           type_name: "Archon",
           group_name: "Carrier",
           is_ship: true,
@@ -71,7 +71,7 @@ defmodule EveDmv.StaticData.ShipTypesTest do
 
       {:ok, _avatar} =
         ItemType.create(%{
-          type_id: 11567,
+          type_id: 11_567,
           type_name: "Avatar",
           group_name: "Titan",
           is_ship: true,
@@ -163,7 +163,7 @@ defmodule EveDmv.StaticData.ShipTypesTest do
 
       {:ok, _ares} =
         ItemType.create(%{
-          type_id: 11202,
+          type_id: 11_202,
           type_name: "Ares",
           group_name: "Interceptor",
           is_ship: true,
@@ -208,7 +208,7 @@ defmodule EveDmv.StaticData.ShipTypesTest do
 
       {:ok, _thrasher} =
         ItemType.create(%{
-          type_id: 16242,
+          type_id: 16_242,
           type_name: "Thrasher",
           group_name: "Destroyer",
           is_ship: true,
@@ -218,22 +218,22 @@ defmodule EveDmv.StaticData.ShipTypesTest do
       :ok
     end
 
-    test "is_tackle_ship? identifies tackle ships" do
+    test "tackle_ship? identifies tackle ships" do
       # Frigate
-      assert ShipTypes.is_tackle_ship?(587) == true
+      assert ShipTypes.tackle_ship?(587) == true
       # Destroyer
-      assert ShipTypes.is_tackle_ship?(16_242) == true
+      assert ShipTypes.tackle_ship?(16_242) == true
       # Cruiser
-      assert ShipTypes.is_tackle_ship?(621) == false
+      assert ShipTypes.tackle_ship?(621) == false
     end
 
-    test "is_dps_ship? identifies DPS platforms" do
+    test "dps_ship? identifies DPS platforms" do
       # Cruiser
-      assert ShipTypes.is_dps_ship?(621) == true
+      assert ShipTypes.dps_ship?(621) == true
       # Frigate
-      assert ShipTypes.is_dps_ship?(587) == false
+      assert ShipTypes.dps_ship?(587) == false
       # Destroyer
-      assert ShipTypes.is_dps_ship?(16_242) == false
+      assert ShipTypes.dps_ship?(16_242) == false
     end
 
     test "tactical_ship_groups returns correct groupings" do
@@ -251,7 +251,7 @@ defmodule EveDmv.StaticData.ShipTypesTest do
     setup do
       {:ok, _ares} =
         ItemType.create(%{
-          type_id: 11202,
+          type_id: 11_202,
           type_name: "Ares",
           group_name: "Interceptor",
           is_ship: true,
@@ -260,7 +260,7 @@ defmodule EveDmv.StaticData.ShipTypesTest do
 
       {:ok, _scimitar} =
         ItemType.create(%{
-          type_id: 11978,
+          type_id: 11_978,
           type_name: "Scimitar",
           group_name: "Logistics Cruiser",
           is_ship: true,
@@ -269,7 +269,7 @@ defmodule EveDmv.StaticData.ShipTypesTest do
 
       {:ok, _kitsune} =
         ItemType.create(%{
-          type_id: 11174,
+          type_id: 11_174,
           type_name: "Kitsune",
           group_name: "Electronic Attack Frigate",
           is_ship: true,
@@ -284,23 +284,23 @@ defmodule EveDmv.StaticData.ShipTypesTest do
       assert ShipTypes.is_interceptor?(11_978) == false
     end
 
-    test "is_logistics? correctly identifies logistics ships" do
-      assert ShipTypes.is_logistics?(11_978) == true
-      assert ShipTypes.is_logistics?(11_202) == false
+    test "logistics? correctly identifies logistics ships" do
+      assert ShipTypes.logistics?(11_978) == true
+      assert ShipTypes.logistics?(11_202) == false
     end
 
-    test "is_ewar? correctly identifies EWAR ships" do
-      assert ShipTypes.is_ewar?(11_174) == true
-      assert ShipTypes.is_ewar?(11_202) == false
+    test "ewar? correctly identifies EWAR ships" do
+      assert ShipTypes.ewar?(11_174) == true
+      assert ShipTypes.ewar?(11_202) == false
     end
 
-    test "is_support_ship? identifies both logistics and EWAR" do
+    test "support_ship? identifies both logistics and EWAR" do
       # Logistics
-      assert ShipTypes.is_support_ship?(11_978) == true
+      assert ShipTypes.support_ship?(11_978) == true
       # EWAR
-      assert ShipTypes.is_support_ship?(11_174) == true
+      assert ShipTypes.support_ship?(11_174) == true
       # Interceptor
-      assert ShipTypes.is_support_ship?(11_202) == false
+      assert ShipTypes.support_ship?(11_202) == false
     end
 
     test "ship ID getter functions return correct lists" do
@@ -319,7 +319,7 @@ defmodule EveDmv.StaticData.ShipTypesTest do
       # Create a non-ship item
       {:ok, _ammo} =
         ItemType.create(%{
-          type_id: 12345,
+          type_id: 12_345,
           type_name: "Some Ammo",
           group_name: "Projectile Ammo",
           is_ship: false,
@@ -333,7 +333,7 @@ defmodule EveDmv.StaticData.ShipTypesTest do
       # Create an unpublished ship
       {:ok, _test_ship} =
         ItemType.create(%{
-          type_id: 99999,
+          type_id: 99_999,
           type_name: "Test Ship",
           group_name: "Frigate",
           is_ship: true,

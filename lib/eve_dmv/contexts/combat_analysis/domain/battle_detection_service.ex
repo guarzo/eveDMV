@@ -7,13 +7,15 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService do
   """
 
   use GenServer
+
   import Ecto.Query
-  require Logger
 
   alias EveDmv.DomainEvents.KillmailEnriched
   alias EveDmv.Infrastructure.EventBus
   alias EveDmv.Shared.Infrastructure.UnifiedCache
   alias EveDmv.Shared.Infrastructure.UnifiedRepository
+
+  require Logger
 
   # 5 minutes
   @battle_time_window 300

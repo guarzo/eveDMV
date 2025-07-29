@@ -12,7 +12,7 @@ defmodule EveDmv.Contexts.FleetOperations.ShipAttributesIntegrationTest do
       test_ships = [
         {1001, "Test Rifter", "Frigate", 150.0, 1200.0},
         {1002, "Test Caracal", "Cruiser", 400.0, 4500.0},
-        {1003, "Test Raven", "Battleship", 800.0, 18000.0},
+        {1003, "Test Raven", "Battleship", 800.0, 18_000.0},
         {1004, "Test Scimitar", "Logistics Cruiser", 80.0, 6000.0},
         {1005, "Test Interceptor", "Interceptor", 180.0, 900.0}
       ]
@@ -55,7 +55,7 @@ defmodule EveDmv.Contexts.FleetOperations.ShipAttributesIntegrationTest do
     test "ShipTypes.get_ship_ehp returns real attribute values" do
       assert {:ok, 1200.0} = ShipTypes.get_ship_ehp(1001)
       assert {:ok, 4500.0} = ShipTypes.get_ship_ehp(1002)
-      assert {:ok, 18000.0} = ShipTypes.get_ship_ehp(1003)
+      assert {:ok, 18_000.0} = ShipTypes.get_ship_ehp(1003)
       assert {:ok, 6000.0} = ShipTypes.get_ship_ehp(1004)
       assert {:ok, 900.0} = ShipTypes.get_ship_ehp(1005)
     end
@@ -91,8 +91,8 @@ defmodule EveDmv.Contexts.FleetOperations.ShipAttributesIntegrationTest do
       # Alpha strike should be roughly 2x DPS
       assert effectiveness.alpha_strike_potential >= 3000
 
-      # EHP should be sum of real EHP values: 1200 + 4500 + 18000 + 6000 + 900 = 30600
-      assert effectiveness.estimated_effective_hp == 30600
+      # EHP should be sum of real EHP values: 1200 + 4500 + 18_000 + 6000 + 900 = 30_600
+      assert effectiveness.estimated_effective_hp == 30_600
 
       # Overall effectiveness should be calculated from real values
       assert is_number(effectiveness.overall_effectiveness)
@@ -116,7 +116,7 @@ defmodule EveDmv.Contexts.FleetOperations.ShipAttributesIntegrationTest do
       # Frigate fallback
       assert {:ok, 200} = ShipTypes.get_ship_dps(9999)
       # Frigate fallback
-      assert {:ok, 15000} = ShipTypes.get_ship_ehp(9999)
+      assert {:ok, 15_000} = ShipTypes.get_ship_ehp(9999)
     end
 
     test "mixed fleet with real and fallback data" do
@@ -159,7 +159,7 @@ defmodule EveDmv.Contexts.FleetOperations.ShipAttributesIntegrationTest do
         {2002, "DPS Cruiser", "Heavy Assault Cruiser", 480.0, 8500.0, "dps", "cruiser"},
         {2003, "Logistics Ship", "Logistics Cruiser", 60.0, 7200.0, "logistics", "cruiser"},
         {2004, "EWAR Ship", "Electronic Attack Frigate", 90.0, 1100.0, "ewar", "frigate"},
-        {2005, "Command Ship", "Command Ship", 350.0, 12000.0, "support", "battlecruiser"}
+        {2005, "Command Ship", "Command Ship", 350.0, 12_000.0, "support", "battlecruiser"}
       ]
 
       for {type_id, name, group, dps, ehp, role, size} <- ships do
@@ -328,7 +328,7 @@ defmodule EveDmv.Contexts.FleetOperations.ShipAttributesIntegrationTest do
 
       # Results should be correct for 100 ships
       # 100 * 175
-      assert analysis.effectiveness_metrics.estimated_fleet_dps == 17500
+      assert analysis.effectiveness_metrics.estimated_fleet_dps == 17_500
       # 100 * 1300
       assert analysis.effectiveness_metrics.estimated_effective_hp == 130_000
     end

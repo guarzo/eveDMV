@@ -22,9 +22,9 @@ defmodule Mix.Tasks.Eve.ImportSdeAttributes do
       mix eve.import_sde_attributes --force
   """
 
-  use Mix.Task
-
   @shortdoc "Import EVE Online SDE ship attributes"
+
+  use Mix.Task
 
   alias EveDmv.StaticData.SdeImporter
 

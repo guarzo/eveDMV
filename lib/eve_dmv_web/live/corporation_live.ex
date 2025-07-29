@@ -229,44 +229,42 @@ defmodule EveDmvWeb.CorporationLive do
 
   # Private helper functions
   defp load_all_corporation_data(corporation_id) do
-    try do
-      # Load all data using the optimized data loader
-      data = DataLoader.load_corporation_data(corporation_id)
+    # Load all data using the optimized data loader
+    data = DataLoader.load_corporation_data(corporation_id)
 
-      # Load additional data that isn't in the optimized loader yet
-      # (these can be migrated to the data loader later)
-      # Temporary placeholder
-      {:ok, location_stats} = DataLoader.load_corporation_info(corporation_id)
-      # Temporary placeholder
-      {:ok, victim_stats} = DataLoader.load_corporation_info(corporation_id)
+    # Load additional data that isn't in the optimized loader yet
+    # (these can be migrated to the data loader later)
+    # Temporary placeholder
+    {:ok, location_stats} = DataLoader.load_corporation_info(corporation_id)
+    # Temporary placeholder
+    {:ok, victim_stats} = DataLoader.load_corporation_info(corporation_id)
 
-      # Load intelligence data
-      intelligence_data =
-        case CorporationIntelligence.get_corporation_intelligence_report(corporation_id) do
-          {:ok, data} -> data
-          {:error, _} -> nil
-        end
+    # Load intelligence data
+    intelligence_data =
+      case CorporationIntelligence.get_corporation_intelligence_report(corporation_id) do
+        {:ok, data} -> data
+        {:error, _} -> nil
+      end
 
-      # Load battle data
-      battles = BattleDetector.detect_corporation_battles(corporation_id, 10)
-      battle_stats = BattleDetector.get_corporation_battle_stats(corporation_id)
-      fleet_doctrines = BattleDetector.get_corporation_fleet_doctrines(corporation_id)
+    # Load battle data
+    battles = BattleDetector.detect_corporation_battles(corporation_id, 10)
+    battle_stats = BattleDetector.get_corporation_battle_stats(corporation_id)
+    fleet_doctrines = BattleDetector.get_corporation_fleet_doctrines(corporation_id)
 
-      # Combine all data
-      {:ok,
-       Map.merge(data, %{
-         location_stats: location_stats,
-         victim_stats: victim_stats,
-         intelligence: intelligence_data,
-         battles: battles,
-         battle_stats: battle_stats,
-         fleet_doctrines: fleet_doctrines
-       })}
-    rescue
-      error ->
-        Logger.error("Error loading corporation data: #{inspect(error)}")
-        {:error, error}
-    end
+    # Combine all data
+    {:ok,
+     Map.merge(data, %{
+       location_stats: location_stats,
+       victim_stats: victim_stats,
+       intelligence: intelligence_data,
+       battles: battles,
+       battle_stats: battle_stats,
+       fleet_doctrines: fleet_doctrines
+     })}
+  rescue
+    error ->
+      Logger.error("Error loading corporation data: #{inspect(error)}")
+      {:error, error}
   end
 
   # Helper functions
@@ -313,18 +311,16 @@ defmodule EveDmvWeb.CorporationLive do
 
   # Sprint 15A: Helper function for loading more activity with pagination
   defp load_more_recent_activity(corporation_id, cursor) do
-    try do
-      activities =
-        CursorPaginator.paginate_character_activity(
-          corporation_id,
-          after: cursor,
-          page_size: 50
-        )
+    activities =
+      CursorPaginator.paginate_character_activity(
+        corporation_id,
+        after: cursor,
+        page_size: 50
+      )
 
-      {:ok, activities.edges |> Enum.map(& &1.node)}
-    rescue
-      _ -> {:error, :pagination_failed}
-    end
+    {:ok, activities.edges |> Enum.map(& &1.node)}
+  rescue
+    _ -> {:error, :pagination_failed}
   end
 
   defp calculate_participation_data(members, corp_info) do

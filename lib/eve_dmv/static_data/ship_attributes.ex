@@ -317,7 +317,7 @@ defmodule EveDmv.StaticData.ShipAttributes do
 
       argument :min_ehp, :decimal do
         allow_nil?(false)
-        default(50000.0)
+        default(50_000.0)
         description("Minimum EHP threshold")
       end
 

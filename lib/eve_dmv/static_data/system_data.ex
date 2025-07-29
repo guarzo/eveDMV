@@ -129,7 +129,7 @@ defmodule EveDmv.StaticData.SystemData do
   @doc """
   Check if a system is a trade hub.
   """
-  def is_trade_hub?(system_id) do
+  def trade_hub?(system_id) do
     Map.has_key?(@trade_hubs, system_id)
   end
 

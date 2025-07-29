@@ -434,7 +434,9 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
     updated_events = [recent_event | socket.assigns.recent_events] |> Enum.take(50)
 
     updated_analyses =
-      if not Enum.empty?(event.significant_changes || []) do
+      if Enum.empty?(event.significant_changes || []) do
+        socket.assigns.recent_analyses
+      else
         analysis_info = %{
           character_id: event.character_id,
           analysis_type: event.analysis_type,
@@ -444,8 +446,6 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
         }
 
         [analysis_info | socket.assigns.recent_analyses] |> Enum.take(10)
-      else
-        socket.assigns.recent_analyses
       end
 
     socket =

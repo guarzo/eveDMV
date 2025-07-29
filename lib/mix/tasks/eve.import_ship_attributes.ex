@@ -16,9 +16,9 @@ defmodule Mix.Tasks.Eve.ImportShipAttributes do
       --limit N - Only import N ships (for testing)
   """
 
-  use Mix.Task
-
   @shortdoc "Import ship attributes into database"
+
+  use Mix.Task
 
   require Logger
 

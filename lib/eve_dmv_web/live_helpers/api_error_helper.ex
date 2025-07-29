@@ -70,15 +70,13 @@ defmodule EveDmvWeb.LiveHelpers.ApiErrorHelper do
   Safely execute an API call with error handling.
   """
   def safe_api_call(socket, api_function, context \\ "API call") do
-    try do
-      case api_function.() do
-        {:ok, result} -> {:ok, result}
-        error -> handle_api_error(socket, error, context)
-      end
-    rescue
-      exception ->
-        handle_api_error(socket, {:error, exception}, context)
+    case api_function.() do
+      {:ok, result} -> {:ok, result}
+      error -> handle_api_error(socket, error, context)
     end
+  rescue
+    exception ->
+      handle_api_error(socket, {:error, exception}, context)
   end
 
   @doc """

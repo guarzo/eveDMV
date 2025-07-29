@@ -138,7 +138,10 @@ defmodule EveDmv.Utils.FleetUtils do
   def calculate_fleet_coordination_score(participants) do
     # Simple coordination score based on ship diversity and role distribution
     ship_types =
-      Enum.count(Stream.uniq(Stream.map(participants, &Map.get(&1, :ship_name))))
+      participants
+      |> Stream.map(&Map.get(&1, :ship_name))
+      |> Stream.uniq()
+      |> Enum.count()
 
     total_pilots = length(participants)
 
@@ -224,7 +227,10 @@ defmodule EveDmv.Utils.FleetUtils do
         pilots: pilots,
         ship_count: length(pilots),
         unique_ship_types:
-          Enum.count(Stream.uniq(Stream.map(pilots, &Map.get(&1, :ship_type_id))))
+          pilots
+          |> Stream.map(&Map.get(&1, :ship_type_id))
+          |> Stream.uniq()
+          |> Enum.count()
       }
     end)
 

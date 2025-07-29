@@ -79,7 +79,7 @@ defmodule EveDmv.Contexts.BattleAnalysisConsolidatedTest do
 
     test "handles empty time periods gracefully" do
       # Far future time period should have no battles
-      start_time = NaiveDateTime.add(NaiveDateTime.utc_now(), 86400 * 365, :second)
+      start_time = NaiveDateTime.add(NaiveDateTime.utc_now(), 86_400 * 365, :second)
       end_time = NaiveDateTime.add(start_time, 3600, :second)
 
       result = BattleAnalysis.get_battle_statistics(start_time, end_time)

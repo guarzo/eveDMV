@@ -11,7 +11,7 @@ defmodule EveDmv.StaticData.ShipAttributeImporterTest do
       test_ships = [
         {1001, "Test Rifter", "Frigate", true, true, 1_070_000, 500.0},
         {1002, "Test Caracal", "Cruiser", true, true, 10_800_000, 2500.0},
-        {1003, "Test Raven", "Battleship", true, true, 98_900_000, 15000.0},
+        {1003, "Test Raven", "Battleship", true, true, 98_900_000, 15_000.0},
         {1004, "Test Interceptor", "Interceptor", true, true, 1_200_000, 450.0},
         {1005, "Test Logistics", "Logistics Cruiser", true, true, 12_500_000, 3000.0},
         {1006, "Unpublished Ship", "Frigate", true, false, 1_500_000, 500.0},
@@ -167,7 +167,7 @@ defmodule EveDmv.StaticData.ShipAttributeImporterTest do
       assert attrs.calculated_dps > 300 and attrs.calculated_dps < 1000
 
       # EHP should be substantial for a HAC
-      assert attrs.calculated_ehp > 8000 and attrs.calculated_ehp < 50000
+      assert attrs.calculated_ehp > 8000 and attrs.calculated_ehp < 50_000
 
       # Should have resistance values
       assert is_number(attrs.shield_em_resist)

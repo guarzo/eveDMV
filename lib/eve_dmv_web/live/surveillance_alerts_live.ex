@@ -384,17 +384,15 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
 
   # Safe call helper for surveillance services
   defp safe_call(fun) when is_function(fun, 0) do
-    try do
-      fun.()
-    rescue
-      error ->
-        Logger.error("Surveillance service call failed: #{inspect(error)}")
-        {:error, :service_unavailable}
-    catch
-      :exit, reason ->
-        Logger.error("Surveillance service process not available: #{inspect(reason)}")
-        {:error, :service_unavailable}
-    end
+    fun.()
+  rescue
+    error ->
+      Logger.error("Surveillance service call failed: #{inspect(error)}")
+      {:error, :service_unavailable}
+  catch
+    :exit, reason ->
+      Logger.error("Surveillance service process not available: #{inspect(reason)}")
+      {:error, :service_unavailable}
   end
 
   # Helper function to get user ID from socket

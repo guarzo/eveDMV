@@ -200,14 +200,14 @@ defmodule EveDmv.StaticData.ShipTypes do
   @doc """
   Check if a ship is typically used for tackling.
   """
-  def is_tackle_ship?(type_id) do
+  def tackle_ship?(type_id) do
     classify_ship_type(type_id) in [:frigate, :destroyer]
   end
 
   @doc """
   Check if a ship is typically a DPS platform.
   """
-  def is_dps_ship?(type_id) do
+  def dps_ship?(type_id) do
     classify_ship_type(type_id) in [:cruiser, :battlecruiser, :battleship]
   end
 
@@ -216,8 +216,8 @@ defmodule EveDmv.StaticData.ShipTypes do
 
   Note: This queries the database to check for logistics and EWAR ships specifically.
   """
-  def is_support_ship?(type_id) do
-    is_logistics?(type_id) or is_ewar?(type_id)
+  def support_ship?(type_id) do
+    logistics?(type_id) or ewar?(type_id)
   end
 
   @doc """
@@ -280,7 +280,7 @@ defmodule EveDmv.StaticData.ShipTypes do
   @doc """
   Check if a ship type ID is a logistics ship.
   """
-  def is_logistics?(type_id) when is_integer(type_id) do
+  def logistics?(type_id) when is_integer(type_id) do
     case from(i in ItemType,
            where:
              i.type_id == ^type_id and
@@ -296,7 +296,7 @@ defmodule EveDmv.StaticData.ShipTypes do
   @doc """
   Check if a ship type ID is an EWAR ship.
   """
-  def is_ewar?(type_id) when is_integer(type_id) do
+  def ewar?(type_id) when is_integer(type_id) do
     case from(i in ItemType,
            where:
              i.type_id == ^type_id and
@@ -441,7 +441,7 @@ defmodule EveDmv.StaticData.ShipTypes do
   @doc """
   Get tank-focused ships for fleet composition optimization.
   """
-  def get_tank_ships(min_ehp \\ 50000.0) do
+  def get_tank_ships(min_ehp \\ 50_000.0) do
     case Api.read(ShipAttributes, action: :tank_ships, min_ehp: min_ehp) do
       {:ok, ships} -> {:ok, ships}
       {:error, error} -> {:error, error}
@@ -467,12 +467,12 @@ defmodule EveDmv.StaticData.ShipTypes do
     case classify_ship_type(type_id) do
       :frigate -> {:ok, 3000.0}
       :destroyer -> {:ok, 5000.0}
-      :cruiser -> {:ok, 12000.0}
-      :battlecruiser -> {:ok, 20000.0}
-      :battleship -> {:ok, 35000.0}
+      :cruiser -> {:ok, 12_000.0}
+      :battlecruiser -> {:ok, 20_000.0}
+      :battleship -> {:ok, 35_000.0}
       :capital -> {:ok, 200_000.0}
       :supercapital -> {:ok, 500_000.0}
-      _ -> {:ok, 10000.0}
+      _ -> {:ok, 10_000.0}
     end
   end
 
