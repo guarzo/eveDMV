@@ -420,33 +420,33 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
   end
 
   defp generate_sophisticated_recommendations(battle_analysis) do
-    recommendations = []
+    base_recommendations = []
 
     # Fleet composition recommendations
     composition_recs =
       analyze_fleet_composition_recommendations(battle_analysis.fleet_compositions)
 
-    recommendations = recommendations ++ composition_recs
+    composition_recommendations = base_recommendations ++ composition_recs
 
     # Tactical positioning recommendations
     positioning_recs =
       analyze_tactical_positioning_recommendations(battle_analysis.tactical_insights)
 
-    recommendations = recommendations ++ positioning_recs
+    positioning_recommendations = composition_recommendations ++ positioning_recs
 
     # Target selection recommendations
     target_recs = analyze_target_selection_recommendations(battle_analysis.outcome_analysis)
-    recommendations = recommendations ++ target_recs
+    target_recommendations = positioning_recommendations ++ target_recs
 
     # Timing recommendations
     timing_recs = analyze_timing_recommendations(battle_analysis.timeline)
-    recommendations = recommendations ++ timing_recs
+    timing_recommendations = target_recommendations ++ timing_recs
 
     # Performance improvement recommendations
     performance_recs = analyze_performance_recommendations(battle_analysis.performance_metrics)
-    recommendations = recommendations ++ performance_recs
+    final_recommendations = timing_recommendations ++ performance_recs
 
-    recommendations
+    final_recommendations
   end
 
   defp fetch_multiple_battle_data(battle_ids) do
@@ -551,14 +551,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
   end
 
   defp generate_tactical_insights(killmails, fleet_compositions) do
-    insights = []
+    base_insights = []
 
     # High-value target insights
     high_value_kills = Enum.filter(killmails, fn km -> km.total_value > 1_000_000_000 end)
 
-    insights =
+    high_value_insights =
       if Enum.empty?(high_value_kills) do
-        insights
+        base_insights
       else
         [
           %{
@@ -566,14 +566,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
             description: "#{length(high_value_kills)} high-value targets eliminated",
             impact: :high
           }
-          | insights
+          | base_insights
         ]
       end
 
     # Fleet balance insights
     alliance_counts = length(Map.keys(fleet_compositions))
 
-    insights =
+    final_insights =
       if alliance_counts > 2 do
         [
           %{
@@ -581,13 +581,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
             description: "#{alliance_counts} parties involved in engagement",
             impact: :medium
           }
-          | insights
+          | high_value_insights
         ]
       else
-        insights
+        high_value_insights
       end
 
-    insights
+    final_insights
   end
 
   defp calculate_performance_metrics(killmails, _timeline) do
