@@ -452,7 +452,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
       total_isk_destroyed: total_value,
       unique_attackers: unique_attackers,
       average_value:
-        if(not Enum.empty?(killmails), do: div(total_value, length(killmails)), else: 0),
+        if(Enum.empty?(killmails), do: 0, else: div(total_value, length(killmails))),
       time_span: calculate_time_span(killmails)
     }
   end
@@ -551,6 +551,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
       |> Enum.map(& &1.attacker_count)
       |> Enum.sum()
 
-    if not Enum.empty?(events), do: div(total_participants, length(events)), else: 0
+    if Enum.empty?(events), do: 0, else: div(total_participants, length(events))
   end
 end

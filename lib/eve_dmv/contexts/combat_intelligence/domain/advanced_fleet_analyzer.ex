@@ -1083,33 +1083,33 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
   end
 
   defp suggest_counter_strategies(capabilities) do
-    strategies = []
+    base_strategies = []
 
-    strategies =
+    mobility_strategies =
       if capabilities.mobility.mobility_rating in [:low, :very_low] do
-        ["Use superior mobility to control engagement range" | strategies]
+        ["Use superior mobility to control engagement range" | base_strategies]
       else
-        strategies
+        base_strategies
       end
 
-    strategies =
+    ewar_strategies =
       if capabilities.ewar.ewar_strength in [:none, :minimal] do
-        ["Exploit lack of EWAR with sensor dampeners or ECM" | strategies]
+        ["Exploit lack of EWAR with sensor dampeners or ECM" | mobility_strategies]
       else
-        strategies
+        mobility_strategies
       end
 
-    strategies =
+    final_strategies =
       if capabilities.defense.logistics_power.sustainability_rating == :critical do
-        ["Focus fire to overwhelm limited logistics" | strategies]
+        ["Focus fire to overwhelm limited logistics" | ewar_strategies]
       else
-        strategies
+        ewar_strategies
       end
 
-    if Enum.empty?(strategies) do
+    if Enum.empty?(final_strategies) do
       ["Requires careful tactical approach - well-balanced fleet"]
     else
-      strategies
+      final_strategies
     end
   end
 
@@ -1259,65 +1259,65 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
   end
 
   defp analyze_advantages(analysis_a, analysis_b) do
-    advantages_a = []
-    advantages_b = []
+    base_advantages_a = []
+    base_advantages_b = []
 
     # DPS advantage
-    advantages_a =
+    dps_advantages_a =
       if analysis_a.capabilities.firepower.total_dps >
            analysis_b.capabilities.firepower.total_dps * 1.2 do
-        ["Superior firepower" | advantages_a]
+        ["Superior firepower" | base_advantages_a]
       else
-        advantages_a
+        base_advantages_a
       end
 
-    advantages_b =
+    dps_advantages_b =
       if analysis_b.capabilities.firepower.total_dps >
            analysis_a.capabilities.firepower.total_dps * 1.2 do
-        ["Superior firepower" | advantages_b]
+        ["Superior firepower" | base_advantages_b]
       else
-        advantages_b
+        base_advantages_b
       end
 
     # Mobility advantage
     mob_a = mobility_to_number(analysis_a.capabilities.mobility.mobility_rating)
     mob_b = mobility_to_number(analysis_b.capabilities.mobility.mobility_rating)
 
-    advantages_a =
+    mobility_advantages_a =
       if mob_a > mob_b do
-        ["Better mobility - can control engagement" | advantages_a]
+        ["Better mobility - can control engagement" | dps_advantages_a]
       else
-        advantages_a
+        dps_advantages_a
       end
 
-    advantages_b =
+    mobility_advantages_b =
       if mob_b > mob_a do
-        ["Better mobility - can control engagement" | advantages_b]
+        ["Better mobility - can control engagement" | dps_advantages_b]
       else
-        advantages_b
+        dps_advantages_b
       end
 
     # EWAR advantage
     ewar_a = ewar_to_number(analysis_a.capabilities.ewar.ewar_strength)
     ewar_b = ewar_to_number(analysis_b.capabilities.ewar.ewar_strength)
 
-    advantages_a =
+    final_advantages_a =
       if ewar_a > ewar_b + 1 do
-        ["EWAR superiority" | advantages_a]
+        ["EWAR superiority" | mobility_advantages_a]
       else
-        advantages_a
+        mobility_advantages_a
       end
 
-    advantages_b =
+    final_advantages_b =
       if ewar_b > ewar_a + 1 do
-        ["EWAR superiority" | advantages_b]
+        ["EWAR superiority" | mobility_advantages_b]
       else
-        advantages_b
+        mobility_advantages_b
       end
 
     %{
-      fleet_a_advantages: advantages_a,
-      fleet_b_advantages: advantages_b
+      fleet_a_advantages: final_advantages_a,
+      fleet_b_advantages: final_advantages_b
     }
   end
 
@@ -1344,21 +1344,21 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
   defp recommend_engagement(analysis_a, analysis_b) do
     # Generate tactical recommendations for fleet A
-    recommendations = []
+    base_recommendations = []
 
     # Range recommendations
     range_a = analysis_a.capabilities.engagement_range.dominant_range
     range_b = analysis_b.capabilities.engagement_range.dominant_range
 
-    recommendations =
+    final_recommendations =
       case {range_a, range_b} do
-        {:long, :brawl} -> ["Maintain range advantage - kite at 60-80km" | recommendations]
-        {:brawl, :long} -> ["Close distance quickly - use MWD and tackle" | recommendations]
-        _ -> recommendations
+        {:long, :brawl} -> ["Maintain range advantage - kite at 60-80km" | base_recommendations]
+        {:brawl, :long} -> ["Close distance quickly - use MWD and tackle" | base_recommendations]
+        _ -> base_recommendations
       end
 
     # Add more tactical recommendations based on matchup
-    recommendations
+    final_recommendations
   end
 
   defp predict_outcome(analysis_a, analysis_b) do

@@ -378,7 +378,9 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
       |> Enum.reduce([], fn km, acc ->
         corp_participants = extract_corp_participants(km, corporation_id)
 
-        if not Enum.empty?(corp_participants) do
+        if Enum.empty?(corp_participants) do
+          acc
+        else
           case find_matching_engagement(km, acc, corporation_id) do
             nil ->
               # Start new engagement
@@ -405,8 +407,6 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
 
               [updated_engagement | other_engagements]
           end
-        else
-          acc
         end
       end)
       |> Enum.reverse()
@@ -675,9 +675,9 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
       count: length(specialized),
       types: Enum.group_by(specialized, & &1.specialization),
       percentage:
-        if(not Enum.empty?(participants),
-          do: length(specialized) / length(participants),
-          else: 0.0
+        if(Enum.empty?(participants),
+          do: 0.0,
+          else: length(specialized) / length(participants)
         )
     }
   end

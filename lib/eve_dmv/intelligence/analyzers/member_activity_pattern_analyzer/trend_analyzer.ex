@@ -85,12 +85,12 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TrendAnaly
         second_half = Enum.drop(activity_data, mid_point)
 
         first_avg =
-          if not Enum.empty?(first_half), do: Enum.sum(first_half) / length(first_half), else: 0
+          if Enum.empty?(first_half), do: 0, else: Enum.sum(first_half) / length(first_half)
 
         second_avg =
-          if not Enum.empty?(second_half),
-            do: Enum.sum(second_half) / length(second_half),
-            else: 0
+          if Enum.empty?(second_half),
+            do: 0,
+            else: Enum.sum(second_half) / length(second_half)
 
         change_percent = if first_avg > 0, do: (second_avg - first_avg) / first_avg * 100, else: 0
 
@@ -243,10 +243,10 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TrendAnaly
     second_half = Enum.drop(activity_series, mid_point)
 
     first_avg =
-      if not Enum.empty?(first_half), do: Enum.sum(first_half) / length(first_half), else: 0
+      if Enum.empty?(first_half), do: 0, else: Enum.sum(first_half) / length(first_half)
 
     second_avg =
-      if not Enum.empty?(second_half), do: Enum.sum(second_half) / length(second_half), else: 0
+      if Enum.empty?(second_half), do: 0, else: Enum.sum(second_half) / length(second_half)
 
     growth_rate = if first_avg > 0, do: (second_avg - first_avg) / first_avg * 100, else: 0
 
@@ -377,25 +377,25 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TrendAnaly
   end
 
   defp calculate_activity_spread(values) do
-    if not Enum.empty?(values) do
+    if Enum.empty?(values) do
+      0.0
+    else
       max_val = Enum.max(values)
       min_val = Enum.min(values)
       if max_val > 0, do: (max_val - min_val) / max_val, else: 0.0
-    else
-      0.0
     end
   end
 
   defp calculate_variance(values) do
-    if not Enum.empty?(values) do
+    if Enum.empty?(values) do
+      0.0
+    else
       mean = Enum.sum(values) / length(values)
 
       values
       |> Enum.map(fn x -> :math.pow(x - mean, 2) end)
       |> Enum.sum()
       |> Kernel./(length(values))
-    else
-      0.0
     end
   end
 

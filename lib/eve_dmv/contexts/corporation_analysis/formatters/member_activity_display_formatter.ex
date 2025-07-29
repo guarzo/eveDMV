@@ -253,7 +253,9 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Formatters.MemberActivityDisplayFo
   end
 
   defp calculate_activity_trend(member_analyses) do
-    if not Enum.empty?(member_analyses) do
+    if Enum.empty?(member_analyses) do
+      :stable
+    else
       avg_trend =
         member_analyses
         |> Enum.map(&(&1.activity_decline || 0))
@@ -265,8 +267,6 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Formatters.MemberActivityDisplayFo
         avg_trend > 0.1 -> :declining
         true -> :stable
       end
-    else
-      :stable
     end
   end
 
@@ -293,11 +293,11 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Formatters.MemberActivityDisplayFo
   end
 
   defp calculate_average_engagement(member_analyses) do
-    if not Enum.empty?(member_analyses) do
+    if Enum.empty?(member_analyses) do
+      0.0
+    else
       total_engagement = Enum.sum(Enum.map(member_analyses, &(&1.engagement_score || 0)))
       Float.round(total_engagement / length(member_analyses), 1)
-    else
-      0.0
     end
   end
 
@@ -305,7 +305,9 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Formatters.MemberActivityDisplayFo
     # Simplified trend calculation based on recent vs historical engagement
     recent_engagements = Enum.map(member_analyses, &(&1.engagement_score || 0))
 
-    if not Enum.empty?(recent_engagements) do
+    if Enum.empty?(recent_engagements) do
+      :stable
+    else
       avg_engagement = Enum.sum(recent_engagements) / length(recent_engagements)
 
       cond do
@@ -313,8 +315,6 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Formatters.MemberActivityDisplayFo
         avg_engagement >= 40 -> :stable
         true -> :declining
       end
-    else
-      :stable
     end
   end
 
@@ -358,7 +358,9 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Formatters.MemberActivityDisplayFo
   defp calculate_participation_trend(member_analyses) do
     trends = Enum.map(member_analyses, &(&1.participation_trend || 0))
 
-    if not Enum.empty?(trends) do
+    if Enum.empty?(trends) do
+      :stable
+    else
       avg_trend = Enum.sum(trends) / length(trends)
 
       cond do
@@ -366,8 +368,6 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Formatters.MemberActivityDisplayFo
         avg_trend < -0.1 -> :decreasing
         true -> :stable
       end
-    else
-      :stable
     end
   end
 
@@ -390,11 +390,11 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Formatters.MemberActivityDisplayFo
   end
 
   defp calculate_average_burnout_risk(member_analyses) do
-    if not Enum.empty?(member_analyses) do
+    if Enum.empty?(member_analyses) do
+      0.0
+    else
       total_risk = Enum.sum(Enum.map(member_analyses, &(&1.burnout_risk || 0)))
       Float.round(total_risk / length(member_analyses), 3)
-    else
-      0.0
     end
   end
 end

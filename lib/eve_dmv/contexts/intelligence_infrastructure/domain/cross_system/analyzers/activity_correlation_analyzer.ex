@@ -157,11 +157,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   def generate_activity_insights(activity_patterns) do
     # Peak hour insights
     peak_insights =
-      if not Enum.empty?(activity_patterns.peak_activity_hours) do
+      if Enum.empty?(activity_patterns.peak_activity_hours) do
+        []
+      else
         peak_hours_str = Enum.join(activity_patterns.peak_activity_hours, ", ")
         ["Peak activity detected at hours: #{peak_hours_str} EVE time"]
-      else
-        []
       end
 
     # Activity distribution insights
@@ -176,12 +176,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
     # Anomaly insights
     anomaly_insights =
-      if not Enum.empty?(activity_patterns.anomalies) do
+      if Enum.empty?(activity_patterns.anomalies) do
+        []
+      else
         [
           "#{length(activity_patterns.anomalies)} activity anomalies detected requiring investigation"
         ]
-      else
-        []
       end
 
     peak_insights ++ distribution_insights ++ anomaly_insights

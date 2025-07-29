@@ -927,44 +927,44 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
     fleet_splits = Map.get(tactical_patterns, :fleet_splits, [])
 
     innovations =
-      if not Enum.empty?(fleet_splits) do
+      if Enum.empty?(fleet_splits) do
+        innovations
+      else
         effectiveness = calculate_split_effectiveness(fleet_splits)
         [%{innovation: :split_fleet_maneuver, effectiveness: effectiveness} | innovations]
-      else
-        innovations
       end
 
     # Check for coordinated alpha strikes
     alpha_strikes = Map.get(tactical_patterns, :alpha_strikes, [])
 
     innovations =
-      if not Enum.empty?(alpha_strikes) do
+      if Enum.empty?(alpha_strikes) do
+        innovations
+      else
         effectiveness = calculate_alpha_strike_effectiveness(alpha_strikes)
         [%{innovation: :coordinated_alpha_strike, effectiveness: effectiveness} | innovations]
-      else
-        innovations
       end
 
     # Check for tactical feints
     feints = Map.get(tactical_patterns, :tactical_feints, [])
 
     innovations =
-      if not Enum.empty?(feints) do
+      if Enum.empty?(feints) do
+        innovations
+      else
         effectiveness = calculate_feint_effectiveness(feints)
         [%{innovation: :tactical_feint, effectiveness: effectiveness} | innovations]
-      else
-        innovations
       end
 
     # Check for electronic warfare coordination
     ewar_coordination = Map.get(tactical_patterns, :ewar_coordination, [])
 
     innovations =
-      if not Enum.empty?(ewar_coordination) do
+      if Enum.empty?(ewar_coordination) do
+        innovations
+      else
         effectiveness = calculate_ewar_coordination_effectiveness(ewar_coordination)
         [%{innovation: :ewar_coordination, effectiveness: effectiveness} | innovations]
-      else
-        innovations
       end
 
     innovations

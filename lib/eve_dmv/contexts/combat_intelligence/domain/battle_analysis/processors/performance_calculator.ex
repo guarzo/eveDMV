@@ -258,14 +258,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Pe
         |> Enum.max(fn -> 0 end)
 
       average_intensity =
-        if not Enum.empty?(timeline_data) do
+        if Enum.empty?(timeline_data) do
+          0.0
+        else
           timeline_data
           |> Enum.map(& &1.intensity_score)
           |> Enum.sum()
           |> Kernel./(length(timeline_data))
           |> Float.round(1)
-        else
-          0.0
         end
 
       {:ok,
@@ -318,10 +318,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Pe
           end
         end)
 
-      if not Enum.empty?(efficiencies) do
-        Float.round(Enum.sum(efficiencies) / length(efficiencies), 2)
-      else
+      if Enum.empty?(efficiencies) do
         0.0
+      else
+        Float.round(Enum.sum(efficiencies) / length(efficiencies), 2)
       end
     end
   end

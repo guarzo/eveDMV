@@ -193,9 +193,9 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
         threat_scores = Enum.map(threat_results, & &1.threat_score)
 
         average_threat =
-          if not Enum.empty?(threat_scores),
-            do: Enum.sum(threat_scores) / length(threat_scores),
-            else: 0
+          if Enum.empty?(threat_scores),
+            do: 0,
+            else: Enum.sum(threat_scores) / length(threat_scores)
 
         threat_distribution = calculate_threat_distribution(threat_results)
 
@@ -658,10 +658,10 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
           |> Enum.take(3)
 
         fleet_comp_text =
-          if not Enum.empty?(ship_names) do
-            "Frequently uses: #{Enum.join(ship_names, ", ")}"
-          else
+          if Enum.empty?(ship_names) do
             "Mixed ship composition"
+          else
+            "Frequently uses: #{Enum.join(ship_names, ", ")}"
           end
 
         # Calculate confidence based on data quality
@@ -751,7 +751,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
         ["Focused ship preferences" | capabilities]
       end
 
-    if not Enum.empty?(capabilities), do: capabilities, else: ["Limited intelligence available"]
+    if Enum.empty?(capabilities), do: ["Limited intelligence available"], else: capabilities
   end
 
   # Generate vulnerabilities based on tactical preferences data
@@ -772,9 +772,9 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
         vulnerabilities
       end
 
-    if not Enum.empty?(vulnerabilities),
-      do: vulnerabilities,
-      else: ["Analysis requires more data"]
+    if Enum.empty?(vulnerabilities),
+      do: ["Analysis requires more data"],
+      else: vulnerabilities
   end
 
   # Generate tactical recommendations based on available data
@@ -803,7 +803,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
         ["Counter specific ship preferences" | recommendations]
       end
 
-    if not Enum.empty?(recommendations), do: recommendations, else: ["Gather more tactical data"]
+    if Enum.empty?(recommendations), do: ["Gather more tactical data"], else: recommendations
   end
 
   # Generate fallback doctrine evolution showing activity patterns instead of doctrine changes
