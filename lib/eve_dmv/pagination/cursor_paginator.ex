@@ -240,16 +240,14 @@ defmodule EveDmv.Pagination.CursorPaginator do
   end
 
   defp decode_cursor(cursor) when is_binary(cursor) do
-    try do
-      values =
-        cursor
-        |> Base.url_decode64!(padding: false)
-        |> :erlang.binary_to_term([:safe])
+    values =
+      cursor
+      |> Base.url_decode64!(padding: false)
+      |> :erlang.binary_to_term([:safe])
 
-      {:ok, values}
-    rescue
-      _ -> {:error, :invalid_cursor}
-    end
+    {:ok, values}
+  rescue
+    _ -> {:error, :invalid_cursor}
   end
 
   defp decode_cursor(_), do: {:error, :invalid_cursor}

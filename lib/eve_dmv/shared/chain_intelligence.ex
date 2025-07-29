@@ -659,53 +659,51 @@ defmodule EveDmv.Shared.ChainIntelligence do
   defp detect_hostile_presence(_activity, corporation_id) do
     # Check for hostile pilots in activity data
     # Query recent killmails to identify hostiles
-    try do
-      since = DateTime.add(DateTime.utc_now(), -48 * 3600, :second)
+    since = DateTime.add(DateTime.utc_now(), -48 * 3600, :second)
 
-      # Get killmails where our corporation was involved
-      killmails =
-        EveDmv.Api.read!(
-          EveDmv.Killmails.KillmailRaw,
-          filter: [
-            occurred_at: [greater_than: since]
-          ],
-          limit: 1000
-        )
+    # Get killmails where our corporation was involved
+    killmails =
+      EveDmv.Api.read!(
+        EveDmv.Killmails.KillmailRaw,
+        filter: [
+          occurred_at: [greater_than: since]
+        ],
+        limit: 1000
+      )
 
-      # Filter for kills involving our corporation
-      relevant_kills =
-        Enum.filter(killmails, fn km ->
-          victim_corp = Map.get(km.victim || %{}, :corporation_id)
-          attacker_corps = (km.attackers || []) |> Enum.map(& &1.corporation_id)
+    # Filter for kills involving our corporation
+    relevant_kills =
+      Enum.filter(killmails, fn km ->
+        victim_corp = Map.get(km.victim || %{}, :corporation_id)
+        attacker_corps = (km.attackers || []) |> Enum.map(& &1.corporation_id)
 
-          victim_corp == corporation_id or corporation_id in attacker_corps
-        end)
+        victim_corp == corporation_id or corporation_id in attacker_corps
+      end)
 
-      # Identify hostile entities
-      hostile_data = analyze_hostile_entities(relevant_kills, corporation_id)
+    # Identify hostile entities
+    hostile_data = analyze_hostile_entities(relevant_kills, corporation_id)
 
-      # Assess threat level based on hostile activity
-      threat_level =
-        cond do
-          length(hostile_data.hostile_pilots) > 10 -> :high
-          length(hostile_data.hostile_pilots) > 5 -> :medium
-          length(hostile_data.hostile_pilots) > 0 -> :low
-          true -> :minimal
-        end
+    # Assess threat level based on hostile activity
+    threat_level =
+      cond do
+        length(hostile_data.hostile_pilots) > 10 -> :high
+        length(hostile_data.hostile_pilots) > 5 -> :medium
+        length(hostile_data.hostile_pilots) > 0 -> :low
+        true -> :minimal
+      end
 
+    %{
+      hostile_pilots: hostile_data.hostile_pilots |> Enum.take(20),
+      hostile_corporations: hostile_data.hostile_corporations |> Enum.take(10),
+      threat_assessment: threat_level
+    }
+  rescue
+    _ ->
       %{
-        hostile_pilots: hostile_data.hostile_pilots |> Enum.take(20),
-        hostile_corporations: hostile_data.hostile_corporations |> Enum.take(10),
-        threat_assessment: threat_level
+        hostile_pilots: [],
+        hostile_corporations: [],
+        threat_assessment: :unknown
       }
-    rescue
-      _ ->
-        %{
-          hostile_pilots: [],
-          hostile_corporations: [],
-          threat_assessment: :unknown
-        }
-    end
   end
 
   defp analyze_hostile_entities(killmails, corporation_id) do

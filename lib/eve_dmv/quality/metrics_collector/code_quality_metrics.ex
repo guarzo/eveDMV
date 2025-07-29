@@ -66,23 +66,19 @@ defmodule EveDmv.Quality.MetricsCollector.CodeQualityMetrics do
   # Credo analysis
 
   defp run_credo_analysis do
-    try do
-      # Return placeholder since running credo could be expensive
-      %{total_issues: 0, issues_by_category: %{}, issues_by_priority: %{}}
-    rescue
-      _ -> %{total_issues: 0, issues_by_category: %{}, issues_by_priority: %{}}
-    end
+    # Return placeholder since running credo could be expensive
+    %{total_issues: 0, issues_by_category: %{}, issues_by_priority: %{}}
+  rescue
+    _ -> %{total_issues: 0, issues_by_category: %{}, issues_by_priority: %{}}
   end
 
   # Dialyzer analysis
 
   defp run_dialyzer_analysis do
-    try do
-      # Return placeholder since running dialyzer could be very expensive
-      %{warning_count: 0, warnings: []}
-    rescue
-      _ -> %{warning_count: 0, warnings: []}
-    end
+    # Return placeholder since running dialyzer could be very expensive
+    %{warning_count: 0, warnings: []}
+  rescue
+    _ -> %{warning_count: 0, warnings: []}
   end
 
   # Code complexity analysis
@@ -158,12 +154,10 @@ defmodule EveDmv.Quality.MetricsCollector.CodeQualityMetrics do
   end
 
   defp check_outdated_dependencies do
-    try do
-      # Return 0 since checking outdated deps requires external commands
-      0
-    rescue
-      _ -> 0
-    end
+    # Return 0 since checking outdated deps requires external commands
+    0
+  rescue
+    _ -> 0
   end
 
   defp categorize_dependencies do
