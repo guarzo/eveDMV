@@ -738,26 +738,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
         matches = victim_match or not Enum.empty?(attacker_matches)
 
         if matches do
-          matched_criteria =
-            []
-            |> then(fn acc ->
-              if victim_match do
-                [
-                  %{
-                    type: :chain_inhabitant_victim,
-                    character_id: killmail_data.victim.character_id
-                  }
-                  | acc
-                ]
-              else
-                acc
-              end
-            end)
-            |> then(fn acc ->
-              Enum.reduce(attacker_matches, acc, fn attacker, acc ->
-                [%{type: :chain_inhabitant_attacker, character_id: attacker.character_id} | acc]
-              end)
-            end)
+          matched_criteria = build_matched_criteria(victim_match, attacker_matches, killmail_data)
 
           %{
             matches: true,
@@ -771,6 +752,30 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
       {:error, _reason} ->
         %{matches: false, matched_criteria: [], confidence_score: 0.0}
     end
+  end
+
+  defp build_matched_criteria(victim_match, attacker_matches, killmail_data) do
+    []
+    |> add_victim_criteria(victim_match, killmail_data)
+    |> add_attacker_criteria(attacker_matches)
+  end
+
+  defp add_victim_criteria(acc, true, killmail_data) do
+    [
+      %{
+        type: :chain_inhabitant_victim,
+        character_id: killmail_data.victim.character_id
+      }
+      | acc
+    ]
+  end
+
+  defp add_victim_criteria(acc, false, _killmail_data), do: acc
+
+  defp add_attacker_criteria(acc, attacker_matches) do
+    Enum.reduce(attacker_matches, acc, fn attacker, acc ->
+      [%{type: :chain_inhabitant_attacker, character_id: attacker.character_id} | acc]
+    end)
   end
 
   defp check_hostile_entering_chain(killmail_data, map_id) do

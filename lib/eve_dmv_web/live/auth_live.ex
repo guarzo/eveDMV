@@ -46,16 +46,7 @@ defmodule EveDmvWeb.AuthLive do
               {:ok, user} ->
                 Logger.debug("User loaded successfully: #{user.eve_character_name}")
                 # Also load account if present
-                account =
-                  if account_id do
-                    case Ash.get(Account, account_id, domain: Api) do
-                      {:ok, acc} -> acc
-                      _ -> nil
-                    end
-                  else
-                    nil
-                  end
-
+                account = load_account_if_present(account_id)
                 assign(socket, current_user: user, current_account: account)
 
               {:error, %Ash.Error.Query.NotFound{}} ->
@@ -105,16 +96,7 @@ defmodule EveDmvWeb.AuthLive do
               {:ok, user} ->
                 Logger.debug("User loaded successfully (optional): #{user.eve_character_name}")
                 # Also load account if present
-                account =
-                  if account_id do
-                    case Ash.get(Account, account_id, domain: Api) do
-                      {:ok, acc} -> acc
-                      _ -> nil
-                    end
-                  else
-                    nil
-                  end
-
+                account = load_account_if_present(account_id)
                 assign(socket, current_user: user, current_account: account)
 
               _error ->
@@ -146,6 +128,15 @@ defmodule EveDmvWeb.AuthLive do
       _ ->
         # Invalid timestamp format, consider timed out
         :timeout
+    end
+  end
+
+  defp load_account_if_present(nil), do: nil
+
+  defp load_account_if_present(account_id) do
+    case Ash.get(Account, account_id, domain: Api) do
+      {:ok, acc} -> acc
+      _ -> nil
     end
   end
 
