@@ -234,14 +234,12 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
 
   defp setup_signal_handlers do
     # Register for SIGTERM and SIGINT signals
-    try do
-      :os.set_signal(:sigterm, :handle)
-      :os.set_signal(:sigint, :handle)
-      Process.flag(:trap_exit, true)
-    rescue
-      _ ->
-        Logger.warning("Unable to set up signal handlers (not supported on this platform)")
-    end
+    :os.set_signal(:sigterm, :handle)
+    :os.set_signal(:sigint, :handle)
+    Process.flag(:trap_exit, true)
+  rescue
+    _ ->
+      Logger.warning("Unable to set up signal handlers (not supported on this platform)")
   end
 
   defp get_phase_info(phase) do
@@ -325,28 +323,24 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
   defp stop_accepting_work(supervisor) do
     # Implementation depends on supervisor - this is a placeholder
     # Real implementation would set a flag to reject new work
-    try do
-      if Process.whereis(supervisor) do
-        GenServer.call(supervisor, :stop_accepting_work, 5000)
-      else
-        :ok
-      end
-    rescue
-      _ -> :ok
+    if Process.whereis(supervisor) do
+      GenServer.call(supervisor, :stop_accepting_work, 5000)
+    else
+      :ok
     end
+  rescue
+    _ -> :ok
   end
 
   defp drain_supervisor_tasks(supervisor, timeout) do
     # Wait for all tasks under supervisor to complete
-    try do
-      if Process.whereis(supervisor) do
-        GenServer.call(supervisor, :drain_tasks, timeout)
-      else
-        :ok
-      end
-    rescue
-      _ -> :ok
+    if Process.whereis(supervisor) do
+      GenServer.call(supervisor, :drain_tasks, timeout)
+    else
+      :ok
     end
+  rescue
+    _ -> :ok
   end
 
   defp stop_broadway_pipeline(pipeline, timeout) do

@@ -367,7 +367,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
         kill.victim_ship_type_id && kill.victim_ship_type_id > 35_000
       end)
 
-    if not Enum.empty?(structure_kills) do
+    if Enum.empty?(structure_kills) do
+      %{detected: false, confidence: 0.0, systems: [], target_types: []}
+    else
       affected_systems = structure_kills |> Enum.map(& &1.solar_system_id) |> Enum.uniq()
       target_types = structure_kills |> Enum.map(& &1.victim_ship_type_id) |> Enum.uniq()
 
@@ -378,8 +380,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
         target_types: target_types,
         structure_count: length(structure_kills)
       }
-    else
-      %{detected: false, confidence: 0.0, systems: [], target_types: []}
     end
   end
 

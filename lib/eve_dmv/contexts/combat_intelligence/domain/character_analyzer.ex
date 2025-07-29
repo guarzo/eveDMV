@@ -816,11 +816,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   end
 
   defp generate_character_tactical_recommendations(character_data) do
-    recommendations = []
+    base_recommendations = []
 
     # Threat-based recommendations
-    recommendations =
-      recommendations ++
+    threat_recommendations =
+      base_recommendations ++
         if character_data.threat_score > 7.0 do
           ["High threat target - approach with caution and superior numbers"]
         else
@@ -828,8 +828,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
         end
 
     # Activity-based recommendations
-    recommendations =
-      recommendations ++
+    activity_recommendations =
+      threat_recommendations ++
         if character_data.activity_summary.events_per_day > 5.0 do
           ["High activity player - likely experienced, expect skilled gameplay"]
         else
@@ -837,18 +837,18 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
         end
 
     # Engagement style recommendations
-    recommendations =
-      recommendations ++
+    final_recommendations =
+      activity_recommendations ++
         case character_data.engagement_patterns.preferred_engagement_size do
           :solo -> ["Solo player - may be skilled in 1v1, vulnerable to ganks"]
           :fleet -> ["Fleet player - dangerous when supported, weaker when isolated"]
           _ -> []
         end
 
-    if Enum.empty?(recommendations) do
+    if Enum.empty?(final_recommendations) do
       ["Standard engagement protocols recommended"]
     else
-      recommendations
+      final_recommendations
     end
   end
 

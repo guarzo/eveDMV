@@ -69,13 +69,11 @@ defmodule EveDmv.Shared.Intelligence.Processor do
   # Source-specific processing
 
   defp process_source_data(:killmails, {:ok, data}) do
-    try do
-      KillmailHandler.process_killmail_data(data)
-    rescue
-      error ->
-        Logger.error("Failed to process killmail data: #{inspect(error)}")
-        build_error_response(:killmails, :processing_failed)
-    end
+    KillmailHandler.process_killmail_data(data)
+  rescue
+    error ->
+      Logger.error("Failed to process killmail data: #{inspect(error)}")
+      build_error_response(:killmails, :processing_failed)
   end
 
   defp process_source_data(:player_reports, {:ok, data}) do

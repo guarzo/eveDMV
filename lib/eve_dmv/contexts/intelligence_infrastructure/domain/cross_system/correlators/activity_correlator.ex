@@ -809,10 +809,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       |> Enum.filter(fn {{s1, s2}, _} -> {s1, s2} in pairs end)
       |> Enum.map(&elem(&1, 1))
 
-    if not Enum.empty?(cluster_correlations) do
-      Float.round(Enum.sum(cluster_correlations) / length(cluster_correlations), 2)
-    else
+    if Enum.empty?(cluster_correlations) do
       0.0
+    else
+      Float.round(Enum.sum(cluster_correlations) / length(cluster_correlations), 2)
     end
   end
 

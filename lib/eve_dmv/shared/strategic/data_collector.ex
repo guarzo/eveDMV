@@ -67,68 +67,64 @@ defmodule EveDmv.Shared.Strategic.DataCollector do
   # Private functions
 
   defp collect_multi_system_data(system_ids, since) do
-    try do
-      killmail_data =
-        Enum.map(system_ids, fn system_id ->
-          killmails =
-            Api.read!(KillmailRaw,
-              filter: [
-                solar_system_id: system_id,
-                timestamp: [greater_than: since]
-              ],
-              limit: 500
-            )
+    killmail_data =
+      Enum.map(system_ids, fn system_id ->
+        killmails =
+          Api.read!(KillmailRaw,
+            filter: [
+              solar_system_id: system_id,
+              timestamp: [greater_than: since]
+            ],
+            limit: 500
+          )
 
-          %{
-            system_id: system_id,
-            killmails: killmails,
-            kill_count: length(killmails)
-          }
-        end)
+        %{
+          system_id: system_id,
+          killmails: killmails,
+          kill_count: length(killmails)
+        }
+      end)
 
-      metrics = calculate_multi_system_metrics(killmail_data)
+    metrics = calculate_multi_system_metrics(killmail_data)
 
-      {:ok,
-       %{
-         scope: :multi_system,
-         systems: system_ids,
-         killmail_data: killmail_data,
-         metrics: metrics,
-         time_range: %{since: since, until: DateTime.utc_now()}
-       }}
-    catch
-      error ->
-        Logger.error("Failed to collect multi-system data: #{inspect(error)}")
-        {:error, :data_collection_failed}
-    end
+    {:ok,
+     %{
+       scope: :multi_system,
+       systems: system_ids,
+       killmail_data: killmail_data,
+       metrics: metrics,
+       time_range: %{since: since, until: DateTime.utc_now()}
+     }}
+  catch
+    error ->
+      Logger.error("Failed to collect multi-system data: #{inspect(error)}")
+      {:error, :data_collection_failed}
   end
 
   defp collect_single_system_data(system_id, since) do
-    try do
-      killmails =
-        Api.read!(KillmailRaw,
-          filter: [
-            solar_system_id: system_id,
-            timestamp: [greater_than: since]
-          ],
-          limit: 1000
-        )
+    killmails =
+      Api.read!(KillmailRaw,
+        filter: [
+          solar_system_id: system_id,
+          timestamp: [greater_than: since]
+        ],
+        limit: 1000
+      )
 
-      metrics = calculate_single_system_metrics(killmails)
+    metrics = calculate_single_system_metrics(killmails)
 
-      {:ok,
-       %{
-         scope: :single_system,
-         system_id: system_id,
-         killmails: killmails,
-         metrics: metrics,
-         time_range: %{since: since, until: DateTime.utc_now()}
-       }}
-    catch
-      error ->
-        Logger.error("Failed to collect single system data: #{inspect(error)}")
-        {:error, :data_collection_failed}
-    end
+    {:ok,
+     %{
+       scope: :single_system,
+       system_id: system_id,
+       killmails: killmails,
+       metrics: metrics,
+       time_range: %{since: since, until: DateTime.utc_now()}
+     }}
+  catch
+    error ->
+      Logger.error("Failed to collect single system data: #{inspect(error)}")
+      {:error, :data_collection_failed}
   end
 
   defp collect_regional_data(region_data, since) do
