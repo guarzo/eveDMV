@@ -192,16 +192,14 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
   end
 
   defp import_single_ship_safe(ship) do
-    try do
-      import_single_ship(ship.type_id)
-    rescue
-      error ->
-        Logger.warning(
-          "Failed to import ship #{ship.type_id} (#{ship.type_name}): #{inspect(error)}"
-        )
+    import_single_ship(ship.type_id)
+  rescue
+    error ->
+      Logger.warning(
+        "Failed to import ship #{ship.type_id} (#{ship.type_name}): #{inspect(error)}"
+      )
 
-        :error
-    end
+      :error
   end
 
   defp import_single_ship(target_type_id) when is_integer(target_type_id) do

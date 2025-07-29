@@ -285,13 +285,13 @@ defmodule EveDmv.Shared.Strategic.AssessmentCompiler do
   end
 
   defp identify_environmental_factors(pattern_analysis, territorial_analysis, resource_analysis) do
-    factors = []
+    base_factors = []
 
     # Pattern-based factors
     pattern_types = Enum.map(pattern_analysis.identified_patterns, & &1.type)
 
-    factors =
-      factors ++
+    pattern_factors =
+      base_factors ++
         cond do
           :offensive_preparation in pattern_types -> ["Imminent conflict"]
           :harassment_campaign in pattern_types -> ["Ongoing harassment"]
@@ -300,38 +300,38 @@ defmodule EveDmv.Shared.Strategic.AssessmentCompiler do
         end
 
     # Territorial factors
-    factors =
+    territorial_factors =
       if territorial_analysis do
         contestation =
           get_in(territorial_analysis, [:contested_areas, :contestation_intensity]) || 0
 
         if contestation > 0.5 do
-          factors ++ ["High territorial contestation"]
+          pattern_factors ++ ["High territorial contestation"]
         else
-          factors
+          pattern_factors
         end
       else
-        factors
+        pattern_factors
       end
 
     # Resource factors
-    factors =
+    final_factors =
       if resource_analysis do
         competition = get_in(resource_analysis, [:competition, :competition_intensity]) || 0
 
         if competition > 0.7 do
-          factors ++ ["Intense resource competition"]
+          territorial_factors ++ ["Intense resource competition"]
         else
-          factors
+          territorial_factors
         end
       else
-        factors
+        territorial_factors
       end
 
-    if Enum.empty?(factors) do
+    if Enum.empty?(final_factors) do
       ["Stable operational environment"]
     else
-      factors
+      final_factors
     end
   end
 
@@ -382,37 +382,37 @@ defmodule EveDmv.Shared.Strategic.AssessmentCompiler do
   end
 
   defp assess_posture_modifiers(opportunity_analysis, trend_analysis, environment) do
-    modifiers = []
+    base_modifiers = []
 
     # Opportunity modifiers
     high_value_opportunities =
       opportunity_analysis.prioritized_opportunities
       |> Enum.count(&(&1.priority_score > 0.8))
 
-    modifiers =
+    opportunity_modifiers =
       if high_value_opportunities >= 3 do
-        modifiers ++ [:opportunity_rich]
+        base_modifiers ++ [:opportunity_rich]
       else
-        modifiers
+        base_modifiers
       end
 
     # Trend modifiers
-    modifiers =
+    trend_modifiers =
       case trend_analysis.momentum.momentum_direction do
-        :strong_positive -> modifiers ++ [:positive_momentum]
-        :strong_negative -> modifiers ++ [:negative_momentum]
-        _ -> modifiers
+        :strong_positive -> opportunity_modifiers ++ [:positive_momentum]
+        :strong_negative -> opportunity_modifiers ++ [:negative_momentum]
+        _ -> opportunity_modifiers
       end
 
     # Threat modifiers
-    modifiers =
+    final_modifiers =
       if environment.threat_level in [:critical, :high] do
-        modifiers ++ [:high_threat]
+        trend_modifiers ++ [:high_threat]
       else
-        modifiers
+        trend_modifiers
       end
 
-    modifiers
+    final_modifiers
   end
 
   defp adjust_posture(base_posture, modifiers) do
@@ -601,11 +601,11 @@ defmodule EveDmv.Shared.Strategic.AssessmentCompiler do
   end
 
   defp compile_key_findings(environment, pattern_analysis, opportunity_analysis) do
-    findings = []
+    base_findings = []
 
     # Environment findings
-    findings =
-      findings ++
+    environment_findings =
+      base_findings ++
         [
           "Strategic environment: #{environment.overall_classification}",
           "Threat level: #{environment.threat_level}",
@@ -617,9 +617,9 @@ defmodule EveDmv.Shared.Strategic.AssessmentCompiler do
 
     pattern_findings =
       if dominant_pattern do
-        findings ++ ["Dominant pattern: #{dominant_pattern}"]
+        environment_findings ++ ["Dominant pattern: #{dominant_pattern}"]
       else
-        findings
+        environment_findings
       end
 
     # Opportunity findings
@@ -851,50 +851,50 @@ defmodule EveDmv.Shared.Strategic.AssessmentCompiler do
          resource_analysis,
          trend_analysis
        ) do
-    insights = []
+    base_insights = []
 
     # Pattern-territorial insights
-    insights =
+    territorial_insights =
       if pattern_analysis.dominant_pattern == :territorial_expansion && territorial_analysis do
         contested = get_in(territorial_analysis, [:contested_areas, :contested_count]) || 0
 
         if contested > 3 do
-          insights ++
+          base_insights ++
             ["Territorial expansion pattern aligns with high contestation - expect conflicts"]
         else
-          insights
+          base_insights
         end
       else
-        insights
+        base_insights
       end
 
     # Resource-trend insights
-    insights =
+    resource_insights =
       if resource_analysis && trend_analysis.momentum.momentum_direction == :strong_positive do
         competition = get_in(resource_analysis, [:competition, :competition_intensity]) || 0
 
         if competition < 0.3 do
-          insights ++ ["Low resource competition with positive momentum - expansion opportunity"]
+          territorial_insights ++ ["Low resource competition with positive momentum - expansion opportunity"]
         else
-          insights
+          territorial_insights
         end
       else
-        insights
+        territorial_insights
       end
 
     # Pattern-trend insights
-    insights =
+    final_insights =
       if pattern_analysis.dominant_pattern == :offensive_preparation &&
            trend_analysis.momentum.momentum_direction == :strong_negative do
-        insights ++ ["Offensive preparation during negative momentum - desperation attack likely"]
+        resource_insights ++ ["Offensive preparation during negative momentum - desperation attack likely"]
       else
-        insights
+        resource_insights
       end
 
-    if Enum.empty?(insights) do
+    if Enum.empty?(final_insights) do
       ["No significant cross-domain correlations identified"]
     else
-      insights
+      final_insights
     end
   end
 

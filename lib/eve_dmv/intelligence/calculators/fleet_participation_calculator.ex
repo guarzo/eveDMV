@@ -32,12 +32,12 @@ defmodule EveDmv.Intelligence.Calculators.FleetParticipationCalculator do
       leadership_roles = Enum.sum(Enum.map(fleet_data, &Map.get(&1, :leadership_roles, 0)))
 
       avg_participation =
-        if not Enum.empty?(participation_rates),
-          do: Enum.sum(participation_rates) / length(participation_rates),
-          else: 0.0
+        if Enum.empty?(participation_rates),
+          do: 0.0,
+          else: Enum.sum(participation_rates) / length(participation_rates)
 
       _avg_duration =
-        if not Enum.empty?(durations), do: Enum.sum(durations) / length(durations), else: 0.0
+        if Enum.empty?(durations), do: 0.0, else: Enum.sum(durations) / length(durations)
 
       leadership_participation = leadership_roles / max(1, length(fleet_data))
 

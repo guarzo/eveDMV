@@ -64,17 +64,15 @@ defmodule EveDmv.Utils.ErrorHandling do
   Safe operation execution with error logging.
   """
   def safe_execute(operation_name, fun, context \\ %{}) when is_function(fun, 0) do
-    try do
-      fun.()
-    rescue
-      error ->
-        log_error("#{operation_name} failed", error, context)
-        {:error, "#{operation_name} encountered an error"}
-    catch
-      :exit, reason ->
-        log_error("#{operation_name} exited", reason, context)
-        {:error, "#{operation_name} was terminated"}
-    end
+    fun.()
+  rescue
+    error ->
+      log_error("#{operation_name} failed", error, context)
+      {:error, "#{operation_name} encountered an error"}
+  catch
+    :exit, reason ->
+      log_error("#{operation_name} exited", reason, context)
+      {:error, "#{operation_name} was terminated"}
   end
 
   @doc """

@@ -343,15 +343,13 @@ defmodule EveDmv.Surveillance.MatchingEngine do
   end
 
   defp database_connected? do
-    try do
-      # Simple ping to check database connectivity
-      case Ecto.Adapters.SQL.query(EveDmv.Repo, "SELECT 1", []) do
-        {:ok, _} -> true
-        _ -> false
-      end
-    rescue
+    # Simple ping to check database connectivity
+    case Ecto.Adapters.SQL.query(EveDmv.Repo, "SELECT 1", []) do
+      {:ok, _} -> true
       _ -> false
     end
+  rescue
+    _ -> false
   end
 
   defp pipeline_running? do

@@ -88,24 +88,22 @@ defmodule EveDmv.StaticData.SdeImporter do
   end
 
   defp parse_csv(csv_data) do
-    try do
-      lines = String.split(csv_data, "\n", trim: true)
-      [header | rows] = lines
+    lines = String.split(csv_data, "\n", trim: true)
+    [header | rows] = lines
 
-      headers = String.split(header, ",") |> Enum.map(&String.trim/1)
+    headers = String.split(header, ",") |> Enum.map(&String.trim/1)
 
-      parsed_rows =
-        rows
-        |> Enum.map(fn line ->
-          values = parse_csv_line(line)
-          Enum.zip(headers, values) |> Map.new()
-        end)
+    parsed_rows =
+      rows
+      |> Enum.map(fn line ->
+        values = parse_csv_line(line)
+        Enum.zip(headers, values) |> Map.new()
+      end)
 
-      {:ok, parsed_rows}
-    rescue
-      error ->
-        {:error, "Failed to parse CSV: #{inspect(error)}"}
-    end
+    {:ok, parsed_rows}
+  rescue
+    error ->
+      {:error, "Failed to parse CSV: #{inspect(error)}"}
   end
 
   defp parse_csv_line(line) do
