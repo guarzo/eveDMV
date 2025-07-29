@@ -162,7 +162,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
 
         %{
           has_issues: not Enum.empty?(lagging_replicas),
-          issues: if(not Enum.empty?(lagging_replicas), do: ["replica_lag"], else: []),
+          issues: if(Enum.empty?(lagging_replicas), do: [], else: ["replica_lag"]),
           replicas: replicas,
           lagging_count: length(lagging_replicas)
         }
@@ -466,20 +466,20 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
     initial_recommendations = []
 
     critical_recommendations =
-      if not Enum.empty?(critical_tables) do
+      if Enum.empty?(critical_tables) do
+        initial_recommendations
+      else
         [
           "#{length(critical_tables)} tables have > 30% dead tuples - urgent vacuum needed"
           | initial_recommendations
         ]
-      else
-        initial_recommendations
       end
 
     final_recommendations =
-      if not Enum.empty?(never_vacuumed) do
-        ["#{length(never_vacuumed)} tables have never been vacuumed" | critical_recommendations]
-      else
+      if Enum.empty?(never_vacuumed) do
         critical_recommendations
+      else
+        ["#{length(never_vacuumed)} tables have never been vacuumed" | critical_recommendations]
       end
 
     if Enum.empty?(final_recommendations) do

@@ -479,33 +479,33 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer do
     initial_recommendations = []
 
     base_recommendations =
-      if not Enum.empty?(analysis.unused_indexes) do
+      if Enum.empty?(analysis.unused_indexes) do
+        initial_recommendations
+      else
         [
           "#{length(analysis.unused_indexes)} unused indexes found - review for removal"
           | initial_recommendations
         ]
-      else
-        initial_recommendations
       end
 
     final_recommendations =
-      if not Enum.empty?(analysis.inefficient_indexes) do
+      if Enum.empty?(analysis.inefficient_indexes) do
+        base_recommendations
+      else
         [
           "#{length(analysis.inefficient_indexes)} inefficient indexes detected - consider rebuilding"
           | base_recommendations
         ]
-      else
-        base_recommendations
       end
 
     missing_recommendations =
-      if not Enum.empty?(analysis.missing_indexes) do
+      if Enum.empty?(analysis.missing_indexes) do
+        final_recommendations
+      else
         [
           "#{length(analysis.missing_indexes)} tables may benefit from additional indexes"
           | final_recommendations
         ]
-      else
-        final_recommendations
       end
 
     if Enum.empty?(missing_recommendations) do
