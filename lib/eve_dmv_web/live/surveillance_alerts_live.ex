@@ -180,11 +180,10 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
     # New real-time alert received
     Logger.info("Received real-time surveillance alert: #{alert_data.alert_id}")
 
-    # Trigger visual and audio notifications
-    socket = trigger_alert_notification(socket, alert_data)
-
+    # Trigger visual and audio notifications and update state
     socket =
       socket
+      |> trigger_alert_notification(alert_data)
       |> update(:new_alert_count, &(&1 + 1))
       |> load_alerts()
 

@@ -725,8 +725,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetComposit
       ship_classes =
         ewar_analysis.ewar_ships
         |> Enum.group_by(& &1.ship_class)
-        |> Enum.map(fn {class, ships} -> "#{length(ships)} #{class}" end)
-        |> Enum.join(", ")
+        |> Enum.map_join(", ", fn {class, ships} -> "#{length(ships)} #{class}" end)
 
       intensity_desc =
         cond do

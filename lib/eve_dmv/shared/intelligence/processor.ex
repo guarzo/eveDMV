@@ -218,10 +218,10 @@ defmodule EveDmv.Shared.Intelligence.Processor do
       |> Enum.map(fn {_source, data} -> Map.get(data, :reliability, 0.0) end)
       |> Enum.reject(&(&1 == 0.0))
 
-    if not Enum.empty?(reliabilities) do
-      Float.round(Enum.sum(reliabilities) / length(reliabilities), 2)
-    else
+    if Enum.empty?(reliabilities) do
       0.0
+    else
+      Float.round(Enum.sum(reliabilities) / length(reliabilities), 2)
     end
   end
 
@@ -401,7 +401,9 @@ defmodule EveDmv.Shared.Intelligence.Processor do
   defp determine_price_trend(data) do
     price_changes = data[:price_changes] || []
 
-    if not Enum.empty?(price_changes) do
+    if Enum.empty?(price_changes) do
+      :unknown
+    else
       average_change =
         price_changes
         |> Enum.map(& &1.price_change)
@@ -413,8 +415,6 @@ defmodule EveDmv.Shared.Intelligence.Processor do
         average_change < -5 -> :decreasing
         true -> :stable
       end
-    else
-      :unknown
     end
   end
 

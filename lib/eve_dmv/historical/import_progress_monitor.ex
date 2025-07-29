@@ -306,10 +306,10 @@ defmodule EveDmv.Historical.ImportProgressMonitor do
   defp calculate_average_rate(metrics) do
     rates = metrics.performance.rates
 
-    if not Enum.empty?(rates) do
-      round(Enum.sum(rates) / length(rates))
-    else
+    if Enum.empty?(rates) do
       0
+    else
+      round(Enum.sum(rates) / length(rates))
     end
   end
 

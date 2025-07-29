@@ -189,7 +189,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
   Get cache statistics.
   """
   @spec get_stats() :: {:ok, map()}
-  def get_stats() do
+  def get_stats do
     # Get cache stats from the Cache module if available
     case Cache.stats(@cache_type) do
       {:ok, stats} ->

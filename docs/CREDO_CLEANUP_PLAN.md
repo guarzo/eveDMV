@@ -227,16 +227,7 @@ Focus: Breaking down large functions and reducing complexity
 3. **Related modules assigned to same team** (avoid cross-dependencies)
 4. **Alphabetical assignment within teams** to prevent conflicts
 
-### **Branch Strategy**
-```
-main
-├── workstream/a-readability
-├── workstream/b-logic-improvements  
-├── workstream/c-complex-refactoring
-└── workstream/d-final-cleanup
 
-Each team member works on: workstream/X-teamY-DEVELOPER_NAME
-```
 
 ### **Daily Validation Cycle**
 ```bash

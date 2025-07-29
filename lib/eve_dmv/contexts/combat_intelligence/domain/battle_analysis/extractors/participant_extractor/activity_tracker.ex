@@ -686,7 +686,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
 
   defp categorize_contribution(score) do
     cond do
-      score >= 10000 -> :exceptional
+      score >= 10_000 -> :exceptional
       score >= 5000 -> :high
       score >= 2000 -> :moderate
       score >= 500 -> :low

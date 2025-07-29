@@ -93,7 +93,7 @@ defmodule EveDmv.Quality.MetricsCollector.CodeQualityMetrics do
       total_files: length(elixir_files),
       total_lines_of_code: total_lines,
       average_file_size:
-        if(not Enum.empty?(elixir_files), do: div(total_lines, length(elixir_files)), else: 0),
+        if(Enum.empty?(elixir_files), do: 0, else: div(total_lines, length(elixir_files))),
       large_files:
         elixir_files
         |> Enum.filter(&(count_lines_in_file(&1) > 300))

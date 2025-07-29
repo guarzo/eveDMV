@@ -15,11 +15,6 @@ defmodule EveDmv.Historical.ImportPipeline do
   require Ash.Query
   require Logger
 
-  @batch_size 1000
-  @max_concurrent_batches 4
-  # Report every 10k killmails
-  @progress_report_interval 10_000
-
   defstruct [
     :import_id,
     :source_type,
@@ -37,6 +32,11 @@ defmodule EveDmv.Historical.ImportPipeline do
     :errors,
     :batch_queue
   ]
+
+  @batch_size 1000
+  @max_concurrent_batches 4
+  # Report every 10k killmails
+  @progress_report_interval 10_000
 
   # Client API
 

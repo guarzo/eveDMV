@@ -308,11 +308,11 @@ defmodule EveDmv.Shared.Intelligence.FusionEngine do
     # Aggregate activity levels from multiple sources
     levels = data_points |> Enum.map(& &1[:activity_level]) |> Enum.reject(&is_nil/1)
 
-    if not Enum.empty?(levels) do
+    if Enum.empty?(levels) do
+      :unknown
+    else
       # Use highest reported level
       Enum.max_by(levels, &activity_level_to_number/1)
-    else
-      :unknown
     end
   end
 

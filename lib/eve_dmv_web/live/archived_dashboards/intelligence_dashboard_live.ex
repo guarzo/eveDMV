@@ -551,67 +551,65 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
   end
 
   defp generate_dashboard_csv_export(assigns) do
-    try do
-      # Create summary CSV of key dashboard metrics
-      headers = [
-        "metric",
-        "value",
-        "timestamp",
-        "status",
-        "change_24h",
-        "trend"
+    # Create summary CSV of key dashboard metrics
+    headers = [
+      "metric",
+      "value",
+      "timestamp",
+      "status",
+      "change_24h",
+      "trend"
+    ]
+
+    dashboard_data = assigns.dashboard_data
+
+    rows = [
+      [
+        "Active Threats",
+        Map.get(dashboard_data, :active_threats, 0),
+        DateTime.utc_now(),
+        "normal",
+        "",
+        "stable"
+      ],
+      [
+        "Recent Analyses",
+        length(assigns.recent_analyses),
+        DateTime.utc_now(),
+        "normal",
+        "",
+        "stable"
+      ],
+      [
+        "Cache Hit Rate",
+        Map.get(assigns.cache_stats, :hit_rate, 0),
+        DateTime.utc_now(),
+        "normal",
+        "",
+        "stable"
+      ],
+      [
+        "System Health Score",
+        Map.get(assigns.system_health, :overall_score, 100),
+        DateTime.utc_now(),
+        "normal",
+        "",
+        "stable"
       ]
+    ]
 
-      dashboard_data = assigns.dashboard_data
+    content =
+      Enum.map_join([headers | rows], "\n", fn row ->
+        row
+        |> Enum.map(&to_string/1)
+        |> Enum.map_join(",", &escape_csv_field/1)
+      end)
 
-      rows = [
-        [
-          "Active Threats",
-          Map.get(dashboard_data, :active_threats, 0),
-          DateTime.utc_now(),
-          "normal",
-          "",
-          "stable"
-        ],
-        [
-          "Recent Analyses",
-          length(assigns.recent_analyses),
-          DateTime.utc_now(),
-          "normal",
-          "",
-          "stable"
-        ],
-        [
-          "Cache Hit Rate",
-          Map.get(assigns.cache_stats, :hit_rate, 0),
-          DateTime.utc_now(),
-          "normal",
-          "",
-          "stable"
-        ],
-        [
-          "System Health Score",
-          Map.get(assigns.system_health, :overall_score, 100),
-          DateTime.utc_now(),
-          "normal",
-          "",
-          "stable"
-        ]
-      ]
-
-      content =
-        Enum.map_join([headers | rows], "\n", fn row ->
-          row
-          |> Enum.map(&to_string/1)
-          |> Enum.map_join(",", &escape_csv_field/1)
-        end)
-
-      {:ok, content}
-    rescue
-      error ->
-        Logger.error("Dashboard CSV export failed: #{inspect(error)}")
-        {:error, "CSV generation failed"}
-    end
+    {:ok, content}
+  rescue
+    error ->
+      Logger.error("Dashboard CSV export failed: #{inspect(error)}")
+      {:error, "CSV generation failed"}
   end
 
   defp escape_csv_field(field) do

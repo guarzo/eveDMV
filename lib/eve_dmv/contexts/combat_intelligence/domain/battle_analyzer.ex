@@ -1413,7 +1413,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
     # This would use real EVE static data
     # Capital ships and expensive hull types
     # Example ship type IDs
-    [23757, 23919, 24483]
+    [23_757, 23_919, 24_483]
   end
 
   defp calculate_priority_consistency(target_order) do
@@ -1475,13 +1475,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
   defp get_support_ships do
     # This would use real EVE static data
     # Example logistics ship type IDs
-    [11985, 11987, 11989]
+    [11_985, 11_987, 11_989]
   end
 
   defp get_dps_ships do
     # This would use real EVE static data
     # Example DPS ship type IDs
-    [24696, 24698, 24700]
+    [24_696, 24_698, 24_700]
   end
 
   # Fleet effectiveness functions
@@ -1688,27 +1688,27 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
   defp get_tank_ships do
     # This would use real EVE static data
     # Example tank ship type IDs
-    [11978, 11980, 11982]
+    [11_978, 11_980, 11_982]
   end
 
   defp get_fast_ships do
     # This would use real EVE static data
     # Example fast ship type IDs
-    [11176, 11178, 11180]
+    [11_176, 11_178, 11_180]
   end
 
   defp role_is_covered?(participants, role) do
     case role do
-      :dps -> Enum.any?(participants, &is_dps_ship?/1)
-      :tank -> Enum.any?(participants, &is_tank_ship?/1)
-      :support -> Enum.any?(participants, &is_support_ship?/1)
-      :tackle -> Enum.any?(participants, &is_tackle_ship?/1)
+      :dps -> Enum.any?(participants, &dps_ship?/1)
+      :tank -> Enum.any?(participants, &tank_ship?/1)
+      :support -> Enum.any?(participants, &support_ship?/1)
+      :tackle -> Enum.any?(participants, &tackle_ship?/1)
       _ -> false
     end
   end
 
-  defp is_dps_ship?(participant), do: participant.ship_type_id in get_dps_ships()
-  defp is_tank_ship?(participant), do: participant.ship_type_id in get_tank_ships()
-  defp is_support_ship?(participant), do: participant.ship_type_id in get_support_ships()
-  defp is_tackle_ship?(participant), do: participant.ship_type_id in get_fast_ships()
+  defp dps_ship?(participant), do: participant.ship_type_id in get_dps_ships()
+  defp tank_ship?(participant), do: participant.ship_type_id in get_tank_ships()
+  defp support_ship?(participant), do: participant.ship_type_id in get_support_ships()
+  defp tackle_ship?(participant), do: participant.ship_type_id in get_fast_ships()
 end

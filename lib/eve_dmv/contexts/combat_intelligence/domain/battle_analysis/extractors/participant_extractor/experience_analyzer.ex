@@ -128,7 +128,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
   """
   def identify_veteran_players(participants) do
     participants
-    |> Enum.filter(&is_veteran?/1)
+    |> Enum.filter(&veteran?/1)
     |> Enum.map(fn participant ->
       %{
         character_id: Map.get(participant, :character_id),
@@ -146,7 +146,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
   """
   def identify_rookie_players(participants) do
     participants
-    |> Enum.filter(&is_rookie?/1)
+    |> Enum.filter(&rookie?/1)
     |> Enum.map(fn participant ->
       %{
         character_id: Map.get(participant, :character_id),
@@ -243,9 +243,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
 
     damage_score =
       cond do
-        damage_done > 50000 -> 0.9
-        damage_done > 20000 -> 0.7
-        damage_done > 10000 -> 0.5
+        damage_done > 50_000 -> 0.9
+        damage_done > 20_000 -> 0.7
+        damage_done > 10_000 -> 0.5
         damage_done > 5000 -> 0.3
         true -> 0.1
       end
@@ -467,7 +467,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
   end
 
   defp calculate_veteran_ratio(members) do
-    veterans = Enum.count(members, &is_veteran?/1)
+    veterans = Enum.count(members, &veteran?/1)
 
     if Enum.empty?(members) do
       0.0
@@ -526,7 +526,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
 
   defp describe_advantages(group_skills) do
     []
-    |> (fn advs -> 
+    |> (fn advs ->
       if Map.get(group_skills, :veteran_ratio, 0) > 0.5 do
         ["High veteran ratio (#{Map.get(group_skills, :veteran_ratio) * 100}%)" | advs]
       else
@@ -567,7 +567,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
     end
   end
 
-  defp is_veteran?(participant) do
+  defp veteran?(participant) do
     security_status = Map.get(participant, :security_status, 0.0)
     ship_class = Map.get(participant, :ship_class, :unknown)
     damage_done = Map.get(participant, :damage_done, 0)
@@ -575,7 +575,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
     # Multiple indicators of veteran status
     low_sec_status = security_status < -5.0
     flies_capital = ship_class in [:capital, :battleship]
-    high_damage = damage_done > 30000
+    high_damage = damage_done > 30_000
 
     # Veteran if meets at least 2 criteria
     indicators = [low_sec_status, flies_capital, high_damage]
@@ -604,7 +604,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
       end
 
     final_indicators =
-      if damage_done > 30000 do
+      if damage_done > 30_000 do
         ["High damage output (#{damage_done})" | ship_indicators]
       else
         ship_indicators
@@ -633,7 +633,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
     round(base_sp * performance_multiplier)
   end
 
-  defp is_rookie?(participant) do
+  defp rookie?(participant) do
     security_status = Map.get(participant, :security_status, 0.0)
     ship_class = Map.get(participant, :ship_class, :unknown)
     damage_done = Map.get(participant, :damage_done, 0)

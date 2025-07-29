@@ -97,15 +97,15 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
 
     # Missing indexes for sequential scans
     scan_index_recommendations =
-      if not Enum.empty?(sequential_scans) do
+      if Enum.empty?(sequential_scans) do
+        base_recommendations
+      else
         scan_suggestions =
           sequential_scans
           |> Enum.map(&suggest_index_for_scan/1)
           |> Enum.reject(&is_nil/1)
 
         scan_suggestions ++ base_recommendations
-      else
-        base_recommendations
       end
 
     # Index-only scan opportunities
@@ -132,13 +132,13 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
 
     # Unused index cleanup
     cleanup_recommendations =
-      if not Enum.empty?(analysis.potentially_unused_indexes) do
+      if Enum.empty?(analysis.potentially_unused_indexes) do
+        bitmap_scan_recommendations
+      else
         [
           "Consider removing unused indexes: #{Enum.join(analysis.potentially_unused_indexes, ", ")}"
           | bitmap_scan_recommendations
         ]
-      else
-        bitmap_scan_recommendations
       end
 
     cleanup_recommendations

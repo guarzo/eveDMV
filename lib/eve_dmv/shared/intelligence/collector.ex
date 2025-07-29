@@ -396,8 +396,7 @@ defmodule EveDmv.Shared.Intelligence.Collector do
 
   defp extract_ship_classes(participants) do
     participants
-    |> Enum.map(& &1.ship_type_id)
-    |> Enum.map(&classify_ship_class/1)
+    |> Enum.map(&classify_ship_class(&1.ship_type_id))
     |> Enum.uniq()
   end
 

@@ -444,7 +444,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
     else
       total_ops = Enum.sum(Enum.map(fleet_data, &Map.get(&1, :fleet_ops, 0)))
       participants = Enum.count(fleet_data, &(Map.get(&1, :fleet_ops, 0) > 0))
-      avg_rate = if not Enum.empty?(fleet_data), do: participants / length(fleet_data), else: 0.0
+      avg_rate = if Enum.empty?(fleet_data), do: 0.0, else: participants / length(fleet_data)
 
       high_participation_members = Enum.filter(fleet_data, &(Map.get(&1, :fleet_ops, 0) >= 5))
       leadership_count = Enum.count(fleet_data, &Map.get(&1, :leadership_role, false))
@@ -458,7 +458,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
         leadership_distribution: %{
           total_leaders: leadership_count,
           leader_ratio:
-            if(not Enum.empty?(fleet_data), do: leadership_count / length(fleet_data), else: 0.0)
+            if(Enum.empty?(fleet_data), do: 0.0, else: leadership_count / length(fleet_data))
         }
       }
     end
@@ -539,12 +539,12 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
         second_half = Enum.drop(activity_data, mid_point)
 
         first_avg =
-          if not Enum.empty?(first_half), do: Enum.sum(first_half) / length(first_half), else: 0
+          if Enum.empty?(first_half), do: 0, else: Enum.sum(first_half) / length(first_half)
 
         second_avg =
-          if not Enum.empty?(second_half),
-            do: Enum.sum(second_half) / length(second_half),
-            else: 0
+          if Enum.empty?(second_half),
+            do: 0,
+            else: Enum.sum(second_half) / length(second_half)
 
         growth_rate = if first_avg > 0, do: (second_avg - first_avg) / first_avg * 100, else: 0
 
@@ -797,10 +797,10 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
       second_half = Enum.drop(activity_data, mid_point)
 
       first_avg =
-        if not Enum.empty?(first_half), do: Enum.sum(first_half) / length(first_half), else: 0
+        if Enum.empty?(first_half), do: 0, else: Enum.sum(first_half) / length(first_half)
 
       second_avg =
-        if not Enum.empty?(second_half), do: Enum.sum(second_half) / length(second_half), else: 0
+        if Enum.empty?(second_half), do: 0, else: Enum.sum(second_half) / length(second_half)
 
       if first_avg > 0 do
         (second_avg - first_avg) / first_avg

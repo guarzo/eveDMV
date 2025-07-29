@@ -111,7 +111,7 @@ defmodule EveDmv.Market.ShipValuation do
   @doc """
   Check if a ship is considered high-value (> 1B ISK).
   """
-  def is_high_value?(type_id) do
+  def high_value?(type_id) do
     estimate_value(type_id) > 1_000_000_000
   end
 

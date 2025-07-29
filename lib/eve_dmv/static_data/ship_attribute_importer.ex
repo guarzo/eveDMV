@@ -11,13 +11,12 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
 
   use GenServer
 
+  import Ash.Expr
+  require Ash.Query
+  require Logger
+
   alias EveDmv.Eve.ItemType
   alias EveDmv.StaticData.ShipAttributes
-
-  require Logger
-  require Ash.Query
-
-  import Ash.Expr
 
   @doc """
   Start the importer service.

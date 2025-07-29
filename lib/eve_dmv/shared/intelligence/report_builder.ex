@@ -410,7 +410,9 @@ defmodule EveDmv.Shared.Intelligence.ReportBuilder do
     base_recs = []
 
     immediate_threat_recs =
-      if not Enum.empty?(threat_assessment.immediate_threats) do
+      if Enum.empty?(threat_assessment.immediate_threats) do
+        []
+      else
         [
           %{
             action: "Deploy defensive fleet immediately",
@@ -419,8 +421,6 @@ defmodule EveDmv.Shared.Intelligence.ReportBuilder do
             category: :defensive
           }
         ]
-      else
-        []
       end
 
     threat_level_recs =
@@ -679,15 +679,13 @@ defmodule EveDmv.Shared.Intelligence.ReportBuilder do
   defp format_findings_for_discord(findings) do
     findings
     |> Enum.take(3)
-    |> Enum.map(&"• #{&1.description}")
-    |> Enum.join("\n")
+    |> Enum.map_join("\n", &"• #{&1.description}")
   end
 
   defp format_recommendations_for_discord(recommendations) do
     recommendations
     |> Enum.take(3)
-    |> Enum.map(&"• #{&1.action}")
-    |> Enum.join("\n")
+    |> Enum.map_join("\n", &"• #{&1.action}")
   end
 
   defp format_for_email(report), do: report

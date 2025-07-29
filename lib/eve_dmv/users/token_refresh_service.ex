@@ -131,7 +131,10 @@ defmodule EveDmv.Users.TokenRefreshService do
 
     case Ash.read(query, domain: Api) do
       {:ok, users} ->
-        if not Enum.empty?(users) do
+        if Enum.empty?(users) do
+          Logger.debug("✅ No tokens need refreshing at this time")
+          state
+        else
           Logger.info("🔄 Found #{length(users)} users with tokens needing refresh")
 
           refresh_results =
@@ -159,9 +162,6 @@ defmodule EveDmv.Users.TokenRefreshService do
             | refreshes_performed: state.refreshes_performed + success_count,
               errors_encountered: state.errors_encountered + error_count
           }
-        else
-          Logger.debug("✅ No tokens need refreshing at this time")
-          state
         end
 
       {:error, reason} ->

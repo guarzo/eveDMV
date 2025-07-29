@@ -278,60 +278,58 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
   end
 
   defp generate_character_csv_export(assigns) do
-    try do
-      headers = [
-        "character_id",
-        "analysis_date",
-        "total_kills",
-        "total_losses",
-        "efficiency_ratio",
-        "isk_destroyed",
-        "isk_lost",
-        "avg_ship_value",
-        "favorite_ship",
-        "primary_role",
-        "threat_score",
-        "activity_level",
-        "preferred_engagement_range"
-      ]
+    headers = [
+      "character_id",
+      "analysis_date",
+      "total_kills",
+      "total_losses",
+      "efficiency_ratio",
+      "isk_destroyed",
+      "isk_lost",
+      "avg_ship_value",
+      "favorite_ship",
+      "primary_role",
+      "threat_score",
+      "activity_level",
+      "preferred_engagement_range"
+    ]
 
-      analysis = assigns.analysis
-      intelligence = Map.get(assigns, :intelligence, %{})
-      ship_specialization = Map.get(assigns, :ship_specialization, %{})
+    analysis = assigns.analysis
+    intelligence = Map.get(assigns, :intelligence, %{})
+    ship_specialization = Map.get(assigns, :ship_specialization, %{})
 
-      row = [
-        assigns.character_id,
-        Date.utc_today(),
-        Map.get(analysis, :total_kills, 0),
-        Map.get(analysis, :total_losses, 0),
-        Map.get(analysis, :efficiency_ratio, 0.0),
-        Map.get(analysis, :isk_destroyed, 0),
-        Map.get(analysis, :isk_lost, 0),
-        Map.get(analysis, :average_ship_value, 0),
-        ship_specialization
-        |> get_in([:preferred_ships])
-        |> List.first()
-        |> format_ship_name(),
-        Map.get(intelligence, :primary_role, "Unknown"),
-        Map.get(intelligence, :threat_score, 0),
-        Map.get(intelligence, :activity_level, "Unknown"),
-        Map.get(intelligence, :engagement_range, "Unknown")
-      ]
+    row = [
+      assigns.character_id,
+      Date.utc_today(),
+      Map.get(analysis, :total_kills, 0),
+      Map.get(analysis, :total_losses, 0),
+      Map.get(analysis, :efficiency_ratio, 0.0),
+      Map.get(analysis, :isk_destroyed, 0),
+      Map.get(analysis, :isk_lost, 0),
+      Map.get(analysis, :average_ship_value, 0),
+      ship_specialization
+      |> get_in([:preferred_ships])
+      |> List.first()
+      |> format_ship_name(),
+      Map.get(intelligence, :primary_role, "Unknown"),
+      Map.get(intelligence, :threat_score, 0),
+      Map.get(intelligence, :activity_level, "Unknown"),
+      Map.get(intelligence, :engagement_range, "Unknown")
+    ]
 
-      content =
-        Enum.map_join([headers, row], "\n", fn row ->
-          row
-          |> Enum.map(&to_string/1)
-          |> Enum.map_join(",", &escape_csv_field/1)
-        end)
+    content =
+      Enum.map_join([headers, row], "\n", fn row ->
+        row
+        |> Enum.map(&to_string/1)
+        |> Enum.map_join(",", &escape_csv_field/1)
+      end)
 
-      {:ok, content}
-    rescue
-      error ->
-        require Logger
-        Logger.error("Character CSV export failed: #{inspect(error)}")
-        {:error, "CSV generation failed"}
-    end
+    {:ok, content}
+  rescue
+    error ->
+      require Logger
+      Logger.error("Character CSV export failed: #{inspect(error)}")
+      {:error, "CSV generation failed"}
   end
 
   defp format_ship_name(nil), do: "Unknown"

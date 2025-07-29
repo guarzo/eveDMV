@@ -81,7 +81,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   Get cache statistics for character analysis.
   """
   @spec get_cache_stats() :: map()
-  def get_cache_stats() do
+  def get_cache_stats do
     case AnalysisCache.get_stats() do
       {:ok, stats} ->
         stats

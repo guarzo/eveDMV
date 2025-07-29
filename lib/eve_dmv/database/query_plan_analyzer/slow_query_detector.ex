@@ -273,7 +273,9 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
   end
 
   defp analyze_cache_performance(slow_queries) do
-    if not Enum.empty?(slow_queries) do
+    if Enum.empty?(slow_queries) do
+      %{avg_hit_ratio: 1.0, min_hit_ratio: 1.0, queries_with_poor_cache: 0}
+    else
       hit_ratios =
         slow_queries
         |> Enum.map(& &1.cache_hit_percent)
@@ -281,15 +283,13 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
 
       %{
         avg_hit_ratio:
-          if(not Enum.empty?(hit_ratios),
-            do: Enum.sum(hit_ratios) / length(hit_ratios) / 100,
-            else: 0
+          if(Enum.empty?(hit_ratios),
+            do: 0,
+            else: Enum.sum(hit_ratios) / length(hit_ratios) / 100
           ),
-        min_hit_ratio: if(not Enum.empty?(hit_ratios), do: Enum.min(hit_ratios) / 100, else: 0),
+        min_hit_ratio: if(Enum.empty?(hit_ratios), do: 0, else: Enum.min(hit_ratios) / 100),
         queries_with_poor_cache: Enum.count(hit_ratios, &(&1 < 80))
       }
-    else
-      %{avg_hit_ratio: 1.0, min_hit_ratio: 1.0, queries_with_poor_cache: 0}
     end
   end
 
@@ -357,9 +357,9 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
     %{
       high_variability_queries: high_variability,
       avg_execution_time:
-        if(not Enum.empty?(slow_queries),
-          do: Enum.sum(Enum.map(slow_queries, & &1.mean_time_ms)) / length(slow_queries),
-          else: 0
+        if(Enum.empty?(slow_queries),
+          do: 0,
+          else: Enum.sum(Enum.map(slow_queries, & &1.mean_time_ms)) / length(slow_queries)
         ),
       total_execution_time: Enum.sum(Enum.map(slow_queries, & &1.total_time_ms))
     }

@@ -664,10 +664,10 @@ defmodule EveDmv.Shared.Strategic.AssessmentCompiler do
 
     posture_action = List.first(posture.implementation_guidelines)
 
-    if not Enum.empty?(best_opportunities) do
-      "#{posture_action}. Priority opportunities: #{Enum.join(best_opportunities, ", ")}"
-    else
+    if Enum.empty?(best_opportunities) do
       posture_action
+    else
+      "#{posture_action}. Priority opportunities: #{Enum.join(best_opportunities, ", ")}"
     end
   end
 

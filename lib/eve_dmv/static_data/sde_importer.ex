@@ -249,13 +249,12 @@ defmodule EveDmv.StaticData.SdeImporter do
   defp insert_batch(batch) do
     values =
       batch
-      |> Enum.map(fn attrs ->
+      |> Enum.map_join(", ", fn attrs ->
         "(#{attrs.type_id}, #{attrs.shield_hp}, #{attrs.armor_hp}, #{attrs.structure_hp}, " <>
           "#{attrs.shield_em_resist}, #{attrs.shield_thermal_resist}, #{attrs.shield_kinetic_resist}, #{attrs.shield_explosive_resist}, " <>
           "#{attrs.armor_em_resist}, #{attrs.armor_thermal_resist}, #{attrs.armor_kinetic_resist}, #{attrs.armor_explosive_resist}, " <>
           "'#{attrs.data_source}', '#{DateTime.to_iso8601(attrs.last_updated)}')"
       end)
-      |> Enum.join(", ")
 
     query = """
     INSERT INTO ship_attributes 

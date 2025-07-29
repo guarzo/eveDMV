@@ -367,7 +367,9 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveMetrics do
   end
 
   defp calculate_overall_efficiency(storage_data) do
-    if not Enum.empty?(storage_data) do
+    if Enum.empty?(storage_data) do
+      0.0
+    else
       avg_efficiency =
         storage_data
         |> Enum.map(& &1.efficiency_ratio)
@@ -375,8 +377,6 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveMetrics do
         |> Kernel./(length(storage_data))
 
       Float.round(avg_efficiency, 4)
-    else
-      0.0
     end
   end
 
@@ -447,13 +447,13 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveMetrics do
       |> Enum.map(fn {_score, policy} -> policy.table end)
 
     recs_with_low_health =
-      if not Enum.empty?(low_health_tables) do
+      if Enum.empty?(low_health_tables) do
+        initial_recommendations
+      else
         [
           "Review archive configuration for tables: #{Enum.join(low_health_tables, ", ")}"
           | initial_recommendations
         ]
-      else
-        initial_recommendations
       end
 
     # Check average health

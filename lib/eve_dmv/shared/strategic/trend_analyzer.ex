@@ -839,10 +839,10 @@ defmodule EveDmv.Shared.Strategic.TrendAnalyzer do
       end)
       |> Enum.reject(&is_nil/1)
 
-    if not Enum.empty?(surrounding) do
-      average(surrounding)
-    else
+    if Enum.empty?(surrounding) do
       0.0
+    else
+      average(surrounding)
     end
   end
 

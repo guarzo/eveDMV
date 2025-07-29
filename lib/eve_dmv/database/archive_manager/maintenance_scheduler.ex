@@ -448,15 +448,15 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
         ArchiveOperations.count_eligible_records(policy) > 100_000
       end)
 
-    if not Enum.empty?(high_backlog_tables) do
+    if Enum.empty?(high_backlog_tables) do
+      recommendations
+    else
       table_names = Enum.map(high_backlog_tables, & &1.table)
 
       [
         "Consider running manual archive for tables with high backlogs: #{Enum.join(table_names, ", ")}"
         | recommendations
       ]
-    else
-      recommendations
     end
   end
 
@@ -468,15 +468,15 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
         table_size.total_size > 10_000_000_000
       end)
 
-    if not Enum.empty?(large_archives) do
+    if Enum.empty?(large_archives) do
+      recommendation_list
+    else
       archive_names = Enum.map(large_archives, & &1.archive_table)
 
       [
         "Consider optimizing large archive tables: #{Enum.join(archive_names, ", ")}"
         | recommendation_list
       ]
-    else
-      recommendation_list
     end
   end
 

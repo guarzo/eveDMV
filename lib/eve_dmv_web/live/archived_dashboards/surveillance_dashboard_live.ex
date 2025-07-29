@@ -130,27 +130,25 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
   end
 
   defp load_profiles(socket) do
-    try do
-      case ThreatSurveillance.list_profiles(%{}) do
-        {:ok, profiles} ->
-          assign(socket, :profiles, profiles)
+    case ThreatSurveillance.list_profiles(%{}) do
+      {:ok, profiles} ->
+        assign(socket, :profiles, profiles)
 
-        {:error, reason} ->
-          Logger.error("Failed to load profiles: #{inspect(reason)}")
-
-          assign(socket, :profiles, [])
-      end
-    rescue
-      error ->
-        Logger.error("Surveillance service unavailable: #{inspect(error)}")
-
-        assign(socket, :profiles, [])
-    catch
-      :exit, reason ->
-        Logger.error("Surveillance service process not available: #{inspect(reason)}")
+      {:error, reason} ->
+        Logger.error("Failed to load profiles: #{inspect(reason)}")
 
         assign(socket, :profiles, [])
     end
+  rescue
+    error ->
+      Logger.error("Surveillance service unavailable: #{inspect(error)}")
+
+      assign(socket, :profiles, [])
+  catch
+    :exit, reason ->
+      Logger.error("Surveillance service process not available: #{inspect(reason)}")
+
+      assign(socket, :profiles, [])
   end
 
   defp load_system_metrics(socket, time_range) do
@@ -681,17 +679,15 @@ defmodule EveDmvWeb.SurveillanceDashboardLive do
 
   # Safe call helper for surveillance services
   defp safe_call(fun) when is_function(fun, 0) do
-    try do
-      fun.()
-    rescue
-      error ->
-        Logger.error("Surveillance service call failed: #{inspect(error)}")
-        {:error, :service_unavailable}
-    catch
-      :exit, reason ->
-        Logger.error("Surveillance service process not available: #{inspect(reason)}")
-        {:error, :service_unavailable}
-    end
+    fun.()
+  rescue
+    error ->
+      Logger.error("Surveillance service call failed: #{inspect(error)}")
+      {:error, :service_unavailable}
+  catch
+    :exit, reason ->
+      Logger.error("Surveillance service process not available: #{inspect(reason)}")
+      {:error, :service_unavailable}
   end
 
   # Formatting helpers

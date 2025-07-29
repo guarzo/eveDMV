@@ -215,7 +215,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance do
   @doc """
   Get surveillance system metrics.
   """
-  def get_surveillance_metrics() do
+  def get_surveillance_metrics do
     %{
       matching_engine: Domain.SurveillanceMatchingEngine.get_metrics(),
       threat_assessment: Domain.ThreatAssessmentEngine.get_metrics(),
@@ -265,7 +265,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance do
   @doc """
   Get threat surveillance cache statistics.
   """
-  def get_cache_stats() do
+  def get_cache_stats do
     %{
       threat_cache: UnifiedCache.get_domain_stats(:threat),
       surveillance_cache: UnifiedCache.get_domain_stats(:surveillance)
@@ -275,7 +275,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance do
   @doc """
   Clear threat surveillance cache.
   """
-  def clear_cache() do
+  def clear_cache do
     UnifiedCache.invalidate_domain(:threat)
     UnifiedCache.invalidate_domain(:surveillance)
   end
@@ -285,7 +285,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance do
   @doc """
   Get threat surveillance metrics.
   """
-  def get_metrics() do
+  def get_metrics do
     %{
       threat_assessments: Domain.ThreatAssessmentEngine.get_metrics(),
       surveillance_matches: Domain.SurveillanceMatchingEngine.get_metrics(),
@@ -299,7 +299,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance do
   @doc """
   Perform health check on threat surveillance services.
   """
-  def health_check() do
+  def health_check do
     services = [
       Domain.ThreatAssessmentEngine,
       Domain.SurveillanceMatchingEngine,

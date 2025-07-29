@@ -307,9 +307,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
     damage_done = Map.get(participant, :damage_done, 0)
 
     cond do
-      damage_done > 50000 -> 1.0
-      damage_done > 20000 -> 0.8
-      damage_done > 10000 -> 0.6
+      damage_done > 50_000 -> 1.0
+      damage_done > 20_000 -> 0.8
+      damage_done > 10_000 -> 0.6
       damage_done > 5000 -> 0.4
       true -> 0.2
     end
@@ -346,7 +346,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
     []
     |> (fn specs -> if ship_class == :frigate, do: [:tackle | specs], else: specs end).()
     |> (fn specs -> if ship_class == :capital, do: [:capital_warfare | specs], else: specs end).()
-    |> (fn specs -> if weapon_type && rem(weapon_type || 0, 7) == 0, do: [:electronic_warfare | specs], else: specs end).()
+    |> (fn specs ->
+      if weapon_type && rem(weapon_type || 0, 7) == 0,
+        do: [:electronic_warfare | specs],
+        else: specs
+    end).()
   end
 
   defp analyze_activity_patterns(_participant) do

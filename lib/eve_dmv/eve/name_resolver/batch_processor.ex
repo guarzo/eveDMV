@@ -23,10 +23,10 @@ defmodule EveDmv.Eve.NameResolver.BatchProcessor do
 
     # Batch load missing names from database to prevent N+1
     missing_results =
-      if not Enum.empty?(missing) do
-        batch_fetch_from_database(type, missing)
-      else
+      if Enum.empty?(missing) do
         %{}
+      else
+        batch_fetch_from_database(type, missing)
       end
 
     # Combine cached and fresh results
@@ -60,7 +60,9 @@ defmodule EveDmv.Eve.NameResolver.BatchProcessor do
 
     # If we have uncached IDs, try ESI bulk lookup
     esi_results =
-      if not Enum.empty?(uncached) do
+      if Enum.empty?(uncached) do
+        %{}
+      else
         case EsiEntityResolver.bulk_esi_lookup(type, uncached) do
           {:ok, results} ->
             # Cache the successful lookups
@@ -74,8 +76,6 @@ defmodule EveDmv.Eve.NameResolver.BatchProcessor do
             # Fall back to individual lookups
             Map.new(uncached, fn id -> {id, fallback_fn.(id)} end)
         end
-      else
-        %{}
       end
 
     Map.merge(cached, esi_results)

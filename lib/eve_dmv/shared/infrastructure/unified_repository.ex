@@ -19,10 +19,11 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   - Domain-specific query builders
   """
 
+  import Ecto.Query
+  require Logger
+
   alias EveDmv.Api
   alias EveDmv.Shared.Infrastructure.UnifiedCache
-  require Logger
-  import Ecto.Query
 
   @type domain :: :threat | :fleet | :corporation | :surveillance | :player | :wormhole
   @type resource :: module()

@@ -400,10 +400,10 @@ defmodule EveDmv.Shared.Strategic.CorrelationEngine do
       end)
       |> Enum.map(& &1.correlation)
 
-    if not Enum.empty?(internal_correlations) do
-      Float.round(Enum.sum(internal_correlations) / length(internal_correlations), 3)
-    else
+    if Enum.empty?(internal_correlations) do
       0.0
+    else
+      Float.round(Enum.sum(internal_correlations) / length(internal_correlations), 3)
     end
   end
 

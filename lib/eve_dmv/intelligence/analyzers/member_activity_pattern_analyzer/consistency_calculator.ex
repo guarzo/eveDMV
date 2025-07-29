@@ -116,15 +116,15 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.Consistenc
   - Float variance value
   """
   def calculate_variance(values) do
-    if not Enum.empty?(values) do
+    if Enum.empty?(values) do
+      0.0
+    else
       mean = Enum.sum(values) / length(values)
 
       values
       |> Enum.map(fn x -> :math.pow(x - mean, 2) end)
       |> Enum.sum()
       |> Kernel./(length(values))
-    else
-      0.0
     end
   end
 
@@ -140,12 +140,12 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.Consistenc
   - Float between 0.0 and 1.0 representing activity spread
   """
   def calculate_activity_spread(values) do
-    if not Enum.empty?(values) do
+    if Enum.empty?(values) do
+      0.0
+    else
       max_val = Enum.max(values)
       min_val = Enum.min(values)
       if max_val > 0, do: (max_val - min_val) / max_val, else: 0.0
-    else
-      0.0
     end
   end
 

@@ -505,10 +505,10 @@ defmodule EveDmv.Intelligence.WandererClient do
         connections = Map.get(data, "connections", [])
 
         all_systems =
-          if not Enum.empty?(systems) do
-            systems
-          else
+          if Enum.empty?(systems) do
             extract_systems_from_connections(connections)
+          else
+            systems
           end
 
         %{

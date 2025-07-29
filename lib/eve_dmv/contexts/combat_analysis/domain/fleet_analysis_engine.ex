@@ -48,14 +48,14 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.FleetAnalysisEngine do
   @doc """
   Get ship class information.
   """
-  def get_ship_classes() do
+  def get_ship_classes do
     @ship_classes
   end
 
   @doc """
   Get doctrine type information.
   """
-  def get_doctrine_types() do
+  def get_doctrine_types do
     @doctrine_types
   end
 
@@ -429,7 +429,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.FleetAnalysisEngine do
 
   # Real implementations using ship static data
 
-  defp load_ship_static_data() do
+  defp load_ship_static_data do
     # Load ship type data from the static data system
     case EveDmv.Api.read(EveDmv.Eve.ItemType, filter: [published: true]) do
       {:ok, ship_types} ->

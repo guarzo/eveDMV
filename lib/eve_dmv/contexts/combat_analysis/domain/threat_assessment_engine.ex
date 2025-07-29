@@ -20,9 +20,8 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
   alias EveDmv.Shared.Infrastructure.UnifiedCache
   alias EveDmv.StaticData
 
-  require Logger
-
   import Ecto.Query
+  require Logger
 
   # Threat scoring weights for combat analysis
   @combat_threat_weights %{

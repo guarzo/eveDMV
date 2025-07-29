@@ -106,22 +106,23 @@ defmodule EveDmv.Shared.Monitoring.Facade do
   def update_monitoring_thresholds(monitoring_setup, recent_detections, options \\ []) do
     current_thresholds = get_current_thresholds(monitoring_setup)
 
-    with {:ok, updated_thresholds} <-
-           AnomalyDetector.update_adaptive_thresholds(
-             current_thresholds,
-             recent_detections,
-             options
-           ) do
-      updated_setup = update_monitoring_setup_thresholds(monitoring_setup, updated_thresholds)
+    case AnomalyDetector.update_adaptive_thresholds(
+           current_thresholds,
+           recent_detections,
+           options
+         ) do
+      {:ok, updated_thresholds} ->
+        updated_setup = update_monitoring_setup_thresholds(monitoring_setup, updated_thresholds)
 
-      {:ok,
-       %{
-         updated_monitoring_setup: updated_setup,
-         threshold_changes: calculate_threshold_changes(current_thresholds, updated_thresholds),
-         update_timestamp: DateTime.utc_now()
-       }}
-    else
-      error -> error
+        {:ok,
+         %{
+           updated_monitoring_setup: updated_setup,
+           threshold_changes: calculate_threshold_changes(current_thresholds, updated_thresholds),
+           update_timestamp: DateTime.utc_now()
+         }}
+
+      error ->
+        error
     end
   end
 
@@ -131,37 +132,39 @@ defmodule EveDmv.Shared.Monitoring.Facade do
   def handle_alert_escalation(alert_manager, options \\ []) do
     current_time = Keyword.get(options, :current_time, DateTime.utc_now())
 
-    with {:ok, escalation_result} <-
-           AlertManager.handle_alert_escalation(alert_manager, current_time) do
-      # Process any escalated alerts
-      escalated_alerts = Enum.filter(escalation_result.escalations, &(&1.status == :escalated))
+    case AlertManager.handle_alert_escalation(alert_manager, current_time) do
+      {:ok, escalation_result} ->
+        # Process any escalated alerts
+        escalated_alerts = Enum.filter(escalation_result.escalations, &(&1.status == :escalated))
 
-      if not Enum.empty?(escalated_alerts) do
-        Logger.warning("#{length(escalated_alerts)} alerts escalated")
-
-        # Deliver escalated alerts
-        notification_channels = get_escalation_channels(alert_manager)
-
-        with {:ok, delivery_result} <-
-               AlertManager.deliver_alerts(escalated_alerts, notification_channels) do
+        if Enum.empty?(escalated_alerts) do
           {:ok,
            %{
              escalations: escalation_result.escalations,
-             delivery_result: delivery_result,
              updated_active_alerts: escalation_result.updated_active_alerts
            }}
         else
-          error -> error
+          Logger.warning("#{length(escalated_alerts)} alerts escalated")
+
+          # Deliver escalated alerts
+          notification_channels = get_escalation_channels(alert_manager)
+
+          case AlertManager.deliver_alerts(escalated_alerts, notification_channels) do
+            {:ok, delivery_result} ->
+              {:ok,
+               %{
+                 escalations: escalation_result.escalations,
+                 delivery_result: delivery_result,
+                 updated_active_alerts: escalation_result.updated_active_alerts
+               }}
+
+            error ->
+              error
+          end
         end
-      else
-        {:ok,
-         %{
-           escalations: escalation_result.escalations,
-           updated_active_alerts: escalation_result.updated_active_alerts
-         }}
-      end
-    else
-      error -> error
+
+      error ->
+        error
     end
   end
 
@@ -171,22 +174,23 @@ defmodule EveDmv.Shared.Monitoring.Facade do
   def generate_monitoring_summary(monitoring_setup, alert_manager, options \\ []) do
     time_window_hours = Keyword.get(options, :time_window_hours, 24)
 
-    with {:ok, alert_summary} <-
-           AlertManager.generate_alert_summary(alert_manager, time_window_hours) do
-      monitoring_summary = %{
-        monitoring_id: monitoring_setup.monitoring_id,
-        monitoring_status: monitoring_setup.status,
-        monitored_systems: length(monitoring_setup.monitored_systems),
-        baseline_quality: monitoring_setup.baseline_reference.baseline_metrics.overall_quality,
-        monitoring_uptime: calculate_monitoring_uptime(monitoring_setup),
-        alert_summary: alert_summary,
-        performance_metrics: extract_performance_metrics(monitoring_setup),
-        summary_timestamp: DateTime.utc_now()
-      }
+    case AlertManager.generate_alert_summary(alert_manager, time_window_hours) do
+      {:ok, alert_summary} ->
+        monitoring_summary = %{
+          monitoring_id: monitoring_setup.monitoring_id,
+          monitoring_status: monitoring_setup.status,
+          monitored_systems: length(monitoring_setup.monitored_systems),
+          baseline_quality: monitoring_setup.baseline_reference.baseline_metrics.overall_quality,
+          monitoring_uptime: calculate_monitoring_uptime(monitoring_setup),
+          alert_summary: alert_summary,
+          performance_metrics: extract_performance_metrics(monitoring_setup),
+          summary_timestamp: DateTime.utc_now()
+        }
 
-      {:ok, monitoring_summary}
-    else
-      error -> error
+        {:ok, monitoring_summary}
+
+      error ->
+        error
     end
   end
 

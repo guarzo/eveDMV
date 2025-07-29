@@ -416,7 +416,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
     if participant_count > 0 do
       avg_damage = total_damage / participant_count
       # Normalize to 0-1 scale
-      min(1.0, avg_damage / 50000)
+      min(1.0, avg_damage / 50_000)
     else
       0.0
     end
@@ -456,7 +456,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
 
   defp calculate_player_performance_score(participant) do
     damage_done = Map.get(participant, :damage_done, 0)
-    final_blow = if(Map.get(participant, :final_blow, false), do: 10000, else: 0)
+    final_blow = if(Map.get(participant, :final_blow, false), do: 10_000, else: 0)
     survived = if(Map.get(participant, :participant_type) == :attacker, do: 5000, else: 0)
 
     damage_done + final_blow + survived

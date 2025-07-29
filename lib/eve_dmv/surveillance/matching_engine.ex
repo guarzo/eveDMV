@@ -256,40 +256,38 @@ defmodule EveDmv.Surveillance.MatchingEngine do
     # Clear existing IndexManager.clear_all_tables(data)
 
     # Load active profiles from database
-    try do
-      case Ash.read(Profile,
-             action: :active_profiles,
-             domain: SurveillanceApi,
-             load: [:filter_tree]
-           ) do
-        {:ok, profiles} ->
-          # Preload profile names to avoid N+1 queries
-          EveDmv.Performance.BatchNameResolver.preload_profile_names(profiles)
+    case Ash.read(Profile,
+           action: :active_profiles,
+           domain: SurveillanceApi,
+           load: [:filter_tree]
+         ) do
+      {:ok, profiles} ->
+        # Preload profile names to avoid N+1 queries
+        EveDmv.Performance.BatchNameResolver.preload_profile_names(profiles)
 
-          # Process profiles in parallel batches for better performance
-          profiles
-          # Process in batches of 10
-          |> Enum.chunk_every(10)
+        # Process profiles in parallel batches for better performance
+        profiles
+        # Process in batches of 10
+        |> Enum.chunk_every(10)
 
-          Task.async_stream(&process_profile_batch/1,
-            max_concurrency: 4,
-            timeout: 30_000
-          )
-          |> Enum.reduce(0, fn
-            {:ok, count}, acc -> acc + count
-            {:error, _}, acc -> acc
-          end)
+        Task.async_stream(&process_profile_batch/1,
+          max_concurrency: 4,
+          timeout: 30_000
+        )
+        |> Enum.reduce(0, fn
+          {:ok, count}, acc -> acc + count
+          {:error, _}, acc -> acc
+        end)
 
-        {:error, error} ->
-          Logger.error("Failed to load surveillance profiles: #{inspect(error)}")
-          0
-      end
-    rescue
-      error ->
-        # Handle database not ready errors gracefully during startup
-        Logger.warning("Database may not be ready yet, skipping profile load: #{inspect(error)}")
+      {:error, error} ->
+        Logger.error("Failed to load surveillance profiles: #{inspect(error)}")
         0
     end
+  rescue
+    error ->
+      # Handle database not ready errors gracefully during startup
+      Logger.warning("Database may not be ready yet, skipping profile load: #{inspect(error)}")
+      0
   end
 
   defp process_profile_batch(profiles) do

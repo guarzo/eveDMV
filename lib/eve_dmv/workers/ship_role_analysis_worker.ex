@@ -249,20 +249,18 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
   end
 
   defp classify_killmail_role(killmail) do
-    try do
-      # Use our ModuleClassifier to analyze the killmail
-      case ModuleClassifier.classify_ship_role(killmail.raw_data) do
-        classification when is_map(classification) ->
-          {:ok, classification}
+    # Use our ModuleClassifier to analyze the killmail
+    case ModuleClassifier.classify_ship_role(killmail.raw_data) do
+      classification when is_map(classification) ->
+        {:ok, classification}
 
-        _ ->
-          {:error, :invalid_classification}
-      end
-    rescue
-      error ->
-        Logger.debug("Failed to classify killmail #{killmail.killmail_id}: #{inspect(error)}")
-        {:error, error}
+      _ ->
+        {:error, :invalid_classification}
     end
+  rescue
+    error ->
+      Logger.debug("Failed to classify killmail #{killmail.killmail_id}: #{inspect(error)}")
+      {:error, error}
   end
 
   defp aggregate_role_distributions(classifications) do

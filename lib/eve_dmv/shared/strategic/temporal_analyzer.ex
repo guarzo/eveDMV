@@ -421,7 +421,9 @@ defmodule EveDmv.Shared.Strategic.TemporalAnalyzer do
         |> Enum.chunk_every(2, 1, :discard)
         |> Enum.map(fn [t1, t2] -> DateTime.diff(t2, t1, :hour) end)
 
-      if not Enum.empty?(intervals) do
+      if Enum.empty?(intervals) do
+        %{detected: false}
+      else
         avg_interval = Enum.sum(intervals) / length(intervals)
 
         %{
@@ -429,8 +431,6 @@ defmodule EveDmv.Shared.Strategic.TemporalAnalyzer do
           average_interval_hours: Float.round(avg_interval, 1),
           consistency: calculate_interval_consistency(intervals, avg_interval)
         }
-      else
-        %{detected: false}
       end
     else
       %{detected: false}

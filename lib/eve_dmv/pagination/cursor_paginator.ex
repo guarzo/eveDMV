@@ -10,9 +10,6 @@ defmodule EveDmv.Pagination.CursorPaginator do
   import Ecto.Query
   alias EveDmv.Repo
 
-  @default_page_size 50
-  @max_page_size 1000
-
   defstruct [
     :query,
     :cursor_fields,
@@ -24,6 +21,9 @@ defmodule EveDmv.Pagination.CursorPaginator do
     :edges,
     :total_count
   ]
+
+  @default_page_size 50
+  @max_page_size 1000
 
   @doc """
   Create a new cursor paginator.

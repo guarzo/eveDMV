@@ -448,7 +448,6 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
           p95: Enum.at(sorted, round(length(sorted) * 0.95)),
           p99: Enum.at(sorted, round(length(sorted) * 0.99))
         }
-        %{avg_duration: 0, p50: 0, p95: 0, p99: 0}
       end
 
     updated_queries = Map.put(queries, :stats, query_stats)

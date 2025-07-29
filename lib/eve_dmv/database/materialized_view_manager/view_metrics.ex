@@ -337,10 +337,10 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
       Enum.map(Enum.filter(index_info.indexes, &(&1.efficiency < 0.5)), & &1.name)
 
     final_recommendations =
-      if not Enum.empty?(inefficient_indexes) do
-        ["Review inefficient indexes: #{Enum.join(inefficient_indexes, ", ")}" | recs_with_size]
-      else
+      if Enum.empty?(inefficient_indexes) do
         recs_with_size
+      else
+        ["Review inefficient indexes: #{Enum.join(inefficient_indexes, ", ")}" | recs_with_size]
       end
 
     final_recommendations
@@ -396,7 +396,9 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
   end
 
   defp calculate_overall_health(health_data) do
-    if not Enum.empty?(health_data) do
+    if Enum.empty?(health_data) do
+      0
+    else
       avg_score =
         health_data
         |> Enum.map(& &1.health_score)
@@ -404,8 +406,6 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
         |> Kernel./(length(health_data))
 
       round(avg_score)
-    else
-      0
     end
   end
 
@@ -417,10 +417,10 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
       Enum.map(Enum.filter(health_data, &(not &1.is_populated)), & &1.view)
 
     issues_with_unpopulated =
-      if not Enum.empty?(unpopulated) do
-        ["Unpopulated views: #{Enum.join(unpopulated, ", ")}" | initial_issues]
-      else
+      if Enum.empty?(unpopulated) do
         initial_issues
+      else
+        ["Unpopulated views: #{Enum.join(unpopulated, ", ")}" | initial_issues]
       end
 
     # Check for views without indexes
@@ -428,10 +428,10 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
       Enum.map(Enum.filter(health_data, &(not &1.has_indexes)), & &1.view)
 
     final_issues =
-      if not Enum.empty?(no_indexes) do
-        ["Views without indexes: #{Enum.join(no_indexes, ", ")}" | issues_with_unpopulated]
-      else
+      if Enum.empty?(no_indexes) do
         issues_with_unpopulated
+      else
+        ["Views without indexes: #{Enum.join(no_indexes, ", ")}" | issues_with_unpopulated]
       end
 
     final_issues

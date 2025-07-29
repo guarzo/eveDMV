@@ -161,17 +161,17 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityTrendAnal
       )
 
     avg_daily_historical =
-      if not Enum.empty?(member_activities) do
-        total_historical_activity / length(member_activities)
-      else
+      if Enum.empty?(member_activities) do
         0.0
+      else
+        total_historical_activity / length(member_activities)
       end
 
     avg_daily_recent =
-      if not Enum.empty?(recent_activities) do
-        total_recent_activity / length(recent_activities)
-      else
+      if Enum.empty?(recent_activities) do
         0.0
+      else
+        total_recent_activity / length(recent_activities)
       end
 
     activity_change_percent =
@@ -218,10 +218,10 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityTrendAnal
     second_half = Enum.drop(activity_series, mid_point)
 
     first_avg =
-      if not Enum.empty?(first_half), do: Enum.sum(first_half) / length(first_half), else: 0
+      if Enum.empty?(first_half), do: 0, else: Enum.sum(first_half) / length(first_half)
 
     second_avg =
-      if not Enum.empty?(second_half), do: Enum.sum(second_half) / length(second_half), else: 0
+      if Enum.empty?(second_half), do: 0, else: Enum.sum(second_half) / length(second_half)
 
     growth_rate = if first_avg > 0, do: (second_avg - first_avg) / first_avg * 100, else: 0
 

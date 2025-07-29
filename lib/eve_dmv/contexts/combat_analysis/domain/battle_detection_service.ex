@@ -7,8 +7,8 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService do
   """
 
   use GenServer
-  require Logger
   import Ecto.Query
+  require Logger
 
   alias EveDmv.DomainEvents.KillmailEnriched
   alias EveDmv.Infrastructure.EventBus

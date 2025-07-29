@@ -24,9 +24,9 @@ defmodule Mix.Tasks.Eve.ImportSdeAttributes do
 
   use Mix.Task
 
-  alias EveDmv.StaticData.SdeImporter
-
   @shortdoc "Import EVE Online SDE ship attributes"
+
+  alias EveDmv.StaticData.SdeImporter
 
   def run(args) do
     Mix.Task.run("app.start")

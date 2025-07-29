@@ -18,9 +18,9 @@ defmodule Mix.Tasks.Eve.ImportShipAttributes do
 
   use Mix.Task
 
-  require Logger
-
   @shortdoc "Import ship attributes into database"
+
+  require Logger
 
   @impl Mix.Task
   def run(args) do
