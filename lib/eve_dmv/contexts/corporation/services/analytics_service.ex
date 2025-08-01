@@ -206,85 +206,85 @@ defmodule EveDmv.Contexts.Corporation.Services.AnalyticsService do
   end
 
   defp identify_key_strengths(data) do
-    strengths = []
+    initial_strengths = []
 
     # High activity
-    strengths =
+    strengths_with_activity =
       if data.activity_analysis.summary.avg_activity_score > 70 do
-        ["High member activity levels" | strengths]
+        ["High member activity levels" | initial_strengths]
       else
-        strengths
+        initial_strengths
       end
 
     # Strong recruitment
-    strengths =
+    strengths_with_recruitment =
       if data.recruitment_analysis.metrics.recruitment_velocity > 2 do
-        ["Strong recruitment pipeline" | strengths]
+        ["Strong recruitment pipeline" | strengths_with_activity]
       else
-        strengths
+        strengths_with_activity
       end
 
     # Good retention
-    strengths =
+    strengths_with_retention =
       if data.risk_analysis.retention_score.score > 75 do
-        ["Excellent member retention" | strengths]
+        ["Excellent member retention" | strengths_with_recruitment]
       else
-        strengths
+        strengths_with_recruitment
       end
 
     # Leadership effectiveness
-    strengths =
+    final_strengths =
       if data.health_analysis.leadership_effectiveness.leadership_activity.activity_score > 70 do
-        ["Active and effective leadership" | strengths]
+        ["Active and effective leadership" | strengths_with_retention]
       else
-        strengths
+        strengths_with_retention
       end
 
-    if Enum.empty?(strengths) do
+    if Enum.empty?(final_strengths) do
       ["Stable organizational structure"]
     else
-      Enum.reverse(strengths)
+      Enum.reverse(final_strengths)
     end
   end
 
   defp identify_primary_concerns(data) do
-    concerns = []
+    initial_concerns = []
 
     # Low activity
-    concerns =
+    concerns_with_activity =
       if data.activity_analysis.summary.avg_activity_score < 40 do
-        ["Low member activity levels" | concerns]
+        ["Low member activity levels" | initial_concerns]
       else
-        concerns
+        initial_concerns
       end
 
     # High flight risk
     flight_risk_count = length(data.risk_analysis.flight_risks)
 
-    concerns =
+    concerns_with_flight_risk =
       if flight_risk_count > 5 do
-        ["High number of flight risk members (#{flight_risk_count})" | concerns]
+        ["High number of flight risk members (#{flight_risk_count})" | concerns_with_activity]
       else
-        concerns
+        concerns_with_activity
       end
 
     # Poor recruitment
-    concerns =
+    concerns_with_recruitment =
       if data.recruitment_analysis.metrics.trend == :declining do
-        ["Declining recruitment trend" | concerns]
+        ["Declining recruitment trend" | concerns_with_flight_risk]
       else
-        concerns
+        concerns_with_flight_risk
       end
 
     # Leadership issues
-    concerns =
+    final_concerns =
       if data.health_analysis.leadership_effectiveness.leadership_activity.activity_score < 50 do
-        ["Leadership activity concerns" | concerns]
+        ["Leadership activity concerns" | concerns_with_recruitment]
       else
-        concerns
+        concerns_with_recruitment
       end
 
-    Enum.reverse(concerns)
+    Enum.reverse(final_concerns)
   end
 
   defp generate_summary_text(health_score, member_count, activity_score) do
@@ -416,25 +416,25 @@ defmodule EveDmv.Contexts.Corporation.Services.AnalyticsService do
   end
 
   defp generate_strategic_insights(data) do
-    insights = []
+    initial_insights = []
 
     # Growth potential insight
     growth_insight = assess_growth_potential(data)
-    insights = [growth_insight | insights]
+    insights_with_growth = [growth_insight | initial_insights]
 
     # Competitive position insight
     competitive_insight = assess_competitive_position(data)
-    insights = [competitive_insight | insights]
+    insights_with_competitive = [competitive_insight | insights_with_growth]
 
     # Operational efficiency insight
     efficiency_insight = assess_operational_efficiency(data)
-    insights = [efficiency_insight | insights]
+    insights_with_efficiency = [efficiency_insight | insights_with_competitive]
 
     # Risk management insight
     risk_insight = assess_risk_management(data)
-    insights = [risk_insight | insights]
+    final_insights = [risk_insight | insights_with_efficiency]
 
-    Enum.reverse(insights)
+    Enum.reverse(final_insights)
   end
 
   defp assess_growth_potential(data) do
@@ -470,39 +470,39 @@ defmodule EveDmv.Contexts.Corporation.Services.AnalyticsService do
   end
 
   defp identify_growth_factors(data) do
-    factors = []
+    initial_factors = []
 
     # Positive factors
-    factors =
+    factors_with_health =
       if data.health_analysis.overall_health_score > 70 do
-        ["Strong organizational health" | factors]
+        ["Strong organizational health" | initial_factors]
       else
-        factors
+        initial_factors
       end
 
-    factors =
+    factors_with_recruitment =
       if data.recruitment_analysis.metrics.recruitment_velocity > 1.5 do
-        ["Active recruitment pipeline" | factors]
+        ["Active recruitment pipeline" | factors_with_health]
       else
-        factors
+        factors_with_health
       end
 
     # Constraining factors
-    factors =
+    factors_with_flight_risk =
       if length(data.risk_analysis.flight_risks) > 5 do
-        ["High member flight risk" | factors]
+        ["High member flight risk" | factors_with_recruitment]
       else
-        factors
+        factors_with_recruitment
       end
 
-    factors =
+    final_factors =
       if data.activity_analysis.summary.avg_activity_score < 50 do
-        ["Low member engagement" | factors]
+        ["Low member engagement" | factors_with_flight_risk]
       else
-        factors
+        factors_with_flight_risk
       end
 
-    Enum.reverse(factors)
+    Enum.reverse(final_factors)
   end
 
   defp generate_growth_recommendations(potential, _data) do
@@ -537,47 +537,47 @@ defmodule EveDmv.Contexts.Corporation.Services.AnalyticsService do
   end
 
   defp identify_competitive_advantages(data) do
-    advantages = []
+    initial_advantages = []
 
-    advantages =
+    advantages_with_timezone =
       if data.participation_analysis.timezone_coverage.coverage_score > 75 do
-        ["Excellent timezone coverage" | advantages]
+        ["Excellent timezone coverage" | initial_advantages]
       else
-        advantages
+        initial_advantages
       end
 
-    advantages =
+    final_advantages =
       if data.doctrine_analysis.combat_effectiveness.overall_effectiveness > 80 do
-        ["Strong combat effectiveness" | advantages]
+        ["Strong combat effectiveness" | advantages_with_timezone]
       else
-        advantages
+        advantages_with_timezone
       end
 
-    if Enum.empty?(advantages) do
+    if Enum.empty?(final_advantages) do
       ["Stable organizational structure"]
     else
-      Enum.reverse(advantages)
+      Enum.reverse(final_advantages)
     end
   end
 
   defp identify_improvement_areas(data) do
-    areas = []
+    initial_areas = []
 
-    areas =
+    areas_with_retention =
       if data.recruitment_analysis.metrics.retention_90_day < 0.5 do
-        ["Member retention" | areas]
+        ["Member retention" | initial_areas]
       else
-        areas
+        initial_areas
       end
 
-    areas =
+    final_areas =
       if data.activity_analysis.summary.avg_activity_score < 60 do
-        ["Member engagement" | areas]
+        ["Member engagement" | areas_with_retention]
       else
-        areas
+        areas_with_retention
       end
 
-    Enum.reverse(areas)
+    Enum.reverse(final_areas)
   end
 
   defp assess_operational_efficiency(data) do
@@ -653,39 +653,39 @@ defmodule EveDmv.Contexts.Corporation.Services.AnalyticsService do
   end
 
   defp compile_recommendations(data) do
-    recommendations = []
+    initial_recommendations = []
 
     # Collect recommendations from all analysis modules
-    recommendations = recommendations ++ (data.health_analysis.recommendations || [])
-    recommendations = recommendations ++ (data.recruitment_analysis.recommendations || [])
-    recommendations = recommendations ++ generate_analytics_recommendations(data)
+    recommendations_with_health = initial_recommendations ++ (data.health_analysis.recommendations || [])
+    recommendations_with_recruitment = recommendations_with_health ++ (data.recruitment_analysis.recommendations || [])
+    final_recommendations = recommendations_with_recruitment ++ generate_analytics_recommendations(data)
 
     # Prioritize and deduplicate
-    recommendations
+    final_recommendations
     |> Enum.uniq()
     |> prioritize_recommendations()
   end
 
   defp generate_analytics_recommendations(data) do
-    recommendations = []
+    initial_recommendations = []
 
     # Activity recommendations
-    recommendations =
+    recommendations_with_activity =
       if data.activity_analysis.summary.avg_activity_score < 60 do
-        ["Implement member engagement initiatives" | recommendations]
+        ["Implement member engagement initiatives" | initial_recommendations]
       else
-        recommendations
+        initial_recommendations
       end
 
     # Recruitment recommendations
-    recommendations =
+    final_recommendations =
       if data.recruitment_analysis.metrics.trend == :declining do
-        ["Revitalize recruitment campaigns" | recommendations]
+        ["Revitalize recruitment campaigns" | recommendations_with_activity]
       else
-        recommendations
+        recommendations_with_activity
       end
 
-    Enum.reverse(recommendations)
+    Enum.reverse(final_recommendations)
   end
 
   defp prioritize_recommendations(recommendations) do
@@ -728,27 +728,27 @@ defmodule EveDmv.Contexts.Corporation.Services.AnalyticsService do
   end
 
   defp generate_risk_mitigation_strategies(risk_analysis) do
-    strategies = []
+    initial_strategies = []
 
     flight_risk_count = length(risk_analysis.flight_risks)
 
-    strategies =
+    strategies_with_flight_risk =
       if flight_risk_count > 0 do
-        ["Implement early warning system for flight risks" | strategies]
+        ["Implement early warning system for flight risks" | initial_strategies]
       else
-        strategies
+        initial_strategies
       end
 
     retention_score = risk_analysis.retention_score.score
 
-    strategies =
+    final_strategies =
       if retention_score < 70 do
-        ["Strengthen new member onboarding process" | strategies]
+        ["Strengthen new member onboarding process" | strategies_with_flight_risk]
       else
-        strategies
+        strategies_with_flight_risk
       end
 
-    Enum.reverse(strategies)
+    Enum.reverse(final_strategies)
   end
 
   defp perform_comparative_analysis(corporation_id, alliance_id) do
