@@ -312,59 +312,59 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberRiskAssessment do
   end
 
   defp identify_specific_risk_indicators(member, member_activity) do
-    indicators = []
+    initial_indicators = []
 
     # Inactivity indicators
-    indicators =
+    indicators_with_inactivity =
       if member.last_seen do
         days_inactive = DateTime.diff(DateTime.utc_now(), member.last_seen, :day)
 
         if days_inactive > 14 do
-          ["Extended inactivity (#{days_inactive} days)" | indicators]
+          ["Extended inactivity (#{days_inactive} days)" | initial_indicators]
         else
-          indicators
+          initial_indicators
         end
       else
-        ["Never seen active" | indicators]
+        ["Never seen active" | initial_indicators]
       end
 
     # New member indicators
     tenure_days = calculate_tenure_days(member.join_date)
 
-    indicators =
+    indicators_with_tenure =
       if tenure_days < 7 do
-        ["Very new member (#{tenure_days} days)" | indicators]
+        ["Very new member (#{tenure_days} days)" | indicators_with_inactivity]
       else
-        indicators
+        indicators_with_inactivity
       end
 
     # Performance indicators
-    indicators =
+    final_indicators =
       if member_activity do
-        indicators =
+        indicators_with_activity =
           if member_activity.activity_score < 20 do
-            ["Low activity score (#{member_activity.activity_score})" | indicators]
+            ["Low activity score (#{member_activity.activity_score})" | indicators_with_tenure]
           else
-            indicators
+            indicators_with_tenure
           end
 
-        indicators =
+        indicators_with_performance =
           if member_activity.engagement_quality.assessment == :poor do
-            ["Poor combat performance" | indicators]
+            ["Poor combat performance" | indicators_with_activity]
           else
-            indicators
+            indicators_with_activity
           end
 
         if member_activity.consistency_score < 30 do
-          ["Inconsistent activity patterns" | indicators]
+          ["Inconsistent activity patterns" | indicators_with_performance]
         else
-          indicators
+          indicators_with_performance
         end
       else
-        indicators
+        indicators_with_tenure
       end
 
-    Enum.reverse(indicators)
+    Enum.reverse(final_indicators)
   end
 
   defp identify_flight_risk_members(risk_data) do
@@ -410,44 +410,44 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberRiskAssessment do
   end
 
   defp generate_member_specific_actions(profile) do
-    actions = []
+    initial_actions = []
 
     # Activity-based actions
-    actions =
+    actions_with_activity =
       if profile.risk_factors.activity_risk > 60 do
-        ["Reach out to encourage participation in corp activities" | actions]
+        ["Reach out to encourage participation in corp activities" | initial_actions]
       else
-        actions
+        initial_actions
       end
 
     # Tenure-based actions
-    actions =
+    actions_with_tenure =
       if profile.tenure_days < 30 do
-        ["Assign mentor or buddy for new member integration" | actions]
+        ["Assign mentor or buddy for new member integration" | actions_with_activity]
       else
-        actions
+        actions_with_activity
       end
 
     # Engagement-based actions
-    actions =
+    actions_with_engagement =
       if profile.risk_factors.engagement_risk > 50 do
-        ["Provide combat training or doctrine guidance" | actions]
+        ["Provide combat training or doctrine guidance" | actions_with_tenure]
       else
-        actions
+        actions_with_tenure
       end
 
     # Social risk actions
-    actions =
+    final_actions =
       if profile.risk_factors.social_risk > 50 do
-        ["Include in social events and fleet operations" | actions]
+        ["Include in social events and fleet operations" | actions_with_engagement]
       else
-        actions
+        actions_with_engagement
       end
 
-    if Enum.empty?(actions) do
+    if Enum.empty?(final_actions) do
       ["Monitor for continued engagement"]
     else
-      Enum.reverse(actions)
+      Enum.reverse(final_actions)
     end
   end
 
@@ -601,7 +601,7 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberRiskAssessment do
   end
 
   defp identify_early_warning_signs(risk_data) do
-    warnings = []
+    initial_warnings = []
 
     # Check for sudden activity drops
     recent_inactives =
@@ -611,11 +611,11 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberRiskAssessment do
         profile.risk_factors.activity_risk > 70 and profile.tenure_days > 30
       end)
 
-    warnings =
+    warnings_with_inactivity =
       if recent_inactives > 0 do
-        ["#{recent_inactives} established members showing sudden inactivity" | warnings]
+        ["#{recent_inactives} established members showing sudden inactivity" | initial_warnings]
       else
-        warnings
+        initial_warnings
       end
 
     # Check for poor new member integration
@@ -626,11 +626,11 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberRiskAssessment do
         profile.tenure_days < 30 and profile.risk_level in [:critical_risk, :high_risk]
       end)
 
-    warnings =
+    warnings_with_integration =
       if new_member_struggles > 2 do
-        ["#{new_member_struggles} new members struggling with integration" | warnings]
+        ["#{new_member_struggles} new members struggling with integration" | warnings_with_inactivity]
       else
-        warnings
+        warnings_with_inactivity
       end
 
     # Check for performance-related risks
@@ -641,21 +641,21 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberRiskAssessment do
         profile.risk_factors.performance_risk > 60
       end)
 
-    warnings =
+    final_warnings =
       if performance_issues > map_size(risk_data) * 0.2 do
         [
           "High number of members with performance-related risks (#{performance_issues})"
-          | warnings
+          | warnings_with_integration
         ]
       else
-        warnings
+        warnings_with_integration
       end
 
-    Enum.reverse(warnings)
+    Enum.reverse(final_warnings)
   end
 
   defp generate_risk_mitigation_recommendations(risk_data) do
-    recommendations = []
+    initial_recommendations = []
     total_members = map_size(risk_data)
 
     # High-risk member recommendations
@@ -664,14 +664,14 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberRiskAssessment do
       |> Map.values()
       |> Enum.count(fn profile -> profile.risk_level in [:critical_risk, :high_risk] end)
 
-    recommendations =
+    recommendations_with_retention =
       if high_risk_count > total_members * 0.15 do
         [
           "Implement member retention program - #{high_risk_count} high-risk members identified"
-          | recommendations
+          | initial_recommendations
         ]
       else
-        recommendations
+        initial_recommendations
       end
 
     # New member integration recommendations
@@ -682,11 +682,11 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberRiskAssessment do
         profile.tenure_days < 30 and profile.risk_level != :minimal_risk
       end)
 
-    recommendations =
+    recommendations_with_integration =
       if integration_issues > 3 do
-        ["Improve new member onboarding process - integration issues detected" | recommendations]
+        ["Improve new member onboarding process - integration issues detected" | recommendations_with_retention]
       else
-        recommendations
+        recommendations_with_retention
       end
 
     # Activity engagement recommendations
@@ -695,20 +695,20 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberRiskAssessment do
       |> Map.values()
       |> Enum.count(fn profile -> profile.risk_factors.activity_risk > 50 end)
 
-    recommendations =
+    final_recommendations =
       if low_activity_count > total_members * 0.3 do
         [
           "Increase member engagement activities - high number of low-activity members"
-          | recommendations
+          | recommendations_with_integration
         ]
       else
-        recommendations
+        recommendations_with_integration
       end
 
-    if Enum.empty?(recommendations) do
+    if Enum.empty?(final_recommendations) do
       ["Continue monitoring member satisfaction and engagement levels"]
     else
-      Enum.reverse(recommendations)
+      Enum.reverse(final_recommendations)
     end
   end
 
