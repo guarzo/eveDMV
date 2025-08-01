@@ -536,7 +536,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
   defp identify_suspicious_patterns(_members, activity_analysis) do
     member_metrics = activity_analysis.member_metrics || []
 
-    suspicious_patterns = []
+    initial_patterns = []
 
     # Check for feeding patterns (only losses)
     feeders =
@@ -544,11 +544,11 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
       |> Enum.filter(fn m -> m.recent_kills == 0 && m.recent_losses > 5 end)
       |> Enum.map(& &1.character_name)
 
-    suspicious_patterns =
+    feeder_patterns =
       if length(feeders) > 0 do
-        ["Potential feeders detected: #{Enum.join(feeders, ", ")}" | suspicious_patterns]
+        ["Potential feeders detected: #{Enum.join(feeders, ", ")}" | initial_patterns]
       else
-        suspicious_patterns
+        initial_patterns
       end
 
     # Check for inactive but present members
@@ -560,47 +560,47 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
       end)
       |> length()
 
-    suspicious_patterns =
+    final_patterns =
       if lurkers > 3 do
-        ["#{lurkers} members with minimal activity but recent logins" | suspicious_patterns]
+        ["#{lurkers} members with minimal activity but recent logins" | feeder_patterns]
       else
-        suspicious_patterns
+        feeder_patterns
       end
 
-    Enum.reverse(suspicious_patterns)
+    Enum.reverse(final_patterns)
   end
 
   defp identify_security_vulnerabilities(security_risks) do
-    vulnerabilities = []
+    initial_vulnerabilities = []
 
     # Infiltration vulnerabilities
-    vulnerabilities =
+    infiltration_vulnerabilities =
       if security_risks.infiltration_risks.risk_level in [:high, :critical] do
-        ["High infiltration risk from new/inactive members" | vulnerabilities]
+        ["High infiltration risk from new/inactive members" | initial_vulnerabilities]
       else
-        vulnerabilities
+        initial_vulnerabilities
       end
 
     # AWOX vulnerabilities
-    vulnerabilities =
+    awox_vulnerabilities =
       if security_risks.awox_risk_assessment.awox_risk_level in [:high, :critical] do
-        ["Potential AWOX threats identified" | vulnerabilities]
+        ["Potential AWOX threats identified" | infiltration_vulnerabilities]
       else
-        vulnerabilities
+        infiltration_vulnerabilities
       end
 
     # Spy vulnerabilities
-    vulnerabilities =
+    final_vulnerabilities =
       if security_risks.spy_indicators.spy_risk_level in [:high, :critical] do
-        ["Possible intelligence gathering activities detected" | vulnerabilities]
+        ["Possible intelligence gathering activities detected" | awox_vulnerabilities]
       else
-        vulnerabilities
+        awox_vulnerabilities
       end
 
-    if Enum.empty?(vulnerabilities) do
+    if Enum.empty?(final_vulnerabilities) do
       ["No critical security vulnerabilities identified"]
     else
-      Enum.reverse(vulnerabilities)
+      Enum.reverse(final_vulnerabilities)
     end
   end
 
