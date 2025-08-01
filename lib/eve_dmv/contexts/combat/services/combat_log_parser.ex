@@ -429,7 +429,8 @@ defmodule EveDmv.Contexts.Combat.Services.CombatLogParser do
   defp calculate_source_damage(source, events) do
     events
     |> Enum.filter(&(&1.source == source))
-    |> Enum.sum(& &1.damage)
+    |> Enum.map(& &1.damage)
+    |> Enum.sum()
   end
 
   defp link_battle_to_log(battle_id, combat_log_id) do

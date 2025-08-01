@@ -9,14 +9,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
   - Managing battle visibility and access
   """
 
-  alias EveDmv.Contexts.BattleAnalysis.Services.BattleService
+  require Ash.Query
+  require Logger
+  
+  import Ash.Expr
+
   alias EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer
   alias EveDmv.Contexts.BattleAnalysis.Resources.Battle
+  alias EveDmv.Contexts.BattleAnalysis.Services.BattleService
   alias EveDmv.Utils.NumberFormatter
-
-  require Logger
-  import Ash.Expr
-  require Ash.Query
 
   @share_token_length 16
   @share_url_base "https://evedmv.com/battles/"
@@ -418,16 +419,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
 
   defp format_stat_value(value), do: to_string(value)
 
-  defp get_participant_breakdown(battle_id) do
-    case ParticipantAnalyzer.get_participant_roles(battle_id) do
-      {:ok, roles} ->
-        Enum.map(roles, fn {role, participants} ->
-          %{role: role, count: length(participants)}
-        end)
-
-      _ ->
-        []
-    end
+  defp get_participant_breakdown(_battle_id) do
+    # TODO: Once battles store killmail associations, retrieve and analyze participants
+    # For now, return empty breakdown
+    []
   end
 
   defp format_isk_value(value) when value >= 1_000_000_000 do

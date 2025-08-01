@@ -11,6 +11,7 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
 
   alias EveDmv.Contexts.Combat.Services.BattleService
   alias EveDmv.Contexts.Combat.Core.{BattleAnalyzer, ParticipantAnalyzer}
+  alias EveDmv.Utils.NumberFormatter
   require Ash.Query
 
   require Logger
@@ -398,7 +399,7 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
   end
 
   defp format_stat_value(value) when is_number(value) do
-    Number.Human.number_to_human(value)
+    NumberFormatter.number_to_human(value)
   end
 
   defp format_stat_value(value), do: to_string(value)
