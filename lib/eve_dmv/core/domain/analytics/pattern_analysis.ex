@@ -489,21 +489,21 @@ defmodule EveDmv.Core.Domain.Analytics.PatternAnalysis do
 
   defp identify_tactical_patterns(killmails) do
     # Analyze common tactical patterns based on ship types, engagement sizes, etc.
-    patterns = []
+    initial_patterns = []
 
     # Check for common patterns
-    patterns =
-      if has_pattern?(:alpha_strike, killmails), do: [:alpha_strike | patterns], else: patterns
+    patterns_with_alpha =
+      if has_pattern?(:alpha_strike, killmails), do: [:alpha_strike | initial_patterns], else: initial_patterns
 
-    patterns =
-      if has_pattern?(:hit_and_run, killmails), do: [:hit_and_run | patterns], else: patterns
+    patterns_with_hit_run =
+      if has_pattern?(:hit_and_run, killmails), do: [:hit_and_run | patterns_with_alpha], else: patterns_with_alpha
 
-    patterns =
+    final_patterns =
       if has_pattern?(:sustained_engagement, killmails),
-        do: [:sustained_engagement | patterns],
-        else: patterns
+        do: [:sustained_engagement | patterns_with_hit_run],
+        else: patterns_with_hit_run
 
-    patterns
+    final_patterns
   end
 
   defp has_pattern?(pattern_type, killmails) do
