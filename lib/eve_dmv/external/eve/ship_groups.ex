@@ -130,7 +130,7 @@ defmodule EveDmv.Eve.ShipGroups do
   @doc """
   Check if a group ID represents a capital ship.
   """
-  def is_capital?(group_id) when is_integer(group_id) do
+  def capital?(group_id) when is_integer(group_id) do
     # Dreads, carriers, supers, titans, FAXes
     group_id in [485, 547, 659, 30, 1538]
   end
@@ -138,7 +138,7 @@ defmodule EveDmv.Eve.ShipGroups do
   @doc """
   Check if a group ID represents a subcapital combat ship.
   """
-  def is_subcapital_combat?(group_id) when is_integer(group_id) do
+  def subcapital_combat?(group_id) when is_integer(group_id) do
     classification = get_classification(group_id)
 
     classification in [
@@ -183,7 +183,7 @@ defmodule EveDmv.Eve.ShipGroups do
   @doc """
   Check if a group ID represents an industrial ship.
   """
-  def is_industrial?(group_id) when is_integer(group_id) do
+  def industrial?(group_id) when is_integer(group_id) do
     classification = get_classification(group_id)
 
     classification in [
@@ -206,8 +206,8 @@ defmodule EveDmv.Eve.ShipGroups do
     cond do
       __MODULE__.logistics?(group_id) -> :logistics
       __MODULE__.ewar?(group_id) -> :ewar
-      is_industrial?(group_id) -> :industrial
-      is_subcapital_combat?(group_id) or is_capital?(group_id) -> :combat
+      industrial?(group_id) -> :industrial
+      subcapital_combat?(group_id) or capital?(group_id) -> :combat
       true -> :special
     end
   end

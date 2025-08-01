@@ -37,7 +37,7 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
       role: EveDmv.StaticData.get_ship_role(ship_name),
       ship_class: EveDmv.StaticData.get_ship_class(ship_name),
       wormhole_suitable: EveDmv.StaticData.wormhole_suitable?(ship_name),
-      is_capital: EveDmv.StaticData.is_capital?(ship_name),
+      is_capital: EveDmv.StaticData.capital?(ship_name),
       wh_restrictions:
         EveDmv.StaticData.get_wormhole_restrictions(EveDmv.StaticData.get_ship_class(ship_name))
     }

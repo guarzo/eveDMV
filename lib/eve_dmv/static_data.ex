@@ -469,7 +469,7 @@ defmodule EveDmv.StaticData do
   @doc """
   Check if a ship is a capital ship.
   """
-  def is_capital?(ship_type_id) when is_integer(ship_type_id) do
+  def capital?(ship_type_id) when is_integer(ship_type_id) do
     get_ship_category(ship_type_id) in [:capital, :supercapital]
   end
 
