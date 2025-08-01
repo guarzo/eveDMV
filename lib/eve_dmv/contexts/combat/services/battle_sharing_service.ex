@@ -313,24 +313,24 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
       }
     }
 
-    data =
+    data_with_killmails =
       if include_killmails do
         Map.put(base_data, :killmails, get_battle_killmails(battle.id))
       else
         base_data
       end
 
-    data =
+    final_data =
       if include_analysis do
         case BattleAnalyzer.analyze_battle(battle.id) do
-          {:ok, analysis} -> Map.put(data, :analysis, analysis)
-          _ -> data
+          {:ok, analysis} -> Map.put(data_with_killmails, :analysis, analysis)
+          _ -> data_with_killmails
         end
       else
-        data
+        data_with_killmails
       end
 
-    {:ok, data}
+    {:ok, final_data}
   end
 
   defp serialize_battle(battle) do
@@ -528,29 +528,29 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
   end
 
   defp generate_comparison_insights(comparison) do
-    insights = []
+    initial_insights = []
 
     # Duration insights
     duration_variance = comparison.duration.max - comparison.duration.min
 
-    insights =
+    insights_with_duration =
       if duration_variance > 30 do
-        ["Significant duration variance (#{duration_variance} minutes)" | insights]
+        ["Significant duration variance (#{duration_variance} minutes)" | initial_insights]
       else
-        insights
+        initial_insights
       end
 
     # Scale insights
     participant_ratio = comparison.participants.max / max(comparison.participants.min, 1)
 
-    insights =
+    final_insights =
       if participant_ratio > 3 do
-        ["Large scale difference (#{Float.round(participant_ratio, 1)}x)" | insights]
+        ["Large scale difference (#{Float.round(participant_ratio, 1)}x)" | insights_with_duration]
       else
-        insights
+        insights_with_duration
       end
 
-    insights
+    final_insights
   end
 
   # Formatting helpers
