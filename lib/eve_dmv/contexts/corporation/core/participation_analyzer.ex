@@ -896,61 +896,61 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
   end
 
   defp generate_participation_recommendations(participation_data, fleet_data, timezone_data) do
-    recommendations = []
+    initial_recommendations = []
     _totalmembers = map_size(participation_data)
 
     # Low participation recommendations
     summary = build_participation_summary(participation_data)
 
-    recommendations =
+    recommendations_with_participation =
       if summary.participation_rate < 50 do
         [
           "Increase member engagement - only #{Float.round(summary.participation_rate, 1)}% participation rate"
-          | recommendations
+          | initial_recommendations
         ]
       else
-        recommendations
+        initial_recommendations
       end
 
     # Fleet participation recommendations
-    recommendations =
+    recommendations_with_fleet =
       if fleet_data.avg_fleet_participation_rate < 30 do
         [
           "Organize more fleet operations - low fleet participation (#{Float.round(fleet_data.avg_fleet_participation_rate, 1)}%)"
-          | recommendations
+          | recommendations_with_participation
         ]
       else
-        recommendations
+        recommendations_with_participation
       end
 
     # Timezone coverage recommendations
-    recommendations =
+    recommendations_with_timezone =
       case timezone_data.timezone_strength do
         strength when strength in [:poor_coverage, :very_poor_coverage] ->
           [
             "Improve timezone coverage - gaps identified in #{length(timezone_data.coverage_gaps)} hours"
-            | recommendations
+            | recommendations_with_fleet
           ]
 
         _ ->
-          recommendations
+          recommendations_with_fleet
       end
 
     # Leadership development recommendations
-    recommendations =
+    final_recommendations =
       if fleet_data.fleet_leadership_depth.potential_leaders < 3 do
         [
           "Develop more fleet leaders - only #{fleet_data.fleet_leadership_depth.potential_leaders} potential leaders identified"
-          | recommendations
+          | recommendations_with_timezone
         ]
       else
-        recommendations
+        recommendations_with_timezone
       end
 
-    if Enum.empty?(recommendations) do
+    if Enum.empty?(final_recommendations) do
       ["Maintain current participation levels and continue monitoring engagement"]
     else
-      Enum.reverse(recommendations)
+      Enum.reverse(final_recommendations)
     end
   end
 
