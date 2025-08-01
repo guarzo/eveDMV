@@ -201,29 +201,29 @@ defmodule EveDmv.Contexts.Intelligence.Services.ComparisonService do
   defp generate_comparison_summary(character_data, aspects) do
     char_count = map_size(character_data)
 
-    summary = %{
+    initial_summary = %{
       character_count: char_count,
       aspects_compared: normalize_aspects(aspects)
     }
 
     # Add aspect-specific summaries
-    summary =
+    final_summary =
       if Map.has_key?(List.first(Map.values(character_data)), :threat) do
         threat_scores =
           character_data
           |> Map.values()
           |> Enum.map(& &1.threat.overall_score)
 
-        Map.put(summary, :threat_summary, %{
+        Map.put(initial_summary, :threat_summary, %{
           min: Enum.min(threat_scores),
           max: Enum.max(threat_scores),
           avg: Float.round(Enum.sum(threat_scores) / length(threat_scores), 2)
         })
       else
-        summary
+        initial_summary
       end
 
-    summary
+    final_summary
   end
 
   defp normalize_aspects(:all), do: [:threat, :combat, :performance, :ships, :behavior]
@@ -231,10 +231,10 @@ defmodule EveDmv.Contexts.Intelligence.Services.ComparisonService do
   defp normalize_aspects(aspect), do: [aspect]
 
   defp generate_aspect_rankings(character_data, aspects) do
-    rankings = %{}
+    initial_rankings = %{}
 
     # Threat rankings
-    rankings =
+    rankings_with_threat =
       if should_include_aspect?(:threat, aspects) do
         threat_ranking =
           character_data
@@ -245,13 +245,13 @@ defmodule EveDmv.Contexts.Intelligence.Services.ComparisonService do
             %{character_id: char_id, rank: rank, score: data.threat.overall_score}
           end)
 
-        Map.put(rankings, :threat, threat_ranking)
+        Map.put(initial_rankings, :threat, threat_ranking)
       else
-        rankings
+        initial_rankings
       end
 
     # Combat rankings
-    rankings =
+    final_rankings =
       if should_include_aspect?(:combat, aspects) do
         combat_ranking =
           character_data
@@ -262,35 +262,35 @@ defmodule EveDmv.Contexts.Intelligence.Services.ComparisonService do
             %{character_id: char_id, rank: rank, kd_ratio: data.combat.kill_death_ratio}
           end)
 
-        Map.put(rankings, :combat, combat_ranking)
+        Map.put(rankings_with_threat, :combat, combat_ranking)
       else
-        rankings
+        rankings_with_threat
       end
 
-    rankings
+    final_rankings
   end
 
   defp generate_comparison_insights(character_data, _aspects) do
-    insights = []
+    initial_insights = []
 
     # Find the most threatening character
-    insights =
+    insights_with_threat =
       case find_highest_threat(character_data) do
         nil ->
-          insights
+          initial_insights
 
         {char_id, threat_score} ->
-          ["Character #{char_id} poses the highest threat (#{threat_score})" | insights]
+          ["Character #{char_id} poses the highest threat (#{threat_score})" | initial_insights]
       end
 
     # Find outliers
-    insights =
+    final_insights =
       case find_performance_outliers(character_data) do
-        [] -> insights
-        outliers -> outliers ++ insights
+        [] -> insights_with_threat
+        outliers -> outliers ++ insights_with_threat
       end
 
-    Enum.reverse(insights)
+    Enum.reverse(final_insights)
   end
 
   defp find_highest_threat(character_data) do
@@ -305,10 +305,10 @@ defmodule EveDmv.Contexts.Intelligence.Services.ComparisonService do
 
   defp find_performance_outliers(character_data) do
     # Find characters with unusually high performance in specific areas
-    outliers = []
+    initial_outliers = []
 
     # High K/D ratio outliers
-    outliers =
+    final_outliers =
       character_data
       |> Enum.filter(fn {_, data} ->
         Map.has_key?(data, :combat) and data.combat.kill_death_ratio > 5.0
@@ -316,9 +316,9 @@ defmodule EveDmv.Contexts.Intelligence.Services.ComparisonService do
       |> Enum.map(fn {char_id, data} ->
         "Character #{char_id} has exceptional K/D ratio (#{data.combat.kill_death_ratio})"
       end)
-      |> Kernel.++(outliers)
+      |> Kernel.++(initial_outliers)
 
-    outliers
+    final_outliers
   end
 
   defp perform_similarity_search(character_id, opts) do
