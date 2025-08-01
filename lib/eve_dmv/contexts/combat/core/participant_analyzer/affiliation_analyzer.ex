@@ -188,8 +188,8 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.AffiliationAnalyzer do
       if side.is_third_party do
         :third_party
       else
-        # Safe to use String.to_atom here as side.id is generated internally as "side_N"
-        String.to_atom(side.id)
+        # Convert to atom safely - side.id is generated internally as "side_N"
+        String.to_existing_atom(side.id)
       end
     else
       :unknown
@@ -200,8 +200,8 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.AffiliationAnalyzer do
     # How strongly affiliated is this participant with their side?
     side_data =
       Enum.find(sides, fn s ->
-        # Safe to use String.to_atom here as s.id is generated internally as "side_N"
-        String.to_atom(s.id) == side || (s.is_third_party && side == :third_party)
+        # Convert to atom safely - s.id is generated internally as "side_N"
+        String.to_existing_atom(s.id) == side || (s.is_third_party && side == :third_party)
       end)
 
     if side_data do
