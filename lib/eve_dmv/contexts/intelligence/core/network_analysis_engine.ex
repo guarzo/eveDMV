@@ -10,10 +10,10 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
   - Community detection
   """
 
+  alias EveDmv.Contexts.Intelligence.Core.LouvainCommunityDetection
   alias EveDmv.Database.KillmailRepository
   alias EveDmv.Intelligence.Cache.IntelligenceCache
   alias EveDmv.StaticData.ShipTypes
-  alias EveDmv.Contexts.Intelligence.Core.LouvainCommunityDetection
 
   require Logger
 
