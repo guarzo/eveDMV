@@ -10,8 +10,9 @@ defmodule EveDmv.Contexts.Intelligence.Core.MLScoringEngine do
   - Ensemble scoring methods
   """
 
-  alias EveDmv.Database.{CharacterRepository, KillmailRepository}
   alias EveDmv.Cache
+  alias EveDmv.Database.CharacterRepository
+  alias EveDmv.Database.KillmailRepository
 
   require Logger
 
