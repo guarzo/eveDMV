@@ -6,11 +6,11 @@ defmodule EveDmv.Platform.Database.CorporationRepository do
   from the database with optimized queries.
   """
 
-  alias EveDmv.Repo
   alias EveDmv.Api
+  alias EveDmv.Contexts.Corporation.Resources.ActivityMetric
   alias EveDmv.Contexts.Corporation.Resources.Corporation
   alias EveDmv.Contexts.Corporation.Resources.CorporationMember
-  alias EveDmv.Contexts.Corporation.Resources.ActivityMetric
+  alias EveDmv.Repo
 
   require Logger
   require Ash.Query
