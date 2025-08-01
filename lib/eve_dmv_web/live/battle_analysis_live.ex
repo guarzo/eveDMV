@@ -888,15 +888,10 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   defp load_battle_metrics(socket) do
     if socket.assigns.current_battle do
-      case EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator.calculate_battle_metrics(
-             socket.assigns.current_battle
-           ) do
-        {:ok, metrics} ->
-          assign(socket, :battle_metrics, metrics)
-
-        {:error, _} ->
-          socket
-      end
+      {:ok, metrics} = EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator.calculate_battle_metrics(
+        socket.assigns.current_battle
+      )
+      assign(socket, :battle_metrics, metrics)
     else
       socket
     end

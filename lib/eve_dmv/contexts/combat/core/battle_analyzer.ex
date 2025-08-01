@@ -839,41 +839,41 @@ defmodule EveDmv.Contexts.Combat.Core.BattleAnalyzer do
   end
 
   defp generate_notable_reason(kill) do
-    reasons = []
+    initial_reasons = []
 
     # Add value reason
-    reasons =
+    reasons_with_value =
       if kill.value >= 1_000_000_000 do
-        ["High value kill (#{format_isk(kill.value)})" | reasons]
+        ["High value kill (#{format_isk(kill.value)})" | initial_reasons]
       else
-        reasons
+        initial_reasons
       end
 
     # Add ship significance
     ship_class = EveDmv.StaticData.ShipTypes.classify_ship_type(kill.victim.ship_type_id)
 
-    reasons =
+    reasons_with_ship_significance =
       case ship_class do
-        :supercapital -> ["Supercapital kill" | reasons]
-        :capital -> ["Capital ship kill" | reasons]
-        :structure -> ["Structure destruction" | reasons]
-        _ -> reasons
+        :supercapital -> ["Supercapital kill" | reasons_with_value]
+        :capital -> ["Capital ship kill" | reasons_with_value]
+        :structure -> ["Structure destruction" | reasons_with_value]
+        _ -> reasons_with_value
       end
 
     # Add participation reason
     attacker_count = length(kill.attackers || [])
 
-    reasons =
+    final_reasons =
       cond do
-        attacker_count >= 100 -> ["Massive fleet engagement" | reasons]
-        attacker_count == 1 -> ["Solo kill" | reasons]
-        true -> reasons
+        attacker_count >= 100 -> ["Massive fleet engagement" | reasons_with_ship_significance]
+        attacker_count == 1 -> ["Solo kill" | reasons_with_ship_significance]
+        true -> reasons_with_ship_significance
       end
 
-    if Enum.empty?(reasons) do
+    if Enum.empty?(final_reasons) do
       "Notable engagement"
     else
-      Enum.join(reasons, ", ")
+      Enum.join(final_reasons, ", ")
     end
   end
 

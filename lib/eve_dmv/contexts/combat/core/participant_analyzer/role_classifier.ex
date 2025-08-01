@@ -41,31 +41,31 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.RoleClassifier do
   end
 
   defp determine_secondary_roles(participant, primary_role) do
-    roles = []
+    initial_roles = []
 
     # A participant can have multiple secondary roles
-    roles =
+    roles_with_damage =
       if high_damage_dealer?(participant) && primary_role != :damage_dealer do
-        [:damage_dealer | roles]
+        [:damage_dealer | initial_roles]
       else
-        roles
+        initial_roles
       end
 
-    roles =
+    roles_with_tackle =
       if has_tackle_behavior?(participant) && primary_role != :tackle do
-        [:tackle | roles]
+        [:tackle | roles_with_damage]
       else
-        roles
+        roles_with_damage
       end
 
-    roles =
+    final_roles =
       if has_command_behavior?(participant) && primary_role != :fleet_commander do
-        [:squad_leader | roles]
+        [:squad_leader | roles_with_tackle]
       else
-        roles
+        roles_with_tackle
       end
 
-    Enum.uniq(roles)
+    Enum.uniq(final_roles)
   end
 
   defp calculate_role_confidence(participant, role) do

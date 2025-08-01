@@ -479,17 +479,17 @@ defmodule EveDmv.Contexts.Combat.Core.FleetCompositionAnalyzer do
   end
 
   defp identify_doctrine_patterns(composition) do
-    patterns = []
+    initial_patterns = []
 
     # Check for common doctrine patterns
-    patterns = patterns ++ check_armor_doctrine(composition)
-    patterns = patterns ++ check_shield_doctrine(composition)
-    patterns = patterns ++ check_alpha_doctrine(composition)
-    patterns = patterns ++ check_kiting_doctrine(composition)
+    patterns_with_armor = initial_patterns ++ check_armor_doctrine(composition)
+    patterns_with_shield = patterns_with_armor ++ check_shield_doctrine(composition)
+    patterns_with_alpha = patterns_with_shield ++ check_alpha_doctrine(composition)
+    final_patterns = patterns_with_alpha ++ check_kiting_doctrine(composition)
 
     %{
-      detected_patterns: patterns,
-      primary_doctrine: determine_primary_doctrine(patterns),
+      detected_patterns: final_patterns,
+      primary_doctrine: determine_primary_doctrine(final_patterns),
       doctrine_cohesion: calculate_doctrine_cohesion(composition)
     }
   end

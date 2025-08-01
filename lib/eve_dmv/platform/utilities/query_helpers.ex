@@ -9,9 +9,9 @@ defmodule EveDmv.Platform.Utilities.QueryHelpers do
 
   alias EveDmv.Repo
 
-  require Logger
-
   import Ecto.Query
+
+  require Logger
 
   # Common query patterns
 
