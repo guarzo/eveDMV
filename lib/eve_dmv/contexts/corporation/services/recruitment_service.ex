@@ -866,49 +866,50 @@ defmodule EveDmv.Contexts.Corporation.Services.RecruitmentService do
   end
 
   defp identify_retention_risk_factors(retention_analysis) do
-    risk_factors = []
+    initial_risk_factors = []
 
     # Poor overall trend
-    risk_factors =
+    trend_risk_factors =
       if retention_analysis.overall_retention_trend == :declining do
-        ["Declining retention trend across cohorts" | risk_factors]
+        ["Declining retention trend across cohorts" | initial_risk_factors]
       else
-        risk_factors
+        initial_risk_factors
       end
 
     # Low cohort performance
-    if not Enum.empty?(retention_analysis.cohorts) do
+    final_risk_factors = if not Enum.empty?(retention_analysis.cohorts) do
       avg_retention =
         retention_analysis.cohorts
         |> Enum.map(& &1.retention_rate)
         |> Enum.sum()
         |> Kernel./(length(retention_analysis.cohorts))
 
-      ^risk_factors =
-        if avg_retention < 0.5 do
-          ["Low average retention rate (#{Float.round(avg_retention * 100, 1)}%)" | risk_factors]
-        else
-          risk_factors
-        end
+      if avg_retention < 0.5 do
+        ["Low average retention rate (#{Float.round(avg_retention * 100, 1)}%)" | trend_risk_factors]
+      else
+        trend_risk_factors
+      end
+    else
+      trend_risk_factors
     end
 
-    Enum.reverse(risk_factors)
+    Enum.reverse(final_risk_factors)
   end
 
   defp identify_retention_improvements(retention_analysis) do
-    improvements = []
+    initial_improvements = []
 
-    improvements =
+    trend_improvements =
       if retention_analysis.overall_retention_trend in [:declining, :stable] do
-        ["Implement enhanced onboarding program" | improvements]
+        ["Implement enhanced onboarding program" | initial_improvements]
       else
-        improvements
+        initial_improvements
       end
 
-    improvements = ["Establish retention tracking dashboard" | improvements]
-    improvements = ["Create new member buddy system" | improvements]
+    dashboard_improvements = ["Establish retention tracking dashboard" | trend_improvements]
+    final_improvements = ["Create new member buddy system" | dashboard_improvements]
 
-    Enum.reverse(improvements)
+    Enum.reverse(final_improvements)
   end
 
   defp analyze_recruitment_market(_corporation_id) do
@@ -948,23 +949,23 @@ defmodule EveDmv.Contexts.Corporation.Services.RecruitmentService do
   end
 
   defp identify_optimization_opportunities(recruitment_analysis) do
-    opportunities = []
+    initial_opportunities = []
 
     # Velocity opportunities
     velocity = recruitment_analysis.metrics.recruitment_velocity
 
-    opportunities =
+    velocity_opportunities =
       if velocity < 1.5 do
-        ["Increase recruitment campaign frequency" | opportunities]
+        ["Increase recruitment campaign frequency" | initial_opportunities]
       else
-        opportunities
+        initial_opportunities
       end
 
     # Process opportunities
-    opportunities = ["Implement automated screening" | opportunities]
-    opportunities = ["Create recruiter training program" | opportunities]
+    screening_opportunities = ["Implement automated screening" | velocity_opportunities]
+    final_opportunities = ["Create recruiter training program" | screening_opportunities]
 
-    Enum.reverse(opportunities)
+    Enum.reverse(final_opportunities)
   end
 
   defp generate_predictive_analysis(recruitment_analysis) do
@@ -1026,34 +1027,34 @@ defmodule EveDmv.Contexts.Corporation.Services.RecruitmentService do
   end
 
   defp generate_actionable_recommendations(recruitment_analysis, effectiveness_data) do
-    recommendations = []
+    initial_recommendations = []
 
     # Velocity-based recommendations
     velocity = recruitment_analysis.metrics.recruitment_velocity
 
-    recommendations =
+    velocity_recommendations =
       if velocity < 1 do
-        ["Launch targeted recruitment campaign to increase pipeline velocity" | recommendations]
+        ["Launch targeted recruitment campaign to increase pipeline velocity" | initial_recommendations]
       else
-        recommendations
+        initial_recommendations
       end
 
     # Effectiveness-based recommendations
     effectiveness = effectiveness_data.effectiveness_score
 
-    recommendations =
+    effectiveness_recommendations =
       if effectiveness < 60 do
-        ["Optimize recruitment process efficiency and quality" | recommendations]
+        ["Optimize recruitment process efficiency and quality" | velocity_recommendations]
       else
-        recommendations
+        velocity_recommendations
       end
 
     # Process improvement recommendations
-    recommendations = ["Implement recruitment metrics dashboard" | recommendations]
-    recommendations = ["Establish recruiter performance tracking" | recommendations]
+    dashboard_recommendations = ["Implement recruitment metrics dashboard" | effectiveness_recommendations]
+    final_recommendations = ["Establish recruiter performance tracking" | dashboard_recommendations]
 
     # Prioritize recommendations
-    recommendations
+    final_recommendations
     |> Enum.reverse()
     |> Enum.with_index(1)
     |> Enum.map(fn {rec, index} ->
@@ -1098,44 +1099,44 @@ defmodule EveDmv.Contexts.Corporation.Services.RecruitmentService do
   end
 
   defp generate_optimization_changes(insights, goals) do
-    changes = []
+    initial_changes = []
 
     # Based on pipeline insights
     pipeline_insights = insights.pipeline_insights
 
-    changes =
+    pipeline_changes =
       if pipeline_insights.velocity_analysis.assessment in [:concerning, :poor] do
-        ["Redesign recruitment pipeline for better velocity" | changes]
+        ["Redesign recruitment pipeline for better velocity" | initial_changes]
       else
-        changes
+        initial_changes
       end
 
     # Based on effectiveness insights
     effectiveness = insights.effectiveness_insights
 
-    changes =
+    effectiveness_changes =
       if effectiveness.overall_effectiveness in [:needs_improvement, :poor] do
-        ["Improve recruitment process effectiveness" | changes]
+        ["Improve recruitment process effectiveness" | pipeline_changes]
       else
-        changes
+        pipeline_changes
       end
 
     # Goal-based changes
-    changes =
+    velocity_changes =
       if :increase_velocity in goals do
-        ["Implement parallel processing for applications" | changes]
+        ["Implement parallel processing for applications" | effectiveness_changes]
       else
-        changes
+        effectiveness_changes
       end
 
-    changes =
+    final_changes =
       if :improve_quality in goals do
-        ["Enhance screening criteria and process" | changes]
+        ["Enhance screening criteria and process" | velocity_changes]
       else
-        changes
+        velocity_changes
       end
 
-    Enum.reverse(changes)
+    Enum.reverse(final_changes)
   end
 
   defp create_implementation_roadmap(_insights, _goals) do
