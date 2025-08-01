@@ -401,40 +401,38 @@ defmodule EveDmv.Workers.ReEnrichmentWorker do
 
   defp process_single_killmail(killmail_id) do
     # Attempt to re-enrich a single killmail
-    try do
-      # Update enrichment status to pending
-      update_query = """
-      UPDATE killmails_raw
-      SET enrichment_status = 'processing', updated_at = NOW()
-      WHERE killmail_id = $1
-      """
+    # Update enrichment status to pending
+    update_query = """
+    UPDATE killmails_raw
+    SET enrichment_status = 'processing', updated_at = NOW()
+    WHERE killmail_id = $1
+    """
 
-      case EveDmv.Repo.query(update_query, [killmail_id]) do
-        {:ok, _} ->
-          # In a real implementation, this would:
-          # 1. Fetch additional data from ESI if needed
-          # 2. Parse and enrich killmail data
-          # 3. Update calculated fields like total_value
-          # 4. Populate missing names from static data
+    case EveDmv.Repo.query(update_query, [killmail_id]) do
+      {:ok, _} ->
+        # In a real implementation, this would:
+        # 1. Fetch additional data from ESI if needed
+        # 2. Parse and enrich killmail data
+        # 3. Update calculated fields like total_value
+        # 4. Populate missing names from static data
 
-          # For now, mark as successfully processed
-          complete_query = """
-          UPDATE killmails_raw
-          SET enrichment_status = 'completed', updated_at = NOW()
-          WHERE killmail_id = $1
-          """
+        # For now, mark as successfully processed
+        complete_query = """
+        UPDATE killmails_raw
+        SET enrichment_status = 'completed', updated_at = NOW()
+        WHERE killmail_id = $1
+        """
 
-          case EveDmv.Repo.query(complete_query, [killmail_id]) do
-            {:ok, _} -> :ok
-            {:error, error} -> {:error, error}
-          end
+        case EveDmv.Repo.query(complete_query, [killmail_id]) do
+          {:ok, _} -> :ok
+          {:error, error} -> {:error, error}
+        end
 
-        {:error, error} ->
-          {:error, error}
-      end
-    rescue
-      exception -> {:error, exception}
+      {:error, error} ->
+        {:error, error}
     end
+  rescue
+    exception -> {:error, exception}
   end
 
   defp handle_batch_failure(batch_job, error, state) do

@@ -159,25 +159,25 @@ defmodule EveDmv.Contexts.Corporation.Resources.ActivityMetric do
     calculate(
       :kill_death_ratio,
       :float,
-      expr(if(total_losses > 0, total_kills / total_losses, total_kills))
+      expr(if total_losses > 0, do: total_kills / total_losses, else: total_kills)
     )
 
     calculate(
       :isk_efficiency,
       :float,
-      expr(if(isk_lost > 0, isk_destroyed / (isk_destroyed + isk_lost), 1.0))
+      expr(if isk_lost > 0, do: isk_destroyed / (isk_destroyed + isk_lost), else: 1.0)
     )
 
     calculate(
       :participation_rate,
       :float,
-      expr(if(total_members > 0, unique_participants / total_members, 0.0))
+      expr(if total_members > 0, do: unique_participants / total_members, else: 0.0)
     )
 
     calculate(
       :member_growth_rate,
       :float,
-      expr(if(total_members > 0, (new_members - departed_members) / total_members, 0.0))
+      expr(if total_members > 0, do: (new_members - departed_members) / total_members, else: 0.0)
     )
   end
 

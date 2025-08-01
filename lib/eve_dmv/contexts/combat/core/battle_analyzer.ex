@@ -353,7 +353,7 @@ defmodule EveDmv.Contexts.Combat.Core.BattleAnalyzer do
       |> Enum.uniq()
 
     # Gate camp characteristics:
-    # - Single system (concentrated location)  
+    # - Single system (concentrated location)
     # - High victim diversity (many different targets)
     # - Minimum number of kills to establish pattern
     length(systems) == 1 && victim_diversity > 0.7 && total_kills >= 3
@@ -414,7 +414,7 @@ defmodule EveDmv.Contexts.Combat.Core.BattleAnalyzer do
         end
 
       _ ->
-        # Default if insufficient sides 
+        # Default if insufficient sides
         50.0
     end
   end
@@ -592,7 +592,7 @@ defmodule EveDmv.Contexts.Combat.Core.BattleAnalyzer do
 
     # MVP scoring factors:
     # - High kill count
-    # - Low death count (survival) 
+    # - Low death count (survival)
     # - High damage contribution
     # - Final blows (finishing kills)
 

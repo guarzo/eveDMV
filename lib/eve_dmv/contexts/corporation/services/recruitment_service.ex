@@ -422,10 +422,10 @@ defmodule EveDmv.Contexts.Corporation.Services.RecruitmentService do
       end
 
     final_red_flags =
-      unless application.api_verified do
-        ["API verification incomplete" | corp_history_red_flags]
-      else
+      if application.api_verified do
         corp_history_red_flags
+      else
+        ["API verification incomplete" | corp_history_red_flags]
       end
 
     Enum.reverse(final_red_flags)
@@ -465,10 +465,10 @@ defmodule EveDmv.Contexts.Corporation.Services.RecruitmentService do
       end
 
     final_notes =
-      unless Enum.empty?(screening.red_flags) do
-        ["Red flags identified: #{Enum.join(screening.red_flags, ", ")}" | security_notes]
-      else
+      if Enum.empty?(screening.red_flags) do
         security_notes
+      else
+        ["Red flags identified: #{Enum.join(screening.red_flags, ", ")}" | security_notes]
       end
 
     if Enum.empty?(final_notes) do

@@ -278,8 +278,9 @@ defmodule EveDmv.Contexts.Corporation.Core.CombatDoctrineAnalyzer do
 
   defp analyze_fleet_size_distribution(fleet_activities) do
     fleet_activities
-    |> Enum.map(& &1.fleet_size)
-    |> Enum.map(fn size ->
+    |> Enum.map(fn activity ->
+      size = activity.fleet_size
+
       cond do
         size >= 100 -> "100+"
         size >= 50 -> "50-99"

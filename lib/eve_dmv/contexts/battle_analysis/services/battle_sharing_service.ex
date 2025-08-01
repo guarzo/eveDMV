@@ -544,5 +544,4 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
   defp format_battle_date(datetime) do
     Calendar.strftime(datetime, "%Y-%m-%d %H:%M")
   end
-
 end

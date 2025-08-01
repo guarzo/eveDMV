@@ -317,7 +317,7 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer do
           end
         end
       end)
-      |> Enum.filter(& &1)
+      |> Enum.reject(&is_nil/1)
       |> Enum.uniq()
       |> length()
 

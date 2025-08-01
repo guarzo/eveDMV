@@ -12,13 +12,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   import Ash.Expr
   import Ecto.Query
 
-  require Ash.Query
-
   alias EveDmv.Contexts.BattleAnalysis.Api
   alias EveDmv.Contexts.BattleAnalysis.Core.BattleDetector
   alias EveDmv.Contexts.BattleAnalysis.Resources.Battle
   alias EveDmv.Contexts.BattleAnalysis.Resources.BattleKillmail
   alias EveDmv.Repo
+
+  require Ash.Query
 
   @doc """
   Create a new battle from detected killmails.

@@ -518,12 +518,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.
       _ ->
         # Deep systems have branching based on system characteristics
         # Use system ID patterns to determine likely connection count
-        cond do
-          # Systems ending in patterns suggesting higher activity
-          # 20% branching
-          Integer.mod(system_id, 100) in [0, 25, 50, 75] -> 2
+        if Integer.mod(system_id, 100) in [0, 25, 50, 75] do
+          # 20% branching for systems with patterns suggesting higher activity
+          2
+        else
           # Most deep systems have single connections
-          true -> 1
+          1
         end
     end
   end

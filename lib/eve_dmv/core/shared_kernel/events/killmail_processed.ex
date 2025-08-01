@@ -7,6 +7,7 @@ defmodule EveDmv.Core.SharedKernel.Events.KillmailProcessed do
   by various analysis engines across the system.
   """
 
+  alias EveDmv.Core.SharedKernel.Entities.Killmail
   alias EveDmv.Core.SharedKernel.ValueObjects.CharacterId
   alias EveDmv.Core.SharedKernel.ValueObjects.IskAmount
   alias EveDmv.Core.SharedKernel.ValueObjects.SystemId
@@ -77,9 +78,9 @@ defmodule EveDmv.Core.SharedKernel.Events.KillmailProcessed do
   @doc """
   Create event from a killmail entity.
   """
-  @spec from_killmail(EveDmv.Core.SharedKernel.Entities.Killmail.t()) :: t()
+  @spec from_killmail(Killmail.t()) :: t()
   def from_killmail(killmail) do
-    final_blow = EveDmv.Core.SharedKernel.Entities.Killmail.final_blow_attacker(killmail)
+    final_blow = Killmail.final_blow_attacker(killmail)
 
     %__MODULE__{
       event_id: generate_event_id(),
@@ -91,12 +92,12 @@ defmodule EveDmv.Core.SharedKernel.Events.KillmailProcessed do
       victim_corporation_id: killmail.victim.corporation_id,
       victim_alliance_id: killmail.victim.alliance_id,
       victim_ship_type_id: killmail.victim.ship_type_id,
-      attacker_count: EveDmv.Core.SharedKernel.Entities.Killmail.attacker_count(killmail),
+      attacker_count: Killmail.attacker_count(killmail),
       final_blow_character_id: final_blow && final_blow.character_id,
       final_blow_corporation_id: final_blow && final_blow.corporation_id,
       total_value: killmail.total_value,
-      is_solo_kill: EveDmv.Core.SharedKernel.Entities.Killmail.solo_kill?(killmail),
-      security_class: EveDmv.Core.SharedKernel.Entities.Killmail.security_class(killmail),
+      is_solo_kill: Killmail.solo_kill?(killmail),
+      security_class: Killmail.security_class(killmail),
       metadata: killmail.metadata
     }
   end

@@ -351,29 +351,7 @@ defmodule EveDmv.Database.CharacterRepository do
 
       case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [character_id]) do
         {:ok, %{rows: rows}} ->
-          stats_map =
-            rows
-            |> Enum.map(fn [ship_type_id, kills, losses, avg_damage, kill_value, loss_value] ->
-              kd_ratio = if losses > 0, do: kills / losses, else: kills
-
-              isk_efficiency =
-                if kill_value + loss_value > 0,
-                  do: kill_value / (kill_value + loss_value) * 100,
-                  else: 0.0
-
-              {ship_type_id,
-               %{
-                 kills: kills,
-                 losses: losses,
-                 kd_ratio: Float.round(kd_ratio, 2),
-                 avg_damage: round(avg_damage),
-                 kill_value: kill_value,
-                 loss_value: loss_value,
-                 isk_efficiency: Float.round(isk_efficiency, 2)
-               }}
-            end)
-            |> Map.new()
-
+          stats_map = build_ship_stats_map(rows)
           {:ok, stats_map}
 
         {:error, reason} ->
@@ -383,6 +361,33 @@ defmodule EveDmv.Database.CharacterRepository do
   end
 
   # Private helper functions
+
+  defp build_ship_stats_map(rows) do
+    rows
+    |> Enum.map(&build_ship_stat_entry/1)
+    |> Map.new()
+  end
+
+  defp build_ship_stat_entry([ship_type_id, kills, losses, avg_damage, kill_value, loss_value]) do
+    kd_ratio = if losses > 0, do: kills / losses, else: kills
+    isk_efficiency = calculate_isk_efficiency(kill_value, loss_value)
+
+    {ship_type_id,
+     %{
+       kills: kills,
+       losses: losses,
+       kd_ratio: Float.round(kd_ratio, 2),
+       avg_damage: round(avg_damage),
+       kill_value: kill_value,
+       loss_value: loss_value,
+       isk_efficiency: Float.round(isk_efficiency, 2)
+     }}
+  end
+
+  defp calculate_isk_efficiency(kill_value, loss_value) do
+    total_value = kill_value + loss_value
+    if total_value > 0, do: kill_value / total_value * 100, else: 0.0
+  end
 
   defp invalidate_character_caches(character_id) do
     # Invalidate specific character caches

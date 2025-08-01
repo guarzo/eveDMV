@@ -234,13 +234,13 @@ defmodule EveDmv.Contexts.Corporation.Resources.CorporationMember do
     calculate(
       :kill_death_ratio,
       :float,
-      expr(if(total_losses > 0, total_kills / total_losses, total_kills))
+      expr(if total_losses > 0, do: total_kills / total_losses, else: total_kills)
     )
 
     calculate(
       :isk_efficiency,
       :float,
-      expr(if(isk_lost > 0, isk_destroyed / (isk_destroyed + isk_lost), 1.0))
+      expr(if isk_lost > 0, do: isk_destroyed / (isk_destroyed + isk_lost), else: 1.0)
     )
 
     calculate(

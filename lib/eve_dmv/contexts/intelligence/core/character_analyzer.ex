@@ -195,10 +195,11 @@ defmodule EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer do
   # Private Functions
 
   defp perform_character_analysis(character_id, opts) do
-    with {:ok, data} <- gather_character_data(character_id, opts) do
-      analysis = build_analysis(data, opts)
-      {:ok, analysis}
-    else
+    case gather_character_data(character_id, opts) do
+      {:ok, data} ->
+        analysis = build_analysis(data, opts)
+        {:ok, analysis}
+
       {:error, reason} = error ->
         Logger.error("Character analysis failed for #{character_id}: #{inspect(reason)}")
         error

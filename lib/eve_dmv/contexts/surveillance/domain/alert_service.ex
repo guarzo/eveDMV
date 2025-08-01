@@ -38,34 +38,32 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
   Returns the generated alert or error if alert generation fails.
   """
   def generate_alert_for_match(match) do
-    try do
-      priority = calculate_alert_priority(match)
+    priority = calculate_alert_priority(match)
 
-      alert_data = %{
-        id: generate_alert_id(),
-        profile_id: match.profile_id,
-        killmail_id: match.killmail_id,
-        match_id: match.match_id || "unknown",
-        alert_type: determine_alert_type(match),
-        priority: priority,
-        state: @state_new,
-        title: generate_alert_title(match),
-        description: generate_alert_description(match),
-        metadata: %{
-          matched_criteria: match.matched_criteria || [],
-          match_confidence: match.match_confidence || 0.0,
-          killmail_value: match.killmail_value || 0
-        },
-        created_at: DateTime.utc_now(),
-        expires_at: calculate_expiry_time(priority)
-      }
+    alert_data = %{
+      id: generate_alert_id(),
+      profile_id: match.profile_id,
+      killmail_id: match.killmail_id,
+      match_id: match.match_id || "unknown",
+      alert_type: determine_alert_type(match),
+      priority: priority,
+      state: @state_new,
+      title: generate_alert_title(match),
+      description: generate_alert_description(match),
+      metadata: %{
+        matched_criteria: match.matched_criteria || [],
+        match_confidence: match.match_confidence || 0.0,
+        killmail_value: match.killmail_value || 0
+      },
+      created_at: DateTime.utc_now(),
+      expires_at: calculate_expiry_time(priority)
+    }
 
-      {:ok, alert_data}
-    rescue
-      _error ->
-        Logger.error("Failed to generate alert for match")
-        {:error, :alert_generation_failed}
-    end
+    {:ok, alert_data}
+  rescue
+    _error ->
+      Logger.error("Failed to generate alert for match")
+      {:error, :alert_generation_failed}
   end
 
   @doc """

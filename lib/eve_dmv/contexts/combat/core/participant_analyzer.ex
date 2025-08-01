@@ -10,12 +10,12 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer do
   - Activity patterns
   """
 
-  require Logger
-
   alias EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.ActivityTracker
   alias EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.AffiliationAnalyzer
   alias EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.RoleClassifier
   alias EveDmv.External.Eve.MarketDataService
+
+  require Logger
 
   @doc """
   Analyze all participants in a set of killmails.

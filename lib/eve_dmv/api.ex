@@ -117,6 +117,7 @@ defmodule EveDmv.Api do
   @doc """
   Bulk creates records in this domain.
   """
+  @spec bulk_create(Ash.Resource.t(), [map()], keyword()) :: Ash.BulkResult.t()
   def bulk_create(resource, attrs_list, opts \\ []) do
     Ash.bulk_create(resource, attrs_list, opts ++ [domain: __MODULE__])
   end
@@ -124,6 +125,7 @@ defmodule EveDmv.Api do
   @doc """
   Gets a record by ID in this domain.
   """
+  @spec get(Ash.Resource.t(), any(), keyword()) :: {:ok, Ash.Resource.record()} | {:error, any()}
   def get(resource, id, opts \\ []) do
     Ash.get(resource, id, opts ++ [domain: __MODULE__])
   end
@@ -131,6 +133,7 @@ defmodule EveDmv.Api do
   @doc """
   Counts records in this domain.
   """
+  @spec count(Ash.Query.t()) :: {:ok, non_neg_integer()} | {:error, any()}
   def count(query) do
     Ash.count(query, domain: __MODULE__)
   end

@@ -12,10 +12,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
 
   import Ecto.Query
 
-  require Logger
-
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Repo
+
+  require Logger
 
   # Configuration
   @time_window_minutes 10

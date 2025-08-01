@@ -1026,12 +1026,17 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
         |> Enum.uniq()
         |> length()
 
-      total_days =
-        DateTime.diff(
-          killmails |> Enum.max_by(& &1.killmail_time) |> Map.get(:killmail_time),
-          killmails |> Enum.min_by(& &1.killmail_time) |> Map.get(:killmail_time),
-          :day
-        )
+      max_time =
+        killmails
+        |> Enum.max_by(& &1.killmail_time)
+        |> Map.get(:killmail_time)
+
+      min_time =
+        killmails
+        |> Enum.min_by(& &1.killmail_time)
+        |> Map.get(:killmail_time)
+
+      total_days = DateTime.diff(max_time, min_time, :day)
 
       if total_days > 0 do
         round(days_with_activity / total_days * 100)
@@ -1050,13 +1055,11 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
           Enum.any?(km.attackers, fn att -> att.character_id == character_id end)
       end)
       |> Enum.map(fn km ->
-        cond do
-          km.victim.character_id == character_id ->
-            {km.killmail_time, km.victim.corporation_id}
-
-          true ->
-            attacker = Enum.find(km.attackers, fn att -> att.character_id == character_id end)
-            {km.killmail_time, attacker.corporation_id}
+        if km.victim.character_id == character_id do
+          {km.killmail_time, km.victim.corporation_id}
+        else
+          attacker = Enum.find(km.attackers, fn att -> att.character_id == character_id end)
+          {km.killmail_time, attacker.corporation_id}
         end
       end)
       |> Enum.sort_by(fn {time, _corp} -> time end, DateTime)

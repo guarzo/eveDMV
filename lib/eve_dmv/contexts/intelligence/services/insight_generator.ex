@@ -86,88 +86,59 @@ defmodule EveDmv.Contexts.Intelligence.Services.InsightGenerator do
   end
 
   defp generate_tactical_insights(threat_assessment, character_analysis) do
-    insights = []
-
-    # Threat-based insights
-    insights =
-      case threat_assessment.threat_level do
-        :critical ->
-          ["PRIORITY TARGET - Requires immediate attention and resources" | insights]
-
-        :high ->
-          ["HIGH VALUE TARGET - Significant threat requiring careful planning" | insights]
-
-        _ ->
-          insights
-      end
-
-    # Combat pattern insights
-    insights =
-      case character_analysis.classifications.pilot_type do
-        :elite_solo_hunter ->
-          [
-            "Exceptional solo combat capability - avoid 1v1 engagements",
-            "Likely to disengage if outnumbered significantly" | insights
-          ]
-
-        :fleet_pilot ->
-          [
-            "Fleet-oriented pilot - most dangerous with backup",
-            "May be vulnerable when caught alone" | insights
-          ]
-
-        :gang_specialist ->
-          [
-            "Small gang specialist - expect coordinated tactics",
-            "Optimal threat level in 3-10 person groups" | insights
-          ]
-
-        _ ->
-          insights
-      end
-
-    # Ship preference insights
     ship_data = character_analysis.data[:ship_preferences] || %{}
 
-    insights =
-      if ship_data[:capital_usage] && ship_data[:capital_usage] > 0.1 do
-        ["Capital ship pilot - potential for escalation" | insights]
-      else
-        insights
-      end
+    threat_cases = %{
+      critical: "PRIORITY TARGET - Requires immediate attention and resources",
+      high: "HIGH VALUE TARGET - Significant threat requiring careful planning"
+    }
 
-    # Engagement style insights
-    insights =
-      case character_analysis.classifications.engagement_style do
-        :hot_dropper ->
-          [
-            "Uses surprise capital drops - monitor for cyno ships",
-            "Likely has capital backup on standby" | insights
-          ]
+    pilot_type_cases = %{
+      elite_solo_hunter: [
+        "Exceptional solo combat capability - avoid 1v1 engagements",
+        "Likely to disengage if outnumbered significantly"
+      ],
+      fleet_pilot: [
+        "Fleet-oriented pilot - most dangerous with backup",
+        "May be vulnerable when caught alone"
+      ],
+      gang_specialist: [
+        "Small gang specialist - expect coordinated tactics",
+        "Optimal threat level in 3-10 person groups"
+      ]
+    }
 
-        :gate_camper ->
-          [
-            "Gate camp specialist - check common routes",
-            "May use scouts on adjacent gates" | insights
-          ]
+    engagement_style_cases = %{
+      hot_dropper: [
+        "Uses surprise capital drops - monitor for cyno ships",
+        "Likely has capital backup on standby"
+      ],
+      gate_camper: [
+        "Gate camp specialist - check common routes",
+        "May use scouts on adjacent gates"
+      ],
+      roamer: [
+        "Roaming pilot - unpredictable movement patterns",
+        "May be part of larger roaming gang"
+      ],
+      home_defender: [
+        "Home defense specialist - most dangerous in home systems",
+        "Likely has local knowledge advantage"
+      ]
+    }
 
-        :roamer ->
-          [
-            "Roaming pilot - unpredictable movement patterns",
-            "May be part of larger roaming gang" | insights
-          ]
-
-        :home_defender ->
-          [
-            "Home defense specialist - most dangerous in home systems",
-            "Likely has local knowledge advantage" | insights
-          ]
-
-        _ ->
-          insights
-      end
-
-    Enum.reverse(insights)
+    []
+    |> add_case_insights(threat_assessment.threat_level, threat_cases)
+    |> add_case_insights(character_analysis.classifications.pilot_type, pilot_type_cases)
+    |> add_insights_for(
+      ship_data[:capital_usage] && ship_data[:capital_usage] > 0.1,
+      "Capital ship pilot - potential for escalation"
+    )
+    |> add_case_insights(
+      character_analysis.classifications.engagement_style,
+      engagement_style_cases
+    )
+    |> Enum.reverse()
   end
 
   defp generate_behavioral_insights(behavioral_patterns) do
@@ -852,4 +823,21 @@ defmodule EveDmv.Contexts.Intelligence.Services.InsightGenerator do
   defp determine_overall_risk(:moderate, _), do: :medium
   defp determine_overall_risk(_, risk_count) when risk_count > 2, do: :medium
   defp determine_overall_risk(_, _), do: :low
+
+  # Helper functions for building insight lists
+  defp add_insights_for(insights, condition, new_insights) when is_list(new_insights) do
+    if condition, do: new_insights ++ insights, else: insights
+  end
+
+  defp add_insights_for(insights, condition, new_insight) do
+    if condition, do: [new_insight | insights], else: insights
+  end
+
+  defp add_case_insights(insights, value, cases) do
+    case Map.get(cases, value) do
+      nil -> insights
+      new_insights when is_list(new_insights) -> new_insights ++ insights
+      new_insight -> [new_insight | insights]
+    end
+  end
 end

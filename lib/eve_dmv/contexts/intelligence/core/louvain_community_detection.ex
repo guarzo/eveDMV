@@ -160,16 +160,14 @@ defmodule EveDmv.Contexts.Intelligence.Core.LouvainCommunityDetection do
     neighbor_communities
     |> Enum.map(fn community ->
       # Calculate modularity gain from moving node to this community
-      gain =
-        calculate_modularity_gain(
-          node,
-          current_community,
-          community,
-          partition,
-          adjacency,
-          total_weight,
-          node_degree
-        )
+      context = %{
+        partition: partition,
+        adjacency: adjacency,
+        total_weight: total_weight,
+        node_degree: node_degree
+      }
+
+      gain = calculate_modularity_gain(node, current_community, community, context)
 
       {community, gain}
     end)
@@ -184,15 +182,14 @@ defmodule EveDmv.Contexts.Intelligence.Core.LouvainCommunityDetection do
   end
 
   # Calculate modularity gain from moving a node between communities
-  defp calculate_modularity_gain(
-         node,
-         from_community,
-         to_community,
-         partition,
-         adjacency,
-         total_weight,
-         node_degree
-       ) do
+  defp calculate_modularity_gain(node, from_community, to_community, context) do
+    %{
+      partition: partition,
+      adjacency: adjacency,
+      total_weight: total_weight,
+      node_degree: node_degree
+    } = context
+
     # Sum of weights from node to nodes in target community
     weight_to_community =
       Map.get(adjacency, node, %{})

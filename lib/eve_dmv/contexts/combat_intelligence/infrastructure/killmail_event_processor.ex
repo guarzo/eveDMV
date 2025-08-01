@@ -8,10 +8,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.KillmailEventProcess
   """
 
   use GenServer
-  require Logger
 
   alias EveDmv.Contexts.BattleAnalysis.Core.BattleDetector
   alias EveDmv.Infrastructure.EventBus
+
+  require Logger
 
   # Processing configuration
   @batch_size 10

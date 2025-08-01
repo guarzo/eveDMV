@@ -1090,21 +1090,23 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
     # Query actual escape route data from wormhole connections
     # This would integrate with wormhole mapping services like Pathfinder or Tripwire
 
-    with {:ok, system_connections} <- get_system_connections(system_id) do
-      # Analyze connections for escape route potential
-      escape_routes =
-        system_connections
-        |> Enum.filter(&viable_escape_route?/1)
-        |> Enum.map(&analyze_escape_route_quality/1)
-        |> Enum.sort_by(& &1.safety_rating, :desc)
+    case get_system_connections(system_id) do
+      {:ok, system_connections} ->
+        # Analyze connections for escape route potential
+        escape_routes =
+          system_connections
+          |> Enum.filter(&viable_escape_route?/1)
+          |> Enum.map(&analyze_escape_route_quality/1)
+          |> Enum.sort_by(& &1.safety_rating, :desc)
 
-      if Enum.empty?(escape_routes) do
-        {:error, :no_escape_routes}
-      else
-        {:ok, escape_routes}
-      end
-    else
-      _error -> {:error, :connection_data_unavailable}
+        if Enum.empty?(escape_routes) do
+          {:error, :no_escape_routes}
+        else
+          {:ok, escape_routes}
+        end
+
+      _error ->
+        {:error, :connection_data_unavailable}
     end
   end
 

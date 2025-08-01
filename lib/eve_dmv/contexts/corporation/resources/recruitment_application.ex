@@ -256,10 +256,9 @@ defmodule EveDmv.Contexts.Corporation.Resources.RecruitmentApplication do
       :days_since_submitted,
       :integer,
       expr(
-        if(
-          is_nil(submitted_at),
-          0,
-          date_part("day", now() - submitted_at)
+        if(is_nil(submitted_at),
+          do: 0,
+          else: date_part("day", now() - submitted_at)
         )
       )
     )
@@ -268,10 +267,9 @@ defmodule EveDmv.Contexts.Corporation.Resources.RecruitmentApplication do
       :processing_time_days,
       :integer,
       expr(
-        if(
-          is_nil(processed_at) or is_nil(submitted_at),
-          nil,
-          date_part("day", processed_at - submitted_at)
+        if(is_nil(processed_at) or is_nil(submitted_at),
+          do: nil,
+          else: date_part("day", processed_at - submitted_at)
         )
       )
     )

@@ -294,21 +294,16 @@ defmodule EveDmv.Contexts.Intelligence.Services.ProfileService do
     base_rec = generate_engagement_recommendation(threat_assessment.threat_level)
 
     # Add performance-based modifications
-    performance_modifiers = []
-
     performance_modifiers =
-      if performance_analysis.core_metrics.solo_effectiveness > 70 do
-        ["Avoid solo engagements" | performance_modifiers]
-      else
-        performance_modifiers
-      end
-
-    performance_modifiers =
-      if performance_analysis.core_metrics.versatility_score > 80 do
-        ["Expect tactical flexibility" | performance_modifiers]
-      else
-        performance_modifiers
-      end
+      []
+      |> add_if(
+        performance_analysis.core_metrics.solo_effectiveness > 70,
+        "Avoid solo engagements"
+      )
+      |> add_if(
+        performance_analysis.core_metrics.versatility_score > 80,
+        "Expect tactical flexibility"
+      )
 
     %{
       primary_recommendation: base_rec,
@@ -317,27 +312,18 @@ defmodule EveDmv.Contexts.Intelligence.Services.ProfileService do
   end
 
   defp generate_counter_strategies(character_analysis, threat_assessment) do
-    strategies = []
-
-    # Based on threat aspects
-    strategies =
-      if threat_assessment.aspect_scores.combat_effectiveness > 70 do
-        ["Use numerical advantage", "Avoid direct confrontation" | strategies]
-      else
-        strategies
-      end
-
-    strategies =
-      if threat_assessment.aspect_scores.operational_security > 70 do
-        ["Use intelligence networks", "Predict patterns carefully" | strategies]
-      else
-        strategies
-      end
-
-    # Based on weaknesses
-    strategies = character_analysis.weaknesses ++ strategies
-
-    Enum.uniq(strategies)
+    # Based on threat aspects and weaknesses
+    []
+    |> add_if_list(threat_assessment.aspect_scores.combat_effectiveness > 70, [
+      "Use numerical advantage",
+      "Avoid direct confrontation"
+    ])
+    |> add_if_list(threat_assessment.aspect_scores.operational_security > 70, [
+      "Use intelligence networks",
+      "Predict patterns carefully"
+    ])
+    |> Kernel.++(character_analysis.weaknesses)
+    |> Enum.uniq()
   end
 
   defp assess_intelligence_value(character_analysis, threat_assessment) do
@@ -566,5 +552,14 @@ defmodule EveDmv.Contexts.Intelligence.Services.ProfileService do
   defp build_share_url(token) do
     # In practice, would use proper URL generation
     "https://app.evedmv.com/shared/profiles/#{token}"
+  end
+
+  # Helper functions for conditional list building
+  defp add_if(list, condition, item) do
+    if condition, do: [item | list], else: list
+  end
+
+  defp add_if_list(list, condition, items) do
+    if condition, do: items ++ list, else: list
   end
 end

@@ -92,14 +92,14 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
         analyzed_at: DateTime.utc_now()
       }
 
-      analysis =
+      final_analysis =
         if Keyword.get(opts, :include_rankings, false) do
           Map.put(analysis, :rankings, calculate_rankings(core_metrics))
         else
           analysis
         end
 
-      {:ok, analysis}
+      {:ok, final_analysis}
     end
   end
 

@@ -207,50 +207,47 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.KillmailEventProcessor do
   # Private helper functions for surveillance processing
 
   defp perform_surveillance_processing(%KillmailReceived{} = killmail_event) do
-    try do
-      with {:ok, active_profiles} <- get_active_surveillance_profiles(),
-           {:ok, match_results} <- run_profile_matching(killmail_event, active_profiles),
-           {:ok, alert_results} <- process_matches_for_alerts(match_results),
-           {:ok, notification_results} <- dispatch_notifications(alert_results) do
-        # Cache the results for performance metrics
-        cache_processing_results(killmail_event, match_results)
+    with {:ok, active_profiles} <- get_active_surveillance_profiles(),
+         {:ok, match_results} <- run_profile_matching(killmail_event, active_profiles),
+         {:ok, alert_results} <- process_matches_for_alerts(match_results),
+         {:ok, notification_results} <- dispatch_notifications(alert_results) do
+      # Cache the results for performance metrics
+      cache_processing_results(killmail_event, match_results)
 
-        processing_summary = %{
-          killmail_id: killmail_event.killmail_id,
-          profiles_checked: length(active_profiles),
-          matches_found: count_matches(match_results),
-          alerts_generated: count_alerts(alert_results),
-          notifications_sent: count_notifications(notification_results),
-          processing_status: :success
-        }
+      processing_summary = %{
+        killmail_id: killmail_event.killmail_id,
+        profiles_checked: length(active_profiles),
+        matches_found: count_matches(match_results),
+        alerts_generated: count_alerts(alert_results),
+        notifications_sent: count_notifications(notification_results),
+        processing_status: :success
+      }
 
-        {:ok, processing_summary}
-      else
-        {:error, :no_active_profiles} ->
-          Logger.debug("No active surveillance profiles",
-            killmail_id: killmail_event.killmail_id
-          )
-
-          {:ok,
-           %{killmail_id: killmail_event.killmail_id, matches_found: 0, reason: :no_profiles}}
-
-        {:error, reason} = error ->
-          Logger.error("Surveillance processing failed",
-            killmail_id: killmail_event.killmail_id,
-            reason: reason
-          )
-
-          error
-      end
-    rescue
-      error ->
-        Logger.error("Exception during surveillance processing",
-          killmail_id: killmail_event.killmail_id,
-          error: inspect(error)
+      {:ok, processing_summary}
+    else
+      {:error, :no_active_profiles} ->
+        Logger.debug("No active surveillance profiles",
+          killmail_id: killmail_event.killmail_id
         )
 
-        {:error, :processing_exception}
+        {:ok, %{killmail_id: killmail_event.killmail_id, matches_found: 0, reason: :no_profiles}}
+
+      {:error, reason} = error ->
+        Logger.error("Surveillance processing failed",
+          killmail_id: killmail_event.killmail_id,
+          reason: reason
+        )
+
+        error
     end
+  rescue
+    error ->
+      Logger.error("Exception during surveillance processing",
+        killmail_id: killmail_event.killmail_id,
+        error: inspect(error)
+      )
+
+      {:error, :processing_exception}
   end
 
   defp get_active_surveillance_profiles do

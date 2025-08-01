@@ -7,10 +7,11 @@ defmodule EveDmv.Platform.Utilities.QueryHelpers do
   database operations.
   """
 
-  import Ecto.Query
+  alias EveDmv.Repo
+
   require Logger
 
-  alias EveDmv.Repo
+  import Ecto.Query
 
   # Common query patterns
 
@@ -282,19 +283,17 @@ defmodule EveDmv.Platform.Utilities.QueryHelpers do
   @spec execute_raw(String.t(), [any()]) ::
           {:ok, %{rows: [[any()]], num_rows: integer()}} | {:error, term()}
   def execute_raw(sql, params \\ []) do
-    try do
-      result = Ecto.Adapters.SQL.query!(Repo, sql, params)
-      {:ok, result}
-    rescue
-      error ->
-        Logger.error("Raw SQL query failed", %{
-          error: inspect(error),
-          sql: sql,
-          params: inspect(params)
-        })
+    result = Ecto.Adapters.SQL.query!(Repo, sql, params)
+    {:ok, result}
+  rescue
+    error ->
+      Logger.error("Raw SQL query failed", %{
+        error: inspect(error),
+        sql: sql,
+        params: inspect(params)
+      })
 
-        {:error, error}
-    end
+      {:error, error}
   end
 
   @doc """
@@ -344,12 +343,10 @@ defmodule EveDmv.Platform.Utilities.QueryHelpers do
   """
   @spec ping() :: :ok | {:error, term()}
   def ping do
-    try do
-      Ecto.Adapters.SQL.query!(Repo, "SELECT 1", [])
-      :ok
-    rescue
-      error -> {:error, error}
-    end
+    Ecto.Adapters.SQL.query!(Repo, "SELECT 1", [])
+    :ok
+  rescue
+    error -> {:error, error}
   end
 
   @doc """

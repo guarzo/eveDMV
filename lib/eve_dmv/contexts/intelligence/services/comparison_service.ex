@@ -205,7 +205,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.ComparisonService do
 
     # Add aspect-specific summaries
     final_summary =
-      if Map.has_key?(List.first(Map.values(character_data)), :threat) do
+      if character_data |> Map.values() |> List.first() |> Map.has_key?(:threat) do
         threat_scores =
           character_data
           |> Map.values()

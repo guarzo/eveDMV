@@ -46,37 +46,35 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
   Returns match result with details about what criteria matched.
   """
   def match_killmail_against_profile(killmail_event, profile) do
-    try do
-      # Extract killmail data from event
-      killmail_data = extract_killmail_data(killmail_event)
+    # Extract killmail data from event
+    killmail_data = extract_killmail_data(killmail_event)
 
-      # Evaluate against profile criteria
-      match_result = evaluate_killmail_against_profile(killmail_data, profile)
+    # Evaluate against profile criteria
+    match_result = evaluate_killmail_against_profile(killmail_data, profile)
 
-      if match_result.matches do
-        {:ok,
-         %{
-           profile_id: profile.id,
-           killmail_id: killmail_data.killmail_id,
-           matched: true,
-           matched_criteria: match_result.matched_criteria,
-           match_confidence: match_result.confidence,
-           timestamp: DateTime.utc_now()
-         }}
-      else
-        {:ok,
-         %{
-           profile_id: profile.id,
-           killmail_id: killmail_data.killmail_id,
-           matched: false,
-           reason: match_result.reason
-         }}
-      end
-    rescue
-      error ->
-        Logger.error("Error matching killmail against profile", error: inspect(error))
-        {:error, :match_error}
+    if match_result.matches do
+      {:ok,
+       %{
+         profile_id: profile.id,
+         killmail_id: killmail_data.killmail_id,
+         matched: true,
+         matched_criteria: match_result.matched_criteria,
+         match_confidence: match_result.confidence,
+         timestamp: DateTime.utc_now()
+       }}
+    else
+      {:ok,
+       %{
+         profile_id: profile.id,
+         killmail_id: killmail_data.killmail_id,
+         matched: false,
+         reason: match_result.reason
+       }}
     end
+  rescue
+    error ->
+      Logger.error("Error matching killmail against profile", error: inspect(error))
+      {:error, :match_error}
   end
 
   @doc """

@@ -175,12 +175,12 @@ defmodule EveDmv.Contexts.Corporation.Resources.MemberPerformanceSnapshot do
   end
 
   calculations do
-    calculate(:kill_death_ratio, :float, expr(if(losses > 0, kills / losses, kills)))
+    calculate(:kill_death_ratio, :float, expr(if losses > 0, do: kills / losses, else: kills))
 
     calculate(
       :isk_efficiency,
       :float,
-      expr(if(isk_lost > 0, isk_destroyed / (isk_destroyed + isk_lost), 1.0))
+      expr(if isk_lost > 0, do: isk_destroyed / (isk_destroyed + isk_lost), else: 1.0)
     )
 
     calculate(

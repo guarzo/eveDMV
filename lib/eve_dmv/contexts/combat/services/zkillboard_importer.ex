@@ -212,27 +212,25 @@ defmodule EveDmv.Contexts.Combat.Services.ZkillboardImporter do
   end
 
   defp transform_zkillboard_kill(zkb_kill) do
-    try do
-      victim = zkb_kill["victim"] || %{}
+    victim = zkb_kill["victim"] || %{}
 
-      %{
-        killmail_id: zkb_kill["killmail_id"],
-        killmail_hash: zkb_kill["killmail_hash"] || generate_killmail_hash(zkb_kill),
-        killmail_time: parse_killmail_time(zkb_kill["killmail_time"]),
-        solar_system_id: zkb_kill["solar_system_id"],
-        victim_character_id: victim["character_id"],
-        victim_corporation_id: victim["corporation_id"],
-        victim_alliance_id: victim["alliance_id"],
-        victim_ship_type_id: victim["ship_type_id"],
-        attacker_count: length(zkb_kill["attackers"] || []),
-        raw_data: zkb_kill,
-        source: "zkillboard"
-      }
-    rescue
-      e ->
-        Logger.error("Failed to transform zkillboard kill: #{inspect(e)}")
-        nil
-    end
+    %{
+      killmail_id: zkb_kill["killmail_id"],
+      killmail_hash: zkb_kill["killmail_hash"] || generate_killmail_hash(zkb_kill),
+      killmail_time: parse_killmail_time(zkb_kill["killmail_time"]),
+      solar_system_id: zkb_kill["solar_system_id"],
+      victim_character_id: victim["character_id"],
+      victim_corporation_id: victim["corporation_id"],
+      victim_alliance_id: victim["alliance_id"],
+      victim_ship_type_id: victim["ship_type_id"],
+      attacker_count: length(zkb_kill["attackers"] || []),
+      raw_data: zkb_kill,
+      source: "zkillboard"
+    }
+  rescue
+    e ->
+      Logger.error("Failed to transform zkillboard kill: #{inspect(e)}")
+      nil
   end
 
   defp parse_killmail_time(time_string) when is_binary(time_string) do

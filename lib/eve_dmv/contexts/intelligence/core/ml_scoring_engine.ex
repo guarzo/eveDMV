@@ -95,7 +95,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.MLScoringEngine do
             {name, scorer.(features), weight}
           end)
         end)
-        |> Enum.map(&Task.await(&1, 5000))
+        |> Task.await_many(5000)
 
       # Combine scores
       ensemble_score = calculate_weighted_ensemble(model_scores)
