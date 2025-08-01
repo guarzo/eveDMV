@@ -6,8 +6,8 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.FleetRequirementsBuilder do
   templates, including mass calculations, cost estimates, and wormhole compatibility.
   """
 
-  alias EveDmv.Intelligence.Analyzers.FleetAssetManager.ShipCostCalculator
   alias EveDmv.Contexts.FleetOperations.Core.MassCalculator
+  alias EveDmv.Intelligence.Analyzers.FleetAssetManager.ShipCostCalculator
 
   @doc """
   Get detailed ship information including mass, cost, and wormhole suitability.
