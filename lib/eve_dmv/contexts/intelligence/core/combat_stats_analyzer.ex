@@ -8,8 +8,8 @@ defmodule EveDmv.Contexts.Intelligence.Core.CombatStatsAnalyzer do
   - Player Profile combat analysis
   """
 
-  alias EveDmv.Database.KillmailRepository
   alias EveDmv.Cache
+  alias EveDmv.Database.KillmailRepository
   alias EveDmv.StaticData.ShipTypes
 
   require Logger
