@@ -446,52 +446,52 @@ defmodule EveDmv.Contexts.Combat.Services.DoctrineEffectivenessService do
   end
 
   defp generate_tactical_recommendations(composition, threat, effectiveness) do
-    recommendations = []
+    initial_recommendations = []
 
     # Add recommendations based on effectiveness and composition analysis
-    recommendations =
+    recommendations_with_effectiveness =
       if effectiveness < 0.4 do
         our_stats = calculate_composition_stats(composition)
         threat_stats = calculate_composition_stats(threat.composition)
 
         cond do
           our_stats.total_dps < threat_stats.total_dps * 0.8 ->
-            ["Increase DPS ships", "Consider alpha strike doctrine" | recommendations]
+            ["Increase DPS ships", "Consider alpha strike doctrine" | initial_recommendations]
 
           our_stats.total_ehp < threat_stats.total_ehp * 0.8 ->
-            ["Add logistics support", "Improve tank" | recommendations]
+            ["Add logistics support", "Improve tank" | initial_recommendations]
 
           our_stats.utility_score < threat_stats.utility_score * 0.8 ->
-            ["Add EWAR support", "Improve fleet utility" | recommendations]
+            ["Add EWAR support", "Improve fleet utility" | initial_recommendations]
 
           true ->
             [
               "Improve pilot coordination",
-              "Consider different engagement range" | recommendations
+              "Consider different engagement range" | initial_recommendations
             ]
         end
       else
-        recommendations
+        initial_recommendations
       end
 
     # Add general recommendations based on threat type
-    recommendations =
+    final_recommendations =
       case threat.doctrine_type do
         "Armor HAC Gang" ->
-          ["Consider neut pressure", "Focus on alpha damage" | recommendations]
+          ["Consider neut pressure", "Focus on alpha damage" | recommendations_with_effectiveness]
 
         "Shield Cruiser Gang" ->
-          ["Use range control", "Add tracking disruption" | recommendations]
+          ["Use range control", "Add tracking disruption" | recommendations_with_effectiveness]
 
         "Battleship Doctrine" ->
-          ["Maintain range", "Use mobility advantage" | recommendations]
+          ["Maintain range", "Use mobility advantage" | recommendations_with_effectiveness]
 
         _ ->
-          recommendations
+          recommendations_with_effectiveness
       end
 
     # Limit to top 3 recommendations
-    Enum.take(recommendations, 3)
+    Enum.take(final_recommendations, 3)
   end
 
   defp generate_composition_based_analysis(composition, common_threats) do
