@@ -317,7 +317,7 @@ defmodule EveDmv.Contexts.Combat.Core.BattleAnalyzer do
     Enum.count(killmails, fn km ->
       ship_type_id = get_in(km.victim, ["ship_type_id"])
       # Rough approximation
-      ship_type_id && ship_type_id > 20000
+      ship_type_id && ship_type_id > 20_000
     end)
   end
 
