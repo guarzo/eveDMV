@@ -4,10 +4,10 @@ defmodule EveDmv.Contexts.Intelligence.Services.CharacterService do
   Handles CRUD operations, caching, and real-time updates.
   """
 
-  alias EveDmv.Intelligence.Cache.IntelligenceCache
+  alias EveDmv.Api
   alias EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer
   alias EveDmv.Contexts.Intelligence.Resources.CharacterProfile
-  alias EveDmv.Api
+  alias EveDmv.Intelligence.Cache.IntelligenceCache
 
   require Logger
   require Ash.Query
