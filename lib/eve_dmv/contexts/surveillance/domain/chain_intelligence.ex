@@ -779,7 +779,7 @@ defmodule EveDmv.Shared.ChainIntelligence do
 
     # Analyze current coverage
     current_coverage = analyze_current_coverage(chain_data)
-    
+
     # Generate optimization recommendations
     recommendations = generate_optimization_recommendations(current_coverage)
 
@@ -845,30 +845,30 @@ defmodule EveDmv.Shared.ChainIntelligence do
   end
 
   defp generate_optimization_recommendations(coverage) do
-    recommendations = []
+    initial_recommendations = []
 
-    recommendations =
+    connection_recommendations =
       if coverage.connection_density < 1.5 do
-        ["Increase scouting to find additional connections" | recommendations]
+        ["Increase scouting to find additional connections" | initial_recommendations]
       else
-        recommendations
+        initial_recommendations
       end
 
-    recommendations =
+    system_recommendations =
       if coverage.system_count < 5 do
-        ["Expand chain mapping to include more systems" | recommendations]
+        ["Expand chain mapping to include more systems" | connection_recommendations]
       else
-        recommendations
+        connection_recommendations
       end
 
-    recommendations =
+    final_recommendations =
       if coverage.optimization_potential > 50 do
-        ["Consider establishing forward operating bases" | recommendations]
+        ["Consider establishing forward operating bases" | system_recommendations]
       else
-        recommendations
+        system_recommendations
       end
 
-    recommendations
+    final_recommendations
   end
 
   defp calculate_corp_activity_score(corporation_id) do
@@ -876,18 +876,20 @@ defmodule EveDmv.Shared.ChainIntelligence do
     since = DateTime.add(DateTime.utc_now(), -7 * 24 * 3600, :second)
 
     try do
-      killmails = EveDmv.Api.read!(
-        EveDmv.Killmails.KillmailRaw,
-        filter: [occurred_at: [greater_than: since]],
-        limit: 1000
-      )
+      killmails =
+        EveDmv.Api.read!(
+          EveDmv.Killmails.KillmailRaw,
+          filter: [occurred_at: [greater_than: since]],
+          limit: 1000
+        )
 
-      corp_killmails = Enum.filter(killmails, fn km ->
-        victim_corp = Map.get(km.victim || %{}, :corporation_id)
-        attacker_corps = (km.attackers || []) |> Enum.map(& &1.corporation_id)
-        
-        victim_corp == corporation_id or corporation_id in attacker_corps
-      end)
+      corp_killmails =
+        Enum.filter(killmails, fn km ->
+          victim_corp = Map.get(km.victim || %{}, :corporation_id)
+          attacker_corps = (km.attackers || []) |> Enum.map(& &1.corporation_id)
+
+          victim_corp == corporation_id or corporation_id in attacker_corps
+        end)
 
       # Calculate activity score based on engagement frequency
       engagement_count = length(corp_killmails)
@@ -912,13 +914,14 @@ defmodule EveDmv.Shared.ChainIntelligence do
   defp evaluate_operational_readiness(corporation_id) do
     # Evaluate operational readiness based on activity patterns
     activity_score = calculate_corp_activity_score(corporation_id)
-    
-    readiness_score = cond do
-      activity_score > 50 -> 0.9
-      activity_score > 25 -> 0.7
-      activity_score > 10 -> 0.5
-      true -> 0.3
-    end
+
+    readiness_score =
+      cond do
+        activity_score > 50 -> 0.9
+        activity_score > 25 -> 0.7
+        activity_score > 10 -> 0.5
+        true -> 0.3
+      end
 
     %{
       score: readiness_score,
@@ -932,23 +935,26 @@ defmodule EveDmv.Shared.ChainIntelligence do
     since = DateTime.add(DateTime.utc_now(), -48 * 3600, :second)
 
     try do
-      killmails = EveDmv.Api.read!(
-        EveDmv.Killmails.KillmailRaw,
-        filter: [occurred_at: [greater_than: since]],
-        limit: 500
-      )
+      killmails =
+        EveDmv.Api.read!(
+          EveDmv.Killmails.KillmailRaw,
+          filter: [occurred_at: [greater_than: since]],
+          limit: 500
+        )
 
-      corp_killmails = Enum.filter(killmails, fn km ->
-        victim_corp = Map.get(km.victim || %{}, :corporation_id)
-        attacker_corps = (km.attackers || []) |> Enum.map(& &1.corporation_id)
-        
-        victim_corp == corporation_id or corporation_id in attacker_corps
-      end)
+      corp_killmails =
+        Enum.filter(killmails, fn km ->
+          victim_corp = Map.get(km.victim || %{}, :corporation_id)
+          attacker_corps = (km.attackers || []) |> Enum.map(& &1.corporation_id)
 
-      victories = Enum.count(corp_killmails, fn km ->
-        attacker_corps = (km.attackers || []) |> Enum.map(& &1.corporation_id)
-        corporation_id in attacker_corps
-      end)
+          victim_corp == corporation_id or corporation_id in attacker_corps
+        end)
+
+      victories =
+        Enum.count(corp_killmails, fn km ->
+          attacker_corps = (km.attackers || []) |> Enum.map(& &1.corporation_id)
+          corporation_id in attacker_corps
+        end)
 
       losses = length(corp_killmails) - victories
 
@@ -956,7 +962,11 @@ defmodule EveDmv.Shared.ChainIntelligence do
         total_engagements: length(corp_killmails),
         victories: victories,
         losses: losses,
-        efficiency: if(length(corp_killmails) > 0, do: Float.round(victories / length(corp_killmails), 2), else: 0.0),
+        efficiency:
+          if(length(corp_killmails) > 0,
+            do: Float.round(victories / length(corp_killmails), 2),
+            else: 0.0
+          ),
         time_period_hours: 48
       }
     rescue
