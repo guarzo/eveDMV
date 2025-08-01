@@ -6,12 +6,10 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
   emerging threats, suspicious activities, and security incidents.
   """
 
-  alias EveDmv.Platform.Database.CorporationRepository
-  alias EveDmv.Database.KillmailRepository
-
   alias EveDmv.Contexts.Corporation.Core.SecurityAnalyzer
-
+  alias EveDmv.Database.KillmailRepository
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
+  alias EveDmv.Platform.Database.CorporationRepository
   alias EveDmv.Platform.PubSub.EventBus
 
   require Logger
