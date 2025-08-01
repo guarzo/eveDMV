@@ -6,26 +6,21 @@ defmodule EveDmv.Contexts.Combat.Api do
   including battle detection, analysis, timeline reconstruction, and tactical insights.
   """
 
-  alias EveDmv.Contexts.Combat.Core.{
-    BattleDetector,
-    BattleAnalyzer,
-    TimelineBuilder,
-    ParticipantAnalyzer,
-    FleetCompositionAnalyzer,
-    TacticalPatternDetector,
-    PerformanceCalculator
-  }
-
-  alias EveDmv.Contexts.Combat.Services.{
-    BattleService,
-    ZkillboardImporter,
-    CombatLogParser,
-    BattleSharingService
-  }
+  alias EveDmv.Contexts.BattleAnalysis.Core.BattleDetector
+  alias EveDmv.Contexts.Combat.Core.BattleAnalyzer
+  alias EveDmv.Contexts.Combat.Core.FleetCompositionAnalyzer
+  alias EveDmv.Contexts.Combat.Core.ParticipantAnalyzer
+  alias EveDmv.Contexts.Combat.Core.PerformanceCalculator
+  alias EveDmv.Contexts.Combat.Core.TacticalPatternDetector
+  alias EveDmv.Contexts.Combat.Core.TimelineBuilder
+  alias EveDmv.Contexts.Combat.Services.BattleService
+  alias EveDmv.Contexts.Combat.Services.BattleSharingService
+  alias EveDmv.Contexts.Combat.Services.CombatLogParser
+  alias EveDmv.Contexts.Combat.Services.ZkillboardImporter
 
   # Battle Detection
   defdelegate detect_battles(killmails, opts \\ []), to: BattleDetector
-  defdelegate detect_battle_in_timeframe(start_time, end_time, opts \\ []), to: BattleDetector
+  defdelegate detect_battles_in_timeframe(start_time, end_time, opts \\ []), to: BattleDetector
 
   # Battle Analysis
   defdelegate analyze_battle(battle_id), to: BattleAnalyzer
@@ -42,13 +37,13 @@ defmodule EveDmv.Contexts.Combat.Api do
   defdelegate get_participant_roles(battle_id), to: ParticipantAnalyzer
 
   # Fleet Analysis
-  defdelegate analyze_fleet_composition(battle_id), to: FleetCompositionAnalyzer
-  defdelegate get_fleet_effectiveness(battle_id, side), to: FleetCompositionAnalyzer
-  defdelegate compare_fleet_strengths(battle_id), to: FleetCompositionAnalyzer
+  defdelegate analyze_composition(killmails), to: FleetCompositionAnalyzer
+  defdelegate get_fleet_effectiveness(killmails, side), to: FleetCompositionAnalyzer
+  defdelegate compare_fleet_strengths(killmails), to: FleetCompositionAnalyzer
 
   # Tactical Analysis
-  defdelegate detect_tactical_patterns(battle_id), to: TacticalPatternDetector
-  defdelegate analyze_engagement_tactics(battle_id), to: TacticalPatternDetector
+  defdelegate detect_patterns(killmails, timeline), to: TacticalPatternDetector
+  defdelegate analyze_engagement_tactics(killmails), to: TacticalPatternDetector
 
   # Performance Metrics
   defdelegate calculate_performance_metrics(battle_id), to: PerformanceCalculator
