@@ -8,16 +8,13 @@ defmodule EveDmv.Contexts.Intelligence.Core.ThreatAssessmentEngine do
   - Player Profile risk assessment
   """
 
-  alias EveDmv.Contexts.Intelligence.Core.{
-    CombatThreatEngine,
-    GangEffectivenessEngine,
-    ShipMasteryEngine,
-    UnpredictabilityEngine,
-    CharacterAnalyzer,
-    HistoricalTrendAnalysis
-  }
-
   alias EveDmv.Cache
+  alias EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer
+  alias EveDmv.Contexts.Intelligence.Core.CombatThreatEngine
+  alias EveDmv.Contexts.Intelligence.Core.GangEffectivenessEngine
+  alias EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis
+  alias EveDmv.Contexts.Intelligence.Core.ShipMasteryEngine
+  alias EveDmv.Contexts.Intelligence.Core.UnpredictabilityEngine
   require Logger
 
   @threat_aspects [
