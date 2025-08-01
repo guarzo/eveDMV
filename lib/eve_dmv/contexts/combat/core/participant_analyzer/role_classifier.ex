@@ -4,10 +4,10 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.RoleClassifier do
   """
 
   # Ship type ID ranges for classification (simplified)
-  @logistics_ships [11985, 11987, 11989, 11978, 11969, 11940, 11936, 11938]
-  @ewar_ships [11963, 11965, 11959, 11961, 11957, 11969, 11971, 584, 585, 586, 587]
+  @logistics_ships [11_985, 11_987, 11_989, 11_978, 11_969, 11_940, 11_936, 11_938]
+  @ewar_ships [11_963, 11_965, 11_959, 11_961, 11_957, 11_969, 11_971, 584, 585, 586, 587]
   @tackle_ships [585, 586, 587, 588, 589, 590, 591, 592, 593, 594, 595, 596]
-  @capital_ships 20000..30000
+  @capital_ships 20_000..30_000
 
   @doc """
   Classify a participant's role based on their combat behavior and ship choices.
