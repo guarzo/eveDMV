@@ -5,9 +5,9 @@ defmodule EveDmv.Contexts.Corporation.Services.MemberService do
   Handles member addition, updates, removal, and querying operations.
   """
 
-  alias EveDmv.Platform.Database.CorporationRepository
   alias EveDmv.Database.CharacterRepository
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
+  alias EveDmv.Platform.Database.CorporationRepository
   alias EveDmv.Platform.PubSub.CorporationUpdates
 
   require Logger
