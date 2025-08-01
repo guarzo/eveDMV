@@ -71,7 +71,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.ExperienceAnalyzer do
 
   defp calculate_tactical_awareness(participant) do
     # Look for signs of tactical thinking
-    score = 0
+    initial_score = 0
 
     # Target selection (final blow ratio)
     final_blow_ratio =
@@ -81,25 +81,25 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.ExperienceAnalyzer do
         0
       end
 
-    score = score + final_blow_ratio * 30
+    score_with_targeting = initial_score + final_blow_ratio * 30
 
     # Engagement timing (not always first to die)
-    score =
+    score_with_survival =
       if participant[:deaths] == 0 || participant[:survival_time] == :survived do
-        score + 40
+        score_with_targeting + 40
       else
-        score
+        score_with_targeting
       end
 
     # Fleet participation vs solo
-    score =
+    final_score =
       if participant[:appearances] > 10 do
-        score + 30
+        score_with_survival + 30
       else
-        score
+        score_with_survival
       end
 
-    min(score, 100)
+    min(final_score, 100)
   end
 
   defp calculate_ship_progression(participant) do
@@ -134,45 +134,45 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.ExperienceAnalyzer do
   end
 
   defp identify_experience_indicators(participant) do
-    indicators = []
+    initial_indicators = []
 
     # Positive indicators
-    indicators =
+    indicators_with_kd =
       if participant[:kills] > participant[:deaths] * 2 do
-        ["positive_kd_ratio" | indicators]
+        ["positive_kd_ratio" | initial_indicators]
       else
-        indicators
+        initial_indicators
       end
 
-    indicators =
+    indicators_with_survival =
       if participant[:survival_time] == :survived && participant[:appearances] > 5 do
-        ["good_survival_instincts" | indicators]
+        ["good_survival_instincts" | indicators_with_kd]
       else
-        indicators
+        indicators_with_kd
       end
 
-    indicators =
+    indicators_with_efficiency =
       if participant[:efficiency_rating] > 70 do
-        ["high_damage_efficiency" | indicators]
+        ["high_damage_efficiency" | indicators_with_survival]
       else
-        indicators
+        indicators_with_survival
       end
 
-    indicators =
+    indicators_with_versatility =
       if length(participant[:ships_used] || []) > 2 do
-        ["ship_versatility" | indicators]
+        ["ship_versatility" | indicators_with_efficiency]
       else
-        indicators
+        indicators_with_efficiency
       end
 
     # Negative indicators
-    indicators =
+    final_indicators =
       if participant[:deaths] > participant[:kills] * 2 do
-        ["poor_engagement_choices" | indicators]
+        ["poor_engagement_choices" | indicators_with_versatility]
       else
-        indicators
+        indicators_with_versatility
       end
 
-    indicators
+    final_indicators
   end
 end
