@@ -7,7 +7,9 @@ defmodule EveDmv.Core.SharedKernel.Events.KillmailProcessed do
   by various analysis engines across the system.
   """
 
-  alias EveDmv.Core.SharedKernel.ValueObjects.{CharacterId, SystemId, IskAmount}
+  alias EveDmv.Core.SharedKernel.ValueObjects.CharacterId
+  alias EveDmv.Core.SharedKernel.ValueObjects.IskAmount
+  alias EveDmv.Core.SharedKernel.ValueObjects.SystemId
 
   defstruct [
     :event_id,
