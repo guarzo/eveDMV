@@ -1094,7 +1094,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
       # Analyze connections for escape route potential
       escape_routes =
         system_connections
-        |> Enum.filter(&is_viable_escape_route?/1)
+        |> Enum.filter(&viable_escape_route?/1)
         |> Enum.map(&analyze_escape_route_quality/1)
         |> Enum.sort_by(& &1.safety_rating, :desc)
 
@@ -1478,7 +1478,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
     {:error, :no_mapping_data}
   end
 
-  defp is_viable_escape_route?(connection) do
+  defp viable_escape_route?(connection) do
     # Check if connection is suitable for escape (not critical mass, not EOL)
     # 5 minutes
     # Safer destinations
