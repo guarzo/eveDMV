@@ -114,6 +114,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.BattleReportComment do
 
     update :upvote do
       accept([])
+      require_atomic?(false)
 
       change(fn changeset, _context ->
         current_upvotes = Ash.Changeset.get_attribute(changeset, :upvotes) || 0
@@ -123,6 +124,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.BattleReportComment do
 
     update :downvote do
       accept([])
+      require_atomic?(false)
 
       change(fn changeset, _context ->
         current_downvotes = Ash.Changeset.get_attribute(changeset, :downvotes) || 0
@@ -132,6 +134,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.BattleReportComment do
 
     update :soft_delete do
       accept([])
+      require_atomic?(false)
 
       change(fn changeset, _context ->
         Ash.Changeset.change_attribute(changeset, :deleted_at, DateTime.utc_now())

@@ -197,6 +197,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.BattleReport do
 
     update :add_rating do
       accept([])
+      require_atomic?(false)
 
       argument :rating_score, :decimal do
         allow_nil?(false)
@@ -246,6 +247,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.BattleReport do
 
     update :add_tactical_highlight do
       accept([])
+      require_atomic?(false)
 
       argument :highlight_data, :map do
         allow_nil?(false)
@@ -273,6 +275,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.BattleReport do
 
     update :increment_views do
       accept([])
+      require_atomic?(false)
 
       change(fn changeset, _context ->
         current_views = Ash.Changeset.get_attribute(changeset, :view_count) || 0

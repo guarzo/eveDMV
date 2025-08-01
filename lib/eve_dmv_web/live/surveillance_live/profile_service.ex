@@ -174,8 +174,4 @@ defmodule EveDmvWeb.SurveillanceLive.ProfileService do
       inspect(error)
     end
   end
-
-  defp format_error_message(error) do
-    inspect(error)
-  end
 end

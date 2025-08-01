@@ -7,6 +7,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.Analyzers.ModuleClassifier do
 
   require Logger
 
+  # Safe conversion of string to existing atom, fallback to :unknown
+  defp safe_string_to_atom(string) when is_binary(string) do
+    String.to_existing_atom(string)
+  rescue
+    ArgumentError -> :unknown
+  end
+
+  defp safe_string_to_atom(_), do: :unknown
+
   @doc """
   Classify ship role based on modules and behavior.
   """
@@ -20,7 +29,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.Analyzers.ModuleClassifier do
           ship_class = EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
 
           %{
-            primary_role: String.to_atom(role),
+            primary_role: safe_string_to_atom(role),
             secondary_roles: determine_secondary_roles(ship_class, role),
             confidence: 0.9,
             analysis: %{

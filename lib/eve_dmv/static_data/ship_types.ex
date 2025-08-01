@@ -41,19 +41,19 @@ defmodule EveDmv.StaticData.ShipTypes do
   @doc """
   Check if a ship is Tech 2 based on its group name.
   """
-  def is_t2_ship?(type_id) when is_integer(type_id) do
+  def t2_ship?(type_id) when is_integer(type_id) do
     case get_ship_group_name(type_id) do
       nil -> false
       group_name -> is_t2_group?(group_name)
     end
   end
 
-  def is_t2_ship?(_), do: false
+  def t2_ship?(_), do: false
 
   @doc """
   Check if a ship is Tech 3 (Strategic Cruiser) based on its group name.
   """
-  def is_t3_ship?(type_id) when is_integer(type_id) do
+  def t3_ship?(type_id) when is_integer(type_id) do
     case get_ship_group_name(type_id) do
       nil -> false
       "Strategic Cruiser" -> true
@@ -61,19 +61,19 @@ defmodule EveDmv.StaticData.ShipTypes do
     end
   end
 
-  def is_t3_ship?(_), do: false
+  def t3_ship?(_), do: false
 
   @doc """
   Check if a ship is a faction ship based on its group name.
   """
-  def is_faction_ship?(type_id) when is_integer(type_id) do
+  def faction_ship?(type_id) when is_integer(type_id) do
     case get_ship_group_name(type_id) do
       nil -> false
       group_name -> is_faction_group?(group_name)
     end
   end
 
-  def is_faction_ship?(_), do: false
+  def faction_ship?(_), do: false
 
   # Helper function to get ship group name
   defp get_ship_group_name(type_id) do

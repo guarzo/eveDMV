@@ -140,7 +140,8 @@ config :eve_dmv,
     EveDmv.Domains.Intelligence,
     EveDmv.Domains.Surveillance,
     EveDmv.Contexts.BattleAnalysis.Api,
-    EveDmv.Contexts.FleetOperations.Domain
+    EveDmv.Contexts.FleetOperations.Domain,
+    EveDmv.Api.WormholeOperationsApi
   ]
 
 # AshPostgres configuration

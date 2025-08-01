@@ -40,11 +40,10 @@ defmodule EveDmvWeb.CorporationLive do
         # Start with loading state
         socket =
           socket
-
-        assign(:loading, true)
-        assign(:corporation_id, corporation_id)
-        assign(:error, nil)
-        assign(:active_tab, "overview")
+          |> assign(:loading, true)
+          |> assign(:corporation_id, corporation_id)
+          |> assign(:error, nil)
+          |> assign(:active_tab, "overview")
 
         # Load data asynchronously
         send(self(), :load_corporation_data)
@@ -54,9 +53,8 @@ defmodule EveDmvWeb.CorporationLive do
       _ ->
         socket =
           socket
-
-        assign(:error, "Invalid corporation ID")
-        assign(:loading, false)
+          |> assign(:error, "Invalid corporation ID")
+          |> assign(:loading, false)
 
         {:ok, socket}
     end
@@ -71,28 +69,26 @@ defmodule EveDmvWeb.CorporationLive do
       {:ok, data} ->
         socket =
           socket
-
-        assign(:loading, false)
-        assign(:error, nil)
-        assign(:corp_info, data.info)
-        assign(:corp_stats, data.stats.last_30_days)
-        assign(:comprehensive_stats, data.stats)
-        assign(:timezone_data, data.timezone)
-        assign(:ship_usage, data.ships)
-        assign(:location_stats, data.location_stats || %{})
-        assign(:victim_stats, data.victim_stats || %{})
-        assign(:intelligence_data, data.intelligence)
-        assign(:recent_battles, data.battles)
-        assign(:battle_stats, data.battle_stats)
-        assign(:fleet_doctrines, data.fleet_doctrines)
-        assign(:participation_data, calculate_participation_data(data.members, data.info))
-        # Sprint 15A: Convert large datasets to streams for memory efficiency
-        stream(:members, data.members || [], at: -1, dom_id: &"member-#{&1.character_id}")
-
-        stream(:recent_activity, data.activity || [],
-          at: -1,
-          dom_id: &"activity-#{&1.killmail_id}-#{&1.character_id}"
-        )
+          |> assign(:loading, false)
+          |> assign(:error, nil)
+          |> assign(:corp_info, data.info)
+          |> assign(:corp_stats, data.stats.last_30_days)
+          |> assign(:comprehensive_stats, data.stats)
+          |> assign(:timezone_data, data.timezone)
+          |> assign(:ship_usage, data.ships)
+          |> assign(:location_stats, data.location_stats || %{})
+          |> assign(:victim_stats, data.victim_stats || %{})
+          |> assign(:intelligence_data, data.intelligence)
+          |> assign(:recent_battles, data.battles)
+          |> assign(:battle_stats, data.battle_stats)
+          |> assign(:fleet_doctrines, data.fleet_doctrines)
+          |> assign(:participation_data, calculate_participation_data(data.members, data.info))
+          # Sprint 15A: Convert large datasets to streams for memory efficiency
+          |> stream(:members, data.members || [], at: -1, dom_id: &"member-#{&1.character_id}")
+          |> stream(:recent_activity, data.activity || [],
+            at: -1,
+            dom_id: &"activity-#{&1.killmail_id}-#{&1.character_id}"
+          )
 
         {:noreply, socket}
 
@@ -101,9 +97,8 @@ defmodule EveDmvWeb.CorporationLive do
 
         socket =
           socket
-
-        assign(:loading, false)
-        assign(:error, "Failed to load corporation data")
+          |> assign(:loading, false)
+          |> assign(:error, "Failed to load corporation data")
 
         {:noreply, socket}
     end

@@ -332,10 +332,10 @@ defmodule EveDmv.Contexts.Combat.Services.DoctrineEffectivenessService do
       |> Enum.reduce(0, fn {type_id, count}, acc ->
         # Use proper T2/T3 ship detection from static data
         cond do
-          ShipTypes.is_t2_ship?(type_id) -> acc + count
-          ShipTypes.is_t3_ship?(type_id) -> acc + count
+          ShipTypes.t2_ship?(type_id) -> acc + count
+          ShipTypes.t3_ship?(type_id) -> acc + count
           # Also count faction ships as high-tier
-          ShipTypes.is_faction_ship?(type_id) -> acc + count
+          ShipTypes.faction_ship?(type_id) -> acc + count
           true -> acc
         end
       end)
