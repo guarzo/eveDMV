@@ -9,18 +9,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
   - Combat effectiveness evaluation
   """
 
-  alias EveDmv.Contexts.Combat.Core.{
-    TimelineBuilder,
-    ParticipantAnalyzer,
-    FleetCompositionAnalyzer,
-    TacticalPatternDetector,
-    PerformanceCalculator
-  }
+  import Ecto.Query
 
   alias EveDmv.Contexts.BattleAnalysis.Resources.Battle
+  alias EveDmv.Contexts.Combat.Core.FleetCompositionAnalyzer
+  alias EveDmv.Contexts.Combat.Core.ParticipantAnalyzer
+  alias EveDmv.Contexts.Combat.Core.PerformanceCalculator
+  alias EveDmv.Contexts.Combat.Core.TacticalPatternDetector
+  alias EveDmv.Contexts.Combat.Core.TimelineBuilder
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Repo
-  import Ecto.Query
 
   @doc """
   Perform comprehensive analysis of a battle.
