@@ -7,22 +7,17 @@ defmodule EveDmv.Contexts.Corporation.Api do
   insights, and organizational health metrics.
   """
 
-  alias EveDmv.Contexts.Corporation.Core.{
-    CorporationAnalyzer,
-    MemberActivityAnalyzer,
-    MemberRiskAssessment,
-    ParticipationAnalyzer,
-    RecruitmentAnalyzer,
-    CombatDoctrineAnalyzer,
-    OrganizationalHealthAnalyzer
-  }
-
-  alias EveDmv.Contexts.Corporation.Services.{
-    CorporationService,
-    MemberService,
-    AnalyticsService,
-    RecruitmentService
-  }
+  alias EveDmv.Contexts.Corporation.Core.CombatDoctrineAnalyzer
+  alias EveDmv.Contexts.Corporation.Core.CorporationAnalyzer
+  alias EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer
+  alias EveDmv.Contexts.Corporation.Core.MemberRiskAssessment
+  alias EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer
+  alias EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer
+  alias EveDmv.Contexts.Corporation.Core.RecruitmentAnalyzer
+  alias EveDmv.Contexts.Corporation.Services.AnalyticsService
+  alias EveDmv.Contexts.Corporation.Services.CorporationService
+  alias EveDmv.Contexts.Corporation.Services.MemberService
+  alias EveDmv.Contexts.Corporation.Services.RecruitmentService
 
   # Corporation Analysis
   defdelegate analyze_corporation(corporation_id, opts \\ []), to: CorporationAnalyzer
