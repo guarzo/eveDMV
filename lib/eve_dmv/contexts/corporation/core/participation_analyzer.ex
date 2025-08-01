@@ -8,9 +8,9 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
   - Corporation Intelligence participation tracking
   """
 
-  alias EveDmv.Platform.Database.CorporationRepository
   alias EveDmv.Database.CharacterRepository
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
+  alias EveDmv.Platform.Database.CorporationRepository
 
   require Logger
 
