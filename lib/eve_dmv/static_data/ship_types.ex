@@ -44,7 +44,7 @@ defmodule EveDmv.StaticData.ShipTypes do
   def t2_ship?(type_id) when is_integer(type_id) do
     case get_ship_group_name(type_id) do
       nil -> false
-      group_name -> is_t2_group?(group_name)
+      group_name -> t2_group?(group_name)
     end
   end
 
@@ -69,7 +69,7 @@ defmodule EveDmv.StaticData.ShipTypes do
   def faction_ship?(type_id) when is_integer(type_id) do
     case get_ship_group_name(type_id) do
       nil -> false
-      group_name -> is_faction_group?(group_name)
+      group_name -> faction_group?(group_name)
     end
   end
 
@@ -85,7 +85,7 @@ defmodule EveDmv.StaticData.ShipTypes do
   end
 
   # Check if group name indicates T2 ship
-  defp is_t2_group?(group_name) do
+  defp t2_group?(group_name) do
     group_name in [
       "Assault Frigate",
       "Covert Ops",
@@ -104,7 +104,7 @@ defmodule EveDmv.StaticData.ShipTypes do
   end
 
   # Check if group name indicates faction ship
-  defp is_faction_group?(group_name) do
+  defp faction_group?(group_name) do
     group_name in [
       "Faction Frigate",
       "Faction Cruiser",
