@@ -13,9 +13,9 @@ defmodule EveDmv.Contexts.Intelligence.Services.AnalyticsService do
   scattered across multiple contexts during the namespace consolidation.
   """
 
+  alias EveDmv.Core.Domain.Analytics.PatternAnalysis
   alias EveDmv.Database.CharacterRepository
   alias EveDmv.Intelligence.Cache.IntelligenceCache
-  alias EveDmv.Core.Domain.Analytics.PatternAnalysis
 
   require Logger
 
