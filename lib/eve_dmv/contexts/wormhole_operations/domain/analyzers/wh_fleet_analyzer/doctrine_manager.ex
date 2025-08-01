@@ -8,7 +8,7 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.DoctrineManager do
 
   alias EveDmv.Eve.EsiClient
   alias EveDmv.Intelligence.Analyzers.FleetPilotAnalyzer
-  alias EveDmv.Intelligence.Fleet.DoctrineTemplateBuilder
+  alias EveDmv.Contexts.FleetOperations.Domain.Fleet.DoctrineTemplateBuilder
   alias EveDmv.Intelligence.Wormhole.FleetComposition
 
   require Logger

@@ -10,7 +10,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   """
 
   require Ash.Query
-  
+
   import Ash.Expr
   import Ecto.Query
 

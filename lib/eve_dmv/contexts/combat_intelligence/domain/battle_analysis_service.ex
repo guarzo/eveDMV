@@ -33,7 +33,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.LiveEngagementTracker
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.RecommendationEngine
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.ParticipantExtractor
-  alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.FleetCompositionAnalyzer
+  alias EveDmv.Contexts.Combat.Core.FleetCompositionAnalyzer
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.PerformanceMetricsCalculator
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.BattleTimelineBuilder
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.PerformanceCalculator
@@ -141,10 +141,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
                    ParticipantExtractor.extract_battle_participants(killmails),
                  {:ok, enhanced_participants} <- enhance_participant_analysis(participants),
                  {:ok, fleet_analysis} <-
-                   FleetCompositionAnalyzer.analyze_fleet_compositions(
-                     enhanced_participants,
-                     killmails
-                   ),
+                   FleetCompositionAnalyzer.analyze_composition(killmails),
                  {:ok, tactical_analysis} <-
                    TacticalAnalysisEngine.perform_tactical_analysis(
                      timeline,

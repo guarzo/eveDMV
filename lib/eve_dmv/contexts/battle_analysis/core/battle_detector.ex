@@ -9,7 +9,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   """
 
   use GenServer
-  
+
   require Logger
   import Ecto.Query
 

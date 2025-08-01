@@ -11,7 +11,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
 
   require Ash.Query
   require Logger
-  
+
   import Ash.Expr
 
   alias EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer

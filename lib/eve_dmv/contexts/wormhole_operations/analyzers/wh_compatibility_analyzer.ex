@@ -118,7 +118,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Analyzers.WhFleetAnalyzer.WormholeC
   """
   def calculate_average_ship_mass(fleet_members) when is_list(fleet_members) do
     case MassCalculator.calculate_fleet_mass(fleet_members) do
-      {:ok, total_mass} -> 
+      {:ok, total_mass} ->
         member_count = length(fleet_members)
         if member_count > 0 do
           total_mass / member_count

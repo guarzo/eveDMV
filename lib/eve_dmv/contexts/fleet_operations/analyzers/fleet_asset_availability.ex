@@ -6,7 +6,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.FleetAssetAvailability do
   fallback placeholder data when authentication tokens are not available.
   """
 
-  alias EveDmv.Contexts.Intelligence.Core.AssetAnalyzer
+  alias EveDmv.Intelligence.Analyzers.AssetAnalyzer
 
   require Logger
 
