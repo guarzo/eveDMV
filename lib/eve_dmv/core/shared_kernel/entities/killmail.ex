@@ -6,7 +6,9 @@ defmodule EveDmv.Core.SharedKernel.Entities.Killmail do
   allowing different contexts to extend it with their specific needs.
   """
 
-  alias EveDmv.Core.SharedKernel.ValueObjects.{CharacterId, SystemId, IskAmount}
+  alias EveDmv.Core.SharedKernel.ValueObjects.CharacterId
+  alias EveDmv.Core.SharedKernel.ValueObjects.IskAmount
+  alias EveDmv.Core.SharedKernel.ValueObjects.SystemId
 
   defstruct [
     :killmail_id,
