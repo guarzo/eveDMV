@@ -774,16 +774,16 @@ defmodule EveDmv.Contexts.Intelligence.Services.AnalyticsService do
   end
 
   defp generate_correlation_recommendations(significant_correlations) do
-    recommendations = []
+    initial_recommendations = []
 
     # High correlation recommendations
     high_correlations = Enum.filter(significant_correlations, &(&1.correlation_strength >= 0.8))
 
-    recommendations =
+    high_correlation_recommendations =
       if length(high_correlations) > 0 do
-        ["Monitor highly correlated characters as potential coordinated group" | recommendations]
+        ["Monitor highly correlated characters as potential coordinated group" | initial_recommendations]
       else
-        recommendations
+        initial_recommendations
       end
 
     # Moderate correlation recommendations
@@ -792,18 +792,18 @@ defmodule EveDmv.Contexts.Intelligence.Services.AnalyticsService do
         corr.correlation_strength >= 0.6 and corr.correlation_strength < 0.8
       end)
 
-    recommendations =
+    final_recommendations =
       if length(moderate_correlations) > 0 do
-        ["Investigate moderate correlations for potential relationships" | recommendations]
+        ["Investigate moderate correlations for potential relationships" | high_correlation_recommendations]
       else
-        recommendations
+        high_correlation_recommendations
       end
 
     # Default recommendation
-    if Enum.empty?(recommendations) do
+    if Enum.empty?(final_recommendations) do
       ["No significant correlations detected - characters appear to operate independently"]
     else
-      Enum.reverse(recommendations)
+      Enum.reverse(final_recommendations)
     end
   end
 
