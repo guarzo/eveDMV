@@ -14,9 +14,9 @@ defmodule EveDmv.External.Eve.MarketDataService do
   use GenServer
   require Logger
 
+  alias EveDmv.Cache
   alias EveDmv.Http.UnifiedClient
   alias EveDmv.StaticData.ShipTypes
-  alias EveDmv.Cache
 
   # Market hub region IDs
   @market_hubs %{
