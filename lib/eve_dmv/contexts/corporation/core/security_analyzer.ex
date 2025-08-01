@@ -7,10 +7,11 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
   to identify potential threats and security vulnerabilities.
   """
 
-  alias EveDmv.Platform.Database.CorporationRepository
+  alias EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer
+  alias EveDmv.Contexts.Corporation.Core.MemberRiskAssessment
   alias EveDmv.Database.CharacterRepository
-  alias EveDmv.Contexts.Corporation.Core.{MemberActivityAnalyzer, MemberRiskAssessment}
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
+  alias EveDmv.Platform.Database.CorporationRepository
 
   require Logger
 
