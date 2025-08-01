@@ -6,7 +6,8 @@ defmodule EveDmv.Core.SharedKernel.Events.BattleDetected do
   by various contexts for further analysis and notification.
   """
 
-  alias EveDmv.Core.SharedKernel.ValueObjects.{SystemId, IskAmount}
+  alias EveDmv.Core.SharedKernel.ValueObjects.IskAmount
+  alias EveDmv.Core.SharedKernel.ValueObjects.SystemId
 
   defstruct [
     :event_id,
