@@ -951,7 +951,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
     query =
       from(k in "killmails_enriched",
-        # Structure type IDs typically > 40000
+        # Structure type IDs typically > 40_000
         where:
           k.solar_system_id == ^system_id and
             k.killmail_time >= ^start_time and

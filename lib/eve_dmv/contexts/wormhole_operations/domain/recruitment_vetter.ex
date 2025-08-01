@@ -754,7 +754,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
                  COUNT(DISTINCT km.solar_system_id) as unique_systems
                FROM killmails_raw km
                LEFT JOIN participants p ON km.killmail_id = p.killmail_id AND p.character_id = $1
-               WHERE km.solar_system_id >= 31000000  -- J-space system IDs
+               WHERE km.solar_system_id >= 31_000_000  -- J-space system IDs
                AND (p.character_id = $1 OR km.victim_character_id = $1)
              )
              SELECT wh_kills, wh_losses, unique_systems

@@ -419,7 +419,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
 
       "Index Scan" ->
         # Regular index scans - maintenance depends on selectivity
-        if index.rows > 10000 do
+        if index.rows > 10_000 do
           "Medium"
         else
           "Low"

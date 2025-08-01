@@ -385,7 +385,7 @@ defmodule EveDmv.StaticData do
 
   @doc """
   Check if a type is a wormhole by ID range.
-  J-space systems are 31000000-32000000.
+  J-space systems are 31_000_000-32_000_000.
   """
   def is_wormhole_system?(system_id) when is_integer(system_id) do
     system_id >= 31_000_000 and system_id < 32_000_000

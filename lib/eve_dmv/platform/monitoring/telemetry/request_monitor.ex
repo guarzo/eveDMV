@@ -16,7 +16,7 @@ defmodule EveDmv.Telemetry.RequestMonitor do
 
   ## Examples
       track_request(:character, 1500, :success)
-      track_request(:market, 30000, :timeout)
+      track_request(:market, 30_000, :timeout)
   """
   @spec track_request(atom(), integer(), atom()) :: :ok
   def track_request(service, duration, status) do

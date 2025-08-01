@@ -347,6 +347,6 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.AlertManagementService do
   end
 
   defp generate_alert_id do
-    "alert_#{System.system_time(:second)}_#{:rand.uniform(10000)}"
+    "alert_#{System.system_time(:second)}_#{:rand.uniform(10_000)}"
   end
 end

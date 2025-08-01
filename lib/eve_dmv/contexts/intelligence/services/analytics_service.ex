@@ -944,118 +944,118 @@ defmodule EveDmv.Contexts.Intelligence.Services.AnalyticsService do
   end
 
   defp identify_threat_vectors(behavioral_analysis, _target_data) do
-    vectors = []
+    initial_vectors = []
 
     # Based on behavior classification
-    vectors =
+    classification_vectors =
       case behavioral_analysis.behavior_classification do
-        :disciplined_aggressor -> ["Direct confrontation", "Coordinated attacks" | vectors]
-        :opportunistic_raider -> ["Hit-and-run tactics", "Exploitation of weaknesses" | vectors]
-        :methodical_defender -> ["Defensive positioning", "Area denial" | vectors]
-        _ -> ["Standard engagement patterns" | vectors]
+        :disciplined_aggressor -> ["Direct confrontation", "Coordinated attacks" | initial_vectors]
+        :opportunistic_raider -> ["Hit-and-run tactics", "Exploitation of weaknesses" | initial_vectors]
+        :methodical_defender -> ["Defensive positioning", "Area denial" | initial_vectors]
+        _ -> ["Standard engagement patterns" | initial_vectors]
       end
 
     # Based on activity patterns
-    vectors =
+    final_vectors =
       if behavioral_analysis.activity_rhythm.consistency_score > 0.7 do
-        ["Predictable timing exploitation" | vectors]
+        ["Predictable timing exploitation" | classification_vectors]
       else
-        vectors
+        classification_vectors
       end
 
-    Enum.reverse(vectors)
+    Enum.reverse(final_vectors)
   end
 
   defp generate_mitigation_strategies(behavioral_analysis, risk_assessment) do
-    strategies = []
+    initial_strategies = []
 
     # Based on threat level
-    strategies =
+    threat_level_strategies =
       case determine_threat_level(behavioral_analysis, risk_assessment) do
-        :critical -> ["Immediate countermeasures", "Maximum alert status" | strategies]
-        :high -> ["Enhanced monitoring", "Prepare defensive measures" | strategies]
-        :moderate -> ["Regular surveillance", "Standard precautions" | strategies]
-        _ -> ["Routine monitoring" | strategies]
+        :critical -> ["Immediate countermeasures", "Maximum alert status" | initial_strategies]
+        :high -> ["Enhanced monitoring", "Prepare defensive measures" | initial_strategies]
+        :moderate -> ["Regular surveillance", "Standard precautions" | initial_strategies]
+        _ -> ["Routine monitoring" | initial_strategies]
       end
 
     # Based on behavior type
-    strategies =
+    final_strategies =
       case behavioral_analysis.behavior_classification do
         :disciplined_aggressor ->
-          ["Avoid predictable patterns", "Use superior numbers" | strategies]
+          ["Avoid predictable patterns", "Use superior numbers" | threat_level_strategies]
 
         :opportunistic_raider ->
-          ["Eliminate vulnerabilities", "Increase unpredictability" | strategies]
+          ["Eliminate vulnerabilities", "Increase unpredictability" | threat_level_strategies]
 
         _ ->
-          strategies
+          threat_level_strategies
       end
 
-    Enum.reverse(strategies)
+    Enum.reverse(final_strategies)
   end
 
   defp determine_monitoring_priorities(behavioral_analysis) do
-    priorities = []
+    initial_priorities = []
 
-    priorities =
+    pattern_priorities =
       if behavioral_analysis.predictability_score > 0.7 do
-        [:pattern_analysis | priorities]
+        [:pattern_analysis | initial_priorities]
       else
-        priorities
+        initial_priorities
       end
 
-    priorities =
+    tracking_priorities =
       if behavioral_analysis.intelligence_value > 0.6 do
-        [:real_time_tracking | priorities]
+        [:real_time_tracking | pattern_priorities]
       else
-        priorities
+        pattern_priorities
       end
 
-    priorities =
+    final_priorities =
       if behavioral_analysis.anomaly_detection.anomalies_detected do
-        [:anomaly_investigation | priorities]
+        [:anomaly_investigation | tracking_priorities]
       else
-        priorities
+        tracking_priorities
       end
 
-    if Enum.empty?(priorities) do
+    if Enum.empty?(final_priorities) do
       [:standard_monitoring]
     else
-      Enum.reverse(priorities)
+      Enum.reverse(final_priorities)
     end
   end
 
   defp define_escalation_triggers(behavioral_analysis, risk_assessment) do
-    triggers = []
+    initial_triggers = []
 
     # Risk-based triggers
-    triggers =
+    risk_triggers =
       if risk_assessment.composite_risk_score > 0.7 do
-        ["Risk score increase >10%" | triggers]
+        ["Risk score increase >10%" | initial_triggers]
       else
-        triggers
+        initial_triggers
       end
 
     # Behavior-based triggers
-    triggers =
+    behavior_triggers =
       if behavioral_analysis.anomaly_detection.anomalies_detected do
-        ["New behavioral anomalies detected" | triggers]
+        ["New behavioral anomalies detected" | risk_triggers]
       else
-        triggers
+        risk_triggers
       end
 
     # Activity-based triggers
-    triggers =
+    final_triggers =
       if behavioral_analysis.activity_rhythm.pattern_type == :sporadic do
-        ["Sudden activity pattern changes" | triggers]
+        ["Sudden activity pattern changes" | behavior_triggers]
       else
-        triggers
+        behavior_triggers
       end
 
-    if Enum.empty?(triggers) do
+    if Enum.empty?(final_triggers) do
       ["Significant pattern deviation"]
     else
-      Enum.reverse(triggers)
+      Enum.reverse(final_triggers)
     end
   end
 

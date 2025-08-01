@@ -385,7 +385,7 @@ defmodule EveDmv.StaticData.ShipAttributesService do
 
         "supercapital" ->
           # Multiple capital weapons, 8000+ DPS
-          12000
+          12_000
 
         _ ->
           # Default for unknown classes

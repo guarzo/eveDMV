@@ -281,7 +281,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
         capital_kills =
           Enum.count(killmails, fn km ->
             km.victim_character_id != km.character_id and
-              (km.victim_ship_type_id || 0) >= 20000
+              (km.victim_ship_type_id || 0) >= 20_000
           end)
 
         # Simple threat score calculation
@@ -420,8 +420,8 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
       ship_type_id < 1000 -> :frigate
       ship_type_id < 2000 -> :destroyer
       ship_type_id < 5000 -> :cruiser
-      ship_type_id < 10000 -> :battlecruiser
-      ship_type_id < 20000 -> :battleship
+      ship_type_id < 10_000 -> :battlecruiser
+      ship_type_id < 20_000 -> :battleship
       true -> :capital
     end
   end

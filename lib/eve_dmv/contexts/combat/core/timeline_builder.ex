@@ -624,13 +624,13 @@ defmodule EveDmv.Contexts.Combat.Core.TimelineBuilder do
   defp is_capital_kill?(killmail) do
     ship_type = get_in(killmail.victim, ["ship_type_id"]) || 0
     # Simplified check
-    ship_type > 20000
+    ship_type > 20_000
   end
 
   defp is_structure_kill?(killmail) do
     ship_type = get_in(killmail.victim, ["ship_type_id"]) || 0
     # Simplified check
-    ship_type > 35000
+    ship_type > 35_000
   end
 
   defp generate_phase_id do

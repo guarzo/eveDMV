@@ -406,7 +406,7 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
         # Capital weapons, 2000-4000 DPS
         "capital" -> 3000
         # Multiple capital weapons, 8000+ DPS
-        "supercapital" -> 12000
+        "supercapital" -> 12_000
         _ -> 120
       end
 
@@ -665,7 +665,7 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
         %{shield_hp: 50_000, armor_hp: 45_000, structure_hp: 40_000, dps: 3000}
 
       "supercapital" ->
-        %{shield_hp: 150_000, armor_hp: 120_000, structure_hp: 100_000, dps: 12000}
+        %{shield_hp: 150_000, armor_hp: 120_000, structure_hp: 100_000, dps: 12_000}
 
       _ ->
         %{shield_hp: 1000, armor_hp: 1000, structure_hp: 1000, dps: 120}

@@ -524,7 +524,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.NotificationService do
   end
 
   defp generate_notification_id do
-    "notification_#{System.system_time(:second)}_#{:rand.uniform(10000)}"
+    "notification_#{System.system_time(:second)}_#{:rand.uniform(10_000)}"
   end
 
   # Placeholder implementations for external integrations

@@ -601,7 +601,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
   defp calculate_rankings(_metrics) do
     # Simplified rankings - would compare against database
     %{
-      overall: %{rank: 1234, percentile: 85.5, total_players: 50000},
+      overall: %{rank: 1234, percentile: 85.5, total_players: 50_000},
       kill_death: %{rank: 890, percentile: 91.2},
       isk_efficiency: %{rank: 2100, percentile: 78.4},
       activity: %{rank: 3200, percentile: 68.9}

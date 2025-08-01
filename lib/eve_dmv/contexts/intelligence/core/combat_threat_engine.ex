@@ -74,25 +74,25 @@ defmodule EveDmv.Contexts.Intelligence.Core.CombatThreatEngine do
   defp detect_capital_usage(killmails, character_id) do
     capital_ship_ids = [
       # Carriers
-      23757,
-      23911,
-      23915,
-      24483,
+      23_757,
+      23_911,
+      23_915,
+      24_483,
       # Dreadnoughts
-      19720,
-      19722,
-      19724,
-      19726,
+      19_720,
+      19_722,
+      19_724,
+      19_726,
       # Supercarriers
-      23913,
-      23917,
-      23919,
+      23_913,
+      23_917,
+      23_919,
       3514,
       # Titans
       671,
       3764,
-      11567,
-      23773
+      11_567,
+      23_773
     ]
 
     killmails

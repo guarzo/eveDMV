@@ -389,9 +389,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
           ship_type_id < 1000 -> :frigate
           ship_type_id < 2000 -> :destroyer
           ship_type_id < 5000 -> :cruiser
-          ship_type_id < 10000 -> :battlecruiser
-          ship_type_id < 20000 -> :battleship
-          ship_type_id >= 20000 -> :capital
+          ship_type_id < 10_000 -> :battlecruiser
+          ship_type_id < 20_000 -> :battleship
+          ship_type_id >= 20_000 -> :capital
           true -> :unknown
         end
     end

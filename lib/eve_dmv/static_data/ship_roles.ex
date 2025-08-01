@@ -83,19 +83,19 @@ defmodule EveDmv.StaticData.ShipRoles do
   # T2 Force Recons
   @force_recons [
     # Rook (Caldari - ECM)
-    11959,
+    11_959,
     # Falcon (Caldari - ECM)
-    11957,
+    11_957,
     # Arazu (Gallente - Damps/Tackle)
-    11969,
+    11_969,
     # Lachesis (Gallente - Damps/Tackle)
-    11971,
+    11_971,
     # Huginn (Minmatar - Webs/Paint)
-    11961,
+    11_961,
     # Rapier (Minmatar - Webs/Paint)
-    11963,
+    11_963,
     # Pilgrim (Amarr - Neuts/TD)
-    11965,
+    11_965,
     # Curse (Amarr - Neuts/TD)
     20125
   ]
@@ -139,11 +139,11 @@ defmodule EveDmv.StaticData.ShipRoles do
   # Combat Recons (also EWAR but more combat-focused)
   @combat_recons [
     # Huginn
-    11961,
+    11_961,
     # Rook
-    11959,
+    11_959,
     # Arazu
-    11969,
+    11_969,
     # Curse
     20125
   ]
@@ -205,7 +205,7 @@ defmodule EveDmv.StaticData.ShipRoles do
 
   ## Examples
 
-      iex> ShipRoles.is_ewar_ship?(11959)
+      iex> ShipRoles.is_ewar_ship?(11_959)
       true  # Rook
 
       iex> ShipRoles.is_ewar_ship?(587)

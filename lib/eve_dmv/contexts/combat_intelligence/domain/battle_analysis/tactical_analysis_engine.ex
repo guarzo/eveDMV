@@ -299,7 +299,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.TacticalAnaly
 
       # Fallback: use corporation characteristics
       corporation_id && corporation_id > 0 ->
-        # NPC corporations (ID < 1000000) are typically neutral
+        # NPC corporations (ID < 1_000_000) are typically neutral
         cond do
           corporation_id < 1_000_000 -> :neutral
           # Older player corps

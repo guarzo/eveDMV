@@ -293,9 +293,9 @@ defmodule EveDmv.Contexts.FleetOperations.Core.MassCalculator do
       # Medium ships (cruisers)
       ship_type_id < 5000 -> 12_000_000
       # Large ships (battlecruisers)
-      ship_type_id < 10000 -> 60_000_000
+      ship_type_id < 10_000 -> 60_000_000
       # Battleships
-      ship_type_id < 20000 -> 100_000_000
+      ship_type_id < 20_000 -> 100_000_000
       # Capitals and specials
       true -> 300_000_000
     end

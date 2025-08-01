@@ -35,8 +35,8 @@ defmodule EveDmv.Database.QueryHelpers do
       iex> query |> apply_safe_limit(limit: 5000)
       # Applies limit of 5000
 
-      iex> query |> apply_safe_limit(limit: 20000)
-      # Applies max limit of 10000
+      iex> query |> apply_safe_limit(limit: 20_000)
+      # Applies max limit of 10_000
   """
   def apply_safe_limit(query, opts \\ []) do
     requested_limit = Keyword.get(opts, :limit, @default_limit)

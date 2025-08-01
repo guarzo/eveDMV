@@ -385,7 +385,7 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
             length(attacker_instances)
 
         # Max 50 points for damage
-        min(avg_damage / 10000 * 50, 50)
+        min(avg_damage / 10_000 * 50, 50)
       else
         0
       end
@@ -535,7 +535,7 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
       ship_type_id < 1000 -> :frigate
       ship_type_id < 3000 -> :cruiser
       ship_type_id < 5000 -> :battleship
-      ship_type_id >= 20000 -> :capital
+      ship_type_id >= 20_000 -> :capital
       true -> :unknown
     end
   end
@@ -619,7 +619,7 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
     EveDmv.StaticData.ShipRoles.is_ewar_ship?(ship_type)
   end
 
-  defp is_capital_ship?(ship_type), do: ship_type && ship_type >= 20000
+  defp is_capital_ship?(ship_type), do: ship_type && ship_type >= 20_000
 
   defp calculate_hvt_priority(target_values) do
     # Check if high-value targets were killed early
@@ -797,7 +797,7 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
       ship_type_id < 1000 -> 5_000
       ship_type_id < 3000 -> 30_000
       ship_type_id < 5000 -> 100_000
-      ship_type_id >= 20000 -> 1_000_000
+      ship_type_id >= 20_000 -> 1_000_000
       true -> 20_000
     end
   end

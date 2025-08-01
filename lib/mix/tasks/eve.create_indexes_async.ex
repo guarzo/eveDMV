@@ -74,7 +74,7 @@ defmodule Mix.Tasks.Eve.CreateIndexesAsync do
         name: "idx_killmails_isk_participants_threat",
         table: "killmails_raw",
         columns: ["killmail_time DESC", "solar_system_id"],
-        where: "raw_data ? 'zkb' AND (raw_data->'zkb'->>'totalValue')::bigint > 100000000",
+        where: "raw_data ? 'zkb' AND (raw_data->'zkb'->>'totalValue')::bigint > 100_000_000",
         comment: "ISK destruction analysis"
       },
       # Sprint 17 indexes

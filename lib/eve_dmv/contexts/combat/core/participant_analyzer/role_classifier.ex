@@ -123,7 +123,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.RoleClassifier do
     appearances = participant[:appearances] || 1
     avg_damage = total_damage / appearances
 
-    avg_damage > 10000 || participant[:final_blows] > 3
+    avg_damage > 10_000 || participant[:final_blows] > 3
   end
 
   defp is_scout?(participant) do
@@ -147,7 +147,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.RoleClassifier do
 
   defp is_high_damage_dealer?(participant) do
     avg_damage = (participant[:total_damage_done] || 0) / max(participant[:appearances] || 1, 1)
-    avg_damage > 20000
+    avg_damage > 20_000
   end
 
   defp has_tackle_behavior?(participant) do
@@ -210,9 +210,9 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.RoleClassifier do
     avg_damage = (participant[:total_damage_done] || 0) / max(participant[:appearances] || 1, 1)
 
     cond do
-      avg_damage > 50000 -> 0.5
-      avg_damage > 20000 -> 0.3
-      avg_damage > 10000 -> 0.2
+      avg_damage > 50_000 -> 0.5
+      avg_damage > 20_000 -> 0.3
+      avg_damage > 10_000 -> 0.2
       true -> 0.0
     end
   end

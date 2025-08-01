@@ -286,7 +286,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.
     # Classify wormhole system based on system ID ranges and patterns
     # This is a simplified approach - real implementation would query static data
     cond do
-      # J-space system IDs are typically in 31000000+ range
+      # J-space system IDs are typically in 31_000_000+ range
       system_id >= 31_000_000 and system_id < 32_000_000 ->
         # Use system ID ranges for proper wormhole classification
         # Based on actual CCP wormhole system numbering scheme
