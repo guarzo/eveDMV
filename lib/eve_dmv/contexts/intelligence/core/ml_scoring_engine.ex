@@ -1020,7 +1020,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.MLScoringEngine do
   end
 
   defp calculate_risk_index(killmails) do
-    if length(killmails) == 0 do
+    if Enum.empty?(killmails) do
       0.0
     else
       # Risk based on going after high-value targets and ship types
@@ -1037,7 +1037,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.MLScoringEngine do
   end
 
   defp analyze_target_selection(killmails) do
-    if length(killmails) == 0 do
+    if Enum.empty?(killmails) do
       0.0
     else
       # Analyze if pilot shows bias toward certain target types
@@ -1055,7 +1055,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.MLScoringEngine do
   end
 
   defp measure_opsec(killmails) do
-    if length(killmails) == 0 do
+    if Enum.empty?(killmails) do
       # No data = assume good opsec
       1.0
     else
@@ -1168,7 +1168,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.MLScoringEngine do
   end
 
   defp calculate_activity_entropy(killmails) do
-    if length(killmails) == 0 do
+    if Enum.empty?(killmails) do
       0.0
     else
       # Calculate entropy based on system activity distribution
@@ -1217,7 +1217,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.MLScoringEngine do
 
   # Advanced feature functions
   defp calculate_kd_isk_interaction(killmails) do
-    if length(killmails) == 0 do
+    if Enum.empty?(killmails) do
       0.0
     else
       kills = Enum.filter(killmails, fn km -> not Map.get(km, :is_victim, false) end)
@@ -1292,7 +1292,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.MLScoringEngine do
   end
 
   defp calculate_high_value_ratio(killmails) do
-    if length(killmails) == 0 do
+    if Enum.empty?(killmails) do
       0.0
     else
       high_value_kills = Enum.count(killmails, fn km -> km.total_value > 1_000_000_000 end)
@@ -1301,7 +1301,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.MLScoringEngine do
   end
 
   defp calculate_defensive_losses(killmails) do
-    if length(killmails) == 0 do
+    if Enum.empty?(killmails) do
       0.0
     else
       # Simple heuristic: losses in home systems or known defensive situations
@@ -1358,7 +1358,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.MLScoringEngine do
   end
 
   defp calculate_engagement_complexity(killmails) do
-    if length(killmails) == 0 do
+    if Enum.empty?(killmails) do
       0.0
     else
       # Measure complexity based on various factors

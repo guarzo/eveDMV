@@ -182,11 +182,11 @@ defmodule EveDmvWeb.FleetOperationsLive do
           summary: generate_composition_summary(analysis)
         }
 
+      {:error, %EveDmv.Error{} = error} ->
+        %{type: "composition", success: false, error: error.message}
+
       {:error, reason} ->
         %{type: "composition", success: false, error: inspect(reason)}
-
-      %EveDmv.Error{} = error ->
-        %{type: "composition", success: false, error: error.message}
     end
   rescue
     error ->

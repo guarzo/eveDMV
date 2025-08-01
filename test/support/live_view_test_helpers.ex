@@ -6,6 +6,11 @@ defmodule EveDmvWeb.LiveViewTestHelpers do
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
   import EveDmv.Factories
+  import ExUnit.Assertions
+  import ExUnit.Callbacks
+  import Plug.Conn
+
+  @endpoint EveDmvWeb.Endpoint
 
   @doc """
   Sets up an authenticated connection with a user session.

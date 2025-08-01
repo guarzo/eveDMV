@@ -205,43 +205,35 @@ defmodule EveDmvWeb.BattleAnalysisLive do
               content = :zlib.uncompress(compressed)
 
               # Parse the log with ENHANCED parser
-              case EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser.parse_combat_log(
-                     content,
-                     pilot_name: combat_log.pilot_name
-                   ) do
-                {:ok,
-                 %{
-                   events: events,
-                   summary: summary,
-                   metadata: metadata,
-                   tactical_analysis: tactical_analysis,
-                   recommendations: recommendations
-                 }} ->
-                  # Update the log with parsed data including tactical analysis
-                  {:ok, updated_log} =
-                    Ash.update(combat_log, %{
-                      parsed_data: %{
-                        events: events,
-                        tactical_analysis: tactical_analysis,
-                        recommendations: recommendations
-                      },
-                      summary: summary,
-                      event_count: length(events),
-                      start_time: metadata[:start_time],
-                      end_time: metadata[:end_time],
-                      parse_status: :completed
-                    })
+              {:ok,
+               %{
+                 events: events,
+                 summary: summary,
+                 metadata: metadata,
+                 tactical_analysis: tactical_analysis,
+                 recommendations: recommendations
+               }} =
+                EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser.parse_combat_log(
+                  content,
+                  pilot_name: combat_log.pilot_name
+                )
 
-                  send(self, {:combat_log_parsed, updated_log})
+              # Update the log with parsed data including tactical analysis
+              {:ok, updated_log} =
+                Ash.update(combat_log, %{
+                  parsed_data: %{
+                    events: events,
+                    tactical_analysis: tactical_analysis,
+                    recommendations: recommendations
+                  },
+                  summary: summary,
+                  event_count: length(events),
+                  start_time: metadata[:start_time],
+                  end_time: metadata[:end_time],
+                  parse_status: :completed
+                })
 
-                _ ->
-                  # Update with error status
-                  {:ok, _} =
-                    Ash.update(combat_log, %{
-                      parse_status: :failed,
-                      parse_error: "Parse failed"
-                    })
-              end
+              send(self, {:combat_log_parsed, updated_log})
             rescue
               error ->
                 # Update with error status
