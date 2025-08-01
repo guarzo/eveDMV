@@ -110,7 +110,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.ExperienceAnalyzer do
       # Using specialized ships
       length(ships_used) > 1 -> 80
       # Using T2/T3 ships (simplified check)
-      Enum.any?(ships_used, &(&1 > 10000)) -> 60
+      Enum.any?(ships_used, &(&1 > 10_000)) -> 60
       # Basic ships
       true -> 20
     end
@@ -123,9 +123,9 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.ExperienceAnalyzer do
       avg_damage = participant[:total_damage_done] / participant[:appearances]
 
       cond do
-        avg_damage > 50000 -> 100
-        avg_damage > 20000 -> 70
-        avg_damage > 10000 -> 40
+        avg_damage > 50_000 -> 100
+        avg_damage > 20_000 -> 70
+        avg_damage > 10_000 -> 40
         true -> 20
       end
     else
