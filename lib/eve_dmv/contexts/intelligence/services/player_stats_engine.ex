@@ -156,9 +156,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.PlayerStatsEngine do
         character_ids,
         correlation_metrics \\ [:combat_effectiveness, :activity_level, :isk_efficiency]
       ) do
-    Logger.info("Analyzing statistical correlations",
-      character_count: length(character_ids)
-    )
+    Logger.info("Analyzing statistical correlations for #{length(character_ids)} characters")
 
     if length(character_ids) < 2 do
       {:error, :insufficient_data}
