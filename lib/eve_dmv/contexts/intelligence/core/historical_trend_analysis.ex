@@ -870,8 +870,8 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
 
     # Check for patterns
     cond do
-      is_steadily_increasing?(scores) -> :steady_escalation
-      is_steadily_decreasing?(scores) -> :gradual_decline
+      steadily_increasing?(scores) -> :steady_escalation
+      steadily_decreasing?(scores) -> :gradual_decline
       has_spike_pattern?(scores) -> :periodic_activity
       true -> :irregular
     end
@@ -879,7 +879,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
 
   defp identify_evolution_pattern(_), do: :insufficient_data
 
-  defp is_steadily_increasing?(scores) do
+  defp steadily_increasing?(scores) do
     scores
     |> Enum.chunk_every(2, 1, :discard)
     |> Enum.map(fn [a, b] -> b >= a end)
@@ -888,7 +888,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
     |> Kernel.>=(0.7)
   end
 
-  defp is_steadily_decreasing?(scores) do
+  defp steadily_decreasing?(scores) do
     scores
     |> Enum.chunk_every(2, 1, :discard)
     |> Enum.map(fn [a, b] -> b <= a end)
