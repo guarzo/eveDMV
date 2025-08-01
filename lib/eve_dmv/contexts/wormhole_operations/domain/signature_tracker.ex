@@ -500,9 +500,18 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
   defp activity_recommendations(patterns) do
     recommendations =
       []
-      |> add_recommendation_if(patterns.rage_rolling.detected, "Rage rolling detected - hostile fleet likely seeking targets")
-      |> add_recommendation_if(patterns.active_farming.detected, "Active farming detected - potential targets in system")
-      |> add_recommendation_if(patterns.chain_rolling.detected, "Chain rolling detected - someone controlling connections")
+      |> add_recommendation_if(
+        patterns.rage_rolling.detected,
+        "Rage rolling detected - hostile fleet likely seeking targets"
+      )
+      |> add_recommendation_if(
+        patterns.active_farming.detected,
+        "Active farming detected - potential targets in system"
+      )
+      |> add_recommendation_if(
+        patterns.chain_rolling.detected,
+        "Chain rolling detected - someone controlling connections"
+      )
       |> add_scanning_activity_recommendation(patterns.scanning_activity.efficiency)
 
     if Enum.empty?(recommendations) do

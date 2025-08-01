@@ -772,6 +772,206 @@ defmodule EveDmv.Shared.ChainIntelligence do
   end
 
   @doc """
+  Analyze coverage optimization for a corporation's chain operations.
+  """
+  def analyze_coverage_optimization(corporation_id, chain_data) do
+    Logger.debug("Analyzing coverage optimization for corporation #{corporation_id}")
+
+    # Analyze current coverage
+    current_coverage = analyze_current_coverage(chain_data)
+    
+    # Generate optimization recommendations
+    recommendations = generate_optimization_recommendations(current_coverage)
+
+    optimization_analysis = %{
+      corporation_id: corporation_id,
+      current_coverage_score: current_coverage.score,
+      optimization_potential: current_coverage.optimization_potential,
+      recommendations: recommendations,
+      analyzed_at: DateTime.utc_now()
+    }
+
+    {:ok, optimization_analysis}
+  rescue
+    error ->
+      Logger.error("Error analyzing coverage optimization: #{inspect(error)}")
+      {:error, :analysis_failed}
+  end
+
+  @doc """
+  Get intelligence summary for a corporation.
+  """
+  def get_corporation_intelligence_summary(corporation_id) do
+    Logger.debug("Getting intelligence summary for corporation #{corporation_id}")
+
+    # Gather various intelligence data points
+    summary = %{
+      corporation_id: corporation_id,
+      chain_activity_score: calculate_corp_activity_score(corporation_id),
+      threat_assessment: assess_corp_threat_level(corporation_id),
+      operational_readiness: evaluate_operational_readiness(corporation_id),
+      recent_engagements: get_recent_engagement_summary(corporation_id),
+      intelligence_confidence: 0.75,
+      last_updated: DateTime.utc_now()
+    }
+
+    {:ok, summary}
+  rescue
+    error ->
+      Logger.error("Error getting corporation intelligence summary: #{inspect(error)}")
+      {:error, :summary_failed}
+  end
+
+  # Private helper functions for new functionality
+
+  defp analyze_current_coverage(chain_data) do
+    systems = Map.get(chain_data, :systems, [])
+    connections = Map.get(chain_data, :connections, [])
+
+    # Calculate coverage metrics
+    system_count = length(systems)
+    connection_density = if system_count > 0, do: length(connections) / system_count, else: 0
+
+    score = min(100.0, system_count * 10 + connection_density * 20)
+    optimization_potential = max(0.0, 100.0 - score)
+
+    %{
+      system_count: system_count,
+      connection_count: length(connections),
+      connection_density: Float.round(connection_density, 2),
+      score: Float.round(score, 2),
+      optimization_potential: Float.round(optimization_potential, 2)
+    }
+  end
+
+  defp generate_optimization_recommendations(coverage) do
+    recommendations = []
+
+    recommendations =
+      if coverage.connection_density < 1.5 do
+        ["Increase scouting to find additional connections" | recommendations]
+      else
+        recommendations
+      end
+
+    recommendations =
+      if coverage.system_count < 5 do
+        ["Expand chain mapping to include more systems" | recommendations]
+      else
+        recommendations
+      end
+
+    recommendations =
+      if coverage.optimization_potential > 50 do
+        ["Consider establishing forward operating bases" | recommendations]
+      else
+        recommendations
+      end
+
+    recommendations
+  end
+
+  defp calculate_corp_activity_score(corporation_id) do
+    # Get recent killmails involving the corporation
+    since = DateTime.add(DateTime.utc_now(), -7 * 24 * 3600, :second)
+
+    try do
+      killmails = EveDmv.Api.read!(
+        EveDmv.Killmails.KillmailRaw,
+        filter: [occurred_at: [greater_than: since]],
+        limit: 1000
+      )
+
+      corp_killmails = Enum.filter(killmails, fn km ->
+        victim_corp = Map.get(km.victim || %{}, :corporation_id)
+        attacker_corps = (km.attackers || []) |> Enum.map(& &1.corporation_id)
+        
+        victim_corp == corporation_id or corporation_id in attacker_corps
+      end)
+
+      # Calculate activity score based on engagement frequency
+      engagement_count = length(corp_killmails)
+      Float.round(min(100.0, engagement_count * 2), 2)
+    rescue
+      _ -> 0.0
+    end
+  end
+
+  defp assess_corp_threat_level(corporation_id) do
+    # Assess threat level based on recent combat activity
+    activity_score = calculate_corp_activity_score(corporation_id)
+
+    cond do
+      activity_score > 75 -> :high
+      activity_score > 40 -> :medium
+      activity_score > 10 -> :low
+      true -> :minimal
+    end
+  end
+
+  defp evaluate_operational_readiness(corporation_id) do
+    # Evaluate operational readiness based on activity patterns
+    activity_score = calculate_corp_activity_score(corporation_id)
+    
+    readiness_score = cond do
+      activity_score > 50 -> 0.9
+      activity_score > 25 -> 0.7
+      activity_score > 10 -> 0.5
+      true -> 0.3
+    end
+
+    %{
+      score: readiness_score,
+      status: if(readiness_score > 0.7, do: :ready, else: :limited),
+      last_assessment: DateTime.utc_now()
+    }
+  end
+
+  defp get_recent_engagement_summary(corporation_id) do
+    # Get summary of recent engagements
+    since = DateTime.add(DateTime.utc_now(), -48 * 3600, :second)
+
+    try do
+      killmails = EveDmv.Api.read!(
+        EveDmv.Killmails.KillmailRaw,
+        filter: [occurred_at: [greater_than: since]],
+        limit: 500
+      )
+
+      corp_killmails = Enum.filter(killmails, fn km ->
+        victim_corp = Map.get(km.victim || %{}, :corporation_id)
+        attacker_corps = (km.attackers || []) |> Enum.map(& &1.corporation_id)
+        
+        victim_corp == corporation_id or corporation_id in attacker_corps
+      end)
+
+      victories = Enum.count(corp_killmails, fn km ->
+        attacker_corps = (km.attackers || []) |> Enum.map(& &1.corporation_id)
+        corporation_id in attacker_corps
+      end)
+
+      losses = length(corp_killmails) - victories
+
+      %{
+        total_engagements: length(corp_killmails),
+        victories: victories,
+        losses: losses,
+        efficiency: if(length(corp_killmails) > 0, do: Float.round(victories / length(corp_killmails), 2), else: 0.0),
+        time_period_hours: 48
+      }
+    rescue
+      _ ->
+        %{
+          total_engagements: 0,
+          victories: 0,
+          losses: 0,
+          efficiency: 0.0,
+          time_period_hours: 48
+        }
+    end
+  end
+
+  @doc """
   Utility function to check if consolidation is working.
   """
   def version do

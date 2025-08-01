@@ -9,7 +9,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.InsightGenerator do
     BehavioralPatternAnalyzer,
     PerformanceAnalyzer
   }
-  alias EveDmv.Platform.Cache.Intelligence.IntelligenceCache
+  alias EveDmv.Cache
   
   require Logger
   
@@ -21,7 +21,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.InsightGenerator do
   def generate_insights(character_id) do
     cache_key = {:character_insights, character_id}
     
-    IntelligenceCache.get_or_compute(cache_key, fn ->
+    Cache.get_or_compute(:analysis, cache_key, fn ->
       compile_character_insights(character_id)
     end, ttl: @cache_ttl)
   end
@@ -46,7 +46,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.InsightGenerator do
   def get_engagement_recommendations(attacker_id, target_id) do
     cache_key = {:engagement_recommendation, attacker_id, target_id}
     
-    IntelligenceCache.get_or_compute(cache_key, fn ->
+    Cache.get_or_compute(:analysis, cache_key, fn ->
       generate_engagement_analysis(attacker_id, target_id)
     end, ttl: @cache_ttl)
   end
@@ -103,9 +103,12 @@ defmodule EveDmv.Contexts.Intelligence.Services.InsightGenerator do
     
     # Ship preference insights
     ship_data = character_analysis.data[:ship_preferences] || %{}
-    if ship_data[:capital_usage] && ship_data[:capital_usage] > 0.1 do
-      insights = ["Capital ship pilot - potential for escalation" | insights]
-    end
+    insights = 
+      if ship_data[:capital_usage] && ship_data[:capital_usage] > 0.1 do
+        ["Capital ship pilot - potential for escalation" | insights]
+      else
+        insights
+      end
     
     # Engagement style insights
     insights = case character_analysis.classifications.engagement_style do
@@ -131,47 +134,62 @@ defmodule EveDmv.Contexts.Intelligence.Services.InsightGenerator do
     insights = []
     
     # Activity pattern insights
-    case behavioral_patterns.activity_patterns.activity_level do
-      :very_high ->
-        insights = ["Extremely active pilot - high encounter probability" | insights]
-      :hyperactive ->
-        insights = ["Hyperactive pilot - likely online frequently" | insights]
-      _ -> insights
-    end
+    insights = 
+      case behavioral_patterns.activity_patterns.activity_level do
+        :very_high ->
+          ["Extremely active pilot - high encounter probability" | insights]
+        :hyperactive ->
+          ["Hyperactive pilot - likely online frequently" | insights]
+        _ -> 
+          insights
+      end
     
     # Timezone insights
-    if behavioral_patterns.timezone != "Unknown" do
-      insights = ["Primary timezone: #{behavioral_patterns.timezone} - plan operations accordingly" | insights]
-    end
+    insights = 
+      if behavioral_patterns.timezone != "Unknown" do
+        ["Primary timezone: #{behavioral_patterns.timezone} - plan operations accordingly" | insights]
+      else
+        insights
+      end
     
     # Predictability insights
-    case behavioral_patterns.predictability do
-      score when score > 0.7 ->
-        insights = ["Highly predictable patterns - good target for planned operations" | insights]
-      score when score < 0.3 ->
-        insights = ["Unpredictable behavior - difficult to track and predict" | insights]
-      _ -> insights
-    end
+    insights = 
+      case behavioral_patterns.predictability do
+        score when score > 0.7 ->
+          ["Highly predictable patterns - good target for planned operations" | insights]
+        score when score < 0.3 ->
+          ["Unpredictable behavior - difficult to track and predict" | insights]
+        _ -> 
+          insights
+      end
     
     # Geographic insights
     geo_prefs = behavioral_patterns.geographic_preferences
-    if geo_prefs.roaming_range == :local do
-      insights = ["Local operator - limited to small geographic area" | insights]
-    end
+    insights = 
+      if geo_prefs.roaming_range == :local do
+        ["Local operator - limited to small geographic area" | insights]
+      else
+        insights
+      end
     
-    if geo_prefs.roaming_range == :nomadic do
-      insights = ["Nomadic pilot - operates across wide geographic areas" | insights]
-    end
+    insights = 
+      if geo_prefs.roaming_range == :nomadic do
+        ["Nomadic pilot - operates across wide geographic areas" | insights]
+      else
+        insights
+      end
     
     # Gang preference insights
     gang_prefs = behavioral_patterns.gang_preferences
-    case gang_prefs.preferred_size do
-      :solo ->
-        insights = ["Solo specialist - most dangerous alone" | insights]
-      :fleet ->
-        insights = ["Fleet pilot - strength multiplied by numbers" | insights]
-      _ -> insights
-    end
+    insights = 
+      case gang_prefs.preferred_size do
+        :solo ->
+          ["Solo specialist - most dangerous alone" | insights]
+        :fleet ->
+          ["Fleet pilot - strength multiplied by numbers" | insights]
+        _ -> 
+          insights
+      end
     
     Enum.reverse(insights)
   end
@@ -181,39 +199,60 @@ defmodule EveDmv.Contexts.Intelligence.Services.InsightGenerator do
     core_metrics = performance_analysis.core_metrics
     
     # K/D ratio insights
-    if core_metrics.kill_death_ratio > 5.0 do
-      insights = ["Exceptional K/D ratio (#{core_metrics.kill_death_ratio}) - highly skilled pilot" | insights]
-    end
+    insights = 
+      if core_metrics.kill_death_ratio > 5.0 do
+        ["Exceptional K/D ratio (#{core_metrics.kill_death_ratio}) - highly skilled pilot" | insights]
+      else
+        insights
+      end
     
     # ISK efficiency insights
-    if core_metrics.isk_efficiency > 80 do
-      insights = ["High ISK efficiency (#{core_metrics.isk_efficiency}%) - selective target engagement" | insights]
-    end
+    insights = 
+      if core_metrics.isk_efficiency > 80 do
+        ["High ISK efficiency (#{core_metrics.isk_efficiency}%) - selective target engagement" | insights]
+      else
+        insights
+      end
     
     # Solo effectiveness insights
-    if core_metrics.solo_effectiveness > 70 do
-      insights = ["Strong solo pilot - dangerous in 1v1 situations" | insights]
-    end
+    insights = 
+      if core_metrics.solo_effectiveness > 70 do
+        ["Strong solo pilot - dangerous in 1v1 situations" | insights]
+      else
+        insights
+      end
     
     # Versatility insights
-    if core_metrics.versatility_score > 70 do
-      insights = ["Highly versatile pilot - adaptable to various situations" | insights]
-    end
+    insights = 
+      if core_metrics.versatility_score > 70 do
+        ["Highly versatile pilot - adaptable to various situations" | insights]
+      else
+        insights
+      end
     
     # Improvement trend insights
     improvement = performance_analysis.improvement_metrics
-    if improvement.improvement_rate > 20 do
-      insights = ["Rapidly improving pilot - threat level increasing" | insights]
-    end
+    insights = 
+      if improvement.improvement_rate > 20 do
+        ["Rapidly improving pilot - threat level increasing" | insights]
+      else
+        insights
+      end
     
-    if improvement.improvement_rate < -20 do
-      insights = ["Declining performance - may be less active or losing effectiveness" | insights]
-    end
+    insights = 
+      if improvement.improvement_rate < -20 do
+        ["Declining performance - may be less active or losing effectiveness" | insights]
+      else
+        insights
+      end
     
     # Consistency insights
-    if core_metrics.consistency_score > 70 do
-      insights = ["Consistent performance - reliable threat assessment" | insights]
-    end
+    insights = 
+      if core_metrics.consistency_score > 70 do
+        ["Consistent performance - reliable threat assessment" | insights]
+      else
+        insights
+      end
     
     Enum.reverse(insights)
   end
@@ -254,162 +293,197 @@ defmodule EveDmv.Contexts.Intelligence.Services.InsightGenerator do
     
     # Ship-based recommendations
     ship_data = character_analysis.data[:ship_preferences] || %{}
-    if ship_data[:capital_usage] && ship_data[:capital_usage] > 0.2 do
-      recommendations = ["Prepare for capital escalation",
-                        "Have anti-capital ships ready" | recommendations]
-    end
+    recommendations = 
+      if ship_data[:capital_usage] && ship_data[:capital_usage] > 0.2 do
+        ["Prepare for capital escalation",
+         "Have anti-capital ships ready" | recommendations]
+      else
+        recommendations
+      end
     
     Enum.reverse(recommendations)
   end
   
   defp analyze_vulnerabilities(character_analysis, behavioral_patterns) do
-    vulnerabilities = []
+    initial_vulnerabilities = []
     
     # Behavioral vulnerabilities
-    if behavioral_patterns.predictability > 0.7 do
-      vulnerabilities = [%{
-        type: :behavioral,
-        description: "Highly predictable activity patterns",
-        severity: :medium,
-        exploitation: "Plan operations during predicted active times and locations"
-      } | vulnerabilities]
-    end
+    behavioral_vulnerabilities = 
+      if behavioral_patterns.predictability > 0.7 do
+        [%{
+          type: :behavioral,
+          description: "Highly predictable activity patterns",
+          severity: :medium,
+          exploitation: "Plan operations during predicted active times and locations"
+        } | initial_vulnerabilities]
+      else
+        initial_vulnerabilities
+      end
     
     # Combat vulnerabilities
     combat_data = character_analysis.data[:combat_stats] || %{}
-    if combat_data[:solo_ratio] && combat_data[:solo_ratio] > 0.8 do
-      vulnerabilities = [%{
-        type: :tactical,
-        description: "Over-reliance on solo combat",
-        severity: :high,
-        exploitation: "Use coordinated group tactics to overwhelm"
-      } | vulnerabilities]
-    end
+    combat_vulnerabilities = 
+      if combat_data[:solo_ratio] && combat_data[:solo_ratio] > 0.8 do
+        [%{
+          type: :tactical,
+          description: "Over-reliance on solo combat",
+          severity: :high,
+          exploitation: "Use coordinated group tactics to overwhelm"
+        } | behavioral_vulnerabilities]
+      else
+        behavioral_vulnerabilities
+      end
     
     # Geographic vulnerabilities
     geo_prefs = behavioral_patterns.geographic_preferences
-    if length(geo_prefs[:home_systems] || []) > 0 do
-      vulnerabilities = [%{
-        type: :geographic,
-        description: "Operates from identifiable home systems",
-        severity: :low,
-        exploitation: "Set up camps or intelligence networks in home areas"
-      } | vulnerabilities]
-    end
+    geographic_vulnerabilities = 
+      if length(geo_prefs[:home_systems] || []) > 0 do
+        [%{
+          type: :geographic,
+          description: "Operates from identifiable home systems",
+          severity: :low,
+          exploitation: "Set up camps or intelligence networks in home areas"
+        } | combat_vulnerabilities]
+      else
+        combat_vulnerabilities
+      end
     
     # Ship vulnerabilities
     ship_data = character_analysis.data[:ship_preferences] || %{}
-    if ship_data[:ship_diversity] && ship_data[:ship_diversity] < 3 do
-      vulnerabilities = [%{
+    final_vulnerabilities = if ship_data[:ship_diversity] && ship_data[:ship_diversity] < 3 do
+      [%{
         type: :tactical,
         description: "Limited ship diversity",
         severity: :low,
         exploitation: "Prepare counters for known ship preferences"
-      } | vulnerabilities]
+      } | geographic_vulnerabilities]
+    else
+      geographic_vulnerabilities
     end
     
-    vulnerabilities
+    final_vulnerabilities
   end
   
   defp assess_opportunities(character_analysis, behavioral_patterns) do
-    opportunities = []
+    initial_opportunities = []
     
     # Recruitment opportunities
-    if character_analysis.classifications.skill_level in [:veteran, :elite] do
-      opportunities = [%{
+    recruitment_opportunities = if character_analysis.classifications.skill_level in [:veteran, :elite] do
+      [%{
         type: :recruitment,
         description: "High-skill pilot suitable for recruitment",
         priority: :high,
         approach: "Diplomatic engagement, demonstrate organizational value"
-      } | opportunities]
+      } | initial_opportunities]
+    else
+      initial_opportunities
     end
     
     # Intelligence opportunities
-    if behavioral_patterns.predictability > 0.6 do
-      opportunities = [%{
+    intelligence_opportunities = if behavioral_patterns.predictability > 0.6 do
+      [%{
         type: :intelligence,
         description: "Predictable patterns allow intelligence gathering",
         priority: :medium,
         approach: "Establish surveillance networks in operational areas"
-      } | opportunities]
+      } | recruitment_opportunities]
+    else
+      recruitment_opportunities
     end
     
     # Tactical opportunities
     combat_data = character_analysis.data[:combat_stats] || %{}
-    if combat_data[:solo_ratio] && combat_data[:solo_ratio] > 0.7 do
-      opportunities = [%{
-        type: :tactical,
-        description: "Solo preference creates isolation opportunities",
-        priority: :medium,
-        approach: "Coordinate multi-vector attacks during solo operations"
-      } | opportunities]
-    end
+    tactical_opportunities = 
+      if combat_data[:solo_ratio] && combat_data[:solo_ratio] > 0.7 do
+        [%{
+          type: :tactical,
+          description: "Solo preference creates isolation opportunities",
+          priority: :medium,
+          approach: "Coordinate multi-vector attacks during solo operations"
+        } | intelligence_opportunities]
+      else
+        intelligence_opportunities
+      end
     
-    opportunities
+    tactical_opportunities
   end
   
   defp identify_intelligence_priorities(threat_assessment, character_analysis) do
-    priorities = []
+    initial_priorities = []
     
     # High-threat pilots are priority intelligence targets
-    if threat_assessment.threat_level in [:critical, :high] do
-      priorities = [%{
-        category: :threat_monitoring,
-        priority: :high,
-        focus: "Continuous activity monitoring and pattern analysis",
-        resources_required: ["Dedicated surveillance", "Network infiltration"]
-      } | priorities]
-    end
+    threat_priorities = 
+      if threat_assessment.threat_level in [:critical, :high] do
+        [%{
+          category: :threat_monitoring,
+          priority: :high,
+          focus: "Continuous activity monitoring and pattern analysis",
+          resources_required: ["Dedicated surveillance", "Network infiltration"]
+        } | initial_priorities]
+      else
+        initial_priorities
+      end
     
     # Unknown or unpredictable pilots need more data
-    if character_analysis.risk_profile.predictability < 0.4 do
-      priorities = [%{
-        category: :behavioral_analysis,
-        priority: :medium,
-        focus: "Extended behavioral pattern collection",
-        resources_required: ["Long-term observation", "Activity correlation"]
-      } | priorities]
-    end
+    behavioral_priorities = 
+      if character_analysis.risk_profile.predictability < 0.4 do
+        [%{
+          category: :behavioral_analysis,
+          priority: :medium,
+          focus: "Extended behavioral pattern collection",
+          resources_required: ["Long-term observation", "Activity correlation"]
+        } | threat_priorities]
+      else
+        threat_priorities
+      end
     
     # Fleet pilots need network analysis
-    if character_analysis.classifications.pilot_type in [:fleet_pilot, :gang_specialist] do
-      priorities = [%{
+    final_priorities = if character_analysis.classifications.pilot_type in [:fleet_pilot, :gang_specialist] do
+      [%{
         category: :network_analysis,
         priority: :medium,
         focus: "Associate mapping and organizational structure",
         resources_required: ["Social network analysis", "Communication monitoring"]
-      } | priorities]
+      } | behavioral_priorities]
+    else
+      behavioral_priorities
     end
     
-    priorities
+    final_priorities
   end
   
   defp enhance_mitigation_strategies(assessment, base_strategies) do
-    enhanced = []
+    initial_enhanced = []
     
     # Enhance based on specific threat aspects
-    if assessment.aspect_scores.combat_effectiveness > 70 do
-      enhanced = [%{
+    combat_enhanced = if assessment.aspect_scores.combat_effectiveness > 70 do
+      [%{
         strategy: "Combat Superiority Mitigation",
         tactics: ["Maintain 2:1+ numerical advantage", "Use range/kiting tactics", "Coordinate focus fire"],
         reasoning: "High combat effectiveness requires overwhelming force"
-      } | enhanced]
+      } | initial_enhanced]
+    else
+      initial_enhanced
     end
     
-    if assessment.aspect_scores.tactical_sophistication > 70 do
-      enhanced = [%{
+    tactical_enhanced = if assessment.aspect_scores.tactical_sophistication > 70 do
+      [%{
         strategy: "Tactical Counter-measures",
         tactics: ["Expect advanced fits and unusual tactics", "Prepare for baiting attempts", "Use simple, proven strategies"],
         reasoning: "High tactical sophistication requires conservative approach"
-      } | enhanced]
+      } | combat_enhanced]
+    else
+      combat_enhanced
     end
     
-    if assessment.aspect_scores.operational_security > 70 do
-      enhanced = [%{
+    opsec_enhanced = if assessment.aspect_scores.operational_security > 70 do
+      [%{
         strategy: "Intelligence Warfare",
         tactics: ["Use multiple intelligence sources", "Expect counter-intelligence", "Maintain operational security"],
         reasoning: "High operational security requires advanced intelligence methods"
-      } | enhanced]
+      } | tactical_enhanced]
+    else
+      tactical_enhanced
     end
     
     # Add base strategies as simple tactical notes
@@ -421,7 +495,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.InsightGenerator do
       }
     end)
     
-    enhanced ++ base_enhanced
+    opsec_enhanced ++ base_enhanced
   end
   
   defp generate_engagement_analysis(attacker_id, target_id) do
@@ -481,10 +555,10 @@ defmodule EveDmv.Contexts.Intelligence.Services.InsightGenerator do
     target_style = target.analysis.classifications.engagement_style
     
     matchup_matrix = %{
-      {hot_dropper: :roamer} => :favorable,
-      {gate_camper: :roamer} => :favorable,
-      {roamer: :home_defender} => :unfavorable,
-      {solo_specialist: :fleet_pilot} => :unfavorable
+      {:hot_dropper, :roamer} => :favorable,
+      {:gate_camper, :roamer} => :favorable,
+      {:roamer, :home_defender} => :unfavorable,
+      {:solo_specialist, :fleet_pilot} => :unfavorable
     }
     
     result = Map.get(matchup_matrix, {attacker_style, target_style}, :neutral)
@@ -525,7 +599,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.InsightGenerator do
     }
   end
   
-  defp generate_specific_engagement_recs(attacker, target) do
+  defp generate_specific_engagement_recs(_attacker, target) do
     recommendations = []
     
     # Based on threat comparison
@@ -564,39 +638,47 @@ defmodule EveDmv.Contexts.Intelligence.Services.InsightGenerator do
     end
     
     # Adjust for various factors
-    adjusted_prob = base_prob
+    initial_adjusted_prob = base_prob
     
     # Solo vs gang preferences
-    if attacker.analysis.classifications.pilot_type == :solo_specialist and
+    final_adjusted_prob = if attacker.analysis.classifications.pilot_type == :solo_specialist and
        target.analysis.classifications.pilot_type == :fleet_pilot do
-      adjusted_prob = adjusted_prob * 1.2  # Solo specialists better against fleet pilots alone
+      initial_adjusted_prob * 1.2  # Solo specialists better against fleet pilots alone
+    else
+      initial_adjusted_prob
     end
     
-    Float.round(min(adjusted_prob, 95.0), 1)  # Cap at 95%
+    Float.round(min(final_adjusted_prob, 95.0), 1)  # Cap at 95%
   end
   
-  defp assess_engagement_risk(attacker, target) do
-    risks = []
+  defp assess_engagement_risk(_attacker, target) do
+    initial_risks = []
     
     # High threat target risks
-    if target.threat_assessment.threat_level in [:critical, :high] do
-      risks = ["Significant loss probability", "Potential for counter-attack" | risks]
+    threat_risks = if target.threat_assessment.threat_level in [:critical, :high] do
+      ["Significant loss probability", "Potential for counter-attack" | initial_risks]
+    else
+      initial_risks
     end
     
     # Capital escalation risks
     target_data = target.analysis.data[:ship_preferences] || %{}
-    if target_data[:capital_usage] && target_data[:capital_usage] > 0.1 do
-      risks = ["Capital escalation possible", "May have backup capitals" | risks]
+    capital_risks = if target_data[:capital_usage] && target_data[:capital_usage] > 0.1 do
+      ["Capital escalation possible", "May have backup capitals" | threat_risks]
+    else
+      threat_risks
     end
     
     # Fleet backup risks
-    if target.analysis.classifications.pilot_type in [:fleet_pilot, :gang_specialist] do
-      risks = ["Likely has backup available", "May be bait for larger engagement" | risks]
+    final_risks = if target.analysis.classifications.pilot_type in [:fleet_pilot, :gang_specialist] do
+      ["Likely has backup available", "May be bait for larger engagement" | capital_risks]
+    else
+      capital_risks
     end
     
     %{
-      risk_factors: risks,
-      overall_risk: determine_overall_risk(target.threat_assessment.threat_level, length(risks))
+      risk_factors: final_risks,
+      overall_risk: determine_overall_risk(target.threat_assessment.threat_level, length(final_risks))
     }
   end
   

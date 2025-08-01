@@ -143,9 +143,26 @@ defmodule EveDmv.Surveillance.Matching.MatchEvaluator do
   Calculate cache hit rate for monitoring purposes.
   """
   def calculate_cache_hit_rate do
-    # This would need to be implemented with proper metrics tracking
-    # For now return a placeholder
-    0.0
+    # Calculate cache hit rate from ETS metrics if available
+    case :ets.info(:surveillance_cache_stats) do
+      :undefined ->
+        # Create stats table if it doesn't exist
+        :ets.new(:surveillance_cache_stats, [:named_table, :public, :set])
+        0.0
+      
+      _ ->
+        # Get hit and miss counts from ETS
+        hits = get_cache_counter(:cache_hits, 0)
+        misses = get_cache_counter(:cache_misses, 0)
+        
+        total_requests = hits + misses
+        
+        if total_requests > 0 do
+          hits / total_requests
+        else
+          0.0
+        end
+    end
   end
 
   @doc """
@@ -195,6 +212,13 @@ defmodule EveDmv.Surveillance.Matching.MatchEvaluator do
   def validate_killmail(_), do: {:error, "Killmail must be a map"}
 
   # Private helper functions
+
+  defp get_cache_counter(key, default) do
+    case :ets.lookup(:surveillance_cache_stats, key) do
+      [{^key, value}] -> value
+      [] -> default
+    end
+  end
 
   defp calculate_data_completeness(killmail) do
     # Check for presence of optional but useful fields

@@ -1,5 +1,4 @@
-defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.Generators.
-            InsightGenerator do
+defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.Generators.InsightGenerator do
   @moduledoc """
   Generates actionable insights from threat assessment data.
 

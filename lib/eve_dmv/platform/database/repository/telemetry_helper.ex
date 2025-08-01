@@ -59,6 +59,9 @@ defmodule EveDmv.Database.Repository.TelemetryHelper do
       status: status
     }
 
+    # Update performance statistics
+    update_stats_from_telemetry(duration_ms, status)
+
     :telemetry.execute(
       [:eve_dmv, :database, :repository, :query],
       measurements,
@@ -127,14 +130,17 @@ defmodule EveDmv.Database.Repository.TelemetryHelper do
   """
   @spec get_performance_stats() :: map()
   def get_performance_stats do
-    # This would typically pull from a metrics store
-    # For now, return placeholder data
-    %{
-      total_queries: 0,
-      avg_duration_ms: 0,
-      slow_queries: 0,
-      error_rate: 0.0
-    }
+    # Get stats from ETS table if available
+    case :ets.info(:repo_performance_stats) do
+      :undefined ->
+        # Create ETS table for tracking stats if it doesn't exist
+        :ets.new(:repo_performance_stats, [:named_table, :public, :set])
+        get_default_stats()
+      
+      _ ->
+        # ETS table exists, gather current stats
+        gather_current_stats()
+    end
   end
 
   @doc """
@@ -142,8 +148,12 @@ defmodule EveDmv.Database.Repository.TelemetryHelper do
   """
   @spec reset_performance_stats() :: :ok
   def reset_performance_stats do
-    # Implementation would reset metrics store
-    :ok
+    case :ets.info(:repo_performance_stats) do
+      :undefined -> :ok
+      _ ->
+        :ets.delete_all_objects(:repo_performance_stats)
+        :ok
+    end
   end
 
   # Private helper functions
@@ -167,5 +177,66 @@ defmodule EveDmv.Database.Repository.TelemetryHelper do
 
   defp extract_result_count(_other) do
     0
+  end
+
+  defp get_default_stats do
+    %{
+      total_queries: 0,
+      avg_duration_ms: 0.0,
+      slow_queries: 0,
+      error_rate: 0.0,
+      last_reset: DateTime.utc_now()
+    }
+  end
+
+  defp gather_current_stats do
+    # Get aggregated stats from ETS
+    total_queries = get_ets_counter(:total_queries, 0)
+    total_duration = get_ets_counter(:total_duration, 0)
+    slow_queries = get_ets_counter(:slow_queries, 0)
+    error_count = get_ets_counter(:error_count, 0)
+
+    avg_duration_ms = if total_queries > 0, do: total_duration / total_queries, else: 0.0
+    error_rate = if total_queries > 0, do: error_count / total_queries * 100, else: 0.0
+
+    %{
+      total_queries: total_queries,
+      avg_duration_ms: Float.round(avg_duration_ms, 2),
+      slow_queries: slow_queries,
+      error_rate: Float.round(error_rate, 2),
+      last_update: DateTime.utc_now()
+    }
+  end
+
+  defp get_ets_counter(key, default) do
+    case :ets.lookup(:repo_performance_stats, key) do
+      [{^key, value}] -> value
+      [] -> default
+    end
+  end
+
+  defp increment_ets_counter(key, amount \\ 1) do
+    :ets.update_counter(:repo_performance_stats, key, amount, {key, 0})
+  end
+
+  defp update_stats_from_telemetry(duration_ms, status) do
+    # Ensure ETS table exists
+    case :ets.info(:repo_performance_stats) do
+      :undefined ->
+        :ets.new(:repo_performance_stats, [:named_table, :public, :set])
+      _ -> :ok
+    end
+
+    # Update counters
+    increment_ets_counter(:total_queries)
+    increment_ets_counter(:total_duration, round(duration_ms))
+
+    if duration_ms >= @slow_query_threshold_ms do
+      increment_ets_counter(:slow_queries)
+    end
+
+    if status == :error do
+      increment_ets_counter(:error_count)
+    end
   end
 end

@@ -760,7 +760,8 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
     |> then(fn scout_indicators ->
       # System exploration
       if metrics.exploration_patterns.systems_explored >= 5 do
-        scout_indicators ++ [{:systematic_exploration, metrics.exploration_patterns.systems_explored}]
+        scout_indicators ++
+          [{:systematic_exploration, metrics.exploration_patterns.systems_explored}]
       else
         scout_indicators
       end
@@ -768,7 +769,8 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
     |> then(fn exploration_indicators ->
       # Intelligence gathering
       if metrics.intelligence_gathering.intelligence_indicators do
-        exploration_indicators ++ [{:intelligence_collection, metrics.intelligence_gathering.probe_kills}]
+        exploration_indicators ++
+          [{:intelligence_collection, metrics.intelligence_gathering.probe_kills}]
       else
         exploration_indicators
       end
@@ -1443,7 +1445,8 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
     |> then(fn buildup_indicators ->
       # Staging activity
       if metrics.staging_activity.concentration_level > 0.3 do
-        buildup_indicators ++ [{:staging_concentration, metrics.staging_activity.concentration_level}]
+        buildup_indicators ++
+          [{:staging_concentration, metrics.staging_activity.concentration_level}]
       else
         buildup_indicators
       end
@@ -1459,7 +1462,8 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
     |> then(fn readiness_indicators ->
       # Coordination
       if metrics.coordination_indicators.coordination_score > 0.5 do
-        readiness_indicators ++ [{:coordinated_activity, metrics.coordination_indicators.coordination_score}]
+        readiness_indicators ++
+          [{:coordinated_activity, metrics.coordination_indicators.coordination_score}]
       else
         readiness_indicators
       end

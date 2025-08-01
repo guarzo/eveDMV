@@ -341,16 +341,18 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
 
   defp identify_specializations(participant) do
     ship_class = Map.get(participant, :ship_class, :unknown)
-    weapon_type = Map.get(participant, :weapon_type_id)
+    ship_type_id = Map.get(participant, :ship_type_id)
+    _weapon_type = Map.get(participant, :weapon_type_id)
 
     []
     |> (fn specs -> if ship_class == :frigate, do: [:tackle | specs], else: specs end).()
     |> (fn specs -> if ship_class == :capital, do: [:capital_warfare | specs], else: specs end).()
     |> (fn specs ->
-      if weapon_type && rem(weapon_type || 0, 7) == 0,
-        do: [:electronic_warfare | specs],
-        else: specs
-    end).()
+          # Use proper EWAR ship detection instead of modulo
+          if ship_type_id && EveDmv.StaticData.ShipRoles.is_ewar_ship?(ship_type_id),
+            do: [:electronic_warfare | specs],
+            else: specs
+        end).()
   end
 
   defp analyze_activity_patterns(_participant) do

@@ -38,6 +38,83 @@ defmodule EveDmv.StaticData.ShipTypes do
 
   def classify_ship_type(_), do: :unknown
 
+  @doc """
+  Check if a ship is Tech 2 based on its group name.
+  """
+  def is_t2_ship?(type_id) when is_integer(type_id) do
+    case get_ship_group_name(type_id) do
+      nil -> false
+      group_name -> is_t2_group?(group_name)
+    end
+  end
+
+  def is_t2_ship?(_), do: false
+
+  @doc """
+  Check if a ship is Tech 3 (Strategic Cruiser) based on its group name.
+  """
+  def is_t3_ship?(type_id) when is_integer(type_id) do
+    case get_ship_group_name(type_id) do
+      nil -> false
+      "Strategic Cruiser" -> true
+      _ -> false
+    end
+  end
+
+  def is_t3_ship?(_), do: false
+
+  @doc """
+  Check if a ship is a faction ship based on its group name.
+  """
+  def is_faction_ship?(type_id) when is_integer(type_id) do
+    case get_ship_group_name(type_id) do
+      nil -> false
+      group_name -> is_faction_group?(group_name)
+    end
+  end
+
+  def is_faction_ship?(_), do: false
+
+  # Helper function to get ship group name
+  defp get_ship_group_name(type_id) do
+    from(i in ItemType,
+         where: i.type_id == ^type_id and i.is_ship == true,
+         select: i.group_name
+       )
+       |> Repo.one()
+  end
+
+  # Check if group name indicates T2 ship
+  defp is_t2_group?(group_name) do
+    group_name in [
+      "Assault Frigate",
+      "Covert Ops", 
+      "Electronic Attack Frigate",
+      "Interceptor",
+      "Stealth Bomber",
+      "Heavy Assault Cruiser",
+      "Heavy Interdictor", 
+      "Logistics",
+      "Recon Ship",
+      "Interdictor",
+      "Command Ship",
+      "Black Ops",
+      "Marauder"
+    ]
+  end
+
+  # Check if group name indicates faction ship
+  defp is_faction_group?(group_name) do
+    group_name in [
+      "Faction Frigate",
+      "Faction Cruiser", 
+      "Faction Battleship",
+      "Pirate Frigate",
+      "Pirate Cruiser",
+      "Pirate Battleship"
+    ] or String.contains?(group_name, ["Navy", "Fleet", "Faction"])
+  end
+
   # Classify a ship based on its group name from the SDE
   defp classify_by_group_name(group_name) do
     case group_name do
@@ -599,6 +676,42 @@ defmodule EveDmv.StaticData.ShipTypes do
       max_entropy = :math.log2(map_size(ship_composition))
       if max_entropy > 0, do: Float.round(entropy / max_entropy, 3), else: 0.0
     end
+  end
+
+  @doc """
+  Get ship type information by type ID.
+  
+  Returns comprehensive ship information including name, group, and attributes.
+  """
+  def get_ship_type(type_id) when is_integer(type_id) do
+    case from(i in ItemType,
+           where: i.type_id == ^type_id and i.is_ship == true,
+           select: %{
+             type_id: i.type_id,
+             type_name: i.type_name,
+             group_name: i.group_name,
+             mass: i.mass,
+             volume: i.volume,
+             capacity: i.capacity
+           }
+         )
+         |> Repo.one() do
+      nil -> {:error, :not_found}
+      ship_info -> 
+        # Add classification to the info
+        classification = classify_by_group_name(ship_info.group_name)
+        info_with_class = Map.put(ship_info, :classification, classification)
+        {:ok, info_with_class}
+    end
+  end
+
+  def get_ship_type(_), do: {:error, :invalid_type_id}
+
+  @doc """
+  Get ship classification. Delegates to main StaticData module.
+  """
+  def get_ship_class(ship_identifier) do
+    EveDmv.StaticData.get_ship_class(ship_identifier)
   end
 
   @doc """

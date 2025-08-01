@@ -1,5 +1,4 @@
-defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.Calculators.
-            ThreatScoreCalculator do
+defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.Calculators.ThreatScoreCalculator do
   @moduledoc """
   Handles threat score calculations and weighting algorithms.
 

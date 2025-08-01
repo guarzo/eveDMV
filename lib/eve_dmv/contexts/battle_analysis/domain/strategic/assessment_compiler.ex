@@ -22,6 +22,7 @@ defmodule EveDmv.Shared.Strategic.AssessmentCompiler do
       trend_analysis: trend_analysis,
       opportunity_analysis: opportunity_analysis
     } = analysis_components
+
     environment_classification =
       classify_strategic_environment(
         pattern_analysis,
@@ -873,7 +874,8 @@ defmodule EveDmv.Shared.Strategic.AssessmentCompiler do
         competition = get_in(resource_analysis, [:competition, :competition_intensity]) || 0
 
         if competition < 0.3 do
-          territorial_insights ++ ["Low resource competition with positive momentum - expansion opportunity"]
+          territorial_insights ++
+            ["Low resource competition with positive momentum - expansion opportunity"]
         else
           territorial_insights
         end
@@ -885,7 +887,8 @@ defmodule EveDmv.Shared.Strategic.AssessmentCompiler do
     final_insights =
       if pattern_analysis.dominant_pattern == :offensive_preparation &&
            trend_analysis.momentum.momentum_direction == :strong_negative do
-        resource_insights ++ ["Offensive preparation during negative momentum - desperation attack likely"]
+        resource_insights ++
+          ["Offensive preparation during negative momentum - desperation attack likely"]
       else
         resource_insights
       end

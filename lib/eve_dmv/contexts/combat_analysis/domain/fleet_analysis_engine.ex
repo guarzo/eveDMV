@@ -564,7 +564,9 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.FleetAnalysisEngine do
         mobility_weaknesses
       end
 
-    if Enum.empty?(final_weaknesses), do: ["No major weaknesses identified"], else: final_weaknesses
+    if Enum.empty?(final_weaknesses),
+      do: ["No major weaknesses identified"],
+      else: final_weaknesses
   end
 
   defp generate_composition_recommendations(composition, doctrine) do
@@ -693,7 +695,8 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.FleetAnalysisEngine do
 
     %{
       advantage: winner,
-      factors: if(Enum.empty?(final_advantages), do: ["No clear advantages"], else: final_advantages),
+      factors:
+        if(Enum.empty?(final_advantages), do: ["No clear advantages"], else: final_advantages),
       magnitude: abs(eff_a - eff_b)
     }
   end
@@ -719,10 +722,16 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.FleetAnalysisEngine do
     final_recommendations =
       case doctrine_matchup[:matchup] do
         :favorable ->
-          ["Exploit doctrine advantage: #{doctrine_matchup[:description]}" | advantage_recommendations]
+          [
+            "Exploit doctrine advantage: #{doctrine_matchup[:description]}"
+            | advantage_recommendations
+          ]
 
         :unfavorable ->
-          ["Mitigate doctrine disadvantage: #{doctrine_matchup[:description]}" | advantage_recommendations]
+          [
+            "Mitigate doctrine disadvantage: #{doctrine_matchup[:description]}"
+            | advantage_recommendations
+          ]
 
         _ ->
           advantage_recommendations
@@ -873,7 +882,9 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.FleetAnalysisEngine do
         tackle_recommendations
       end
 
-    if Enum.empty?(final_recommendations), do: ["Fleet balance appears good"], else: final_recommendations
+    if Enum.empty?(final_recommendations),
+      do: ["Fleet balance appears good"],
+      else: final_recommendations
   end
 
   defp generate_composition_hash(participants) do

@@ -33,6 +33,42 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
   end
 
   @doc """
+  Generate an alert for a surveillance match.
+  
+  Returns the generated alert or error if alert generation fails.
+  """
+  def generate_alert_for_match(match) do
+    try do
+      priority = calculate_alert_priority(match)
+      
+      alert_data = %{
+        id: generate_alert_id(),
+        profile_id: match.profile_id,
+        killmail_id: match.killmail_id,
+        match_id: match.match_id || "unknown",
+        alert_type: determine_alert_type(match),
+        priority: priority,
+        state: @state_new,
+        title: generate_alert_title(match),
+        description: generate_alert_description(match),
+        metadata: %{
+          matched_criteria: match.matched_criteria || [],
+          match_confidence: match.match_confidence || 0.0,
+          killmail_value: match.killmail_value || 0
+        },
+        created_at: DateTime.utc_now(),
+        expires_at: calculate_expiry_time(priority)
+      }
+      
+      {:ok, alert_data}
+    rescue
+      _error ->
+        Logger.error("Failed to generate alert for match")
+        {:error, :alert_generation_failed}
+    end
+  end
+
+  @doc """
   Process a surveillance match and generate appropriate alerts.
   """
   def process_match(match) do
@@ -535,6 +571,94 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
         ),
       current_counters: state.alert_counters
     }
+  end
+
+  # Helper functions for alert generation
+
+  defp create_alert_from_match(match) do
+    # This is a placeholder - in a real implementation would create a proper alert structure
+    %{
+      match_id: match.match_id || "unknown",
+      profile_id: match.profile_id,
+      killmail_id: match.killmail_id,
+      created_from_match: true
+    }
+  end
+
+  defp calculate_alert_priority(match) do
+    confidence = match.match_confidence || 0.0
+    killmail_value = match.killmail_value || 0
+    
+    cond do
+      confidence >= 0.9 and killmail_value > 1_000_000_000 -> @priority_critical
+      confidence >= 0.8 or killmail_value > 500_000_000 -> @priority_high
+      confidence >= 0.6 or killmail_value > 100_000_000 -> @priority_medium
+      true -> @priority_low
+    end
+  end
+
+  defp determine_alert_type(match) do
+    criteria = match.matched_criteria || []
+    
+    cond do
+      Enum.any?(criteria, fn c -> c.type == :character_victim end) -> :character_loss
+      Enum.any?(criteria, fn c -> c.type == :character_attacker end) -> :character_activity
+      Enum.any?(criteria, fn c -> c.type == :corporation_victim end) -> :corporation_loss
+      Enum.any?(criteria, fn c -> c.type == :system_match end) -> :system_activity
+      true -> :general_match
+    end
+  end
+
+  defp generate_alert_title(match) do
+    case determine_alert_type(match) do
+      :character_loss -> "Character Loss Detected"
+      :character_activity -> "Watched Character Activity"
+      :corporation_loss -> "Corporation Loss Alert"
+      :system_activity -> "System Activity Alert"
+      :general_match -> "Surveillance Match"
+    end
+  end
+
+  defp generate_alert_description(match) do
+    criteria_count = length(match.matched_criteria || [])
+    confidence = match.match_confidence || 0.0
+    value = match.killmail_value || 0
+    
+    value_text = if value > 0 do
+      " (#{format_isk_value(value)} ISK)"
+    else
+      ""
+    end
+    
+    "Surveillance match detected with #{criteria_count} matching criteria. " <>
+    "Confidence: #{Float.round(confidence * 100, 1)}%#{value_text}"
+  end
+
+  defp calculate_expiry_time(priority) do
+    hours_to_expire = case priority do
+      @priority_critical -> 48  # 2 days
+      @priority_high -> 24      # 1 day
+      @priority_medium -> 12    # 12 hours
+      @priority_low -> 6        # 6 hours
+    end
+    
+    DateTime.add(DateTime.utc_now(), hours_to_expire * 3600, :second)
+  end
+
+  defp format_isk_value(value) when value >= 1_000_000_000 do
+    "#{Float.round(value / 1_000_000_000, 1)}B"
+  end
+  
+  defp format_isk_value(value) when value >= 1_000_000 do
+    "#{Float.round(value / 1_000_000, 1)}M"
+  end
+  
+  defp format_isk_value(value) when value >= 1_000 do
+    "#{Float.round(value / 1_000, 1)}K"
+  end
+  
+  defp format_isk_value(value) do
+    "#{value}"
   end
 
   defp generate_alert_id do

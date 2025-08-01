@@ -794,9 +794,13 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
 
   defp identify_missing_components(activity_ready, threat_ready, thresholds_set) do
     []
-    |> then(fn missing -> if activity_ready, do: missing, else: missing ++ [:activity_baseline] end)
+    |> then(fn missing ->
+      if activity_ready, do: missing, else: missing ++ [:activity_baseline]
+    end)
     |> then(fn missing -> if threat_ready, do: missing, else: missing ++ [:threat_baseline] end)
-    |> then(fn missing -> if thresholds_set, do: missing, else: missing ++ [:anomaly_thresholds] end)
+    |> then(fn missing ->
+      if thresholds_set, do: missing, else: missing ++ [:anomaly_thresholds]
+    end)
   end
 
   defp validate_baseline_quality(baseline_metrics, confidence_threshold) do

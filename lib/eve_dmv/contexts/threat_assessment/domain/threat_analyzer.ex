@@ -11,7 +11,8 @@ defmodule EveDmv.Contexts.ThreatAssessment.Domain.ThreatAnalyzer do
   use EveDmv.ErrorHandler
 
   alias EveDmv.Contexts.ThreatAssessment.Analyzers.VulnerabilityScanner
-  alias EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatRepository
+  alias EveDmv.Database.KillmailRepository
+  alias EveDmv.Platform.Database.{CharacterRepository, CorporationRepository}
   alias EveDmv.Shared.MetricsCalculator
 
   require Logger
@@ -242,13 +243,19 @@ defmodule EveDmv.Contexts.ThreatAssessment.Domain.ThreatAnalyzer do
   end
 
   defp gather_base_data(entity_id, entity_type) do
-    case ThreatRepository.get_entity_data(entity_id, entity_type) do
+    entity_data_result = case entity_type do
+      :character -> CharacterRepository.get_character_stats(entity_id)
+      :corporation -> CorporationRepository.get_corporation_info(entity_id)
+      _ -> {:error, :unsupported_entity_type}
+    end
+    
+    case entity_data_result do
       {:ok, entity_data} ->
         # Gather all necessary base data
         base_data = %{
           entity_data: entity_data,
-          related_data: ThreatRepository.get_related_data(entity_id, entity_type),
-          security_context: ThreatRepository.get_security_context(entity_id, entity_type)
+          related_data: get_related_data(entity_id, entity_type),
+          security_context: get_security_context(entity_id, entity_type)
         }
 
         {:ok, base_data}
@@ -256,6 +263,33 @@ defmodule EveDmv.Contexts.ThreatAssessment.Domain.ThreatAnalyzer do
       {:error, reason} ->
         {:error, reason}
     end
+  end
+  
+  defp get_related_data(entity_id, entity_type) do
+    case entity_type do
+      :character ->
+        # Get recent killmails for character
+        case KillmailRepository.get_by_character(entity_id, DateTime.add(DateTime.utc_now(), -90 * 24 * 60 * 60, :second)) do
+          {:ok, killmails} -> %{recent_killmails: killmails}
+          _ -> %{recent_killmails: []}
+        end
+      :corporation ->
+        # Get corporation members and activity
+        case CorporationRepository.get_corporation_members(entity_id) do
+          {:ok, members} -> %{members: members}
+          _ -> %{members: []}
+        end
+      _ -> %{}
+    end
+  end
+  
+  defp get_security_context(entity_id, entity_type) do
+    # Basic security context - can be expanded based on needs
+    %{
+      entity_id: entity_id,
+      entity_type: entity_type,
+      analyzed_at: DateTime.utc_now()
+    }
   end
 
   defp analyze_vulnerabilities(entity_id, entity_type, base_data, opts) do

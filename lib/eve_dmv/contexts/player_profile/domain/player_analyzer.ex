@@ -398,22 +398,20 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
     avg_loss_value = get_in(combat_stats, [:performance_metrics, :average_loss_value]) || 0
     flies_expensive = get_in(ship_prefs, [:value_patterns, :flies_expensive_ships]) || false
 
-    (
-      0.5
-      |> then(fn base_risk ->
-        # Lower risk for better pilots
-        if kd_ratio > 2.0, do: base_risk - 0.2, else: base_risk
-      end)
-      |> then(fn base_risk ->
-        # Higher risk for expensive losses
-        if avg_loss_value > 500_000_000, do: base_risk + 0.2, else: base_risk
-      end)
-      |> then(fn base_risk ->
-        # Higher risk for expensive ships
-        if flies_expensive, do: base_risk + 0.1, else: base_risk
-      end)
-      |> then(fn base_risk -> max(0.0, min(1.0, base_risk)) end)
-    )
+    0.5
+    |> then(fn base_risk ->
+      # Lower risk for better pilots
+      if kd_ratio > 2.0, do: base_risk - 0.2, else: base_risk
+    end)
+    |> then(fn base_risk ->
+      # Higher risk for expensive losses
+      if avg_loss_value > 500_000_000, do: base_risk + 0.2, else: base_risk
+    end)
+    |> then(fn base_risk ->
+      # Higher risk for expensive ships
+      if flies_expensive, do: base_risk + 0.1, else: base_risk
+    end)
+    |> then(fn base_risk -> max(0.0, min(1.0, base_risk)) end)
   end
 
   defp identify_risk_factors(combat_stats, ship_prefs) do

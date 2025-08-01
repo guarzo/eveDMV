@@ -196,6 +196,72 @@ defmodule EveDmv.Database.KillmailRepository do
     end)
   end
 
+  @doc """
+  Get battles since a specific date.
+  """
+  @spec get_battles_since(DateTime.t()) :: {:ok, [struct()]} | {:error, term()}
+  def get_battles_since(since_date) do
+    cache_key = CacheHelper.build_key("killmail", "battles_since", since_date, [])
+    
+    Cache.get_or_compute(
+      :hot_data,
+      cache_key,
+      fn ->
+        TelemetryHelper.measure_query("killmail", :get_battles_since, fn ->
+          # For now, return battles based on high-value killmail grouping
+          # This is a simplified implementation - in reality would need battle detection logic
+          query = 
+            Ash.Query.new(KillmailEnriched)
+            |> Ash.Query.filter(killmail_time >= ^since_date)
+            |> Ash.Query.filter(total_value >= 50_000_000)  # 50M+ ISK battles
+            |> Ash.Query.sort(desc: :killmail_time)
+            |> Ash.Query.limit(100)
+            |> Ash.Query.load([:participants])
+          
+          Ash.read(query, domain: Api)
+        end)
+      end,
+      cache_ttl: 300  # 5 minutes cache
+    )
+  end
+
+  @doc """
+  Get popular fleet compositions with minimum engagement count.
+  """
+  @spec get_popular_fleet_compositions(integer(), keyword()) :: {:ok, [map()]} | {:error, term()}
+  def get_popular_fleet_compositions(min_engagements, opts \\ []) do
+    cache_key = CacheHelper.build_key("killmail", "popular_compositions", min_engagements, opts)
+    
+    Cache.get_or_compute(
+      :analysis,
+      cache_key,
+      fn ->
+        TelemetryHelper.measure_query("killmail", :get_popular_compositions, fn ->
+          # Simplified implementation - analyze ship types from recent killmails
+          days_back = Keyword.get(opts, :days_back, 30)
+          since_date = DateTime.add(DateTime.utc_now(), -days_back, :day)
+          
+          query = 
+            Ash.Query.new(KillmailEnriched)
+            |> Ash.Query.filter(killmail_time >= ^since_date)
+            |> Ash.Query.filter(total_value >= 100_000_000)  # High value engagements
+            |> Ash.Query.sort(desc: :killmail_time)
+            |> Ash.Query.limit(500)
+            |> Ash.Query.load([:participants])
+          
+          case Ash.read(query, domain: Api) do
+            {:ok, killmails} ->
+              compositions = analyze_fleet_compositions(killmails, min_engagements)
+              {:ok, compositions}
+            error ->
+              error
+          end
+        end)
+      end,
+      Keyword.merge(opts, cache_ttl: 3600)  # 1 hour cache
+    )
+  end
+
   # Private query building methods
 
   defp build_character_killmails_query(character_id, opts) do
@@ -389,5 +455,65 @@ defmodule EveDmv.Database.KillmailRepository do
       date_or_datetime ->
         date_or_datetime
     end
+  end
+
+  @doc """
+  Get killmails involving multiple characters with a date filter.
+  
+  Fetches all killmails where any of the specified characters appear
+  either as victims or attackers.
+  
+  ## Examples
+  
+      get_killmails_by_characters([12345, 67890], ~U[2024-01-01 00:00:00Z])
+  """
+  @spec get_killmails_by_characters([integer()], DateTime.t()) :: {:ok, [struct()]} | {:error, term()}
+  def get_killmails_by_characters(character_ids, start_time) when is_list(character_ids) do
+    TelemetryHelper.measure_query("killmail", :get_by_characters, fn ->
+      query =
+        KillmailEnriched
+        |> Ash.Query.new()
+        |> Ash.Query.filter(killmail_time >= ^start_time)
+        |> Ash.Query.filter(
+          victim_character_id in ^character_ids or
+          exists(participants, character_id in ^character_ids)
+        )
+        |> Ash.Query.sort(desc: :killmail_time)
+        |> Ash.Query.limit(1000)
+        |> Ash.Query.load([:participants])
+
+      Ash.read(query, domain: Api)
+    end)
+  end
+
+  defp analyze_fleet_compositions(killmails, min_engagements) do
+    # Group killmails by similar engagement patterns and analyze ship compositions
+    killmails
+    |> Enum.group_by(fn km -> 
+      # Group by system and rough time window (1 hour)
+      hour = DateTime.truncate(km.killmail_time, :hour)
+      {km.solar_system_id, hour}
+    end)
+    |> Enum.filter(fn {_key, kms} -> length(kms) >= min_engagements end)
+    |> Enum.map(fn {{system_id, hour}, kms} ->
+      ship_types = 
+        kms
+        |> Enum.flat_map(fn km -> km.participants || [] end)
+        |> Enum.map(fn p -> p.ship_type_id end)
+        |> Enum.frequencies()
+        |> Enum.sort_by(fn {_ship, count} -> count end, :desc)
+        |> Enum.take(10)
+
+      %{
+        system_id: system_id,
+        engagement_time: hour,
+        killmail_count: length(kms),
+        total_value: Enum.sum(Enum.map(kms, & &1.total_value || 0)),
+        ship_composition: ship_types,
+        participant_count: kms |> Enum.flat_map(fn km -> km.participants || [] end) |> length()
+      }
+    end)
+    |> Enum.sort_by(& &1.total_value, :desc)
+    |> Enum.take(20)
   end
 end

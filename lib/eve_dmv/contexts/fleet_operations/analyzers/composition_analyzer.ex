@@ -1149,7 +1149,10 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
     logistics_insights =
       cond do
         logistics_count == 0 and total_pilots > 5 ->
-          ["⚠️ No logistics support detected - fleet vulnerable to attrition warfare." | tactical_insights]
+          [
+            "⚠️ No logistics support detected - fleet vulnerable to attrition warfare."
+            | tactical_insights
+          ]
 
         logistics_count > 0 and total_pilots > 0 ->
           logi_ratio = logistics_count / total_pilots

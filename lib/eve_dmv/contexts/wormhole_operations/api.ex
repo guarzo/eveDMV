@@ -9,7 +9,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Api do
 
   use EveDmv.ErrorHandler
   alias EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer
-  alias EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer
   alias EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter
   alias EveDmv.Contexts.WormholeOperations.Infrastructure.VettingRepository
   # Chain intelligence now uses unified module
@@ -18,31 +17,39 @@ defmodule EveDmv.Contexts.WormholeOperations.Api do
 
   require Logger
 
-  # Private functions for operations not yet in unified module
+  # Private functions for operations delegated to unified module
   defp optimize_chain_coverage_internal(corporation_id, chain_data) do
-    # This functionality will be migrated to unified module
-    # For now, return a basic coverage optimization
-    {:ok,
-     %{
-       corporation_id: corporation_id,
-       chain_id: chain_data[:map_id],
-       coverage_score: 0.75,
-       recommendations: ["Monitor high-traffic connections", "Establish scout coverage"],
-       optimized_at: DateTime.utc_now()
-     }}
+    # Delegate to unified chain intelligence module for proper implementation
+    case ChainIntelligence.analyze_coverage_optimization(corporation_id, chain_data) do
+      {:ok, analysis} -> 
+        {:ok, %{
+          corporation_id: corporation_id,
+          chain_id: chain_data[:map_id],
+          coverage_score: analysis.coverage_score || 0.0,
+          recommendations: analysis.recommendations || [],
+          optimized_at: DateTime.utc_now()
+        }}
+      {:error, reason} ->
+        Logger.warning("Chain coverage optimization failed: #{inspect(reason)}")
+        {:error, :coverage_analysis_unavailable}
+    end
   end
 
   defp get_intelligence_summary_internal(corporation_id) do
-    # This functionality will be migrated to unified module
-    # For now, return a basic intelligence summary
-    {:ok,
-     %{
-       corporation_id: corporation_id,
-       active_chains: 0,
-       threat_level: :low,
-       recent_activity: [],
-       summary_generated_at: DateTime.utc_now()
-     }}
+    # Delegate to unified chain intelligence module for proper implementation  
+    case ChainIntelligence.get_corporation_intelligence_summary(corporation_id) do
+      {:ok, summary} ->
+        {:ok, %{
+          corporation_id: corporation_id,
+          active_chains: summary.active_chains || 0,
+          threat_level: summary.threat_level || :unknown,
+          recent_activity: summary.recent_activity || [],
+          summary_generated_at: DateTime.utc_now()
+        }}
+      {:error, reason} ->
+        Logger.warning("Intelligence summary failed: #{inspect(reason)}")
+        {:error, :intelligence_data_unavailable}
+    end
   end
 
   # Recruitment and Vetting API
@@ -178,61 +185,52 @@ defmodule EveDmv.Contexts.WormholeOperations.Api do
   # Mass Optimization API
 
   @doc """
-  Optimize fleet composition for specific wormhole class constraints.
+  Validate fleet composition for wormhole operations.
+  Note: Mass tracking feature has been removed.
 
   ## Parameters
   - fleet_data: Current fleet composition and pilot availability
-  - wormhole_class: Target wormhole class (C1-C6, or specific mass limit)
+  - wormhole_class: Target wormhole class (C1-C6)
 
   ## Returns
-  Optimized fleet composition that maximizes effectiveness within mass constraints.
+  Fleet validation results without mass optimization.
   """
   def optimize_fleet_for_wormhole(fleet_data, wormhole_class) do
     with {:ok, validated_fleet} <- validate_fleet_data(fleet_data),
-         {:ok, validated_class} <- validate_wormhole_class(wormhole_class),
-         {:ok, optimization} <-
-           MassOptimizer.optimize_fleet_composition(validated_fleet, validated_class) do
-      Logger.info("Optimized fleet for #{wormhole_class} wormhole operations")
-      {:ok, optimization}
+         {:ok, validated_class} <- validate_wormhole_class(wormhole_class) do
+      Logger.info("Fleet validation for #{wormhole_class} wormhole operations")
+      # Return the fleet as-is without mass optimization
+      {:ok, %{
+        fleet: validated_fleet,
+        wormhole_class: validated_class,
+        recommendations: []
+      }}
     else
       {:error, reason} ->
-        Logger.warning("Failed to optimize fleet for wormhole: #{inspect(reason)}")
+        Logger.warning("Failed to validate fleet for wormhole: #{inspect(reason)}")
         {:error, reason}
     end
   end
 
   @doc """
-  Calculate mass efficiency metrics for a fleet.
+  Mass efficiency calculation removed - feature deprecated.
   """
-  def calculate_mass_efficiency(fleet_data) do
-    with {:ok, validated_fleet} <- validate_fleet_data(fleet_data),
-         {:ok, efficiency_metrics} <- MassOptimizer.calculate_mass_efficiency(validated_fleet) do
-      {:ok, efficiency_metrics}
-    end
+  def calculate_mass_efficiency(_fleet_data) do
+    {:error, :feature_removed}
   end
 
   @doc """
-  Get mass optimization suggestions for a target wormhole class.
+  Mass optimization suggestions removed - feature deprecated.
   """
-  def get_mass_optimization_suggestions(fleet_data, target_class) do
-    with {:ok, validated_fleet} <- validate_fleet_data(fleet_data),
-         {:ok, validated_class} <- validate_wormhole_class(target_class),
-         {:ok, suggestions} <-
-           MassOptimizer.generate_optimization_suggestions(validated_fleet, validated_class) do
-      {:ok, suggestions}
-    end
+  def get_mass_optimization_suggestions(_fleet_data, _target_class) do
+    {:error, :feature_removed}
   end
 
   @doc """
-  Validate fleet against wormhole mass constraints.
+  Mass constraint validation removed - feature deprecated.
   """
-  def validate_fleet_mass_limits(fleet_data, wormhole_constraints) do
-    with {:ok, validated_fleet} <- validate_fleet_data(fleet_data),
-         {:ok, validated_constraints} <- validate_wormhole_constraints(wormhole_constraints),
-         {:ok, validation_result} <-
-           MassOptimizer.validate_mass_constraints(validated_fleet, validated_constraints) do
-      {:ok, validation_result}
-    end
+  def validate_fleet_mass_limits(_fleet_data, _wormhole_constraints) do
+    {:error, :feature_removed}
   end
 
   # Operational Security API

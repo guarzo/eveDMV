@@ -37,7 +37,7 @@ defmodule EveDmv.Contexts.WormholeOperations do
       # Domain services
       Domain.RecruitmentVetter,
       Domain.HomeDefenseAnalyzer,
-      Domain.MassOptimizer,
+      # MassOptimizer removed - mass tracking feature deprecated
       # ChainIntelligenceService removed - using unified module
 
       # Infrastructure
@@ -119,7 +119,7 @@ defmodule EveDmv.Contexts.WormholeOperations do
     %{
       recruitment_vetter: Domain.RecruitmentVetter.get_metrics(),
       home_defense: Domain.HomeDefenseAnalyzer.get_metrics(),
-      mass_optimizer: Domain.MassOptimizer.get_metrics(),
+      # mass_optimizer removed - feature deprecated
       opsec_monitor: %{
         total_violations: 0,
         average_compliance_score: 0.0,

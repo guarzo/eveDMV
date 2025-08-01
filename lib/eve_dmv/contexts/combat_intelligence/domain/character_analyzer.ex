@@ -153,7 +153,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
         # Calculate threat scores for each character
         search_results =
           character_ids
-          |> Enum.map(&process_character_for_search(&1, threat_level_min, threat_level_max, cutoff_date))
+          |> Enum.map(
+            &process_character_for_search(&1, threat_level_min, threat_level_max, cutoff_date)
+          )
           |> Enum.filter(&(&1 != nil))
           |> Enum.sort_by(& &1.threat_score, :desc)
           |> Enum.take(limit)
@@ -509,8 +511,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
         engagement_style_comparison: compare_engagement_styles(character_data),
         risk_assessment_comparison: compare_risk_assessments(character_data),
         relative_rankings: generate_relative_rankings(character_data),
-        tactical_recommendations:
-          generate_tactical_recommendations_for_comparison(character_data)
+        tactical_recommendations: generate_tactical_recommendations_for_comparison(character_data)
       }
 
       {:ok, comparison_results}
@@ -877,14 +878,31 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   defp process_character_for_search(character_id, threat_level_min, threat_level_max, cutoff_date) do
     case ThreatScoringCoordinator.calculate_threat_score(character_id) do
       {:ok, threat_data} ->
-        process_character_with_threat_data(character_id, threat_data, threat_level_min, threat_level_max, cutoff_date)
+        process_character_with_threat_data(
+          character_id,
+          threat_data,
+          threat_level_min,
+          threat_level_max,
+          cutoff_date
+        )
 
       {:error, _} ->
-        process_character_without_threat_data(character_id, threat_level_min, threat_level_max, cutoff_date)
+        process_character_without_threat_data(
+          character_id,
+          threat_level_min,
+          threat_level_max,
+          cutoff_date
+        )
     end
   end
 
-  defp process_character_with_threat_data(character_id, threat_data, threat_level_min, threat_level_max, cutoff_date) do
+  defp process_character_with_threat_data(
+         character_id,
+         threat_data,
+         threat_level_min,
+         threat_level_max,
+         cutoff_date
+       ) do
     threat_score = threat_data.composite_score || 0.0
 
     if threat_score >= threat_level_min and threat_score <= threat_level_max do
@@ -901,7 +919,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
     end
   end
 
-  defp process_character_without_threat_data(character_id, threat_level_min, threat_level_max, cutoff_date) do
+  defp process_character_without_threat_data(
+         character_id,
+         threat_level_min,
+         threat_level_max,
+         cutoff_date
+       ) do
     # Include characters without threat data if no threat filter
     if threat_level_min == 0.0 and threat_level_max == 10.0 do
       %{

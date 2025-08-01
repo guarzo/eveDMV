@@ -70,14 +70,14 @@ defmodule EveDmvWeb.ProfileLive do
   defp get_character_combat_stats(character_id) do
     case CharacterIntelligence.get_character_intelligence_report(character_id) do
       {:ok, report} -> report.combat_stats
-      _ -> nil
+      {:error, _} -> nil
     end
   end
 
   defp get_character_ship_intelligence(character_id) do
     case ShipIntelligenceBridge.calculate_ship_specialization(character_id) do
       {:ok, intelligence} -> intelligence
-      _ -> nil
+      {:error, _} -> nil
     end
   end
 
@@ -99,7 +99,7 @@ defmodule EveDmvWeb.ProfileLive do
     intelligence_data =
       case CharacterIntelligence.get_character_intelligence_report(user.eve_character_id) do
         {:ok, report} -> report
-        _ -> %{error: "Intelligence data not available"}
+        {:error, _} -> %{error: "Intelligence data not available"}
       end
 
     # Get threat scoring data
@@ -184,7 +184,7 @@ defmodule EveDmvWeb.ProfileLive do
            "Data export completed. Check your email for the download link."
          )}
 
-      _ ->
+      {:error, _reason} ->
         {:noreply, put_flash(socket, :error, "Failed to export data")}
     end
   end

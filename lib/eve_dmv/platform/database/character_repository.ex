@@ -192,6 +192,20 @@ defmodule EveDmv.Database.CharacterRepository do
   end
 
   @doc """
+  Get character killmails since a specific date.
+  """
+  @spec get_character_killmails_since(integer(), DateTime.t()) :: {:ok, [struct()]} | {:error, term()}
+  def get_character_killmails_since(character_id, since_date) do
+    TelemetryHelper.measure_query("character_stats", :get_killmails_since, fn ->
+      # Use the existing killmail repository functionality
+      EveDmv.Database.KillmailRepository.get_by_character(character_id,
+        start_date: since_date,
+        limit: 1000
+      )
+    end)
+  end
+
+  @doc """
   Refresh statistics for a character by triggering recalculation.
   """
   @spec refresh_character_stats(integer()) :: {:ok, struct()} | {:error, term()}
@@ -218,6 +232,149 @@ defmodule EveDmv.Database.CharacterRepository do
       {:error, reason} ->
         {:error, reason}
     end
+  end
+
+  @doc """
+  Get multiple characters by their IDs.
+  
+  Used by network analysis for batch character data retrieval.
+  
+  ## Examples
+  
+      get_characters_by_ids([12345, 67890])
+  """
+  @spec get_characters_by_ids([integer()]) :: {:ok, [struct()]} | {:error, term()}
+  def get_characters_by_ids(character_ids) when is_list(character_ids) do
+    TelemetryHelper.measure_query("character_stats", :get_by_ids, fn ->
+      query =
+        CharacterStats
+        |> Ash.Query.new()
+        |> Ash.Query.filter(character_id in ^character_ids)
+        |> Ash.Query.sort(:character_name)
+
+      Ash.read(query, domain: Api)
+    end)
+  end
+
+  @doc """
+  Get ship usage data for a character.
+  
+  Returns a map of ship type IDs to usage counts from killmail data.
+  
+  ## Examples
+  
+      get_character_ship_usage(12345)
+      # => {:ok, %{670 => 15, 24698 => 8, ...}}
+  """
+  @spec get_character_ship_usage(integer()) :: {:ok, map()} | {:error, term()}
+  def get_character_ship_usage(character_id) do
+    TelemetryHelper.measure_query("character_stats", :get_ship_usage, fn ->
+      # Query killmails to get ship usage counts
+      query = """
+      SELECT ship_type_id, COUNT(*) as usage_count
+      FROM killmails_raw
+      WHERE character_id = $1
+      AND (victim_character_id = $1 OR EXISTS (
+        SELECT 1 FROM jsonb_array_elements(attackers) AS attacker
+        WHERE (attacker->>'character_id')::bigint = $1
+      ))
+      GROUP BY ship_type_id
+      ORDER BY usage_count DESC
+      """
+      
+      case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [character_id]) do
+        {:ok, %{rows: rows}} ->
+          usage_map = 
+            rows
+            |> Enum.map(fn [ship_type_id, count] -> {ship_type_id, count} end)
+            |> Map.new()
+          {:ok, usage_map}
+          
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end)
+  end
+
+  @doc """
+  Get ship performance statistics for a character.
+  
+  Returns detailed statistics per ship type including kill/death ratios,
+  average damage dealt, and ISK efficiency.
+  
+  ## Examples
+  
+      get_character_ship_stats(12345)
+  """
+  @spec get_character_ship_stats(integer()) :: {:ok, map()} | {:error, term()}
+  def get_character_ship_stats(character_id) do
+    TelemetryHelper.measure_query("character_stats", :get_ship_stats, fn ->
+      # Query to get ship-specific performance metrics
+      query = """
+      WITH ship_kills AS (
+        SELECT 
+          a.ship_type_id,
+          COUNT(DISTINCT k.killmail_id) as kills,
+          AVG(COALESCE(a.damage_done, 0)) as avg_damage,
+          SUM(COALESCE(k.total_value, 0)) as total_kill_value
+        FROM killmails_raw k
+        CROSS JOIN LATERAL jsonb_to_recordset(k.attackers) AS a(
+          character_id bigint,
+          ship_type_id bigint,
+          damage_done integer
+        )
+        WHERE a.character_id = $1
+        GROUP BY a.ship_type_id
+      ),
+      ship_losses AS (
+        SELECT 
+          k.ship_type_id,
+          COUNT(*) as losses,
+          SUM(COALESCE(k.total_value, 0)) as total_loss_value
+        FROM killmails_raw k
+        WHERE k.victim_character_id = $1
+        GROUP BY k.ship_type_id
+      )
+      SELECT 
+        COALESCE(sk.ship_type_id, sl.ship_type_id) as ship_type_id,
+        COALESCE(sk.kills, 0) as kills,
+        COALESCE(sl.losses, 0) as losses,
+        COALESCE(sk.avg_damage, 0) as avg_damage,
+        COALESCE(sk.total_kill_value, 0) as kill_value,
+        COALESCE(sl.total_loss_value, 0) as loss_value
+      FROM ship_kills sk
+      FULL OUTER JOIN ship_losses sl ON sk.ship_type_id = sl.ship_type_id
+      ORDER BY (COALESCE(sk.kills, 0) + COALESCE(sl.losses, 0)) DESC
+      """
+      
+      case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [character_id]) do
+        {:ok, %{rows: rows}} ->
+          stats_map = 
+            rows
+            |> Enum.map(fn [ship_type_id, kills, losses, avg_damage, kill_value, loss_value] ->
+              kd_ratio = if losses > 0, do: kills / losses, else: kills
+              isk_efficiency = 
+                if kill_value + loss_value > 0,
+                  do: kill_value / (kill_value + loss_value) * 100,
+                  else: 0.0
+              
+              {ship_type_id, %{
+                kills: kills,
+                losses: losses,
+                kd_ratio: Float.round(kd_ratio, 2),
+                avg_damage: round(avg_damage),
+                kill_value: kill_value,
+                loss_value: loss_value,
+                isk_efficiency: Float.round(isk_efficiency, 2)
+              }}
+            end)
+            |> Map.new()
+          {:ok, stats_map}
+          
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end)
   end
 
   # Private helper functions

@@ -5,7 +5,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   Consolidates repository functionality from:
   - ThreatAssessment.Infrastructure.ThreatRepository
   - FleetOperations.Infrastructure.FleetRepository
-  - CorporationAnalysis.Infrastructure.CorporationRepository
+  - Corporation.Infrastructure.CorporationRepository
   - Surveillance.Infrastructure.ProfileRepository
   - PlayerProfile.Infrastructure.PlayerRepository
   - WormholeOperations.Infrastructure.VettingRepository
@@ -245,7 +245,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   """
   @spec get_corporation_analysis(integer(), options()) :: {:ok, struct()} | {:error, :not_found}
   def get_corporation_analysis(corp_id, opts \\ []) do
-    get_by_id(:corporation, EveDmv.CorporationAnalysis.CorporationAnalysis, corp_id, opts)
+    get_by_id(:corporation, EveDmv.Contexts.Corporation.Resources.Corporation, corp_id, opts)
   end
 
   @doc """
@@ -254,7 +254,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   @spec list_corp_analyses_by_alliance(integer(), options()) :: {:ok, list()} | {:error, term()}
   def list_corp_analyses_by_alliance(alliance_id, opts \\ []) do
     filter = [alliance_id: alliance_id]
-    list_by_filter(:corporation, EveDmv.CorporationAnalysis.CorporationAnalysis, filter, opts)
+    list_by_filter(:corporation, EveDmv.Contexts.Corporation.Resources.Corporation, filter, opts)
   end
 
   ## Surveillance Repository

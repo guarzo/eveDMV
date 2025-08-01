@@ -118,9 +118,20 @@ defmodule EveDmv.Intelligence.PatternAnalysis do
     end
   end
 
-  defp determine_peak_activity_period(_stats) do
-    # Placeholder - would analyze activity timestamps
-    "UTC 18:00-22:00"
+  defp determine_peak_activity_period(stats) do
+    # Analyze activity patterns based on available stats
+    # In practice, this would use temporal analysis of killmail timestamps
+    total_activity = (stats.total_kills || 0) + (stats.total_losses || 0)
+    
+    cond do
+      # High activity suggests multi-timezone operations
+      total_activity > 1000 -> "Multi-timezone active"
+      # Medium activity in single region
+      total_activity > 500 -> "Regional prime time"
+      # Low activity suggests casual play
+      total_activity > 100 -> "Weekend warrior"
+      true -> "Sporadic activity"
+    end
   end
 
   defp calculate_activity_variance(total_activity) do
@@ -371,24 +382,89 @@ defmodule EveDmv.Intelligence.PatternAnalysis do
     end
   end
 
-  defp calculate_cooperation_index(_stats) do
-    # Placeholder for cooperation analysis
-    0.6
+  defp calculate_cooperation_index(stats) do
+    # Calculate cooperation based on fleet participation
+    fleet_ratio = stats.fleet_ratio || 0.0
+    gang_ratio = stats.gang_ratio || 0.0
+    solo_ratio = stats.solo_ratio || 1.0
+    
+    # Fleet and gang participation indicates cooperation
+    cooperation_score = (fleet_ratio * 0.8) + (gang_ratio * 0.6) + (solo_ratio * 0.1)
+    
+    # Normalize to 0-1 range
+    min(1.0, cooperation_score)
   end
 
-  defp identify_leadership_indicators(_stats) do
-    # Placeholder for leadership analysis
-    %{leadership_score: 0.3, command_experience: false}
+  defp identify_leadership_indicators(stats) do
+    # Analyze leadership potential based on activity patterns
+    fleet_ratio = stats.fleet_ratio || 0.0
+    total_kills = stats.total_kills || 0
+    kd_ratio = calculate_kill_death_ratio(stats)
+    
+    # High fleet participation + good performance suggests leadership
+    leadership_score = 0.0
+    
+    leadership_score = leadership_score +
+      cond do
+        fleet_ratio > 0.7 and kd_ratio > 2.0 -> 0.4
+        fleet_ratio > 0.5 and kd_ratio > 1.5 -> 0.3
+        fleet_ratio > 0.3 and total_kills > 200 -> 0.2
+        true -> 0.1
+      end
+    
+    # Experience factor
+    has_command_experience = total_kills > 500 and fleet_ratio > 0.6
+    
+    %{
+      leadership_score: min(1.0, leadership_score),
+      command_experience: has_command_experience
+    }
   end
 
-  defp assess_network_centrality(_stats) do
-    # Placeholder for network analysis
-    0.4
+  defp assess_network_centrality(stats) do
+    # Estimate network centrality based on activity patterns
+    total_activity = (stats.total_kills || 0) + (stats.total_losses || 0)
+    fleet_ratio = stats.fleet_ratio || 0.0
+    gang_ratio = stats.gang_ratio || 0.0
+    
+    # High activity with mixed group sizes suggests central position
+    centrality_score = 0.0
+    
+    # Activity level contributes to centrality
+    centrality_score = centrality_score +
+      cond do
+        total_activity > 1000 -> 0.3
+        total_activity > 500 -> 0.2
+        total_activity > 100 -> 0.1
+        true -> 0.05
+      end
+    
+    # Mixed participation suggests bridge role
+    centrality_score = if fleet_ratio > 0.3 and gang_ratio > 0.3 do
+      centrality_score + 0.3
+    else
+      centrality_score
+    end
+    
+    min(1.0, centrality_score)
   end
 
-  defp calculate_social_influence_score(_stats) do
-    # Placeholder for social influence calculation
-    0.5
+  defp calculate_social_influence_score(stats) do
+    # Calculate social influence based on performance and participation
+    kd_ratio = calculate_kill_death_ratio(stats)
+    total_kills = stats.total_kills || 0
+    fleet_ratio = stats.fleet_ratio || 0.0
+    
+    # Performance influence
+    performance_influence = min(0.4, kd_ratio * 0.2)
+    
+    # Experience influence  
+    experience_influence = min(0.3, total_kills / 1000.0)
+    
+    # Fleet leadership influence
+    leadership_influence = fleet_ratio * 0.3
+    
+    performance_influence + experience_influence + leadership_influence
   end
 
   defp calculate_operational_tempo(stats) do
@@ -403,14 +479,64 @@ defmodule EveDmv.Intelligence.PatternAnalysis do
     end
   end
 
-  defp categorize_mission_types(_stats) do
-    # Placeholder for mission type categorization
-    %{pve: 0.3, pvp: 0.6, exploration: 0.1}
+  defp categorize_mission_types(stats) do
+    # Categorize mission types based on kill patterns
+    total_kills = stats.total_kills || 0
+    total_losses = stats.total_losses || 0
+    solo_ratio = stats.solo_ratio || 0.5
+    
+    total_activity = total_kills + total_losses
+    
+    if total_activity == 0 do
+      %{pve: 0.7, pvp: 0.2, exploration: 0.1}
+    else
+      # High K/D with losses suggests PvP focus
+      pvp_ratio = if total_losses > 0 do
+        min(0.9, total_kills / (total_kills + total_losses))
+      else
+        0.3
+      end
+      
+      # Solo players often do exploration
+      exploration_ratio = if solo_ratio > 0.7, do: 0.2, else: 0.05
+      
+      # Remainder is PvE
+      pve_ratio = 1.0 - pvp_ratio - exploration_ratio
+      
+      %{
+        pve: max(0.0, pve_ratio),
+        pvp: pvp_ratio,
+        exploration: exploration_ratio
+      }
+    end
   end
 
-  defp assess_resource_efficiency(_stats) do
-    # Placeholder for resource efficiency assessment
-    0.7
+  defp assess_resource_efficiency(stats) do
+    # Assess resource efficiency based on kill/death patterns
+    kills = stats.total_kills || 0
+    losses = stats.total_losses || 0
+    avg_ship_value = stats.avg_ship_value || 50_000_000
+    
+    if losses > 0 do
+      # Efficiency based on K/D ratio and ship value usage
+      kd_ratio = kills / losses
+      
+      # Lower value ships with good K/D = efficient
+      value_efficiency = cond do
+        avg_ship_value < 10_000_000 -> 0.4
+        avg_ship_value < 50_000_000 -> 0.3
+        avg_ship_value < 200_000_000 -> 0.2
+        true -> 0.1
+      end
+      
+      # K/D efficiency
+      performance_efficiency = min(0.6, kd_ratio * 0.3)
+      
+      value_efficiency + performance_efficiency
+    else
+      # No losses = perfect efficiency (up to a point)
+      if kills > 0, do: 0.9, else: 0.5
+    end
   end
 
   defp assess_strategic_thinking(stats) do

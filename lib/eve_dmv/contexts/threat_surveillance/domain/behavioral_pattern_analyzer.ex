@@ -637,6 +637,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
 
   defp extract_entities_from_killmail(event) do
     victim_entities = extract_entities_from_actor(event.victim)
+
     attacker_entities =
       event.attackers
       |> Enum.flat_map(&extract_entities_from_actor/1)
@@ -652,10 +653,14 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
   end
 
   defp maybe_add_character_entity(entities, nil), do: entities
-  defp maybe_add_character_entity(entities, character_id), do: [{character_id, :character} | entities]
+
+  defp maybe_add_character_entity(entities, character_id),
+    do: [{character_id, :character} | entities]
 
   defp maybe_add_corporation_entity(entities, nil), do: entities
-  defp maybe_add_corporation_entity(entities, corporation_id), do: [{corporation_id, :corporation} | entities]
+
+  defp maybe_add_corporation_entity(entities, corporation_id),
+    do: [{corporation_id, :corporation} | entities]
 
   # Metrics functions
 

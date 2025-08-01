@@ -412,6 +412,7 @@ defmodule EveDmv.Users.User do
       case EsiRequestClient.public_request("GET", corp_path) do
         {:ok, corp_response} ->
           process_corporation_response(corp_response, corporation_id)
+
         error ->
           Logger.error("Failed to fetch corporation data: #{inspect(error)}")
           error
@@ -433,9 +434,7 @@ defmodule EveDmv.Users.User do
 
     corp_data = extract_corporation_data(actual_corp_response)
 
-    Logger.info(
-      "Got corporation data: #{inspect(Map.take(corp_data, ["name", "alliance_id"]))}"
-    )
+    Logger.info("Got corporation data: #{inspect(Map.take(corp_data, ["name", "alliance_id"]))}")
 
     alliance_id = Map.get(corp_data, "alliance_id")
     alliance_name = fetch_alliance_name_if_present(alliance_id)

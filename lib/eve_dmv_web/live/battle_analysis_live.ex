@@ -9,7 +9,8 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   use EveDmvWeb, :live_view
   import EveDmvWeb.BattleAnalysisLive.Helpers
 
-  alias EveDmv.Contexts.CombatAnalysis
+  alias EveDmv.Contexts.BattleAnalysis
+  alias EveDmv.Contexts.BattleSharing
   alias EveDmv.Performance.BatchNameResolver
   alias EveDmvWeb.BattleAnalysisLive.Helpers
 
@@ -54,7 +55,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     self = self()
 
     Task.start(fn ->
-      result = CombatAnalysis.import_from_zkillboard(url)
+      result = BattleAnalysis.import_from_zkillboard(url)
       send(self, {:import_complete, result})
     end)
 
@@ -430,7 +431,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
         visibility: String.to_existing_atom(params["visibility"])
       ]
 
-      case CombatAnalysis.create_battle_report_from_data(
+      case BattleSharing.create_battle_report_from_data(
              socket.assigns.current_battle,
              creator_id,
              options
@@ -483,7 +484,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     rater_id = 12_345
     rating_value = String.to_integer(rating)
 
-    case CombatAnalysis.rate_battle_report(report_id, rater_id, rating_value) do
+    case BattleSharing.rate_battle_report(report_id, rater_id, rating_value) do
       {:ok, _} ->
         {:noreply,
          socket
@@ -560,7 +561,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   # Private functions
 
   defp load_recent_battles(socket) do
-    case CombatAnalysis.detect_recent_battles(48, min_participants: 2) do
+    case BattleAnalysis.detect_recent_battles(48, min_participants: 2) do
       {:ok, battles} ->
         # Only show significant battles (multiple kills OR lasting > 2 minutes)
         significant_battles =
@@ -595,7 +596,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
         if Map.has_key?(existing_battle, :timeline) do
           existing_battle
         else
-          timeline = CombatAnalysis.reconstruct_battle_timeline(existing_battle)
+          timeline = BattleAnalysis.reconstruct_battle_timeline(existing_battle)
           Map.put(existing_battle, :timeline, timeline)
         end
 
@@ -607,7 +608,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
       # Load intelligence analysis
       intelligence =
-        case CombatAnalysis.analyze_battle_with_intelligence(battle_with_timeline) do
+        case BattleAnalysis.analyze_battle_with_intelligence(battle_with_timeline) do
           {:ok, intel} -> intel
           _ -> nil
         end
@@ -624,7 +625,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       |> load_battle_reports()
     else
       # Try to load from backend
-      case CombatAnalysis.get_battle_with_timeline(battle_id) do
+      case BattleAnalysis.get_battle_with_timeline(battle_id) do
         {:ok, battle} ->
           # Preload all names to prevent N+1 queries
           BatchNameResolver.preload_battle_names(battle)
@@ -634,7 +635,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
           # Load intelligence analysis
           intelligence =
-            case CombatAnalysis.analyze_battle_with_intelligence(battle) do
+            case BattleAnalysis.analyze_battle_with_intelligence(battle) do
               {:ok, intel} -> intel
               _ -> nil
             end
@@ -837,10 +838,12 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   defp process_attacker_corporations(event, acc) do
     victim_value = event[:isk_value] || 0
+
     event.attackers
     |> Enum.filter(& &1.corporation_id)
     |> Enum.reduce(acc, fn attacker, acc2 ->
       attacker_share = calculate_attacker_share(event.attackers, victim_value)
+
       Map.update(
         acc2,
         attacker.corporation_id,
@@ -901,7 +904,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   defp load_battle_reports(socket) do
     if socket.assigns.current_battle do
-      case CombatAnalysis.get_reports_for_battle(socket.assigns.current_battle.battle_id) do
+      case BattleSharing.get_reports_for_battle(socket.assigns.current_battle.battle_id) do
         {:ok, reports} ->
           assign(socket, :battle_reports, reports)
 

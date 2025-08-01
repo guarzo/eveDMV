@@ -379,7 +379,9 @@ defmodule EveDmvWeb.SystemActivityLive do
     high_value_kills = Enum.count(killmails, fn km -> (km.zkb_total_value || 0) > 100_000_000 end)
 
     value_classifications =
-      if high_value_kills > 0, do: ["High Value Targets" | base_classifications], else: base_classifications
+      if high_value_kills > 0,
+        do: ["High Value Targets" | base_classifications],
+        else: base_classifications
 
     # Capital activity
     capital_kills =
@@ -389,7 +391,9 @@ defmodule EveDmvWeb.SystemActivityLive do
       end)
 
     capital_classifications =
-      if capital_kills > 0, do: ["Capital Warfare" | value_classifications], else: value_classifications
+      if capital_kills > 0,
+        do: ["Capital Warfare" | value_classifications],
+        else: value_classifications
 
     # Gang activity (multiple attackers)
     gang_kills = Enum.count(killmails, fn km -> length(km.attackers) > 5 end)

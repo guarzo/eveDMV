@@ -13,7 +13,7 @@ defmodule EveDmvWeb.WHVettingLive do
 
   use EveDmvWeb, :live_view
 
-  alias EveDmv.Api
+  alias EveDmv.Domains.Intelligence
   alias EveDmv.Eve.EsiClient
   alias EveDmv.Intelligence.Wormhole.Vetting, as: WHVetting
   alias EveDmv.IntelligenceMigrationAdapter
@@ -95,7 +95,7 @@ defmodule EveDmvWeb.WHVettingLive do
 
   @impl Phoenix.LiveView
   def handle_event("view_vetting", %{"id" => vetting_id}, socket) do
-    case Ash.get(WHVetting, vetting_id, domain: Api) do
+    case Ash.get(WHVetting, vetting_id, domain: Intelligence) do
       {:ok, record} ->
         {:noreply, assign(socket, :selected_record, record)}
 
@@ -106,9 +106,9 @@ defmodule EveDmvWeb.WHVettingLive do
 
   @impl Phoenix.LiveView
   def handle_event("update_notes", %{"id" => vetting_id, "notes" => notes}, socket) do
-    case Ash.get(WHVetting, vetting_id, domain: Api) do
+    case Ash.get(WHVetting, vetting_id, domain: Intelligence) do
       {:ok, record} ->
-        case WHVetting.add_notes(record, notes) do
+        case WHVetting.add_notes(record, %{recruiter_notes: notes}) do
           {:ok, updated_record} ->
             socket =
               socket

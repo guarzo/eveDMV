@@ -805,7 +805,9 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
         ["Counter specific ship preferences" | efficiency_recommendations]
       end
 
-    if Enum.empty?(final_recommendations), do: ["Gather more tactical data"], else: final_recommendations
+    if Enum.empty?(final_recommendations),
+      do: ["Gather more tactical data"],
+      else: final_recommendations
   end
 
   # Generate fallback doctrine evolution showing activity patterns instead of doctrine changes

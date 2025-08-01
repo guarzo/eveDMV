@@ -3,12 +3,12 @@ defmodule EveDmv.Contexts.Intelligence.Core.UnpredictabilityEngine do
   Analyzes operational security and unpredictability patterns.
   Part of the multi-dimensional threat assessment system.
   """
-  
+
   alias EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer
-  alias EveDmv.Platform.Database.KillmailRepository
-  
+  alias EveDmv.Database.KillmailRepository
+
   require Logger
-  
+
   @doc """
   Analyze unpredictability for a character.
   """
@@ -16,10 +16,10 @@ defmodule EveDmv.Contexts.Intelligence.Core.UnpredictabilityEngine do
     with {:ok, behavioral} <- BehavioralPatternAnalyzer.analyze_behavior(character_id),
          {:ok, location_patterns} <- analyze_location_unpredictability(character_id),
          {:ok, timing_patterns} <- analyze_timing_unpredictability(character_id) do
-      
       analysis = %{
         character_id: character_id,
-        unpredictability_score: calculate_unpredictability_score(behavioral, location_patterns, timing_patterns),
+        unpredictability_score:
+          calculate_unpredictability_score(behavioral, location_patterns, timing_patterns),
         location_variance: location_patterns.variance_score,
         timing_variance: timing_patterns.variance_score,
         ship_variance: calculate_ship_unpredictability(character_id),
@@ -27,15 +27,15 @@ defmodule EveDmv.Contexts.Intelligence.Core.UnpredictabilityEngine do
         pattern_breaking: detect_pattern_breaking(character_id),
         analyzed_at: DateTime.utc_now()
       }
-      
+
       {:ok, analysis}
     end
   end
-  
+
   defp analyze_location_unpredictability(character_id) do
     start_date = DateTime.utc_now() |> DateTime.add(-90 * 24 * 60 * 60, :second)
-    
-    case KillmailRepository.get_character_killmails(character_id, start_date) do
+
+    case KillmailRepository.get_by_character(character_id, start_date) do
       {:ok, killmails} ->
         location_analysis = %{
           unique_systems: count_unique_systems(killmails),
@@ -43,56 +43,61 @@ defmodule EveDmv.Contexts.Intelligence.Core.UnpredictabilityEngine do
           variance_score: calculate_location_variance(killmails),
           roaming_patterns: detect_roaming_patterns(killmails)
         }
+
         {:ok, location_analysis}
-        
-      error -> error
+
+      error ->
+        error
     end
   end
-  
+
   defp count_unique_systems(killmails) do
     killmails
     |> Enum.map(& &1.solar_system_id)
     |> Enum.uniq()
     |> length()
   end
-  
+
   defp analyze_system_distribution(killmails) do
-    system_counts = killmails
-    |> Enum.frequencies_by(& &1.solar_system_id)
-    
+    system_counts =
+      killmails
+      |> Enum.frequencies_by(& &1.solar_system_id)
+
     total_activity = length(killmails)
-    
+
     if total_activity == 0 do
       %{concentration: 0, gini_coefficient: 0}
     else
       # Calculate concentration
       max_system_activity = Map.values(system_counts) |> Enum.max(fn -> 0 end)
       concentration = max_system_activity / total_activity
-      
+
       # Calculate Gini coefficient for inequality
       gini = calculate_gini_coefficient(Map.values(system_counts))
-      
+
       %{
         concentration: Float.round(concentration, 3),
         gini_coefficient: Float.round(gini, 3)
       }
     end
   end
-  
+
   defp calculate_gini_coefficient(values) do
     sorted_values = Enum.sort(values)
     n = length(sorted_values)
-    
+
     if n <= 1 do
       0.0
     else
-      sum_of_differences = for i <- sorted_values,
-                              j <- sorted_values,
-                              do: abs(i - j)
-      |> Enum.sum()
-      
+      sum_of_differences =
+        for i <- sorted_values,
+            j <- sorted_values,
+            do:
+              abs(i - j)
+              |> Enum.sum()
+
       mean_value = Enum.sum(sorted_values) / n
-      
+
       if mean_value > 0 do
         sum_of_differences / (2 * n * n * mean_value)
       else
@@ -100,55 +105,59 @@ defmodule EveDmv.Contexts.Intelligence.Core.UnpredictabilityEngine do
       end
     end
   end
-  
+
   defp calculate_location_variance(killmails) do
     if length(killmails) < 10 do
       0.0
     else
       # Calculate variance in system usage
-      system_counts = killmails
-      |> Enum.frequencies_by(& &1.solar_system_id)
-      |> Map.values()
-      
+      system_counts =
+        killmails
+        |> Enum.frequencies_by(& &1.solar_system_id)
+        |> Map.values()
+
       mean = Enum.sum(system_counts) / length(system_counts)
-      variance = system_counts
-      |> Enum.map(fn count -> :math.pow(count - mean, 2) end)
-      |> Enum.sum()
-      |> Kernel./(length(system_counts))
-      
+
+      variance =
+        system_counts
+        |> Enum.map(fn count -> :math.pow(count - mean, 2) end)
+        |> Enum.sum()
+        |> Kernel./(length(system_counts))
+
       # Normalize variance (higher = more unpredictable)
       normalized_variance = min(1.0, variance / (mean * mean))
       Float.round(normalized_variance, 3)
     end
   end
-  
+
   defp detect_roaming_patterns(killmails) do
     # Analyze movement patterns between systems
-    system_transitions = killmails
-    |> Enum.sort_by(& &1.killmail_time)
-    |> Enum.chunk_every(2, 1, :discard)
-    |> Enum.map(fn [km1, km2] ->
-      {km1.solar_system_id, km2.solar_system_id}
-    end)
-    |> Enum.frequencies()
-    
+    system_transitions =
+      killmails
+      |> Enum.sort_by(& &1.killmail_time)
+      |> Enum.chunk_every(2, 1, :discard)
+      |> Enum.map(fn [km1, km2] ->
+        {km1.solar_system_id, km2.solar_system_id}
+      end)
+      |> Enum.frequencies()
+
     %{
       total_transitions: length(system_transitions),
       repeated_routes: count_repeated_routes(system_transitions),
       route_diversity: map_size(system_transitions)
     }
   end
-  
+
   defp count_repeated_routes(transitions) do
     transitions
     |> Map.values()
     |> Enum.count(fn count -> count > 1 end)
   end
-  
+
   defp analyze_timing_unpredictability(character_id) do
     start_date = DateTime.utc_now() |> DateTime.add(-60 * 24 * 60 * 60, :second)
-    
-    case KillmailRepository.get_character_killmails(character_id, start_date) do
+
+    case KillmailRepository.get_by_character(character_id, start_date) do
       {:ok, killmails} ->
         timing_analysis = %{
           time_distribution: analyze_time_spread(killmails),
@@ -156,57 +165,66 @@ defmodule EveDmv.Contexts.Intelligence.Core.UnpredictabilityEngine do
           session_patterns: analyze_session_unpredictability(killmails),
           day_patterns: analyze_day_variance(killmails)
         }
+
         {:ok, timing_analysis}
-        
-      error -> error
+
+      error ->
+        error
     end
   end
-  
+
   defp analyze_time_spread(killmails) do
-    hourly_activity = killmails
-    |> Enum.map(fn km -> DateTime.to_time(km.killmail_time).hour end)
-    |> Enum.frequencies()
-    
+    hourly_activity =
+      killmails
+      |> Enum.map(fn km -> DateTime.to_time(km.killmail_time).hour end)
+      |> Enum.frequencies()
+
     %{
       active_hours: map_size(hourly_activity),
-      peak_concentration: if(map_size(hourly_activity) > 0, do: Enum.max(Map.values(hourly_activity)) / length(killmails), else: 0),
+      peak_concentration:
+        if(map_size(hourly_activity) > 0,
+          do: Enum.max(Map.values(hourly_activity)) / length(killmails),
+          else: 0
+        ),
       spread_rating: min(map_size(hourly_activity) / 24, 1.0)
     }
   end
-  
+
   defp calculate_timing_variance(killmails) do
     if length(killmails) < 5 do
       0.0
     else
       # Calculate variance in activity timing
-      hours = killmails
-      |> Enum.map(fn km -> DateTime.to_time(km.killmail_time).hour end)
-      
+      hours =
+        killmails
+        |> Enum.map(fn km -> DateTime.to_time(km.killmail_time).hour end)
+
       hourly_counts = hours |> Enum.frequencies() |> Map.values()
-      
+
       if Enum.empty?(hourly_counts) do
         0.0
       else
         mean = Enum.sum(hourly_counts) / length(hourly_counts)
-        
-        variance = hourly_counts
-        |> Enum.map(fn count -> :math.pow(count - mean, 2) end)
-        |> Enum.sum()
-        |> Kernel./(length(hourly_counts))
-        
+
+        variance =
+          hourly_counts
+          |> Enum.map(fn count -> :math.pow(count - mean, 2) end)
+          |> Enum.sum()
+          |> Kernel./(length(hourly_counts))
+
         # Normalize (higher = more unpredictable)
         Float.round(min(1.0, variance / (mean * mean)), 3)
       end
     end
   end
-  
+
   defp analyze_session_unpredictability(killmails) do
     # Group killmails into sessions
     sessions = group_into_sessions(killmails)
-    
+
     session_lengths = sessions |> Enum.map(&length/1)
     session_intervals = calculate_session_intervals(sessions)
-    
+
     %{
       session_count: length(sessions),
       avg_session_length: calculate_average(session_lengths),
@@ -215,18 +233,21 @@ defmodule EveDmv.Contexts.Intelligence.Core.UnpredictabilityEngine do
       interval_variance: calculate_variance(session_intervals)
     }
   end
-  
+
   defp group_into_sessions(killmails) do
     killmails
     |> Enum.sort_by(& &1.killmail_time)
     |> Enum.reduce([], fn km, sessions ->
       case sessions do
-        [] -> [[km]]
+        [] ->
+          [[km]]
+
         [current_session | rest] ->
           last_km = List.last(current_session)
           hours_since = DateTime.diff(km.killmail_time, last_km.killmail_time, :hour)
-          
-          if hours_since <= 3 do  # Within 3 hours = same session
+
+          # Within 3 hours = same session
+          if hours_since <= 3 do
             [[km | current_session] | rest]
           else
             [[km] | sessions]
@@ -234,7 +255,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.UnpredictabilityEngine do
       end
     end)
   end
-  
+
   defp calculate_session_intervals(sessions) do
     sessions
     |> Enum.chunk_every(2, 1, :discard)
@@ -244,7 +265,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.UnpredictabilityEngine do
       DateTime.diff(start2, start1, :hour)
     end)
   end
-  
+
   defp calculate_average(list) do
     if Enum.empty?(list) do
       0
@@ -252,70 +273,73 @@ defmodule EveDmv.Contexts.Intelligence.Core.UnpredictabilityEngine do
       Enum.sum(list) / length(list)
     end
   end
-  
+
   defp calculate_variance(list) do
     if length(list) <= 1 do
       0.0
     else
       mean = Enum.sum(list) / length(list)
-      
-      sum_of_squares = list
-      |> Enum.map(fn x -> :math.pow(x - mean, 2) end)
-      |> Enum.sum()
-      
+
+      sum_of_squares =
+        list
+        |> Enum.map(fn x -> :math.pow(x - mean, 2) end)
+        |> Enum.sum()
+
       sum_of_squares / (length(list) - 1)
     end
   end
-  
+
   defp analyze_day_variance(killmails) do
-    daily_activity = killmails
-    |> Enum.map(fn km -> Date.day_of_week(DateTime.to_date(km.killmail_time)) end)
-    |> Enum.frequencies()
-    
+    daily_activity =
+      killmails
+      |> Enum.map(fn km -> Date.day_of_week(DateTime.to_date(km.killmail_time)) end)
+      |> Enum.frequencies()
+
     if map_size(daily_activity) == 0 do
       0.0
     else
       # Calculate how evenly spread across days
       values = Map.values(daily_activity)
       mean = Enum.sum(values) / length(values)
-      
-      variance = values
-      |> Enum.map(fn v -> :math.pow(v - mean, 2) end)
-      |> Enum.sum()
-      |> Kernel./(length(values))
-      
+
+      variance =
+        values
+        |> Enum.map(fn v -> :math.pow(v - mean, 2) end)
+        |> Enum.sum()
+        |> Kernel./(length(values))
+
       Float.round(min(1.0, variance / (mean * mean)), 3)
     end
   end
-  
-  defp calculate_ship_unpredictability(character_id) do
+
+  defp calculate_ship_unpredictability(_character_id) do
     # This would analyze ship switching patterns
     # For now, return a placeholder
     0.5
   end
-  
+
   defp calculate_unpredictability_score(behavioral, location_patterns, timing_patterns) do
     # Combine all factors
     location_score = location_patterns.variance_score * 0.4
     timing_score = timing_patterns.variance_score * 0.3
-    
+
     # From behavioral patterns
     predictability = behavioral.predictability
     unpredictability_from_behavior = (1.0 - predictability) * 0.3
-    
+
     total_score = location_score + timing_score + unpredictability_from_behavior
     Float.round(total_score, 3)
   end
-  
+
   defp assess_operational_security(behavioral, location_patterns, timing_patterns) do
     # Higher unpredictability = better operational security
     location_opsec = location_patterns.variance_score > 0.6
     timing_opsec = timing_patterns.variance_score > 0.5
     pattern_opsec = behavioral.predictability < 0.4
-    
+
     security_factors = [location_opsec, timing_opsec, pattern_opsec]
     security_score = Enum.count(security_factors, & &1) / 3
-    
+
     cond do
       security_score >= 0.8 -> :excellent
       security_score >= 0.6 -> :good
@@ -324,8 +348,8 @@ defmodule EveDmv.Contexts.Intelligence.Core.UnpredictabilityEngine do
       true -> :very_poor
     end
   end
-  
-  defp detect_pattern_breaking(character_id) do
+
+  defp detect_pattern_breaking(_character_id) do
     # Analyze if pilot changes patterns over time
     # This would need historical analysis - placeholder for now
     %{

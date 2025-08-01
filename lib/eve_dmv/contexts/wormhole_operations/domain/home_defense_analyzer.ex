@@ -834,20 +834,20 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
     if condition, do: [recommendation | recommendations], else: recommendations
   end
 
-  defp analyze_escape_routes(topology, _system_id) do
+  defp analyze_escape_routes(topology, system_id) do
     # Analyze potential escape routes
     connection_count = topology.wormhole_connections
 
     # Generate escape route analysis
     %{
-      primary_routes: generate_escape_routes(connection_count, :primary),
-      backup_routes: generate_escape_routes(connection_count, :backup),
-      emergency_routes: generate_escape_routes(connection_count, :emergency),
+      primary_routes: generate_escape_routes(connection_count, :primary, system_id),
+      backup_routes: generate_escape_routes(connection_count, :backup, system_id),
+      emergency_routes: generate_escape_routes(connection_count, :emergency, system_id),
       route_security: assess_route_security(connection_count)
     }
   end
 
-  defp generate_escape_routes(connection_count, route_type) do
+  defp generate_escape_routes(connection_count, route_type, system_id) do
     # Generate escape routes based on actual connection data
     route_count =
       case route_type do
@@ -857,7 +857,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
       end
 
     # Get actual connection data if available
-    case get_system_escape_connections(route_type) do
+    case get_system_escape_connections(route_type, system_id) do
       {:ok, connections} when length(connections) >= route_count ->
         # Use real connection data
         connections
@@ -1086,11 +1086,25 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
     end
   end
 
-  defp get_system_escape_connections(_route_type) do
-    # Get connections suitable for escape routes
-    # This would query actual wormhole mapping data
-    # Placeholder - would implement with real data
-    {:error, :no_data}
+  defp get_system_escape_connections(_route_type, system_id) do
+    # Query actual escape route data from wormhole connections
+    # This would integrate with wormhole mapping services like Pathfinder or Tripwire
+    
+    with {:ok, system_connections} <- get_system_connections(system_id) do
+      # Analyze connections for escape route potential
+      escape_routes = system_connections
+        |> Enum.filter(&is_viable_escape_route?/1)
+        |> Enum.map(&analyze_escape_route_quality/1)
+        |> Enum.sort_by(&(&1.safety_rating), :desc)
+      
+      if Enum.empty?(escape_routes) do
+        {:error, :no_escape_routes}
+      else
+        {:ok, escape_routes}
+      end
+    else
+      _error -> {:error, :connection_data_unavailable}
+    end
   end
 
   defp assess_route_security_rating(connection) do
@@ -1376,9 +1390,18 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
   defp generate_system_defense_recommendations(vulnerabilities, defensive_assets) do
     # Generate system-wide defense recommendations
     []
-    |> add_recommendation_if(length(vulnerabilities) > 3, "Address critical system vulnerabilities")
-    |> add_recommendation_if(defensive_assets.active_members < 10, "Increase active member participation")
-    |> add_recommendation_if(defensive_assets.available_ships < 20, "Expand available ship inventory")
+    |> add_recommendation_if(
+      length(vulnerabilities) > 3,
+      "Address critical system vulnerabilities"
+    )
+    |> add_recommendation_if(
+      defensive_assets.active_members < 10,
+      "Increase active member participation"
+    )
+    |> add_recommendation_if(
+      defensive_assets.available_ships < 20,
+      "Expand available ship inventory"
+    )
   end
 
   defp summarize_system_activity(system_activity) do
@@ -1427,9 +1450,62 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
   end
 
   defp get_corporation_home_system(corporation_id) do
-    # Get the home system for a corporation
-    # Simplified: Return a mock system ID
-    corporation_id + 31_000_000
+    # Get the home system for a corporation from database
+    # This would query corporation structures, member activity, or alliance data
+    
+    case get_most_active_system_for_corporation(corporation_id) do
+      {:ok, system_id} when is_integer(system_id) -> system_id
+      {:error, _} ->
+        # If no activity data, check corporation structures
+        case get_corporation_structure_systems(corporation_id) do
+          {:ok, [primary_system | _]} -> primary_system
+          _ -> 
+            # No data available - return error instead of fake data
+            {:error, :home_system_unknown}
+        end
+    end
+  end
+
+  # Helper functions for escape route analysis
+  defp get_system_connections(_system_id) do
+    # This would query real wormhole connection data
+    # For now, return no connections available
+    {:error, :no_mapping_data}
+  end
+  
+  defp is_viable_escape_route?(connection) do
+    # Check if connection is suitable for escape (not critical mass, not EOL)
+    connection.mass_remaining > 0.5 and 
+    connection.time_remaining > 300 and # 5 minutes
+    connection.destination_class in ["K-space", "C1", "C2", "C3"] # Safer destinations
+  end
+  
+  defp analyze_escape_route_quality(connection) do
+    safety_rating = cond do
+      connection.destination_class == "K-space" -> 0.9
+      connection.destination_class in ["C1", "C2"] -> 0.7
+      connection.destination_class == "C3" -> 0.5
+      true -> 0.3
+    end
+    
+    %{
+      connection: connection,
+      safety_rating: safety_rating,
+      estimated_travel_time: connection.jumps * 30 # 30 seconds per jump
+    }
+  end
+  
+  # Helper functions for corporation home system detection
+  defp get_most_active_system_for_corporation(_corporation_id) do
+    # Query killmail data to find most active system for this corp
+    # This would analyze member activity patterns
+    {:error, :activity_data_unavailable}
+  end
+  
+  defp get_corporation_structure_systems(_corporation_id) do
+    # Query structure data (citadels, POSes) for the corporation
+    # This would integrate with ESI structure endpoints
+    {:error, :structure_data_unavailable}
   end
 
   defp generate_timezone_recommendations(timezone_coverage) do

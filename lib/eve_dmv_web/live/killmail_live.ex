@@ -287,66 +287,66 @@ defmodule EveDmvWeb.KillmailLive do
   end
 
   defp generate_csv_export(killmail) do
-      # Create CSV with killmail summary and attackers
-      headers = [
-        "killmail_id",
-        "killmail_time",
-        "system_id",
-        "victim_name",
-        "victim_corp",
-        "victim_ship",
-        "attacker_name",
-        "attacker_corp",
-        "attacker_ship",
-        "damage_done",
-        "final_blow",
-        "total_value"
-      ]
+    # Create CSV with killmail summary and attackers
+    headers = [
+      "killmail_id",
+      "killmail_time",
+      "system_id",
+      "victim_name",
+      "victim_corp",
+      "victim_ship",
+      "attacker_name",
+      "attacker_corp",
+      "attacker_ship",
+      "damage_done",
+      "final_blow",
+      "total_value"
+    ]
 
-      base_data = [
-        killmail.killmail_id,
-        killmail.killmail_time,
-        killmail.solar_system_id,
-        killmail.victim_details.character_name,
-        killmail.victim_details.corporation_name,
-        killmail.victim_details.ship_name,
-        "",
-        "",
-        "",
-        "",
-        "",
-        killmail.calculated_value
-      ]
+    base_data = [
+      killmail.killmail_id,
+      killmail.killmail_time,
+      killmail.solar_system_id,
+      killmail.victim_details.character_name,
+      killmail.victim_details.corporation_name,
+      killmail.victim_details.ship_name,
+      "",
+      "",
+      "",
+      "",
+      "",
+      killmail.calculated_value
+    ]
 
-      attacker_rows =
-        killmail.attackers_details
-        |> Enum.map(fn attacker ->
-          [
-            killmail.killmail_id,
-            killmail.killmail_time,
-            killmail.solar_system_id,
-            killmail.victim_details.character_name,
-            killmail.victim_details.corporation_name,
-            killmail.victim_details.ship_name,
-            attacker.character_name,
-            attacker.corporation_name,
-            attacker.ship_name,
-            attacker.damage_done,
-            attacker.final_blow,
-            killmail.calculated_value
-          ]
-        end)
+    attacker_rows =
+      killmail.attackers_details
+      |> Enum.map(fn attacker ->
+        [
+          killmail.killmail_id,
+          killmail.killmail_time,
+          killmail.solar_system_id,
+          killmail.victim_details.character_name,
+          killmail.victim_details.corporation_name,
+          killmail.victim_details.ship_name,
+          attacker.character_name,
+          attacker.corporation_name,
+          attacker.ship_name,
+          attacker.damage_done,
+          attacker.final_blow,
+          killmail.calculated_value
+        ]
+      end)
 
-      all_rows = [headers] ++ if Enum.empty?(attacker_rows), do: [base_data], else: attacker_rows
+    all_rows = [headers] ++ if Enum.empty?(attacker_rows), do: [base_data], else: attacker_rows
 
-      content =
-        Enum.map_join(all_rows, "\n", fn row ->
-          row
-          |> Enum.map(&to_string/1)
-          |> Enum.map_join(",", &escape_csv_field/1)
-        end)
+    content =
+      Enum.map_join(all_rows, "\n", fn row ->
+        row
+        |> Enum.map(&to_string/1)
+        |> Enum.map_join(",", &escape_csv_field/1)
+      end)
 
-      {:ok, content}
+    {:ok, content}
   rescue
     error ->
       Logger.error("CSV export failed: #{inspect(error)}")

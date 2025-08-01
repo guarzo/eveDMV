@@ -28,7 +28,9 @@ defmodule EveDmv.Shared.Monitoring.AnomalyDetector do
       []
       |> then(fn acc ->
         if :statistical in detection_methods do
-          statistical_anomalies = detect_statistical_anomalies(current_data, baseline, sensitivity)
+          statistical_anomalies =
+            detect_statistical_anomalies(current_data, baseline, sensitivity)
+
           acc ++ statistical_anomalies
         else
           acc
@@ -77,7 +79,10 @@ defmodule EveDmv.Shared.Monitoring.AnomalyDetector do
 
     # Check participant count anomalies
     current_participants = Map.get(current_data, :average_participants, 0)
-    baseline_participants = baseline.activity_baseline.aggregate_baseline.average_participants_per_system
+
+    baseline_participants =
+      baseline.activity_baseline.aggregate_baseline.average_participants_per_system
+
     participant_threshold = baseline_participants * threshold_multiplier
 
     # Check value anomalies

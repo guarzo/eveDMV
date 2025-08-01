@@ -2,23 +2,23 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
   @moduledoc """
   Analyzes character performance metrics including efficiency, improvement trends,
   and comparative rankings.
-  
+
   Consolidates functionality from:
   - Character Intelligence performance metrics
   - Player Profile performance analysis
   """
-  
-  alias EveDmv.Platform.Database.{CharacterRepository, KillmailRepository}
-  alias EveDmv.Platform.Cache.Intelligence.IntelligenceCache
+
+  alias EveDmv.Database.KillmailRepository
+  alias EveDmv.Cache
   alias EveDmv.Contexts.Intelligence.Core.{CharacterAnalyzer, CombatStatsAnalyzer}
-  
+
   require Logger
-  
+
   @cache_ttl :timer.hours(2)
-  
+
   @doc """
   Analyze performance metrics for a character.
-  
+
   Options:
     - time_period: Period for trend analysis (default: last 90 days)
     - include_rankings: Include peer rankings
@@ -26,12 +26,17 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
   """
   def analyze_performance(character_id, opts \\ []) do
     cache_key = {:performance_metrics, character_id, opts}
-    
-    IntelligenceCache.get_or_compute(cache_key, fn ->
-      perform_performance_analysis(character_id, opts)
-    end, ttl: @cache_ttl)
+
+    Cache.get_or_compute(
+      :analysis,
+      cache_key,
+      fn ->
+        perform_performance_analysis(character_id, opts)
+      end,
+      ttl: @cache_ttl
+    )
   end
-  
+
   @doc """
   Get core performance metrics.
   """
@@ -41,19 +46,18 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
       error -> error
     end
   end
-  
+
   @doc """
   Compare performance against a peer group.
   """
   def get_peer_comparison(character_id, peer_group) do
     with {:ok, char_metrics} <- analyze_performance(character_id),
          {:ok, peer_metrics} <- get_peer_group_metrics(peer_group) do
-      
       comparison = compare_to_peers(char_metrics, peer_metrics)
       {:ok, comparison}
     end
   end
-  
+
   @doc """
   Get performance trends over time.
   """
@@ -63,20 +67,19 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
       {:ok, trends}
     end
   end
-  
+
   # Private Functions
-  
+
   defp perform_performance_analysis(character_id, opts) do
     time_period = Keyword.get(opts, :time_period, days: 90)
-    
+
     with {:ok, combat_stats} <- CombatStatsAnalyzer.analyze_combat_stats(character_id),
          {:ok, killmails} <- get_recent_killmails(character_id, time_period),
          {:ok, character_data} <- CharacterAnalyzer.get_character_stats(character_id) do
-      
       core_metrics = calculate_core_metrics(combat_stats, killmails, character_data)
       efficiency_metrics = calculate_efficiency_metrics(combat_stats, killmails)
       improvement_metrics = calculate_improvement_metrics(killmails, time_period)
-      
+
       analysis = %{
         character_id: character_id,
         core_metrics: core_metrics,
@@ -87,30 +90,31 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
         areas_for_improvement: identify_improvement_areas(core_metrics, combat_stats),
         analyzed_at: DateTime.utc_now()
       }
-      
-      analysis = if Keyword.get(opts, :include_rankings, false) do
-        Map.put(analysis, :rankings, calculate_rankings(core_metrics))
-      else
-        analysis
-      end
-      
+
+      analysis =
+        if Keyword.get(opts, :include_rankings, false) do
+          Map.put(analysis, :rankings, calculate_rankings(core_metrics))
+        else
+          analysis
+        end
+
       {:ok, analysis}
     end
   end
-  
+
   defp get_recent_killmails(character_id, time_period) do
     start_date = calculate_start_date(time_period)
-    KillmailRepository.get_character_killmails(character_id, start_date)
+    KillmailRepository.get_by_character(character_id, start_date)
   end
-  
+
   defp calculate_start_date(days: days) do
     DateTime.utc_now() |> DateTime.add(-days * 24 * 60 * 60, :second)
   end
-  
+
   defp calculate_start_date(months: months) do
     DateTime.utc_now() |> DateTime.add(-months * 30 * 24 * 60 * 60, :second)
   end
-  
+
   defp calculate_core_metrics(combat_stats, killmails, character_data) do
     %{
       kill_death_ratio: combat_stats.kill_death_ratio,
@@ -123,18 +127,18 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
       consistency_score: calculate_consistency_score(killmails)
     }
   end
-  
+
   defp calculate_solo_effectiveness(combat_stats) do
     total_engagements = combat_stats.total_kills + combat_stats.total_losses
-    
+
     if total_engagements > 0 do
       solo_success = combat_stats.solo_kills
       solo_total = combat_stats.solo_kills + combat_stats.solo_losses
-      
+
       if solo_total > 0 do
-        effectiveness = (solo_success / solo_total) * 100
+        effectiveness = solo_success / solo_total * 100
         weight = solo_total / total_engagements
-        
+
         Float.round(effectiveness * weight, 1)
       else
         0.0
@@ -143,10 +147,10 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
       0.0
     end
   end
-  
+
   defp calculate_average_kill_value(killmails, character_id) do
     kills = Enum.filter(killmails, fn km -> km.victim.character_id != character_id end)
-    
+
     if Enum.empty?(kills) do
       0
     else
@@ -154,107 +158,118 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
       total_value / length(kills)
     end
   end
-  
+
   defp calculate_activity_score(combat_stats, killmails) do
     # Activity score based on total engagements and recency
     total_activity = combat_stats.total_kills + combat_stats.total_losses
-    
+
     # Check recent activity (last 30 days)
     recent_cutoff = DateTime.utc_now() |> DateTime.add(-30 * 24 * 60 * 60, :second)
-    recent_activity = killmails
-    |> Enum.count(fn km -> DateTime.compare(km.killmail_time, recent_cutoff) == :gt end)
-    
+
+    recent_activity =
+      killmails
+      |> Enum.count(fn km -> DateTime.compare(km.killmail_time, recent_cutoff) == :gt end)
+
     # Weight recent activity more heavily
     base_score = :math.log10(max(total_activity, 1)) * 20
     recency_bonus = :math.log10(max(recent_activity, 1)) * 30
-    
+
     min(100, base_score + recency_bonus)
   end
-  
+
   defp calculate_versatility_score(killmails, character_data) do
     # Check ship diversity
-    ship_types = killmails
-    |> Enum.map(fn km ->
-      if km.victim.character_id == character_data.character_id do
-        km.victim.ship_type_id
-      else
-        # Find character's ship in attackers
-        attacker = Enum.find(km.attackers, fn att -> 
-          att.character_id == character_data.character_id 
-        end)
-        if attacker, do: attacker.ship_type_id, else: nil
-      end
-    end)
-    |> Enum.filter(& &1)
-    |> Enum.uniq()
-    |> length()
-    
+    ship_types =
+      killmails
+      |> Enum.map(fn km ->
+        if km.victim.character_id == character_data.character_id do
+          km.victim.ship_type_id
+        else
+          # Find character's ship in attackers
+          attacker =
+            Enum.find(km.attackers, fn att ->
+              att.character_id == character_data.character_id
+            end)
+
+          if attacker, do: attacker.ship_type_id, else: nil
+        end
+      end)
+      |> Enum.filter(& &1)
+      |> Enum.uniq()
+      |> length()
+
     # Check system diversity
-    systems = killmails
-    |> Enum.map(& &1.solar_system_id)
-    |> Enum.uniq()
-    |> length()
-    
+    systems =
+      killmails
+      |> Enum.map(& &1.solar_system_id)
+      |> Enum.uniq()
+      |> length()
+
     # Check gang size diversity
-    gang_sizes = killmails
-    |> Enum.map(fn km -> length(km.attackers) end)
-    |> Enum.uniq()
-    |> length()
-    
+    gang_sizes =
+      killmails
+      |> Enum.map(fn km -> length(km.attackers) end)
+      |> Enum.uniq()
+      |> length()
+
     # Calculate composite score
     ship_score = min(ship_types * 5, 40)
     system_score = min(systems * 2, 30)
     gang_score = min(gang_sizes * 10, 30)
-    
+
     Float.round(ship_score + system_score + gang_score, 1)
   end
-  
-  defp calculate_danger_rating(combat_stats, character_data) do
+
+  defp calculate_danger_rating(combat_stats, _character_data) do
     # Multi-factor danger assessment
     kd_factor = min(combat_stats.kill_death_ratio * 10, 30)
     isk_factor = min(combat_stats.isk_efficiency / 3, 30)
     activity_factor = min(combat_stats.total_kills / 10, 20)
     solo_factor = min(combat_stats.solo_ratio * 20, 20)
-    
+
     Float.round(kd_factor + isk_factor + activity_factor + solo_factor, 1)
   end
-  
+
   defp calculate_consistency_score(killmails) do
     # Group by week
-    weekly_activity = killmails
-    |> Enum.group_by(fn km ->
-      {Date.year(km.killmail_time), Date.week_of_year(km.killmail_time)}
-    end)
-    |> Map.values()
-    |> Enum.map(&length/1)
-    
+    weekly_activity =
+      killmails
+      |> Enum.group_by(fn km ->
+        date = DateTime.to_date(km.killmail_time)
+        week = div(Date.day_of_year(date) - 1, 7) + 1
+        {date.year, week}
+      end)
+      |> Map.values()
+      |> Enum.map(&length/1)
+
     if length(weekly_activity) < 4 do
       0.0
     else
       mean = Enum.sum(weekly_activity) / length(weekly_activity)
       variance = calculate_variance(weekly_activity, mean)
       std_dev = :math.sqrt(variance)
-      
+
       # Lower coefficient of variation = higher consistency
       cv = if mean > 0, do: std_dev / mean, else: 1
       consistency = max(0, 100 * (1 - cv))
-      
+
       Float.round(consistency, 1)
     end
   end
-  
+
   defp calculate_variance(values, mean) do
     if Enum.empty?(values) do
       0
     else
-      sum_squares = values
-      |> Enum.map(fn v -> :math.pow(v - mean, 2) end)
-      |> Enum.sum()
-      
+      sum_squares =
+        values
+        |> Enum.map(fn v -> :math.pow(v - mean, 2) end)
+        |> Enum.sum()
+
       sum_squares / length(values)
     end
   end
-  
+
   defp calculate_efficiency_metrics(combat_stats, killmails) do
     %{
       isk_per_hour: calculate_isk_per_hour(killmails),
@@ -264,7 +279,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
       resource_efficiency: calculate_resource_efficiency(killmails)
     }
   end
-  
+
   defp calculate_isk_per_hour(killmails) do
     if Enum.empty?(killmails) do
       0
@@ -273,40 +288,43 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
       sorted_kms = Enum.sort_by(killmails, & &1.killmail_time)
       first_km = List.first(sorted_kms)
       last_km = List.last(sorted_kms)
-      
+
       hours = DateTime.diff(last_km.killmail_time, first_km.killmail_time, :second) / 3600
-      
+
       if hours > 0 do
-        total_destroyed = killmails
-        |> Enum.filter(fn km -> km.victim.character_id != List.first(killmails).victim.character_id end)
-        |> Enum.map(& &1.total_value)
-        |> Enum.sum()
-        
+        total_destroyed =
+          killmails
+          |> Enum.filter(fn km ->
+            km.victim.character_id != List.first(killmails).victim.character_id
+          end)
+          |> Enum.map(& &1.total_value)
+          |> Enum.sum()
+
         Float.round(total_destroyed / hours, 2)
       else
         0
       end
     end
   end
-  
+
   defp calculate_kill_efficiency(combat_stats) do
     # Points per kill based on gang size
     solo_points = combat_stats.solo_kills * 1.0
     gang_points = (combat_stats.total_kills - combat_stats.solo_kills) * 0.5
-    
+
     total_points = solo_points + gang_points
     engagements = combat_stats.total_kills + combat_stats.total_losses
-    
+
     if engagements > 0 do
       Float.round(total_points / engagements * 100, 1)
     else
       0.0
     end
   end
-  
+
   defp calculate_survival_rate(combat_stats) do
     total_engagements = combat_stats.total_kills + combat_stats.total_losses
-    
+
     if total_engagements > 0 do
       survival_rate = combat_stats.total_kills / total_engagements
       Float.round(survival_rate * 100, 1)
@@ -314,13 +332,14 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
       0.0
     end
   end
-  
+
   defp analyze_target_efficiency(killmails) do
     # Analyze if targets are worth the risk
-    kills = Enum.filter(killmails, fn km ->
-      km.victim.character_id != List.first(killmails).victim.character_id
-    end)
-    
+    kills =
+      Enum.filter(killmails, fn km ->
+        km.victim.character_id != List.first(killmails).victim.character_id
+      end)
+
     if Enum.empty?(kills) do
       0.0
     else
@@ -329,35 +348,43 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
       Float.round(high_value_kills / length(kills) * 100, 1)
     end
   end
-  
+
   defp calculate_resource_efficiency(killmails) do
     # ISK destroyed vs ISK lost ratio
-    destroyed = killmails
-    |> Enum.filter(fn km -> km.victim.character_id != List.first(killmails).victim.character_id end)
-    |> Enum.map(& &1.total_value)
-    |> Enum.sum()
-    
-    lost = killmails
-    |> Enum.filter(fn km -> km.victim.character_id == List.first(killmails).victim.character_id end)
-    |> Enum.map(& &1.total_value)
-    |> Enum.sum()
-    
+    destroyed =
+      killmails
+      |> Enum.filter(fn km ->
+        km.victim.character_id != List.first(killmails).victim.character_id
+      end)
+      |> Enum.map(& &1.total_value)
+      |> Enum.sum()
+
+    lost =
+      killmails
+      |> Enum.filter(fn km ->
+        km.victim.character_id == List.first(killmails).victim.character_id
+      end)
+      |> Enum.map(& &1.total_value)
+      |> Enum.sum()
+
     if lost > 0 do
       Float.round(destroyed / lost, 2)
     else
-      Float.round(destroyed / 1, 2)  # Avoid division by zero
+      # Avoid division by zero
+      Float.round(destroyed / 1, 2)
     end
   end
-  
+
   defp calculate_improvement_metrics(killmails, time_period) do
     # Split killmails into periods for trend analysis
     midpoint = calculate_midpoint(time_period)
-    
-    {early_kms, recent_kms} = killmails
-    |> Enum.split_with(fn km ->
-      DateTime.compare(km.killmail_time, midpoint) == :lt
-    end)
-    
+
+    {early_kms, recent_kms} =
+      killmails
+      |> Enum.split_with(fn km ->
+        DateTime.compare(km.killmail_time, midpoint) == :lt
+      end)
+
     %{
       kd_trend: calculate_kd_trend(early_kms, recent_kms),
       efficiency_trend: calculate_efficiency_trend(early_kms, recent_kms),
@@ -366,86 +393,91 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
       improvement_rate: calculate_overall_improvement(early_kms, recent_kms)
     }
   end
-  
+
   defp calculate_midpoint(days: days) do
     DateTime.utc_now() |> DateTime.add(-days * 24 * 60 * 60 / 2, :second)
   end
-  
+
   defp calculate_midpoint(months: months) do
     DateTime.utc_now() |> DateTime.add(-months * 30 * 24 * 60 * 60 / 2, :second)
   end
-  
+
   defp calculate_kd_trend(early_kms, recent_kms) do
     early_kd = calculate_period_kd(early_kms)
     recent_kd = calculate_period_kd(recent_kms)
-    
+
     if early_kd > 0 do
-      trend = ((recent_kd - early_kd) / early_kd) * 100
+      trend = (recent_kd - early_kd) / early_kd * 100
       Float.round(trend, 1)
     else
       0.0
     end
   end
-  
+
   defp calculate_period_kd(killmails) do
-    character_id = if Enum.empty?(killmails), do: nil, else: List.first(killmails).victim.character_id
-    
+    character_id =
+      if Enum.empty?(killmails), do: nil, else: List.first(killmails).victim.character_id
+
     kills = Enum.count(killmails, fn km -> km.victim.character_id != character_id end)
     losses = Enum.count(killmails, fn km -> km.victim.character_id == character_id end)
-    
+
     if losses > 0, do: kills / losses, else: Float.round(kills * 1.0, 2)
   end
-  
+
   defp calculate_efficiency_trend(early_kms, recent_kms) do
     early_eff = calculate_period_efficiency(early_kms)
     recent_eff = calculate_period_efficiency(recent_kms)
-    
+
     Float.round(recent_eff - early_eff, 1)
   end
-  
+
   defp calculate_period_efficiency(killmails) do
-    character_id = if Enum.empty?(killmails), do: nil, else: List.first(killmails).victim.character_id
-    
-    destroyed = killmails
-    |> Enum.filter(fn km -> km.victim.character_id != character_id end)
-    |> Enum.map(& &1.total_value)
-    |> Enum.sum()
-    
-    lost = killmails
-    |> Enum.filter(fn km -> km.victim.character_id == character_id end)
-    |> Enum.map(& &1.total_value)
-    |> Enum.sum()
-    
+    character_id =
+      if Enum.empty?(killmails), do: nil, else: List.first(killmails).victim.character_id
+
+    destroyed =
+      killmails
+      |> Enum.filter(fn km -> km.victim.character_id != character_id end)
+      |> Enum.map(& &1.total_value)
+      |> Enum.sum()
+
+    lost =
+      killmails
+      |> Enum.filter(fn km -> km.victim.character_id == character_id end)
+      |> Enum.map(& &1.total_value)
+      |> Enum.sum()
+
     total = destroyed + lost
-    if total > 0, do: (destroyed / total) * 100, else: 0.0
+    if total > 0, do: destroyed / total * 100, else: 0.0
   end
-  
+
   defp calculate_activity_trend(early_kms, recent_kms) do
     # Compare activity levels
     early_count = length(early_kms)
     recent_count = length(recent_kms)
-    
+
     if early_count > 0 do
-      trend = ((recent_count - early_count) / early_count) * 100
+      trend = (recent_count - early_count) / early_count * 100
       Float.round(trend, 1)
     else
-      100.0  # If no early activity, any recent activity is improvement
+      # If no early activity, any recent activity is improvement
+      100.0
     end
   end
-  
+
   defp analyze_skill_progression(early_kms, recent_kms) do
     # Compare ship complexity/value
     early_avg_value = calculate_avg_ship_value(early_kms)
     recent_avg_value = calculate_avg_ship_value(recent_kms)
-    
+
     if early_avg_value > 0 do
-      progression = ((recent_avg_value - early_avg_value) / early_avg_value) * 100
+      progression = (recent_avg_value - early_avg_value) / early_avg_value * 100
       Float.round(progression, 1)
     else
       0.0
     end
   end
-  
+
   defp calculate_avg_ship_value(killmails) do
     if Enum.empty?(killmails) do
       0
@@ -454,107 +486,118 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
       total / length(killmails)
     end
   end
-  
+
   defp calculate_overall_improvement(early_kms, recent_kms) do
     # Composite improvement score
     kd_improvement = calculate_kd_trend(early_kms, recent_kms) * 0.4
     eff_improvement = calculate_efficiency_trend(early_kms, recent_kms) * 0.3
     activity_improvement = min(calculate_activity_trend(early_kms, recent_kms), 100) * 0.2
     skill_improvement = calculate_efficiency_trend(early_kms, recent_kms) * 0.1
-    
+
     Float.round(kd_improvement + eff_improvement + activity_improvement + skill_improvement, 1)
   end
-  
+
   defp calculate_overall_rating(core_metrics, efficiency_metrics) do
     # Weighted performance rating
     kd_score = min(core_metrics.kill_death_ratio * 20, 40)
-    eff_score = min(efficiency_metrics.isk_per_hour / 1_000_000, 20)  # Per million ISK/hour
+    # Per million ISK/hour
+    eff_score = min(efficiency_metrics.isk_per_hour / 1_000_000, 20)
     activity_score = min(core_metrics.activity_score / 2, 20)
     versatility_score = min(core_metrics.versatility_score / 5, 20)
-    
+
     total = kd_score + eff_score + activity_score + versatility_score
-    
-    rating = cond do
-      total >= 90 -> :elite
-      total >= 75 -> :expert  
-      total >= 60 -> :veteran
-      total >= 40 -> :competent
-      total >= 20 -> :developing
-      true -> :novice
-    end
-    
+
+    rating =
+      cond do
+        total >= 90 -> :elite
+        total >= 75 -> :expert
+        total >= 60 -> :veteran
+        total >= 40 -> :competent
+        total >= 20 -> :developing
+        true -> :novice
+      end
+
     %{
       score: Float.round(total, 1),
       rating: rating
     }
   end
-  
+
   defp identify_strengths(metrics, combat_stats) do
     strengths = []
-    
-    strengths = if metrics.kill_death_ratio > 2.0 do
-      ["Excellent K/D ratio" | strengths]
-    else
-      strengths
-    end
-    
-    strengths = if metrics.isk_efficiency > 75 do
-      ["High ISK efficiency" | strengths]
-    else
-      strengths
-    end
-    
-    strengths = if metrics.solo_effectiveness > 60 do
-      ["Strong solo pilot" | strengths]
-    else
-      strengths
-    end
-    
-    strengths = if metrics.versatility_score > 70 do
-      ["Highly versatile" | strengths]
-    else
-      strengths
-    end
-    
-    strengths = if combat_stats.weapon_preferences |> List.first() |> elem(1) > 50 do
-      ["Weapon specialization" | strengths]
-    else
-      strengths
-    end
-    
+
+    strengths =
+      if metrics.kill_death_ratio > 2.0 do
+        ["Excellent K/D ratio" | strengths]
+      else
+        strengths
+      end
+
+    strengths =
+      if metrics.isk_efficiency > 75 do
+        ["High ISK efficiency" | strengths]
+      else
+        strengths
+      end
+
+    strengths =
+      if metrics.solo_effectiveness > 60 do
+        ["Strong solo pilot" | strengths]
+      else
+        strengths
+      end
+
+    strengths =
+      if metrics.versatility_score > 70 do
+        ["Highly versatile" | strengths]
+      else
+        strengths
+      end
+
+    strengths =
+      if combat_stats.weapon_preferences |> List.first() |> elem(1) > 50 do
+        ["Weapon specialization" | strengths]
+      else
+        strengths
+      end
+
     Enum.reverse(strengths)
   end
-  
+
   defp identify_improvement_areas(metrics, _combat_stats) do
     areas = []
-    
-    areas = if metrics.kill_death_ratio < 1.0 do
-      ["Improve engagement selection" | areas]
-    else
-      areas
-    end
-    
-    areas = if metrics.isk_efficiency < 50 do
-      ["Target selection efficiency" | areas]
-    else
-      areas
-    end
-    
-    areas = if metrics.consistency_score < 40 do
-      ["Activity consistency" | areas]
-    else
-      areas
-    end
-    
-    areas = if metrics.versatility_score < 30 do
-      ["Ship/system diversity" | areas]
-    else
-      areas
-    end
-    
+
+    areas =
+      if metrics.kill_death_ratio < 1.0 do
+        ["Improve engagement selection" | areas]
+      else
+        areas
+      end
+
+    areas =
+      if metrics.isk_efficiency < 50 do
+        ["Target selection efficiency" | areas]
+      else
+        areas
+      end
+
+    areas =
+      if metrics.consistency_score < 40 do
+        ["Activity consistency" | areas]
+      else
+        areas
+      end
+
+    areas =
+      if metrics.versatility_score < 30 do
+        ["Ship/system diversity" | areas]
+      else
+        areas
+      end
+
     Enum.reverse(areas)
   end
-  
+
   defp calculate_rankings(_metrics) do
     # Simplified rankings - would compare against database
     %{
@@ -564,34 +607,40 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
       activity: %{rank: 3200, percentile: 68.9}
     }
   end
-  
+
   defp get_peer_group_metrics(_peer_group) do
     # Would fetch actual peer metrics from database
-    {:ok, %{
-      avg_kd_ratio: 1.5,
-      avg_isk_efficiency: 65.0,
-      avg_activity_score: 45.0,
-      avg_danger_rating: 55.0
-    }}
+    {:ok,
+     %{
+       avg_kd_ratio: 1.5,
+       avg_isk_efficiency: 65.0,
+       avg_activity_score: 45.0,
+       avg_danger_rating: 55.0
+     }}
   end
-  
+
   defp compare_to_peers(char_metrics, peer_metrics) do
     %{
-      kd_comparison: compare_metric(char_metrics.core_metrics.kill_death_ratio, peer_metrics.avg_kd_ratio),
-      efficiency_comparison: compare_metric(char_metrics.core_metrics.isk_efficiency, peer_metrics.avg_isk_efficiency),
-      activity_comparison: compare_metric(char_metrics.core_metrics.activity_score, peer_metrics.avg_activity_score),
-      danger_comparison: compare_metric(char_metrics.core_metrics.danger_rating, peer_metrics.avg_danger_rating),
+      kd_comparison:
+        compare_metric(char_metrics.core_metrics.kill_death_ratio, peer_metrics.avg_kd_ratio),
+      efficiency_comparison:
+        compare_metric(char_metrics.core_metrics.isk_efficiency, peer_metrics.avg_isk_efficiency),
+      activity_comparison:
+        compare_metric(char_metrics.core_metrics.activity_score, peer_metrics.avg_activity_score),
+      danger_comparison:
+        compare_metric(char_metrics.core_metrics.danger_rating, peer_metrics.avg_danger_rating),
       overall_standing: determine_overall_standing(char_metrics, peer_metrics)
     }
   end
-  
+
   defp compare_metric(char_value, peer_avg) do
-    diff_percent = if peer_avg > 0 do
-      ((char_value - peer_avg) / peer_avg) * 100
-    else
-      0
-    end
-    
+    diff_percent =
+      if peer_avg > 0 do
+        (char_value - peer_avg) / peer_avg * 100
+      else
+        0
+      end
+
     %{
       character_value: char_value,
       peer_average: peer_avg,
@@ -599,7 +648,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
       rating: rate_comparison(diff_percent)
     }
   end
-  
+
   defp rate_comparison(diff_percent) do
     cond do
       diff_percent > 50 -> :far_above_average
@@ -609,16 +658,19 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
       true -> :far_below_average
     end
   end
-  
+
   defp determine_overall_standing(char_metrics, peer_metrics) do
     # Simple average comparison
-    char_composite = [
-      char_metrics.core_metrics.kill_death_ratio / max(peer_metrics.avg_kd_ratio, 1),
-      char_metrics.core_metrics.isk_efficiency / max(peer_metrics.avg_isk_efficiency, 1),
-      char_metrics.core_metrics.activity_score / max(peer_metrics.avg_activity_score, 1),
-      char_metrics.core_metrics.danger_rating / max(peer_metrics.avg_danger_rating, 1)
-    ] |> Enum.sum() |> Kernel./(4)
-    
+    char_composite =
+      [
+        char_metrics.core_metrics.kill_death_ratio / max(peer_metrics.avg_kd_ratio, 1),
+        char_metrics.core_metrics.isk_efficiency / max(peer_metrics.avg_isk_efficiency, 1),
+        char_metrics.core_metrics.activity_score / max(peer_metrics.avg_activity_score, 1),
+        char_metrics.core_metrics.danger_rating / max(peer_metrics.avg_danger_rating, 1)
+      ]
+      |> Enum.sum()
+      |> Kernel./(4)
+
     cond do
       char_composite > 1.5 -> :top_performer
       char_composite > 1.2 -> :above_average
@@ -627,16 +679,17 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
       true -> :needs_improvement
     end
   end
-  
-  defp get_historical_performance(character_id, time_period) do
+
+  defp get_historical_performance(_character_id, time_period) do
     # Would fetch historical snapshots
-    {:ok, %{
-      snapshots: [],
-      period: time_period
-    }}
+    {:ok,
+     %{
+       snapshots: [],
+       period: time_period
+     }}
   end
-  
-  defp analyze_trends(historical_data) do
+
+  defp analyze_trends(_historical_data) do
     # Simplified trend analysis
     %{
       overall_trend: :improving,

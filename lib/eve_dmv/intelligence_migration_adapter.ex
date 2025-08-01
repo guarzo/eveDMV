@@ -8,7 +8,7 @@ defmodule EveDmv.IntelligenceMigrationAdapter do
   """
 
   alias EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache
-  alias EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer
+  alias EveDmv.Contexts.Corporation.Core.CorporationAnalyzer
   alias EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer
   alias EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer
   alias EveDmv.Contexts.ThreatAssessment.Domain.ThreatAnalyzer

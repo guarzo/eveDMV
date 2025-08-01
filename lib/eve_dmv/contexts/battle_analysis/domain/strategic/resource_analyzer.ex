@@ -583,10 +583,12 @@ defmodule EveDmv.Shared.Strategic.ResourceAnalyzer do
     stability_recommendations =
       case control_stability.stability_trend do
         :increasing_competition ->
-          competition_recommendations ++ ["Competition increasing - prepare for resource conflicts"]
+          competition_recommendations ++
+            ["Competition increasing - prepare for resource conflicts"]
 
         :consolidating_control ->
-          competition_recommendations ++ ["Control consolidating - opportunity to expand operations"]
+          competition_recommendations ++
+            ["Control consolidating - opportunity to expand operations"]
 
         _ ->
           competition_recommendations

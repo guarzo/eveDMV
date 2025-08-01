@@ -90,6 +90,13 @@ defmodule EveDmv.StaticData.SystemData do
   def get_security_status(_), do: 0.5
 
   @doc """
+  Alias for get_security_status/1 for backward compatibility.
+  """
+  def get_system_security(system_id) do
+    get_security_status(system_id)
+  end
+
+  @doc """
   Classify a system by its security type.
   """
   def classify_security_type(system_id) when is_integer(system_id) do

@@ -26,7 +26,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.BattlePhaseAnalyzer
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleComparisonEngine
+
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.DataCollectors.BattleDataCollector
+
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.FleetComparisonEngine
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.LiveEngagementTracker
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.RecommendationEngine

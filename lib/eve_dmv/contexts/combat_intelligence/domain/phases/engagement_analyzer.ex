@@ -242,10 +242,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Engage
     # Analyze numerical advantage, ship composition, and target selection
     logistics_count = count_logistics_ships(participants)
     primary_targets = count_primary_targets_killed(killmails)
+
     []
-    |> (fn factors -> if length(participants) > 10, do: ["numerical_advantage" | factors], else: factors end).()
-    |> (fn factors -> if logistics_count > 0, do: ["logistics_support" | factors], else: factors end).()
-    |> (fn factors -> if primary_targets > 0, do: ["effective_target_selection" | factors], else: factors end).()
+    |> (fn factors ->
+          if length(participants) > 10, do: ["numerical_advantage" | factors], else: factors
+        end).()
+    |> (fn factors ->
+          if logistics_count > 0, do: ["logistics_support" | factors], else: factors
+        end).()
+    |> (fn factors ->
+          if primary_targets > 0, do: ["effective_target_selection" | factors], else: factors
+        end).()
   end
 
   defp classify_participants_by_side(participants) do

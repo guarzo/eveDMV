@@ -41,6 +41,43 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
   end
 
   @doc """
+  Match a killmail against a specific surveillance profile.
+  
+  Returns match result with details about what criteria matched.
+  """
+  def match_killmail_against_profile(killmail_event, profile) do
+    try do
+      # Extract killmail data from event
+      killmail_data = extract_killmail_data(killmail_event)
+      
+      # Evaluate against profile criteria
+      match_result = evaluate_killmail_against_profile(killmail_data, profile)
+      
+      if match_result.matches do
+        {:ok, %{
+          profile_id: profile.id,
+          killmail_id: killmail_data.killmail_id,
+          matched: true,
+          matched_criteria: match_result.matched_criteria,
+          match_confidence: match_result.confidence,
+          timestamp: DateTime.utc_now()
+        }}
+      else
+        {:ok, %{
+          profile_id: profile.id,
+          killmail_id: killmail_data.killmail_id,
+          matched: false,
+          reason: match_result.reason
+        }}
+      end
+    rescue
+      error ->
+        Logger.error("Error matching killmail against profile", error: inspect(error))
+        {:error, :match_error}
+    end
+  end
+
+  @doc """
   Get recent matches across all profiles.
   """
   def get_recent_matches(opts \\ []) do
@@ -837,6 +874,187 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
         true -> 10
       end
     end
+  end
+
+  # Helper functions for killmail matching
+
+  defp extract_killmail_data(killmail_event) do
+    # Extract relevant data from killmail event
+    %{
+      killmail_id: killmail_event[:killmail_id] || killmail_event["killmail_id"],
+      solar_system_id: killmail_event[:solar_system_id] || killmail_event["solar_system_id"],
+      killmail_time: killmail_event[:killmail_time] || killmail_event["killmail_time"],
+      victim: extract_victim_data(killmail_event),
+      attackers: extract_attackers_data(killmail_event),
+      total_value: killmail_event[:zkb_total_value] || killmail_event["zkb_total_value"] || 0
+    }
+  end
+
+  defp extract_victim_data(killmail_event) do
+    victim = killmail_event[:victim] || killmail_event["victim"] || %{}
+    %{
+      character_id: victim[:character_id] || victim["character_id"],
+      corporation_id: victim[:corporation_id] || victim["corporation_id"],
+      alliance_id: victim[:alliance_id] || victim["alliance_id"],
+      ship_type_id: victim[:ship_type_id] || victim["ship_type_id"]
+    }
+  end
+
+  defp extract_attackers_data(killmail_event) do
+    attackers = killmail_event[:attackers] || killmail_event["attackers"] || []
+    Enum.map(attackers, fn attacker ->
+      %{
+        character_id: attacker[:character_id] || attacker["character_id"],
+        corporation_id: attacker[:corporation_id] || attacker["corporation_id"],
+        alliance_id: attacker[:alliance_id] || attacker["alliance_id"],
+        ship_type_id: attacker[:ship_type_id] || attacker["ship_type_id"],
+        final_blow: attacker[:final_blow] || attacker["final_blow"] || false
+      }
+    end)
+  end
+
+  defp evaluate_killmail_against_profile(killmail_data, profile) do
+    criteria = profile.criteria || %{}
+    
+    case criteria do
+      %{character_ids: char_ids} when is_list(char_ids) ->
+        evaluate_character_criteria(killmail_data, char_ids)
+      
+      %{corporation_ids: corp_ids} when is_list(corp_ids) ->
+        evaluate_corporation_criteria(killmail_data, corp_ids)
+      
+      %{system_ids: system_ids} when is_list(system_ids) ->
+        evaluate_system_criteria(killmail_data, system_ids)
+      
+      %{alliance_ids: alliance_ids} when is_list(alliance_ids) ->
+        evaluate_alliance_criteria(killmail_data, alliance_ids)
+      
+      _ ->
+        %{matches: false, reason: "No valid criteria found", confidence: 0.0}
+    end
+  end
+
+  defp evaluate_character_criteria(killmail_data, character_ids) do
+    victim_match = killmail_data.victim.character_id in character_ids
+    attacker_match = Enum.any?(killmail_data.attackers, fn a -> a.character_id in character_ids end)
+    
+    if victim_match or attacker_match do
+      %{
+        matches: true,
+        matched_criteria: build_character_match_criteria(killmail_data, character_ids, victim_match, attacker_match),
+        confidence: if(victim_match, do: 1.0, else: 0.8)
+      }
+    else
+      %{matches: false, reason: "No character matches", confidence: 0.0}
+    end
+  end
+
+  defp evaluate_corporation_criteria(killmail_data, corporation_ids) do
+    victim_match = killmail_data.victim.corporation_id in corporation_ids
+    attacker_match = Enum.any?(killmail_data.attackers, fn a -> a.corporation_id in corporation_ids end)
+    
+    if victim_match or attacker_match do
+      %{
+        matches: true,
+        matched_criteria: build_corporation_match_criteria(killmail_data, corporation_ids, victim_match, attacker_match),
+        confidence: if(victim_match, do: 0.9, else: 0.7)
+      }
+    else
+      %{matches: false, reason: "No corporation matches", confidence: 0.0}
+    end
+  end
+
+  defp evaluate_system_criteria(killmail_data, system_ids) do
+    if killmail_data.solar_system_id in system_ids do
+      %{
+        matches: true,
+        matched_criteria: [%{type: :system_match, system_id: killmail_data.solar_system_id}],
+        confidence: 1.0
+      }
+    else
+      %{matches: false, reason: "System not in watch list", confidence: 0.0}
+    end
+  end
+
+  defp evaluate_alliance_criteria(killmail_data, alliance_ids) do
+    victim_match = killmail_data.victim.alliance_id in alliance_ids
+    attacker_match = Enum.any?(killmail_data.attackers, fn a -> a.alliance_id in alliance_ids end)
+    
+    if victim_match or attacker_match do
+      %{
+        matches: true,
+        matched_criteria: build_alliance_match_criteria(killmail_data, alliance_ids, victim_match, attacker_match),
+        confidence: if(victim_match, do: 0.8, else: 0.6)
+      }
+    else
+      %{matches: false, reason: "No alliance matches", confidence: 0.0}
+    end
+  end
+
+  defp build_character_match_criteria(killmail_data, character_ids, victim_match, attacker_match) do
+    criteria = []
+    
+    criteria = if victim_match do
+      [%{type: :character_victim, character_id: killmail_data.victim.character_id} | criteria]
+    else
+      criteria
+    end
+    
+    criteria = if attacker_match do
+      matching_attackers = Enum.filter(killmail_data.attackers, fn a -> a.character_id in character_ids end)
+      attacker_criteria = Enum.map(matching_attackers, fn a -> 
+        %{type: :character_attacker, character_id: a.character_id}
+      end)
+      attacker_criteria ++ criteria
+    else
+      criteria
+    end
+    
+    criteria
+  end
+
+  defp build_corporation_match_criteria(killmail_data, corporation_ids, victim_match, attacker_match) do
+    criteria = []
+    
+    criteria = if victim_match do
+      [%{type: :corporation_victim, corporation_id: killmail_data.victim.corporation_id} | criteria]
+    else
+      criteria
+    end
+    
+    criteria = if attacker_match do
+      matching_attackers = Enum.filter(killmail_data.attackers, fn a -> a.corporation_id in corporation_ids end)
+      attacker_criteria = Enum.map(matching_attackers, fn a -> 
+        %{type: :corporation_attacker, corporation_id: a.corporation_id}
+      end)
+      attacker_criteria ++ criteria
+    else
+      criteria
+    end
+    
+    criteria
+  end
+
+  defp build_alliance_match_criteria(killmail_data, alliance_ids, victim_match, attacker_match) do
+    criteria = []
+    
+    criteria = if victim_match do
+      [%{type: :alliance_victim, alliance_id: killmail_data.victim.alliance_id} | criteria]
+    else
+      criteria
+    end
+    
+    criteria = if attacker_match do
+      matching_attackers = Enum.filter(killmail_data.attackers, fn a -> a.alliance_id in alliance_ids end)
+      attacker_criteria = Enum.map(matching_attackers, fn a -> 
+        %{type: :alliance_attacker, alliance_id: a.alliance_id}
+      end)
+      attacker_criteria ++ criteria
+    else
+      criteria
+    end
+    
+    criteria
   end
 
   # Validation functions

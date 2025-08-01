@@ -135,6 +135,14 @@ defmodule EveDmv.Intelligence.Cache.IntelligenceCache do
   end
 
   @doc """
+  Put a value in the cache with the given key and TTL.
+  """
+  def put(cache_key, value, opts \\ []) do
+    ttl = Keyword.get(opts, :ttl, :timer.hours(6))
+    Cache.put(:analysis, cache_key, value, ttl: ttl)
+  end
+  
+  @doc """
   Invalidate cache for a specific character.
 
   Useful when new data is available that would change analysis results.
@@ -193,6 +201,13 @@ defmodule EveDmv.Intelligence.Cache.IntelligenceCache do
       # Not tracked in simplified version
       hit_ratio: 0.0
     }
+  end
+
+  @doc """
+  Delete a specific cache entry.
+  """
+  def delete(cache_key) do
+    Cache.delete(:analysis, cache_key)
   end
 
   @doc """
@@ -266,5 +281,32 @@ defmodule EveDmv.Intelligence.Cache.IntelligenceCache do
       end)
 
     {:ok, %{character_id: character_id, trends: trends}}
+  end
+
+  @doc """
+  Generic get_or_compute function for intelligence cache.
+  
+  This provides a generic interface to cache any computation result.
+  """
+  def get_or_compute(cache_key, compute_fn, opts \\ []) do
+    ttl = Keyword.get(opts, :ttl, :timer.hours(1))
+    
+    case Cache.get(:analysis, cache_key) do
+      {:ok, result} ->
+        Logger.debug("Cache hit for #{inspect(cache_key)}")
+        {:ok, result}
+        
+      :miss ->
+        Logger.debug("Cache miss for #{inspect(cache_key)}")
+        
+        case compute_fn.() do
+          {:ok, result} ->
+            Cache.put(:analysis, cache_key, result, ttl: ttl)
+            {:ok, result}
+            
+          {:error, _} = error ->
+            error
+        end
+    end
   end
 end

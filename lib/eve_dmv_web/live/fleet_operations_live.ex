@@ -159,82 +159,82 @@ defmodule EveDmvWeb.FleetOperationsLive do
   # Analysis functions
 
   defp analyze_fleet_composition(fleet_data) do
-      # CompositionAnalyzer expects fleet_id as integer and base_data structure
-      # Convert string to integer
-      fleet_id_hash = :erlang.phash2(fleet_data.fleet_id)
+    # CompositionAnalyzer expects fleet_id as integer and base_data structure
+    # Convert string to integer
+    fleet_id_hash = :erlang.phash2(fleet_data.fleet_id)
 
-      # Fix the fleet participants key mapping
-      fleet_participants_fixed = %{
-        fleet_id_hash => Map.get(fleet_data.fleet_participants, fleet_data.fleet_id, [])
-      }
+    # Fix the fleet participants key mapping
+    fleet_participants_fixed = %{
+      fleet_id_hash => Map.get(fleet_data.fleet_participants, fleet_data.fleet_id, [])
+    }
 
-      base_data = %{
-        fleet_data: %{fleet_id_hash => fleet_data.fleet_data},
-        fleet_participants: fleet_participants_fixed
-      }
+    base_data = %{
+      fleet_data: %{fleet_id_hash => fleet_data.fleet_data},
+      fleet_participants: fleet_participants_fixed
+    }
 
-      case CompositionAnalyzer.analyze(fleet_id_hash, base_data) do
-        {:ok, analysis} ->
-          %{
-            type: "composition",
-            success: true,
-            data: analysis,
-            summary: generate_composition_summary(analysis)
-          }
+    case CompositionAnalyzer.analyze(fleet_id_hash, base_data) do
+      {:ok, analysis} ->
+        %{
+          type: "composition",
+          success: true,
+          data: analysis,
+          summary: generate_composition_summary(analysis)
+        }
 
-        {:error, reason} ->
-          %{type: "composition", success: false, error: inspect(reason)}
+      {:error, reason} ->
+        %{type: "composition", success: false, error: inspect(reason)}
 
-        %EveDmv.Error{} = error ->
-          %{type: "composition", success: false, error: error.message}
-      end
+      %EveDmv.Error{} = error ->
+        %{type: "composition", success: false, error: error.message}
+    end
   rescue
     error ->
       %{type: "composition", success: false, error: "Analysis failed: #{inspect(error)}"}
   end
 
   defp analyze_fleet_effectiveness(fleet_data) do
-      participant_data = Map.get(fleet_data, :fleet_participants, %{})
-      participants = Map.get(participant_data, fleet_data.fleet_id, [])
+    participant_data = Map.get(fleet_data, :fleet_participants, %{})
+    participants = Map.get(participant_data, fleet_data.fleet_id, [])
 
-      fleet_analysis = WhFleetAnalyzer.analyze_fleet_composition_from_members(participants)
-      effectiveness = WhFleetAnalyzer.calculate_fleet_effectiveness(fleet_analysis)
+    fleet_analysis = WhFleetAnalyzer.analyze_fleet_composition_from_members(participants)
+    effectiveness = WhFleetAnalyzer.calculate_fleet_effectiveness(fleet_analysis)
 
-      improvements =
-        WhFleetAnalyzer.recommend_fleet_improvements(%{
-          effectiveness_metrics: effectiveness,
-          role_distribution: fleet_analysis.role_distribution,
-          doctrine_compliance: fleet_analysis.doctrine_compliance
-        })
+    improvements =
+      WhFleetAnalyzer.recommend_fleet_improvements(%{
+        effectiveness_metrics: effectiveness,
+        role_distribution: fleet_analysis.role_distribution,
+        doctrine_compliance: fleet_analysis.doctrine_compliance
+      })
 
-      %{
-        type: "effectiveness",
-        success: true,
-        data: %{
-          fleet_analysis: fleet_analysis,
-          effectiveness: effectiveness,
-          improvements: improvements
-        },
-        summary: generate_effectiveness_summary(effectiveness)
-      }
+    %{
+      type: "effectiveness",
+      success: true,
+      data: %{
+        fleet_analysis: fleet_analysis,
+        effectiveness: effectiveness,
+        improvements: improvements
+      },
+      summary: generate_effectiveness_summary(effectiveness)
+    }
   rescue
     error ->
       %{type: "effectiveness", success: false, error: "Analysis failed: #{inspect(error)}"}
   end
 
   defp analyze_pilot_performance(fleet_data) do
-      participant_data = Map.get(fleet_data, :fleet_participants, %{})
-      participants = Map.get(participant_data, fleet_data.fleet_id, [])
+    participant_data = Map.get(fleet_data, :fleet_participants, %{})
+    participants = Map.get(participant_data, fleet_data.fleet_id, [])
 
-      # Calculate real pilot performance metrics from battle data
-      performance_metrics = calculate_pilot_performance_metrics(participants)
+    # Calculate real pilot performance metrics from battle data
+    performance_metrics = calculate_pilot_performance_metrics(participants)
 
-      %{
-        type: "performance",
-        success: true,
-        data: performance_metrics,
-        summary: generate_performance_summary(performance_metrics)
-      }
+    %{
+      type: "performance",
+      success: true,
+      data: performance_metrics,
+      summary: generate_performance_summary(performance_metrics)
+    }
   rescue
     error ->
       %{type: "performance", success: false, error: "Analysis failed: #{inspect(error)}"}
@@ -1029,54 +1029,54 @@ defmodule EveDmvWeb.FleetOperationsLive do
   end
 
   defp extract_side_participants(battle, side) do
-      killmails = Map.get(battle, :killmails, [])
-      participants = extract_participants_from_killmails(killmails)
-      fleet_sides = group_participants_into_sides(participants)
+    killmails = Map.get(battle, :killmails, [])
+    participants = extract_participants_from_killmails(killmails)
+    fleet_sides = group_participants_into_sides(participants)
 
-      # Add side_id to fleet sides for compatibility with battle analysis
-      fleet_sides_with_ids =
-        Enum.with_index(fleet_sides)
-        |> Enum.map(fn {fleet_side, index} ->
-          Map.put(fleet_side, :side_id, "side_#{index + 1}")
-        end)
+    # Add side_id to fleet sides for compatibility with battle analysis
+    fleet_sides_with_ids =
+      Enum.with_index(fleet_sides)
+      |> Enum.map(fn {fleet_side, index} ->
+        Map.put(fleet_side, :side_id, "side_#{index + 1}")
+      end)
 
-      require Logger
+    require Logger
 
-      Logger.info(
-        "Available fleet sides: #{inspect(Enum.map(fleet_sides_with_ids, fn s -> %{group_id: s.group_id, side_id: s.side_id} end))}"
-      )
+    Logger.info(
+      "Available fleet sides: #{inspect(Enum.map(fleet_sides_with_ids, fn s -> %{group_id: s.group_id, side_id: s.side_id} end))}"
+    )
 
-      Logger.info("Looking for side: #{inspect(side)}")
+    Logger.info("Looking for side: #{inspect(side)}")
 
-      # Improved side matching with both group_id and side_id
-      target_side =
-        Enum.find(fleet_sides_with_ids, fn fleet_side ->
-          # Try exact side_id match (side_1, side_2, etc.)
-          # Try exact group_id match (alliance/corp ID)
-          # Try index-based matching (side_1 -> first side, side_2 -> second side)
-          Map.get(fleet_side, :side_id) == side or
-            to_string(Map.get(fleet_side, :group_id)) == side or
-            (side == "side_1" and Map.get(fleet_side, :side_id) == "side_1") or
-            (side == "side_2" and Map.get(fleet_side, :side_id) == "side_2")
-        end)
+    # Improved side matching with both group_id and side_id
+    target_side =
+      Enum.find(fleet_sides_with_ids, fn fleet_side ->
+        # Try exact side_id match (side_1, side_2, etc.)
+        # Try exact group_id match (alliance/corp ID)
+        # Try index-based matching (side_1 -> first side, side_2 -> second side)
+        Map.get(fleet_side, :side_id) == side or
+          to_string(Map.get(fleet_side, :group_id)) == side or
+          (side == "side_1" and Map.get(fleet_side, :side_id) == "side_1") or
+          (side == "side_2" and Map.get(fleet_side, :side_id) == "side_2")
+      end)
 
-      case target_side do
-        nil ->
-          available_sides =
-            Enum.map(fleet_sides_with_ids, fn s ->
-              "#{s.side_id} (#{s.group_id})"
-            end)
+    case target_side do
+      nil ->
+        available_sides =
+          Enum.map(fleet_sides_with_ids, fn s ->
+            "#{s.side_id} (#{s.group_id})"
+          end)
 
-          {:error,
-           "Side '#{side}' not found in battle. Available sides: #{inspect(available_sides)}"}
+        {:error,
+         "Side '#{side}' not found in battle. Available sides: #{inspect(available_sides)}"}
 
-        side_data ->
-          Logger.info(
-            "Found side data: #{side_data.side_id} with #{length(Map.get(side_data, :pilots, []))} pilots"
-          )
+      side_data ->
+        Logger.info(
+          "Found side data: #{side_data.side_id} with #{length(Map.get(side_data, :pilots, []))} pilots"
+        )
 
-          {:ok, Map.get(side_data, :pilots, [])}
-      end
+        {:ok, Map.get(side_data, :pilots, [])}
+    end
   rescue
     error ->
       {:error, "Failed to extract side participants: #{inspect(error)}"}

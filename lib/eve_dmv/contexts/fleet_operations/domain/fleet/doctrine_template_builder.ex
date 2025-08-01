@@ -1,4 +1,4 @@
-defmodule EveDmv.Intelligence.Fleet.DoctrineTemplateBuilder do
+defmodule EveDmv.Contexts.FleetOperations.Domain.Fleet.DoctrineTemplateBuilder do
   @moduledoc """
   Doctrine template building and sizing module for fleet operations.
 

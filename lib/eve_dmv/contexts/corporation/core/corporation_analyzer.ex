@@ -2,38 +2,36 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
   @moduledoc """
   Main corporation analysis engine that provides comprehensive analysis
   of corporation statistics, member composition, and organizational health.
-  
+
   Consolidates functionality from:
   - Corporation Analysis domain analyzers
   - Corporation Intelligence analyzers
   """
-  
+
   use GenServer
-  
+
   alias EveDmv.Contexts.Corporation.Core.{
     MemberActivityAnalyzer,
-    MemberRiskAssessment,
-    ParticipationAnalyzer,
     OrganizationalHealthAnalyzer
   }
+
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
   alias EveDmv.Platform.Database.CorporationRepository
-  alias EveDmv.Result
-  
+
   require Logger
-  
+
   @analysis_timeout 60_000
   @cache_ttl :timer.hours(2)
-  
+
   # Client API
-  
+
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
-  
+
   @doc """
   Perform comprehensive corporation analysis.
-  
+
   Options:
     - include_members: Include detailed member analysis
     - include_health: Include organizational health assessment
@@ -43,7 +41,7 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
   def analyze_corporation(corporation_id, opts \\ []) do
     GenServer.call(__MODULE__, {:analyze_corporation, corporation_id, opts}, @analysis_timeout)
   end
-  
+
   @doc """
   Get basic corporation statistics.
   """
@@ -51,18 +49,19 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
     case CorporationCache.get({:corporation_stats, corporation_id}) do
       nil ->
         CorporationRepository.get_corporation_stats(corporation_id)
+
       stats ->
         {:ok, stats}
     end
   end
-  
+
   @doc """
   Get comprehensive corporation profile.
   """
   def get_corporation_profile(corporation_id) do
     GenServer.call(__MODULE__, {:get_profile, corporation_id}, @analysis_timeout)
   end
-  
+
   @doc """
   Calculate corporation threat level based on member analysis.
   """
@@ -76,11 +75,11 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
         threat_distribution: analyze_threat_distribution(member_data),
         combat_readiness: assess_combat_readiness(member_data)
       }
-      
+
       {:ok, threat_level}
     end
   end
-  
+
   @doc """
   Get intelligence summary for corporation members.
   """
@@ -94,11 +93,11 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
         intelligence_gaps: identify_intelligence_gaps(members),
         key_personnel: identify_key_personnel(members)
       }
-      
+
       {:ok, summary}
     end
   end
-  
+
   @doc """
   Assess threats posed by corporation.
   """
@@ -111,48 +110,53 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
         diplomatic_threat: analysis.alliance_strength,
         overall_assessment: determine_overall_threat_assessment(analysis)
       }
-      
+
       {:ok, threats}
     end
   end
-  
+
   @doc """
   Analyze multiple enemy corporations.
   """
   def analyze_enemy_corporations(corporation_ids) do
     corporation_ids
-    |> Task.async_stream(fn corp_id ->
-      {corp_id, analyze_corporation(corp_id, include_threats: true)}
-    end, max_concurrency: 5, timeout: @analysis_timeout)
+    |> Task.async_stream(
+      fn corp_id ->
+        {corp_id, analyze_corporation(corp_id, include_threats: true)}
+      end,
+      max_concurrency: 5,
+      timeout: @analysis_timeout
+    )
     |> Enum.reduce({[], []}, fn
       {:ok, {corp_id, {:ok, analysis}}}, {successes, failures} ->
         {[{corp_id, analysis} | successes], failures}
-        
+
       {:ok, {corp_id, {:error, reason}}}, {successes, failures} ->
         {successes, [{corp_id, reason} | failures]}
-        
+
       {:exit, reason}, {successes, failures} ->
         Logger.error("Enemy corporation analysis failed: #{inspect(reason)}")
         {successes, failures}
     end)
     |> then(fn {successes, failures} ->
-      {:ok, %{
-        analyses: Map.new(Enum.reverse(successes)),
-        failures: Enum.reverse(failures),
-        comparative_assessment: generate_comparative_assessment(successes)
-      }}
+      {:ok,
+       %{
+         analyses: Map.new(Enum.reverse(successes)),
+         failures: Enum.reverse(failures),
+         comparative_assessment: generate_comparative_assessment(successes)
+       }}
     end)
   end
-  
+
   @doc """
   Batch analyze multiple corporations.
   """
   def analyze_batch(corporation_ids, opts \\ []) do
     GenServer.call(__MODULE__, {:analyze_batch, corporation_ids, opts}, :infinity)
   end
-  
+
   # Server Callbacks
-  
+
   @impl true
   def init(_opts) do
     state = %{
@@ -163,63 +167,68 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
         cache_misses: 0
       }
     }
-    
+
     {:ok, state}
   end
-  
+
   @impl true
   def handle_call({:analyze_corporation, corporation_id, opts}, from, state) do
     cache_key = {:corporation_analysis, corporation_id, opts}
-    
+
     case CorporationCache.get(cache_key) do
       nil ->
         # Start async analysis
-        task = Task.async(fn ->
-          perform_corporation_analysis(corporation_id, opts)
-        end)
-        
-        new_state = %{state |
-          active_analyses: Map.put(state.active_analyses, task.ref, {from, cache_key}),
-          metrics: Map.update!(state.metrics, :cache_misses, &(&1 + 1))
+        task =
+          Task.async(fn ->
+            perform_corporation_analysis(corporation_id, opts)
+          end)
+
+        new_state = %{
+          state
+          | active_analyses: Map.put(state.active_analyses, task.ref, {from, cache_key}),
+            metrics: Map.update!(state.metrics, :cache_misses, &(&1 + 1))
         }
-        
+
         {:noreply, new_state}
-        
+
       cached_result ->
-        new_state = %{state |
-          metrics: Map.update!(state.metrics, :cache_hits, &(&1 + 1))
-        }
-        
+        new_state = %{state | metrics: Map.update!(state.metrics, :cache_hits, &(&1 + 1))}
+
         {:reply, {:ok, cached_result}, new_state}
     end
   end
-  
+
   @impl true
   def handle_call({:get_profile, corporation_id}, _from, state) do
     profile = build_corporation_profile(corporation_id)
     {:reply, profile, state}
   end
-  
+
   @impl true
   def handle_call({:analyze_batch, corporation_ids, opts}, _from, state) do
-    results = corporation_ids
-    |> Task.async_stream(fn corp_id ->
-      {corp_id, perform_corporation_analysis(corp_id, opts)}
-    end, max_concurrency: 5, timeout: @analysis_timeout)
-    |> Enum.reduce(%{successes: [], failures: []}, fn
-      {:ok, {corp_id, {:ok, analysis}}}, acc ->
-        %{acc | successes: [{corp_id, analysis} | acc.successes]}
-        
-      {:ok, {corp_id, {:error, reason}}}, acc ->
-        %{acc | failures: [{corp_id, reason} | acc.failures]}
-        
-      {:exit, _reason}, acc ->
-        acc
-    end)
-    
+    results =
+      corporation_ids
+      |> Task.async_stream(
+        fn corp_id ->
+          {corp_id, perform_corporation_analysis(corp_id, opts)}
+        end,
+        max_concurrency: 5,
+        timeout: @analysis_timeout
+      )
+      |> Enum.reduce(%{successes: [], failures: []}, fn
+        {:ok, {corp_id, {:ok, analysis}}}, acc ->
+          %{acc | successes: [{corp_id, analysis} | acc.successes]}
+
+        {:ok, {corp_id, {:error, reason}}}, acc ->
+          %{acc | failures: [{corp_id, reason} | acc.failures]}
+
+        {:exit, _reason}, acc ->
+          acc
+      end)
+
     {:reply, {:ok, results}, state}
   end
-  
+
   @impl true
   def handle_info({ref, result}, state) when is_reference(ref) do
     case Map.get(state.active_analyses, ref) do
@@ -229,40 +238,38 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
           {:ok, analysis} = result
           CorporationCache.put(cache_key, analysis, ttl: @cache_ttl)
         end
-        
+
         # Reply to caller
         GenServer.reply(from, result)
-        
+
         # Update state
-        new_state = %{state |
-          active_analyses: Map.delete(state.active_analyses, ref),
-          metrics: Map.update!(state.metrics, :total_analyses, &(&1 + 1))
+        new_state = %{
+          state
+          | active_analyses: Map.delete(state.active_analyses, ref),
+            metrics: Map.update!(state.metrics, :total_analyses, &(&1 + 1))
         }
-        
+
         {:noreply, new_state}
-        
+
       nil ->
         {:noreply, state}
     end
   end
-  
+
   @impl true
   def handle_info({:DOWN, ref, :process, _pid, _reason}, state) do
-    new_state = %{state |
-      active_analyses: Map.delete(state.active_analyses, ref)
-    }
-    
+    new_state = %{state | active_analyses: Map.delete(state.active_analyses, ref)}
+
     {:noreply, new_state}
   end
-  
+
   # Private Functions
-  
+
   defp perform_corporation_analysis(corporation_id, opts) do
     with {:ok, basic_data} <- gather_basic_corporation_data(corporation_id),
          {:ok, member_data} <- maybe_gather_member_data(corporation_id, opts),
          {:ok, health_data} <- maybe_gather_health_data(corporation_id, opts),
          {:ok, threat_data} <- maybe_gather_threat_data(corporation_id, opts) do
-      
       analysis = build_comprehensive_analysis(basic_data, member_data, health_data, threat_data)
       {:ok, analysis}
     else
@@ -271,11 +278,10 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
         error
     end
   end
-  
+
   defp gather_basic_corporation_data(corporation_id) do
     with {:ok, corp_info} <- CorporationRepository.get_corporation_info(corporation_id),
          {:ok, corp_stats} <- CorporationRepository.get_corporation_stats(corporation_id) do
-      
       basic_data = %{
         corporation_id: corporation_id,
         corporation_info: corp_info,
@@ -286,11 +292,11 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
         isk_efficiency: corp_stats.isk_efficiency || 0,
         avg_member_age: corp_stats.avg_member_age || 0
       }
-      
+
       {:ok, basic_data}
     end
   end
-  
+
   defp maybe_gather_member_data(corporation_id, opts) do
     if Keyword.get(opts, :include_members, true) do
       MemberActivityAnalyzer.analyze_member_activity(corporation_id)
@@ -298,7 +304,7 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
       {:ok, %{}}
     end
   end
-  
+
   defp maybe_gather_health_data(corporation_id, opts) do
     if Keyword.get(opts, :include_health, true) do
       OrganizationalHealthAnalyzer.assess_organizational_health(corporation_id)
@@ -306,7 +312,7 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
       {:ok, %{}}
     end
   end
-  
+
   defp maybe_gather_threat_data(corporation_id, opts) do
     if Keyword.get(opts, :include_threats, false) do
       calculate_corporation_threat_level(corporation_id)
@@ -314,7 +320,7 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
       {:ok, %{}}
     end
   end
-  
+
   defp build_comprehensive_analysis(basic_data, member_data, health_data, threat_data) do
     %{
       corporation_id: basic_data.corporation_id,
@@ -330,11 +336,11 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
       analyzed_at: DateTime.utc_now()
     }
   end
-  
+
   defp extract_basic_info(basic_data) do
     corp_info = basic_data.corporation_info
     corp_stats = basic_data.corporation_stats
-    
+
     %{
       corporation_name: corp_info.corporation_name,
       ticker: corp_info.ticker,
@@ -348,10 +354,10 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
       public_info: corp_info.public_info || %{}
     }
   end
-  
+
   defp classify_activity_level(corp_stats) do
     weekly_kills = (corp_stats.total_kills || 0) / max(corp_stats.weeks_active || 1, 1)
-    
+
     cond do
       weekly_kills >= 100 -> :very_active
       weekly_kills >= 50 -> :active
@@ -360,11 +366,11 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
       true -> :inactive
     end
   end
-  
+
   defp assess_combat_capability(basic_data, member_data) do
     base_capability = calculate_base_combat_capability(basic_data)
     member_multiplier = calculate_member_combat_multiplier(member_data)
-    
+
     %{
       base_score: base_capability,
       member_multiplier: member_multiplier,
@@ -372,38 +378,41 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
       assessment: categorize_combat_capability(base_capability * member_multiplier)
     }
   end
-  
+
   defp calculate_base_combat_capability(basic_data) do
     # Base calculation from corporation statistics
-    kd_ratio = if basic_data.total_losses > 0 do
-      basic_data.total_kills / basic_data.total_losses
-    else
-      basic_data.total_kills * 1.0
-    end
-    
+    kd_ratio =
+      if basic_data.total_losses > 0 do
+        basic_data.total_kills / basic_data.total_losses
+      else
+        basic_data.total_kills * 1.0
+      end
+
     member_factor = :math.log10(max(basic_data.member_count, 1)) * 10
-    activity_factor = case classify_activity_level(basic_data.corporation_stats) do
-      :very_active -> 30
-      :active -> 25
-      :moderate -> 15
-      :low -> 8
-      :inactive -> 2
-    end
-    
+
+    activity_factor =
+      case classify_activity_level(basic_data.corporation_stats) do
+        :very_active -> 30
+        :active -> 25
+        :moderate -> 15
+        :low -> 8
+        :inactive -> 2
+      end
+
     kd_score = min(kd_ratio * 15, 40)
     total = kd_score + member_factor + activity_factor
-    
+
     Float.round(total, 2)
   end
-  
+
   defp calculate_member_combat_multiplier(member_data) do
     if Map.has_key?(member_data, :combat_effectiveness) do
-      1.0 + (member_data.combat_effectiveness / 100)
+      1.0 + member_data.combat_effectiveness / 100
     else
       1.0
     end
   end
-  
+
   defp categorize_combat_capability(score) do
     cond do
       score >= 80 -> :elite_military_corporation
@@ -413,23 +422,24 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
       true -> :limited_combat_ability
     end
   end
-  
+
   defp assess_economic_power(basic_data, member_data) do
     # Economic assessment based on ISK efficiency and activity
     isk_efficiency = basic_data.corporation_stats.isk_efficiency || 0
     member_count = basic_data.member_count
-    
-    base_score = (isk_efficiency * 0.6) + (member_count * 0.4)
-    
+
+    base_score = isk_efficiency * 0.6 + member_count * 0.4
+
     # Factor in member economic activity if available
-    economic_multiplier = if Map.has_key?(member_data, :economic_activity) do
-      1.0 + (member_data.economic_activity / 200)
-    else
-      1.0
-    end
-    
+    economic_multiplier =
+      if Map.has_key?(member_data, :economic_activity) do
+        1.0 + member_data.economic_activity / 200
+      else
+        1.0
+      end
+
     total_score = base_score * economic_multiplier
-    
+
     %{
       base_score: Float.round(base_score, 2),
       economic_multiplier: Float.round(economic_multiplier, 2),
@@ -437,7 +447,7 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
       assessment: categorize_economic_power(total_score)
     }
   end
-  
+
   defp categorize_economic_power(score) do
     cond do
       score >= 80 -> :economic_powerhouse
@@ -447,24 +457,26 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
       true -> :limited_resources
     end
   end
-  
+
   defp assess_intelligence_capability(member_data) do
     # Intelligence capability based on member diversity and activity patterns
-    base_capability = 50  # Default assumption
-    
+    # Default assumption
+    base_capability = 50
+
     # Factor in member intelligence if available
-    intelligence_score = if Map.has_key?(member_data, :intelligence_rating) do
-      member_data.intelligence_rating
-    else
-      base_capability
-    end
-    
+    intelligence_score =
+      if Map.has_key?(member_data, :intelligence_rating) do
+        member_data.intelligence_rating
+      else
+        base_capability
+      end
+
     %{
       score: intelligence_score,
       assessment: categorize_intelligence_capability(intelligence_score)
     }
   end
-  
+
   defp categorize_intelligence_capability(score) do
     cond do
       score >= 80 -> :advanced_intelligence_network
@@ -474,7 +486,7 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
       true -> :minimal_intelligence_capability
     end
   end
-  
+
   defp assess_alliance_strength(basic_data) do
     if basic_data.corporation_info.alliance_id do
       # Would normally query alliance data
@@ -482,7 +494,8 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
         in_alliance: true,
         alliance_id: basic_data.corporation_info.alliance_id,
         alliance_name: basic_data.corporation_info.alliance_name,
-        strength_rating: :unknown  # Would calculate from alliance stats
+        # Would calculate from alliance stats
+        strength_rating: :unknown
       }
     else
       %{
@@ -491,31 +504,37 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
       }
     end
   end
-  
+
   defp generate_strategic_assessment(basic_data, member_data, health_data) do
     assessments = []
-    
+
     # Activity assessment
     activity = classify_activity_level(basic_data.corporation_stats)
     assessments = ["Activity level: #{activity}" | assessments]
-    
+
     # Size assessment
     size_category = categorize_corporation_size(basic_data.member_count)
     assessments = ["Corporation size: #{size_category}" | assessments]
-    
+
     # Health assessment
-    if Map.has_key?(health_data, :overall_health) do
-      assessments = ["Organizational health: #{health_data.overall_health}" | assessments]
-    end
-    
+    assessments = 
+      if Map.has_key?(health_data, :overall_health) do
+        ["Organizational health: #{health_data.overall_health}" | assessments]
+      else
+        assessments
+      end
+
     # Combat readiness
-    if Map.has_key?(member_data, :combat_readiness) do
-      assessments = ["Combat readiness: #{member_data.combat_readiness}" | assessments]
-    end
-    
+    assessments = 
+      if Map.has_key?(member_data, :combat_readiness) do
+        ["Combat readiness: #{member_data.combat_readiness}" | assessments]
+      else
+        assessments
+      end
+
     Enum.reverse(assessments)
   end
-  
+
   defp categorize_corporation_size(member_count) do
     cond do
       member_count >= 1000 -> :mega_corporation
@@ -525,57 +544,63 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
       true -> :micro_corporation
     end
   end
-  
+
   defp build_corporation_profile(corporation_id) do
     with {:ok, analysis} <- analyze_corporation(corporation_id) do
-      {:ok, %{
-        corporation_id: corporation_id,
-        analysis: analysis,
-        profile_generated_at: DateTime.utc_now()
-      }}
+      {:ok,
+       %{
+         corporation_id: corporation_id,
+         analysis: analysis,
+         profile_generated_at: DateTime.utc_now()
+       }}
     end
   end
-  
+
   defp get_member_threat_data(corporation_id) do
     # Would integrate with intelligence context to get member threat data
     case CorporationRepository.get_corporation_members(corporation_id) do
       {:ok, members} ->
         # Simulate threat data gathering
-        threat_data = Enum.map(members, fn member ->
-          %{
-            character_id: member.character_id,
-            threat_score: 50,  # Would get from intelligence context
-            threat_level: :moderate
-          }
-        end)
+        threat_data =
+          Enum.map(members, fn member ->
+            %{
+              character_id: member.character_id,
+              # Would get from intelligence context
+              threat_score: 50,
+              threat_level: :moderate
+            }
+          end)
+
         {:ok, threat_data}
-        
-      error -> error
+
+      error ->
+        error
     end
   end
-  
+
   defp calculate_overall_threat(member_data) do
     if Enum.empty?(member_data) do
       0
     else
-      avg_threat = member_data
-      |> Enum.map(& &1.threat_score)
-      |> Enum.sum()
-      |> Kernel./(length(member_data))
-      
+      avg_threat =
+        member_data
+        |> Enum.map(& &1.threat_score)
+        |> Enum.sum()
+        |> Kernel./(length(member_data))
+
       # Factor in member count
       size_multiplier = :math.log10(length(member_data) + 1) / 3
-      
+
       Float.round(avg_threat * (1 + size_multiplier), 2)
     end
   end
-  
+
   defp count_high_threat_members(member_data) do
     Enum.count(member_data, fn member ->
       member.threat_level in [:high, :critical]
     end)
   end
-  
+
   defp calculate_average_threat(member_data) do
     if Enum.empty?(member_data) do
       0
@@ -584,16 +609,16 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
       Enum.sum(threat_scores) / length(threat_scores)
     end
   end
-  
+
   defp analyze_threat_distribution(member_data) do
     member_data
     |> Enum.map(& &1.threat_level)
     |> Enum.frequencies()
   end
-  
+
   defp assess_combat_readiness(member_data) do
     high_threat_ratio = count_high_threat_members(member_data) / max(length(member_data), 1)
-    
+
     cond do
       high_threat_ratio > 0.3 -> :high_readiness
       high_threat_ratio > 0.15 -> :moderate_readiness
@@ -601,65 +626,70 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
       true -> :minimal_readiness
     end
   end
-  
+
   defp count_active_members(members) do
     # Would check recent activity
-    length(members)  # Simplified
+    # Simplified
+    length(members)
   end
-  
+
   defp count_veteran_members(members) do
     # Would check join dates and experience
     Enum.count(members, fn member ->
       # Simplified check
-      member.join_date && 
-      DateTime.diff(DateTime.utc_now(), member.join_date, :day) > 365
+      member.join_date &&
+        DateTime.diff(DateTime.utc_now(), member.join_date, :day) > 365
     end)
   end
-  
+
   defp count_recent_recruits(members) do
     cutoff = DateTime.utc_now() |> DateTime.add(-30, :day)
-    
+
     Enum.count(members, fn member ->
       member.join_date && DateTime.compare(member.join_date, cutoff) == :gt
     end)
   end
-  
+
   defp identify_intelligence_gaps(members) do
     # Identify members with limited intelligence data
     gaps = []
-    
+
     # Check for members without recent activity data
-    inactive_count = Enum.count(members, fn member ->
-      is_nil(member.last_seen) || 
-      DateTime.diff(DateTime.utc_now(), member.last_seen, :day) > 30
-    end)
-    
-    gaps = if inactive_count > length(members) * 0.2 do
-      ["High number of inactive/unknown members (#{inactive_count})" | gaps]
-    else
-      gaps
-    end
-    
+    inactive_count =
+      Enum.count(members, fn member ->
+        is_nil(member.last_seen) ||
+          DateTime.diff(DateTime.utc_now(), member.last_seen, :day) > 30
+      end)
+
+    gaps =
+      if inactive_count > length(members) * 0.2 do
+        ["High number of inactive/unknown members (#{inactive_count})" | gaps]
+      else
+        gaps
+      end
+
     gaps
   end
-  
+
   defp identify_key_personnel(members) do
     # Identify leadership and key members
-    key_members = []
-    
+    _key_members = []
+
     # CEO and directors (would need role data)
-    key_members = Enum.filter(members, fn member ->
-      member.roles && ("CEO" in member.roles || "Director" in member.roles)
-    end)
-    
+    key_members =
+      Enum.filter(members, fn member ->
+        member.roles && ("CEO" in member.roles || "Director" in member.roles)
+      end)
+
     # High activity members
-    active_members = Enum.filter(members, fn member ->
-      member.recent_activity_score && member.recent_activity_score > 80
-    end)
-    
+    active_members =
+      Enum.filter(members, fn member ->
+        member.recent_activity_score && member.recent_activity_score > 80
+      end)
+
     key_members ++ Enum.take(active_members, 5)
   end
-  
+
   defp determine_overall_threat_assessment(analysis) do
     factors = [
       analysis.combat_capability.overall_score * 0.4,
@@ -667,9 +697,9 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
       analysis.intelligence_capability.score * 0.2,
       if(analysis.alliance_strength.in_alliance, do: 20, else: 0) * 0.2
     ]
-    
+
     total_score = Enum.sum(factors)
-    
+
     cond do
       total_score >= 80 -> :critical_threat
       total_score >= 65 -> :high_threat
@@ -678,15 +708,16 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
       true -> :minimal_threat
     end
   end
-  
+
   defp generate_comparative_assessment(corp_analyses) do
     if length(corp_analyses) < 2 do
       %{comparison: "Insufficient data for comparison"}
     else
-      scores = Enum.map(corp_analyses, fn {_corp_id, analysis} ->
-        analysis.combat_capability.overall_score
-      end)
-      
+      scores =
+        Enum.map(corp_analyses, fn {_corp_id, analysis} ->
+          analysis.combat_capability.overall_score
+        end)
+
       %{
         highest_threat: Enum.max(scores),
         lowest_threat: Enum.min(scores),

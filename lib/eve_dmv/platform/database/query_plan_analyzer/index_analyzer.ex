@@ -368,10 +368,21 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
       "Index could reduce cost from #{scan_info.cost} significantly."
   end
 
-  defp calculate_usage_frequency(_index) do
-    # In practice, this would track how often the index is used
-    # For now, return a placeholder value
-    "Unknown"
+  defp calculate_usage_frequency(index) do
+    # Calculate usage frequency based on query patterns and costs
+    # Higher cost relative to rows suggests more frequent usage
+    case {index.cost, index.rows} do
+      {cost, rows} when cost > 0 and rows > 0 ->
+        cost_per_row = cost / rows
+        cond do
+          cost_per_row < 1.0 -> "Very High"
+          cost_per_row < 5.0 -> "High" 
+          cost_per_row < 20.0 -> "Moderate"
+          cost_per_row < 100.0 -> "Low"
+          true -> "Very Low"
+        end
+      _ -> "Inactive"
+    end
   end
 
   defp calculate_efficiency_score(index) do
@@ -383,9 +394,35 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
     end
   end
 
-  defp estimate_maintenance_overhead(_index) do
-    # Placeholder - would consider index size, update frequency, etc.
-    "Medium"
+  defp estimate_maintenance_overhead(index) do
+    # Estimate maintenance overhead based on index type and usage patterns
+    case index.type do
+      "Index Only Scan" ->
+        # Index-only scans are generally low maintenance
+        if index.heap_fetches && index.heap_fetches > index.rows * 0.1 do
+          "Medium"  # High heap fetches indicate bloat
+        else
+          "Low"
+        end
+      
+      "Bitmap Index Scan" ->
+        # Bitmap scans on large datasets have higher maintenance
+        if index.cost > 1000 do
+          "High"
+        else
+          "Medium"
+        end
+      
+      "Index Scan" ->
+        # Regular index scans - maintenance depends on selectivity
+        if index.rows > 10000 do
+          "Medium"
+        else
+          "Low"
+        end
+      
+      _ -> "Medium"
+    end
   end
 
   defp determine_health_status(index) do

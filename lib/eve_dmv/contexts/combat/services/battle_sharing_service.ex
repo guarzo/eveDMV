@@ -1,23 +1,23 @@
 defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
   @moduledoc """
   Service for sharing battle reports and analysis.
-  
+
   Handles:
   - Generating shareable battle reports
   - Creating battle permalinks
   - Exporting battle data in various formats
   - Managing battle visibility and access
   """
-  
+
   alias EveDmv.Contexts.Combat.Services.BattleService
-  alias EveDmv.Contexts.Combat.Core.{BattleAnalyzer, TimelineBuilder, ParticipantAnalyzer}
-  alias EveDmv.Contexts.Combat.Resources.Battle
-  
+  alias EveDmv.Contexts.Combat.Core.{BattleAnalyzer, ParticipantAnalyzer}
+  require Ash.Query
+
   require Logger
-  
+
   @share_token_length 16
   @share_url_base "https://evedmv.com/battles/"
-  
+
   @doc """
   Share a battle by creating a shareable link.
   """
@@ -25,64 +25,63 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
     with {:ok, battle} <- BattleService.get_battle(battle_id),
          {:ok, share_token} <- generate_share_token(battle),
          {:ok, _} <- update_battle_sharing_info(battle, share_token, sharing_options) do
-      
       share_url = build_share_url(share_token)
-      
-      {:ok, %{
-        share_url: share_url,
-        share_token: share_token,
-        expires_at: calculate_expiry(sharing_options),
-        options: sharing_options
-      }}
+
+      {:ok,
+       %{
+         share_url: share_url,
+         share_token: share_token,
+         expires_at: calculate_expiry(sharing_options),
+         options: sharing_options
+       }}
     end
   end
-  
+
   @doc """
   Generate a battle report in various formats.
   """
   def generate_battle_report(battle_id, format \\ :markdown) do
     with {:ok, battle} <- BattleService.get_battle(battle_id),
          {:ok, analysis} <- BattleAnalyzer.analyze_battle(battle_id) do
-      
-      report = case format do
-        :markdown -> generate_markdown_report(battle, analysis)
-        :json -> generate_json_report(battle, analysis)
-        :html -> generate_html_report(battle, analysis)
-        :text -> generate_text_report(battle, analysis)
-        _ -> {:error, :unsupported_format}
-      end
-      
+      report =
+        case format do
+          :markdown -> generate_markdown_report(battle, analysis)
+          :json -> generate_json_report(battle, analysis)
+          :html -> generate_html_report(battle, analysis)
+          :text -> generate_text_report(battle, analysis)
+          _ -> {:error, :unsupported_format}
+        end
+
       {:ok, report}
     end
   end
-  
+
   @doc """
   Export battle data for external tools.
   """
   def export_battle_data(battle_id, export_options \\ %{}) do
     with {:ok, battle} <- BattleService.get_battle(battle_id),
          {:ok, export_data} <- prepare_export_data(battle, export_options) do
-      
       format = Map.get(export_options, :format, :json)
-      
-      formatted_data = case format do
-        :json -> Jason.encode!(export_data, pretty: true)
-        :csv -> export_to_csv(export_data)
-        :zkillboard -> format_for_zkillboard(export_data)
-        _ -> {:error, :unsupported_export_format}
-      end
-      
+
+      formatted_data =
+        case format do
+          :json -> Jason.encode!(export_data, pretty: true)
+          :csv -> export_to_csv(export_data)
+          :zkillboard -> format_for_zkillboard(export_data)
+          _ -> {:error, :unsupported_export_format}
+        end
+
       {:ok, formatted_data}
     end
   end
-  
+
   @doc """
   Create a battle summary card for embedding.
   """
   def create_battle_card(battle_id, card_options \\ %{}) do
     with {:ok, battle} <- BattleService.get_battle(battle_id),
          {:ok, summary} <- BattleAnalyzer.get_battle_summary(battle_id) do
-      
       card = %{
         title: build_battle_title(battle, summary),
         description: summary.headline,
@@ -96,27 +95,26 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
         embed_code: generate_embed_code(battle_id, card_options),
         preview_image: generate_preview_image_url(battle_id)
       }
-      
+
       {:ok, card}
     end
   end
-  
+
   @doc """
   Get battle by share token.
   """
   def get_shared_battle(share_token) do
     with {:ok, battle} <- find_battle_by_token(share_token),
          :ok <- verify_share_access(battle) do
-      
       {:ok, battle}
     end
   end
-  
+
   @doc """
   Revoke battle sharing.
   """
   def revoke_sharing(battle_id) do
-    with {:ok, battle} <- BattleService.get_battle(battle_id) do
+    with {:ok, _battle} <- BattleService.get_battle(battle_id) do
       BattleService.update_battle(battle_id, %{
         share_token: nil,
         share_expires_at: nil,
@@ -124,30 +122,30 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
       })
     end
   end
-  
+
   @doc """
   Generate a battle comparison report.
   """
   def generate_comparison_report(battle_ids) when is_list(battle_ids) do
     with {:ok, battles} <- fetch_battles_for_comparison(battle_ids),
          {:ok, comparison} <- compare_battles(battles) do
-      
       report = %{
         battles: Enum.map(battles, &summarize_battle/1),
         comparison: comparison,
         insights: generate_comparison_insights(comparison)
       }
-      
+
       {:ok, report}
     end
   end
-  
+
   # Private Functions
-  
+
   defp generate_share_token(battle) do
-    token = :crypto.strong_rand_bytes(@share_token_length)
-    |> Base.url_encode64(padding: false)
-    
+    token =
+      :crypto.strong_rand_bytes(@share_token_length)
+      |> Base.url_encode64(padding: false)
+
     # Ensure uniqueness
     if token_exists?(token) do
       generate_share_token(battle)
@@ -155,15 +153,13 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
       {:ok, token}
     end
   end
-  
-  defp token_exists?(token) do
-    # Check if token already exists in database
-    Battle
-    |> Ash.Query.filter(share_token == ^token)
-    |> Ash.read!()
-    |> Enum.any?()
+
+  defp token_exists?(_token) do
+    # Battle sharing functionality not yet implemented
+    # Battle resource doesn't have share_token field
+    false
   end
-  
+
   defp update_battle_sharing_info(battle, share_token, options) do
     updates = %{
       share_token: share_token,
@@ -172,51 +168,53 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
       share_expires_at: calculate_expiry(options),
       share_options: options
     }
-    
+
     BattleService.update_battle(battle.id, updates)
   end
-  
+
   defp calculate_expiry(%{expires_in: hours}) when is_number(hours) do
     DateTime.add(DateTime.utc_now(), hours * 3600, :second)
   end
-  defp calculate_expiry(_), do: nil # No expiry by default
-  
+
+  # No expiry by default
+  defp calculate_expiry(_), do: nil
+
   defp build_share_url(share_token) do
     "#{@share_url_base}#{share_token}"
   end
-  
+
   defp generate_markdown_report(battle, analysis) do
     """
     # Battle Report - #{format_battle_date(battle.start_time)}
-    
+
     ## Overview
     #{analysis.summary.headline}
-    
+
     **Location:** System #{battle.system_id}  
     **Duration:** #{battle.duration_minutes} minutes  
     **Participants:** #{battle.participant_count}  
     **ISK Destroyed:** #{format_isk_value(battle.total_value)}
-    
+
     ## Key Statistics
     #{format_statistics_markdown(analysis.metrics)}
-    
+
     ## Timeline
     #{format_timeline_markdown(analysis.timeline)}
-    
+
     ## Top Performers
     #{format_participants_markdown(analysis.participants)}
-    
+
     ## Fleet Compositions
     #{format_fleet_comp_markdown(analysis.fleet_composition)}
-    
+
     ## Tactical Analysis
     #{format_tactical_markdown(analysis.tactical_patterns)}
-    
+
     ---
     *Generated by EVE DMV - #{DateTime.utc_now() |> DateTime.to_string()}*
     """
   end
-  
+
   defp generate_json_report(battle, analysis) do
     %{
       battle: %{
@@ -234,7 +232,7 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
       }
     }
   end
-  
+
   defp generate_html_report(battle, analysis) do
     """
     <!DOCTYPE html>
@@ -273,7 +271,7 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
     </html>
     """
   end
-  
+
   defp generate_text_report(battle, analysis) do
     """
     BATTLE REPORT
@@ -281,31 +279,31 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
     Date: #{format_battle_date(battle.start_time)}
     System: #{battle.system_id}
     Duration: #{battle.duration_minutes} minutes
-    
+
     SUMMARY
     -------
     #{analysis.summary.headline}
-    
+
     STATISTICS
     ----------
     Total Kills: #{battle.kill_count}
     Participants: #{battle.participant_count}
     ISK Destroyed: #{format_isk_value(battle.total_value)}
-    
+
     TOP KILLERS
     -----------
     #{format_top_killers_text(analysis.participants)}
-    
+
     TIMELINE
     --------
     #{format_timeline_text(analysis.timeline)}
     """
   end
-  
+
   defp prepare_export_data(battle, options) do
     include_killmails = Map.get(options, :include_killmails, false)
     include_analysis = Map.get(options, :include_analysis, true)
-    
+
     base_data = %{
       battle: serialize_battle(battle),
       metadata: %{
@@ -313,57 +311,66 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
         export_version: "1.0"
       }
     }
-    
-    data = if include_killmails do
-      Map.put(base_data, :killmails, get_battle_killmails(battle.id))
-    else
-      base_data
-    end
-    
-    data = if include_analysis do
-      case BattleAnalyzer.analyze_battle(battle.id) do
-        {:ok, analysis} -> Map.put(data, :analysis, analysis)
-        _ -> data
+
+    data =
+      if include_killmails do
+        Map.put(base_data, :killmails, get_battle_killmails(battle.id))
+      else
+        base_data
       end
-    else
-      data
-    end
-    
+
+    data =
+      if include_analysis do
+        case BattleAnalyzer.analyze_battle(battle.id) do
+          {:ok, analysis} -> Map.put(data, :analysis, analysis)
+          _ -> data
+        end
+      else
+        data
+      end
+
     {:ok, data}
   end
-  
+
   defp serialize_battle(battle) do
     Map.take(battle, [
-      :id, :system_id, :start_time, :end_time,
-      :participant_count, :kill_count, :total_value,
-      :ship_classes, :status
+      :id,
+      :system_id,
+      :start_time,
+      :end_time,
+      :participant_count,
+      :kill_count,
+      :total_value,
+      :ship_classes,
+      :status
     ])
   end
-  
-  defp get_battle_killmails(battle_id) do
+
+  defp get_battle_killmails(_battle_id) do
     # Would fetch actual killmails from database
     []
   end
-  
+
   defp export_to_csv(export_data) do
     # Convert to CSV format
     headers = ["Time", "Event", "Participants", "Value"]
-    
-    rows = export_data
-    |> get_in([:analysis, :timeline, :events])
-    |> Enum.map(fn event ->
-      [
-        DateTime.to_string(event.time),
-        event.type,
-        length(event.attackers),
-        event.value
-      ]
-      |> Enum.join(",")
-    end)
-    
-    ([headers | rows] |> Enum.join("\n"))
+
+    rows =
+      export_data
+      |> get_in([:analysis, :timeline, :events])
+      |> Enum.map(fn event ->
+        [
+          DateTime.to_string(event.time),
+          event.type,
+          length(event.attackers),
+          event.value
+        ]
+        |> Enum.join(",")
+      end)
+
+    [headers | rows] |> Enum.join("\n")
   end
-  
+
   defp format_for_zkillboard(export_data) do
     # Format for zkillboard compatibility
     %{
@@ -376,11 +383,11 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
       }
     }
   end
-  
-  defp build_battle_title(battle, summary) do
+
+  defp build_battle_title(battle, _summary) do
     "Battle in #{battle.system_id} - #{format_battle_date(battle.start_time)}"
   end
-  
+
   defp format_key_stats(stats) do
     Enum.map(stats, fn stat ->
       %{
@@ -389,46 +396,51 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
       }
     end)
   end
-  
+
   defp format_stat_value(value) when is_number(value) do
     Number.Human.number_to_human(value)
   end
+
   defp format_stat_value(value), do: to_string(value)
-  
+
   defp get_participant_breakdown(battle_id) do
     case ParticipantAnalyzer.get_participant_roles(battle_id) do
       {:ok, roles} ->
         Enum.map(roles, fn {role, participants} ->
           %{role: role, count: length(participants)}
         end)
+
       _ ->
         []
     end
   end
-  
+
   defp format_isk_value(value) when value >= 1_000_000_000 do
     "#{Float.round(value / 1_000_000_000, 1)}B ISK"
   end
+
   defp format_isk_value(value) when value >= 1_000_000 do
     "#{Float.round(value / 1_000_000, 1)}M ISK"
   end
+
   defp format_isk_value(value) do
     "#{round(value)} ISK"
   end
-  
+
   defp format_duration(minutes) when minutes >= 60 do
     hours = div(minutes, 60)
     mins = rem(minutes, 60)
     "#{hours}h #{mins}m"
   end
+
   defp format_duration(minutes) do
     "#{minutes}m"
   end
-  
+
   defp generate_embed_code(battle_id, options) do
     width = Map.get(options, :width, 600)
     height = Map.get(options, :height, 400)
-    
+
     """
     <iframe 
       src="#{@share_url_base}embed/#{battle_id}"
@@ -439,49 +451,48 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
     </iframe>
     """
   end
-  
+
   defp generate_preview_image_url(battle_id) do
     "#{@share_url_base}preview/#{battle_id}.png"
   end
-  
-  defp find_battle_by_token(share_token) do
-    case Battle
-         |> Ash.Query.filter(share_token == ^share_token)
-         |> Ash.read_one() do
-      {:ok, battle} when not is_nil(battle) -> {:ok, battle}
-      _ -> {:error, :battle_not_found}
-    end
+
+  defp find_battle_by_token(_share_token) do
+    # Battle sharing functionality not yet implemented
+    # Battle resource doesn't have share_token field
+    {:error, :battle_not_found}
   end
-  
+
   defp verify_share_access(battle) do
     cond do
       not battle.sharing_enabled ->
         {:error, :sharing_disabled}
-        
-      battle.share_expires_at && DateTime.compare(DateTime.utc_now(), battle.share_expires_at) == :gt ->
+
+      battle.share_expires_at &&
+          DateTime.compare(DateTime.utc_now(), battle.share_expires_at) == :gt ->
         {:error, :share_expired}
-        
+
       true ->
         :ok
     end
   end
-  
+
   defp fetch_battles_for_comparison(battle_ids) do
-    battles = Enum.map(battle_ids, fn id ->
-      case BattleService.get_battle(id) do
-        {:ok, battle} -> battle
-        _ -> nil
-      end
-    end)
-    |> Enum.reject(&is_nil/1)
-    
+    battles =
+      Enum.map(battle_ids, fn id ->
+        case BattleService.get_battle(id) do
+          {:ok, battle} -> battle
+          _ -> nil
+        end
+      end)
+      |> Enum.reject(&is_nil/1)
+
     if length(battles) == length(battle_ids) do
       {:ok, battles}
     else
       {:error, :some_battles_not_found}
     end
   end
-  
+
   defp compare_battles(battles) do
     comparison = %{
       duration: compare_metric(battles, & &1.duration_minutes),
@@ -490,13 +501,13 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
       kills: compare_metric(battles, & &1.kill_count),
       systems: Enum.map(battles, & &1.system_id) |> Enum.uniq()
     }
-    
+
     {:ok, comparison}
   end
-  
+
   defp compare_metric(battles, extractor) do
     values = Enum.map(battles, extractor)
-    
+
     %{
       min: Enum.min(values),
       max: Enum.max(values),
@@ -504,7 +515,7 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
       values: values
     }
   end
-  
+
   defp summarize_battle(battle) do
     %{
       id: battle.id,
@@ -514,35 +525,39 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
       value: battle.total_value
     }
   end
-  
+
   defp generate_comparison_insights(comparison) do
     insights = []
-    
+
     # Duration insights
     duration_variance = comparison.duration.max - comparison.duration.min
-    insights = if duration_variance > 30 do
-      ["Significant duration variance (#{duration_variance} minutes)" | insights]
-    else
-      insights
-    end
-    
+
+    insights =
+      if duration_variance > 30 do
+        ["Significant duration variance (#{duration_variance} minutes)" | insights]
+      else
+        insights
+      end
+
     # Scale insights
     participant_ratio = comparison.participants.max / max(comparison.participants.min, 1)
-    insights = if participant_ratio > 3 do
-      ["Large scale difference (#{Float.round(participant_ratio, 1)}x)" | insights]
-    else
-      insights
-    end
-    
+
+    insights =
+      if participant_ratio > 3 do
+        ["Large scale difference (#{Float.round(participant_ratio, 1)}x)" | insights]
+      else
+        insights
+      end
+
     insights
   end
-  
+
   # Formatting helpers
-  
+
   defp format_battle_date(datetime) do
     Calendar.strftime(datetime, "%Y-%m-%d %H:%M")
   end
-  
+
   defp format_statistics_markdown(metrics) do
     """
     - **ISK Efficiency:** #{metrics.efficiency.isk_efficiency}%
@@ -550,7 +565,7 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
     - **Average Kill Value:** #{format_isk_value(metrics.destruction.total_isk / max(metrics.destruction.ships_destroyed, 1))}
     """
   end
-  
+
   defp format_timeline_markdown(timeline) do
     timeline.events
     |> Enum.take(10)
@@ -559,7 +574,7 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
     end)
     |> Enum.join("\n")
   end
-  
+
   defp format_participants_markdown(participants) do
     participants.mvp_candidates
     |> Enum.take(5)
@@ -569,7 +584,7 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
     end)
     |> Enum.join("\n")
   end
-  
+
   defp format_fleet_comp_markdown(fleet_comp) do
     fleet_comp.sides
     |> Enum.map(fn {side, comp} ->
@@ -582,7 +597,7 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
     end)
     |> Enum.join("\n")
   end
-  
+
   defp format_tactical_markdown(patterns) do
     patterns
     |> Enum.map(fn pattern ->
@@ -590,15 +605,15 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
     end)
     |> Enum.join("\n")
   end
-  
+
   defp format_time(datetime) do
     Calendar.strftime(datetime, "%H:%M:%S")
   end
-  
+
   defp describe_event(event) do
     "#{event.victim.character_name} lost #{event.victim.ship_name}"
   end
-  
+
   defp format_ship_classes(ship_classes) do
     ship_classes
     |> Enum.map(fn {class, data} ->
@@ -606,7 +621,7 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
     end)
     |> Enum.join(", ")
   end
-  
+
   defp describe_pattern(pattern) do
     case pattern.type do
       :focus_fire -> "Coordinated targeting detected"
@@ -615,7 +630,7 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
       _ -> "Tactical pattern detected"
     end
   end
-  
+
   defp format_stats_html(metrics) do
     """
     <div class="stat-card">
@@ -636,7 +651,7 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
     </div>
     """
   end
-  
+
   defp format_timeline_html(timeline) do
     timeline.events
     |> Enum.take(10)
@@ -650,7 +665,7 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
     end)
     |> Enum.join("\n")
   end
-  
+
   defp format_participants_html(participants) do
     """
     <table>
@@ -659,7 +674,7 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
     </table>
     """
   end
-  
+
   defp format_participant_rows(participants) do
     participants
     |> Enum.take(10)
@@ -669,7 +684,7 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
     end)
     |> Enum.join("\n")
   end
-  
+
   defp format_top_killers_text(participants) do
     participants.mvp_candidates
     |> Enum.take(5)
@@ -679,7 +694,7 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
     end)
     |> Enum.join("\n")
   end
-  
+
   defp format_timeline_text(timeline) do
     timeline.events
     |> Enum.take(5)

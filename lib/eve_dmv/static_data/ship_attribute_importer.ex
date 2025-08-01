@@ -390,26 +390,31 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
   end
 
   defp estimate_dps_for_ship(size_class, role_classification) do
+    # More realistic DPS calculations based on weapon systems and ship specialization
     base_dps =
       case size_class do
-        "frigate" -> 150
-        "destroyer" -> 250
-        "cruiser" -> 400
-        "battlecruiser" -> 600
-        "battleship" -> 800
-        "capital" -> 2000
-        "supercapital" -> 5000
-        _ -> 200
+        "frigate" -> 100    # T1: 80-120 DPS, T2: 100-180 DPS
+        "destroyer" -> 200  # 6-8 small weapons, 180-250 DPS
+        "cruiser" -> 350    # 4-6 medium weapons, 300-450 DPS
+        "battlecruiser" -> 600  # 6-8 large weapons or many mediums, 500-700 DPS
+        "battleship" -> 800     # 6-8 large weapons, 700-1000 DPS
+        "capital" -> 3000       # Capital weapons, 2000-4000 DPS
+        "supercapital" -> 12000 # Multiple capital weapons, 8000+ DPS
+        _ -> 120
       end
 
+    # Updated role multipliers reflecting actual EVE ship bonuses
     role_multiplier =
       case role_classification do
-        "dps" -> 1.2
-        "tank" -> 0.7
-        "logistics" -> 0.3
-        "ewar" -> 0.5
-        "tackle" -> 0.8
-        "support" -> 0.9
+        "dps" -> 1.15       # DPS ships get damage bonuses
+        "attack" -> 1.15    # Attack ships similar to DPS
+        "assault" -> 1.2    # HACs/AFs get significant damage bonuses
+        "tank" -> 0.7       # Tank ships sacrifice damage for survivability
+        "logistics" -> 0.2  # Logistics ships have minimal weapons
+        "ewar" -> 0.4       # EWAR ships sacrifice damage for utility
+        "tackle" -> 0.6     # Tackle ships focus on speed and tackling
+        "support" -> 0.8    # Support ships (command) still have decent damage
+        "transport" -> 0.3  # Haulers have minimal combat capability
         _ -> 1.0
       end
 
@@ -623,27 +628,31 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
   end
 
   defp get_estimated_stats_by_size(size_class) do
-    # Use estimates based on typical EVE ship statistics
+    # Use realistic estimates based on actual EVE ship statistics and weapon systems
     case size_class do
-      "frigate" -> %{shield_hp: 800, armor_hp: 600, structure_hp: 400, dps: 150}
-      "destroyer" -> %{shield_hp: 1200, armor_hp: 900, structure_hp: 600, dps: 250}
-      "cruiser" -> %{shield_hp: 2500, armor_hp: 2000, structure_hp: 1500, dps: 400}
+      "frigate" -> %{shield_hp: 800, armor_hp: 600, structure_hp: 400, dps: 100}
+      "destroyer" -> %{shield_hp: 1200, armor_hp: 900, structure_hp: 600, dps: 200}
+      "cruiser" -> %{shield_hp: 2500, armor_hp: 2000, structure_hp: 1500, dps: 350}
       "battlecruiser" -> %{shield_hp: 4000, armor_hp: 3500, structure_hp: 3000, dps: 600}
       "battleship" -> %{shield_hp: 8000, armor_hp: 7000, structure_hp: 6000, dps: 800}
-      "capital" -> %{shield_hp: 50_000, armor_hp: 45_000, structure_hp: 40_000, dps: 2000}
-      "supercapital" -> %{shield_hp: 150_000, armor_hp: 120_000, structure_hp: 100_000, dps: 5000}
-      _ -> %{shield_hp: 1000, armor_hp: 1000, structure_hp: 1000, dps: 200}
+      "capital" -> %{shield_hp: 50_000, armor_hp: 45_000, structure_hp: 40_000, dps: 3000}
+      "supercapital" -> %{shield_hp: 150_000, armor_hp: 120_000, structure_hp: 100_000, dps: 12000}
+      _ -> %{shield_hp: 1000, armor_hp: 1000, structure_hp: 1000, dps: 120}
     end
   end
 
   defp get_role_multipliers(role) do
+    # Realistic role multipliers based on ship specialization and bonuses
     case role do
-      "dps" -> %{damage: 1.2, tank: 0.9, utility: 0.7}
+      "dps" -> %{damage: 1.15, tank: 0.9, utility: 0.7}
+      "attack" -> %{damage: 1.15, tank: 0.9, utility: 0.7}
+      "assault" -> %{damage: 1.2, tank: 1.1, utility: 0.8}  # HACs get both damage and tank bonuses
       "tank" -> %{damage: 0.7, tank: 1.5, utility: 0.8}
-      "logistics" -> %{damage: 0.3, tank: 1.1, utility: 1.5}
-      "ewar" -> %{damage: 0.5, tank: 0.8, utility: 1.3}
-      "tackle" -> %{damage: 0.8, tank: 0.7, utility: 1.2}
-      "support" -> %{damage: 0.9, tank: 1.1, utility: 1.2}
+      "logistics" -> %{damage: 0.2, tank: 1.2, utility: 1.8}  # Logi ships sacrifice damage for reps
+      "ewar" -> %{damage: 0.4, tank: 0.8, utility: 1.5}  # EWAR ships sacrifice damage for utility
+      "tackle" -> %{damage: 0.6, tank: 0.7, utility: 1.3}  # Fast tackle ships
+      "support" -> %{damage: 0.8, tank: 1.2, utility: 1.4}  # Command ships
+      "transport" -> %{damage: 0.2, tank: 1.3, utility: 0.9}  # Haulers focus on tank
       _ -> %{damage: 1.0, tank: 1.0, utility: 1.0}
     end
   end

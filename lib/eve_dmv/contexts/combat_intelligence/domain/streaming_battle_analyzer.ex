@@ -451,8 +451,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
       total_killmails: length(killmails),
       total_isk_destroyed: total_value,
       unique_attackers: unique_attackers,
-      average_value:
-        if(Enum.empty?(killmails), do: 0, else: div(total_value, length(killmails))),
+      average_value: if(Enum.empty?(killmails), do: 0, else: div(total_value, length(killmails))),
       time_span: calculate_time_span(killmails)
     }
   end

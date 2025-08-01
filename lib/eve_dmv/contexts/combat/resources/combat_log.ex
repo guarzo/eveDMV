@@ -4,7 +4,7 @@ defmodule EveDmv.Contexts.Combat.Resources.CombatLog do
   """
 
   use Ash.Resource,
-    domain: EveDmv.Contexts.Combat.Api,
+    domain: EveDmv.Contexts.BattleAnalysis.Api,
     data_layer: AshPostgres.DataLayer
 
   alias EveDmv.Contexts.BattleAnalysis.Domain.CombatLogHelper

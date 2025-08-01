@@ -335,10 +335,11 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
     }
 
     # Add optional sections if requested
-    final_analysis = analysis
-    |> maybe_add_threat_history(analysis_data)
-    |> maybe_add_threat_predictions(analysis_data)
-    |> maybe_add_threat_correlations(analysis_data)
+    final_analysis =
+      analysis
+      |> maybe_add_threat_history(analysis_data)
+      |> maybe_add_threat_predictions(analysis_data)
+      |> maybe_add_threat_correlations(analysis_data)
 
     {:ok, final_analysis}
   end

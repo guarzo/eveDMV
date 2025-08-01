@@ -2,31 +2,36 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
   @moduledoc """
   Analyzes behavioral patterns including activity times, geographic preferences,
   and operational patterns.
-  
+
   Consolidates functionality from:
   - Character Intelligence pattern analysis
   - Player Profile behavioral analysis
   """
-  
-  alias EveDmv.Platform.Database.{CharacterRepository, KillmailRepository}
-  alias EveDmv.Platform.Cache.Intelligence.IntelligenceCache
+
+  alias EveDmv.Database.{CharacterRepository, KillmailRepository}
+  alias EveDmv.Cache
   alias EveDmv.StaticData.SystemData
-  
+
   require Logger
-  
+
   @cache_ttl :timer.hours(12)
-  
+
   @doc """
   Analyze behavioral patterns for a character.
   """
   def analyze_behavior(character_id) do
     cache_key = {:behavioral_patterns, character_id}
-    
-    IntelligenceCache.get_or_compute(cache_key, fn ->
-      perform_behavioral_analysis(character_id)
-    end, ttl: @cache_ttl)
+
+    Cache.get_or_compute(
+      :analysis,
+      cache_key,
+      fn ->
+        perform_behavioral_analysis(character_id)
+      end,
+      ttl: @cache_ttl
+    )
   end
-  
+
   @doc """
   Get activity patterns including peak times and consistency.
   """
@@ -36,7 +41,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       error -> error
     end
   end
-  
+
   @doc """
   Get estimated timezone based on activity.
   """
@@ -46,7 +51,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       error -> error
     end
   end
-  
+
   @doc """
   Get gang size preferences.
   """
@@ -56,7 +61,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       error -> error
     end
   end
-  
+
   @doc """
   Get geographic operational preferences.
   """
@@ -66,13 +71,12 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       error -> error
     end
   end
-  
+
   # Private Functions
-  
+
   defp perform_behavioral_analysis(character_id) do
     with {:ok, killmails} <- get_character_killmails(character_id),
          {:ok, activity_data} <- get_activity_data(character_id) do
-      
       patterns = %{
         character_id: character_id,
         activity_patterns: analyze_activity_patterns(killmails),
@@ -86,49 +90,53 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
         risk_tolerance: assess_risk_tolerance(killmails, character_id),
         analyzed_at: DateTime.utc_now()
       }
-      
+
       {:ok, patterns}
     end
   end
-  
+
   defp get_character_killmails(character_id) do
     start_date = DateTime.utc_now() |> DateTime.add(-90 * 24 * 60 * 60, :second)
-    KillmailRepository.get_character_killmails(character_id, start_date)
+    KillmailRepository.get_by_character(character_id, start_date)
   end
-  
+
   defp get_activity_data(character_id) do
-    CharacterRepository.get_character_activity_summary(character_id)
+    CharacterRepository.get_character_stats(character_id)
   end
-  
+
   defp analyze_activity_patterns(killmails) do
     # Group by hour of day
-    hourly_activity = killmails
-    |> Enum.group_by(fn km -> 
-      DateTime.to_time(km.killmail_time).hour 
-    end)
-    |> Enum.map(fn {hour, kms} -> {hour, length(kms)} end)
-    |> Map.new()
-    
+    hourly_activity =
+      killmails
+      |> Enum.group_by(fn km ->
+        DateTime.to_time(km.killmail_time).hour
+      end)
+      |> Enum.map(fn {hour, kms} -> {hour, length(kms)} end)
+      |> Map.new()
+
     # Group by day of week
-    daily_activity = killmails
-    |> Enum.group_by(fn km -> 
-      Date.day_of_week(DateTime.to_date(km.killmail_time))
-    end)
-    |> Enum.map(fn {day, kms} -> {day, length(kms)} end)
-    |> Map.new()
-    
+    daily_activity =
+      killmails
+      |> Enum.group_by(fn km ->
+        Date.day_of_week(DateTime.to_date(km.killmail_time))
+      end)
+      |> Enum.map(fn {day, kms} -> {day, length(kms)} end)
+      |> Map.new()
+
     # Find peak hours
-    peak_hours = hourly_activity
-    |> Enum.sort_by(fn {_hour, count} -> count end, :desc)
-    |> Enum.take(3)
-    |> Enum.map(fn {hour, _} -> hour end)
-    
+    peak_hours =
+      hourly_activity
+      |> Enum.sort_by(fn {_hour, count} -> count end, :desc)
+      |> Enum.take(3)
+      |> Enum.map(fn {hour, _} -> hour end)
+
     # Find peak days
-    peak_days = daily_activity
-    |> Enum.sort_by(fn {_day, count} -> count end, :desc)
-    |> Enum.take(3)
-    |> Enum.map(fn {day, _} -> day end)
-    
+    peak_days =
+      daily_activity
+      |> Enum.sort_by(fn {_day, count} -> count end, :desc)
+      |> Enum.take(3)
+      |> Enum.map(fn {day, _} -> day end)
+
     %{
       hourly_distribution: hourly_activity,
       daily_distribution: daily_activity,
@@ -138,7 +146,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       session_patterns: analyze_session_patterns(killmails)
     }
   end
-  
+
   defp classify_activity_level(killmail_count) do
     cond do
       killmail_count >= 500 -> :very_high
@@ -148,30 +156,34 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       true -> :minimal
     end
   end
-  
+
   defp analyze_session_patterns(killmails) do
     # Group killmails into sessions (activity within 2 hours)
-    sessions = killmails
-    |> Enum.sort_by(& &1.killmail_time)
-    |> Enum.reduce([], fn km, sessions ->
-      case sessions do
-        [] -> 
-          [[km]]
-        [current_session | rest] ->
-          last_km = List.last(current_session)
-          time_diff = DateTime.diff(km.killmail_time, last_km.killmail_time, :minute)
-          
-          if time_diff <= 120 do  # Within 2 hours
-            [[km | current_session] | rest]
-          else
-            [[km] | sessions]
-          end
-      end
-    end)
-    
-    session_lengths = sessions
-    |> Enum.map(&length/1)
-    
+    sessions =
+      killmails
+      |> Enum.sort_by(& &1.killmail_time)
+      |> Enum.reduce([], fn km, sessions ->
+        case sessions do
+          [] ->
+            [[km]]
+
+          [current_session | rest] ->
+            last_km = List.last(current_session)
+            time_diff = DateTime.diff(km.killmail_time, last_km.killmail_time, :minute)
+
+            # Within 2 hours
+            if time_diff <= 120 do
+              [[km | current_session] | rest]
+            else
+              [[km] | sessions]
+            end
+        end
+      end)
+
+    session_lengths =
+      sessions
+      |> Enum.map(&length/1)
+
     %{
       average_session_length: calculate_average(session_lengths),
       session_count: length(sessions),
@@ -179,26 +191,28 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       session_regularity: calculate_session_regularity(sessions)
     }
   end
-  
+
   defp calculate_average(list) when length(list) > 0 do
     Enum.sum(list) / length(list)
   end
+
   defp calculate_average(_), do: 0
-  
+
   defp calculate_session_regularity(sessions) do
     if length(sessions) < 2 do
       :insufficient_data
     else
       # Calculate time between session starts
-      intervals = sessions
-      |> Enum.chunk_every(2, 1, :discard)
-      |> Enum.map(fn [s1, s2] ->
-        DateTime.diff(List.first(s2).killmail_time, List.first(s1).killmail_time, :hour)
-      end)
-      
+      intervals =
+        sessions
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.map(fn [s1, s2] ->
+          DateTime.diff(List.first(s2).killmail_time, List.first(s1).killmail_time, :hour)
+        end)
+
       avg_interval = calculate_average(intervals)
       variance = calculate_variance(intervals, avg_interval)
-      
+
       cond do
         variance < 24 -> :very_regular
         variance < 72 -> :regular
@@ -207,49 +221,55 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       end
     end
   end
-  
+
   defp calculate_variance(values, mean) do
-    if length(values) == 0 do
+    if Enum.empty?(values) do
       0
     else
-      sum_squares = values
-      |> Enum.map(fn v -> :math.pow(v - mean, 2) end)
-      |> Enum.sum()
-      
+      sum_squares =
+        values
+        |> Enum.map(fn v -> :math.pow(v - mean, 2) end)
+        |> Enum.sum()
+
       sum_squares / length(values)
     end
   end
-  
+
   defp estimate_timezone(killmails) do
     if length(killmails) < 10 do
       "Unknown"
     else
       # Find the most active 4-hour window
-      hourly_counts = killmails
-      |> Enum.map(fn km -> DateTime.to_time(km.killmail_time).hour end)
-      |> Enum.frequencies()
-      
+      hourly_counts =
+        killmails
+        |> Enum.map(fn km -> DateTime.to_time(km.killmail_time).hour end)
+        |> Enum.frequencies()
+
       # Calculate activity for each 4-hour window
-      prime_windows = for start_hour <- 0..23 do
-        hours = Enum.map(0..3, fn offset -> rem(start_hour + offset, 24) end)
-        activity = hours
-        |> Enum.map(fn h -> Map.get(hourly_counts, h, 0) end)
-        |> Enum.sum()
-        
-        {start_hour, activity}
-      end
-      
+      prime_windows =
+        for start_hour <- 0..23 do
+          hours = Enum.map(0..3, fn offset -> rem(start_hour + offset, 24) end)
+
+          activity =
+            hours
+            |> Enum.map(fn h -> Map.get(hourly_counts, h, 0) end)
+            |> Enum.sum()
+
+          {start_hour, activity}
+        end
+
       {peak_start, _} = Enum.max_by(prime_windows, fn {_, activity} -> activity end)
-      
+
       # Estimate timezone based on peak activity
       estimate_tz_from_peak_hour(peak_start)
     end
   end
-  
+
   defp estimate_tz_from_peak_hour(peak_hour) do
     # Assume peak activity is between 19:00-23:00 local time
-    offset = peak_hour - 21  # 21:00 UTC as baseline
-    
+    # 21:00 UTC as baseline
+    offset = peak_hour - 21
+
     cond do
       offset >= -2 and offset <= 2 -> "EU-TZ"
       offset >= -7 and offset <= -4 -> "US-TZ"
@@ -257,34 +277,36 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       true -> "Other"
     end
   end
-  
+
   defp analyze_gang_preferences(killmails, character_id) do
-    gang_sizes = killmails
-    |> Enum.map(fn km ->
-      if km.victim.character_id == character_id do
-        # On losses, count attackers
-        length(km.attackers)
-      else
-        # On kills, count allies
-        length(km.attackers)
-      end
-    end)
-    
-    gang_distribution = gang_sizes
-    |> Enum.map(fn size ->
-      cond do
-        size == 1 -> :solo
-        size <= 5 -> :small_gang
-        size <= 15 -> :medium_gang
-        size <= 50 -> :large_gang
-        true -> :fleet
-      end
-    end)
-    |> Enum.frequencies()
-    
+    gang_sizes =
+      killmails
+      |> Enum.map(fn km ->
+        if km.victim.character_id == character_id do
+          # On losses, count attackers
+          length(km.attackers)
+        else
+          # On kills, count allies
+          length(km.attackers)
+        end
+      end)
+
+    gang_distribution =
+      gang_sizes
+      |> Enum.map(fn size ->
+        cond do
+          size == 1 -> :solo
+          size <= 5 -> :small_gang
+          size <= 15 -> :medium_gang
+          size <= 50 -> :large_gang
+          true -> :fleet
+        end
+      end)
+      |> Enum.frequencies()
+
     total = length(gang_sizes)
     avg_gang_size = if total > 0, do: Enum.sum(gang_sizes) / total, else: 1.0
-    
+
     %{
       average_gang_size: Float.round(avg_gang_size, 1),
       gang_distribution: gang_distribution,
@@ -292,7 +314,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       flexibility: assess_gang_flexibility(gang_sizes)
     }
   end
-  
+
   defp determine_preferred_gang_size(distribution, total) do
     if total == 0 do
       :unknown
@@ -302,10 +324,10 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       |> elem(0)
     end
   end
-  
+
   defp assess_gang_flexibility(gang_sizes) do
     unique_sizes = gang_sizes |> Enum.uniq() |> length()
-    
+
     cond do
       unique_sizes >= 10 -> :very_flexible
       unique_sizes >= 5 -> :flexible
@@ -314,35 +336,38 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       true -> :fixed
     end
   end
-  
+
   defp analyze_geographic_patterns(killmails, activity_data) do
     # System activity
-    system_activity = killmails
-    |> Enum.group_by(& &1.solar_system_id)
-    |> Enum.map(fn {system_id, kms} -> 
-      {system_id, length(kms)}
-    end)
-    |> Enum.sort_by(fn {_, count} -> count end, :desc)
-    
+    system_activity =
+      killmails
+      |> Enum.group_by(& &1.solar_system_id)
+      |> Enum.map(fn {system_id, kms} ->
+        {system_id, length(kms)}
+      end)
+      |> Enum.sort_by(fn {_, count} -> count end, :desc)
+
     # Region activity from activity data
-    region_activity = case activity_data do
-      {:ok, data} -> data[:regions] || %{}
-      _ -> %{}
-    end
-    
-    # Security preferences
-    security_distribution = system_activity
-    |> Enum.map(fn {system_id, count} ->
-      sec_status = case SystemData.get_system_security(system_id) do
-        {:ok, sec} -> classify_security(sec)
-        _ -> :unknown
+    region_activity =
+      case activity_data do
+        {:ok, data} -> data[:regions] || %{}
+        _ -> %{}
       end
-      {sec_status, count}
-    end)
-    |> Enum.reduce(%{}, fn {sec, count}, acc ->
-      Map.update(acc, sec, count, &(&1 + count))
-    end)
-    
+
+    # Security preferences
+    security_distribution =
+      system_activity
+      |> Enum.map(fn {system_id, count} ->
+        sec_status =
+          sec = SystemData.get_security_status(system_id)
+          classify_security(sec)
+
+        {sec_status, count}
+      end)
+      |> Enum.reduce(%{}, fn {sec, count}, acc ->
+        Map.update(acc, sec, count, &(&1 + count))
+      end)
+
     %{
       active_systems: length(system_activity),
       home_systems: identify_home_systems(system_activity),
@@ -351,7 +376,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       roaming_range: calculate_roaming_range(system_activity)
     }
   end
-  
+
   defp classify_security(sec) do
     cond do
       sec >= 0.5 -> :highsec
@@ -360,26 +385,28 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       true -> :wormhole
     end
   end
-  
+
   defp identify_home_systems(system_activity) do
-    total_activity = system_activity
-    |> Enum.map(fn {_, count} -> count end)
-    |> Enum.sum()
-    
+    total_activity =
+      system_activity
+      |> Enum.map(fn {_, count} -> count end)
+      |> Enum.sum()
+
     system_activity
-    |> Enum.filter(fn {_, count} -> 
-      count / total_activity > 0.1  # More than 10% of activity
+    |> Enum.filter(fn {_, count} ->
+      # More than 10% of activity
+      count / total_activity > 0.1
     end)
     |> Enum.take(3)
     |> Enum.map(fn {system_id, _} -> system_id end)
   end
-  
+
   defp analyze_regional_focus(region_activity) do
     if map_size(region_activity) == 0 do
       :unknown
     else
       region_count = map_size(region_activity)
-      
+
       cond do
         region_count == 1 -> :single_region
         region_count <= 3 -> :focused
@@ -388,10 +415,10 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       end
     end
   end
-  
+
   defp calculate_roaming_range(system_activity) do
     system_count = length(system_activity)
-    
+
     cond do
       system_count <= 5 -> :local
       system_count <= 15 -> :regional
@@ -399,7 +426,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       true -> :nomadic
     end
   end
-  
+
   defp analyze_operational_patterns(killmails) do
     %{
       hunt_patterns: detect_hunting_patterns(killmails),
@@ -408,67 +435,83 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       target_selection: analyze_target_selection(killmails)
     }
   end
-  
+
   defp detect_hunting_patterns(killmails) do
     # Analyze how the player hunts
-    kill_locations = killmails
-    |> Enum.filter(fn km -> km.victim.character_id != List.first(killmails).victim.character_id end)
-    |> Enum.map(& &1.location)
-    |> Enum.filter(& &1)
-    
+    kill_locations =
+      killmails
+      |> Enum.filter(fn km ->
+        km.victim.character_id != List.first(killmails).victim.character_id
+      end)
+      |> Enum.map(& &1.location)
+      |> Enum.filter(& &1)
+
     %{
-      prefers_gates: Enum.count(kill_locations, &String.contains?(&1, "Stargate")) > length(kill_locations) * 0.3,
-      camps_stations: Enum.count(kill_locations, &String.contains?(&1, "Station")) > length(kill_locations) * 0.2,
+      prefers_gates:
+        Enum.count(kill_locations, &String.contains?(&1, "Stargate")) >
+          length(kill_locations) * 0.3,
+      camps_stations:
+        Enum.count(kill_locations, &String.contains?(&1, "Station")) >
+          length(kill_locations) * 0.2,
       roams_systems: length(Enum.uniq(Enum.map(killmails, & &1.solar_system_id))) > 10
     }
   end
-  
+
   defp detect_defensive_patterns(killmails) do
     # Analyze defensive behavior
-    losses = Enum.filter(killmails, fn km -> 
-      km.victim.character_id == List.first(killmails).victim.character_id 
-    end)
-    
+    losses =
+      Enum.filter(killmails, fn km ->
+        km.victim.character_id == List.first(killmails).victim.character_id
+      end)
+
     %{
       fights_to_death: analyze_pod_losses(losses),
-      uses_scouts: false,  # Would need additional data
+      # Would need additional data
+      uses_scouts: false,
       risk_averse: length(losses) < length(killmails) * 0.2
     }
   end
-  
+
   defp analyze_pod_losses(losses) do
-    pod_losses = Enum.count(losses, fn km ->
-      # Check if ship is a pod/capsule
-      km.victim.ship_type_id == 670  # Capsule type ID
-    end)
-    
+    pod_losses =
+      Enum.count(losses, fn km ->
+        # Check if ship is a pod/capsule
+        # Capsule type ID
+        km.victim.ship_type_id == 670
+      end)
+
     pod_losses > length(losses) * 0.1
   end
-  
-  defp analyze_tactical_preferences(killmails) do
+
+  defp analyze_tactical_preferences(_killmails) do
     %{
-      prefers_ambush: false,  # Would need positioning data
-      uses_terrain: false,    # Would need environmental data
-      coordinated_attacks: false  # Would need timing analysis
+      # Would need positioning data
+      prefers_ambush: false,
+      # Would need environmental data
+      uses_terrain: false,
+      # Would need timing analysis
+      coordinated_attacks: false
     }
   end
-  
+
   defp analyze_target_selection(killmails) do
-    kills = Enum.filter(killmails, fn km ->
-      km.victim.character_id != List.first(killmails).victim.character_id
-    end)
-    
-    target_sizes = kills
-    |> Enum.map(fn km -> classify_target_size(km.victim.ship_type_id) end)
-    |> Enum.frequencies()
-    
+    kills =
+      Enum.filter(killmails, fn km ->
+        km.victim.character_id != List.first(killmails).victim.character_id
+      end)
+
+    target_sizes =
+      kills
+      |> Enum.map(fn km -> classify_target_size(km.victim.ship_type_id) end)
+      |> Enum.frequencies()
+
     %{
       preferred_targets: target_sizes,
       opportunistic: map_size(target_sizes) > 3,
       specialized: map_size(target_sizes) <= 2
     }
   end
-  
+
   defp classify_target_size(ship_type_id) do
     # Simplified classification
     cond do
@@ -478,21 +521,22 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       true -> :capital
     end
   end
-  
+
   defp calculate_consistency_metrics(killmails) do
     # Group by day
-    daily_activity = killmails
-    |> Enum.group_by(fn km -> DateTime.to_date(km.killmail_time) end)
-    |> Map.values()
-    |> Enum.map(&length/1)
-    
+    daily_activity =
+      killmails
+      |> Enum.group_by(fn km -> DateTime.to_date(km.killmail_time) end)
+      |> Map.values()
+      |> Enum.map(&length/1)
+
     %{
       activity_variance: calculate_variance(daily_activity, calculate_average(daily_activity)),
       consistency_score: calculate_consistency_score(daily_activity),
       reliability_rating: assess_reliability(daily_activity)
     }
   end
-  
+
   defp calculate_consistency_score(daily_counts) do
     if length(daily_counts) < 7 do
       0.0
@@ -500,18 +544,18 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       # Calculate coefficient of variation
       mean = calculate_average(daily_counts)
       std_dev = :math.sqrt(calculate_variance(daily_counts, mean))
-      
+
       if mean > 0 do
-        1.0 - (std_dev / mean)
+        1.0 - std_dev / mean
       else
         0.0
       end
     end
   end
-  
+
   defp assess_reliability(daily_counts) do
     consistency = calculate_consistency_score(daily_counts)
-    
+
     cond do
       consistency > 0.8 -> :very_reliable
       consistency > 0.6 -> :reliable
@@ -520,39 +564,43 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       true -> :unpredictable
     end
   end
-  
+
   defp calculate_predictability_score(killmails) do
     # Analyze patterns to determine predictability
-    hourly_activity = killmails
-    |> Enum.map(fn km -> DateTime.to_time(km.killmail_time).hour end)
-    |> Enum.frequencies()
-    |> Map.values()
-    
-    system_activity = killmails
-    |> Enum.map(& &1.solar_system_id)
-    |> Enum.frequencies()
-    |> Map.values()
-    
+    hourly_activity =
+      killmails
+      |> Enum.map(fn km -> DateTime.to_time(km.killmail_time).hour end)
+      |> Enum.frequencies()
+      |> Map.values()
+
+    system_activity =
+      killmails
+      |> Enum.map(& &1.solar_system_id)
+      |> Enum.frequencies()
+      |> Map.values()
+
     # Higher concentration = higher predictability
-    hour_concentration = if length(hourly_activity) > 0 do
-      Enum.max(hourly_activity) / Enum.sum(hourly_activity)
-    else
-      0
-    end
-    
-    system_concentration = if length(system_activity) > 0 do
-      Enum.max(system_activity) / Enum.sum(system_activity)
-    else
-      0
-    end
-    
+    hour_concentration =
+      if length(hourly_activity) > 0 do
+        Enum.max(hourly_activity) / Enum.sum(hourly_activity)
+      else
+        0
+      end
+
+    system_concentration =
+      if length(system_activity) > 0 do
+        Enum.max(system_activity) / Enum.sum(system_activity)
+      else
+        0
+      end
+
     Float.round((hour_concentration + system_concentration) / 2, 2)
   end
-  
+
   defp analyze_engagement_behavior(killmails, character_id) do
     kills = Enum.filter(killmails, fn km -> km.victim.character_id != character_id end)
     losses = Enum.filter(killmails, fn km -> km.victim.character_id == character_id end)
-    
+
     %{
       aggression_level: calculate_aggression_level(kills, losses),
       target_selection: analyze_detailed_target_selection(kills),
@@ -560,16 +608,16 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       revenge_seeking: detect_revenge_patterns(killmails)
     }
   end
-  
+
   defp calculate_aggression_level(kills, losses) do
     kill_count = length(kills)
     loss_count = length(losses)
-    
+
     if kill_count + loss_count == 0 do
       :unknown
     else
       aggression_ratio = kill_count / (kill_count + loss_count)
-      
+
       cond do
         aggression_ratio > 0.8 -> :very_aggressive
         aggression_ratio > 0.6 -> :aggressive
@@ -579,39 +627,43 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       end
     end
   end
-  
-  defp analyze_detailed_target_selection(kills) do
+
+  defp analyze_detailed_target_selection(_kills) do
     # More detailed than earlier analysis
     %{
-      picks_weak_targets: false,  # Would need ship comparison
-      challenges_stronger: false,  # Would need pilot comparison
+      # Would need ship comparison
+      picks_weak_targets: false,
+      # Would need pilot comparison
+      challenges_stronger: false,
       opportunistic: true
     }
   end
-  
+
   defp analyze_escape_patterns(_losses) do
     # Would need warp-off data
     :unknown
   end
-  
+
   defp detect_revenge_patterns(_killmails) do
     # Would need to track repeated engagements
     false
   end
-  
+
   defp assess_risk_tolerance(killmails, character_id) do
     losses = Enum.filter(killmails, fn km -> km.victim.character_id == character_id end)
-    
-    expensive_losses = losses
-    |> Enum.filter(fn km -> km.total_value > 100_000_000 end)
-    |> length()
-    
-    loss_ratio = if length(killmails) > 0 do
-      length(losses) / length(killmails)
-    else
-      0
-    end
-    
+
+    expensive_losses =
+      losses
+      |> Enum.filter(fn km -> km.total_value > 100_000_000 end)
+      |> length()
+
+    loss_ratio =
+      if length(killmails) > 0 do
+        length(losses) / length(killmails)
+      else
+        0
+      end
+
     cond do
       expensive_losses > 5 and loss_ratio < 0.3 -> :high_risk_tolerance
       expensive_losses > 0 and loss_ratio < 0.5 -> :moderate_risk_tolerance

@@ -1360,13 +1360,15 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
   end
 
   defp determine_skill_focus(total_sp) do
-    # Simplified skill focus determination
-    case rem(total_sp, 5) do
-      0 -> :combat_specialist
-      1 -> :support_specialist
-      2 -> :exploration_specialist
-      3 -> :logistics_specialist
-      4 -> :generalist
+    # Determine skill focus based on actual SP thresholds
+    # These represent realistic EVE skill point distributions
+    cond do
+      total_sp < 5_000_000 -> :newcomer
+      total_sp < 20_000_000 -> :generalist  # Most players in this range
+      total_sp < 50_000_000 -> :combat_specialist  # Common combat focus
+      total_sp < 80_000_000 -> :support_specialist  # Advanced support roles
+      total_sp < 120_000_000 -> :exploration_specialist  # Deep specialization
+      total_sp >= 120_000_000 -> :veteran_specialist  # Multi-role veterans
     end
   end
 

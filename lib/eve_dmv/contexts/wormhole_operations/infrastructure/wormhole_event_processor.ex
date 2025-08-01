@@ -7,7 +7,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Infrastructure.WormholeEventProcess
   """
 
   alias EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer
-  alias EveDmv.Contexts.WormholeOperations.Domain.MassOptimizer
   alias EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter
 
   require Logger
@@ -238,28 +237,17 @@ defmodule EveDmv.Contexts.WormholeOperations.Infrastructure.WormholeEventProcess
     # Extract target wormhole class from event or default to C5
     wormhole_class = Map.get(event, :target_wormhole_class, "C5")
 
-    # Optimize fleet for wormhole mass constraints
-    case MassOptimizer.optimize_fleet_composition(fleet_data, wormhole_class) do
-      {:ok, optimization_result} ->
-        # Check if fleet meets doctrine requirements
-        doctrine_compliance = check_doctrine_compliance(fleet_data, wormhole_class)
+    # Check if fleet meets doctrine requirements (mass optimization removed)
+    doctrine_compliance = check_doctrine_compliance(fleet_data, wormhole_class)
 
-        result = %{
-          fleet_id: fleet_id,
-          wormhole_class: wormhole_class,
-          optimization: optimization_result,
-          doctrine_compliance: doctrine_compliance,
-          mass_efficiency: optimization_result.mass_efficiency,
-          recommendations: optimization_result.recommendations,
-          processed_at: DateTime.utc_now()
-        }
+    result = %{
+      fleet_id: fleet_id,
+      wormhole_class: wormhole_class,
+      doctrine_compliance: doctrine_compliance,
+      processed_at: DateTime.utc_now()
+    }
 
-        {:ok, result}
-
-      {:error, reason} ->
-        Logger.error("Failed to optimize fleet #{fleet_id}: #{inspect(reason)}")
-        {:error, reason}
-    end
+    {:ok, result}
   end
 
   # Private helper functions
