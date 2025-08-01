@@ -8,14 +8,11 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   - Corporation Intelligence health monitoring
   """
 
-  alias EveDmv.Contexts.Corporation.Core.{
-    MemberActivityAnalyzer,
-    MemberRiskAssessment,
-    ParticipationAnalyzer
-  }
-
-  alias EveDmv.Platform.Database.CorporationRepository
+  alias EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer
+  alias EveDmv.Contexts.Corporation.Core.MemberRiskAssessment
+  alias EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
+  alias EveDmv.Platform.Database.CorporationRepository
   alias EveDmv.Utils.DateHelper
 
   require Logger
