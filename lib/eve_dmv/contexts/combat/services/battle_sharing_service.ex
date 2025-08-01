@@ -9,8 +9,9 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
   - Managing battle visibility and access
   """
 
+  alias EveDmv.Contexts.Combat.Core.BattleAnalyzer
+  alias EveDmv.Contexts.Combat.Core.ParticipantAnalyzer
   alias EveDmv.Contexts.Combat.Services.BattleService
-  alias EveDmv.Contexts.Combat.Core.{BattleAnalyzer, ParticipantAnalyzer}
   alias EveDmv.Utils.NumberFormatter
   require Ash.Query
 
