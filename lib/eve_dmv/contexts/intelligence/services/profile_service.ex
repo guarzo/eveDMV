@@ -3,13 +3,10 @@ defmodule EveDmv.Contexts.Intelligence.Services.ProfileService do
   Service for generating comprehensive character profiles and handling exports.
   """
 
-  alias EveDmv.Contexts.Intelligence.Core.{
-    CharacterAnalyzer,
-    ThreatAssessmentEngine,
-    PerformanceAnalyzer
-  }
-
   alias EveDmv.Cache
+  alias EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer
+  alias EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer
+  alias EveDmv.Contexts.Intelligence.Core.ThreatAssessmentEngine
 
   require Logger
 
