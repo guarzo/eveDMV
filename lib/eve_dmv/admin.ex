@@ -58,14 +58,14 @@ defmodule EveDmv.Admin do
   @doc """
   Check if a user is an admin by character ID.
   """
-  def is_admin?(character_id) when is_integer(character_id) do
+  def admin?(character_id) when is_integer(character_id) do
     case Ash.read_one(User, domain: Api, filter: [eve_character_id: character_id]) do
       {:ok, %User{is_admin: true}} -> true
       _ -> false
     end
   end
 
-  def is_admin?(character_name) when is_binary(character_name) do
+  def admin?(character_name) when is_binary(character_name) do
     case Ash.read_one(User, domain: Api, filter: [eve_character_name: character_name]) do
       {:ok, %User{is_admin: true}} -> true
       _ -> false
