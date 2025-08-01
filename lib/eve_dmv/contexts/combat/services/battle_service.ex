@@ -9,9 +9,10 @@ defmodule EveDmv.Contexts.Combat.Services.BattleService do
   - Battle search and filtering
   """
 
-  alias EveDmv.Contexts.BattleAnalysis.Resources.{Battle, BattleKillmail}
-  alias EveDmv.Contexts.BattleAnalysis.Core.BattleDetector
   alias EveDmv.Api
+  alias EveDmv.Contexts.BattleAnalysis.Core.BattleDetector
+  alias EveDmv.Contexts.BattleAnalysis.Resources.Battle
+  alias EveDmv.Contexts.BattleAnalysis.Resources.BattleKillmail
   alias EveDmv.Repo
   import Ecto.Query
   require Ash.Query
