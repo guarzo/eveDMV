@@ -615,51 +615,51 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
   end
 
   defp extract_infiltration_indicators(infiltration_risks) do
-    indicators = []
+    initial_indicators = []
 
-    indicators =
+    new_member_indicators =
       if infiltration_risks.new_member_ratio > 20 do
-        ["High ratio of new members (#{infiltration_risks.new_member_ratio}%)" | indicators]
+        ["High ratio of new members (#{infiltration_risks.new_member_ratio}%)" | initial_indicators]
       else
-        indicators
+        initial_indicators
       end
 
-    indicators =
+    final_indicators =
       if infiltration_risks.low_activity_count > 5 do
-        ["#{infiltration_risks.low_activity_count} low-activity members present" | indicators]
+        ["#{infiltration_risks.low_activity_count} low-activity members present" | new_member_indicators]
       else
-        indicators
+        new_member_indicators
       end
 
-    Enum.reverse(indicators)
+    Enum.reverse(final_indicators)
   end
 
   defp extract_behavioral_indicators(activity_analysis) do
     summary = activity_analysis.summary || %{}
 
-    indicators = []
+    initial_behavioral_indicators = []
 
-    indicators =
+    final_behavioral_indicators =
       if Map.get(summary, :participation_rate, 100) < 40 do
-        ["Low overall participation rate" | indicators]
+        ["Low overall participation rate" | initial_behavioral_indicators]
       else
-        indicators
+        initial_behavioral_indicators
       end
 
-    Enum.reverse(indicators)
+    Enum.reverse(final_behavioral_indicators)
   end
 
   defp extract_operational_indicators(security_risks) do
-    indicators = []
+    initial_operational_indicators = []
 
-    indicators =
+    final_operational_indicators =
       if length(security_risks.spy_indicators.potential_spies) > 0 do
-        ["Suspicious activity patterns detected" | indicators]
+        ["Suspicious activity patterns detected" | initial_operational_indicators]
       else
-        indicators
+        initial_operational_indicators
       end
 
-    Enum.reverse(indicators)
+    Enum.reverse(final_operational_indicators)
   end
 
   defp calculate_security_score(security_risks) do
@@ -698,68 +698,68 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
   end
 
   defp generate_security_recommendations(security_risks) do
-    recommendations = []
+    initial_recommendations = []
 
     # Infiltration recommendations
-    recommendations =
+    infiltration_recommendations =
       case security_risks.infiltration_risks.risk_level do
         level when level in [:high, :critical] ->
           [
             "Implement stricter vetting procedures for new members",
-            "Monitor low-activity members for suspicious behavior" | recommendations
+            "Monitor low-activity members for suspicious behavior" | initial_recommendations
           ]
 
         :moderate ->
-          ["Review new member onboarding process" | recommendations]
+          ["Review new member onboarding process" | initial_recommendations]
 
         _ ->
-          recommendations
+          initial_recommendations
       end
 
     # AWOX recommendations
-    recommendations =
+    awox_recommendations =
       case security_risks.awox_risk_assessment.awox_risk_level do
         level when level in [:high, :critical] ->
           [
             "Implement fleet role restrictions for high-risk members",
-            "Monitor identified AWOX risks during operations" | recommendations
+            "Monitor identified AWOX risks during operations" | infiltration_recommendations
           ]
 
         :moderate ->
-          ["Review fleet access permissions" | recommendations]
+          ["Review fleet access permissions" | infiltration_recommendations]
 
         _ ->
-          recommendations
+          infiltration_recommendations
       end
 
     # Spy recommendations
-    recommendations =
+    spy_recommendations =
       case security_risks.spy_indicators.spy_risk_level do
         :high ->
           [
             "Limit access to sensitive operational information",
-            "Implement need-to-know information policies" | recommendations
+            "Implement need-to-know information policies" | awox_recommendations
           ]
 
         :moderate ->
-          ["Review information security practices" | recommendations]
+          ["Review information security practices" | awox_recommendations]
 
         _ ->
-          recommendations
+          awox_recommendations
       end
 
     # General recommendations
-    recommendations =
+    final_recommendations =
       if security_risks.overall_risk_level in [:high, :critical] do
         [
           "Conduct immediate security review of all members",
-          "Implement enhanced monitoring procedures" | recommendations
+          "Implement enhanced monitoring procedures" | spy_recommendations
         ]
       else
-        ["Maintain regular security assessments" | recommendations]
+        ["Maintain regular security assessments" | spy_recommendations]
       end
 
-    Enum.reverse(recommendations) |> Enum.uniq()
+    Enum.reverse(final_recommendations) |> Enum.uniq()
   end
 
   defp get_character_security_data(character_id) do
@@ -866,32 +866,32 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
   end
 
   defp identify_security_flags(killmail_data, activity_data, _affiliation_data) do
-    flags = []
+    initial_flags = []
 
     # Check for concerning killmail patterns
-    flags =
+    feeder_flags =
       if killmail_data.kills == 0 && killmail_data.losses > 10 do
-        ["Only losses recorded - potential feeder" | flags]
+        ["Only losses recorded - potential feeder" | initial_flags]
       else
-        flags
+        initial_flags
       end
 
-    flags =
+    friendly_fire_flags =
       if killmail_data.friendly_fire_incidents > 0 do
-        ["Friendly fire incidents recorded" | flags]
+        ["Friendly fire incidents recorded" | feeder_flags]
       else
-        flags
+        feeder_flags
       end
 
     # Check activity patterns
-    flags =
+    final_flags =
       if activity_data.consistency_score < 30 do
-        ["Highly irregular activity patterns" | flags]
+        ["Highly irregular activity patterns" | friendly_fire_flags]
       else
-        flags
+        friendly_fire_flags
       end
 
-    Enum.reverse(flags)
+    Enum.reverse(final_flags)
   end
 
   defp perform_member_vetting(character_data, corporation_id) do
