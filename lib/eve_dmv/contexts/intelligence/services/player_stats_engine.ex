@@ -434,51 +434,51 @@ defmodule EveDmv.Contexts.Intelligence.Services.PlayerStatsEngine do
   end
 
   defp generate_player_recommendations(combat_stats, activity_stats, performance_trends) do
-    recommendations = []
+    initial_recommendations = []
 
     # Combat-based recommendations
-    recommendations =
+    recommendations_with_kd =
       if combat_stats.kill_death_ratio < 1.0 do
-        ["Focus on improving survival tactics and engagement selection" | recommendations]
+        ["Focus on improving survival tactics and engagement selection" | initial_recommendations]
       else
-        recommendations
+        initial_recommendations
       end
 
-    recommendations =
+    recommendations_with_isk =
       if combat_stats.isk_efficiency < 1.0 do
-        ["Work on ISK efficiency by choosing targets more carefully" | recommendations]
+        ["Work on ISK efficiency by choosing targets more carefully" | recommendations_with_kd]
       else
-        recommendations
+        recommendations_with_kd
       end
 
     # Activity-based recommendations
-    recommendations =
+    recommendations_with_activity =
       if activity_stats.activity_consistency < 0.5 do
         [
           "Establish more consistent activity patterns for better performance tracking"
-          | recommendations
+          | recommendations_with_isk
         ]
       else
-        recommendations
+        recommendations_with_isk
       end
 
     # Trend-based recommendations
-    recommendations =
+    final_recommendations =
       case performance_trends.improvement_rate do
         rate when rate < 0 ->
-          ["Performance appears to be declining - consider reviewing tactics" | recommendations]
+          ["Performance appears to be declining - consider reviewing tactics" | recommendations_with_activity]
 
         rate when rate > 0.1 ->
-          ["Strong improvement trend - continue current approach" | recommendations]
+          ["Strong improvement trend - continue current approach" | recommendations_with_activity]
 
         _ ->
-          ["Performance is stable - consider new challenges for growth" | recommendations]
+          ["Performance is stable - consider new challenges for growth" | recommendations_with_activity]
       end
 
-    if Enum.empty?(recommendations) do
+    if Enum.empty?(final_recommendations) do
       ["Continue current performance level with focus on consistency"]
     else
-      Enum.reverse(recommendations)
+      Enum.reverse(final_recommendations)
     end
   end
 
