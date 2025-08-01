@@ -167,26 +167,26 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
   end
 
   defp assess_infiltration_risk_level(new_members, low_activity_members, suspicious_members) do
-    risk_score = 0
+    base_risk_score = 0
 
     # High ratio of new members
     # Normalized
     new_member_ratio = length(new_members) / 100
-    risk_score = risk_score + new_member_ratio * 30
+    new_member_risk = base_risk_score + new_member_ratio * 30
 
     # Low activity members present
     low_activity_score = min(length(low_activity_members) * 5, 30)
-    risk_score = risk_score + low_activity_score
+    low_activity_risk = new_member_risk + low_activity_score
 
     # Suspicious patterns
     suspicious_score = min(length(suspicious_members) * 10, 40)
-    risk_score = risk_score + suspicious_score
+    final_risk_score = low_activity_risk + suspicious_score
 
     cond do
-      risk_score >= 70 -> :critical
-      risk_score >= 50 -> :high
-      risk_score >= 30 -> :moderate
-      risk_score >= 15 -> :low
+      final_risk_score >= 70 -> :critical
+      final_risk_score >= 50 -> :high
+      final_risk_score >= 30 -> :moderate
+      final_risk_score >= 15 -> :low
       true -> :minimal
     end
   end
