@@ -68,9 +68,9 @@ defmodule EveDmv.Contexts.Combat.Core.TimelineBuilder do
         position: get_in(killmail.victim, ["position"])
       },
       value: get_in(killmail.zkb, ["totalValue"]) || 0,
-      is_pod_kill: is_pod_kill?(killmail),
-      is_capital_kill: is_capital_kill?(killmail),
-      is_structure_kill: is_structure_kill?(killmail),
+      is_pod_kill: pod_kill?(killmail),
+      is_capital_kill: capital_kill?(killmail),
+      is_structure_kill: structure_kill?(killmail),
       raw_data: killmail
     }
   end
@@ -616,18 +616,18 @@ defmodule EveDmv.Contexts.Combat.Core.TimelineBuilder do
     end
   end
 
-  defp is_pod_kill?(killmail) do
+  defp pod_kill?(killmail) do
     # Capsule
     get_in(killmail.victim, ["ship_type_id"]) == 670
   end
 
-  defp is_capital_kill?(killmail) do
+  defp capital_kill?(killmail) do
     ship_type = get_in(killmail.victim, ["ship_type_id"]) || 0
     # Simplified check
     ship_type > 20_000
   end
 
-  defp is_structure_kill?(killmail) do
+  defp structure_kill?(killmail) do
     ship_type = get_in(killmail.victim, ["ship_type_id"]) || 0
     # Simplified check
     ship_type > 35_000

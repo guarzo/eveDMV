@@ -224,8 +224,8 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
       cond do
         kiting_pattern?(ranges, timeline) -> :kiting
         brawling_pattern?(ranges) -> :brawling
-        is_hit_and_run?(timeline) -> :hit_and_run
-        is_gate_camp?(positions) -> :gate_camp
+        hit_and_run?(timeline) -> :hit_and_run
+        gate_camp?(positions) -> :gate_camp
         true -> :mixed
       end
 
@@ -283,7 +283,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
     avg_range < 10
   end
 
-  defp is_hit_and_run?(timeline) do
+  defp hit_and_run?(timeline) do
     # Check for engagement gaps in timeline
     phases = timeline[:phases] || []
 
@@ -297,7 +297,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
     gap_count > 2
   end
 
-  defp is_gate_camp?(positions) do
+  defp gate_camp?(positions) do
     # Check if kills happen at similar positions (near gate)
     unique_positions =
       positions
@@ -330,7 +330,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
       killmails
       |> Enum.flat_map(fn km ->
         (km.attackers || [])
-        |> Enum.filter(&is_ewar_ship?(&1["ship_type_id"]))
+        |> Enum.filter(&ewar_ship?(&1["ship_type_id"]))
       end)
 
     %{
@@ -341,7 +341,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
     }
   end
 
-  defp is_ewar_ship?(ship_type_id) do
+  defp ewar_ship?(ship_type_id) do
     ship_type_id && ShipTypes.ewar?(ship_type_id)
   end
 
@@ -381,13 +381,13 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
   end
 
   defp involves_capital?(killmail) do
-    is_capital_ship?(get_in(killmail.victim, ["ship_type_id"])) ||
+    capital_ship?(get_in(killmail.victim, ["ship_type_id"])) ||
       Enum.any?(killmail.attackers || [], fn attacker ->
-        is_capital_ship?(attacker["ship_type_id"])
+        capital_ship?(attacker["ship_type_id"])
       end)
   end
 
-  defp is_capital_ship?(ship_type_id) do
+  defp capital_ship?(ship_type_id) do
     ship_type_id && ShipTypes.is_ship_class?(ship_type_id, :capital)
   end
 
@@ -403,7 +403,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
 
   defp count_capital_losses(capital_kills) do
     Enum.count(capital_kills, fn km ->
-      is_capital_ship?(get_in(km.victim, ["ship_type_id"]))
+      capital_ship?(get_in(km.victim, ["ship_type_id"]))
     end)
   end
 
@@ -473,14 +473,14 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
       simultaneous_kills.kills
       |> Enum.flat_map(fn km ->
         (km.attackers || [])
-        |> Enum.filter(&is_bomber?(&1["ship_type_id"]))
+        |> Enum.filter(&bomber?(&1["ship_type_id"]))
       end)
       |> length()
 
     bomber_count >= 5
   end
 
-  defp is_bomber?(ship_type_id) do
+  defp bomber?(ship_type_id) do
     # Check if ship is a stealth bomber using database lookup
     if ship_type_id do
       case ShipTypes.classify_ship_type(ship_type_id) do
