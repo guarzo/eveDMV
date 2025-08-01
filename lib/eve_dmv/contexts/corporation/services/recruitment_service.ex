@@ -404,31 +404,31 @@ defmodule EveDmv.Contexts.Corporation.Services.RecruitmentService do
   end
 
   defp identify_red_flags(application) do
-    red_flags = []
+    initial_red_flags = []
 
     # Check for concerning patterns
-    red_flags =
+    security_red_flags =
       if application.security_status && application.security_status < -5 do
-        ["Very low security status" | red_flags]
+        ["Very low security status" | initial_red_flags]
       else
-        red_flags
+        initial_red_flags
       end
 
-    red_flags =
+    corp_history_red_flags =
       if application.corp_history && length(application.corp_history) > 10 do
-        ["Frequent corporation changes" | red_flags]
+        ["Frequent corporation changes" | security_red_flags]
       else
-        red_flags
+        security_red_flags
       end
 
-    red_flags =
+    final_red_flags =
       unless application.api_verified do
-        ["API verification incomplete" | red_flags]
+        ["API verification incomplete" | corp_history_red_flags]
       else
-        red_flags
+        corp_history_red_flags
       end
 
-    Enum.reverse(red_flags)
+    Enum.reverse(final_red_flags)
   end
 
   defp determine_application_recommendation(application) do
@@ -448,33 +448,33 @@ defmodule EveDmv.Contexts.Corporation.Services.RecruitmentService do
     score = calculate_application_score(application)
     screening = perform_automated_screening(application)
 
-    notes = []
+    initial_notes = []
 
-    notes =
+    quality_notes =
       if score >= 80 do
-        ["High-quality application with strong qualifications" | notes]
+        ["High-quality application with strong qualifications" | initial_notes]
       else
-        notes
+        initial_notes
       end
 
-    notes =
+    security_notes =
       if screening.security_clearance.clearance_level == :restricted do
-        ["Security status requires review" | notes]
+        ["Security status requires review" | quality_notes]
       else
-        notes
+        quality_notes
       end
 
-    notes =
+    final_notes =
       unless Enum.empty?(screening.red_flags) do
-        ["Red flags identified: #{Enum.join(screening.red_flags, ", ")}" | notes]
+        ["Red flags identified: #{Enum.join(screening.red_flags, ", ")}" | security_notes]
       else
-        notes
+        security_notes
       end
 
-    if Enum.empty?(notes) do
+    if Enum.empty?(final_notes) do
       ["Standard application, meets basic requirements"]
     else
-      Enum.reverse(notes)
+      Enum.reverse(final_notes)
     end
   end
 
