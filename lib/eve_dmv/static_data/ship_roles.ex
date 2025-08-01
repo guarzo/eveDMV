@@ -169,54 +169,54 @@ defmodule EveDmv.StaticData.ShipRoles do
 
   ## Examples
 
-      iex> ShipRoles.is_logistics_ship?(11985)
+      iex> ShipRoles.logistics_ship?(11985)
       true  # Basilisk
 
-      iex> ShipRoles.is_logistics_ship?(587)
+      iex> ShipRoles.logistics_ship?(587)
       false # Rifter
   """
-  @spec is_logistics_ship?(integer()) :: boolean()
-  def is_logistics_ship?(ship_type_id) when is_integer(ship_type_id) do
+  @spec logistics_ship?(integer()) :: boolean()
+  def logistics_ship?(ship_type_id) when is_integer(ship_type_id) do
     MapSet.member?(@all_logistics, ship_type_id)
   end
 
-  def is_logistics_ship?(_), do: false
+  def logistics_ship?(_), do: false
 
   @doc """
   Check if a ship type ID is a command ship.
 
   ## Examples
 
-      iex> ShipRoles.is_command_ship?(22442)
+      iex> ShipRoles.command_ship?(22442)
       true  # Eos
 
-      iex> ShipRoles.is_command_ship?(587)
+      iex> ShipRoles.command_ship?(587)
       false # Rifter
   """
-  @spec is_command_ship?(integer()) :: boolean()
-  def is_command_ship?(ship_type_id) when is_integer(ship_type_id) do
+  @spec command_ship?(integer()) :: boolean()
+  def command_ship?(ship_type_id) when is_integer(ship_type_id) do
     MapSet.member?(@all_command, ship_type_id)
   end
 
-  def is_command_ship?(_), do: false
+  def command_ship?(_), do: false
 
   @doc """
   Check if a ship type ID is an electronic warfare ship.
 
   ## Examples
 
-      iex> ShipRoles.is_ewar_ship?(11_959)
+      iex> ShipRoles.ewar_ship?(11_959)
       true  # Rook
 
-      iex> ShipRoles.is_ewar_ship?(587)
+      iex> ShipRoles.ewar_ship?(587)
       false # Rifter
   """
-  @spec is_ewar_ship?(integer()) :: boolean()
-  def is_ewar_ship?(ship_type_id) when is_integer(ship_type_id) do
+  @spec ewar_ship?(integer()) :: boolean()
+  def ewar_ship?(ship_type_id) when is_integer(ship_type_id) do
     MapSet.member?(@all_ewar, ship_type_id)
   end
 
-  def is_ewar_ship?(_), do: false
+  def ewar_ship?(_), do: false
 
   @doc """
   Get the primary role of a ship based on its type ID.
@@ -234,10 +234,10 @@ defmodule EveDmv.StaticData.ShipRoles do
   @spec get_ship_role(integer()) :: atom()
   def get_ship_role(ship_type_id) when is_integer(ship_type_id) do
     cond do
-      is_logistics_ship?(ship_type_id) -> :logistics
-      is_command_ship?(ship_type_id) -> :command
-      is_ewar_ship?(ship_type_id) -> :ewar
-      is_tackle_ship?(ship_type_id) -> :tackle
+      logistics_ship?(ship_type_id) -> :logistics
+      command_ship?(ship_type_id) -> :command
+      ewar_ship?(ship_type_id) -> :ewar
+      tackle_ship?(ship_type_id) -> :tackle
       # Default to DPS role
       true -> :dps
     end
@@ -248,8 +248,8 @@ defmodule EveDmv.StaticData.ShipRoles do
   @doc """
   Check if a ship is a tackle ship (interceptors, interdictors).
   """
-  @spec is_tackle_ship?(integer()) :: boolean()
-  def is_tackle_ship?(ship_type_id) when is_integer(ship_type_id) do
+  @spec tackle_ship?(integer()) :: boolean()
+  def tackle_ship?(ship_type_id) when is_integer(ship_type_id) do
     # Interceptors
     interceptor_ids = [
       # T2 Interceptors (Crow, Raptor, Ares, Malediction)
@@ -285,7 +285,7 @@ defmodule EveDmv.StaticData.ShipRoles do
     ship_type_id in (interceptor_ids ++ interdictor_ids ++ heavy_interdictor_ids)
   end
 
-  def is_tackle_ship?(_), do: false
+  def tackle_ship?(_), do: false
 
   @doc """
   Detect role from fitted modules in a killmail.

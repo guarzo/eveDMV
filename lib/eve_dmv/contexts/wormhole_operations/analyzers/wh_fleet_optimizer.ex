@@ -162,11 +162,11 @@ defmodule EveDmv.Contexts.WormholeOperations.Analyzers.WhFleetAnalyzer.FleetOpti
   end
 
   defp has_logistics_ships?(ships) do
-    Enum.any?(ships, &EveDmv.StaticData.ShipRoles.is_logistics_ship?/1)
+    Enum.any?(ships, &EveDmv.StaticData.ShipRoles.logistics_ship?/1)
   end
 
   defp has_ewar_ships?(ships) do
-    Enum.any?(ships, &EveDmv.StaticData.ShipRoles.is_ewar_ship?/1)
+    Enum.any?(ships, &EveDmv.StaticData.ShipRoles.ewar_ship?/1)
   end
 
   defp has_capital_ships?(ships) do

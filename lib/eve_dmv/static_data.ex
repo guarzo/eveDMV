@@ -266,7 +266,7 @@ defmodule EveDmv.StaticData do
   @doc """
   Check if a ship type is an EWAR ship based on group or name.
   """
-  def is_ewar_ship?(ship_type_id) when is_integer(ship_type_id) do
+  def ewar_ship?(ship_type_id) when is_integer(ship_type_id) do
     case get_type(ship_type_id) do
       %ItemType{group_id: group_id, type_name: name} ->
         # Check by group

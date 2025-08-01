@@ -276,7 +276,7 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetOptimizer do
   end
 
   defp analyze_vs_armor_hacs_basic(ship_types) do
-    has_ewar = Enum.any?(ship_types, &EveDmv.StaticData.ShipRoles.is_ewar_ship?/1)
+    has_ewar = Enum.any?(ship_types, &EveDmv.StaticData.ShipRoles.ewar_ship?/1)
     has_high_alpha = has_alpha_ships?(ship_types)
 
     effectiveness = calculate_basic_effectiveness_vs_armor_hacs(has_ewar, has_high_alpha)

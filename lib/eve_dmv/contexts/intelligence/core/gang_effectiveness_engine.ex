@@ -147,9 +147,9 @@ defmodule EveDmv.Contexts.Intelligence.Core.GangEffectivenessEngine do
     alias EveDmv.StaticData.ShipRoles
 
     cond do
-      ShipRoles.is_logistics_ship?(ship_type_id) -> :logistics
-      ShipRoles.is_ewar_ship?(ship_type_id) -> :support
-      ShipRoles.is_command_ship?(ship_type_id) -> :support
+      ShipRoles.logistics_ship?(ship_type_id) -> :logistics
+      ShipRoles.ewar_ship?(ship_type_id) -> :support
+      ShipRoles.command_ship?(ship_type_id) -> :support
       # Interceptors and dictors are tackle ships
       ship_type_id in [11_172, 11_174, 11_176, 11_182, 11_184, 11_186, 11_188, 11_192] -> :tackle
       # Interdictors

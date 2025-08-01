@@ -444,9 +444,9 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
     alias EveDmv.StaticData.ShipRoles
 
     cond do
-      ShipRoles.is_logistics_ship?(ship_type_id) -> :logistics
-      ShipRoles.is_ewar_ship?(ship_type_id) -> :support
-      ShipRoles.is_command_ship?(ship_type_id) -> :support
+      ShipRoles.logistics_ship?(ship_type_id) -> :logistics
+      ShipRoles.ewar_ship?(ship_type_id) -> :support
+      ShipRoles.command_ship?(ship_type_id) -> :support
       # Default to DPS for combat ships
       true -> :dps
     end

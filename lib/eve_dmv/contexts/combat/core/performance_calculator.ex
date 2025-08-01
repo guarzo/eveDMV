@@ -608,15 +608,15 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
   end
 
   defp logistics_ship?(ship_type) do
-    EveDmv.StaticData.ShipRoles.is_logistics_ship?(ship_type)
+    EveDmv.StaticData.ShipRoles.logistics_ship?(ship_type)
   end
 
   defp command_ship?(ship_type) do
-    EveDmv.StaticData.ShipRoles.is_command_ship?(ship_type)
+    EveDmv.StaticData.ShipRoles.command_ship?(ship_type)
   end
 
   defp ewar_ship?(ship_type) do
-    EveDmv.StaticData.ShipRoles.is_ewar_ship?(ship_type)
+    EveDmv.StaticData.ShipRoles.ewar_ship?(ship_type)
   end
 
   defp capital_ship?(ship_type), do: ship_type && ship_type >= 20_000

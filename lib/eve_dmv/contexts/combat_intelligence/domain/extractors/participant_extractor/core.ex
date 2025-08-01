@@ -349,7 +349,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
     |> (fn specs -> if ship_class == :capital, do: [:capital_warfare | specs], else: specs end).()
     |> (fn specs ->
           # Use proper EWAR ship detection instead of modulo
-          if ship_type_id && EveDmv.StaticData.ShipRoles.is_ewar_ship?(ship_type_id),
+          if ship_type_id && EveDmv.StaticData.ShipRoles.ewar_ship?(ship_type_id),
             do: [:electronic_warfare | specs],
             else: specs
         end).()
