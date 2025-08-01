@@ -37,6 +37,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
         tactical_preferences: %{...}
       }}
   """
+  @spec analyze_combat_doctrines(integer(), keyword()) :: {:ok, map()} | {:error, atom()}
   def analyze_combat_doctrines(corporation_id, options \\ []) do
     case CombatDoctrineAnalyzer.analyze_combat_doctrines(corporation_id, options) do
       {:ok, analysis} -> {:ok, analysis}
@@ -49,6 +50,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
 
   Useful for identifying tactical advantages and vulnerabilities.
   """
+  @spec compare_combat_doctrines([integer()], keyword()) :: {:ok, map()} | {:error, atom()}
   def compare_combat_doctrines(corporation_ids, options \\ []) when is_list(corporation_ids) do
     case CombatDoctrineAnalyzer.compare_combat_doctrines(corporation_ids, options) do
       {:ok, comparison} -> {:ok, comparison}
@@ -61,6 +63,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
 
   Analyzes the target's preferred doctrines and suggests effective counters.
   """
+  @spec generate_counter_doctrine(integer(), keyword()) :: {:ok, map()} | {:error, atom()}
   def generate_counter_doctrine(target_corporation_id, options \\ []) do
     case CombatDoctrineAnalyzer.generate_counter_doctrine(target_corporation_id, options) do
       {:ok, recommendations} -> {:ok, recommendations}
@@ -73,6 +76,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
 
   Shows how tactics and fleet compositions have changed.
   """
+  @spec track_doctrine_evolution(integer(), keyword()) :: {:ok, map()} | {:error, atom()}
   def track_doctrine_evolution(corporation_id, options \\ []) do
     case CombatDoctrineAnalyzer.track_doctrine_evolution(corporation_id, options) do
       {:ok, evolution} -> {:ok, evolution}
@@ -85,6 +89,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
 
   Combines doctrine analysis, member threat assessments, and activity metrics.
   """
+  @spec get_corporation_intelligence_report(integer()) :: {:ok, map()}
   def get_corporation_intelligence_report(corporation_id) do
     # Get basic info first
     corp_info =
@@ -148,6 +153,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
   @doc """
   Analyzes threat levels of top members in a corporation.
   """
+  @spec analyze_top_member_threats(integer(), integer()) :: {:ok, map()} | {:error, atom()}
   def analyze_top_member_threats(corporation_id, limit \\ 10) do
     alias EveDmv.Contexts.CharacterIntelligence
 
@@ -214,6 +220,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
   @doc """
   Calculates activity metrics for a corporation.
   """
+  @spec calculate_activity_metrics(integer(), integer()) :: {:ok, map()} | {:error, atom()}
   def calculate_activity_metrics(corporation_id, days_back \\ 30) do
     time_cutoff = DateTime.utc_now() |> DateTime.add(-days_back, :day)
 
@@ -269,6 +276,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
   @doc """
   Clears cached intelligence data for a corporation.
   """
+  @spec clear_corporation_cache(integer()) :: :ok
   def clear_corporation_cache(_corporation_id) do
     # This is a placeholder - in a production system you might have specific
     # intelligence caches to clear. For now, the AnalysisCache handles this.

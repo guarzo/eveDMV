@@ -26,6 +26,7 @@ defmodule EveDmv.Shared.MetricsCalculator do
       iex> EveDmv.Shared.MetricsCalculator.calculate_current_metrics(state)
       %{average_analysis_time_ms: 150.0}
   """
+  @spec calculate_current_metrics(map()) :: map()
   def calculate_current_metrics(state) do
     avg_time =
       if Enum.empty?(state.recent_analysis_times) do
@@ -53,6 +54,7 @@ defmodule EveDmv.Shared.MetricsCalculator do
       iex> EveDmv.Shared.MetricsCalculator.calculate_average([])
       0.0
   """
+  @spec calculate_average([number()]) :: float()
   def calculate_average(values) when is_list(values) do
     if Enum.empty?(values) do
       0.0
@@ -72,6 +74,7 @@ defmodule EveDmv.Shared.MetricsCalculator do
   ## Returns
   Updated metrics map
   """
+  @spec update_metrics_with_average(map(), [number()], atom()) :: map()
   def update_metrics_with_average(metrics, recent_times, field_name \\ :average_analysis_time_ms) do
     avg_time = calculate_average(recent_times)
     Map.put(metrics, field_name, avg_time)
@@ -91,6 +94,7 @@ defmodule EveDmv.Shared.MetricsCalculator do
       iex> EveDmv.Shared.MetricsCalculator.calculate_analyzer_metrics(state)
       %{total: 100, cache_hit_rate: 80.0, cache_miss_rate: 20.0, average_time_ms: 0, last_updated: ~U[...]}
   """
+  @spec calculate_analyzer_metrics(map()) :: map()
   def calculate_analyzer_metrics(state) when is_map(state) do
     metrics = Map.get(state, :metrics, %{})
     total = Map.get(metrics, :total_analyses, 0)
@@ -112,6 +116,7 @@ defmodule EveDmv.Shared.MetricsCalculator do
     end
   end
 
+  @spec calculate_analyzer_metrics(any()) :: map()
   def calculate_analyzer_metrics(_), do: default_analyzer_metrics()
 
   @doc """
@@ -131,6 +136,7 @@ defmodule EveDmv.Shared.MetricsCalculator do
       iex> EveDmv.Shared.MetricsCalculator.calculate_rate(1, 3)
       33.33
   """
+  @spec calculate_rate(number(), number()) :: float()
   def calculate_rate(numerator, denominator) do
     cond do
       not is_number(numerator) or not is_number(denominator) -> 0.0
@@ -149,6 +155,7 @@ defmodule EveDmv.Shared.MetricsCalculator do
       iex> EveDmv.Shared.MetricsCalculator.default_analyzer_metrics()
       %{total: 0, cache_hit_rate: 0.0, cache_miss_rate: 0.0, average_time_ms: 0, last_updated: ~U[...]}
   """
+  @spec default_analyzer_metrics() :: map()
   def default_analyzer_metrics do
     %{
       total: 0,

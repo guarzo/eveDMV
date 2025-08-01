@@ -24,6 +24,8 @@ defmodule EveDmv.Contexts.BattleAnalysis do
       iex> EveDmv.Contexts.BattleAnalysis.detect_battles(start_time, end_time)
       {:ok, [%{battle_id: "battle_30003089_20250109050000", killmails: [...], metadata: %{...}}]}
   """
+  @spec detect_battles(NaiveDateTime.t(), NaiveDateTime.t(), keyword()) ::
+          {:ok, [map()]} | {:error, atom()}
   def detect_battles(start_time, end_time, options \\ []) do
     BattleDetectionService.detect_battles(start_time, end_time, options)
   end
@@ -31,6 +33,8 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   @doc """
   Detects battles in a specific solar system within a time range.
   """
+  @spec detect_battles_in_system(integer(), NaiveDateTime.t(), NaiveDateTime.t(), keyword()) ::
+          {:ok, [map()]} | {:error, atom()}
   def detect_battles_in_system(system_id, start_time, end_time, options \\ []) do
     BattleDetectionService.detect_battles_in_system(system_id, start_time, end_time, options)
   end
@@ -39,6 +43,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   Analyzes a potential battle from a list of killmail IDs.
   Useful for analyzing battles from external sources like zkillboard.
   """
+  @spec analyze_battle_from_killmail_ids([integer()]) :: {:ok, map()} | {:error, atom()}
   def analyze_battle_from_killmail_ids(killmail_ids) when is_list(killmail_ids) do
     BattleDetectionService.analyze_battle_from_killmail_ids(killmail_ids)
   end
@@ -46,6 +51,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   @doc """
   Detects recent battles from the last N hours.
   """
+  @spec detect_recent_battles(integer(), keyword()) :: {:ok, [map()]} | {:error, atom()}
   def detect_recent_battles(hours_back \\ 24, options \\ []) do
     end_time = NaiveDateTime.utc_now()
     start_time = NaiveDateTime.add(end_time, -hours_back * 3600, :second)
@@ -56,6 +62,8 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   @doc """
   Gets battle summary statistics for a time period.
   """
+  @spec get_battle_statistics(NaiveDateTime.t(), NaiveDateTime.t()) ::
+          {:ok, map()} | {:error, atom()}
   def get_battle_statistics(start_time, end_time) do
     case detect_battles(start_time, end_time) do
       {:ok, battles} ->
@@ -80,6 +88,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   Provides chronological event analysis, battle phases, fleet composition changes,
   and identifies key moments in the battle.
   """
+  @spec reconstruct_battle_timeline(map()) :: map()
   def reconstruct_battle_timeline(battle) do
     BattleTimelineService.reconstruct_timeline(battle)
   end
@@ -89,6 +98,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
 
   Useful for tracking roaming gangs, escalating conflicts, or multi-system engagements.
   """
+  @spec analyze_battle_sequence([map()]) :: {:ok, map()} | {:error, atom()}
   def analyze_battle_sequence(battles) when is_list(battles) do
     BattleTimelineService.analyze_battle_sequence(battles)
   end
@@ -96,6 +106,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   @doc """
   Gets a detailed battle analysis including timeline for a specific battle ID.
   """
+  @spec get_battle_with_timeline(String.t()) :: {:ok, map()} | {:error, atom()}
   def get_battle_with_timeline(battle_id) do
     # Parse battle_id to extract system and time
     case parse_battle_id(battle_id) do
@@ -246,6 +257,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
       # Import recent kills for a character
       {:ok, battles} = import_from_zkillboard("https://zkillboard.com/character/1234567890/")
   """
+  @spec import_from_zkillboard(String.t()) :: {:ok, map()} | {:error, atom()}
   def import_from_zkillboard(url) when is_binary(url) do
     case ZkillboardImportService.import_from_url(url) do
       {:ok, killmail_ids} ->
@@ -260,6 +272,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   @doc """
   Imports a specific killmail from zkillboard by ID.
   """
+  @spec import_killmail_from_zkillboard(integer()) :: {:ok, map()} | {:error, atom()}
   def import_killmail_from_zkillboard(killmail_id) when is_integer(killmail_id) do
     case ZkillboardImportService.import_killmail(killmail_id) do
       {:ok, killmail_ids} ->
@@ -273,6 +286,8 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   @doc """
   Imports related kills from zkillboard for a specific system and time.
   """
+  @spec import_related_kills_from_zkillboard(integer(), DateTime.t() | NaiveDateTime.t()) ::
+          {:ok, map()} | {:error, atom()}
   def import_related_kills_from_zkillboard(system_id, timestamp) do
     case ZkillboardImportService.import_related_kills(system_id, timestamp) do
       {:ok, killmail_ids} ->
@@ -301,6 +316,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
         advanced_analysis: %{...}
       }}
   """
+  @spec analyze_battle_with_intelligence(map()) :: {:ok, map()} | {:error, atom()}
   def analyze_battle_with_intelligence(battle) do
     # Use the advanced BattleAnalysisService for comprehensive analysis
     alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService
@@ -376,6 +392,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
 
   Identifies connected engagements that may be part of a larger conflict.
   """
+  @spec get_multi_system_battle_chain(String.t()) :: {:ok, [map()]} | {:error, atom()}
   def get_multi_system_battle_chain(battle_id) do
     with {:ok, battle} <- get_battle_by_id(battle_id),
          {:ok, chain} <- MultiSystemBattleCorrelator.correlate_multi_system_battles([battle]) do
@@ -388,6 +405,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
 
   Returns phase detection, key moments, and tactical patterns.
   """
+  @spec get_tactical_analysis(String.t()) :: {:ok, map()} | {:error, atom()}
   def get_tactical_analysis(battle_id) do
     with {:ok, battle} <- get_battle_by_id(battle_id),
          {:ok, phases} <- TacticalPhaseDetector.detect_tactical_phases(battle),
@@ -408,6 +426,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
 
   Analyzes DPS efficiency, survivability, and tactical contribution.
   """
+  @spec get_ship_performance_report(String.t()) :: {:ok, map()} | {:error, atom()}
   def get_ship_performance_report(battle_id) do
     with {:ok, battle} <- get_battle_by_id(battle_id),
          {:ok, performance} <- ShipPerformanceAnalyzer.analyze_battle_performance(battle) do
@@ -421,6 +440,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   Returns comprehensive battle analytics including timeline, fleet composition,
   tactical effectiveness, and strategic recommendations.
   """
+  @spec analyze_battle(String.t(), keyword()) :: {:ok, map()} | {:error, atom()}
   def analyze_battle(battle_id, opts \\ []) do
     alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService
     BattleAnalysisService.analyze_battle(battle_id, opts)
@@ -429,6 +449,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   @doc """
   Analyze ongoing engagement in real-time using BattleAnalysisService.
   """
+  @spec analyze_live_engagement(integer(), keyword()) :: {:ok, map()} | {:error, atom()}
   def analyze_live_engagement(system_id, opts \\ []) do
     alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService
     BattleAnalysisService.analyze_live_engagement(system_id, opts)
@@ -437,6 +458,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   @doc """
   Generate tactical recommendations based on battle analysis.
   """
+  @spec generate_tactical_recommendations(map()) :: {:ok, [String.t()]} | {:error, atom()}
   def generate_tactical_recommendations(battle_analysis) do
     alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService
     BattleAnalysisService.generate_tactical_recommendations(battle_analysis)
@@ -447,6 +469,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
 
   Combines all available intelligence analysis into a single report.
   """
+  @spec get_battle_intelligence_summary(String.t()) :: {:ok, map()} | {:error, atom()}
   def get_battle_intelligence_summary(battle_id) do
     with {:ok, battle} <- get_battle_by_id(battle_id),
          {:ok, intelligence} <- analyze_battle_with_intelligence(battle),

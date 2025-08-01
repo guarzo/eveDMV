@@ -847,17 +847,14 @@ defmodule EveDmv.Shared.Strategic.TrendAnalyzer do
   end
 
   defp assess_trend_strength(activity_trends, pattern_evolution) do
-    activity_strength =
-      if activity_trends.trend_strength do
-        activity_trends.trend_strength
-      else
-        0.0
-      end
+    activity_strength = Map.get(activity_trends, :trend_strength, 0.0)
 
-    pattern_strength = pattern_evolution.pattern_stability
+    pattern_strength = Map.get(pattern_evolution, :pattern_stability, 0.0)
+
+    volatility = Map.get(activity_trends, :volatility, 1.0)
 
     momentum_consistency =
-      if activity_trends.volatility && activity_trends.volatility < 0.3 do
+      if is_number(volatility) and volatility < 0.3 do
         0.8
       else
         0.4

@@ -51,7 +51,7 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
       {:ok, cached_comparison} ->
         {:ok, cached_comparison}
 
-      :miss ->
+      {:error, :not_found} ->
         with {:ok, character_data} <- fetch_character_data(character_ids, timeframe),
              {:ok, comparison} <- perform_comparison(character_data, metrics) do
           UnifiedCache.put(:analysis, cache_key, comparison, @cache_ttl)

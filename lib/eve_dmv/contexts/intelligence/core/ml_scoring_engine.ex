@@ -26,6 +26,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.MLScoringEngine do
   @doc """
   Calculate ML-enhanced intelligence score with feature engineering.
   """
+  @spec calculate_ml_score(integer(), keyword()) :: {:ok, map()} | {:error, atom()}
   def calculate_ml_score(character_id, opts \\ []) do
     cache_key = {:ml_intelligence_score, character_id, opts}
 
@@ -42,6 +43,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.MLScoringEngine do
   @doc """
   Detect anomalies in character behavior using statistical methods.
   """
+  @spec detect_behavioral_anomalies(integer()) :: {:ok, map()} | {:error, atom()}
   def detect_behavioral_anomalies(character_id) do
     with {:ok, features} <- extract_features(character_id),
          {:ok, baseline} <- calculate_baseline_behavior(character_id),
@@ -59,6 +61,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.MLScoringEngine do
   @doc """
   Predict future threat level using historical trends.
   """
+  @spec predict_threat_trajectory(integer(), integer()) :: {:ok, map()} | {:error, atom()}
   def predict_threat_trajectory(character_id, days_ahead \\ 30) do
     with {:ok, historical_data} <- get_historical_features(character_id),
          {:ok, trend_model} <- fit_trend_model(historical_data) do
@@ -78,6 +81,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.MLScoringEngine do
   @doc """
   Calculate ensemble score combining multiple models.
   """
+  @spec calculate_ensemble_score(integer()) :: {:ok, map()} | {:error, atom()}
   def calculate_ensemble_score(character_id) do
     models = [
       {:behavioral, &score_behavioral_model/1, 0.25},
@@ -112,6 +116,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.MLScoringEngine do
 
   # Private Functions
 
+  @spec perform_ml_scoring(integer(), keyword()) :: {:ok, map()} | {:error, atom()}
   defp perform_ml_scoring(character_id, opts) do
     with {:ok, features} <- extract_features(character_id),
          {:ok, behavioral_score} <- calculate_behavioral_score(features),
@@ -147,6 +152,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.MLScoringEngine do
     end
   end
 
+  @spec extract_features(integer()) :: {:ok, map()} | {:error, atom()}
   defp extract_features(character_id) do
     # Extract comprehensive feature set for ML models
     with {:ok, killmails} <- get_recent_killmails(character_id),
@@ -302,63 +308,96 @@ defmodule EveDmv.Contexts.Intelligence.Core.MLScoringEngine do
 
   # ML Model Scoring Functions
 
+  @spec calculate_behavioral_score(map()) :: {:ok, float()} | {:error, atom()}
   defp calculate_behavioral_score(features) do
-    # Score based on behavioral consistency and patterns
-    behavioral_components = [
-      features.behavioral_features.activity_consistency * 0.2,
-      features.behavioral_features.timezone_stability * 0.15,
-      features.behavioral_features.operational_security_score * 0.25,
-      (1.0 - features.behavioral_features.risk_taking_index) * 0.2,
-      features.engineered_features.activity_periodicity * 0.2
-    ]
+    try do
+      behavioral_features = Map.get(features, :behavioral_features, %{})
+      engineered_features = Map.get(features, :engineered_features, %{})
 
-    score = Enum.sum(behavioral_components)
-    {:ok, Float.round(score, 3)}
+      # Score based on behavioral consistency and patterns with safe access
+      behavioral_components = [
+        Map.get(behavioral_features, :activity_consistency, 0.0) * 0.2,
+        Map.get(behavioral_features, :timezone_stability, 0.0) * 0.15,
+        Map.get(behavioral_features, :operational_security_score, 0.0) * 0.25,
+        (1.0 - Map.get(behavioral_features, :risk_taking_index, 0.0)) * 0.2,
+        Map.get(engineered_features, :activity_periodicity, 0.0) * 0.2
+      ]
+
+      score = Enum.sum(behavioral_components)
+      {:ok, Float.round(score, 3)}
+    rescue
+      _error -> {:error, :behavioral_score_calculation_failed}
+    end
   end
 
+  @spec calculate_combat_effectiveness_score(map()) :: {:ok, float()} | {:error, atom()}
   defp calculate_combat_effectiveness_score(features) do
-    # Advanced combat scoring with feature interactions
-    combat_components = [
-      normalize_kd_ratio(features.basic_stats.kill_death_ratio) * 0.25,
-      features.basic_stats.isk_efficiency * 0.20,
-      features.combat_features.solo_kill_ratio * 0.15,
-      features.combat_features.ship_diversity_index * 0.15,
-      normalize_kill_value(features.combat_features.average_kill_value) * 0.15,
-      features.combat_features.killing_blow_ratio * 0.10
-    ]
+    try do
+      basic_stats = Map.get(features, :basic_stats, %{})
+      combat_features = Map.get(features, :combat_features, %{})
 
-    score = Enum.sum(combat_components)
-    {:ok, Float.round(score, 3)}
+      # Advanced combat scoring with feature interactions and safe access
+      combat_components = [
+        normalize_kd_ratio(Map.get(basic_stats, :kill_death_ratio, 0.0)) * 0.25,
+        Map.get(basic_stats, :isk_efficiency, 0.0) * 0.20,
+        Map.get(combat_features, :solo_kill_ratio, 0.0) * 0.15,
+        Map.get(combat_features, :ship_diversity_index, 0.0) * 0.15,
+        normalize_kill_value(Map.get(combat_features, :average_kill_value, 0.0)) * 0.15,
+        Map.get(combat_features, :killing_blow_ratio, 0.0) * 0.10
+      ]
+
+      score = Enum.sum(combat_components)
+      {:ok, Float.round(score, 3)}
+    rescue
+      _error -> {:error, :combat_score_calculation_failed}
+    end
   end
 
+  @spec calculate_network_influence_score(map()) :: {:ok, float()} | {:error, atom()}
   defp calculate_network_influence_score(features) do
-    # Network-based influence scoring
-    network_components = [
-      normalize_network_size(features.network_features.unique_allies_count) * 0.3,
-      features.network_features.repeat_engagement_ratio * 0.2,
-      features.network_features.corporation_diversity * 0.15,
-      features.network_features.social_clustering_coefficient * 0.2,
-      features.network_features.fleet_consistency_score * 0.15
-    ]
+    try do
+      network_features = Map.get(features, :network_features, %{})
 
-    score = Enum.sum(network_components)
-    {:ok, Float.round(score, 3)}
+      # Network-based influence scoring with safe access
+      network_components = [
+        normalize_network_size(Map.get(network_features, :unique_allies_count, 0)) * 0.3,
+        Map.get(network_features, :repeat_engagement_ratio, 0.0) * 0.2,
+        Map.get(network_features, :corporation_diversity, 0.0) * 0.15,
+        Map.get(network_features, :social_clustering_coefficient, 0.0) * 0.2,
+        Map.get(network_features, :fleet_consistency_score, 0.0) * 0.15
+      ]
+
+      score = Enum.sum(network_components)
+      {:ok, Float.round(score, 3)}
+    rescue
+      _error -> {:error, :network_score_calculation_failed}
+    end
   end
 
+  @spec calculate_anomaly_detection_score(map()) :: {:ok, float()} | {:error, atom()}
   defp calculate_anomaly_detection_score(features) do
-    # Detect anomalous patterns
-    anomaly_indicators = [
-      detect_value_anomalies(features.statistical_features.value_percentiles),
-      detect_temporal_anomalies(features.temporal_features),
-      detect_behavioral_anomalies_score(features.behavioral_features),
-      detect_combat_anomalies(features.combat_features)
-    ]
+    try do
+      statistical_features = Map.get(features, :statistical_features, %{})
+      temporal_features = Map.get(features, :temporal_features, %{})
+      behavioral_features = Map.get(features, :behavioral_features, %{})
+      combat_features = Map.get(features, :combat_features, %{})
 
-    # Invert for scoring (fewer anomalies = higher score)
-    anomaly_count = Enum.sum(anomaly_indicators)
-    score = max(0.0, 1.0 - anomaly_count / 10.0)
+      # Detect anomalous patterns with safe access
+      anomaly_indicators = [
+        detect_value_anomalies(Map.get(statistical_features, :value_percentiles, [])),
+        detect_temporal_anomalies(temporal_features),
+        detect_behavioral_anomalies_score(behavioral_features),
+        detect_combat_anomalies(combat_features)
+      ]
 
-    {:ok, Float.round(score, 3)}
+      # Invert for scoring (fewer anomalies = higher score)
+      anomaly_count = Enum.sum(anomaly_indicators)
+      score = max(0.0, 1.0 - anomaly_count / 10.0)
+
+      {:ok, Float.round(score, 3)}
+    rescue
+      _error -> {:error, :anomaly_score_calculation_failed}
+    end
   end
 
   # Weight Optimization
@@ -639,51 +678,716 @@ defmodule EveDmv.Contexts.Intelligence.Core.MLScoringEngine do
   # Additional ML-specific functions would go here...
   # Including anomaly detection, trend analysis, ensemble methods, etc.
 
-  defp calculate_solo_ratio(_), do: 0.5
-  defp calculate_average_gang_size(_), do: 5.0
-  defp calculate_ship_diversity(_), do: 0.6
-  defp calculate_capital_usage(_), do: 0.1
-  defp calculate_average_value(_), do: 100_000_000
-  defp calculate_killing_blow_ratio(_), do: 0.3
-  defp calculate_weapon_diversity(_), do: 0.5
-  defp calculate_engagement_variance(_), do: 0.4
+  defp calculate_solo_ratio(killmails) do
+    total_kills = length(killmails)
 
-  defp count_unique_allies(_), do: 20
-  defp calculate_repeat_engagement_ratio(_), do: 0.2
-  defp calculate_corp_diversity(_), do: 0.4
-  defp calculate_alliance_participation(_), do: 0.6
-  defp calculate_social_clustering(_), do: 0.5
-  defp calculate_fleet_consistency(_), do: 0.7
+    if total_kills > 0 do
+      solo_kills =
+        Enum.count(killmails, fn km ->
+          attackers = Map.get(km, :attackers, [])
+          length(attackers) == 1
+        end)
 
-  defp measure_activity_consistency(_), do: 0.8
-  defp calculate_timezone_stability(_), do: 0.9
-  defp identify_hunting_patterns(_), do: 0.6
-  defp calculate_risk_index(_), do: 0.4
-  defp analyze_target_selection(_), do: 0.5
-  defp measure_opsec(_), do: 0.7
+      solo_kills / total_kills
+    else
+      0.0
+    end
+  end
 
-  defp calculate_time_interval_stats(_), do: %{}
-  defp calculate_skewness(_), do: 0.0
-  defp calculate_kurtosis(_), do: 0.0
-  defp calculate_activity_entropy(_), do: 0.5
-  defp detect_activity_bursts(_), do: 0.3
+  defp calculate_average_gang_size(killmails) do
+    if length(killmails) > 0 do
+      total_attackers =
+        killmails
+        |> Enum.map(fn km -> length(Map.get(km, :attackers, [])) end)
+        |> Enum.sum()
 
-  defp calculate_kd_isk_interaction(_), do: 0.6
-  defp calculate_trend_slope(_, _), do: 0.0
-  defp calculate_high_value_ratio(_), do: 0.2
-  defp calculate_defensive_losses(_), do: 0.1
-  defp detect_periodic_patterns(_), do: 0.4
-  defp calculate_engagement_complexity(_), do: 0.5
+      total_attackers / length(killmails)
+    else
+      0.0
+    end
+  end
 
-  defp detect_value_anomalies(_), do: 0
-  defp detect_temporal_anomalies(_), do: 0
-  defp detect_behavioral_anomalies_score(_), do: 0
-  defp detect_combat_anomalies(_), do: 0
+  defp calculate_ship_diversity(killmails) do
+    unique_ships =
+      killmails
+      |> Enum.map(& &1.ship_type_id)
+      |> Enum.uniq()
+      |> length()
 
-  defp assess_behavioral_quality(_), do: 1.0
-  defp assess_combat_quality(_), do: 1.0
-  defp assess_network_quality(_), do: 1.0
-  defp assess_statistical_quality(_), do: 1.0
+    # Normalize to 0-1 scale (assuming max 20 different ship types is high diversity)
+    min(unique_ships / 20.0, 1.0)
+  end
+
+  defp calculate_capital_usage(killmails) do
+    total_kills = length(killmails)
+
+    if total_kills > 0 do
+      capital_kills =
+        Enum.count(killmails, fn km ->
+          # This would need actual ship classification logic
+          ship_type_id = km.ship_type_id
+          # Simple heuristic: ship type IDs above 30000 are often capitals
+          ship_type_id > 30000
+        end)
+
+      capital_kills / total_kills
+    else
+      0.0
+    end
+  end
+
+  defp calculate_average_value(killmails) do
+    if length(killmails) > 0 do
+      total_value = Enum.sum(Enum.map(killmails, & &1.total_value))
+      total_value / length(killmails)
+    else
+      0.0
+    end
+  end
+
+  defp calculate_killing_blow_ratio(killmails) do
+    total_kills = length(killmails)
+
+    if total_kills > 0 do
+      final_blows =
+        Enum.count(killmails, fn km ->
+          Map.get(km, :is_final_blow, false)
+        end)
+
+      final_blows / total_kills
+    else
+      0.0
+    end
+  end
+
+  defp calculate_weapon_diversity(killmails) do
+    unique_weapons =
+      killmails
+      |> Enum.flat_map(fn km -> Map.get(km, :attackers, []) end)
+      |> Enum.map(fn attacker -> Map.get(attacker, :weapon_type_id) end)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+      |> length()
+
+    # Normalize to 0-1 scale (assuming max 15 different weapon types is high diversity)
+    min(unique_weapons / 15.0, 1.0)
+  end
+
+  defp calculate_engagement_variance(killmails) do
+    if length(killmails) < 2 do
+      0.0
+    else
+      values = Enum.map(killmails, & &1.total_value)
+      mean = Enum.sum(values) / length(values)
+
+      if mean > 0 do
+        variance =
+          Enum.reduce(values, 0, fn val, acc ->
+            acc + :math.pow(val - mean, 2)
+          end) / length(values)
+
+        :math.sqrt(variance) / mean
+      else
+        0.0
+      end
+    end
+  end
+
+  defp count_unique_allies(killmails) do
+    killmails
+    |> Enum.flat_map(fn km -> Map.get(km, :attackers, []) end)
+    |> Enum.map(fn attacker -> Map.get(attacker, :character_id) end)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+    |> length()
+  end
+
+  defp calculate_repeat_engagement_ratio(killmails) do
+    if length(killmails) > 1 do
+      # Count how many times this character engages the same targets
+      victims = Enum.map(killmails, fn km -> km.victim.character_id end)
+      unique_victims = Enum.uniq(victims)
+
+      if length(unique_victims) > 0 do
+        1.0 - length(unique_victims) / length(victims)
+      else
+        0.0
+      end
+    else
+      0.0
+    end
+  end
+
+  defp calculate_corp_diversity(killmails) do
+    unique_corps =
+      killmails
+      |> Enum.map(fn km -> Map.get(km.victim, :corporation_id) end)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+      |> length()
+
+    # Normalize: more than 10 different corps is high diversity
+    min(unique_corps / 10.0, 1.0)
+  end
+
+  defp calculate_alliance_participation(killmails) do
+    unique_alliances =
+      killmails
+      |> Enum.map(fn km -> Map.get(km.victim, :alliance_id) end)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+      |> length()
+
+    # Normalize: more than 5 different alliances is high participation
+    min(unique_alliances / 5.0, 1.0)
+  end
+
+  # Simplified implementations that return meaningful but basic calculations
+  defp calculate_social_clustering(killmails) do
+    # Simple heuristic: how often do you kill with the same people
+    if length(killmails) > 1 do
+      all_allies =
+        killmails
+        |> Enum.flat_map(fn km -> Map.get(km, :attackers, []) end)
+        |> Enum.map(fn attacker -> Map.get(attacker, :character_id) end)
+        |> Enum.reject(&is_nil/1)
+
+      unique_allies = Enum.uniq(all_allies)
+
+      if length(unique_allies) > 0 do
+        1.0 - length(unique_allies) / length(all_allies)
+      else
+        0.0
+      end
+    else
+      0.0
+    end
+  end
+
+  defp calculate_fleet_consistency(killmails) do
+    # How consistent are gang sizes
+    gang_sizes = Enum.map(killmails, fn km -> length(Map.get(km, :attackers, [])) end)
+
+    if length(gang_sizes) > 1 do
+      mean = Enum.sum(gang_sizes) / length(gang_sizes)
+
+      variance =
+        Enum.reduce(gang_sizes, 0, fn size, acc ->
+          acc + :math.pow(size - mean, 2)
+        end) / length(gang_sizes)
+
+      # Lower variance = higher consistency
+      max(0.0, 1.0 - :math.sqrt(variance) / mean)
+    else
+      1.0
+    end
+  end
+
+  # Anomaly detection functions - simplified implementations
+  defp detect_value_anomalies(killmails) do
+    if length(killmails) < 3 do
+      0
+    else
+      values = Enum.map(killmails, & &1.total_value)
+      mean = Enum.sum(values) / length(values)
+      outliers = Enum.count(values, fn val -> abs(val - mean) > mean * 2 end)
+      outliers
+    end
+  end
+
+  defp detect_temporal_anomalies(killmails) do
+    # Simple temporal anomaly detection based on unusual kill timing
+    if length(killmails) < 3 do
+      0
+    else
+      timestamps =
+        Enum.map(killmails, & &1.killmail_time)
+        |> Enum.sort(DateTime)
+
+      intervals =
+        timestamps
+        |> Enum.zip(Enum.drop(timestamps, 1))
+        |> Enum.map(fn {t1, t2} -> DateTime.diff(t2, t1, :second) end)
+
+      if length(intervals) > 0 do
+        mean_interval = Enum.sum(intervals) / length(intervals)
+
+        unusual_intervals =
+          Enum.count(intervals, fn interval ->
+            abs(interval - mean_interval) > mean_interval * 3
+          end)
+
+        unusual_intervals
+      else
+        0
+      end
+    end
+  end
+
+  defp detect_behavioral_anomalies_score(_killmails), do: 0
+  defp detect_combat_anomalies(_killmails), do: 0
+
+  # Quality assessment functions
+  defp assess_behavioral_quality(features) do
+    # Simple data quality check based on available features
+    required_fields = [:activity_consistency, :timezone_stability, :operational_security_score]
+    available_fields = Map.keys(features.behavioral_features || %{})
+    overlap = MapSet.intersection(MapSet.new(required_fields), MapSet.new(available_fields))
+    MapSet.size(overlap) / length(required_fields)
+  end
+
+  defp assess_combat_quality(features) do
+    basic_stats = features.basic_stats || %{}
+    required_fields = [:kill_death_ratio, :isk_efficiency]
+
+    available_count =
+      Enum.count(required_fields, fn field -> Map.has_key?(basic_stats, field) end)
+
+    available_count / length(required_fields)
+  end
+
+  defp assess_network_quality(features) do
+    network_features = features.network_features || %{}
+    if map_size(network_features) > 0, do: 1.0, else: 0.0
+  end
+
+  defp assess_statistical_quality(features) do
+    statistical_features = features.statistical_features || %{}
+    if map_size(statistical_features) > 0, do: 1.0, else: 0.0
+  end
+
+  # Behavioral feature functions
+  defp measure_activity_consistency(killmails) do
+    if length(killmails) < 7 do
+      # Neutral consistency for insufficient data
+      0.5
+    else
+      # Group by day of week and measure consistency
+      daily_counts =
+        killmails
+        |> Enum.group_by(fn km -> DateTime.to_date(km.killmail_time) |> Date.day_of_week() end)
+        |> Enum.map(fn {_day, kills} -> length(kills) end)
+
+      if length(daily_counts) > 1 do
+        mean = Enum.sum(daily_counts) / length(daily_counts)
+
+        variance =
+          Enum.reduce(daily_counts, 0, fn count, acc ->
+            acc + :math.pow(count - mean, 2)
+          end) / length(daily_counts)
+
+        # Higher consistency = lower variance
+        max(0.0, 1.0 - :math.sqrt(variance) / mean)
+      else
+        1.0
+      end
+    end
+  end
+
+  defp calculate_timezone_stability(killmails) do
+    if length(killmails) < 3 do
+      0.5
+    else
+      # Extract hours of activity
+      hours =
+        killmails
+        |> Enum.map(fn km -> km.killmail_time.hour end)
+
+      # Measure how concentrated the activity is in certain hours
+      hour_counts = Enum.frequencies(hours)
+      max_count = Enum.max(Map.values(hour_counts))
+      total_count = length(killmails)
+
+      # Higher concentration = higher stability
+      max_count / total_count
+    end
+  end
+
+  defp identify_hunting_patterns(killmails) do
+    if length(killmails) < 2 do
+      0.0
+    else
+      # Simple pattern: how often kills happen in quick succession
+      timestamps = Enum.map(killmails, & &1.killmail_time) |> Enum.sort(DateTime)
+
+      quick_succession =
+        timestamps
+        |> Enum.zip(Enum.drop(timestamps, 1))
+        |> Enum.count(fn {t1, t2} -> DateTime.diff(t2, t1, :minute) < 15 end)
+
+      quick_succession / (length(timestamps) - 1)
+    end
+  end
+
+  defp calculate_risk_index(killmails) do
+    if length(killmails) == 0 do
+      0.0
+    else
+      # Risk based on going after high-value targets and ship types
+      high_value_kills = Enum.count(killmails, fn km -> km.total_value > 100_000_000 end)
+      high_value_ratio = high_value_kills / length(killmails)
+
+      # Risk based on attacking capitals/expensive ships
+      expensive_ships = Enum.count(killmails, fn km -> km.total_value > 500_000_000 end)
+      expensive_ratio = expensive_ships / length(killmails)
+
+      # Combined risk index
+      high_value_ratio * 0.6 + expensive_ratio * 0.4
+    end
+  end
+
+  defp analyze_target_selection(killmails) do
+    if length(killmails) == 0 do
+      0.0
+    else
+      # Analyze if pilot shows bias toward certain target types
+      ship_types = Enum.map(killmails, & &1.ship_type_id)
+      ship_frequencies = Enum.frequencies(ship_types)
+
+      if map_size(ship_frequencies) > 0 do
+        # Measure how concentrated the targeting is
+        max_frequency = Enum.max(Map.values(ship_frequencies))
+        max_frequency / length(killmails)
+      else
+        0.0
+      end
+    end
+  end
+
+  defp measure_opsec(killmails) do
+    if length(killmails) == 0 do
+      # No data = assume good opsec
+      1.0
+    else
+      # Simple heuristic: variety in systems and timing suggests better opsec
+      unique_systems =
+        killmails
+        |> Enum.map(& &1.solar_system_id)
+        |> Enum.uniq()
+        |> length()
+
+      system_diversity = min(unique_systems / length(killmails), 1.0)
+
+      # Time diversity - kills spread across different hours
+      unique_hours =
+        killmails
+        |> Enum.map(fn km -> km.killmail_time.hour end)
+        |> Enum.uniq()
+        |> length()
+
+      time_diversity = unique_hours / 24.0
+
+      # Combined opsec score
+      system_diversity * 0.6 + time_diversity * 0.4
+    end
+  end
+
+  # Statistical functions
+  defp calculate_time_interval_stats(timestamps) do
+    if length(timestamps) < 2 do
+      %{mean: 0, variance: 0, min: 0, max: 0}
+    else
+      sorted_timestamps = Enum.sort(timestamps, DateTime)
+
+      intervals =
+        sorted_timestamps
+        |> Enum.zip(Enum.drop(sorted_timestamps, 1))
+        |> Enum.map(fn {t1, t2} -> DateTime.diff(t2, t1, :second) end)
+
+      mean = Enum.sum(intervals) / length(intervals)
+
+      variance =
+        if length(intervals) > 1 do
+          Enum.reduce(intervals, 0, fn interval, acc ->
+            acc + :math.pow(interval - mean, 2)
+          end) / length(intervals)
+        else
+          0
+        end
+
+      %{
+        mean: mean,
+        variance: variance,
+        min: Enum.min(intervals),
+        max: Enum.max(intervals)
+      }
+    end
+  end
+
+  defp calculate_skewness(values) do
+    if length(values) < 3 do
+      0.0
+    else
+      mean = Enum.sum(values) / length(values)
+
+      variance =
+        Enum.reduce(values, 0, fn val, acc ->
+          acc + :math.pow(val - mean, 2)
+        end) / length(values)
+
+      if variance > 0 do
+        std_dev = :math.sqrt(variance)
+
+        skewness =
+          Enum.reduce(values, 0, fn val, acc ->
+            acc + :math.pow((val - mean) / std_dev, 3)
+          end) / length(values)
+
+        skewness
+      else
+        0.0
+      end
+    end
+  end
+
+  defp calculate_kurtosis(values) do
+    if length(values) < 4 do
+      0.0
+    else
+      mean = Enum.sum(values) / length(values)
+
+      variance =
+        Enum.reduce(values, 0, fn val, acc ->
+          acc + :math.pow(val - mean, 2)
+        end) / length(values)
+
+      if variance > 0 do
+        std_dev = :math.sqrt(variance)
+
+        kurtosis =
+          Enum.reduce(values, 0, fn val, acc ->
+            acc + :math.pow((val - mean) / std_dev, 4)
+          end) / length(values)
+
+        # Subtract 3 for excess kurtosis
+        kurtosis - 3.0
+      else
+        0.0
+      end
+    end
+  end
+
+  defp calculate_activity_entropy(killmails) do
+    if length(killmails) == 0 do
+      0.0
+    else
+      # Calculate entropy based on system activity distribution
+      system_counts =
+        killmails
+        |> Enum.map(& &1.solar_system_id)
+        |> Enum.frequencies()
+        |> Map.values()
+
+      total = length(killmails)
+
+      entropy =
+        system_counts
+        |> Enum.reduce(0, fn count, acc ->
+          p = count / total
+
+          if p > 0 do
+            acc - p * :math.log2(p)
+          else
+            acc
+          end
+        end)
+
+      # Normalize to 0-1 scale
+      max_entropy = :math.log2(length(system_counts))
+      if max_entropy > 0, do: entropy / max_entropy, else: 0.0
+    end
+  end
+
+  defp detect_activity_bursts(timestamps) do
+    if length(timestamps) < 3 do
+      0.0
+    else
+      sorted_timestamps = Enum.sort(timestamps, DateTime)
+
+      intervals =
+        sorted_timestamps
+        |> Enum.zip(Enum.drop(sorted_timestamps, 1))
+        |> Enum.map(fn {t1, t2} -> DateTime.diff(t2, t1, :minute) end)
+
+      # Define burst as multiple kills within 5 minutes
+      burst_intervals = Enum.count(intervals, fn interval -> interval <= 5 end)
+      burst_intervals / length(intervals)
+    end
+  end
+
+  # Advanced feature functions
+  defp calculate_kd_isk_interaction(killmails) do
+    if length(killmails) == 0 do
+      0.0
+    else
+      kills = Enum.filter(killmails, fn km -> not Map.get(km, :is_victim, false) end)
+      deaths = Enum.filter(killmails, fn km -> Map.get(km, :is_victim, false) end)
+
+      avg_kill_value =
+        if length(kills) > 0 do
+          Enum.sum(Enum.map(kills, & &1.total_value)) / length(kills)
+        else
+          0
+        end
+
+      avg_death_value =
+        if length(deaths) > 0 do
+          Enum.sum(Enum.map(deaths, & &1.total_value)) / length(deaths)
+        else
+          0
+        end
+
+      # Higher kill value vs death value indicates better performance
+      if avg_death_value > 0 do
+        min(avg_kill_value / avg_death_value / 10.0, 1.0)
+      else
+        min(avg_kill_value / 100_000_000.0, 1.0)
+      end
+    end
+  end
+
+  defp calculate_trend_slope(killmails, metric) do
+    if length(killmails) < 3 do
+      0.0
+    else
+      # Group killmails by week and calculate trend
+      sorted_killmails = Enum.sort_by(killmails, & &1.killmail_time, DateTime)
+
+      # Calculate weekly values
+      weekly_data =
+        sorted_killmails
+        |> Enum.group_by(fn km ->
+          Date.beginning_of_week(DateTime.to_date(km.killmail_time))
+        end)
+        |> Enum.map(fn {week, kms} ->
+          value =
+            case metric do
+              :kills -> length(kms)
+              :value -> Enum.sum(Enum.map(kms, & &1.total_value))
+              _ -> length(kms)
+            end
+
+          {week, value}
+        end)
+        |> Enum.sort_by(fn {week, _} -> week end, Date)
+
+      if length(weekly_data) < 2 do
+        0.0
+      else
+        # Simple linear trend calculation
+        values = Enum.map(weekly_data, fn {_, value} -> value end)
+        first_half_sum = Enum.take(values, div(length(values), 2)) |> Enum.sum()
+        first_half_avg = first_half_sum / max(div(length(values), 2), 1)
+        second_half_sum = Enum.drop(values, div(length(values), 2)) |> Enum.sum()
+        second_half_avg = second_half_sum / max(length(values) - div(length(values), 2), 1)
+
+        # Normalize trend slope
+        if first_half_avg > 0 do
+          (second_half_avg - first_half_avg) / first_half_avg
+        else
+          0.0
+        end
+      end
+    end
+  end
+
+  defp calculate_high_value_ratio(killmails) do
+    if length(killmails) == 0 do
+      0.0
+    else
+      high_value_kills = Enum.count(killmails, fn km -> km.total_value > 1_000_000_000 end)
+      high_value_kills / length(killmails)
+    end
+  end
+
+  defp calculate_defensive_losses(killmails) do
+    if length(killmails) == 0 do
+      0.0
+    else
+      # Simple heuristic: losses in home systems or known defensive situations
+      defensive_losses =
+        Enum.count(killmails, fn km ->
+          # Outnumbered = defensive
+          Map.get(km, :is_victim, false) and
+            Map.get(km, :attackers, []) |> length() > 3
+        end)
+
+      total_losses = Enum.count(killmails, fn km -> Map.get(km, :is_victim, false) end)
+
+      if total_losses > 0 do
+        defensive_losses / total_losses
+      else
+        0.0
+      end
+    end
+  end
+
+  defp detect_periodic_patterns(killmails) do
+    if length(killmails) < 7 do
+      0.0
+    else
+      # Detect patterns in daily activity
+      daily_activity =
+        killmails
+        |> Enum.group_by(fn km ->
+          DateTime.to_date(km.killmail_time) |> Date.day_of_week()
+        end)
+        |> Enum.map(fn {day, kms} -> {day, length(kms)} end)
+        |> Enum.sort_by(fn {day, _} -> day end)
+
+      if length(daily_activity) > 1 do
+        values = Enum.map(daily_activity, fn {_, count} -> count end)
+        mean = Enum.sum(values) / length(values)
+
+        # Measure how much the pattern deviates from uniform distribution
+        variance =
+          Enum.reduce(values, 0, fn count, acc ->
+            acc + :math.pow(count - mean, 2)
+          end) / length(values)
+
+        # Higher variance suggests more periodic patterns
+        if mean > 0 do
+          min(:math.sqrt(variance) / mean, 1.0)
+        else
+          0.0
+        end
+      else
+        0.0
+      end
+    end
+  end
+
+  defp calculate_engagement_complexity(killmails) do
+    if length(killmails) == 0 do
+      0.0
+    else
+      # Measure complexity based on various factors
+      ship_diversity =
+        killmails
+        |> Enum.map(& &1.ship_type_id)
+        |> Enum.uniq()
+        |> length()
+
+      system_diversity =
+        killmails
+        |> Enum.map(& &1.solar_system_id)
+        |> Enum.uniq()
+        |> length()
+
+      avg_gang_size =
+        killmails
+        |> Enum.map(fn km -> length(Map.get(km, :attackers, [])) end)
+        |> Enum.sum()
+        |> Kernel./(length(killmails))
+
+      # Combine factors for complexity score
+      ship_factor = min(ship_diversity / 10.0, 1.0)
+      system_factor = min(system_diversity / 20.0, 1.0)
+      gang_factor = min(avg_gang_size / 20.0, 1.0)
+
+      ship_factor * 0.4 + system_factor * 0.3 + gang_factor * 0.3
+    end
+  end
 
   # Ensemble scoring functions
 

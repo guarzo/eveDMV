@@ -17,6 +17,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.CharacterService do
   @doc """
   Create a new character profile from raw character data.
   """
+  @spec create_character_profile(map()) :: {:ok, any()} | {:error, atom()}
   def create_character_profile(character_data) do
     with {:ok, profile} <- Ash.create(CharacterProfile, character_data, domain: Api) do
       # Broadcast creation event
@@ -33,6 +34,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.CharacterService do
   @doc """
   Update character statistics.
   """
+  @spec update_character_stats(integer(), map()) :: {:ok, any()} | {:error, atom()}
   def update_character_stats(character_id, stats) do
     case get_character(character_id) do
       {:ok, character} ->
@@ -58,6 +60,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.CharacterService do
   @doc """
   Get character profile by ID.
   """
+  @spec get_character(integer()) :: {:ok, any()} | {:error, atom()}
   def get_character(character_id) do
     case Ash.get(CharacterProfile, character_id, domain: Api) do
       {:ok, character} -> {:ok, character}
@@ -69,6 +72,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.CharacterService do
   @doc """
   Search characters by various parameters.
   """
+  @spec search_characters(map() | keyword()) :: {:ok, [any()]} | {:error, atom()}
   def search_characters(search_params) do
     query =
       CharacterProfile
@@ -85,6 +89,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.CharacterService do
   @doc """
   Refresh character cache by re-analyzing.
   """
+  @spec refresh_character_cache(integer()) :: {:ok, map()} | {:error, atom()}
   def refresh_character_cache(character_id) do
     # Clear existing cache
     clear_character_cache(character_id)
@@ -104,6 +109,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.CharacterService do
   @doc """
   Clear all cached data for a character.
   """
+  @spec clear_character_cache(integer()) :: :ok
   def clear_character_cache(character_id) do
     # Clear various cache keys
     cache_keys = [
@@ -127,6 +133,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.CharacterService do
   @doc """
   Subscribe to character updates.
   """
+  @spec subscribe_to_character_updates(integer()) :: :ok | {:error, any()}
   def subscribe_to_character_updates(character_id) do
     Phoenix.PubSub.subscribe(
       EveDmv.PubSub,
@@ -137,6 +144,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.CharacterService do
   @doc """
   Unsubscribe from character updates.
   """
+  @spec unsubscribe_from_character_updates(integer()) :: :ok
   def unsubscribe_from_character_updates(character_id) do
     Phoenix.PubSub.unsubscribe(
       EveDmv.PubSub,
@@ -147,6 +155,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.CharacterService do
   @doc """
   Bulk update character stats from killmail processing.
   """
+  @spec bulk_update_from_killmails([{integer(), map()}]) :: {:ok, {[any()], [any()]}}
   def bulk_update_from_killmails(character_stats_list) do
     results =
       character_stats_list

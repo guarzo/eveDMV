@@ -73,10 +73,8 @@ defmodule EveDmvWeb.ProfileLive do
   end
 
   defp get_character_ship_intelligence(character_id) do
-    case ShipIntelligenceBridge.calculate_ship_specialization(character_id) do
-      {:ok, intelligence} -> intelligence
-      {:error, _} -> nil
-    end
+    {:ok, intelligence} = ShipIntelligenceBridge.calculate_ship_specialization(character_id)
+    intelligence
   end
 
   defp export_user_data(user) do

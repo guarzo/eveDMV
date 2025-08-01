@@ -322,7 +322,7 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
         leader.roles && "CEO" in leader.roles
       end)
 
-    risks =
+    succession_risks =
       if ceos <= 1 do
         ["Single CEO creates succession risk" | risks]
       else
@@ -336,22 +336,22 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
         calculate_tenure_days(leader.join_date) > 365 * 2
       end)
 
-    risks =
+    aging_risks =
       if old_leaders > length(leaders) * 0.7 do
-        ["Leadership team lacks fresh perspective" | risks]
+        ["Leadership team lacks fresh perspective" | succession_risks]
       else
-        risks
+        succession_risks
       end
 
     # Insufficient pipeline risk
-    risks =
+    pipeline_risks =
       if length(potential_leaders) < 3 do
-        ["Insufficient leadership pipeline" | risks]
+        ["Insufficient leadership pipeline" | aging_risks]
       else
-        risks
+        aging_risks
       end
 
-    Enum.reverse(risks)
+    Enum.reverse(pipeline_risks)
   end
 
   defp assess_decision_making do
@@ -588,7 +588,7 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
     # High flight risk
     flight_risk_count = length(risk_data.flight_risks || [])
 
-    risks =
+    flight_risks =
       if flight_risk_count > 5 do
         ["High number of flight risks (#{flight_risk_count})" | risks]
       else
@@ -599,25 +599,25 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
     integration_assessment = risk_data.integration_assessment || %{}
     integration_health = Map.get(integration_assessment, :overall_integration_health, :unknown)
 
-    risks =
+    integration_risks =
       if integration_health in [:poor, :critical] do
-        ["Poor new member integration" | risks]
+        ["Poor new member integration" | flight_risks]
       else
-        risks
+        flight_risks
       end
 
     # Retention issues
     retention_score = risk_data.retention_score || %{}
     retention_assessment = Map.get(retention_score, :assessment, :unknown)
 
-    risks =
+    retention_risks =
       if retention_assessment in [:concerning_retention, :poor_retention] do
-        ["Member retention concerns" | risks]
+        ["Member retention concerns" | integration_risks]
       else
-        risks
+        integration_risks
       end
 
-    Enum.reverse(risks)
+    Enum.reverse(retention_risks)
   end
 
   defp analyze_growth_pattern(members) do
@@ -763,7 +763,7 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
     summary = activity_data.summary || %{}
     participation_rate = Map.get(summary, :participation_rate, 0)
 
-    indicators =
+    participation_indicators =
       if participation_rate > 70 do
         ["High member participation rate" | indicators]
       else
@@ -774,14 +774,14 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
     retention_score = risk_data.retention_score || %{}
     retention_assessment = Map.get(retention_score, :assessment, :unknown)
 
-    indicators =
+    retention_indicators =
       if retention_assessment in [:concerning_retention, :poor_retention] do
-        ["Member retention concerns" | indicators]
+        ["Member retention concerns" | participation_indicators]
       else
-        indicators
+        participation_indicators
       end
 
-    Enum.reverse(indicators)
+    Enum.reverse(retention_indicators)
   end
 
   defp assess_communication_health(participation_data) do
@@ -815,7 +815,7 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
 
     indicators = []
 
-    indicators =
+    timezone_indicators =
       case timezone_strength do
         :excellent_coverage -> ["Excellent timezone coverage" | indicators]
         :good_coverage -> ["Good timezone coverage" | indicators]
@@ -824,7 +824,7 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
         _ -> indicators
       end
 
-    Enum.reverse(indicators)
+    Enum.reverse(timezone_indicators)
   end
 
   defp assess_growth_sustainability(members, activity_data) do
@@ -881,7 +881,7 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   defp generate_growth_recommendations(sustainability, avg_activity) do
     recommendations = []
 
-    recommendations =
+    sustainability_recommendations =
       case sustainability do
         :unsustainable_growth ->
           ["Slow recruitment to focus on member integration" | recommendations]
@@ -896,14 +896,14 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
           recommendations
       end
 
-    recommendations =
+    activity_recommendations =
       if avg_activity < 40 do
-        ["Focus on increasing member activity and engagement" | recommendations]
+        ["Focus on increasing member activity and engagement" | sustainability_recommendations]
       else
-        recommendations
+        sustainability_recommendations
       end
 
-    Enum.reverse(recommendations)
+    Enum.reverse(activity_recommendations)
   end
 
   defp calculate_health_metrics(activity_data, risk_data, participation_data, leadership_data) do

@@ -285,7 +285,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
         m.last_seen && DateTime.compare(m.last_seen, recent_cutoff) == :gt
       end)
 
-    events =
+    logout_events =
       if recent_active < length(members) * 0.1 do
         ["Mass logout detected - only #{recent_active} members active" | events]
       else
@@ -298,14 +298,14 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
         DateTime.compare(km.killmail_time, recent_cutoff) == :gt
       end)
 
-    events =
+    loss_events =
       if recent_losses > 10 do
-        ["Spike in combat losses - #{recent_losses} in last hour" | events]
+        ["Spike in combat losses - #{recent_losses} in last hour" | logout_events]
       else
-        events
+        logout_events
       end
 
-    Enum.reverse(events)
+    Enum.reverse(loss_events)
   end
 
   defp detect_activity_anomalies(members, killmails) do
@@ -330,14 +330,14 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
         m.join_date && DateTime.compare(m.join_date, new_member_cutoff) == :gt
       end)
 
-    anomalies =
+    login_anomalies =
       if new_member_logins >= 5 do
         ["#{new_member_logins} new members joined in last 24 hours" | anomalies]
       else
         anomalies
       end
 
-    Enum.reverse(anomalies)
+    Enum.reverse(login_anomalies)
   end
 
   defp detect_combat_anomalies(killmails) do
@@ -375,18 +375,18 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
     deviations = []
 
     # Check for unusual activity spikes
-    deviations = check_activity_spikes(killmails) ++ deviations
+    spike_deviations = check_activity_spikes(killmails) ++ deviations
 
     # Check for new/unusual operational areas
-    deviations = check_new_operational_areas(killmails) ++ deviations
+    area_deviations = check_new_operational_areas(killmails) ++ spike_deviations
 
     # Check for unusual ship type usage
-    deviations = check_unusual_ship_usage(killmails) ++ deviations
+    ship_deviations = check_unusual_ship_usage(killmails) ++ area_deviations
 
     # Check for timing pattern changes
-    deviations = check_timing_deviations(killmails) ++ deviations
+    timing_deviations = check_timing_deviations(killmails) ++ ship_deviations
 
-    deviations
+    timing_deviations
   end
 
   defp compile_threat_indicators(members, recent_activity, security_analysis) do
@@ -493,33 +493,37 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
     score = 0
 
     # Unusual logins
-    score = score + length(recent_activity.member_logins.unusual_login_times) * 0.1
+    login_score = score + length(recent_activity.member_logins.unusual_login_times) * 0.1
 
     # Dormant reactivations
-    score = score + length(recent_activity.member_logins.dormant_reactivations) * 0.15
+    reactivation_score =
+      login_score + length(recent_activity.member_logins.dormant_reactivations) * 0.15
 
     # Suspicious losses
-    score = score + length(recent_activity.combat_activity.suspicious_losses) * 0.2
+    final_score =
+      reactivation_score + length(recent_activity.combat_activity.suspicious_losses) * 0.2
 
-    min(1.0, score)
+    min(1.0, final_score)
   end
 
   defp count_threat_vectors(security_analysis, recent_activity) do
     vectors = 0
 
-    vectors =
+    infiltration_vectors =
       vectors +
         if security_analysis.infiltration_risk_assessment.risk_level in [:high, :critical],
           do: 1,
           else: 0
 
-    vectors =
-      vectors + if length(recent_activity.combat_activity.suspicious_losses) > 0, do: 1, else: 0
+    combat_vectors =
+      infiltration_vectors +
+        if length(recent_activity.combat_activity.suspicious_losses) > 0, do: 1, else: 0
 
-    vectors =
-      vectors + if length(recent_activity.member_logins.dormant_reactivations) > 0, do: 1, else: 0
+    total_vectors =
+      combat_vectors +
+        if length(recent_activity.member_logins.dormant_reactivations) > 0, do: 1, else: 0
 
-    vectors
+    total_vectors
   end
 
   defp assess_threat_convergence(_security_analysis, _recent_activity) do
@@ -531,7 +535,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
     threats = []
 
     # Infiltration threat
-    threats =
+    infiltration_threats =
       if threat_indicators.security_indicators.infiltration_risk in [:high, :critical] do
         threat = %{
           threat_type: :infiltration,
@@ -548,7 +552,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
       end
 
     # Espionage threat
-    threats =
+    espionage_threats =
       if length(threat_indicators.activity_indicators.dormant_reactivations) > 0 do
         threat = %{
           threat_type: :espionage,
@@ -563,13 +567,13 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
           confidence: :moderate
         }
 
-        [threat | threats]
+        [threat | infiltration_threats]
       else
-        threats
+        infiltration_threats
       end
 
     # Asset theft threat
-    threats =
+    asset_threats =
       if length(threat_indicators.activity_indicators.suspicious_losses) > 0 do
         threat = %{
           threat_type: :asset_theft,
@@ -581,13 +585,13 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
           confidence: :high
         }
 
-        [threat | threats]
+        [threat | espionage_threats]
       else
-        threats
+        espionage_threats
       end
 
     # Coordinated threat
-    threats =
+    coordinated_threats =
       if threat_indicators.composite_indicators.threat_vector_count >= 3 do
         threat = %{
           threat_type: :coordinated_operation,
@@ -598,12 +602,12 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
           confidence: :moderate
         }
 
-        [threat | threats]
+        [threat | asset_threats]
       else
-        threats
+        asset_threats
       end
 
-    Enum.reverse(threats)
+    Enum.reverse(coordinated_threats)
   end
 
   defp analyze_threat_patterns(threat_indicators) do
@@ -621,14 +625,14 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
     patterns = []
 
     # Check for time-coordinated activities
-    patterns =
+    temporal_patterns =
       if length(threat_indicators.activity_indicators.unusual_logins) > 3 do
         ["Coordinated login times detected" | patterns]
       else
         patterns
       end
 
-    patterns
+    temporal_patterns
   end
 
   defp analyze_behavioral_threat_patterns(threat_indicators) do
@@ -636,7 +640,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
     patterns = []
 
     # Check for feeder behavior
-    patterns =
+    behavioral_patterns =
       if Enum.any?(threat_indicators.activity_indicators.suspicious_losses, fn loss ->
            String.contains?(loss.suspicion_reason, "minimal resistance")
          end) do
@@ -645,7 +649,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
         patterns
       end
 
-    patterns
+    behavioral_patterns
   end
 
   defp analyze_coordination_patterns(threat_indicators) do
@@ -960,7 +964,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
     recommendations = []
 
     # Based on threat level
-    recommendations =
+    threat_level_recommendations =
       case current_threats.overall_threat_level do
         :critical ->
           ["Implement 24/7 monitoring", "Alert all leadership immediately" | recommendations]
@@ -976,14 +980,19 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
       end
 
     # Based on trends
-    recommendations =
+    trend_recommendations =
       case threat_trends.threat_frequency do
-        :increasing -> ["Prepare for escalation", "Review defensive measures" | recommendations]
-        :decreasing -> ["Maintain vigilance during de-escalation" | recommendations]
-        _ -> recommendations
+        :increasing ->
+          ["Prepare for escalation", "Review defensive measures" | threat_level_recommendations]
+
+        :decreasing ->
+          ["Maintain vigilance during de-escalation" | threat_level_recommendations]
+
+        _ ->
+          threat_level_recommendations
       end
 
-    Enum.reverse(recommendations) |> Enum.uniq()
+    Enum.reverse(trend_recommendations) |> Enum.uniq()
   end
 
   defp extract_corp_ids(killmails) do

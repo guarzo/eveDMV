@@ -52,14 +52,8 @@ defmodule EveDmv.Contexts.Corporation.Resources.Alliance do
 
       filter(
         expr(
-          if(not is_nil(^arg(:name_search)),
-            do: contains(alliance_name, ^arg(:name_search)),
-            else: true
-          ) and
-            if(not is_nil(^arg(:ticker_search)),
-              do: contains(ticker, ^arg(:ticker_search)),
-              else: true
-            )
+          (is_nil(^arg(:name_search)) or contains(alliance_name, ^arg(:name_search))) and
+            (is_nil(^arg(:ticker_search)) or contains(ticker, ^arg(:ticker_search)))
         )
       )
     end

@@ -184,29 +184,21 @@ defmodule EveDmvWeb.CharacterComparisonLive do
       [char1_id, char2_id] = socket.assigns.selected_characters
       socket = assign(socket, :loading, true)
 
-      case CharacterComparisonService.head_to_head_comparison(
-             char1_id,
-             char2_id,
-             socket.assigns.timeframe
-           ) do
-        {:ok, result} ->
-          socket =
-            socket
-            |> assign(:comparison_result, result)
-            |> assign(:similarity_result, nil)
-            |> assign(:loading, false)
-            |> assign(:error, nil)
+      {:ok, result} =
+        CharacterComparisonService.head_to_head_comparison(
+          char1_id,
+          char2_id,
+          socket.assigns.timeframe
+        )
 
-          {:noreply, socket}
+      socket =
+        socket
+        |> assign(:comparison_result, result)
+        |> assign(:similarity_result, nil)
+        |> assign(:loading, false)
+        |> assign(:error, nil)
 
-        {:error, reason} ->
-          socket =
-            socket
-            |> assign(:loading, false)
-            |> assign(:error, reason)
-
-          {:noreply, put_flash(socket, :error, "Head-to-head comparison failed: #{reason}")}
-      end
+      {:noreply, socket}
     end
   end
 
@@ -220,29 +212,21 @@ defmodule EveDmvWeb.CharacterComparisonLive do
       [character_id] = socket.assigns.selected_characters
       socket = assign(socket, :loading, true)
 
-      case CharacterComparisonService.find_similar_characters(
-             character_id,
-             socket.assigns.timeframe,
-             10
-           ) do
-        {:ok, result} ->
-          socket =
-            socket
-            |> assign(:similarity_result, result)
-            |> assign(:comparison_result, nil)
-            |> assign(:loading, false)
-            |> assign(:error, nil)
+      {:ok, result} =
+        CharacterComparisonService.find_similar_characters(
+          character_id,
+          socket.assigns.timeframe,
+          10
+        )
 
-          {:noreply, socket}
+      socket =
+        socket
+        |> assign(:similarity_result, result)
+        |> assign(:comparison_result, nil)
+        |> assign(:loading, false)
+        |> assign(:error, nil)
 
-        {:error, reason} ->
-          socket =
-            socket
-            |> assign(:loading, false)
-            |> assign(:error, reason)
-
-          {:noreply, put_flash(socket, :error, "Similarity search failed: #{reason}")}
-      end
+      {:noreply, socket}
     end
   end
 

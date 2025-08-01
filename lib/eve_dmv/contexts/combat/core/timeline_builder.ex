@@ -365,10 +365,8 @@ defmodule EveDmv.Contexts.Combat.Core.TimelineBuilder do
   end
 
   defp detect_key_moments(events, phases) do
-    moments = []
-
     # First blood
-    moments =
+    first_blood_moments =
       if length(events) > 0 do
         [
           %{
@@ -377,17 +375,16 @@ defmodule EveDmv.Contexts.Combat.Core.TimelineBuilder do
             event: List.first(events),
             description: "Battle begins"
           }
-          | moments
         ]
       else
-        moments
+        []
       end
 
     # Capital losses
     capital_losses = Enum.filter(events, & &1.is_capital_kill)
 
-    moments =
-      moments ++
+    capital_moments =
+      first_blood_moments ++
         Enum.map(capital_losses, fn event ->
           %{
             type: :capital_loss,
@@ -399,12 +396,12 @@ defmodule EveDmv.Contexts.Combat.Core.TimelineBuilder do
 
     # Turning points (momentum shifts)
     turning_points = detect_turning_points(events, phases)
-    moments = moments ++ turning_points
+    turning_point_moments = capital_moments ++ turning_points
 
     # Peak intensity
     peak_phase = Enum.max_by(phases, & &1.intensity, fn -> nil end)
 
-    moments =
+    peak_moments =
       if peak_phase do
         [
           %{
@@ -413,13 +410,13 @@ defmodule EveDmv.Contexts.Combat.Core.TimelineBuilder do
             phase: peak_phase,
             description: "Peak battle intensity reached"
           }
-          | moments
+          | turning_point_moments
         ]
       else
-        moments
+        turning_point_moments
       end
 
-    Enum.sort_by(moments, & &1.time, DateTime)
+    Enum.sort_by(peak_moments, & &1.time, DateTime)
   end
 
   defp detect_turning_points(_events, phases) do

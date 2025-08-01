@@ -405,7 +405,7 @@ defmodule EveDmv.Contexts.Corporation.Core.RecruitmentAnalyzer do
     strengths = []
 
     # Velocity-based strengths
-    strengths =
+    velocity_strengths =
       if recruitment_data.recruitment_velocity.velocity > 2 do
         [
           "Strong recruitment velocity (#{recruitment_data.recruitment_velocity.velocity} per week)"
@@ -416,25 +416,25 @@ defmodule EveDmv.Contexts.Corporation.Core.RecruitmentAnalyzer do
       end
 
     # Trend-based strengths
-    strengths =
+    trend_strengths =
       if recruitment_data.recruitment_velocity.trend == :accelerating do
-        ["Accelerating recruitment trend" | strengths]
+        ["Accelerating recruitment trend" | velocity_strengths]
       else
-        strengths
+        velocity_strengths
       end
 
     # Batch recruitment capability
-    strengths =
+    batch_strengths =
       if recruitment_data.batch_recruitment.total_batch_events > 2 do
-        ["Effective batch recruitment capability" | strengths]
+        ["Effective batch recruitment capability" | trend_strengths]
       else
-        strengths
+        trend_strengths
       end
 
-    if Enum.empty?(strengths) do
+    if Enum.empty?(batch_strengths) do
       ["Consistent recruitment activity"]
     else
-      Enum.reverse(strengths)
+      Enum.reverse(batch_strengths)
     end
   end
 
@@ -442,7 +442,7 @@ defmodule EveDmv.Contexts.Corporation.Core.RecruitmentAnalyzer do
     weaknesses = []
 
     # Low velocity
-    weaknesses =
+    velocity_weaknesses =
       if recruitment_data.recruitment_velocity.velocity < 1 do
         [
           "Low recruitment velocity (#{recruitment_data.recruitment_velocity.velocity} per week)"
@@ -453,22 +453,22 @@ defmodule EveDmv.Contexts.Corporation.Core.RecruitmentAnalyzer do
       end
 
     # Declining trend
-    weaknesses =
+    trend_weaknesses =
       if recruitment_data.recruitment_velocity.trend == :declining do
-        ["Declining recruitment trend" | weaknesses]
+        ["Declining recruitment trend" | velocity_weaknesses]
       else
-        weaknesses
+        velocity_weaknesses
       end
 
     # Limited recruitment events
-    weaknesses =
+    event_weaknesses =
       if recruitment_data.batch_recruitment.total_batch_events == 0 do
-        ["No organized recruitment events detected" | weaknesses]
+        ["No organized recruitment events detected" | trend_weaknesses]
       else
-        weaknesses
+        trend_weaknesses
       end
 
-    Enum.reverse(weaknesses)
+    Enum.reverse(event_weaknesses)
   end
 
   defp analyze_conversion_rates do
@@ -545,7 +545,7 @@ defmodule EveDmv.Contexts.Corporation.Core.RecruitmentAnalyzer do
     opportunities = []
 
     # Velocity opportunities
-    opportunities =
+    velocity_opportunities =
       if recruitment_data.recruitment_velocity.velocity < 2 do
         ["Increase recruitment campaign frequency and reach" | opportunities]
       else
@@ -553,26 +553,26 @@ defmodule EveDmv.Contexts.Corporation.Core.RecruitmentAnalyzer do
       end
 
     # Retention opportunities
-    opportunities =
+    retention_opportunities =
       if retention_data.overall_retention["90_day"] < 0.6 do
-        ["Improve new member onboarding and early engagement" | opportunities]
+        ["Improve new member onboarding and early engagement" | velocity_opportunities]
       else
-        opportunities
+        velocity_opportunities
       end
 
     # Pipeline opportunities
-    opportunities = ["Implement recruitment tracking system" | opportunities]
-    opportunities = ["Develop recruiter training program" | opportunities]
-    opportunities = ["Create recruitment incentive programs" | opportunities]
+    tracking_opportunities = ["Implement recruitment tracking system" | retention_opportunities]
+    training_opportunities = ["Develop recruiter training program" | tracking_opportunities]
+    incentive_opportunities = ["Create recruitment incentive programs" | training_opportunities]
 
-    Enum.reverse(opportunities)
+    Enum.reverse(incentive_opportunities)
   end
 
   defp generate_recruitment_recommendations(recruitment_data, retention_data) do
     recommendations = []
 
     # Velocity recommendations
-    recommendations =
+    velocity_recommendations =
       if recruitment_data.recruitment_velocity.trend == :declining do
         ["Launch targeted recruitment campaign to reverse declining trend" | recommendations]
       else
@@ -580,18 +580,23 @@ defmodule EveDmv.Contexts.Corporation.Core.RecruitmentAnalyzer do
       end
 
     # Quality recommendations
-    recommendations =
+    quality_recommendations =
       if retention_data.overall_retention["30_day"] < 0.7 do
-        ["Strengthen new member screening and onboarding process" | recommendations]
+        ["Strengthen new member screening and onboarding process" | velocity_recommendations]
       else
-        recommendations
+        velocity_recommendations
       end
 
     # Process recommendations
-    recommendations = ["Establish recruitment metrics dashboard" | recommendations]
-    recommendations = ["Create recruitment ambassador program" | recommendations]
+    metrics_recommendations = [
+      "Establish recruitment metrics dashboard" | quality_recommendations
+    ]
 
-    Enum.reverse(recommendations)
+    ambassador_recommendations = [
+      "Create recruitment ambassador program" | metrics_recommendations
+    ]
+
+    Enum.reverse(ambassador_recommendations)
   end
 
   defp build_recruitment_metrics(recruitment_data, retention_data) do

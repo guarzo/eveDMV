@@ -124,15 +124,9 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
   defp classify_ship_type(ship_type_id) do
     # Use actual ship classification from static data
     case EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id) do
-      {:ok, :mining_frigate} -> :venture
-      {:ok, :mining_barge} -> :retriever
-      # Group with mining barges
-      {:ok, :exhumer} -> :retriever
-      {:ok, :industrial} -> :hauler
-      {:ok, :transport} -> :hauler
-      {:ok, :freighter} -> :hauler
-      {:ok, _} -> :combat
-      {:error, _} -> :combat
+      :mining -> :venture
+      :industrial -> :hauler
+      _ -> :combat
     end
   end
 
@@ -635,7 +629,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
     |> Enum.reject(&is_nil/1)
     |> Enum.frequencies()
     |> Enum.filter(fn {_, count} -> count >= 2 end)
-    |> Map.keys()
+    |> Enum.map(fn {corp_id, _count} -> corp_id end)
   end
 
   defp calculate_window_competition(competitors) do

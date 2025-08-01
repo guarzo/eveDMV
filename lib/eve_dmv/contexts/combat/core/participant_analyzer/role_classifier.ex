@@ -167,7 +167,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.RoleClassifier do
     confidence = 0.0
 
     # Using logistics ship is strong indicator
-    confidence =
+    ship_confidence =
       if using_logistics_ship?(participant[:ships_used] || []) do
         confidence + 0.4
       else
@@ -175,20 +175,20 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.RoleClassifier do
       end
 
     # Low damage output expected
-    confidence =
+    damage_confidence =
       if participant[:total_damage_done] < 1000 do
-        confidence + 0.1
+        ship_confidence + 0.1
       else
-        confidence
+        ship_confidence
       end
 
-    confidence
+    damage_confidence
   end
 
   defp calculate_ewar_confidence(participant) do
     confidence = 0.0
 
-    confidence =
+    ship_confidence =
       if using_ewar_ship?(participant[:ships_used] || []) do
         confidence + 0.4
       else
@@ -196,14 +196,14 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.RoleClassifier do
       end
 
     # EWAR pilots often have many kill participations but low damage
-    confidence =
+    participation_confidence =
       if participant[:appearances] > 10 && participant[:total_damage_done] < 5000 do
-        confidence + 0.2
+        ship_confidence + 0.2
       else
-        confidence
+        ship_confidence
       end
 
-    confidence
+    participation_confidence
   end
 
   defp calculate_dps_confidence(participant) do
@@ -221,7 +221,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.RoleClassifier do
     confidence = 0.0
 
     # High appearance count
-    confidence =
+    appearance_confidence =
       if participant[:appearances] >= 15 do
         confidence + 0.2
       else
@@ -229,23 +229,23 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.RoleClassifier do
       end
 
     # Survived the battle
-    confidence =
+    survival_confidence =
       if participant[:survival_time] == :survived do
-        confidence + 0.2
+        appearance_confidence + 0.2
       else
-        confidence
+        appearance_confidence
       end
 
     # Low average damage (not primary DPS)
     avg_damage = (participant[:total_damage_done] || 0) / max(participant[:appearances] || 1, 1)
 
-    confidence =
+    avg_damage_confidence =
       if avg_damage < 5000 do
-        confidence + 0.1
+        survival_confidence + 0.1
       else
-        confidence
+        survival_confidence
       end
 
-    confidence
+    avg_damage_confidence
   end
 end

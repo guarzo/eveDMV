@@ -226,12 +226,12 @@ defmodule EveDmv.Contexts.Corporation.Services.CorporationService do
       |> Map.new()
 
     # Validate limits
-    validated_params =
+    final_params =
       validated_params
       |> Map.update(:limit, 50, fn limit -> min(limit, 100) end)
       |> Map.update(:offset, 0, fn offset -> max(offset, 0) end)
 
-    {:ok, validated_params}
+    {:ok, final_params}
   end
 
   defp invalidate_corporation_cache(corporation_id) do

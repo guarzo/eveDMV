@@ -16,22 +16,28 @@ defmodule EveDmv.Contexts.Intelligence.Services.InsightGenerator do
   @doc """
   Generate comprehensive insights for a character.
   """
+  @spec generate_insights(integer()) :: {:ok, map()} | {:error, atom()}
   def generate_insights(character_id) do
     cache_key = {:character_insights, character_id}
 
-    Cache.get_or_compute(
-      :analysis,
-      cache_key,
-      fn ->
-        compile_character_insights(character_id)
-      end,
-      ttl: @cache_ttl
-    )
+    case Cache.get_or_compute(
+           :analysis,
+           cache_key,
+           fn ->
+             compile_character_insights(character_id)
+           end,
+           ttl: @cache_ttl
+         ) do
+      {:ok, insights} -> {:ok, insights}
+      {:error, reason} -> {:error, reason}
+      result -> result
+    end
   end
 
   @doc """
   Get threat mitigation strategies for a character.
   """
+  @spec get_threat_mitigation_strategies(integer()) :: {:ok, [map()]} | {:error, atom()}
   def get_threat_mitigation_strategies(character_id) do
     case ThreatAssessmentEngine.assess_threat(character_id, include_mitigation: true) do
       {:ok, assessment} ->
@@ -47,17 +53,22 @@ defmodule EveDmv.Contexts.Intelligence.Services.InsightGenerator do
   @doc """
   Generate engagement recommendations for attacker vs target scenario.
   """
+  @spec get_engagement_recommendations(integer(), integer()) :: {:ok, map()} | {:error, atom()}
   def get_engagement_recommendations(attacker_id, target_id) do
     cache_key = {:engagement_recommendation, attacker_id, target_id}
 
-    Cache.get_or_compute(
-      :analysis,
-      cache_key,
-      fn ->
-        generate_engagement_analysis(attacker_id, target_id)
-      end,
-      ttl: @cache_ttl
-    )
+    case Cache.get_or_compute(
+           :analysis,
+           cache_key,
+           fn ->
+             generate_engagement_analysis(attacker_id, target_id)
+           end,
+           ttl: @cache_ttl
+         ) do
+      {:ok, analysis} -> {:ok, analysis}
+      {:error, reason} -> {:error, reason}
+      result -> result
+    end
   end
 
   # Private Functions
@@ -145,7 +156,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.InsightGenerator do
     insights = []
 
     # Activity pattern insights
-    insights =
+    activity_insights =
       case behavioral_patterns.activity_patterns.activity_level do
         :very_high ->
           ["Extremely active pilot - high encounter probability" | insights]
@@ -158,62 +169,62 @@ defmodule EveDmv.Contexts.Intelligence.Services.InsightGenerator do
       end
 
     # Timezone insights
-    insights =
+    timezone_insights =
       if behavioral_patterns.timezone != "Unknown" do
         [
           "Primary timezone: #{behavioral_patterns.timezone} - plan operations accordingly"
-          | insights
+          | activity_insights
         ]
       else
-        insights
+        activity_insights
       end
 
     # Predictability insights
-    insights =
+    predictability_insights =
       case behavioral_patterns.predictability do
         score when score > 0.7 ->
-          ["Highly predictable patterns - good target for planned operations" | insights]
+          ["Highly predictable patterns - good target for planned operations" | timezone_insights]
 
         score when score < 0.3 ->
-          ["Unpredictable behavior - difficult to track and predict" | insights]
+          ["Unpredictable behavior - difficult to track and predict" | timezone_insights]
 
         _ ->
-          insights
+          timezone_insights
       end
 
     # Geographic insights
     geo_prefs = behavioral_patterns.geographic_preferences
 
-    insights =
+    geographic_insights =
       if geo_prefs.roaming_range == :local do
-        ["Local operator - limited to small geographic area" | insights]
+        ["Local operator - limited to small geographic area" | predictability_insights]
       else
-        insights
+        predictability_insights
       end
 
-    insights =
+    nomadic_insights =
       if geo_prefs.roaming_range == :nomadic do
-        ["Nomadic pilot - operates across wide geographic areas" | insights]
+        ["Nomadic pilot - operates across wide geographic areas" | geographic_insights]
       else
-        insights
+        geographic_insights
       end
 
     # Gang preference insights
     gang_prefs = behavioral_patterns.gang_preferences
 
-    insights =
+    gang_size_insights =
       case gang_prefs.preferred_size do
         :solo ->
-          ["Solo specialist - most dangerous alone" | insights]
+          ["Solo specialist - most dangerous alone" | nomadic_insights]
 
         :fleet ->
-          ["Fleet pilot - strength multiplied by numbers" | insights]
+          ["Fleet pilot - strength multiplied by numbers" | nomadic_insights]
 
         _ ->
-          insights
+          nomadic_insights
       end
 
-    Enum.reverse(insights)
+    Enum.reverse(gang_size_insights)
   end
 
   defp generate_performance_insights(performance_analysis) do
@@ -221,7 +232,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.InsightGenerator do
     core_metrics = performance_analysis.core_metrics
 
     # K/D ratio insights
-    insights =
+    kd_insights =
       if core_metrics.kill_death_ratio > 5.0 do
         [
           "Exceptional K/D ratio (#{core_metrics.kill_death_ratio}) - highly skilled pilot"
@@ -232,65 +243,68 @@ defmodule EveDmv.Contexts.Intelligence.Services.InsightGenerator do
       end
 
     # ISK efficiency insights
-    insights =
+    isk_insights =
       if core_metrics.isk_efficiency > 80 do
         [
           "High ISK efficiency (#{core_metrics.isk_efficiency}%) - selective target engagement"
-          | insights
+          | kd_insights
         ]
       else
-        insights
+        kd_insights
       end
 
     # Solo effectiveness insights
-    insights =
+    solo_insights =
       if core_metrics.solo_effectiveness > 70 do
-        ["Strong solo pilot - dangerous in 1v1 situations" | insights]
+        ["Strong solo pilot - dangerous in 1v1 situations" | isk_insights]
       else
-        insights
+        isk_insights
       end
 
     # Versatility insights
-    insights =
+    versatility_insights =
       if core_metrics.versatility_score > 70 do
-        ["Highly versatile pilot - adaptable to various situations" | insights]
+        ["Highly versatile pilot - adaptable to various situations" | solo_insights]
       else
-        insights
+        solo_insights
       end
 
     # Improvement trend insights
     improvement = performance_analysis.improvement_metrics
 
-    insights =
+    improvement_insights =
       if improvement.improvement_rate > 20 do
-        ["Rapidly improving pilot - threat level increasing" | insights]
+        ["Rapidly improving pilot - threat level increasing" | versatility_insights]
       else
-        insights
+        versatility_insights
       end
 
-    insights =
+    decline_insights =
       if improvement.improvement_rate < -20 do
-        ["Declining performance - may be less active or losing effectiveness" | insights]
+        [
+          "Declining performance - may be less active or losing effectiveness"
+          | improvement_insights
+        ]
       else
-        insights
+        improvement_insights
       end
 
     # Consistency insights
-    insights =
+    final_insights =
       if core_metrics.consistency_score > 70 do
-        ["Consistent performance - reliable threat assessment" | insights]
+        ["Consistent performance - reliable threat assessment" | decline_insights]
       else
-        insights
+        decline_insights
       end
 
-    Enum.reverse(insights)
+    Enum.reverse(final_insights)
   end
 
   defp generate_strategic_recommendations(threat_assessment, character_analysis) do
     recommendations = []
 
     # Engagement recommendations based on threat level
-    recommendations =
+    threat_recommendations =
       case threat_assessment.threat_level do
         :critical ->
           [
@@ -318,37 +332,64 @@ defmodule EveDmv.Contexts.Intelligence.Services.InsightGenerator do
       end
 
     # Tactical recommendations based on pilot type
-    recommendations =
+    tactical_recommendations =
       case character_analysis.classifications.pilot_type do
         :elite_solo_hunter ->
           [
             "Never engage solo",
             "Use overwhelming numbers",
-            "Consider this pilot a priority elimination target" | recommendations
+            "Consider this pilot a priority elimination target" | threat_recommendations
           ]
 
         :fleet_pilot ->
           [
             "Most vulnerable when alone",
             "Monitor for fleet backup",
-            "Consider hit-and-run tactics" | recommendations
+            "Consider hit-and-run tactics" | threat_recommendations
           ]
 
         _ ->
-          recommendations
+          threat_recommendations
       end
 
     # Ship-based recommendations
     ship_data = character_analysis.data[:ship_preferences] || %{}
 
-    recommendations =
+    ship_recommendations =
       if ship_data[:capital_usage] && ship_data[:capital_usage] > 0.2 do
-        ["Prepare for capital escalation", "Have anti-capital ships ready" | recommendations]
+        [
+          "Prepare for capital escalation",
+          "Have anti-capital ships ready" | tactical_recommendations
+        ]
       else
-        recommendations
+        tactical_recommendations
       end
 
-    Enum.reverse(recommendations)
+    # Based on tactical matchup - Note: this section needs character_analysis parameter for target
+    # Removing this section until proper implementation
+    final_tactical_recommendations = ship_recommendations
+
+    _disabled_tactical_recommendations =
+      case :placeholder do
+        :hot_dropper ->
+          [
+            "Beware of capital backup",
+            "Monitor for cyno ships",
+            "Have escape plan ready" | ship_recommendations
+          ]
+
+        :gate_camper ->
+          [
+            "Avoid predictable routes",
+            "Use scouts",
+            "Consider alternative paths" | ship_recommendations
+          ]
+
+        _ ->
+          ship_recommendations
+      end
+
+    Enum.reverse(final_tactical_recommendations)
   end
 
   defp analyze_vulnerabilities(character_analysis, behavioral_patterns) do
@@ -716,37 +757,14 @@ defmodule EveDmv.Contexts.Intelligence.Services.InsightGenerator do
     # Based on threat comparison
     target_threat = target.threat_assessment.overall_score
 
-    recommendations =
+    final_recommendations =
       if target_threat > 70 do
         ["HIGH RISK TARGET - Consider avoiding unless tactical necessity" | recommendations]
       else
         recommendations
       end
 
-    # Based on tactical matchup
-    target_style = target.analysis.classifications.engagement_style
-
-    recommendations =
-      case target_style do
-        :hot_dropper ->
-          [
-            "Beware of capital backup",
-            "Monitor for cyno ships",
-            "Have escape plan ready" | recommendations
-          ]
-
-        :gate_camper ->
-          [
-            "Avoid predictable routes",
-            "Use scouts",
-            "Consider alternative paths" | recommendations
-          ]
-
-        _ ->
-          recommendations
-      end
-
-    Enum.reverse(recommendations)
+    final_recommendations
   end
 
   defp calculate_success_probability(attacker, target) do

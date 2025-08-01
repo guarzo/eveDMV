@@ -174,7 +174,8 @@ defmodule EveDmv.Contexts.Intelligence.Core.ShipPreferenceAnalyzer do
         {km.killmail_time.year, km.killmail_time.month}
       end)
       |> Enum.map(fn {{year, month}, kms} ->
-        ship_types = extract_ship_types_for_character(kms)
+        ship_types =
+          extract_ship_types_for_character(kms)
           |> Enum.filter(& &1)
           |> Enum.uniq()
 
@@ -218,7 +219,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.ShipPreferenceAnalyzer do
 
   defp extract_ship_types_for_character(kms) do
     target_character_id = List.first(kms).victim.character_id
-    
+
     Enum.map(kms, fn km ->
       if km.victim.character_id == target_character_id do
         km.victim.ship_type_id

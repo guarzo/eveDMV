@@ -1,0 +1,40 @@
+# Guard Failure Analysis - Workstream 4
+
+## FOUND GUARD PATTERNS (not necessarily failures):
+
+### 1. Redundant guard conditions:
+- lib/eve_dmv/contexts/battle_analysis/domain/services/detection_service.ex:817
+  `{activity, count} when activity >= 15 and count >= 50 -> "major_escalation"`
+- lib/eve_dmv/contexts/combat_intelligence/domain/extractors/participant_extractor/affiliation_analyzer.ex:590-592
+  Multiple guards with >= conditions
+- lib/eve_dmv/contexts/corporation_intelligence.ex:718
+  `{activities, ships} when activities >= 50 and ships >= 5 -> 0.6`
+
+### 2. Complex guard patterns that need validation:
+- lib/eve_dmv/shared_kernel/value_objects.ex:134
+  `when is_number(score) and score >= 0 and score <= 1`
+- lib/eve_dmv/contexts/killmail_processing/api.ex:314
+  `when is_integer(min) and is_integer(max) and min <= max and min >= 0`
+
+### 3. Variable comparison guards (potential for improvement):
+- lib/eve_dmv/contexts/surveillance/domain/matching_engine.ex:1005
+- lib/eve_dmv/contexts/threat_surveillance/domain/notification_service.ex:489
+- lib/eve_dmv/contexts/corporation/core/organizational_health_analyzer.ex:220
+
+## SPECIFIC FILES FROM PLAN TO CHECK:
+
+### Files mentioned in the plan that need investigation:
+1. lib/eve_dmv/contexts/character_intelligence.ex:475-478 (4 guard failures)
+2. lib/eve_dmv/contexts/battle_analysis/domain/strategic/trend_analyzer.ex:851,860
+3. lib/eve_dmv/contexts/battle_analysis/domain/tactical_pattern_detector.ex:844-846  
+4. lib/eve_dmv/contexts/combat/core/fleet_composition_analyzer.ex:184
+
+## COMPILATION ERRORS FIXED:
+- Fixed undefined variable 'decline_insights' in insight_generator.ex:292
+- Fixed unused variable warnings
+
+## ACTION PLAN:
+1.  Catalog completed
+2. = Now fix guard logic systematically  
+3. ó Add type specifications where missing
+4. ó Clean up utility functions

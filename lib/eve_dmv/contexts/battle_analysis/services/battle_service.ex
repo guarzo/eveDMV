@@ -23,6 +23,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   @doc """
   Create a new battle from detected killmails.
   """
+  @spec create_battle(map()) :: {:ok, any()} | {:error, atom()}
   def create_battle(params) do
     params = prepare_battle_params(params)
 
@@ -34,6 +35,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   @doc """
   Update an existing battle.
   """
+  @spec update_battle(String.t(), map()) :: {:ok, any()} | {:error, atom()}
   def update_battle(battle_id, params) do
     with {:ok, battle} <- get_battle(battle_id) do
       battle
@@ -45,6 +47,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   @doc """
   Get a battle by ID.
   """
+  @spec get_battle(String.t()) :: {:ok, any()} | {:error, atom()}
   def get_battle(battle_id) do
     case Ash.get(Battle, battle_id, domain: Api) do
       {:ok, battle} -> {:ok, battle}
@@ -63,15 +66,20 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
     - min_value: Minimum ISK destroyed
     - status: Battle status (active, completed, analyzed)
   """
+  @spec list_battles(keyword()) :: {:ok, [any()]} | {:error, atom()}
   def list_battles(filters \\ []) do
-    Battle
-    |> apply_filters(filters)
-    |> Ash.read()
+    case Battle
+         |> apply_filters(filters)
+         |> Ash.read(domain: Api) do
+      {:ok, battles} -> {:ok, battles}
+      {:error, reason} -> {:error, reason}
+    end
   end
 
   @doc """
   Delete a battle and its associations.
   """
+  @spec delete_battle(String.t()) :: :ok | {:error, atom()}
   def delete_battle(battle_id) do
     with {:ok, battle} <- get_battle(battle_id) do
       # Delete associated battle killmails first
@@ -85,6 +93,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   @doc """
   Create a battle from a set of killmail IDs.
   """
+  @spec create_battle_from_killmails([integer()], keyword()) :: {:ok, any()} | {:error, atom()}
   def create_battle_from_killmails(killmail_ids, opts \\ []) do
     with {:ok, killmails} <- fetch_killmails(killmail_ids),
          {:ok, battle_data} <- analyze_killmails_for_battle(killmails),
@@ -104,6 +113,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   @doc """
   Mark a battle as analyzed.
   """
+  @spec mark_battle_analyzed(String.t(), map()) :: {:ok, any()} | {:error, atom()}
   def mark_battle_analyzed(battle_id, analysis_results) do
     update_battle(battle_id, %{
       status: :analyzed,
@@ -115,39 +125,53 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   @doc """
   Search battles by various criteria.
   """
+  @spec search_battles(map()) :: {:ok, [any()]} | {:error, atom()}
   def search_battles(search_params) do
-    base_query = from(b in Battle)
+    try do
+      base_query = from(b in Battle)
 
-    query =
-      search_params
-      |> Enum.reduce(base_query, &apply_search_filter/2)
-      |> order_by([b], desc: b.start_time)
+      query =
+        search_params
+        |> Enum.reduce(base_query, &apply_search_filter/2)
+        |> order_by([b], desc: b.start_time)
 
-    Repo.all(query)
+      battles = Repo.all(query)
+      {:ok, battles}
+    rescue
+      error -> {:error, error}
+    end
   end
 
   @doc """
   Get battle statistics for a time period.
   """
+  @spec get_battle_statistics(Date.t() | DateTime.t(), Date.t() | DateTime.t()) ::
+          {:ok, map()} | {:error, atom()}
   def get_battle_statistics(start_date, end_date) do
-    query =
-      from(b in Battle,
-        where: b.start_time >= ^start_date and b.end_time <= ^end_date,
-        select: %{
-          total_battles: count(b.id),
-          total_kills: sum(b.kill_count),
-          total_isk_destroyed: sum(b.total_value),
-          avg_participants: avg(b.participant_count),
-          avg_duration: avg(b.duration_minutes)
-        }
-      )
+    try do
+      query =
+        from(b in Battle,
+          where: b.start_time >= ^start_date and b.end_time <= ^end_date,
+          select: %{
+            total_battles: count(b.id),
+            total_kills: sum(b.kill_count),
+            total_isk_destroyed: sum(b.total_value),
+            avg_participants: avg(b.participant_count),
+            avg_duration: avg(b.duration_minutes)
+          }
+        )
 
-    Repo.one(query)
+      stats = Repo.one(query)
+      {:ok, stats || %{}}
+    rescue
+      error -> {:error, error}
+    end
   end
 
   @doc """
   Find similar battles to a given battle.
   """
+  @spec find_similar_battles(String.t(), keyword()) :: {:ok, [any()]} | {:error, atom()}
   def find_similar_battles(battle_id, opts \\ []) do
     with {:ok, battle} <- get_battle(battle_id) do
       limit = Keyword.get(opts, :limit, 10)
@@ -174,6 +198,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   @doc """
   Get battles for a specific character.
   """
+  @spec get_character_battles(integer(), keyword()) :: {:ok, [any()]} | {:error, atom()}
   def get_character_battles(_character_id, opts \\ []) do
     _limit = Keyword.get(opts, :limit, 50)
     _offset = Keyword.get(opts, :offset, 0)
@@ -186,6 +211,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   @doc """
   Merge multiple battles into one.
   """
+  @spec merge_battles([String.t()]) :: {:ok, any()} | {:error, atom()}
   def merge_battles(battle_ids) when length(battle_ids) > 1 do
     with {:ok, battles} <- fetch_battles(battle_ids),
          {:ok, merged_data} <- prepare_merged_battle_data(battles),
@@ -207,6 +233,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   @doc """
   Split a battle into multiple battles.
   """
+  @spec split_battle(String.t(), DateTime.t()) :: {:ok, [any()]} | {:error, atom()}
   def split_battle(battle_id, split_time) do
     with {:ok, _battle} <- get_battle(battle_id),
          {:ok, killmails} <- get_battle_killmails(battle_id),

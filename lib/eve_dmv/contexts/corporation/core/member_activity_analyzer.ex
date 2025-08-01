@@ -156,21 +156,21 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer do
         analyzed_at: DateTime.utc_now()
       }
 
-      analysis =
+      trends_analysis =
         if Keyword.get(opts, :include_trends, false) do
           Map.put(analysis, :trends, analyze_activity_trends(corporation_id, activity_data))
         else
           analysis
         end
 
-      analysis =
+      final_analysis =
         if Keyword.get(opts, :include_patterns, false) do
-          Map.put(analysis, :patterns, analyze_detailed_patterns(activity_data))
+          Map.put(trends_analysis, :patterns, analyze_detailed_patterns(activity_data))
         else
-          analysis
+          trends_analysis
         end
 
-      {:ok, analysis}
+      {:ok, final_analysis}
     end
   end
 
@@ -306,22 +306,24 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer do
   defp analyze_ship_diversity(killmails, character_id) do
     ships_used =
       killmails
-      |> Enum.filter(fn km ->
-        # Get ships used by this character (either as victim or attacker)
-        if km.victim.character_id == character_id do
-          km.victim.ship_type_id
-        else
-          case Enum.find(km.attackers, fn att -> att.character_id == character_id end) do
-            nil -> nil
-            attacker -> attacker.ship_type_id
-          end
-        end
-      end)
+      |> Enum.map(fn km -> get_character_ship_from_killmail(km, character_id) end)
       |> Enum.reject(&is_nil/1)
       |> Enum.uniq()
       |> length()
 
     ships_used
+  end
+
+  defp get_character_ship_from_killmail(killmail, character_id) do
+    # Get ships used by this character (either as victim or attacker)
+    if killmail.victim.character_id == character_id do
+      killmail.victim.ship_type_id
+    else
+      case Enum.find(killmail.attackers, fn att -> att.character_id == character_id end) do
+        nil -> nil
+        attacker -> attacker.ship_type_id
+      end
+    end
   end
 
   defp analyze_gang_participation(killmails) do
@@ -722,7 +724,7 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer do
     recommendations = []
 
     # Low participation recommendations
-    recommendations =
+    participation_recommendations =
       if participation_data.overall_participation < 0.4 do
         [
           "Consider member engagement initiatives - low overall participation rate"
@@ -736,27 +738,30 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer do
     inactive_count = count_inactive_members(activity_data)
     total_count = map_size(activity_data)
 
-    recommendations =
+    inactive_recommendations =
       if inactive_count / total_count > 0.3 do
         [
           "Review inactive members for potential removal - #{inactive_count} inactive out of #{total_count}"
-          | recommendations
+          | participation_recommendations
         ]
       else
-        recommendations
+        participation_recommendations
       end
 
     # Activity concentration recommendations
     highly_active = count_highly_active_members(activity_data)
 
-    recommendations =
+    leadership_recommendations =
       if highly_active < 5 and total_count > 20 do
-        ["Identify and develop more highly active members for leadership roles" | recommendations]
+        [
+          "Identify and develop more highly active members for leadership roles"
+          | inactive_recommendations
+        ]
       else
-        recommendations
+        inactive_recommendations
       end
 
-    Enum.reverse(recommendations)
+    Enum.reverse(leadership_recommendations)
   end
 
   defp analyze_activity_trends(_corporation_id, _activity_data) do

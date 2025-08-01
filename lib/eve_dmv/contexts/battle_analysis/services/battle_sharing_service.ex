@@ -25,6 +25,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
   @doc """
   Share a battle by creating a shareable link.
   """
+  @spec share_battle(String.t(), map()) :: {:ok, map()} | {:error, atom()}
   def share_battle(battle_id, sharing_options \\ %{}) do
     with {:ok, battle} <- BattleService.get_battle(battle_id),
          {:ok, share_token} <- generate_share_token(battle),
@@ -44,6 +45,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
   @doc """
   Export battle data for external tools.
   """
+  @spec export_battle_data(String.t(), map()) :: {:ok, String.t()} | {:error, atom()}
   def export_battle_data(battle_id, export_options \\ %{}) do
     with {:ok, battle} <- BattleService.get_battle(battle_id),
          {:ok, export_data} <- prepare_export_data(battle, export_options) do
@@ -64,6 +66,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
   @doc """
   Create a battle summary card for embedding.
   """
+  @spec create_battle_card(String.t(), map()) :: {:ok, map()} | {:error, atom()}
   def create_battle_card(battle_id, card_options \\ %{}) do
     with {:ok, battle} <- BattleService.get_battle(battle_id),
          {:ok, summary} <- BattleAnalyzer.get_battle_summary(battle_id) do
@@ -88,6 +91,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
   @doc """
   Get battle by share token.
   """
+  @spec get_shared_battle(String.t()) :: {:ok, any()} | {:error, atom()}
   def get_shared_battle(share_token) do
     with {:ok, battle} <- find_battle_by_token(share_token),
          :ok <- verify_share_access(battle) do
@@ -98,6 +102,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
   @doc """
   Revoke battle sharing.
   """
+  @spec revoke_sharing(String.t()) :: {:ok, any()} | {:error, atom()}
   def revoke_sharing(battle_id) do
     with {:ok, _battle} <- BattleService.get_battle(battle_id) do
       BattleService.update_battle(battle_id, %{
@@ -111,6 +116,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
   @doc """
   Generate a battle comparison report.
   """
+  @spec generate_comparison_report([String.t()]) :: {:ok, map()} | {:error, atom()}
   def generate_comparison_report(battle_ids) when is_list(battle_ids) do
     with {:ok, battles} <- fetch_battles_for_comparison(battle_ids),
          {:ok, comparison} <- compare_battles(battles) do

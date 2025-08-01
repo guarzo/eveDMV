@@ -410,17 +410,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
     fleet_ships =
       killmails
       |> Enum.filter(fn km -> length(km.attackers) >= 5 end)
-      |> Enum.flat_map(fn km ->
-        # Find character's ship in this killmail
-        if km.victim.character_id == character_id do
-          [km.victim.ship_type_id]
-        else
-          case Enum.find(km.attackers, fn att -> att.character_id == character_id end) do
-            nil -> []
-            attacker -> [attacker.ship_type_id]
-          end
-        end
-      end)
+      |> Enum.flat_map(fn km -> extract_character_ship_from_killmail(km, character_id) end)
       |> Enum.frequencies()
       |> Enum.sort_by(fn {_ship, count} -> count end, :desc)
       |> Enum.take(5)
@@ -449,6 +439,18 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
       ShipRoles.command_ship?(ship_type_id) -> :support
       # Default to DPS for combat ships
       true -> :dps
+    end
+  end
+
+  defp extract_character_ship_from_killmail(killmail, character_id) do
+    # Find character's ship in this killmail
+    if killmail.victim.character_id == character_id do
+      [killmail.victim.ship_type_id]
+    else
+      case Enum.find(killmail.attackers, fn att -> att.character_id == character_id end) do
+        nil -> []
+        attacker -> [attacker.ship_type_id]
+      end
     end
   end
 

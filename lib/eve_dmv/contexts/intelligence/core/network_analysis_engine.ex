@@ -391,12 +391,13 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
     else
       # Count triangles (connections between neighbors)
       possible_triangles = combination_pairs(neighbors)
-      
-      actual_triangles = Enum.count(possible_triangles, fn {n1, n2} ->
-        # Check if these two neighbors are connected
-        edge_exists?(edges, n1, n2)
-      end)
-      
+
+      actual_triangles =
+        Enum.count(possible_triangles, fn {n1, n2} ->
+          # Check if these two neighbors are connected
+          edge_exists?(edges, n1, n2)
+        end)
+
       # Local clustering coefficient = actual triangles / possible triangles
       max_triangles = length(neighbors) * (length(neighbors) - 1) / 2
       actual_triangles / max_triangles

@@ -1557,10 +1557,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
 
   defp classify_ship_type(ship_type_id) do
     # Use actual ship classification from static data
-    case EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id) do
-      {:ok, ship_class} -> ship_class
-      {:error, _} -> :unknown
-    end
+    EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
   end
 
   defp average(list) do

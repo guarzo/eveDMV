@@ -551,17 +551,7 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
           max_damage = Enum.max(damages, fn -> 0 end)
           total_damage = Enum.sum(damages)
 
-          if total_damage > 0 do
-            concentration = max_damage / total_damage
-
-            cond do
-              concentration > 0.7 -> :highly_concentrated
-              concentration > 0.4 -> :moderately_concentrated
-              true -> :well_distributed
-            end
-          else
-            :unknown
-          end
+          classify_damage_concentration(max_damage, total_damage)
         else
           :unknown
         end
@@ -572,6 +562,20 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
     |> Enum.frequencies()
     |> Enum.max_by(fn {_pattern, count} -> count end, fn -> {:unknown, 0} end)
     |> elem(0)
+  end
+
+  defp classify_damage_concentration(max_damage, total_damage) do
+    if total_damage > 0 do
+      concentration = max_damage / total_damage
+
+      cond do
+        concentration > 0.7 -> :highly_concentrated
+        concentration > 0.4 -> :moderately_concentrated
+        true -> :well_distributed
+      end
+    else
+      :unknown
+    end
   end
 
   defp calculate_target_selection_efficiency(killmails) do

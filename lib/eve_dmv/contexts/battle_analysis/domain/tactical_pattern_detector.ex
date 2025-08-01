@@ -841,9 +841,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
   defp calculate_overall_coordination(damage_coord, target_coord, movement_coord) do
     # Combine all coordination scores
-    damage_score = damage_coord.average_coordination || 0
-    target_score = target_coord.target_priority_adherence || 0
-    movement_score = movement_coord.formation_maintenance || 0
+    damage_score = Map.get(damage_coord, :average_coordination, 0)
+    target_score = Map.get(target_coord, :target_priority_adherence, 0)
+    movement_score = Map.get(movement_coord, :formation_maintenance, 0)
 
     overall = damage_score * 0.4 + target_score * 0.4 + movement_score * 0.2
     Float.round(overall, 2)

@@ -10,10 +10,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Analyzers.T
   """
 
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Calculators.ThreatScoreCalculator,
-        as: ThreatScoreCalculator
+    as: ThreatScoreCalculator
 
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.DataFetchers.CombatDataFetcher,
-        as: CombatDataFetcher
+    as: CombatDataFetcher
 
   require Logger
 

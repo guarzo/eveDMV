@@ -32,6 +32,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
         recent_activity: %{...}
       }}
   """
+  @spec analyze_character_threat(integer()) :: {:ok, map()}
   def analyze_character_threat(character_id) do
     case ThreatScoringEngine.calculate_threat_score(character_id) do
       {:ok, threat_data} ->
@@ -75,6 +76,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   - Specialist
   - Opportunist
   """
+  @spec detect_behavioral_patterns(integer()) :: {:ok, map()}
   def detect_behavioral_patterns(character_id) do
     # Since ThreatScoringEngine includes behavioral analysis in the threat score,
     # we'll extract it from there
@@ -93,6 +95,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Calculates threat trends for a character over time.
   Shows how their threat level has evolved based on recent performance.
   """
+  @spec calculate_threat_trends(integer(), integer()) :: {:ok, map()} | {:error, atom()}
   def calculate_threat_trends(character_id, days_back \\ 90) do
     ThreatScoringEngine.analyze_threat_trends(character_id, analysis_window_days: days_back)
   end
@@ -101,6 +104,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Compares threat levels between multiple characters.
   Useful for identifying the most dangerous opponents in a group.
   """
+  @spec compare_character_threats([integer()]) :: {:ok, [{integer(), map()}]}
   def compare_character_threats(character_ids) when is_list(character_ids) do
     threat_analyses =
       character_ids
@@ -118,6 +122,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Gets a comprehensive intelligence report for a character.
   Combines threat scoring, behavioral analysis, and performance metrics.
   """
+  @spec get_character_intelligence_report(integer()) :: {:ok, map()} | {:error, atom()}
   def get_character_intelligence_report(character_id) do
     with {:ok, threat_analysis} <- analyze_character_threat(character_id),
          {:ok, behavioral_patterns} <- detect_behavioral_patterns(character_id),
@@ -145,6 +150,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Get comprehensive ship intelligence for a character.
   Returns ship specialization, role preferences, and tactical insights.
   """
+  @spec get_character_ship_intelligence(integer()) :: {:ok, map()} | {:error, atom()}
   def get_character_ship_intelligence(character_id) do
     ShipIntelligenceBridge.calculate_ship_specialization(character_id)
   end
@@ -152,6 +158,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   @doc """
   Get ship preference summary for quick threat assessment.
   """
+  @spec get_ship_preferences(integer()) :: {:ok, map()} | {:error, atom()}
   def get_ship_preferences(character_id) do
     ShipIntelligenceBridge.get_character_ship_preferences(character_id)
   end
@@ -160,6 +167,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Get detailed ship preferences for a character.
   Returns top ships used with usage counts, efficiency metrics, and ship classifications.
   """
+  @spec get_detailed_ship_preferences(integer(), Date.t() | DateTime.t()) ::
+          {:ok, map()} | {:error, atom()}
   def get_detailed_ship_preferences(character_id, since_date) do
     CharacterIntelligenceAnalyzer.analyze_ship_preferences(
       character_id,
@@ -171,6 +180,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Get weapon preferences for a character.
   Returns weapon usage patterns, categories, and effectiveness ratings.
   """
+  @spec get_weapon_preferences(integer(), Date.t() | DateTime.t()) ::
+          {:ok, map()} | {:error, atom()}
   def get_weapon_preferences(character_id, since_date) do
     CharacterIntelligenceAnalyzer.analyze_weapon_preferences(
       character_id,
@@ -182,6 +193,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Calculate ISK efficiency metrics for a character.
   Returns ISK destroyed/lost, efficiency percentage, and risk assessment.
   """
+  @spec calculate_isk_efficiency(integer(), Date.t() | DateTime.t()) ::
+          {:ok, map()} | {:error, atom()}
   def calculate_isk_efficiency(character_id, since_date) do
     CharacterIntelligenceAnalyzer.analyze_isk_efficiency(
       character_id,
@@ -193,6 +206,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Get gang size patterns for a character.
   Returns preferences for solo, small gang, medium gang, large gang, and fleet operations.
   """
+  @spec get_gang_size_patterns(integer(), Date.t() | DateTime.t()) ::
+          {:ok, map()} | {:error, atom()}
   def get_gang_size_patterns(character_id, since_date) do
     CharacterIntelligenceAnalyzer.analyze_gang_patterns(
       character_id,
@@ -204,6 +219,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Calculate activity statistics for a character.
   Returns recent activity, timezone estimates, activity consistency, and trends.
   """
+  @spec calculate_activity_stats(integer(), Date.t() | DateTime.t()) ::
+          {:ok, map()} | {:error, atom()}
   def calculate_activity_stats(character_id, since_date) do
     CharacterIntelligenceAnalyzer.analyze_activity_stats(
       character_id,
@@ -215,6 +232,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Get character intelligence summary.
   Returns peak activity times, top locations, operational preferences, and activity spread.
   """
+  @spec get_intelligence_summary(integer(), Date.t() | DateTime.t()) ::
+          {:ok, map()} | {:error, atom()}
   def get_intelligence_summary(character_id, since_date) do
     CharacterIntelligenceAnalyzer.analyze_intelligence_summary(
       character_id,

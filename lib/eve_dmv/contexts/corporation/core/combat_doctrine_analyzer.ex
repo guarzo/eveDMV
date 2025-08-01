@@ -146,17 +146,7 @@ defmodule EveDmv.Contexts.Corporation.Core.CombatDoctrineAnalyzer do
   defp extract_ships_used(killmails, character_id) do
     ships =
       killmails
-      |> Enum.flat_map(fn km ->
-        # Get ships used by this character
-        if km.victim.character_id == character_id do
-          [km.victim.ship_type_id]
-        else
-          case Enum.find(km.attackers, fn att -> att.character_id == character_id end) do
-            nil -> []
-            attacker -> [attacker.ship_type_id]
-          end
-        end
-      end)
+      |> Enum.flat_map(fn km -> get_character_ships_from_killmail(km, character_id) end)
       |> Enum.frequencies()
       |> Enum.sort_by(fn {_ship, count} -> count end, :desc)
 
@@ -172,6 +162,18 @@ defmodule EveDmv.Contexts.Corporation.Core.CombatDoctrineAnalyzer do
         usage_percentage: Float.round(count / length(killmails) * 100, 1)
       }
     end)
+  end
+
+  defp get_character_ships_from_killmail(killmail, character_id) do
+    # Get ships used by this character
+    if killmail.victim.character_id == character_id do
+      [killmail.victim.ship_type_id]
+    else
+      case Enum.find(killmail.attackers, fn att -> att.character_id == character_id end) do
+        nil -> []
+        attacker -> [attacker.ship_type_id]
+      end
+    end
   end
 
   defp get_ship_info(ship_type_id) do

@@ -12,6 +12,7 @@ defmodule EveDmv.Intelligence.EngagementCalculator do
   This is the primary function that combines different engagement factors
   into a single score from 0-100.
   """
+  @spec calculate_overall_score(map()) :: integer()
   def calculate_overall_score(member_data) do
     killmail_score = calculate_killmail_engagement(member_data)
     participation_score = calculate_fleet_engagement(member_data)
@@ -33,6 +34,7 @@ defmodule EveDmv.Intelligence.EngagementCalculator do
   Considers kills, losses, and kill/death ratio.
   Returns a score from 0-100.
   """
+  @spec calculate_killmail_engagement(map()) :: integer()
   def calculate_killmail_engagement(member_data) do
     kills = Map.get(member_data, :total_kills, 0)
     losses = Map.get(member_data, :total_losses, 0)
@@ -53,6 +55,7 @@ defmodule EveDmv.Intelligence.EngagementCalculator do
   Considers different types of fleet operations with appropriate weights.
   Returns a score from 0-100.
   """
+  @spec calculate_fleet_engagement(map()) :: number()
   def calculate_fleet_engagement(member_data) do
     home_defense = Map.get(member_data, :home_defense_participations, 0)
     chain_ops = Map.get(member_data, :chain_operations_participations, 0)
@@ -74,6 +77,7 @@ defmodule EveDmv.Intelligence.EngagementCalculator do
   This is a placeholder for future communication metrics.
   Returns a score from 0-100.
   """
+  @spec calculate_communication_engagement(map()) :: number()
   def calculate_communication_engagement(member_data) do
     # Placeholder implementation for communication scoring
     # In the future, this could include:
@@ -91,6 +95,7 @@ defmodule EveDmv.Intelligence.EngagementCalculator do
 
   Takes a list of member analysis records and returns the average engagement score.
   """
+  @spec calculate_average_engagement([map()]) :: float()
   def calculate_average_engagement(member_analyses) when is_list(member_analyses) do
     if Enum.empty?(member_analyses) do
       0.0
@@ -109,6 +114,7 @@ defmodule EveDmv.Intelligence.EngagementCalculator do
 
   Returns the number of members with engagement scores above the threshold (default: 30).
   """
+  @spec count_active_members([map()], integer()) :: integer()
   def count_active_members(member_analyses, threshold \\ 30) when is_list(member_analyses) do
     Enum.count(member_analyses, fn analysis ->
       Map.get(analysis, :engagement_score, 0) > threshold
@@ -120,6 +126,7 @@ defmodule EveDmv.Intelligence.EngagementCalculator do
 
   Members are considered at-risk if their burnout or disengagement score exceeds 50.
   """
+  @spec calculate_at_risk_percentage([map()]) :: float()
   def calculate_at_risk_percentage(member_analyses) when is_list(member_analyses) do
     if Enum.empty?(member_analyses) do
       0.0
@@ -140,6 +147,7 @@ defmodule EveDmv.Intelligence.EngagementCalculator do
 
   High performers are defined as members with engagement scores above 75.
   """
+  @spec calculate_high_performers_percentage([map()], integer()) :: float()
   def calculate_high_performers_percentage(member_analyses, threshold \\ 75)
       when is_list(member_analyses) do
     if Enum.empty?(member_analyses) do
@@ -156,6 +164,7 @@ defmodule EveDmv.Intelligence.EngagementCalculator do
 
   # Private helper functions
 
+  @spec calculate_kd_bonus(integer(), integer()) :: integer()
   defp calculate_kd_bonus(kills, losses) do
     cond do
       losses == 0 and kills > 0 ->

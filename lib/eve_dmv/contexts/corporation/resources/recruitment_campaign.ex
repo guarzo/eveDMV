@@ -145,7 +145,9 @@ defmodule EveDmv.Contexts.Corporation.Resources.RecruitmentCampaign do
     calculate(
       :success_rate,
       :float,
-      expr(if applications_received > 0, do: applications_approved / applications_received, else: 0.0)
+      expr(
+        if applications_received > 0, do: applications_approved / applications_received, else: 0.0
+      )
     )
 
     calculate(:is_active, :boolean, expr(status == :active))

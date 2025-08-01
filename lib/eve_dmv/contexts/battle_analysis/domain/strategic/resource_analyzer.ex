@@ -619,9 +619,7 @@ defmodule EveDmv.Shared.Strategic.ResourceAnalyzer do
 
   defp classify_ship_type(ship_type_id) do
     # Use actual ship classification from static data
-    case EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id) do
-      {:ok, ship_class} -> ship_class
-      {:error, _} -> :other
-    end
+    ship_class = EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
+    if ship_class == :unknown, do: :other, else: ship_class
   end
 end

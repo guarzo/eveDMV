@@ -28,10 +28,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Analyzers.TrendAnalyzer
 
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Calculators.ThreatScoreCalculator,
-        as: Calculator
+    as: Calculator
 
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.DataFetchers.CombatDataFetcher,
-        as: DataFetcher
+    as: DataFetcher
 
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Generators.ComparisonEngine
 

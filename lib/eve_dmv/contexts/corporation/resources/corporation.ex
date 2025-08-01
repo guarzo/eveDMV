@@ -155,8 +155,8 @@ defmodule EveDmv.Contexts.Corporation.Resources.Corporation do
 
       filter(
         expr(
-          if(not is_nil(^arg(:min_rank)), do: activity_rank >= ^arg(:min_rank), else: true) and
-            if(not is_nil(^arg(:max_rank)), do: activity_rank <= ^arg(:max_rank), else: true)
+          (is_nil(^arg(:min_rank)) or activity_rank >= ^arg(:min_rank)) and
+            (is_nil(^arg(:max_rank)) or activity_rank <= ^arg(:max_rank))
         )
       )
     end

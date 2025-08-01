@@ -83,10 +83,12 @@ defmodule EveDmv.Contexts.Surveillance do
   defdelegate test_notification_delivery(profile_id), to: Api
 
   # Context-specific utilities
+  @spec force_profile_matching(map()) :: {:ok, [map()]} | {:error, atom()}
   def force_profile_matching(killmail_data) do
     Domain.MatchingEngine.force_match_all_profiles(killmail_data)
   end
 
+  @spec get_surveillance_metrics() :: {:ok, map()} | {:error, atom()}
   def get_surveillance_metrics do
     case Domain.MatchingEngine.get_metrics() do
       {:ok, metrics} ->
@@ -116,6 +118,7 @@ defmodule EveDmv.Contexts.Surveillance do
     end
   end
 
+  @spec refresh_profile_cache() :: :ok
   def refresh_profile_cache do
     Infrastructure.ProfileRepository.refresh_cache()
   end

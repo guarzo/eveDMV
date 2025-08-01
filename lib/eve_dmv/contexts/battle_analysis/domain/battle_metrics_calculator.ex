@@ -530,19 +530,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
       _ ->
         # Fallback: Get ship class and use conservative estimates
         case EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id) do
-          {:ok, :frigate} -> 5_000
-          {:ok, :destroyer} -> 12_000
-          {:ok, :cruiser} -> 25_000
-          {:ok, :battlecruiser} -> 60_000
-          {:ok, :battleship} -> 120_000
-          {:ok, :carrier} -> 2_000_000
-          {:ok, :dreadnought} -> 8_000_000
-          {:ok, :titan} -> 25_000_000
-          {:ok, :supercarrier} -> 15_000_000
-          {:ok, :force_auxiliary} -> 3_000_000
-          {:ok, :industrial} -> 10_000
-          {:ok, :mining_barge} -> 15_000
-          {:ok, :exhumer} -> 20_000
+          :frigate -> 5_000
+          :destroyer -> 12_000
+          :cruiser -> 25_000
+          :battlecruiser -> 60_000
+          :battleship -> 120_000
+          :capital -> 2_000_000
+          :supercapital -> 15_000_000
+          :industrial -> 10_000
+          :mining -> 15_000
           # Conservative default
           _ -> 30_000
         end

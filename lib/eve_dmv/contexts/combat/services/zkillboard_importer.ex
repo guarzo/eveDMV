@@ -393,35 +393,35 @@ defmodule EveDmv.Contexts.Combat.Services.ZkillboardImporter do
   defp extract_battle_tags(zkb_data) do
     tags = []
 
-    tags =
+    npc_tags =
       if zkb_data.zkb_stats.npc_kills > 0 do
         ["has_npc_kills" | tags]
       else
         tags
       end
 
-    tags =
+    solo_tags =
       if zkb_data.zkb_stats.solo_kills > 0 do
-        ["has_solo_kills" | tags]
+        ["has_solo_kills" | npc_tags]
       else
-        tags
+        npc_tags
       end
 
-    tags =
+    awox_tags =
       if zkb_data.zkb_stats.awox_kills > 0 do
-        ["has_awox" | tags]
+        ["has_awox" | solo_tags]
       else
-        tags
+        solo_tags
       end
 
-    tags =
+    value_tags =
       if zkb_data.zkb_stats.total_value > 10_000_000_000 do
-        ["high_value_battle" | tags]
+        ["high_value_battle" | awox_tags]
       else
-        tags
+        awox_tags
       end
 
-    Enum.uniq(tags)
+    Enum.uniq(value_tags)
   end
 
   @doc """

@@ -394,21 +394,21 @@ defmodule EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer do
     patterns = data[:behavioral_patterns] || %{}
     notable = []
 
-    notable =
+    gang_notable =
       if patterns[:consistent_gang_size] do
         ["Consistent gang composition" | notable]
       else
         notable
       end
 
-    notable =
+    final_notable =
       if patterns[:regional_preference] do
-        ["Strong regional preference" | notable]
+        ["Strong regional preference" | gang_notable]
       else
-        notable
+        gang_notable
       end
 
-    notable
+    final_notable
   end
 
   defp assess_risk_profile(data) do

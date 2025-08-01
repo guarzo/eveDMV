@@ -1,15 +1,30 @@
 defmodule EveDmv.Api do
   @moduledoc """
-  The main Ash API for the EVE PvP Tracker application.
+  The main Ash API for the EVE DMV application.
 
-  This API contains core resources needed for the application's primary
-  functionality. Additional specialized resources are managed through
-  focused sub-domains to reduce complexity and dependencies.
+  This API provides the central access point for all core resources and
+  standardized CRUD operations with comprehensive error handling and
+  type safety.
 
-  Sub-domains:
+  ## Core Resources
+  - Users and authentication (User, Token, ApiAuthentication)
+  - Killmail data (KillmailRaw, Participant)
+  - EVE static data (ItemType, SolarSystem, ShipAttributes)
+  - Intelligence data (CharacterStats, CharacterProfile)
+  - Corporation data (Corporation, Alliance, etc.)
+
+  ## Sub-domains
   - EveDmv.Api.SurveillanceApi - Surveillance resources
-  - EveDmv.Api.AnalyticsApi - Analytics resources
+  - EveDmv.Api.AnalyticsApi - Analytics resources  
   - EveDmv.Api.BattleAnalysisApi - Battle analysis resources
+
+  ## Error Handling
+  All functions return standardized `{:ok, result}` or `{:error, reason}` tuples
+  for consistent error handling across the application.
+
+  ## Type Safety
+  All public functions include comprehensive `@spec` annotations for
+  compile-time type checking with Dialyzer.
   """
 
   use Ash.Domain,
@@ -68,6 +83,7 @@ defmodule EveDmv.Api do
   @doc """
   Executes a read query against this domain and returns the result or raises an error.
   """
+  @spec read!(Ash.Query.t()) :: [Ash.Resource.record()] | Ash.Resource.record()
   def read!(query) do
     Ash.read!(query, domain: __MODULE__)
   end
@@ -75,6 +91,7 @@ defmodule EveDmv.Api do
   @doc """
   Executes a read query against this domain with options.
   """
+  @spec read!(Ash.Resource.t(), keyword()) :: [Ash.Resource.record()] | Ash.Resource.record()
   def read!(resource, opts) when is_atom(resource) do
     Ash.read!(resource, opts ++ [domain: __MODULE__])
   end
@@ -82,6 +99,8 @@ defmodule EveDmv.Api do
   @doc """
   Executes a read query against this domain.
   """
+  @spec read(Ash.Query.t()) ::
+          {:ok, [Ash.Resource.record()]} | {:ok, Ash.Resource.record()} | {:error, any()}
   def read(query) do
     Ash.read(query, domain: __MODULE__)
   end
@@ -89,6 +108,8 @@ defmodule EveDmv.Api do
   @doc """
   Executes a read query against this domain with options.
   """
+  @spec read(Ash.Resource.t(), keyword()) ::
+          {:ok, [Ash.Resource.record()]} | {:ok, Ash.Resource.record()} | {:error, any()}
   def read(resource, opts) when is_atom(resource) do
     Ash.read(resource, opts ++ [domain: __MODULE__])
   end
@@ -96,6 +117,8 @@ defmodule EveDmv.Api do
   @doc """
   Creates a record in this domain.
   """
+  @spec create(Ash.Resource.t(), map(), keyword()) ::
+          {:ok, Ash.Resource.record()} | {:error, any()}
   def create(resource, attrs, opts \\ []) do
     Ash.create(resource, attrs, opts ++ [domain: __MODULE__])
   end
@@ -103,6 +126,8 @@ defmodule EveDmv.Api do
   @doc """
   Updates a record in this domain.
   """
+  @spec update(Ash.Resource.record(), map(), keyword()) ::
+          {:ok, Ash.Resource.record()} | {:error, any()}
   def update(record, attrs, opts \\ []) do
     Ash.update(record, attrs, opts ++ [domain: __MODULE__])
   end
@@ -110,6 +135,7 @@ defmodule EveDmv.Api do
   @doc """
   Destroys a record in this domain.
   """
+  @spec destroy(Ash.Resource.record(), keyword()) :: :ok | {:error, any()}
   def destroy(record, opts \\ []) do
     Ash.destroy(record, opts ++ [domain: __MODULE__])
   end
