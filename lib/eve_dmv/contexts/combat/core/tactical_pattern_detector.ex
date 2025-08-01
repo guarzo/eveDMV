@@ -696,21 +696,21 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
 
     base_score = 50
 
-    score =
+    score_with_coordination =
       if coordination_pattern do
         base_score + effectiveness_to_score(coordination_pattern.target_calling_efficiency)
       else
         base_score
       end
 
-    score =
+    final_score =
       if focus_fire_pattern do
-        score + effectiveness_to_score(focus_fire_pattern.effectiveness) * 0.5
+        score_with_coordination + effectiveness_to_score(focus_fire_pattern.effectiveness) * 0.5
       else
-        score
+        score_with_coordination
       end
 
-    min(score, 100)
+    min(final_score, 100)
   end
 
   defp effectiveness_to_score(:excellent), do: 40
