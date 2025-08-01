@@ -9,11 +9,11 @@ defmodule EveDmv.Contexts.Combat.Services.ZkillboardImporter do
   - Handling zkillboard API rate limits
   """
 
-  alias EveDmv.Contexts.Combat.Services.BattleService
-  alias EveDmv.Contexts.BattleAnalysis.Core.BattleDetector
-  alias EveDmv.Killmails.KillmailRaw
-  alias EveDmv.Http.UnifiedClient
   alias EveDmv.Api
+  alias EveDmv.Contexts.BattleAnalysis.Core.BattleDetector
+  alias EveDmv.Contexts.Combat.Services.BattleService
+  alias EveDmv.Http.UnifiedClient
+  alias EveDmv.Killmails.KillmailRaw
 
   require Logger
 
