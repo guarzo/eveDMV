@@ -6,10 +6,10 @@ defmodule EveDmv.Contexts.WormholeOperations.Analyzers.WhFleetAnalyzer.DoctrineM
   generating counter-doctrines, and managing doctrine templates.
   """
 
-  alias EveDmv.Eve.EsiClient
   alias EveDmv.Contexts.FleetOperations.Domain.Fleet.DoctrineTemplateBuilder
-  alias EveDmv.Intelligence.Wormhole.FleetComposition
+  alias EveDmv.Eve.EsiClient
   alias EveDmv.Intelligence.Analyzers.FleetPilotAnalyzer
+  alias EveDmv.Intelligence.Wormhole.FleetComposition
 
   require Logger
 
