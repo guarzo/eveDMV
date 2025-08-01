@@ -402,10 +402,10 @@ defmodule EveDmv.Intelligence.PatternAnalysis do
     kd_ratio = calculate_kill_death_ratio(stats)
 
     # High fleet participation + good performance suggests leadership
-    leadership_score = 0.0
+    initial_leadership_score = 0.0
 
-    leadership_score =
-      leadership_score +
+    final_leadership_score =
+      initial_leadership_score +
         cond do
           fleet_ratio > 0.7 and kd_ratio > 2.0 -> 0.4
           fleet_ratio > 0.5 and kd_ratio > 1.5 -> 0.3
@@ -417,7 +417,7 @@ defmodule EveDmv.Intelligence.PatternAnalysis do
     has_command_experience = total_kills > 500 and fleet_ratio > 0.6
 
     %{
-      leadership_score: min(1.0, leadership_score),
+      leadership_score: min(1.0, final_leadership_score),
       command_experience: has_command_experience
     }
   end
@@ -429,11 +429,11 @@ defmodule EveDmv.Intelligence.PatternAnalysis do
     gang_ratio = stats.gang_ratio || 0.0
 
     # High activity with mixed group sizes suggests central position
-    centrality_score = 0.0
+    initial_centrality_score = 0.0
 
     # Activity level contributes to centrality
-    centrality_score =
-      centrality_score +
+    centrality_with_activity =
+      initial_centrality_score +
         cond do
           total_activity > 1000 -> 0.3
           total_activity > 500 -> 0.2
@@ -442,14 +442,14 @@ defmodule EveDmv.Intelligence.PatternAnalysis do
         end
 
     # Mixed participation suggests bridge role
-    centrality_score =
+    final_centrality_score =
       if fleet_ratio > 0.3 and gang_ratio > 0.3 do
-        centrality_score + 0.3
+        centrality_with_activity + 0.3
       else
-        centrality_score
+        centrality_with_activity
       end
 
-    min(1.0, centrality_score)
+    min(1.0, final_centrality_score)
   end
 
   defp calculate_social_influence_score(stats) do
