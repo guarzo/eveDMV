@@ -15,9 +15,9 @@ defmodule EveDmv.Contexts.Combat.Services.BattleService do
   alias EveDmv.Contexts.BattleAnalysis.Resources.BattleKillmail
   alias EveDmv.Repo
 
-  require Ash.Query
-
   import Ecto.Query
+
+  require Ash.Query
 
   @doc """
   Create a new battle from detected killmails.

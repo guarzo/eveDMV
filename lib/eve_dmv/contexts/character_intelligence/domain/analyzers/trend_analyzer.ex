@@ -1,4 +1,4 @@
-defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.Analyzers.TrendAnalyzer do
+defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Analyzers.TrendAnalyzer do
   @moduledoc """
   Analyzes threat trends for characters over time.
 
@@ -9,11 +9,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
   - Analyzing recent changes and patterns
   """
 
-  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.Calculators.ThreatScoreCalculator,
-    as: ThreatScoreCalculator
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Calculators.ThreatScoreCalculator,
+        as: ThreatScoreCalculator
 
-  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.DataFetchers.CombatDataFetcher,
-    as: CombatDataFetcher
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.DataFetchers.CombatDataFetcher,
+        as: CombatDataFetcher
 
   require Logger
 

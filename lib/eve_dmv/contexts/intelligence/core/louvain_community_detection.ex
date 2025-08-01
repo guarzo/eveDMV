@@ -291,24 +291,9 @@ defmodule EveDmv.Contexts.Intelligence.Core.LouvainCommunityDetection do
       adjacency
       |> Enum.flat_map(fn {node, neighbors} ->
         node_community = Map.get(partition, node)
-
-        neighbors
-        |> Enum.map(fn {neighbor, weight} ->
-          neighbor_community = Map.get(partition, neighbor)
-
-          if node_community != neighbor_community do
-            edge_key =
-              if node_community < neighbor_community,
-                do: {node_community, neighbor_community},
-                else: {neighbor_community, node_community}
-
-            {edge_key, weight}
-          else
-            nil
-          end
-        end)
-        |> Enum.reject(&is_nil/1)
+        create_community_edges(neighbors, node_community, &Map.get(partition, &1))
       end)
+      |> Enum.reject(&is_nil/1)
       |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
       |> Enum.map(fn {{c1, c2}, weights} ->
         {Enum.min([c1, c2]) <> "_" <> Enum.max([c1, c2]),
@@ -323,6 +308,24 @@ defmodule EveDmv.Contexts.Intelligence.Core.LouvainCommunityDetection do
       |> Map.new()
 
     %{nodes: coarse_nodes, edges: coarse_edges}
+  end
+
+  defp create_community_edges(neighbors, node_community, partition_lookup_fn) do
+    neighbors
+    |> Enum.map(fn {neighbor, weight} ->
+      neighbor_community = partition_lookup_fn.(neighbor)
+
+      if node_community != neighbor_community do
+        edge_key =
+          if node_community < neighbor_community,
+            do: {node_community, neighbor_community},
+            else: {neighbor_community, node_community}
+
+        {edge_key, weight}
+      else
+        nil
+      end
+    end)
   end
 
   # Expand coarse communities back to original nodes

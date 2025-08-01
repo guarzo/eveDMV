@@ -1054,27 +1054,27 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
     avg_ttk = calculate_average_ttk(killmails)
     burst_damage = detect_burst_damage(killmails)
 
-    lethality_score = 50
+    base_lethality_score = 50
 
     # Quick kills increase lethality
-    lethality_score =
+    lethality_with_ttk_bonus =
       if avg_ttk < 30 do
-        lethality_score + 30
+        base_lethality_score + 30
       else
-        lethality_score + max(30 - avg_ttk / 10, 0)
+        base_lethality_score + max(30 - avg_ttk / 10, 0)
       end
 
     # Burst damage increases lethality
-    lethality_score = lethality_score + burst_damage.burst_percentage * 0.2
+    final_lethality_score = lethality_with_ttk_bonus + burst_damage.burst_percentage * 0.2
 
     %{
-      score: min(lethality_score, 100),
+      score: min(final_lethality_score, 100),
       rating:
         cond do
-          lethality_score > 80 -> :extreme
-          lethality_score > 60 -> :high
-          lethality_score > 40 -> :moderate
-          lethality_score > 20 -> :low
+          final_lethality_score > 80 -> :extreme
+          final_lethality_score > 60 -> :high
+          final_lethality_score > 40 -> :moderate
+          final_lethality_score > 20 -> :low
           true -> :minimal
         end
     }

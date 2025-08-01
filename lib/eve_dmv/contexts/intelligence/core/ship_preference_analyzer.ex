@@ -174,21 +174,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.ShipPreferenceAnalyzer do
         {km.killmail_time.year, km.killmail_time.month}
       end)
       |> Enum.map(fn {{year, month}, kms} ->
-        ship_types =
-          kms
-          |> Enum.map(fn km ->
-            if km.victim.character_id == List.first(kms).victim.character_id do
-              km.victim.ship_type_id
-            else
-              # Find character's ship in attackers
-              attacker =
-                Enum.find(km.attackers, fn att ->
-                  att.character_id == List.first(kms).victim.character_id
-                end)
-
-              if attacker, do: attacker.ship_type_id, else: nil
-            end
-          end)
+        ship_types = extract_ship_types_for_character(kms)
           |> Enum.filter(& &1)
           |> Enum.uniq()
 
@@ -228,6 +214,20 @@ defmodule EveDmv.Contexts.Intelligence.Core.ShipPreferenceAnalyzer do
       avg_tech >= 1.5 -> :intermediate
       true -> :beginner
     end
+  end
+
+  defp extract_ship_types_for_character(kms) do
+    target_character_id = List.first(kms).victim.character_id
+    
+    Enum.map(kms, fn km ->
+      if km.victim.character_id == target_character_id do
+        km.victim.ship_type_id
+      else
+        # Find character's ship in attackers
+        attacker = Enum.find(km.attackers, &(&1.character_id == target_character_id))
+        if attacker, do: attacker.ship_type_id, else: nil
+      end
+    end)
   end
 
   defp determine_current_progression(ship_usage) do

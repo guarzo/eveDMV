@@ -398,19 +398,21 @@ defmodule EveDmv.Contexts.Corporation.Services.MemberService do
 
   defp extract_most_used_ships(killmails, character_id) do
     killmails
-    |> Enum.flat_map(fn km ->
-      if km.victim.character_id == character_id do
-        [km.victim.ship_type_id]
-      else
-        case Enum.find(km.attackers, fn att -> att.character_id == character_id end) do
-          nil -> []
-          attacker -> [attacker.ship_type_id]
-        end
-      end
-    end)
+    |> Enum.flat_map(&extract_ship_type_for_character(&1, character_id))
     |> Enum.frequencies()
     |> Enum.sort_by(fn {_ship, count} -> count end, :desc)
     |> Enum.take(5)
+  end
+
+  defp extract_ship_type_for_character(km, character_id) do
+    if km.victim.character_id == character_id do
+      [km.victim.ship_type_id]
+    else
+      case Enum.find(km.attackers, fn att -> att.character_id == character_id end) do
+        nil -> []
+        attacker -> [attacker.ship_type_id]
+      end
+    end
   end
 
   defp analyze_member_tenure(member) do

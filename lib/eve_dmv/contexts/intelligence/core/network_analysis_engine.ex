@@ -357,24 +357,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
         nodes
         |> Enum.map(fn node ->
           neighbors = Map.get(adjacency, node, MapSet.new()) |> MapSet.to_list()
-
-          if length(neighbors) < 2 do
-            # Need at least 2 neighbors to form triangles
-            0.0
-          else
-            # Count triangles (connections between neighbors)
-            possible_triangles = combination_pairs(neighbors)
-
-            actual_triangles =
-              Enum.count(possible_triangles, fn {n1, n2} ->
-                # Check if these two neighbors are connected
-                edge_exists?(network_data.edges, n1, n2)
-              end)
-
-            # Local clustering coefficient = actual triangles / possible triangles
-            max_triangles = length(neighbors) * (length(neighbors) - 1) / 2
-            actual_triangles / max_triangles
-          end
+          calculate_node_clustering_coefficient(neighbors, network_data.edges)
         end)
         # Only consider nodes with non-zero coefficient
         |> Enum.filter(&(&1 > 0))
@@ -399,6 +382,25 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
       |> Map.update(char1, MapSet.new([char2]), &MapSet.put(&1, char2))
       |> Map.update(char2, MapSet.new([char1]), &MapSet.put(&1, char1))
     end)
+  end
+
+  defp calculate_node_clustering_coefficient(neighbors, edges) do
+    if length(neighbors) < 2 do
+      # Need at least 2 neighbors to form triangles
+      0.0
+    else
+      # Count triangles (connections between neighbors)
+      possible_triangles = combination_pairs(neighbors)
+      
+      actual_triangles = Enum.count(possible_triangles, fn {n1, n2} ->
+        # Check if these two neighbors are connected
+        edge_exists?(edges, n1, n2)
+      end)
+      
+      # Local clustering coefficient = actual triangles / possible triangles
+      max_triangles = length(neighbors) * (length(neighbors) - 1) / 2
+      actual_triangles / max_triangles
+    end
   end
 
   defp combination_pairs(list) do

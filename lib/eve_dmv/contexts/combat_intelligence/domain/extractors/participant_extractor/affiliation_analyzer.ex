@@ -1,4 +1,4 @@
-defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.ParticipantExtractor.AffiliationAnalyzer do
+defmodule EveDmv.Contexts.CombatIntelligence.Domain.Extractors.ParticipantExtractor.AffiliationAnalyzer do
   @moduledoc """
   Analyzes participant affiliations and relationships in battles.
 

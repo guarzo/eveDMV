@@ -1,4 +1,4 @@
-defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.Generators.ComparisonEngine do
+defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Generators.ComparisonEngine do
   @moduledoc """
   Compares threat levels across multiple characters for relative assessment.
 
