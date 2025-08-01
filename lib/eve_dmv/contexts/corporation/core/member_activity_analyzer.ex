@@ -8,9 +8,9 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer do
   - Corporation Intelligence member activity analysis
   """
 
-  alias EveDmv.Platform.Database.CorporationRepository
   alias EveDmv.Database.CharacterRepository
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
+  alias EveDmv.Platform.Database.CorporationRepository
 
   require Logger
 
