@@ -117,17 +117,17 @@ defmodule EveDmv.Utils.NumberFormatter do
     minutes = div(rem(seconds, 3600), 60)
     remaining_seconds = rem(seconds, 60)
 
-    parts = []
+    initial_parts = []
 
-    parts = if hours > 0, do: ["#{hours}h" | parts], else: parts
-    parts = if minutes > 0, do: ["#{minutes}m" | parts], else: parts
+    parts_with_hours = if hours > 0, do: ["#{hours}h" | initial_parts], else: initial_parts
+    parts_with_minutes = if minutes > 0, do: ["#{minutes}m" | parts_with_hours], else: parts_with_hours
 
-    parts =
-      if remaining_seconds > 0 or Enum.empty?(parts),
-        do: ["#{remaining_seconds}s" | parts],
-        else: parts
+    final_parts =
+      if remaining_seconds > 0 or Enum.empty?(parts_with_minutes),
+        do: ["#{remaining_seconds}s" | parts_with_minutes],
+        else: parts_with_minutes
 
-    parts
+    final_parts
     |> Enum.reverse()
     |> Enum.join(" ")
   end
