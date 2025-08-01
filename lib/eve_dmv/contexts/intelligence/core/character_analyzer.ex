@@ -10,14 +10,11 @@ defmodule EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer do
 
   use GenServer
 
-  alias EveDmv.Contexts.Intelligence.Core.{
-    CombatStatsAnalyzer,
-    ShipPreferenceAnalyzer,
-    BehavioralPatternAnalyzer,
-    PerformanceAnalyzer
-  }
-
   alias EveDmv.Cache
+  alias EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer
+  alias EveDmv.Contexts.Intelligence.Core.CombatStatsAnalyzer
+  alias EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer
+  alias EveDmv.Contexts.Intelligence.Core.ShipPreferenceAnalyzer
   alias EveDmv.Database.CharacterRepository
 
   require Logger
