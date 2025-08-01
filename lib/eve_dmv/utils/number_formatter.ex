@@ -15,13 +15,13 @@ defmodule EveDmv.Utils.NumberFormatter do
 
       iex> EveDmv.Utils.NumberFormatter.number_to_human(1500)
       "1.5K"
-      
+
       iex> EveDmv.Utils.NumberFormatter.number_to_human(2_500_000)
       "2.5M"
-      
+
       iex> EveDmv.Utils.NumberFormatter.number_to_human(1_200_000_000)
       "1.2B"
-      
+
       iex> EveDmv.Utils.NumberFormatter.number_to_human(500)
       "500"
   """
@@ -54,7 +54,7 @@ defmodule EveDmv.Utils.NumberFormatter do
 
       iex> EveDmv.Utils.NumberFormatter.isk_to_human(1_500_000.50)
       "1.5M ISK"
-      
+
       iex> EveDmv.Utils.NumberFormatter.isk_to_human(250_000)
       "250K ISK"
   """
@@ -70,7 +70,7 @@ defmodule EveDmv.Utils.NumberFormatter do
 
       iex> EveDmv.Utils.NumberFormatter.percentage(0.156)
       "15.6%"
-      
+
       iex> EveDmv.Utils.NumberFormatter.percentage(0.9234, 1)
       "92.3%"
   """
@@ -87,7 +87,7 @@ defmodule EveDmv.Utils.NumberFormatter do
 
       iex> EveDmv.Utils.NumberFormatter.with_commas(1234567)
       "1,234,567"
-      
+
       iex> EveDmv.Utils.NumberFormatter.with_commas(999)
       "999"
   """
@@ -107,7 +107,7 @@ defmodule EveDmv.Utils.NumberFormatter do
 
       iex> EveDmv.Utils.NumberFormatter.duration_to_human(3661)
       "1h 1m 1s"
-      
+
       iex> EveDmv.Utils.NumberFormatter.duration_to_human(90)
       "1m 30s"
   """

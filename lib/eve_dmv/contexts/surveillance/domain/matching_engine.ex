@@ -42,33 +42,35 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
   @doc """
   Match a killmail against a specific surveillance profile.
-  
+
   Returns match result with details about what criteria matched.
   """
   def match_killmail_against_profile(killmail_event, profile) do
     try do
       # Extract killmail data from event
       killmail_data = extract_killmail_data(killmail_event)
-      
+
       # Evaluate against profile criteria
       match_result = evaluate_killmail_against_profile(killmail_data, profile)
-      
+
       if match_result.matches do
-        {:ok, %{
-          profile_id: profile.id,
-          killmail_id: killmail_data.killmail_id,
-          matched: true,
-          matched_criteria: match_result.matched_criteria,
-          match_confidence: match_result.confidence,
-          timestamp: DateTime.utc_now()
-        }}
+        {:ok,
+         %{
+           profile_id: profile.id,
+           killmail_id: killmail_data.killmail_id,
+           matched: true,
+           matched_criteria: match_result.matched_criteria,
+           match_confidence: match_result.confidence,
+           timestamp: DateTime.utc_now()
+         }}
       else
-        {:ok, %{
-          profile_id: profile.id,
-          killmail_id: killmail_data.killmail_id,
-          matched: false,
-          reason: match_result.reason
-        }}
+        {:ok,
+         %{
+           profile_id: profile.id,
+           killmail_id: killmail_data.killmail_id,
+           matched: false,
+           reason: match_result.reason
+         }}
       end
     rescue
       error ->
@@ -892,6 +894,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
   defp extract_victim_data(killmail_event) do
     victim = killmail_event[:victim] || killmail_event["victim"] || %{}
+
     %{
       character_id: victim[:character_id] || victim["character_id"],
       corporation_id: victim[:corporation_id] || victim["corporation_id"],
@@ -902,6 +905,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
   defp extract_attackers_data(killmail_event) do
     attackers = killmail_event[:attackers] || killmail_event["attackers"] || []
+
     Enum.map(attackers, fn attacker ->
       %{
         character_id: attacker[:character_id] || attacker["character_id"],
@@ -915,20 +919,20 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
   defp evaluate_killmail_against_profile(killmail_data, profile) do
     criteria = profile.criteria || %{}
-    
+
     case criteria do
       %{character_ids: char_ids} when is_list(char_ids) ->
         evaluate_character_criteria(killmail_data, char_ids)
-      
+
       %{corporation_ids: corp_ids} when is_list(corp_ids) ->
         evaluate_corporation_criteria(killmail_data, corp_ids)
-      
+
       %{system_ids: system_ids} when is_list(system_ids) ->
         evaluate_system_criteria(killmail_data, system_ids)
-      
+
       %{alliance_ids: alliance_ids} when is_list(alliance_ids) ->
         evaluate_alliance_criteria(killmail_data, alliance_ids)
-      
+
       _ ->
         %{matches: false, reason: "No valid criteria found", confidence: 0.0}
     end
@@ -936,12 +940,20 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
   defp evaluate_character_criteria(killmail_data, character_ids) do
     victim_match = killmail_data.victim.character_id in character_ids
-    attacker_match = Enum.any?(killmail_data.attackers, fn a -> a.character_id in character_ids end)
-    
+
+    attacker_match =
+      Enum.any?(killmail_data.attackers, fn a -> a.character_id in character_ids end)
+
     if victim_match or attacker_match do
       %{
         matches: true,
-        matched_criteria: build_character_match_criteria(killmail_data, character_ids, victim_match, attacker_match),
+        matched_criteria:
+          build_character_match_criteria(
+            killmail_data,
+            character_ids,
+            victim_match,
+            attacker_match
+          ),
         confidence: if(victim_match, do: 1.0, else: 0.8)
       }
     else
@@ -951,12 +963,20 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
   defp evaluate_corporation_criteria(killmail_data, corporation_ids) do
     victim_match = killmail_data.victim.corporation_id in corporation_ids
-    attacker_match = Enum.any?(killmail_data.attackers, fn a -> a.corporation_id in corporation_ids end)
-    
+
+    attacker_match =
+      Enum.any?(killmail_data.attackers, fn a -> a.corporation_id in corporation_ids end)
+
     if victim_match or attacker_match do
       %{
         matches: true,
-        matched_criteria: build_corporation_match_criteria(killmail_data, corporation_ids, victim_match, attacker_match),
+        matched_criteria:
+          build_corporation_match_criteria(
+            killmail_data,
+            corporation_ids,
+            victim_match,
+            attacker_match
+          ),
         confidence: if(victim_match, do: 0.9, else: 0.7)
       }
     else
@@ -979,11 +999,12 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
   defp evaluate_alliance_criteria(killmail_data, alliance_ids) do
     victim_match = killmail_data.victim.alliance_id in alliance_ids
     attacker_match = Enum.any?(killmail_data.attackers, fn a -> a.alliance_id in alliance_ids end)
-    
+
     if victim_match or attacker_match do
       %{
         matches: true,
-        matched_criteria: build_alliance_match_criteria(killmail_data, alliance_ids, victim_match, attacker_match),
+        matched_criteria:
+          build_alliance_match_criteria(killmail_data, alliance_ids, victim_match, attacker_match),
         confidence: if(victim_match, do: 0.8, else: 0.6)
       }
     else
@@ -993,67 +1014,93 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
   defp build_character_match_criteria(killmail_data, character_ids, victim_match, attacker_match) do
     criteria = []
-    
-    criteria = if victim_match do
-      [%{type: :character_victim, character_id: killmail_data.victim.character_id} | criteria]
-    else
-      criteria
-    end
-    
-    criteria = if attacker_match do
-      matching_attackers = Enum.filter(killmail_data.attackers, fn a -> a.character_id in character_ids end)
-      attacker_criteria = Enum.map(matching_attackers, fn a -> 
-        %{type: :character_attacker, character_id: a.character_id}
-      end)
-      attacker_criteria ++ criteria
-    else
-      criteria
-    end
-    
+
+    criteria =
+      if victim_match do
+        [%{type: :character_victim, character_id: killmail_data.victim.character_id} | criteria]
+      else
+        criteria
+      end
+
+    criteria =
+      if attacker_match do
+        matching_attackers =
+          Enum.filter(killmail_data.attackers, fn a -> a.character_id in character_ids end)
+
+        attacker_criteria =
+          Enum.map(matching_attackers, fn a ->
+            %{type: :character_attacker, character_id: a.character_id}
+          end)
+
+        attacker_criteria ++ criteria
+      else
+        criteria
+      end
+
     criteria
   end
 
-  defp build_corporation_match_criteria(killmail_data, corporation_ids, victim_match, attacker_match) do
+  defp build_corporation_match_criteria(
+         killmail_data,
+         corporation_ids,
+         victim_match,
+         attacker_match
+       ) do
     criteria = []
-    
-    criteria = if victim_match do
-      [%{type: :corporation_victim, corporation_id: killmail_data.victim.corporation_id} | criteria]
-    else
-      criteria
-    end
-    
-    criteria = if attacker_match do
-      matching_attackers = Enum.filter(killmail_data.attackers, fn a -> a.corporation_id in corporation_ids end)
-      attacker_criteria = Enum.map(matching_attackers, fn a -> 
-        %{type: :corporation_attacker, corporation_id: a.corporation_id}
-      end)
-      attacker_criteria ++ criteria
-    else
-      criteria
-    end
-    
+
+    criteria =
+      if victim_match do
+        [
+          %{type: :corporation_victim, corporation_id: killmail_data.victim.corporation_id}
+          | criteria
+        ]
+      else
+        criteria
+      end
+
+    criteria =
+      if attacker_match do
+        matching_attackers =
+          Enum.filter(killmail_data.attackers, fn a -> a.corporation_id in corporation_ids end)
+
+        attacker_criteria =
+          Enum.map(matching_attackers, fn a ->
+            %{type: :corporation_attacker, corporation_id: a.corporation_id}
+          end)
+
+        attacker_criteria ++ criteria
+      else
+        criteria
+      end
+
     criteria
   end
 
   defp build_alliance_match_criteria(killmail_data, alliance_ids, victim_match, attacker_match) do
     criteria = []
-    
-    criteria = if victim_match do
-      [%{type: :alliance_victim, alliance_id: killmail_data.victim.alliance_id} | criteria]
-    else
-      criteria
-    end
-    
-    criteria = if attacker_match do
-      matching_attackers = Enum.filter(killmail_data.attackers, fn a -> a.alliance_id in alliance_ids end)
-      attacker_criteria = Enum.map(matching_attackers, fn a -> 
-        %{type: :alliance_attacker, alliance_id: a.alliance_id}
-      end)
-      attacker_criteria ++ criteria
-    else
-      criteria
-    end
-    
+
+    criteria =
+      if victim_match do
+        [%{type: :alliance_victim, alliance_id: killmail_data.victim.alliance_id} | criteria]
+      else
+        criteria
+      end
+
+    criteria =
+      if attacker_match do
+        matching_attackers =
+          Enum.filter(killmail_data.attackers, fn a -> a.alliance_id in alliance_ids end)
+
+        attacker_criteria =
+          Enum.map(matching_attackers, fn a ->
+            %{type: :alliance_attacker, alliance_id: a.alliance_id}
+          end)
+
+        attacker_criteria ++ criteria
+      else
+        criteria
+      end
+
     criteria
   end
 

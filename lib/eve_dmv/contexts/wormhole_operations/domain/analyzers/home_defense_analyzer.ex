@@ -259,7 +259,7 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
              JOIN participants p ON km.killmail_id = p.killmail_id
              WHERE km.killmail_time >= $1
                AND (
-                 p.corporation_id = $2 OR 
+                 p.corporation_id = $2 OR
                  fragment("?->>'corporation_id' = ?", km.victim, $2::text)
                )
              GROUP BY p.character_id, p.character_name

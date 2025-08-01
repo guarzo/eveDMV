@@ -10,7 +10,6 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
   - Damage application metrics
   """
 
-
   @doc """
   Calculate comprehensive performance metrics for a battle.
   """

@@ -21,14 +21,16 @@ defmodule EveDmv.Contexts.WormholeOperations.Api do
   defp optimize_chain_coverage_internal(corporation_id, chain_data) do
     # Delegate to unified chain intelligence module for proper implementation
     case ChainIntelligence.analyze_coverage_optimization(corporation_id, chain_data) do
-      {:ok, analysis} -> 
-        {:ok, %{
-          corporation_id: corporation_id,
-          chain_id: chain_data[:map_id],
-          coverage_score: analysis.coverage_score || 0.0,
-          recommendations: analysis.recommendations || [],
-          optimized_at: DateTime.utc_now()
-        }}
+      {:ok, analysis} ->
+        {:ok,
+         %{
+           corporation_id: corporation_id,
+           chain_id: chain_data[:map_id],
+           coverage_score: analysis.coverage_score || 0.0,
+           recommendations: analysis.recommendations || [],
+           optimized_at: DateTime.utc_now()
+         }}
+
       {:error, reason} ->
         Logger.warning("Chain coverage optimization failed: #{inspect(reason)}")
         {:error, :coverage_analysis_unavailable}
@@ -36,16 +38,18 @@ defmodule EveDmv.Contexts.WormholeOperations.Api do
   end
 
   defp get_intelligence_summary_internal(corporation_id) do
-    # Delegate to unified chain intelligence module for proper implementation  
+    # Delegate to unified chain intelligence module for proper implementation
     case ChainIntelligence.get_corporation_intelligence_summary(corporation_id) do
       {:ok, summary} ->
-        {:ok, %{
-          corporation_id: corporation_id,
-          active_chains: summary.active_chains || 0,
-          threat_level: summary.threat_level || :unknown,
-          recent_activity: summary.recent_activity || [],
-          summary_generated_at: DateTime.utc_now()
-        }}
+        {:ok,
+         %{
+           corporation_id: corporation_id,
+           active_chains: summary.active_chains || 0,
+           threat_level: summary.threat_level || :unknown,
+           recent_activity: summary.recent_activity || [],
+           summary_generated_at: DateTime.utc_now()
+         }}
+
       {:error, reason} ->
         Logger.warning("Intelligence summary failed: #{inspect(reason)}")
         {:error, :intelligence_data_unavailable}
@@ -200,11 +204,12 @@ defmodule EveDmv.Contexts.WormholeOperations.Api do
          {:ok, validated_class} <- validate_wormhole_class(wormhole_class) do
       Logger.info("Fleet validation for #{wormhole_class} wormhole operations")
       # Return the fleet as-is without mass optimization
-      {:ok, %{
-        fleet: validated_fleet,
-        wormhole_class: validated_class,
-        recommendations: []
-      }}
+      {:ok,
+       %{
+         fleet: validated_fleet,
+         wormhole_class: validated_class,
+         recommendations: []
+       }}
     else
       {:error, reason} ->
         Logger.warning("Failed to validate fleet for wormhole: #{inspect(reason)}")

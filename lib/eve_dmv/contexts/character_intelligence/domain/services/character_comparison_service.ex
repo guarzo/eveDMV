@@ -65,7 +65,7 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
 
   ## Parameters
   - `char1_id` - First character ID
-  - `char2_id` - Second character ID  
+  - `char2_id` - Second character ID
   - `options` - Comparison options
 
   ## Returns

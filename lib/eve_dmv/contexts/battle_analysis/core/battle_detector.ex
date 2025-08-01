@@ -2,7 +2,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   @moduledoc """
   Unified battle detection service that combines the best features from:
   - Time-based clustering with spatial correlation (from battle_analysis)
-  - Real-time GenServer processing (from combat_analysis)  
+  - Real-time GenServer processing (from combat_analysis)
   - Advanced analytics and metrics (from combat_intelligence)
 
   This module provides comprehensive battle detection from killmail streams.
@@ -352,11 +352,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
       DateTime.diff(battle2.end_time, battle1.start_time, :minute) >= 0
   end
 
-
   defp similar_participants?(battle1, battle2) do
     # Calculate participant overlap between two battles
     participants1 = get_battle_participants(battle1)
     participants2 = get_battle_participants(battle2)
+
     if MapSet.size(participants1) == 0 or MapSet.size(participants2) == 0 do
       false
     else
@@ -374,13 +374,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
     case battle do
       %{participants: participants} when is_struct(participants, MapSet) ->
         participants
+
       %{participants: participants} when is_list(participants) ->
         MapSet.new(participants)
+
       %{participants: participants} when is_map(participants) ->
         MapSet.new(Map.keys(participants))
+
       # If no participants field, try to extract from killmail_ids
       %{killmail_ids: killmail_ids} ->
         extract_participants_from_killmail_ids(killmail_ids)
+
       _ ->
         MapSet.new()
     end
@@ -392,7 +396,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
       KillmailRaw
       |> where([k], k.killmail_id in ^killmail_ids)
       |> Repo.all()
-    
+
     killmails
     |> Enum.reduce(MapSet.new(), fn killmail, acc ->
       participants = extract_participants(killmail)
@@ -418,16 +422,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   """
   def detect_character_battles(character_id, limit \\ 10) do
     since = DateTime.add(DateTime.utc_now(), -30 * 24 * 3600, :second)
-    
+
     # Get killmails involving this character
-    killmails = 
+    killmails =
       KillmailRaw
       |> where([k], k.killmail_time > ^since)
       |> where([k], fragment("? @> ?", k.participants, ^[%{character_id: character_id}]))
       |> order_by([k], desc: k.killmail_time)
-      |> limit(^(limit * 3)) # Get more killmails to find battles
+      # Get more killmails to find battles
+      |> limit(^(limit * 3))
       |> Repo.all()
-    
+
     case detect_battles(killmails) do
       {:ok, battles} -> battles |> Enum.take(limit)
       {:error, _} -> []
@@ -441,7 +446,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   """
   def get_character_battle_stats(character_id) do
     battles = detect_character_battles(character_id, 100)
-    
+
     %{
       total_battles: length(battles),
       total_kills: count_character_kills_in_battles(character_id, battles),
@@ -458,15 +463,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   """
   def detect_system_battles(system_id, limit \\ 10) do
     since = DateTime.add(DateTime.utc_now(), -7 * 24 * 3600, :second)
-    
-    killmails = 
+
+    killmails =
       KillmailRaw
       |> where([k], k.solar_system_id == ^system_id)
       |> where([k], k.killmail_time > ^since)
       |> order_by([k], desc: k.killmail_time)
       |> limit(^(limit * 5))
       |> Repo.all()
-    
+
     case detect_battles(killmails) do
       {:ok, battles} -> battles |> Enum.take(limit)
       {:error, _} -> []
@@ -480,7 +485,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   """
   def get_system_battle_stats(system_id) do
     battles = detect_system_battles(system_id, 100)
-    
+
     %{
       total_battles: length(battles),
       total_kills: count_total_kills_in_battles(battles),
@@ -496,15 +501,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   """
   def detect_corporation_battles(corporation_id, limit \\ 10) do
     since = DateTime.add(DateTime.utc_now(), -30 * 24 * 3600, :second)
-    
-    killmails = 
+
+    killmails =
       KillmailRaw
       |> where([k], k.killmail_time > ^since)
       |> where([k], fragment("? @> ?", k.participants, ^[%{corporation_id: corporation_id}]))
       |> order_by([k], desc: k.killmail_time)
       |> limit(^(limit * 3))
       |> Repo.all()
-    
+
     case detect_battles(killmails) do
       {:ok, battles} -> battles |> Enum.take(limit)
       {:error, _} -> []
@@ -518,7 +523,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   """
   def get_corporation_battle_stats(corporation_id) do
     battles = detect_corporation_battles(corporation_id, 100)
-    
+
     %{
       total_battles: length(battles),
       total_kills: count_corporation_kills_in_battles(corporation_id, battles),
@@ -538,24 +543,24 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
     time_window = @time_window_minutes
     start_time = DateTime.add(killmail.killmail_time, -time_window * 60, :second)
     end_time = DateTime.add(killmail.killmail_time, time_window * 60, :second)
-    
-    related_killmails = 
+
+    related_killmails =
       KillmailRaw
       |> where([k], k.solar_system_id == ^killmail.solar_system_id)
       |> where([k], k.killmail_time >= ^start_time and k.killmail_time <= ^end_time)
       |> Repo.all()
-    
+
     case detect_battles([killmail | related_killmails]) do
       {:ok, [battle | _]} -> {:ok, battle}
       {:ok, []} -> {:error, :no_battle_detected}
       {:error, reason} -> {:error, reason}
     end
   rescue
-    error -> {:error, error}  
+    error -> {:error, error}
   end
 
   # Helper functions for statistics calculations
-  
+
   defp count_character_kills_in_battles(character_id, battles) do
     battles
     |> Enum.map(fn battle ->
@@ -576,7 +581,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
     KillmailRaw
     |> where([k], k.killmail_id in ^killmail_ids)
     |> where([k], fragment("? @> ?", k.participants, ^[%{character_id: character_id}]))
-    |> where([k], fragment("?->'victim'->>'character_id' != ?", k.participants, ^to_string(character_id)))
+    |> where(
+      [k],
+      fragment("?->'victim'->>'character_id' != ?", k.participants, ^to_string(character_id))
+    )
     |> Repo.aggregate(:count)
   rescue
     _ -> 0
@@ -585,7 +593,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   defp count_character_losses_in_battle(character_id, killmail_ids) do
     KillmailRaw
     |> where([k], k.killmail_id in ^killmail_ids)
-    |> where([k], fragment("?->'victim'->>'character_id' = ?", k.participants, ^to_string(character_id)))
+    |> where(
+      [k],
+      fragment("?->'victim'->>'character_id' = ?", k.participants, ^to_string(character_id))
+    )
     |> Repo.aggregate(:count)
   rescue
     _ -> 0
@@ -611,7 +622,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
     KillmailRaw
     |> where([k], k.killmail_id in ^killmail_ids)
     |> where([k], fragment("? @> ?", k.participants, ^[%{character_id: character_id}]))
-    |> where([k], fragment("?->'victim'->>'character_id' != ?", k.participants, ^to_string(character_id)))
+    |> where(
+      [k],
+      fragment("?->'victim'->>'character_id' != ?", k.participants, ^to_string(character_id))
+    )
     |> select([k], k.total_value)
     |> Repo.all()
     |> Enum.sum()
@@ -622,7 +636,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   defp calculate_character_isk_lost_in_battle(character_id, killmail_ids) do
     KillmailRaw
     |> where([k], k.killmail_id in ^killmail_ids)
-    |> where([k], fragment("?->'victim'->>'character_id' = ?", k.participants, ^to_string(character_id)))
+    |> where(
+      [k],
+      fragment("?->'victim'->>'character_id' = ?", k.participants, ^to_string(character_id))
+    )
     |> select([k], k.total_value)
     |> Repo.all()
     |> Enum.sum()
@@ -632,7 +649,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
 
   defp find_most_active_system(battles) do
     battles
-    |> Enum.flat_map(fn battle -> 
+    |> Enum.flat_map(fn battle ->
       case battle.system_id do
         list when is_list(list) -> list
         single -> [single]
@@ -670,8 +687,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
     else
       first_battle = List.last(battles)
       last_battle = List.first(battles)
-      
+
       time_diff_hours = DateTime.diff(last_battle.start_time, first_battle.start_time, :hour)
+
       if time_diff_hours > 0 do
         Float.round(length(battles) / time_diff_hours, 2)
       else
@@ -700,7 +718,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
     KillmailRaw
     |> where([k], k.killmail_id in ^killmail_ids)
     |> where([k], fragment("? @> ?", k.participants, ^[%{corporation_id: corporation_id}]))
-    |> where([k], fragment("?->'victim'->>'corporation_id' != ?", k.participants, ^to_string(corporation_id)))
+    |> where(
+      [k],
+      fragment("?->'victim'->>'corporation_id' != ?", k.participants, ^to_string(corporation_id))
+    )
     |> Repo.aggregate(:count)
   rescue
     _ -> 0
@@ -709,7 +730,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   defp count_corporation_losses_in_battle(corporation_id, killmail_ids) do
     KillmailRaw
     |> where([k], k.killmail_id in ^killmail_ids)
-    |> where([k], fragment("?->'victim'->>'corporation_id' = ?", k.participants, ^to_string(corporation_id)))
+    |> where(
+      [k],
+      fragment("?->'victim'->>'corporation_id' = ?", k.participants, ^to_string(corporation_id))
+    )
     |> Repo.aggregate(:count)
   rescue
     _ -> 0
@@ -735,7 +759,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
     KillmailRaw
     |> where([k], k.killmail_id in ^killmail_ids)
     |> where([k], fragment("? @> ?", k.participants, ^[%{corporation_id: corporation_id}]))
-    |> where([k], fragment("?->'victim'->>'corporation_id' != ?", k.participants, ^to_string(corporation_id)))
+    |> where(
+      [k],
+      fragment("?->'victim'->>'corporation_id' != ?", k.participants, ^to_string(corporation_id))
+    )
     |> select([k], k.total_value)
     |> Repo.all()
     |> Enum.sum()
@@ -746,7 +773,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   defp calculate_corporation_isk_lost_in_battle(corporation_id, killmail_ids) do
     KillmailRaw
     |> where([k], k.killmail_id in ^killmail_ids)
-    |> where([k], fragment("?->'victim'->>'corporation_id' = ?", k.participants, ^to_string(corporation_id)))
+    |> where(
+      [k],
+      fragment("?->'victim'->>'corporation_id' = ?", k.participants, ^to_string(corporation_id))
+    )
     |> select([k], k.total_value)
     |> Repo.all()
     |> Enum.sum()
@@ -757,7 +787,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   defp calculate_corporation_efficiency(corporation_id, battles) do
     destroyed = calculate_corporation_isk_destroyed(corporation_id, battles)
     lost = calculate_corporation_isk_lost(corporation_id, battles)
-    
+
     if destroyed + lost > 0 do
       Float.round(destroyed / (destroyed + lost) * 100, 1)
     else

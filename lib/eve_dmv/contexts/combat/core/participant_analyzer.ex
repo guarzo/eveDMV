@@ -4,7 +4,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer do
 
   Consolidates the best features from multiple implementations:
   - Basic participant extraction
-  - Advanced role classification 
+  - Advanced role classification
   - Experience analysis
   - Affiliation tracking
   - Activity patterns
@@ -392,7 +392,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer do
     # Calculate ship value using market data service
     case get_ship_values(ship_type_ids) do
       {:ok, values} ->
-        # Return average relative value score (0-100) 
+        # Return average relative value score (0-100)
         total_value = Enum.sum(Map.values(values))
         ship_count = length(ship_type_ids)
 

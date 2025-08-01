@@ -331,7 +331,7 @@ defmodule EveDmv.StaticData.ShipAttributesService do
     case group_id do
       # Frigates
       id when id in [25, 237, 324, 830, 831, 893, 1283] -> :frigate
-      # Destroyers  
+      # Destroyers
       id when id in [420, 541, 1305] -> :destroyer
       # Cruisers
       id when id in [26, 358, 833, 832, 894, 906, 963] -> :cruiser
@@ -356,43 +356,58 @@ defmodule EveDmv.StaticData.ShipAttributesService do
 
   defp calculate_base_dps_by_class_and_role(size_class, role) when is_binary(size_class) do
     # More realistic DPS calculations based on typical weapon configurations
-    base_dps = case size_class do
-      "frigate" -> 
-        # T1 frigates: 1-2 small weapons, ~80-120 DPS
-        # T2 frigates: specialized roles, 100-180 DPS  
-        100
-      "destroyer" ->
-        # 6-8 small weapons, good tracking, ~180-250 DPS
-        200
-      "cruiser" ->
-        # 4-6 medium weapons, ~300-450 DPS
-        350
-      "battlecruiser" ->
-        # 6-8 large weapons or many mediums, ~500-700 DPS
-        600
-      "battleship" ->
-        # 6-8 large weapons, ~700-1000 DPS
-        800
-      "capital" ->
-        # Capital weapons, ~2000-4000 DPS
-        3000
-      "supercapital" ->
-        # Multiple capital weapons, 8000+ DPS
-        12000
-      _ -> 
-        120  # Default for unknown classes
-    end
+    base_dps =
+      case size_class do
+        "frigate" ->
+          # T1 frigates: 1-2 small weapons, ~80-120 DPS
+          # T2 frigates: specialized roles, 100-180 DPS
+          100
+
+        "destroyer" ->
+          # 6-8 small weapons, good tracking, ~180-250 DPS
+          200
+
+        "cruiser" ->
+          # 4-6 medium weapons, ~300-450 DPS
+          350
+
+        "battlecruiser" ->
+          # 6-8 large weapons or many mediums, ~500-700 DPS
+          600
+
+        "battleship" ->
+          # 6-8 large weapons, ~700-1000 DPS
+          800
+
+        "capital" ->
+          # Capital weapons, ~2000-4000 DPS
+          3000
+
+        "supercapital" ->
+          # Multiple capital weapons, 8000+ DPS
+          12000
+
+        _ ->
+          # Default for unknown classes
+          120
+      end
 
     # Adjust for role specialization
     case role do
       "dps" -> base_dps
-      "attack" -> base_dps  
-      "assault" -> round(base_dps * 1.1)  # Assault ships get damage bonus
-      "logistics" -> round(base_dps * 0.2)  # Logistics ships have minimal weapons
-      "ewar" -> round(base_dps * 0.4)  # EWAR ships sacrifice damage for utility
-      "tackle" -> round(base_dps * 0.6)  # Tackle ships focus on speed/point
-      "support" -> round(base_dps * 0.8)  # Support ships have reduced damage
-      "transport" -> round(base_dps * 0.3)  # Haulers have minimal weapons
+      "attack" -> base_dps
+      # Assault ships get damage bonus
+      "assault" -> round(base_dps * 1.1)
+      # Logistics ships have minimal weapons
+      "logistics" -> round(base_dps * 0.2)
+      # EWAR ships sacrifice damage for utility
+      "ewar" -> round(base_dps * 0.4)
+      # Tackle ships focus on speed/point
+      "tackle" -> round(base_dps * 0.6)
+      # Support ships have reduced damage
+      "support" -> round(base_dps * 0.8)
+      # Haulers have minimal weapons
+      "transport" -> round(base_dps * 0.3)
       _ -> base_dps
     end
   end
@@ -402,12 +417,18 @@ defmodule EveDmv.StaticData.ShipAttributesService do
     case role do
       "dps" -> 1.0
       "attack" -> 1.0
-      "assault" -> 1.15  # HACs and AFs get damage bonuses
-      "logistics" -> 0.25  # Logistics ships focus on reps
-      "ewar" -> 0.4   # EWAR ships sacrifice damage  
-      "tackle" -> 0.7   # Interceptors/dictors moderate damage
-      "support" -> 0.8  # Command ships still do decent damage
-      "transport" -> 0.3  # Haulers minimal combat capability
+      # HACs and AFs get damage bonuses
+      "assault" -> 1.15
+      # Logistics ships focus on reps
+      "logistics" -> 0.25
+      # EWAR ships sacrifice damage
+      "ewar" -> 0.4
+      # Interceptors/dictors moderate damage
+      "tackle" -> 0.7
+      # Command ships still do decent damage
+      "support" -> 0.8
+      # Haulers minimal combat capability
+      "transport" -> 0.3
       _ -> 1.0
     end
   end

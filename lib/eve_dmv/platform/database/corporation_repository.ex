@@ -35,7 +35,7 @@ defmodule EveDmv.Platform.Database.CorporationRepository do
       FROM killmails_raw
       WHERE victim_corporation_id = $1
         AND victim_character_id IS NOT NULL
-      GROUP BY victim_character_id, victim_character_name, victim_corporation_id, 
+      GROUP BY victim_character_id, victim_character_name, victim_corporation_id,
                victim_corporation_name, victim_alliance_id, victim_alliance_name
     ),
     attacker_members AS (
@@ -59,7 +59,7 @@ defmodule EveDmv.Platform.Database.CorporationRepository do
       UNION
       SELECT * FROM attacker_members
     )
-    SELECT 
+    SELECT
       character_id,
       character_name,
       corporation_id,

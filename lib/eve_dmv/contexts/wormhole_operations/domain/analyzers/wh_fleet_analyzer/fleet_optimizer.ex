@@ -57,8 +57,12 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetOptimizer do
   """
   def generate_counter_doctrine_analysis(composition) do
     # Use the doctrine effectiveness service for real analysis
-    case EveDmv.Contexts.Combat.Services.DoctrineEffectivenessService.analyze_counter_doctrine_effectiveness(composition) do
-      {:ok, analyses} -> analyses
+    case EveDmv.Contexts.Combat.Services.DoctrineEffectivenessService.analyze_counter_doctrine_effectiveness(
+           composition
+         ) do
+      {:ok, analyses} ->
+        analyses
+
       {:error, _reason} ->
         # Fallback to basic composition analysis if service fails
         generate_basic_counter_analysis(composition)
@@ -246,7 +250,7 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetOptimizer do
   defp generate_basic_counter_analysis(composition) do
     # Basic fallback analysis based on composition characteristics
     ship_types = extract_ship_types_from_composition(composition)
-    
+
     [
       analyze_vs_armor_hacs_basic(ship_types),
       analyze_vs_shield_cruisers_basic(ship_types)
@@ -258,10 +262,13 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetOptimizer do
     case composition do
       %{"ships" => ships} when is_list(ships) ->
         Enum.map(ships, &(&1["type_id"] || &1[:type_id]))
+
       ships when is_list(ships) ->
         Enum.map(ships, &(&1["type_id"] || &1[:type_id] || &1))
+
       %{} ->
         Map.keys(composition)
+
       _ ->
         []
     end
@@ -271,9 +278,9 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetOptimizer do
   defp analyze_vs_armor_hacs_basic(ship_types) do
     has_ewar = Enum.any?(ship_types, &EveDmv.StaticData.ShipRoles.is_ewar_ship?/1)
     has_high_alpha = has_alpha_ships?(ship_types)
-    
+
     effectiveness = calculate_basic_effectiveness_vs_armor_hacs(has_ewar, has_high_alpha)
-    
+
     %{
       "threat_type" => "Armor HAC gang",
       "effectiveness" => effectiveness,
@@ -284,9 +291,9 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetOptimizer do
   defp analyze_vs_shield_cruisers_basic(ship_types) do
     has_range = has_range_ships?(ship_types)
     has_mobility = has_mobile_ships?(ship_types)
-    
+
     effectiveness = calculate_basic_effectiveness_vs_shield_cruisers(has_range, has_mobility)
-    
+
     %{
       "threat_type" => "Shield cruiser gang",
       "effectiveness" => effectiveness,

@@ -268,15 +268,18 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.TacticalAnaly
           %{primary_targets: targets} when targets != [] ->
             # Alliance that attacks the most entities is likely side_a (aggressor)
             if length(targets) >= 3, do: :side_a, else: :side_b
-          _ -> :neutral
+
+          _ ->
+            :neutral
         end
-      
+
       # Fallback: use alliance characteristics for basic side assignment
       alliance_id && alliance_id > 0 ->
         # Large alliances (lower IDs are typically older/larger) are more likely aggressors
         if alliance_id < 500_000, do: :side_a, else: :side_b
-      
-      true -> :neutral
+
+      true ->
+        :neutral
     end
   end
 
@@ -293,17 +296,20 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.TacticalAnaly
           %{aggression_score: score} when score > 0.0 -> :side_b
           _ -> :neutral
         end
-      
-      # Fallback: use corporation characteristics  
+
+      # Fallback: use corporation characteristics
       corporation_id && corporation_id > 0 ->
         # NPC corporations (ID < 1000000) are typically neutral
         cond do
           corporation_id < 1_000_000 -> :neutral
-          corporation_id < 2_000_000 -> :side_a  # Older player corps
-          true -> :side_b  # Newer player corps
+          # Older player corps
+          corporation_id < 2_000_000 -> :side_a
+          # Newer player corps
+          true -> :side_b
         end
-      
-      true -> :neutral
+
+      true ->
+        :neutral
     end
   end
 

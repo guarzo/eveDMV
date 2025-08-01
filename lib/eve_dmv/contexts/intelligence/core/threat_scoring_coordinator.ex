@@ -21,7 +21,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.ThreatScoringCoordinator do
     case ThreatAssessmentEngine.assess_threat(character_id, opts) do
       {:ok, assessment} ->
         {:ok, assessment.overall_score}
-      
+
       error ->
         error
     end

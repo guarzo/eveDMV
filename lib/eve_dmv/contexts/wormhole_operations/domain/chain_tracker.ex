@@ -110,7 +110,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainTracker do
 
       # Persist to database for proper chain tracking
       case save_connection_to_database(connection) do
-        {:ok, saved_connection} -> {:ok, saved_connection}
+        {:ok, saved_connection} ->
+          {:ok, saved_connection}
+
         {:error, reason} ->
           Logger.warning("Failed to save connection: #{inspect(reason)}")
           # Return the connection data even if persistence fails

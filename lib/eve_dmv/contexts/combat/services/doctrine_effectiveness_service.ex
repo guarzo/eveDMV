@@ -101,7 +101,7 @@ defmodule EveDmv.Contexts.Combat.Services.DoctrineEffectivenessService do
         has_significant_role?(ship_roles, "logistics", 0.25) ->
           "Logistics Heavy"
 
-        # Battleship doctrine  
+        # Battleship doctrine
         has_significant_ship_class?(composition, :battleship, 0.6) ->
           "Battleship Doctrine"
 

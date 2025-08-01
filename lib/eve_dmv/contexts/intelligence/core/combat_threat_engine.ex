@@ -78,7 +78,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.CombatThreatEngine do
       23911,
       23915,
       24483,
-      # Dreadnoughts  
+      # Dreadnoughts
       19720,
       19722,
       19724,

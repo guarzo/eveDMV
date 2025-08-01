@@ -502,7 +502,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.CombatStatsAnalyzer do
 
   defp classify_security_status(solar_system_id) do
     sec = EveDmv.StaticData.SystemData.get_system_security(solar_system_id)
-    
+
     cond do
       sec >= 0.5 -> :highsec
       sec > 0.0 -> :lowsec

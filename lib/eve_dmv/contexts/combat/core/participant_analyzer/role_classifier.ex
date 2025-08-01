@@ -167,7 +167,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.RoleClassifier do
     confidence = 0.0
 
     # Using logistics ship is strong indicator
-    confidence = 
+    confidence =
       if using_logistics_ship?(participant[:ships_used] || []) do
         confidence + 0.4
       else
@@ -175,7 +175,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.RoleClassifier do
       end
 
     # Low damage output expected
-    confidence = 
+    confidence =
       if participant[:total_damage_done] < 1000 do
         confidence + 0.1
       else
@@ -188,7 +188,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.RoleClassifier do
   defp calculate_ewar_confidence(participant) do
     confidence = 0.0
 
-    confidence = 
+    confidence =
       if using_ewar_ship?(participant[:ships_used] || []) do
         confidence + 0.4
       else
@@ -196,7 +196,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.RoleClassifier do
       end
 
     # EWAR pilots often have many kill participations but low damage
-    confidence = 
+    confidence =
       if participant[:appearances] > 10 && participant[:total_damage_done] < 5000 do
         confidence + 0.2
       else
@@ -221,7 +221,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.RoleClassifier do
     confidence = 0.0
 
     # High appearance count
-    confidence = 
+    confidence =
       if participant[:appearances] >= 15 do
         confidence + 0.2
       else
@@ -229,7 +229,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.RoleClassifier do
       end
 
     # Survived the battle
-    confidence = 
+    confidence =
       if participant[:survival_time] == :survived do
         confidence + 0.2
       else
@@ -239,7 +239,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.RoleClassifier do
     # Low average damage (not primary DPS)
     avg_damage = (participant[:total_damage_done] || 0) / max(participant[:appearances] || 1, 1)
 
-    confidence = 
+    confidence =
       if avg_damage < 5000 do
         confidence + 0.1
       else

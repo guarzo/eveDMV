@@ -34,13 +34,13 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
 
   @doc """
   Generate an alert for a surveillance match.
-  
+
   Returns the generated alert or error if alert generation fails.
   """
   def generate_alert_for_match(match) do
     try do
       priority = calculate_alert_priority(match)
-      
+
       alert_data = %{
         id: generate_alert_id(),
         profile_id: match.profile_id,
@@ -59,7 +59,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
         created_at: DateTime.utc_now(),
         expires_at: calculate_expiry_time(priority)
       }
-      
+
       {:ok, alert_data}
     rescue
       _error ->
@@ -588,7 +588,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
   defp calculate_alert_priority(match) do
     confidence = match.match_confidence || 0.0
     killmail_value = match.killmail_value || 0
-    
+
     cond do
       confidence >= 0.9 and killmail_value > 1_000_000_000 -> @priority_critical
       confidence >= 0.8 or killmail_value > 500_000_000 -> @priority_high
@@ -599,7 +599,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
 
   defp determine_alert_type(match) do
     criteria = match.matched_criteria || []
-    
+
     cond do
       Enum.any?(criteria, fn c -> c.type == :character_victim end) -> :character_loss
       Enum.any?(criteria, fn c -> c.type == :character_attacker end) -> :character_activity
@@ -623,40 +623,46 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
     criteria_count = length(match.matched_criteria || [])
     confidence = match.match_confidence || 0.0
     value = match.killmail_value || 0
-    
-    value_text = if value > 0 do
-      " (#{format_isk_value(value)} ISK)"
-    else
-      ""
-    end
-    
+
+    value_text =
+      if value > 0 do
+        " (#{format_isk_value(value)} ISK)"
+      else
+        ""
+      end
+
     "Surveillance match detected with #{criteria_count} matching criteria. " <>
-    "Confidence: #{Float.round(confidence * 100, 1)}%#{value_text}"
+      "Confidence: #{Float.round(confidence * 100, 1)}%#{value_text}"
   end
 
   defp calculate_expiry_time(priority) do
-    hours_to_expire = case priority do
-      @priority_critical -> 48  # 2 days
-      @priority_high -> 24      # 1 day
-      @priority_medium -> 12    # 12 hours
-      @priority_low -> 6        # 6 hours
-    end
-    
+    hours_to_expire =
+      case priority do
+        # 2 days
+        @priority_critical -> 48
+        # 1 day
+        @priority_high -> 24
+        # 12 hours
+        @priority_medium -> 12
+        # 6 hours
+        @priority_low -> 6
+      end
+
     DateTime.add(DateTime.utc_now(), hours_to_expire * 3600, :second)
   end
 
   defp format_isk_value(value) when value >= 1_000_000_000 do
     "#{Float.round(value / 1_000_000_000, 1)}B"
   end
-  
+
   defp format_isk_value(value) when value >= 1_000_000 do
     "#{Float.round(value / 1_000_000, 1)}M"
   end
-  
+
   defp format_isk_value(value) when value >= 1_000 do
     "#{Float.round(value / 1_000, 1)}K"
   end
-  
+
   defp format_isk_value(value) do
     "#{value}"
   end

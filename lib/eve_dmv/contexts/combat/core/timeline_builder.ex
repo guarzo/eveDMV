@@ -9,7 +9,6 @@ defmodule EveDmv.Contexts.Combat.Core.TimelineBuilder do
   - Tactical flow analysis
   """
 
-
   @doc """
   Build a complete battle timeline from killmails.
   """

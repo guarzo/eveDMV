@@ -175,8 +175,12 @@ defmodule EveDmvWeb.SurveillanceLive.ProfileService do
     Atom.to_string(error)
   end
 
-  defp format_error_message(error) when is_exception(error) do
-    Exception.message(error)
+  defp format_error_message(%{__struct__: module} = error) when is_atom(module) do
+    if function_exported?(module, :message, 1) do
+      module.message(error)
+    else
+      inspect(error)
+    end
   end
 
   defp format_error_message(error) do

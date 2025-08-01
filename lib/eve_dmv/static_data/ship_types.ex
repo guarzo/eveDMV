@@ -78,22 +78,22 @@ defmodule EveDmv.StaticData.ShipTypes do
   # Helper function to get ship group name
   defp get_ship_group_name(type_id) do
     from(i in ItemType,
-         where: i.type_id == ^type_id and i.is_ship == true,
-         select: i.group_name
-       )
-       |> Repo.one()
+      where: i.type_id == ^type_id and i.is_ship == true,
+      select: i.group_name
+    )
+    |> Repo.one()
   end
 
   # Check if group name indicates T2 ship
   defp is_t2_group?(group_name) do
     group_name in [
       "Assault Frigate",
-      "Covert Ops", 
+      "Covert Ops",
       "Electronic Attack Frigate",
       "Interceptor",
       "Stealth Bomber",
       "Heavy Assault Cruiser",
-      "Heavy Interdictor", 
+      "Heavy Interdictor",
       "Logistics",
       "Recon Ship",
       "Interdictor",
@@ -107,7 +107,7 @@ defmodule EveDmv.StaticData.ShipTypes do
   defp is_faction_group?(group_name) do
     group_name in [
       "Faction Frigate",
-      "Faction Cruiser", 
+      "Faction Cruiser",
       "Faction Battleship",
       "Pirate Frigate",
       "Pirate Cruiser",
@@ -680,7 +680,7 @@ defmodule EveDmv.StaticData.ShipTypes do
 
   @doc """
   Get ship type information by type ID.
-  
+
   Returns comprehensive ship information including name, group, and attributes.
   """
   def get_ship_type(type_id) when is_integer(type_id) do
@@ -696,8 +696,10 @@ defmodule EveDmv.StaticData.ShipTypes do
            }
          )
          |> Repo.one() do
-      nil -> {:error, :not_found}
-      ship_info -> 
+      nil ->
+        {:error, :not_found}
+
+      ship_info ->
         # Add classification to the info
         classification = classify_by_group_name(ship_info.group_name)
         info_with_class = Map.put(ship_info, :classification, classification)

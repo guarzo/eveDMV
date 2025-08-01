@@ -79,9 +79,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.ProfileService do
       }
 
       # Cache the share record
-      Cache.put(:analysis, {:profile_share, share_token}, share_record,
-        ttl: :timer.hours(24 * 7)
-      )
+      Cache.put(:analysis, {:profile_share, share_token}, share_record, ttl: :timer.hours(24 * 7))
 
       {:ok,
        %{
@@ -502,14 +500,14 @@ defmodule EveDmv.Contexts.Intelligence.Services.ProfileService do
             <p><strong>Generated:</strong> #{profile.generated_at}</p>
             <p><strong>Activity Level:</strong> #{profile.basic_info.activity_level}</p>
         </div>
-        
+
         <div class="section">
             <div class="header">Threat Assessment</div>
             <p><strong>Threat Level:</strong> <span class="threat-#{profile.threat_profile.threat_level}">#{String.upcase(to_string(profile.threat_profile.threat_level))}</span></p>
             <p><strong>Threat Score:</strong> #{profile.threat_profile.overall_score}/100</p>
             <p><strong>Recommendation:</strong> #{profile.threat_profile.engagement_recommendation}</p>
         </div>
-        
+
         <div class="section">
             <div class="header">Intelligence Summary</div>
             #{Enum.map(profile.intelligence_summary.key_insights, fn insight -> "<li>#{insight}</li>" end) |> Enum.join("")}

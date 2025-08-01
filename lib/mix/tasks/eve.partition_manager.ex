@@ -188,23 +188,29 @@ defmodule Mix.Tasks.Eve.PartitionManager do
     end
   end
 
-  defp parse_size_to_bytes(size_string) do
+  defp parse_size_to_bytes(size_string) when is_binary(size_string) do
     case Regex.run(~r/(\d+\.?\d*)\s*(\w+)/, size_string) do
       [_, size_str, unit] ->
-        size = String.to_float(size_str)
+        size = if String.contains?(size_str, ".") do
+          String.to_float(size_str)
+        else
+          String.to_integer(size_str) * 1.0
+        end
 
         case String.upcase(unit) do
           "BYTES" -> size
           "KB" -> size * 1024
           "MB" -> size * 1024 * 1024
           "GB" -> size * 1024 * 1024 * 1024
-          _ -> 0
+          _ -> 0.0
         end
 
       _ ->
-        0
+        0.0
     end
   end
+
+  defp parse_size_to_bytes(_), do: 0.0
 
   defp format_bytes(bytes) when bytes < 1024, do: "#{:erlang.round(bytes)} bytes"
   defp format_bytes(bytes) when bytes < 1024 * 1024, do: "#{Float.round(bytes / 1024, 1)} KB"

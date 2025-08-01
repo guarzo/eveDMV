@@ -241,21 +241,23 @@ defmodule EveDmv.Intelligence.Analyzers.AssetAnalyzer do
     # Resolve location IDs to system names using ESI cache
     location_map
     |> Enum.map(fn {location_id, location_data} ->
-      location_name = case resolve_location_name(location_id) do
-        {:ok, name} -> name
-        {:error, _} -> "Location #{location_id}"
-      end
-      
+      location_name =
+        case resolve_location_name(location_id) do
+          {:ok, name} -> name
+          {:error, _} -> "Location #{location_id}"
+        end
+
       {location_name, location_data}
     end)
     |> Enum.into(%{})
   end
-  
+
   defp resolve_location_name(location_id) do
     # Try to resolve location using ESI cache
     case EsiCache.get_system(location_id) do
-      {:ok, system_data} -> 
+      {:ok, system_data} ->
         {:ok, system_data.name}
+
       :miss ->
         # Structure resolution not yet implemented
         {:error, :location_not_found}

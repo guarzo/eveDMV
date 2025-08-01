@@ -78,7 +78,7 @@ defmodule EveDmv.Infrastructure.EventBus do
 
   @doc """
   Publish an event to a specific context/topic.
-  
+
   This is a context-aware version that allows publishing events with
   additional context information.
   """
@@ -86,16 +86,16 @@ defmodule EveDmv.Infrastructure.EventBus do
   def publish(context, event) when is_atom(context) and is_map(event) do
     # Enhance the event with context information
     enhanced_event = Map.put(event, :context, context)
-    
+
     # Convert to struct-like format if not already
-    event_struct = 
+    event_struct =
       if is_struct(enhanced_event) do
         enhanced_event
       else
         # Create a generic event struct
         struct(EveDmv.Events.GenericEvent, enhanced_event)
       end
-    
+
     publish(event_struct)
   end
 

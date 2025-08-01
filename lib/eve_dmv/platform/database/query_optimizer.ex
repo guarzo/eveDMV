@@ -256,7 +256,7 @@ defmodule EveDmv.Database.QueryOptimizer do
   def monitor_queries(func) do
     # Initialize query tracking for this process
     Process.put(:query_count, 0)
-    
+
     # Wrap function execution with query counting
     start_count = get_query_count()
     result = func.()
@@ -274,10 +274,10 @@ defmodule EveDmv.Database.QueryOptimizer do
 
     result
   end
-  
+
   @doc """
   Increment the query counter for the current process.
-  
+
   This should be called by query telemetry handlers.
   """
   def increment_query_count do
@@ -292,11 +292,13 @@ defmodule EveDmv.Database.QueryOptimizer do
       [] ->
         # No telemetry handlers - use process-local counter
         Process.get(:query_count, 0)
-      
+
       _handlers ->
         # Telemetry available - get count from metrics
         case :ets.info(:telemetry_metrics) do
-          :undefined -> 0
+          :undefined ->
+            0
+
           _ ->
             # In practice, would aggregate query counts from telemetry
             # For now, return process-local counter as fallback

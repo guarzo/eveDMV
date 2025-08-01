@@ -31,7 +31,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
 
   @doc """
   Dispatch alert notification immediately and return result.
-  
+
   This is a synchronous version that returns the dispatch result.
   """
   def dispatch_alert_notification(alert) do
@@ -117,33 +117,40 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
     case ProfileRepository.get_profile(alert.profile_id) do
       {:ok, profile} ->
         notifications = prepare_notifications(alert, profile)
-        
+
         # Attempt to deliver notifications immediately
-        delivery_results = Enum.map(notifications, fn notification ->
-          case deliver_notification_immediate(notification) do
-            {:ok, result} -> 
-              {:ok, %{notification_id: notification.id, status: :delivered, result: result}}
-            {:error, reason} -> 
-              {:error, %{notification_id: notification.id, status: :failed, reason: reason}}
-          end
-        end)
-        
+        delivery_results =
+          Enum.map(notifications, fn notification ->
+            case deliver_notification_immediate(notification) do
+              {:ok, result} ->
+                {:ok, %{notification_id: notification.id, status: :delivered, result: result}}
+
+              {:error, reason} ->
+                {:error, %{notification_id: notification.id, status: :failed, reason: reason}}
+            end
+          end)
+
         # Update notification history
-        new_history = add_to_history(state.notification_history, alert.profile_id, delivery_results)
+        new_history =
+          add_to_history(state.notification_history, alert.profile_id, delivery_results)
+
         new_state = %{state | notification_history: new_history}
-        
+
         dispatch_result = %{
-          profile_id: alert.profile_id,  
+          profile_id: alert.profile_id,
           alert_id: alert.id,
           notifications_sent: length(notifications),
           delivery_results: delivery_results,
           timestamp: DateTime.utc_now()
         }
-        
+
         {:reply, {:ok, dispatch_result}, new_state}
-      
+
       {:error, reason} ->
-        Logger.error("Failed to get profile #{alert.profile_id} for notification dispatch: #{inspect(reason)}")
+        Logger.error(
+          "Failed to get profile #{alert.profile_id} for notification dispatch: #{inspect(reason)}"
+        )
+
         {:reply, {:error, :profile_not_found}, state}
     end
   end
@@ -749,34 +756,34 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
     case notification.channel do
       @channel_email ->
         deliver_email_notification(notification)
-      
+
       @channel_webhook ->
         deliver_webhook_notification(notification)
-      
+
       @channel_in_app ->
         deliver_in_app_notification(notification)
-      
+
       _ ->
         {:error, :unsupported_channel}
     end
   end
 
-
   defp add_to_history(history, profile_id, delivery_results) do
     existing_history = Map.get(history, profile_id, [])
-    
-    history_entries = Enum.map(delivery_results, fn result ->
-      %{
-        timestamp: DateTime.utc_now(),
-        result: result,
-        id: generate_notification_id()
-      }
-    end)
-    
+
+    history_entries =
+      Enum.map(delivery_results, fn result ->
+        %{
+          timestamp: DateTime.utc_now(),
+          result: result,
+          id: generate_notification_id()
+        }
+      end)
+
     updated_history = history_entries ++ existing_history
     # Keep only last 100 entries per profile
     trimmed_history = Enum.take(updated_history, 100)
-    
+
     Map.put(history, profile_id, trimmed_history)
   end
 

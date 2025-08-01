@@ -257,8 +257,8 @@ defmodule EveDmv.StaticData.SdeImporter do
       end)
 
     query = """
-    INSERT INTO ship_attributes 
-    (type_id, shield_hp, armor_hp, structure_hp, 
+    INSERT INTO ship_attributes
+    (type_id, shield_hp, armor_hp, structure_hp,
      shield_em_resist, shield_thermal_resist, shield_kinetic_resist, shield_explosive_resist,
      armor_em_resist, armor_thermal_resist, armor_kinetic_resist, armor_explosive_resist,
      data_source, last_updated)

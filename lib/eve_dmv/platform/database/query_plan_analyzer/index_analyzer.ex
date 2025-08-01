@@ -374,14 +374,17 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
     case {index.cost, index.rows} do
       {cost, rows} when cost > 0 and rows > 0 ->
         cost_per_row = cost / rows
+
         cond do
           cost_per_row < 1.0 -> "Very High"
-          cost_per_row < 5.0 -> "High" 
+          cost_per_row < 5.0 -> "High"
           cost_per_row < 20.0 -> "Moderate"
           cost_per_row < 100.0 -> "Low"
           true -> "Very Low"
         end
-      _ -> "Inactive"
+
+      _ ->
+        "Inactive"
     end
   end
 
@@ -400,11 +403,12 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
       "Index Only Scan" ->
         # Index-only scans are generally low maintenance
         if index.heap_fetches && index.heap_fetches > index.rows * 0.1 do
-          "Medium"  # High heap fetches indicate bloat
+          # High heap fetches indicate bloat
+          "Medium"
         else
           "Low"
         end
-      
+
       "Bitmap Index Scan" ->
         # Bitmap scans on large datasets have higher maintenance
         if index.cost > 1000 do
@@ -412,7 +416,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
         else
           "Medium"
         end
-      
+
       "Index Scan" ->
         # Regular index scans - maintenance depends on selectivity
         if index.rows > 10000 do
@@ -420,8 +424,9 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
         else
           "Low"
         end
-      
-      _ -> "Medium"
+
+      _ ->
+        "Medium"
     end
   end
 

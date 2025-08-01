@@ -76,7 +76,7 @@ defmodule EveDmv.Core.SharedKernel.ValueObjects.SystemId do
   @spec known_space?(t()) :: boolean()
   def known_space?(%__MODULE__{value: id}) do
     # High-sec: 30,000,000 - 30,004,999
-    # Low-sec: 30,005,000 - 30,099,999  
+    # Low-sec: 30,005,000 - 30,099,999
     # Null-sec: 30,100,000 - 30,999,999
     id >= 30_000_000 and id <= 30_999_999
   end

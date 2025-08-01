@@ -907,7 +907,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
 
     case Repo.query(
            """
-             SELECT DISTINCT 
+             SELECT DISTINCT
                km.solar_system_id as destination_system,
                COUNT(*) as activity_count,
                MAX(km.killmail_time) as last_activity
@@ -915,8 +915,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
              WHERE km.killmail_time >= $1
                AND km.solar_system_id != $2
                AND EXISTS (
-                 SELECT 1 FROM killmails_raw km2 
-                 WHERE km2.solar_system_id = $2 
+                 SELECT 1 FROM killmails_raw km2
+                 WHERE km2.solar_system_id = $2
                  AND ABS(EXTRACT(EPOCH FROM km.killmail_time - km2.killmail_time)) < 1800
                )
              GROUP BY km.solar_system_id
@@ -1089,14 +1089,15 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
   defp get_system_escape_connections(_route_type, system_id) do
     # Query actual escape route data from wormhole connections
     # This would integrate with wormhole mapping services like Pathfinder or Tripwire
-    
+
     with {:ok, system_connections} <- get_system_connections(system_id) do
       # Analyze connections for escape route potential
-      escape_routes = system_connections
+      escape_routes =
+        system_connections
         |> Enum.filter(&is_viable_escape_route?/1)
         |> Enum.map(&analyze_escape_route_quality/1)
-        |> Enum.sort_by(&(&1.safety_rating), :desc)
-      
+        |> Enum.sort_by(& &1.safety_rating, :desc)
+
       if Enum.empty?(escape_routes) do
         {:error, :no_escape_routes}
       else
@@ -1452,14 +1453,18 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
   defp get_corporation_home_system(corporation_id) do
     # Get the home system for a corporation from database
     # This would query corporation structures, member activity, or alliance data
-    
+
     case get_most_active_system_for_corporation(corporation_id) do
-      {:ok, system_id} when is_integer(system_id) -> system_id
+      {:ok, system_id} when is_integer(system_id) ->
+        system_id
+
       {:error, _} ->
         # If no activity data, check corporation structures
         case get_corporation_structure_systems(corporation_id) do
-          {:ok, [primary_system | _]} -> primary_system
-          _ -> 
+          {:ok, [primary_system | _]} ->
+            primary_system
+
+          _ ->
             # No data available - return error instead of fake data
             {:error, :home_system_unknown}
         end
@@ -1472,36 +1477,40 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
     # For now, return no connections available
     {:error, :no_mapping_data}
   end
-  
+
   defp is_viable_escape_route?(connection) do
     # Check if connection is suitable for escape (not critical mass, not EOL)
-    connection.mass_remaining > 0.5 and 
-    connection.time_remaining > 300 and # 5 minutes
-    connection.destination_class in ["K-space", "C1", "C2", "C3"] # Safer destinations
+    # 5 minutes
+    # Safer destinations
+    connection.mass_remaining > 0.5 and
+      connection.time_remaining > 300 and
+      connection.destination_class in ["K-space", "C1", "C2", "C3"]
   end
-  
+
   defp analyze_escape_route_quality(connection) do
-    safety_rating = cond do
-      connection.destination_class == "K-space" -> 0.9
-      connection.destination_class in ["C1", "C2"] -> 0.7
-      connection.destination_class == "C3" -> 0.5
-      true -> 0.3
-    end
-    
+    safety_rating =
+      cond do
+        connection.destination_class == "K-space" -> 0.9
+        connection.destination_class in ["C1", "C2"] -> 0.7
+        connection.destination_class == "C3" -> 0.5
+        true -> 0.3
+      end
+
     %{
       connection: connection,
       safety_rating: safety_rating,
-      estimated_travel_time: connection.jumps * 30 # 30 seconds per jump
+      # 30 seconds per jump
+      estimated_travel_time: connection.jumps * 30
     }
   end
-  
+
   # Helper functions for corporation home system detection
   defp get_most_active_system_for_corporation(_corporation_id) do
     # Query killmail data to find most active system for this corp
     # This would analyze member activity patterns
     {:error, :activity_data_unavailable}
   end
-  
+
   defp get_corporation_structure_systems(_corporation_id) do
     # Query structure data (citadels, POSes) for the corporation
     # This would integrate with ESI structure endpoints

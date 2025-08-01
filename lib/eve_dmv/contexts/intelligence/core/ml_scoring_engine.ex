@@ -13,7 +13,6 @@ defmodule EveDmv.Contexts.Intelligence.Core.MLScoringEngine do
   alias EveDmv.Database.{CharacterRepository, KillmailRepository}
   alias EveDmv.Cache
 
-
   require Logger
 
   @cache_ttl :timer.hours(4)
@@ -215,9 +214,10 @@ defmodule EveDmv.Contexts.Intelligence.Core.MLScoringEngine do
   end
 
   defp extract_combat_features(killmails) when is_list(killmails) do
-    kills = Enum.filter(killmails, fn km -> 
-      is_map(km) && Map.get(km, :is_victim, false) == false
-    end)
+    kills =
+      Enum.filter(killmails, fn km ->
+        is_map(km) && Map.get(km, :is_victim, false) == false
+      end)
 
     %{
       solo_kill_ratio: calculate_solo_ratio(kills),
@@ -230,17 +230,18 @@ defmodule EveDmv.Contexts.Intelligence.Core.MLScoringEngine do
       engagement_range_variance: calculate_engagement_variance(kills)
     }
   end
-  
-  defp extract_combat_features(_), do: %{
-    solo_kill_ratio: 0.0,
-    average_gang_size: 0.0,
-    ship_diversity_index: 0.0,
-    capital_usage_ratio: 0.0,
-    average_kill_value: 0.0,
-    killing_blow_ratio: 0.0,
-    weapon_diversity: 0.0,
-    engagement_range_variance: 0.0
-  }
+
+  defp extract_combat_features(_),
+    do: %{
+      solo_kill_ratio: 0.0,
+      average_gang_size: 0.0,
+      ship_diversity_index: 0.0,
+      capital_usage_ratio: 0.0,
+      average_kill_value: 0.0,
+      killing_blow_ratio: 0.0,
+      weapon_diversity: 0.0,
+      engagement_range_variance: 0.0
+    }
 
   defp extract_network_features(killmails) do
     %{
@@ -405,45 +406,45 @@ defmodule EveDmv.Contexts.Intelligence.Core.MLScoringEngine do
 
     if losses == 0, do: kills * 1.0, else: kills / losses
   end
-  
+
   defp calculate_kd_ratio(_), do: 0.0
 
   defp count_kills(killmails) when is_list(killmails) do
-    Enum.count(killmails, fn km -> 
+    Enum.count(killmails, fn km ->
       is_map(km) && Map.get(km, :is_victim, false) == false
     end)
   end
-  
+
   defp count_kills(_), do: 0
 
   defp count_losses(killmails) when is_list(killmails) do
-    Enum.count(killmails, fn km -> 
+    Enum.count(killmails, fn km ->
       is_map(km) && Map.get(km, :is_victim, false) == true
     end)
   end
-  
+
   defp count_losses(_), do: 0
 
   defp sum_isk_destroyed(killmails) when is_list(killmails) do
     killmails
-    |> Enum.filter(fn km -> 
+    |> Enum.filter(fn km ->
       is_map(km) && Map.get(km, :is_victim, false) == false
     end)
     |> Enum.map(fn km -> Map.get(km, :total_value, 0.0) end)
     |> Enum.sum()
   end
-  
+
   defp sum_isk_destroyed(_), do: 0.0
 
   defp sum_isk_lost(killmails) when is_list(killmails) do
     killmails
-    |> Enum.filter(fn km -> 
+    |> Enum.filter(fn km ->
       is_map(km) && Map.get(km, :is_victim, false) == true
     end)
     |> Enum.map(fn km -> Map.get(km, :total_value, 0.0) end)
     |> Enum.sum()
   end
-  
+
   defp sum_isk_lost(_), do: 0.0
 
   defp calculate_isk_efficiency(killmails) do
@@ -477,10 +478,10 @@ defmodule EveDmv.Contexts.Intelligence.Core.MLScoringEngine do
 
     Enum.filter(killmails, fn km ->
       is_map(km) && is_struct(Map.get(km, :killmail_time), DateTime) &&
-      DateTime.compare(km.killmail_time, cutoff) != :lt
+        DateTime.compare(km.killmail_time, cutoff) != :lt
     end)
   end
-  
+
   defp filter_by_window(_, _), do: []
 
   defp count_unique_systems(killmails) do

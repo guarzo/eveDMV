@@ -28,7 +28,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
     else
       # Sort timeline by timestamp
       sorted_timeline = Enum.sort_by(timeline, & &1.timestamp)
-      
+
       # Treat entire battle as single phase
       [analyze_single_phase(sorted_timeline)]
     end
@@ -52,39 +52,40 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
       }
     else
       first_kill = List.first(timeline)
-    last_kill = List.last(timeline)
-    duration = DateTime.diff(last_kill.timestamp, first_kill.timestamp, :second)
-    kill_count = length(timeline)
-    
-    # Calculate basic metrics for the single phase
-    intensity = calculate_battle_intensity(timeline, max(duration, 60))
-    ship_classes = analyze_ship_composition(timeline)
-    isk_destroyed = calculate_total_isk_destroyed(timeline)
-    dominant_side = determine_dominant_side(timeline)
-    key_events = identify_key_events(timeline)
-    
-    # Determine battle type based on characteristics
-    phase_type = cond do
-      kill_count >= 50 -> :major_engagement
-      kill_count >= 20 -> :significant_battle  
-      kill_count >= 10 -> :skirmish
-      kill_count >= 5 -> :small_engagement
-      true -> :minor_skirmish
-    end
+      last_kill = List.last(timeline)
+      duration = DateTime.diff(last_kill.timestamp, first_kill.timestamp, :second)
+      kill_count = length(timeline)
 
-    %{
-      phase_number: 1,
-      start_time: first_kill.timestamp,
-      end_time: last_kill.timestamp,
-      duration_seconds: max(duration, 1),
-      kill_count: kill_count,
-      intensity: Float.round(intensity, 2),
-      phase_type: phase_type,
-      dominant_side: dominant_side,
-      key_events: key_events,
-      ship_classes: ship_classes,
-      isk_destroyed: isk_destroyed
-    }
+      # Calculate basic metrics for the single phase
+      intensity = calculate_battle_intensity(timeline, max(duration, 60))
+      ship_classes = analyze_ship_composition(timeline)
+      isk_destroyed = calculate_total_isk_destroyed(timeline)
+      dominant_side = determine_dominant_side(timeline)
+      key_events = identify_key_events(timeline)
+
+      # Determine battle type based on characteristics
+      phase_type =
+        cond do
+          kill_count >= 50 -> :major_engagement
+          kill_count >= 20 -> :significant_battle
+          kill_count >= 10 -> :skirmish
+          kill_count >= 5 -> :small_engagement
+          true -> :minor_skirmish
+        end
+
+      %{
+        phase_number: 1,
+        start_time: first_kill.timestamp,
+        end_time: last_kill.timestamp,
+        duration_seconds: max(duration, 1),
+        kill_count: kill_count,
+        intensity: Float.round(intensity, 2),
+        phase_type: phase_type,
+        dominant_side: dominant_side,
+        key_events: key_events,
+        ship_classes: ship_classes,
+        isk_destroyed: isk_destroyed
+      }
     end
   end
 
@@ -212,7 +213,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
       true -> :minor_engagement
     end
   end
-  
 
   @doc """
   Calculate which side was dominant during a specific phase.
@@ -380,12 +380,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
   defp classify_ship(ship_type_id) do
     # Use proper ship classification from static data service
     case EveDmv.StaticData.ShipAttributesService.get_ship_class(ship_type_id) do
-      {:ok, ship_class} -> ship_class
-      {:error, _} -> 
+      {:ok, ship_class} ->
+        ship_class
+
+      {:error, _} ->
         # Fallback classification based on ID ranges for unknown ships
         cond do
           ship_type_id < 1000 -> :frigate
-          ship_type_id < 2000 -> :destroyer  
+          ship_type_id < 2000 -> :destroyer
           ship_type_id < 5000 -> :cruiser
           ship_type_id < 10000 -> :battlecruiser
           ship_type_id < 20000 -> :battleship
@@ -488,10 +490,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
 
   defp calculate_battle_intensity(timeline, duration_seconds) do
     kill_count = length(timeline)
+
     if duration_seconds > 0 do
       kill_count / (duration_seconds / 60.0)
     else
-      kill_count * 10.0  # Instant alpha strike
+      # Instant alpha strike
+      kill_count * 10.0
     end
   end
 
@@ -513,7 +517,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
     else
       # Simple heuristic: look at alliance/corporation distribution
       participants = extract_participants_from_events(timeline)
-      alliance_counts = 
+
+      alliance_counts =
         participants
         |> Enum.map(&Map.get(&1, :alliance_id))
         |> Enum.reject(&is_nil/1)
@@ -525,9 +530,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
         # If one alliance has significantly more participants, they're likely dominant
         {_top_alliance, top_count} = Enum.max_by(alliance_counts, &elem(&1, 1))
         total_participants = length(participants)
-        
+
         if top_count / total_participants > 0.6 do
-          :side_a  # Dominant alliance
+          # Dominant alliance
+          :side_a
         else
           :balanced
         end

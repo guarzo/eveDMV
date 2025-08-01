@@ -190,9 +190,9 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
     ## Overview
     #{analysis.summary.headline}
 
-    **Location:** System #{battle.system_id}  
-    **Duration:** #{battle.duration_minutes} minutes  
-    **Participants:** #{battle.participant_count}  
+    **Location:** System #{battle.system_id}
+    **Duration:** #{battle.duration_minutes} minutes
+    **Participants:** #{battle.participant_count}
     **ISK Destroyed:** #{format_isk_value(battle.total_value)}
 
     ## Key Statistics
@@ -253,16 +253,16 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
         <h1>Battle Report</h1>
         <p>#{analysis.summary.headline}</p>
       </div>
-      
+
       <div class="stats">
         #{format_stats_html(analysis.metrics)}
       </div>
-      
+
       <div class="timeline">
         <h2>Battle Timeline</h2>
         #{format_timeline_html(analysis.timeline)}
       </div>
-      
+
       <div class="participants">
         <h2>Top Participants</h2>
         #{format_participants_html(analysis.participants)}
@@ -442,7 +442,7 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
     height = Map.get(options, :height, 400)
 
     """
-    <iframe 
+    <iframe
       src="#{@share_url_base}embed/#{battle_id}"
       width="#{width}"
       height="#{height}"

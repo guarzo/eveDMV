@@ -2,7 +2,7 @@ defmodule EveDmv.Contexts.Corporation.Services.AnalyticsService do
   @moduledoc """
   Service layer for corporation analytics generation and export operations.
 
-  Handles comprehensive analytics generation, comparative analysis, and 
+  Handles comprehensive analytics generation, comparative analysis, and
   performance tracking for corporations.
   """
 
@@ -875,7 +875,7 @@ defmodule EveDmv.Contexts.Corporation.Services.AnalyticsService do
   end
 
   defp export_excel(_report) do
-    # Would generate Excel report - simplified  
+    # Would generate Excel report - simplified
     {:ok, %{format: :excel, data: "Excel generation not implemented"}}
   end
 

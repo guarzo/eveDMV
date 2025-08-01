@@ -68,7 +68,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
   Detect anomalous behavior for an entity based on recent activity.
 
   ## Parameters
-  - `entity_id` - Character or corporation ID  
+  - `entity_id` - Character or corporation ID
   - `recent_activity` - Recent killmails or activity data
 
   ## Returns

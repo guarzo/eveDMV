@@ -136,7 +136,7 @@ defmodule EveDmv.Database.Repository.TelemetryHelper do
         # Create ETS table for tracking stats if it doesn't exist
         :ets.new(:repo_performance_stats, [:named_table, :public, :set])
         get_default_stats()
-      
+
       _ ->
         # ETS table exists, gather current stats
         gather_current_stats()
@@ -149,7 +149,9 @@ defmodule EveDmv.Database.Repository.TelemetryHelper do
   @spec reset_performance_stats() :: :ok
   def reset_performance_stats do
     case :ets.info(:repo_performance_stats) do
-      :undefined -> :ok
+      :undefined ->
+        :ok
+
       _ ->
         :ets.delete_all_objects(:repo_performance_stats)
         :ok
@@ -224,7 +226,9 @@ defmodule EveDmv.Database.Repository.TelemetryHelper do
     case :ets.info(:repo_performance_stats) do
       :undefined ->
         :ets.new(:repo_performance_stats, [:named_table, :public, :set])
-      _ -> :ok
+
+      _ ->
+        :ok
     end
 
     # Update counters

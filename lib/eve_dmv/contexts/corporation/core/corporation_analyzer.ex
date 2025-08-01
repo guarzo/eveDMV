@@ -506,33 +506,33 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
   end
 
   defp generate_strategic_assessment(basic_data, member_data, health_data) do
-    assessments = []
+    initial_assessments = []
 
     # Activity assessment
     activity = classify_activity_level(basic_data.corporation_stats)
-    assessments = ["Activity level: #{activity}" | assessments]
+    activity_assessments = ["Activity level: #{activity}" | initial_assessments]
 
     # Size assessment
     size_category = categorize_corporation_size(basic_data.member_count)
-    assessments = ["Corporation size: #{size_category}" | assessments]
+    size_assessments = ["Corporation size: #{size_category}" | activity_assessments]
 
     # Health assessment
-    assessments = 
+    health_assessments =
       if Map.has_key?(health_data, :overall_health) do
-        ["Organizational health: #{health_data.overall_health}" | assessments]
+        ["Organizational health: #{health_data.overall_health}" | size_assessments]
       else
-        assessments
+        size_assessments
       end
 
     # Combat readiness
-    assessments = 
+    final_assessments =
       if Map.has_key?(member_data, :combat_readiness) do
-        ["Combat readiness: #{member_data.combat_readiness}" | assessments]
+        ["Combat readiness: #{member_data.combat_readiness}" | health_assessments]
       else
-        assessments
+        health_assessments
       end
 
-    Enum.reverse(assessments)
+    Enum.reverse(final_assessments)
   end
 
   defp categorize_corporation_size(member_count) do
@@ -652,7 +652,7 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
 
   defp identify_intelligence_gaps(members) do
     # Identify members with limited intelligence data
-    gaps = []
+    initial_gaps = []
 
     # Check for members without recent activity data
     inactive_count =
@@ -661,14 +661,14 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
           DateTime.diff(DateTime.utc_now(), member.last_seen, :day) > 30
       end)
 
-    gaps =
+    final_gaps =
       if inactive_count > length(members) * 0.2 do
-        ["High number of inactive/unknown members (#{inactive_count})" | gaps]
+        ["High number of inactive/unknown members (#{inactive_count})" | initial_gaps]
       else
-        gaps
+        initial_gaps
       end
 
-    gaps
+    final_gaps
   end
 
   defp identify_key_personnel(members) do

@@ -194,7 +194,8 @@ defmodule EveDmv.Database.CharacterRepository do
   @doc """
   Get character killmails since a specific date.
   """
-  @spec get_character_killmails_since(integer(), DateTime.t()) :: {:ok, [struct()]} | {:error, term()}
+  @spec get_character_killmails_since(integer(), DateTime.t()) ::
+          {:ok, [struct()]} | {:error, term()}
   def get_character_killmails_since(character_id, since_date) do
     TelemetryHelper.measure_query("character_stats", :get_killmails_since, fn ->
       # Use the existing killmail repository functionality
@@ -236,11 +237,11 @@ defmodule EveDmv.Database.CharacterRepository do
 
   @doc """
   Get multiple characters by their IDs.
-  
+
   Used by network analysis for batch character data retrieval.
-  
+
   ## Examples
-  
+
       get_characters_by_ids([12345, 67890])
   """
   @spec get_characters_by_ids([integer()]) :: {:ok, [struct()]} | {:error, term()}
@@ -258,11 +259,11 @@ defmodule EveDmv.Database.CharacterRepository do
 
   @doc """
   Get ship usage data for a character.
-  
+
   Returns a map of ship type IDs to usage counts from killmail data.
-  
+
   ## Examples
-  
+
       get_character_ship_usage(12345)
       # => {:ok, %{670 => 15, 24698 => 8, ...}}
   """
@@ -281,15 +282,16 @@ defmodule EveDmv.Database.CharacterRepository do
       GROUP BY ship_type_id
       ORDER BY usage_count DESC
       """
-      
+
       case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [character_id]) do
         {:ok, %{rows: rows}} ->
-          usage_map = 
+          usage_map =
             rows
             |> Enum.map(fn [ship_type_id, count] -> {ship_type_id, count} end)
             |> Map.new()
+
           {:ok, usage_map}
-          
+
         {:error, reason} ->
           {:error, reason}
       end
@@ -298,12 +300,12 @@ defmodule EveDmv.Database.CharacterRepository do
 
   @doc """
   Get ship performance statistics for a character.
-  
+
   Returns detailed statistics per ship type including kill/death ratios,
   average damage dealt, and ISK efficiency.
-  
+
   ## Examples
-  
+
       get_character_ship_stats(12345)
   """
   @spec get_character_ship_stats(integer()) :: {:ok, map()} | {:error, term()}
@@ -312,7 +314,7 @@ defmodule EveDmv.Database.CharacterRepository do
       # Query to get ship-specific performance metrics
       query = """
       WITH ship_kills AS (
-        SELECT 
+        SELECT
           a.ship_type_id,
           COUNT(DISTINCT k.killmail_id) as kills,
           AVG(COALESCE(a.damage_done, 0)) as avg_damage,
@@ -327,7 +329,7 @@ defmodule EveDmv.Database.CharacterRepository do
         GROUP BY a.ship_type_id
       ),
       ship_losses AS (
-        SELECT 
+        SELECT
           k.ship_type_id,
           COUNT(*) as losses,
           SUM(COALESCE(k.total_value, 0)) as total_loss_value
@@ -335,7 +337,7 @@ defmodule EveDmv.Database.CharacterRepository do
         WHERE k.victim_character_id = $1
         GROUP BY k.ship_type_id
       )
-      SELECT 
+      SELECT
         COALESCE(sk.ship_type_id, sl.ship_type_id) as ship_type_id,
         COALESCE(sk.kills, 0) as kills,
         COALESCE(sl.losses, 0) as losses,
@@ -346,31 +348,34 @@ defmodule EveDmv.Database.CharacterRepository do
       FULL OUTER JOIN ship_losses sl ON sk.ship_type_id = sl.ship_type_id
       ORDER BY (COALESCE(sk.kills, 0) + COALESCE(sl.losses, 0)) DESC
       """
-      
+
       case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [character_id]) do
         {:ok, %{rows: rows}} ->
-          stats_map = 
+          stats_map =
             rows
             |> Enum.map(fn [ship_type_id, kills, losses, avg_damage, kill_value, loss_value] ->
               kd_ratio = if losses > 0, do: kills / losses, else: kills
-              isk_efficiency = 
+
+              isk_efficiency =
                 if kill_value + loss_value > 0,
                   do: kill_value / (kill_value + loss_value) * 100,
                   else: 0.0
-              
-              {ship_type_id, %{
-                kills: kills,
-                losses: losses,
-                kd_ratio: Float.round(kd_ratio, 2),
-                avg_damage: round(avg_damage),
-                kill_value: kill_value,
-                loss_value: loss_value,
-                isk_efficiency: Float.round(isk_efficiency, 2)
-              }}
+
+              {ship_type_id,
+               %{
+                 kills: kills,
+                 losses: losses,
+                 kd_ratio: Float.round(kd_ratio, 2),
+                 avg_damage: round(avg_damage),
+                 kill_value: kill_value,
+                 loss_value: loss_value,
+                 isk_efficiency: Float.round(isk_efficiency, 2)
+               }}
             end)
             |> Map.new()
+
           {:ok, stats_map}
-          
+
         {:error, reason} ->
           {:error, reason}
       end

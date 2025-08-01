@@ -292,7 +292,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.
         # Based on actual CCP wormhole system numbering scheme
         cond do
           system_id >= 31_000_000 and system_id < 31_001_000 -> "C1"
-          system_id >= 31_001_000 and system_id < 31_002_000 -> "C2" 
+          system_id >= 31_001_000 and system_id < 31_002_000 -> "C2"
           system_id >= 31_002_000 and system_id < 31_003_000 -> "C3"
           system_id >= 31_003_000 and system_id < 31_004_000 -> "C4"
           system_id >= 31_004_000 and system_id < 31_005_000 -> "C5"
@@ -300,8 +300,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.
           # Shattered systems have different ranges
           system_id >= 31_100_000 and system_id < 31_200_000 -> "Shattered"
           # Default to C1-C3 for unknown ranges (most common)
-          system_id >= 31_000_000 and system_id < 31_500_000 -> "C1"  
-          true -> "C5"  # Higher-end systems default to C5
+          system_id >= 31_000_000 and system_id < 31_500_000 -> "C1"
+          # Higher-end systems default to C5
+          true -> "C5"
         end
 
       # Thera and other special wormholes
@@ -519,7 +520,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.
         # Use system ID patterns to determine likely connection count
         cond do
           # Systems ending in patterns suggesting higher activity
-          Integer.mod(system_id, 100) in [0, 25, 50, 75] -> 2  # 20% branching
+          # 20% branching
+          Integer.mod(system_id, 100) in [0, 25, 50, 75] -> 2
           # Most deep systems have single connections
           true -> 1
         end

@@ -149,14 +149,14 @@ defmodule EveDmv.Surveillance.Matching.MatchEvaluator do
         # Create stats table if it doesn't exist
         :ets.new(:surveillance_cache_stats, [:named_table, :public, :set])
         0.0
-      
+
       _ ->
         # Get hit and miss counts from ETS
         hits = get_cache_counter(:cache_hits, 0)
         misses = get_cache_counter(:cache_misses, 0)
-        
+
         total_requests = hits + misses
-        
+
         if total_requests > 0 do
           hits / total_requests
         else

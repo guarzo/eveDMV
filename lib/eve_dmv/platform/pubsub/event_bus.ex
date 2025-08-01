@@ -13,7 +13,7 @@ defmodule EveDmv.Platform.PubSub.EventBus do
       EventBus.publish(%BattleDetected{battle_id: "123", participants: [...]})
 
       # Subscribe to events
-      EventBus.subscribe(:battle_detected, fn event -> 
+      EventBus.subscribe(:battle_detected, fn event ->
         Logger.info("Battle detected: \#{event.battle_id}")
       end)
 
@@ -87,7 +87,7 @@ defmodule EveDmv.Platform.PubSub.EventBus do
 
   @doc """
   Broadcast a message to a specific topic.
-  
+
   This is used for direct topic-based messaging rather than typed domain events.
   """
   @spec broadcast(String.t(), any()) :: :ok | {:error, term()}

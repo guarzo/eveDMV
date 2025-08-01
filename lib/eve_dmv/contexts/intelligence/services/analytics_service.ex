@@ -76,7 +76,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.AnalyticsService do
 
         {:ok, correlations}
       else
-        {:error, reason} = error ->
+        {:error, _reason} = error ->
           Logger.error("Failed to perform character correlation analysis")
 
           error
@@ -521,7 +521,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.AnalyticsService do
     # Calculate similarity in fleet preferences
     fleet_similarity = 1.0 - abs(patterns1.fleet_preference - patterns2.fleet_preference)
 
-    # Calculate similarity in risk tolerance  
+    # Calculate similarity in risk tolerance
     risk_similarity = 1.0 - abs(patterns1.risk_tolerance - patterns2.risk_tolerance)
 
     # Average the behavioral similarities
@@ -956,7 +956,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.AnalyticsService do
       end
 
     # Based on activity patterns
-    vectors = 
+    vectors =
       if behavioral_analysis.activity_rhythm.consistency_score > 0.7 do
         ["Predictable timing exploitation" | vectors]
       else
@@ -1029,7 +1029,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.AnalyticsService do
     triggers = []
 
     # Risk-based triggers
-    triggers = 
+    triggers =
       if risk_assessment.composite_risk_score > 0.7 do
         ["Risk score increase >10%" | triggers]
       else
@@ -1037,7 +1037,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.AnalyticsService do
       end
 
     # Behavior-based triggers
-    triggers = 
+    triggers =
       if behavioral_analysis.anomaly_detection.anomalies_detected do
         ["New behavioral anomalies detected" | triggers]
       else
@@ -1045,7 +1045,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.AnalyticsService do
       end
 
     # Activity-based triggers
-    triggers = 
+    triggers =
       if behavioral_analysis.activity_rhythm.pattern_type == :sporadic do
         ["Sudden activity pattern changes" | triggers]
       else

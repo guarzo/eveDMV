@@ -84,7 +84,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.ExperienceAnalyzer do
     score = score + final_blow_ratio * 30
 
     # Engagement timing (not always first to die)
-    score = 
+    score =
       if participant[:deaths] == 0 || participant[:survival_time] == :survived do
         score + 40
       else
@@ -92,7 +92,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.ExperienceAnalyzer do
       end
 
     # Fleet participation vs solo
-    score = 
+    score =
       if participant[:appearances] > 10 do
         score + 30
       else

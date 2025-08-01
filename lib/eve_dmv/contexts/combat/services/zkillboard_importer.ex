@@ -214,7 +214,7 @@ defmodule EveDmv.Contexts.Combat.Services.ZkillboardImporter do
   defp transform_zkillboard_kill(zkb_kill) do
     try do
       victim = zkb_kill["victim"] || %{}
-      
+
       %{
         killmail_id: zkb_kill["killmail_id"],
         killmail_hash: zkb_kill["killmail_hash"] || generate_killmail_hash(zkb_kill),
@@ -248,7 +248,7 @@ defmodule EveDmv.Contexts.Combat.Services.ZkillboardImporter do
     # Generate a hash from killmail_id and time
     killmail_id = to_string(zkb_kill["killmail_id"] || 0)
     time_string = to_string(zkb_kill["killmail_time"] || "")
-    
+
     :crypto.hash(:sha256, killmail_id <> time_string)
     |> Base.encode16(case: :lower)
     |> String.slice(0..39)
@@ -275,8 +275,9 @@ defmodule EveDmv.Contexts.Combat.Services.ZkillboardImporter do
   defp save_or_update_killmail(killmail_data) do
     # Use Ash API to create the killmail
     case Api.create(KillmailRaw, killmail_data, action: :ingest_from_source) do
-      {:ok, killmail} -> 
+      {:ok, killmail} ->
         killmail
+
       {:error, error} ->
         Logger.error("Failed to save killmail: #{inspect(error)}")
         nil

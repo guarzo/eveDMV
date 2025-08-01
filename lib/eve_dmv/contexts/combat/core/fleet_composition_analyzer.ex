@@ -239,7 +239,7 @@ defmodule EveDmv.Contexts.Combat.Core.FleetCompositionAnalyzer do
     # Higher rating for more frigates and destroyers
     frigate_weight = (ship_classes[:frigate][:count] || 0) * 3
     destroyer_weight = (ship_classes[:destroyer][:count] || 0) * 2
-    cruiser_weight = (ship_classes[:cruiser][:count] || 0)
+    cruiser_weight = ship_classes[:cruiser][:count] || 0
 
     total_ships =
       ship_classes
@@ -332,21 +332,22 @@ defmodule EveDmv.Contexts.Combat.Core.FleetCompositionAnalyzer do
       |> Map.values()
       |> Enum.reduce(0, &(&1.count + &2))
 
-    composition_weaknesses = if total_ships > 0 do
-      max_class_percentage =
-        ship_classes
-        |> Map.values()
-        |> Enum.map(& &1.percentage)
-        |> Enum.max()
+    composition_weaknesses =
+      if total_ships > 0 do
+        max_class_percentage =
+          ship_classes
+          |> Map.values()
+          |> Enum.map(& &1.percentage)
+          |> Enum.max()
 
-      if max_class_percentage > 60 do
-        [:unbalanced_composition | tackle_weaknesses]
+        if max_class_percentage > 60 do
+          [:unbalanced_composition | tackle_weaknesses]
+        else
+          tackle_weaknesses
+        end
       else
         tackle_weaknesses
       end
-    else
-      tackle_weaknesses
-    end
 
     composition_weaknesses
   end

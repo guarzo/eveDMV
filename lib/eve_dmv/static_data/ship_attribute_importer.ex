@@ -257,7 +257,7 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
              SELECT shield_hp, armor_hp, structure_hp,
                     shield_em_resist, shield_thermal_resist, shield_kinetic_resist, shield_explosive_resist,
                     armor_em_resist, armor_thermal_resist, armor_kinetic_resist, armor_explosive_resist
-             FROM ship_attributes 
+             FROM ship_attributes
              WHERE type_id = $1 AND data_source = 'sde_import'
            """,
            [type_id]
@@ -393,28 +393,44 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
     # More realistic DPS calculations based on weapon systems and ship specialization
     base_dps =
       case size_class do
-        "frigate" -> 100    # T1: 80-120 DPS, T2: 100-180 DPS
-        "destroyer" -> 200  # 6-8 small weapons, 180-250 DPS
-        "cruiser" -> 350    # 4-6 medium weapons, 300-450 DPS
-        "battlecruiser" -> 600  # 6-8 large weapons or many mediums, 500-700 DPS
-        "battleship" -> 800     # 6-8 large weapons, 700-1000 DPS
-        "capital" -> 3000       # Capital weapons, 2000-4000 DPS
-        "supercapital" -> 12000 # Multiple capital weapons, 8000+ DPS
+        # T1: 80-120 DPS, T2: 100-180 DPS
+        "frigate" -> 100
+        # 6-8 small weapons, 180-250 DPS
+        "destroyer" -> 200
+        # 4-6 medium weapons, 300-450 DPS
+        "cruiser" -> 350
+        # 6-8 large weapons or many mediums, 500-700 DPS
+        "battlecruiser" -> 600
+        # 6-8 large weapons, 700-1000 DPS
+        "battleship" -> 800
+        # Capital weapons, 2000-4000 DPS
+        "capital" -> 3000
+        # Multiple capital weapons, 8000+ DPS
+        "supercapital" -> 12000
         _ -> 120
       end
 
     # Updated role multipliers reflecting actual EVE ship bonuses
     role_multiplier =
       case role_classification do
-        "dps" -> 1.15       # DPS ships get damage bonuses
-        "attack" -> 1.15    # Attack ships similar to DPS
-        "assault" -> 1.2    # HACs/AFs get significant damage bonuses
-        "tank" -> 0.7       # Tank ships sacrifice damage for survivability
-        "logistics" -> 0.2  # Logistics ships have minimal weapons
-        "ewar" -> 0.4       # EWAR ships sacrifice damage for utility
-        "tackle" -> 0.6     # Tackle ships focus on speed and tackling
-        "support" -> 0.8    # Support ships (command) still have decent damage
-        "transport" -> 0.3  # Haulers have minimal combat capability
+        # DPS ships get damage bonuses
+        "dps" -> 1.15
+        # Attack ships similar to DPS
+        "attack" -> 1.15
+        # HACs/AFs get significant damage bonuses
+        "assault" -> 1.2
+        # Tank ships sacrifice damage for survivability
+        "tank" -> 0.7
+        # Logistics ships have minimal weapons
+        "logistics" -> 0.2
+        # EWAR ships sacrifice damage for utility
+        "ewar" -> 0.4
+        # Tackle ships focus on speed and tackling
+        "tackle" -> 0.6
+        # Support ships (command) still have decent damage
+        "support" -> 0.8
+        # Haulers have minimal combat capability
+        "transport" -> 0.3
         _ -> 1.0
       end
 
@@ -598,16 +614,16 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
     # Try to get actual ship stats from database if we have SDE data
     case EveDmv.Repo.query(
            """
-             SELECT 
+             SELECT
                AVG(shield_hp) as avg_shield_hp,
-               AVG(armor_hp) as avg_armor_hp, 
+               AVG(armor_hp) as avg_armor_hp,
                AVG(structure_hp) as avg_structure_hp,
                AVG(calculated_dps) as avg_dps
              FROM ship_attributes sa
              JOIN eve_item_types eit ON sa.type_id = eit.type_id
-             WHERE sa.size_class = $1 
-             AND sa.shield_hp > 0 
-             AND sa.armor_hp > 0 
+             WHERE sa.size_class = $1
+             AND sa.shield_hp > 0
+             AND sa.armor_hp > 0
              AND sa.structure_hp > 0
              GROUP BY sa.size_class
            """,
@@ -630,14 +646,29 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
   defp get_estimated_stats_by_size(size_class) do
     # Use realistic estimates based on actual EVE ship statistics and weapon systems
     case size_class do
-      "frigate" -> %{shield_hp: 800, armor_hp: 600, structure_hp: 400, dps: 100}
-      "destroyer" -> %{shield_hp: 1200, armor_hp: 900, structure_hp: 600, dps: 200}
-      "cruiser" -> %{shield_hp: 2500, armor_hp: 2000, structure_hp: 1500, dps: 350}
-      "battlecruiser" -> %{shield_hp: 4000, armor_hp: 3500, structure_hp: 3000, dps: 600}
-      "battleship" -> %{shield_hp: 8000, armor_hp: 7000, structure_hp: 6000, dps: 800}
-      "capital" -> %{shield_hp: 50_000, armor_hp: 45_000, structure_hp: 40_000, dps: 3000}
-      "supercapital" -> %{shield_hp: 150_000, armor_hp: 120_000, structure_hp: 100_000, dps: 12000}
-      _ -> %{shield_hp: 1000, armor_hp: 1000, structure_hp: 1000, dps: 120}
+      "frigate" ->
+        %{shield_hp: 800, armor_hp: 600, structure_hp: 400, dps: 100}
+
+      "destroyer" ->
+        %{shield_hp: 1200, armor_hp: 900, structure_hp: 600, dps: 200}
+
+      "cruiser" ->
+        %{shield_hp: 2500, armor_hp: 2000, structure_hp: 1500, dps: 350}
+
+      "battlecruiser" ->
+        %{shield_hp: 4000, armor_hp: 3500, structure_hp: 3000, dps: 600}
+
+      "battleship" ->
+        %{shield_hp: 8000, armor_hp: 7000, structure_hp: 6000, dps: 800}
+
+      "capital" ->
+        %{shield_hp: 50_000, armor_hp: 45_000, structure_hp: 40_000, dps: 3000}
+
+      "supercapital" ->
+        %{shield_hp: 150_000, armor_hp: 120_000, structure_hp: 100_000, dps: 12000}
+
+      _ ->
+        %{shield_hp: 1000, armor_hp: 1000, structure_hp: 1000, dps: 120}
     end
   end
 
@@ -646,13 +677,19 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
     case role do
       "dps" -> %{damage: 1.15, tank: 0.9, utility: 0.7}
       "attack" -> %{damage: 1.15, tank: 0.9, utility: 0.7}
-      "assault" -> %{damage: 1.2, tank: 1.1, utility: 0.8}  # HACs get both damage and tank bonuses
+      # HACs get both damage and tank bonuses
+      "assault" -> %{damage: 1.2, tank: 1.1, utility: 0.8}
       "tank" -> %{damage: 0.7, tank: 1.5, utility: 0.8}
-      "logistics" -> %{damage: 0.2, tank: 1.2, utility: 1.8}  # Logi ships sacrifice damage for reps
-      "ewar" -> %{damage: 0.4, tank: 0.8, utility: 1.5}  # EWAR ships sacrifice damage for utility
-      "tackle" -> %{damage: 0.6, tank: 0.7, utility: 1.3}  # Fast tackle ships
-      "support" -> %{damage: 0.8, tank: 1.2, utility: 1.4}  # Command ships
-      "transport" -> %{damage: 0.2, tank: 1.3, utility: 0.9}  # Haulers focus on tank
+      # Logi ships sacrifice damage for reps
+      "logistics" -> %{damage: 0.2, tank: 1.2, utility: 1.8}
+      # EWAR ships sacrifice damage for utility
+      "ewar" -> %{damage: 0.4, tank: 0.8, utility: 1.5}
+      # Fast tackle ships
+      "tackle" -> %{damage: 0.6, tank: 0.7, utility: 1.3}
+      # Command ships
+      "support" -> %{damage: 0.8, tank: 1.2, utility: 1.4}
+      # Haulers focus on tank
+      "transport" -> %{damage: 0.2, tank: 1.3, utility: 0.9}
       _ -> %{damage: 1.0, tank: 1.0, utility: 1.0}
     end
   end

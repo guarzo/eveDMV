@@ -22,7 +22,7 @@ defmodule EveDmv.External.Eve.MarketDataService do
   @market_hubs %{
     # The Forge
     jita: 10_000_002,
-    # Domain  
+    # Domain
     amarr: 10_000_043,
     # Sinq Laison
     dodixie: 10_000_032,
@@ -78,7 +78,7 @@ defmodule EveDmv.External.Eve.MarketDataService do
   Batches requests to ESI for optimal performance.
 
   ## Parameters
-  - `type_ids` - List of ship type IDs  
+  - `type_ids` - List of ship type IDs
   - `region` - Market region atom (default: :jita)
   - `price_type` - :sell_min, :buy_max, or :average (default: :sell_min)
 
@@ -332,7 +332,7 @@ defmodule EveDmv.External.Eve.MarketDataService do
   defp estimate_ship_price_fallback(type_id) do
     # Use ship classification to estimate price when market data unavailable
     ship_class = ShipTypes.classify_ship_type(type_id)
-    
+
     if ship_class != :unknown do
       estimated_price = get_base_price_estimate(ship_class)
 
@@ -378,7 +378,7 @@ defmodule EveDmv.External.Eve.MarketDataService do
   defp get_fitting_multiplier(type_id, role) do
     # Calculate fitting cost multiplier based on ship attributes and role
     ship_class = ShipTypes.classify_ship_type(type_id)
-    
+
     if ship_class != :unknown do
       base_multiplier = get_base_fitting_multiplier(ship_class)
       role_modifier = get_role_fitting_modifier(role)

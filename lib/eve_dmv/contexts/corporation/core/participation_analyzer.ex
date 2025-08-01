@@ -320,7 +320,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
       # Calculate depth score
       # Max 5 points
       activity_volume = min(length(killmails) / 10, 5)
-      # Max 3 points  
+      # Max 3 points
       diversity_score = min((system_diversity + ship_diversity) / 4, 3)
       # Max 2 points
       commitment_score = min(time_span / 10, 2)
@@ -442,7 +442,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
   defp categorize_ship_role(ship_type_id) do
     # Use proper ship role detection from static data
     alias EveDmv.StaticData.ShipRoles
-    
+
     cond do
       ShipRoles.is_logistics_ship?(ship_type_id) -> :logistics
       ShipRoles.is_ewar_ship?(ship_type_id) -> :support

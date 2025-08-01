@@ -230,11 +230,12 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
       end
 
     # Check leadership-to-member ratio for large corps
-    leadership_gaps = if total_members > 100 and length(leaders) < 5 do
-      ["Insufficient leadership for corporation size" | gaps]
-    else
-      gaps
-    end
+    leadership_gaps =
+      if total_members > 100 and length(leaders) < 5 do
+        ["Insufficient leadership for corporation size" | gaps]
+      else
+        gaps
+      end
 
     # Check for fleet commanders
     has_fc =
@@ -449,7 +450,7 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
       cond do
         # Australian/Asian timezone
         avg_hour >= 0 && avg_hour < 8 -> "AU-TZ"
-        # European timezone  
+        # European timezone
         avg_hour >= 8 && avg_hour < 16 -> "EU-TZ"
         # US timezone
         avg_hour >= 16 && avg_hour < 24 -> "US-TZ"

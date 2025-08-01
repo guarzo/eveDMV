@@ -141,7 +141,7 @@ defmodule EveDmv.Intelligence.Cache.IntelligenceCache do
     ttl = Keyword.get(opts, :ttl, :timer.hours(6))
     Cache.put(:analysis, cache_key, value, ttl: ttl)
   end
-  
+
   @doc """
   Invalidate cache for a specific character.
 
@@ -285,25 +285,25 @@ defmodule EveDmv.Intelligence.Cache.IntelligenceCache do
 
   @doc """
   Generic get_or_compute function for intelligence cache.
-  
+
   This provides a generic interface to cache any computation result.
   """
   def get_or_compute(cache_key, compute_fn, opts \\ []) do
     ttl = Keyword.get(opts, :ttl, :timer.hours(1))
-    
+
     case Cache.get(:analysis, cache_key) do
       {:ok, result} ->
         Logger.debug("Cache hit for #{inspect(cache_key)}")
         {:ok, result}
-        
+
       :miss ->
         Logger.debug("Cache miss for #{inspect(cache_key)}")
-        
+
         case compute_fn.() do
           {:ok, result} ->
             Cache.put(:analysis, cache_key, result, ttl: ttl)
             {:ok, result}
-            
+
           {:error, _} = error ->
             error
         end

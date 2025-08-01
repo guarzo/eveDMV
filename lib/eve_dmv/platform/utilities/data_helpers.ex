@@ -4,7 +4,7 @@ defmodule EveDmv.Platform.Utilities.DataHelpers do
 
   This module provides helper functions for:
   - Data structure manipulation
-  - Validation and sanitization  
+  - Validation and sanitization
   - Format conversion
   - Common calculations
   """

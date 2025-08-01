@@ -12,12 +12,12 @@ defmodule Mix.Tasks.Eve.ImportSdeAttributes do
   ## Options
 
     * `--force` - Force re-import even if data already exists
-    
+
   ## Examples
 
       # Import SDE ship attributes
       mix eve.import_sde_attributes
-      
+
       # Force re-import
       mix eve.import_sde_attributes --force
   """

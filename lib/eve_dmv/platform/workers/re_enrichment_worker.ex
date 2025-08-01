@@ -390,25 +390,25 @@ defmodule EveDmv.Workers.ReEnrichmentWorker do
 
     # Process each killmail and track results
     results = Enum.map(killmail_ids, &process_single_killmail/1)
-    
+
     successful = Enum.count(results, &(&1 == :ok))
     failed = Enum.count(results, &(&1 != :ok))
 
     Logger.debug("Re-enrichment batch complete: #{successful} successful, #{failed} failed")
-    
+
     %{successful: successful, failed: failed}
   end
-  
+
   defp process_single_killmail(killmail_id) do
     # Attempt to re-enrich a single killmail
     try do
       # Update enrichment status to pending
       update_query = """
-      UPDATE killmails_raw 
-      SET enrichment_status = 'processing', updated_at = NOW() 
+      UPDATE killmails_raw
+      SET enrichment_status = 'processing', updated_at = NOW()
       WHERE killmail_id = $1
       """
-      
+
       case EveDmv.Repo.query(update_query, [killmail_id]) do
         {:ok, _} ->
           # In a real implementation, this would:
@@ -416,20 +416,21 @@ defmodule EveDmv.Workers.ReEnrichmentWorker do
           # 2. Parse and enrich killmail data
           # 3. Update calculated fields like total_value
           # 4. Populate missing names from static data
-          
+
           # For now, mark as successfully processed
           complete_query = """
-          UPDATE killmails_raw 
-          SET enrichment_status = 'completed', updated_at = NOW() 
+          UPDATE killmails_raw
+          SET enrichment_status = 'completed', updated_at = NOW()
           WHERE killmail_id = $1
           """
-          
+
           case EveDmv.Repo.query(complete_query, [killmail_id]) do
             {:ok, _} -> :ok
             {:error, error} -> {:error, error}
           end
-          
-        {:error, error} -> {:error, error}
+
+        {:error, error} ->
+          {:error, error}
       end
     rescue
       exception -> {:error, exception}
@@ -476,29 +477,29 @@ defmodule EveDmv.Workers.ReEnrichmentWorker do
   defp find_enrichment_candidates(batch_size) do
     # Query for killmails that need re-enrichment
     # Look for killmails missing essential data or with processing errors
-    
+
     query = """
-    SELECT killmail_id 
-    FROM killmails_raw 
+    SELECT killmail_id
+    FROM killmails_raw
     WHERE (
       -- Missing participant data
-      enrichment_status IS NULL 
+      enrichment_status IS NULL
       OR enrichment_status = 'failed'
       OR (enrichment_status = 'pending' AND updated_at < NOW() - INTERVAL '1 hour')
       -- Missing critical fields that should be populated
-      OR solar_system_name IS NULL 
+      OR solar_system_name IS NULL
       OR victim_character_name IS NULL
       OR (total_value IS NULL AND victim_ship_type_id IS NOT NULL)
     )
     -- Prioritize recent killmails
-    ORDER BY killmail_time DESC 
+    ORDER BY killmail_time DESC
     LIMIT $1
     """
-    
+
     case EveDmv.Repo.query(query, [batch_size]) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [killmail_id] -> killmail_id end)
-      
+
       {:error, error} ->
         Logger.warning("Failed to find enrichment candidates: #{inspect(error)}")
         []

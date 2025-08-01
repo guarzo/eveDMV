@@ -360,7 +360,8 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       |> Enum.map(fn {system_id, count} ->
         sec_status =
           sec = SystemData.get_security_status(system_id)
-          classify_security(sec)
+
+        classify_security(sec)
 
         {sec_status, count}
       end)

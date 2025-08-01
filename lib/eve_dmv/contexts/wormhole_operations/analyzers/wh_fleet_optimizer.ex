@@ -60,16 +60,17 @@ defmodule EveDmv.Contexts.WormholeOperations.Analyzers.WhFleetAnalyzer.FleetOpti
     case analyze_composition_profile(composition) do
       {:ok, profile} ->
         generate_threat_analysis(profile, composition)
+
       {:error, _} ->
         # Return empty analysis if composition analysis fails
         []
     end
   end
-  
+
   # Analyze the fleet composition to determine its strengths and weaknesses
   defp analyze_composition_profile(composition) do
     ships = extract_ship_types(composition)
-    
+
     profile = %{
       ship_count: length(ships),
       has_logistics: has_logistics_ships?(ships),
@@ -80,71 +81,75 @@ defmodule EveDmv.Contexts.WormholeOperations.Analyzers.WhFleetAnalyzer.FleetOpti
       alpha_potential: calculate_alpha_potential(ships),
       mobility: calculate_mobility_score(ships)
     }
-    
+
     {:ok, profile}
   end
-  
+
   # Generate threat analysis based on composition profile
   defp generate_threat_analysis(profile, _composition) do
     [
       analyze_vs_armor_hacs(profile),
-      analyze_vs_shield_cruisers(profile), 
+      analyze_vs_shield_cruisers(profile),
       analyze_vs_kiting_doctrines(profile),
       analyze_vs_brawling_doctrines(profile)
     ]
     |> Enum.reject(&is_nil/1)
   end
-  
+
   # Specific threat analysis functions
   defp analyze_vs_armor_hacs(profile) do
     effectiveness = calculate_effectiveness_vs_armor_hacs(profile)
-    
+
     %{
       "threat_type" => "Armor HAC gang",
       "effectiveness" => effectiveness,
       "recommended_changes" => generate_armor_hac_counters(profile, effectiveness)
     }
   end
-  
+
   defp analyze_vs_shield_cruisers(profile) do
     effectiveness = calculate_effectiveness_vs_shield_cruisers(profile)
-    
+
     %{
-      "threat_type" => "Shield cruiser gang", 
+      "threat_type" => "Shield cruiser gang",
       "effectiveness" => effectiveness,
       "recommended_changes" => generate_shield_cruiser_counters(profile, effectiveness)
     }
   end
-  
+
   defp analyze_vs_kiting_doctrines(profile) do
     if profile.mobility < 0.3 do
-      effectiveness = 0.2 + profile.alpha_potential * 0.3  # Poor against kiters
-      
+      # Poor against kiters
+      effectiveness = 0.2 + profile.alpha_potential * 0.3
+
       %{
         "threat_type" => "Kiting doctrines",
         "effectiveness" => Float.round(effectiveness, 2),
         "recommended_changes" => ["Add fast tackle", "Increase range", "Consider mobile doctrine"]
       }
     else
-      nil  # Good mobility, no special analysis needed
+      # Good mobility, no special analysis needed
+      nil
     end
   end
-  
+
   defp analyze_vs_brawling_doctrines(profile) do
     # Brawling analysis
-    effectiveness = if profile.primary_range == :short do
-      0.7 + (if profile.has_logistics, do: 0.2, else: 0.0)
-    else
-      0.4  # Long range struggles in brawls
-    end
-    
+    effectiveness =
+      if profile.primary_range == :short do
+        0.7 + if profile.has_logistics, do: 0.2, else: 0.0
+      else
+        # Long range struggles in brawls
+        0.4
+      end
+
     %{
       "threat_type" => "Brawling doctrines",
-      "effectiveness" => Float.round(effectiveness, 2), 
+      "effectiveness" => Float.round(effectiveness, 2),
       "recommended_changes" => generate_brawling_counters(profile)
     }
   end
-  
+
   # Helper functions for composition analysis
   defp extract_ship_types(composition) do
     # Extract ship type IDs from composition data
@@ -155,15 +160,15 @@ defmodule EveDmv.Contexts.WormholeOperations.Analyzers.WhFleetAnalyzer.FleetOpti
     end
     |> Enum.reject(&is_nil/1)
   end
-  
+
   defp has_logistics_ships?(ships) do
     Enum.any?(ships, &EveDmv.StaticData.ShipRoles.is_logistics_ship?/1)
   end
-  
+
   defp has_ewar_ships?(ships) do
     Enum.any?(ships, &EveDmv.StaticData.ShipRoles.is_ewar_ship?/1)
   end
-  
+
   defp has_capital_ships?(ships) do
     Enum.any?(ships, fn ship_id ->
       case EveDmv.StaticData.ShipAttributesService.get_ship_class(ship_id) do
@@ -173,119 +178,136 @@ defmodule EveDmv.Contexts.WormholeOperations.Analyzers.WhFleetAnalyzer.FleetOpti
       end
     end)
   end
-  
+
   defp determine_primary_tank_type(_ships) do
     # Simplified tank type detection - would need more sophisticated analysis
     # For now, assume armor unless clearly shield-focused
     :armor
   end
-  
+
   defp determine_primary_engagement_range(_ships) do
     # Simplified range detection - would analyze weapon systems
     :medium
   end
-  
+
   defp calculate_alpha_potential(ships) do
     # Calculate alpha strike potential based on ship types
     # Higher for battleships, lower for cruisers
-    capital_count = Enum.count(ships, fn ship_id ->
-      case EveDmv.StaticData.ShipAttributesService.get_ship_class(ship_id) do
-        {:ok, class} -> class in [:battleship, :capital, :supercapital]
-        _ -> false
-      end
-    end)
-    
+    capital_count =
+      Enum.count(ships, fn ship_id ->
+        case EveDmv.StaticData.ShipAttributesService.get_ship_class(ship_id) do
+          {:ok, class} -> class in [:battleship, :capital, :supercapital]
+          _ -> false
+        end
+      end)
+
     total_ships = length(ships)
+
     if total_ships > 0 do
       Float.round(capital_count / total_ships, 2)
     else
       0.0
     end
   end
-  
+
   defp calculate_mobility_score(ships) do
     # Calculate mobility based on ship classes
-    fast_ships = Enum.count(ships, fn ship_id ->
-      case EveDmv.StaticData.ShipAttributesService.get_ship_class(ship_id) do
-        {:ok, class} -> class in [:frigate, :destroyer, :cruiser]
-        _ -> false
-      end
-    end)
-    
+    fast_ships =
+      Enum.count(ships, fn ship_id ->
+        case EveDmv.StaticData.ShipAttributesService.get_ship_class(ship_id) do
+          {:ok, class} -> class in [:frigate, :destroyer, :cruiser]
+          _ -> false
+        end
+      end)
+
     total_ships = length(ships)
+
     if total_ships > 0 do
       Float.round(fast_ships / total_ships, 2)
     else
       0.0
     end
   end
-  
+
   # Effectiveness calculation functions
   defp calculate_effectiveness_vs_armor_hacs(profile) do
     base_effectiveness = 0.5
-    
+
     # Bonuses for good counters
-    effectiveness = base_effectiveness
-    |> add_if(profile.has_ewar, 0.2)  # EWAR helps vs HACs
-    |> add_if(profile.alpha_potential > 0.3, 0.15)  # Alpha helps break reps
-    |> add_if(profile.has_logistics, 0.1)  # Logi helps sustain
-    
+    effectiveness =
+      base_effectiveness
+      # EWAR helps vs HACs
+      |> add_if(profile.has_ewar, 0.2)
+      # Alpha helps break reps
+      |> add_if(profile.alpha_potential > 0.3, 0.15)
+      # Logi helps sustain
+      |> add_if(profile.has_logistics, 0.1)
+
     Float.round(min(effectiveness, 1.0), 2)
   end
-  
+
   defp calculate_effectiveness_vs_shield_cruisers(profile) do
-    base_effectiveness = 0.6  # Generally easier target
-    
-    effectiveness = base_effectiveness
-    |> add_if(profile.primary_range == :long, 0.15)  # Range advantage
-    |> add_if(profile.mobility > 0.5, 0.1)  # Mobility helps
-    
+    # Generally easier target
+    base_effectiveness = 0.6
+
+    effectiveness =
+      base_effectiveness
+      # Range advantage
+      |> add_if(profile.primary_range == :long, 0.15)
+      # Mobility helps
+      |> add_if(profile.mobility > 0.5, 0.1)
+
     Float.round(min(effectiveness, 1.0), 2)
   end
-  
+
   # Counter recommendation functions
   defp generate_armor_hac_counters(profile, effectiveness) do
     counters = []
-    
-    counters = if effectiveness < 0.7 and not profile.has_ewar do
-      ["Add EWAR support" | counters]
-    else
-      counters
-    end
-    
-    counters = if effectiveness < 0.6 and profile.alpha_potential < 0.3 do
-      ["Increase alpha damage" | counters] 
-    else
-      counters
-    end
-    
-    counters = if effectiveness < 0.5 do
-      ["Consider neut pressure" | counters]
-    else
-      counters
-    end
-    
+
+    counters =
+      if effectiveness < 0.7 and not profile.has_ewar do
+        ["Add EWAR support" | counters]
+      else
+        counters
+      end
+
+    counters =
+      if effectiveness < 0.6 and profile.alpha_potential < 0.3 do
+        ["Increase alpha damage" | counters]
+      else
+        counters
+      end
+
+    counters =
+      if effectiveness < 0.5 do
+        ["Consider neut pressure" | counters]
+      else
+        counters
+      end
+
     if Enum.empty?(counters), do: ["Composition effective as-is"], else: counters
   end
-  
+
   defp generate_shield_cruiser_counters(profile, effectiveness) do
     counters = []
-    
-    counters = if effectiveness < 0.6 and profile.primary_range == :short do
-      ["Increase engagement range" | counters]
-    else
-      counters
-    end
-    
-    counters = if effectiveness < 0.7 and profile.mobility < 0.4 do
-      ["Add mobile elements" | counters]
-    else  
-      counters
-    end
-    
+
+    counters =
+      if effectiveness < 0.6 and profile.primary_range == :short do
+        ["Increase engagement range" | counters]
+      else
+        counters
+      end
+
+    counters =
+      if effectiveness < 0.7 and profile.mobility < 0.4 do
+        ["Add mobile elements" | counters]
+      else
+        counters
+      end
+
     if Enum.empty?(counters), do: ["Good matchup"], else: counters
   end
-  
+
   defp generate_brawling_counters(profile) do
     if profile.primary_range == :long do
       ["Maintain range advantage", "Use kiting tactics"]
@@ -293,7 +315,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Analyzers.WhFleetAnalyzer.FleetOpti
       ["Ensure logistics support", "Focus fire coordination"]
     end
   end
-  
+
   # Helper function for conditional additions
   defp add_if(value, condition, addition) do
     if condition, do: value + addition, else: value

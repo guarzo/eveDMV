@@ -670,7 +670,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
                WHERE km.victim_character_id = $1
              ),
              recent_activity AS (
-               SELECT 
+               SELECT
                  COUNT(CASE WHEN p.character_id != km.victim_character_id THEN 1 END) as recent_kills,
                  COUNT(CASE WHEN km.victim_character_id = $1 THEN 1 END) as recent_losses
                FROM killmails_raw km
@@ -1364,11 +1364,16 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
     # These represent realistic EVE skill point distributions
     cond do
       total_sp < 5_000_000 -> :newcomer
-      total_sp < 20_000_000 -> :generalist  # Most players in this range
-      total_sp < 50_000_000 -> :combat_specialist  # Common combat focus
-      total_sp < 80_000_000 -> :support_specialist  # Advanced support roles
-      total_sp < 120_000_000 -> :exploration_specialist  # Deep specialization
-      total_sp >= 120_000_000 -> :veteran_specialist  # Multi-role veterans
+      # Most players in this range
+      total_sp < 20_000_000 -> :generalist
+      # Common combat focus
+      total_sp < 50_000_000 -> :combat_specialist
+      # Advanced support roles
+      total_sp < 80_000_000 -> :support_specialist
+      # Deep specialization
+      total_sp < 120_000_000 -> :exploration_specialist
+      # Multi-role veterans
+      total_sp >= 120_000_000 -> :veteran_specialist
     end
   end
 
