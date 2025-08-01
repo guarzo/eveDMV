@@ -164,7 +164,6 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
     }
   end
 
-
   defp has_high_activity_score?(member) do
     # Consider highly active members as informal leaders
     member.recent_activity_score && member.recent_activity_score > 80
@@ -205,44 +204,30 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   end
 
   defp identify_leadership_gaps(leaders, total_members) do
-    gaps = []
+    has_ceo = Enum.any?(leaders, fn leader -> leader.roles && "CEO" in leader.roles end)
 
-    # Check for CEO
-    has_ceo =
-      Enum.any?(leaders, fn leader ->
-        leader.roles && "CEO" in leader.roles
-      end)
-
-    gaps =
-      if has_ceo do
-        gaps
-      else
-        ["No active CEO identified" | gaps]
-      end
-
-    # Check leadership-to-member ratio for large corps
-    leadership_gaps =
-      if total_members > 100 and length(leaders) < 5 do
-        ["Insufficient leadership for corporation size" | gaps]
-      else
-        gaps
-      end
-
-    # Check for fleet commanders
     has_fc =
-      Enum.any?(leaders, fn leader ->
-        leader.roles && "Fleet Commander" in leader.roles
-      end)
+      Enum.any?(leaders, fn leader -> leader.roles && "Fleet Commander" in leader.roles end)
 
-    final_gaps =
-      if has_fc do
-        leadership_gaps
-      else
-        ["No fleet commanders identified" | leadership_gaps]
-      end
-
-    Enum.reverse(final_gaps)
+    []
+    |> maybe_add_ceo_gap(has_ceo)
+    |> maybe_add_leadership_size_gap(total_members, length(leaders))
+    |> maybe_add_fc_gap(has_fc)
+    |> Enum.reverse()
   end
+
+  defp maybe_add_ceo_gap(gaps, true), do: gaps
+  defp maybe_add_ceo_gap(gaps, false), do: ["No active CEO identified" | gaps]
+
+  defp maybe_add_leadership_size_gap(gaps, total_members, leader_count)
+       when total_members > 100 and leader_count < 5 do
+    ["Insufficient leadership for corporation size" | gaps]
+  end
+
+  defp maybe_add_leadership_size_gap(gaps, _total_members, _leader_count), do: gaps
+
+  defp maybe_add_fc_gap(gaps, true), do: gaps
+  defp maybe_add_fc_gap(gaps, false), do: ["No fleet commanders identified" | gaps]
 
   defp assess_leadership_activity(members) do
     leaders = Enum.filter(members, &has_leadership_role?/1)
@@ -1081,19 +1066,23 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
     |> Enum.reverse()
   end
 
-  defp maybe_add_activity_recommendation(recommendations, activity_health) when activity_health < 60 do
+  defp maybe_add_activity_recommendation(recommendations, activity_health)
+       when activity_health < 60 do
     ["Implement member engagement initiatives to improve activity" | recommendations]
   end
 
   defp maybe_add_activity_recommendation(recommendations, _activity_health), do: recommendations
 
-  defp maybe_add_leadership_recommendation(recommendations, leadership_health) when leadership_health < 60 do
+  defp maybe_add_leadership_recommendation(recommendations, leadership_health)
+       when leadership_health < 60 do
     ["Strengthen leadership structure and development programs" | recommendations]
   end
 
-  defp maybe_add_leadership_recommendation(recommendations, _leadership_health), do: recommendations
+  defp maybe_add_leadership_recommendation(recommendations, _leadership_health),
+    do: recommendations
 
-  defp maybe_add_retention_recommendation(recommendations, retention_health) when retention_health < 60 do
+  defp maybe_add_retention_recommendation(recommendations, retention_health)
+       when retention_health < 60 do
     ["Address member retention issues through improved onboarding" | recommendations]
   end
 

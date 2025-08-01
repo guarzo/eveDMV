@@ -148,8 +148,7 @@ defmodule EveDmv.Core.SharedKernel.ValueObjects.IskAmount do
     |> Enum.chunk_every(3)
     |> Enum.map(&Enum.reverse/1)
     |> Enum.reverse()
-    |> Enum.map(&Enum.join/1)
-    |> Enum.join(",")
+    |> Enum.map_join(",", &Enum.join/1)
     |> Kernel.<>(" ISK")
   end
 

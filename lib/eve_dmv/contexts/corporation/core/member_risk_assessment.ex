@@ -628,7 +628,10 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberRiskAssessment do
 
     warnings_with_integration =
       if new_member_struggles > 2 do
-        ["#{new_member_struggles} new members struggling with integration" | warnings_with_inactivity]
+        [
+          "#{new_member_struggles} new members struggling with integration"
+          | warnings_with_inactivity
+        ]
       else
         warnings_with_inactivity
       end
@@ -684,7 +687,10 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberRiskAssessment do
 
     recommendations_with_integration =
       if integration_issues > 3 do
-        ["Improve new member onboarding process - integration issues detected" | recommendations_with_retention]
+        [
+          "Improve new member onboarding process - integration issues detected"
+          | recommendations_with_retention
+        ]
       else
         recommendations_with_retention
       end

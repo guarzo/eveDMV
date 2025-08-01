@@ -466,13 +466,19 @@ defmodule EveDmv.Contexts.Intelligence.Services.PlayerStatsEngine do
     final_recommendations =
       case performance_trends.improvement_rate do
         rate when rate < 0 ->
-          ["Performance appears to be declining - consider reviewing tactics" | recommendations_with_activity]
+          [
+            "Performance appears to be declining - consider reviewing tactics"
+            | recommendations_with_activity
+          ]
 
         rate when rate > 0.1 ->
           ["Strong improvement trend - continue current approach" | recommendations_with_activity]
 
         _ ->
-          ["Performance is stable - consider new challenges for growth" | recommendations_with_activity]
+          [
+            "Performance is stable - consider new challenges for growth"
+            | recommendations_with_activity
+          ]
       end
 
     if Enum.empty?(final_recommendations) do

@@ -143,14 +143,22 @@ defmodule EveDmv.Contexts.Intelligence.Core.ThreatAssessmentEngine do
 
       assessment_with_mitigation =
         if Keyword.get(opts, :include_mitigation, false) do
-          Map.put(initial_assessment, :mitigation_strategies, generate_mitigation_strategies(initial_assessment))
+          Map.put(
+            initial_assessment,
+            :mitigation_strategies,
+            generate_mitigation_strategies(initial_assessment)
+          )
         else
           initial_assessment
         end
 
       final_assessment =
         if Keyword.get(opts, :include_trends, false) do
-          Map.put(assessment_with_mitigation, :trends, analyze_threat_trends(character_id, overall_score))
+          Map.put(
+            assessment_with_mitigation,
+            :trends,
+            analyze_threat_trends(character_id, overall_score)
+          )
         else
           assessment_with_mitigation
         end

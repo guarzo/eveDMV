@@ -332,30 +332,62 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetOptimizer do
   end
 
   defp calculate_basic_effectiveness_vs_armor_hacs(has_ewar, has_high_alpha) do
-    base = 0.5
-    base = if has_ewar, do: base + 0.2, else: base
-    base = if has_high_alpha, do: base + 0.15, else: base
-    Float.round(min(base, 1.0), 2)
+    0.5
+    |> add_ewar_bonus(has_ewar)
+    |> add_alpha_bonus(has_high_alpha)
+    |> min(1.0)
+    |> Float.round(2)
   end
+
+  defp add_ewar_bonus(base, true), do: base + 0.2
+  defp add_ewar_bonus(base, false), do: base
+
+  defp add_alpha_bonus(base, true), do: base + 0.15
+  defp add_alpha_bonus(base, false), do: base
 
   defp calculate_basic_effectiveness_vs_shield_cruisers(has_range, has_mobility) do
-    base = 0.6
-    base = if has_range, do: base + 0.15, else: base
-    base = if has_mobility, do: base + 0.1, else: base
-    Float.round(min(base, 1.0), 2)
+    0.6
+    |> add_range_bonus(has_range)
+    |> add_mobility_bonus(has_mobility)
+    |> min(1.0)
+    |> Float.round(2)
   end
+
+  defp add_range_bonus(base, true), do: base + 0.15
+  defp add_range_bonus(base, false), do: base
+
+  defp add_mobility_bonus(base, true), do: base + 0.1
+  defp add_mobility_bonus(base, false), do: base
 
   defp generate_armor_hac_counters_basic(has_ewar, has_high_alpha) do
-    counters = []
-    counters = if not has_ewar, do: ["Add EWAR support" | counters], else: counters
-    counters = if not has_high_alpha, do: ["Increase alpha damage" | counters], else: counters
-    if Enum.empty?(counters), do: ["Composition effective as-is"], else: counters
+    []
+    |> maybe_add_ewar_counter(has_ewar)
+    |> maybe_add_alpha_counter(has_high_alpha)
+    |> finalize_armor_hac_counters()
   end
 
+  defp maybe_add_ewar_counter(counters, true), do: counters
+  defp maybe_add_ewar_counter(counters, false), do: ["Add EWAR support" | counters]
+
+  defp maybe_add_alpha_counter(counters, true), do: counters
+  defp maybe_add_alpha_counter(counters, false), do: ["Increase alpha damage" | counters]
+
+  defp finalize_armor_hac_counters([]), do: ["Composition effective as-is"]
+  defp finalize_armor_hac_counters(counters), do: counters
+
   defp generate_shield_cruiser_counters_basic(has_range, has_mobility) do
-    counters = []
-    counters = if not has_range, do: ["Add long-range ships" | counters], else: counters
-    counters = if not has_mobility, do: ["Add mobile elements" | counters], else: counters
-    if Enum.empty?(counters), do: ["Good matchup"], else: counters
+    []
+    |> maybe_add_range_counter(has_range)
+    |> maybe_add_mobility_counter(has_mobility)
+    |> finalize_shield_cruiser_counters()
   end
+
+  defp maybe_add_range_counter(counters, true), do: counters
+  defp maybe_add_range_counter(counters, false), do: ["Add long-range ships" | counters]
+
+  defp maybe_add_mobility_counter(counters, true), do: counters
+  defp maybe_add_mobility_counter(counters, false), do: ["Add mobile elements" | counters]
+
+  defp finalize_shield_cruiser_counters([]), do: ["Good matchup"]
+  defp finalize_shield_cruiser_counters(counters), do: counters
 end

@@ -524,78 +524,25 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
   end
 
   defp identify_strengths(metrics, combat_stats) do
-    strengths = []
-
-    strengths =
-      if metrics.kill_death_ratio > 2.0 do
-        ["Excellent K/D ratio" | strengths]
-      else
-        strengths
-      end
-
-    strengths =
-      if metrics.isk_efficiency > 75 do
-        ["High ISK efficiency" | strengths]
-      else
-        strengths
-      end
-
-    strengths =
-      if metrics.solo_effectiveness > 60 do
-        ["Strong solo pilot" | strengths]
-      else
-        strengths
-      end
-
-    strengths =
-      if metrics.versatility_score > 70 do
-        ["Highly versatile" | strengths]
-      else
-        strengths
-      end
-
-    strengths =
-      if combat_stats.weapon_preferences |> List.first() |> elem(1) > 50 do
-        ["Weapon specialization" | strengths]
-      else
-        strengths
-      end
-
-    Enum.reverse(strengths)
+    []
+    |> maybe_add_strength(metrics.kill_death_ratio > 2.0, "Excellent K/D ratio")
+    |> maybe_add_strength(metrics.isk_efficiency > 75, "High ISK efficiency")
+    |> maybe_add_strength(metrics.solo_effectiveness > 60, "Strong solo pilot")
+    |> maybe_add_strength(metrics.versatility_score > 70, "Highly versatile")
+    |> maybe_add_strength(
+      combat_stats.weapon_preferences |> List.first() |> elem(1) > 50,
+      "Weapon specialization"
+    )
+    |> Enum.reverse()
   end
 
   defp identify_improvement_areas(metrics, _combat_stats) do
-    areas = []
-
-    areas =
-      if metrics.kill_death_ratio < 1.0 do
-        ["Improve engagement selection" | areas]
-      else
-        areas
-      end
-
-    areas =
-      if metrics.isk_efficiency < 50 do
-        ["Target selection efficiency" | areas]
-      else
-        areas
-      end
-
-    areas =
-      if metrics.consistency_score < 40 do
-        ["Activity consistency" | areas]
-      else
-        areas
-      end
-
-    areas =
-      if metrics.versatility_score < 30 do
-        ["Ship/system diversity" | areas]
-      else
-        areas
-      end
-
-    Enum.reverse(areas)
+    []
+    |> maybe_add_improvement(metrics.kill_death_ratio < 1.0, "Improve engagement selection")
+    |> maybe_add_improvement(metrics.isk_efficiency < 50, "Target selection efficiency")
+    |> maybe_add_improvement(metrics.consistency_score < 40, "Activity consistency")
+    |> maybe_add_improvement(metrics.versatility_score < 30, "Ship/system diversity")
+    |> Enum.reverse()
   end
 
   defp calculate_rankings(_metrics) do
@@ -698,4 +645,10 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
       activity_trend: :declining
     }
   end
+
+  defp maybe_add_strength(strengths, true, strength_message), do: [strength_message | strengths]
+  defp maybe_add_strength(strengths, false, _strength_message), do: strengths
+
+  defp maybe_add_improvement(areas, true, improvement_message), do: [improvement_message | areas]
+  defp maybe_add_improvement(areas, false, _improvement_message), do: areas
 end

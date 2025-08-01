@@ -151,9 +151,9 @@ defmodule EveDmv.Contexts.Intelligence.Core.GangEffectivenessEngine do
       ShipRoles.is_ewar_ship?(ship_type_id) -> :support
       ShipRoles.is_command_ship?(ship_type_id) -> :support
       # Interceptors and dictors are tackle ships
-      ship_type_id in [11172, 11174, 11176, 11182, 11184, 11186, 11188, 11192] -> :tackle
+      ship_type_id in [11_172, 11_174, 11_176, 11_182, 11_184, 11_186, 11_188, 11_192] -> :tackle
       # Interdictors
-      ship_type_id in [22456, 22452, 22448, 22460] -> :tackle
+      ship_type_id in [22_456, 22_452, 22_448, 22_460] -> :tackle
       # Default to DPS for other combat ships
       true -> :dps
     end

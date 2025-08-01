@@ -246,12 +246,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
 
       system_id ->
         # Query system security from eve_systems table
-        case EveDmv.Repo.one(
-               from(s in "eve_systems",
-                 where: s.system_id == ^system_id,
-                 select: s.security_status
-               )
-             ) do
+        case from(s in "eve_systems",
+               where: s.system_id == ^system_id,
+               select: s.security_status
+             )
+             |> EveDmv.Repo.one() do
           nil -> 0.5
           security when is_float(security) -> security
           _ -> 0.5
@@ -502,12 +501,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
             end)
             |> Enum.count(fn ship_type_id ->
               # Check if ship is stealth bomber using group name
-              case EveDmv.Repo.one(
-                     from(i in "eve_item_types",
-                       where: i.type_id == ^ship_type_id and i.group_name == "Stealth Bomber",
-                       select: i.type_id
-                     )
-                   ) do
+              case from(i in "eve_item_types",
+                     where: i.type_id == ^ship_type_id and i.group_name == "Stealth Bomber",
+                     select: i.type_id
+                   )
+                   |> EveDmv.Repo.one() do
                 nil -> false
                 _ -> true
               end

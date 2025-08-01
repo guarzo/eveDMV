@@ -9,13 +9,13 @@ defmodule EveDmv.StaticData.ShipRoles do
   # T2 Logistics Cruisers
   @t2_logistics_cruisers [
     # Basilisk (Caldari)
-    11985,
+    11_985,
     # Guardian (Amarr)
-    11987,
+    11_987,
     # Oneiros (Gallente)
-    11989,
+    11_989,
     # Scimitar (Minmatar)
-    11978
+    11_978
   ]
 
   # T1 Logistics Cruisers
@@ -23,7 +23,7 @@ defmodule EveDmv.StaticData.ShipRoles do
     # Osprey (Caldari)
     2161,
     # Augoror (Amarr)
-    16509,
+    16_509,
     # Exequror (Gallente)
     634,
     # Scythe (Minmatar)
@@ -33,51 +33,51 @@ defmodule EveDmv.StaticData.ShipRoles do
   # T1 Logistics Frigates
   @t1_logistics_frigates [
     # Bantam (Caldari)
-    37457,
+    37_457,
     # Inquisitor (Amarr)
-    37454,
+    37_454,
     # Navitas (Gallente)
-    37456,
+    37_456,
     # Burst (Minmatar)
-    37453
+    37_453
   ]
 
   # Command Ships (Battlecruiser)
   @command_battlecruisers [
     # Eos (Gallente)
-    22442,
+    22_442,
     # Astarte (Gallente)
-    22444,
+    22_444,
     # Claymore (Minmatar)
-    22446,
+    22_446,
     # Sleipnir (Minmatar)
-    22448,
+    22_448,
     # Vulture (Caldari)
-    22466,
+    22_466,
     # Nighthawk (Caldari)
-    22468,
+    22_468,
     # Absolution (Amarr)
-    22470,
+    22_470,
     # Damnation (Amarr)
-    22474
+    22_474
   ]
 
   # Command Destroyers
   @command_destroyers [
     # Bifrost (Minmatar)
-    37480,
+    37_480,
     # Pontifex (Amarr)
-    37481,
+    37_481,
     # Stork (Caldari)
-    37482,
+    37_482,
     # Magus (Gallente)
-    37483
+    37_483
   ]
 
   # Command Frigates (Monitor)
   @command_frigates [
     # Monitor (ORE)
-    45534
+    45_534
   ]
 
   # T2 Force Recons
@@ -97,19 +97,19 @@ defmodule EveDmv.StaticData.ShipRoles do
     # Pilgrim (Amarr - Neuts/TD)
     11_965,
     # Curse (Amarr - Neuts/TD)
-    20125
+    20_125
   ]
 
   # Electronic Attack Frigates
   @electronic_attack_frigates [
     # Keres (Gallente - Damps)
-    11174,
+    11_174,
     # Sentinel (Amarr - Neuts/TD)
-    11190,
+    11_190,
     # Kitsune (Caldari - ECM)
-    11194,
+    11_194,
     # Hyena (Minmatar - Webs/Paint)
-    11387
+    11_387
   ]
 
   # T1 EWAR Cruisers
@@ -117,7 +117,7 @@ defmodule EveDmv.StaticData.ShipRoles do
     # Blackbird (Caldari - ECM)
     584,
     # Celestis (Gallente - Damps)
-    20128,
+    20_128,
     # Bellicose (Minmatar - Paint)
     631,
     # Arbitrator (Amarr - TD)
@@ -145,7 +145,7 @@ defmodule EveDmv.StaticData.ShipRoles do
     # Arazu
     11_969,
     # Curse
-    20125
+    20_125
   ]
 
   # All logistics ships
@@ -253,33 +253,33 @@ defmodule EveDmv.StaticData.ShipRoles do
     # Interceptors
     interceptor_ids = [
       # T2 Interceptors (Crow, Raptor, Ares, Malediction)
-      11176,
-      11178,
-      11184,
-      11186,
+      11_176,
+      11_178,
+      11_184,
+      11_186,
       # T2 Interceptors (Stiletto, Claw, Taranis, Crusader)
-      11196,
-      11198,
-      11200,
-      11202
+      11_196,
+      11_198,
+      11_200,
+      11_202
     ]
 
     # Interdictors
     interdictor_ids = [
       # Sabre, Flycatcher, Eris, Heretic
-      22452,
-      22456,
-      22460,
-      22464
+      22_452,
+      22_456,
+      22_460,
+      22_464
     ]
 
     # Heavy Interdictors
     heavy_interdictor_ids = [
       # Onyx, Broadsword, Phobos, Devoter
-      11995,
-      12013,
-      12017,
-      12021
+      11_995,
+      12_013,
+      12_017,
+      12_021
     ]
 
     ship_type_id in (interceptor_ids ++ interdictor_ids ++ heavy_interdictor_ids)
@@ -334,10 +334,10 @@ defmodule EveDmv.StaticData.ShipRoles do
       8645,
       8647,
       # Capital Remote Reps
-      41460,
-      41461,
-      41462,
-      41463
+      41_460,
+      41_461,
+      41_462,
+      41_463
     ]
 
     Enum.any?(module_ids, &(&1 in remote_rep_ids))
@@ -346,7 +346,7 @@ defmodule EveDmv.StaticData.ShipRoles do
   defp has_command_burst_modules?(module_ids) do
     # Command Burst modules (all variants)
     # IDs 43907-43918 are command bursts
-    Enum.any?(module_ids, &(&1 >= 43907 and &1 <= 43918))
+    Enum.any?(module_ids, &(&1 >= 43_907 and &1 <= 43_918))
   end
 
   defp has_ewar_modules?(module_ids) do
@@ -386,7 +386,7 @@ defmodule EveDmv.StaticData.ShipRoles do
       4027,
       4029,
       4031,
-      14680
+      14_680
     ]
 
     Enum.any?(module_ids, &(&1 in tackle_module_ids))

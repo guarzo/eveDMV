@@ -117,19 +117,23 @@ defmodule EveDmv.Utils.NumberFormatter do
     minutes = div(rem(seconds, 3600), 60)
     remaining_seconds = rem(seconds, 60)
 
-    initial_parts = []
-
-    parts_with_hours = if hours > 0, do: ["#{hours}h" | initial_parts], else: initial_parts
-    parts_with_minutes = if minutes > 0, do: ["#{minutes}m" | parts_with_hours], else: parts_with_hours
-
-    final_parts =
-      if remaining_seconds > 0 or Enum.empty?(parts_with_minutes),
-        do: ["#{remaining_seconds}s" | parts_with_minutes],
-        else: parts_with_minutes
-
-    final_parts
+    []
+    |> maybe_add_duration_part(hours > 0, "#{hours}h")
+    |> maybe_add_duration_part(minutes > 0, "#{minutes}m")
+    |> maybe_add_seconds_part(remaining_seconds)
     |> Enum.reverse()
     |> Enum.join(" ")
+  end
+
+  defp maybe_add_duration_part(parts, true, part), do: [part | parts]
+  defp maybe_add_duration_part(parts, false, _part), do: parts
+
+  defp maybe_add_seconds_part(parts, remaining_seconds) do
+    if remaining_seconds > 0 or Enum.empty?(parts) do
+      ["#{remaining_seconds}s" | parts]
+    else
+      parts
+    end
   end
 
   # Private helper functions

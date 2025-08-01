@@ -10,8 +10,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
 
   use GenServer
 
-  require Logger
   import Ecto.Query
+
+  require Logger
 
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Repo
@@ -231,10 +232,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   defp analyze_ship_classes(killmails) do
     killmails
     |> Enum.map(& &1.victim["ship_type_id"])
-    |> Enum.frequencies()
-    |> Map.keys()
-
-    # TODO: Map to actual ship classes once we have ship type data
+    |> Enum.reject(&is_nil/1)
+    |> Enum.map(&{&1, EveDmv.StaticData.ShipTypes.classify_ship_type(&1)})
+    |> Enum.group_by(fn {_type_id, class} -> class end)
+    |> Enum.map(fn {class, ships} -> {class, length(ships)} end)
+    |> Map.new()
   end
 
   defp calculate_total_value(killmails) do

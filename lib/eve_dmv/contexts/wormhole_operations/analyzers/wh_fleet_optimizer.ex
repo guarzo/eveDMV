@@ -262,51 +262,60 @@ defmodule EveDmv.Contexts.WormholeOperations.Analyzers.WhFleetAnalyzer.FleetOpti
 
   # Counter recommendation functions
   defp generate_armor_hac_counters(profile, effectiveness) do
-    counters = []
-
-    counters =
-      if effectiveness < 0.7 and not profile.has_ewar do
-        ["Add EWAR support" | counters]
-      else
-        counters
-      end
-
-    counters =
-      if effectiveness < 0.6 and profile.alpha_potential < 0.3 do
-        ["Increase alpha damage" | counters]
-      else
-        counters
-      end
-
-    counters =
-      if effectiveness < 0.5 do
-        ["Consider neut pressure" | counters]
-      else
-        counters
-      end
-
-    if Enum.empty?(counters), do: ["Composition effective as-is"], else: counters
+    []
+    |> maybe_add_ewar_counter_advanced(effectiveness, profile.has_ewar)
+    |> maybe_add_alpha_counter_advanced(effectiveness, profile.alpha_potential)
+    |> maybe_add_neut_counter(effectiveness)
+    |> finalize_armor_hac_counters_advanced()
   end
+
+  defp maybe_add_ewar_counter_advanced(counters, _effectiveness, true), do: counters
+
+  defp maybe_add_ewar_counter_advanced(counters, effectiveness, false) when effectiveness < 0.7 do
+    ["Add EWAR support" | counters]
+  end
+
+  defp maybe_add_ewar_counter_advanced(counters, _effectiveness, false), do: counters
+
+  defp maybe_add_alpha_counter_advanced(counters, effectiveness, alpha_potential)
+       when effectiveness < 0.6 and alpha_potential < 0.3 do
+    ["Increase alpha damage" | counters]
+  end
+
+  defp maybe_add_alpha_counter_advanced(counters, _effectiveness, _alpha_potential), do: counters
+
+  defp maybe_add_neut_counter(counters, effectiveness) when effectiveness < 0.5 do
+    ["Consider neut pressure" | counters]
+  end
+
+  defp maybe_add_neut_counter(counters, _effectiveness), do: counters
+
+  defp finalize_armor_hac_counters_advanced([]), do: ["Composition effective as-is"]
+  defp finalize_armor_hac_counters_advanced(counters), do: counters
 
   defp generate_shield_cruiser_counters(profile, effectiveness) do
-    counters = []
-
-    counters =
-      if effectiveness < 0.6 and profile.primary_range == :short do
-        ["Increase engagement range" | counters]
-      else
-        counters
-      end
-
-    counters =
-      if effectiveness < 0.7 and profile.mobility < 0.4 do
-        ["Add mobile elements" | counters]
-      else
-        counters
-      end
-
-    if Enum.empty?(counters), do: ["Good matchup"], else: counters
+    []
+    |> maybe_add_range_counter_advanced(effectiveness, profile.primary_range)
+    |> maybe_add_mobility_counter_advanced(effectiveness, profile.mobility)
+    |> finalize_shield_cruiser_counters_advanced()
   end
+
+  defp maybe_add_range_counter_advanced(counters, effectiveness, :short)
+       when effectiveness < 0.6 do
+    ["Increase engagement range" | counters]
+  end
+
+  defp maybe_add_range_counter_advanced(counters, _effectiveness, _range), do: counters
+
+  defp maybe_add_mobility_counter_advanced(counters, effectiveness, mobility)
+       when effectiveness < 0.7 and mobility < 0.4 do
+    ["Add mobile elements" | counters]
+  end
+
+  defp maybe_add_mobility_counter_advanced(counters, _effectiveness, _mobility), do: counters
+
+  defp finalize_shield_cruiser_counters_advanced([]), do: ["Good matchup"]
+  defp finalize_shield_cruiser_counters_advanced(counters), do: counters
 
   defp generate_brawling_counters(profile) do
     if profile.primary_range == :long do

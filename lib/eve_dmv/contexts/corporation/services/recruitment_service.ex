@@ -878,7 +878,9 @@ defmodule EveDmv.Contexts.Corporation.Services.RecruitmentService do
 
     # Low cohort performance
     final_risk_factors =
-      if not Enum.empty?(retention_analysis.cohorts) do
+      if Enum.empty?(retention_analysis.cohorts) do
+        trend_risk_factors
+      else
         avg_retention =
           retention_analysis.cohorts
           |> Enum.map(& &1.retention_rate)
@@ -893,8 +895,6 @@ defmodule EveDmv.Contexts.Corporation.Services.RecruitmentService do
         else
           trend_risk_factors
         end
-      else
-        trend_risk_factors
       end
 
     Enum.reverse(final_risk_factors)

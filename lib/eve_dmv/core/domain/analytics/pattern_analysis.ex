@@ -493,10 +493,14 @@ defmodule EveDmv.Core.Domain.Analytics.PatternAnalysis do
 
     # Check for common patterns
     patterns_with_alpha =
-      if has_pattern?(:alpha_strike, killmails), do: [:alpha_strike | initial_patterns], else: initial_patterns
+      if has_pattern?(:alpha_strike, killmails),
+        do: [:alpha_strike | initial_patterns],
+        else: initial_patterns
 
     patterns_with_hit_run =
-      if has_pattern?(:hit_and_run, killmails), do: [:hit_and_run | patterns_with_alpha], else: patterns_with_alpha
+      if has_pattern?(:hit_and_run, killmails),
+        do: [:hit_and_run | patterns_with_alpha],
+        else: patterns_with_alpha
 
     final_patterns =
       if has_pattern?(:sustained_engagement, killmails),

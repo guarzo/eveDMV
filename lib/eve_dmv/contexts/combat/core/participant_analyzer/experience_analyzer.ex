@@ -71,9 +71,6 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.ExperienceAnalyzer do
 
   defp calculate_tactical_awareness(participant) do
     # Look for signs of tactical thinking
-    initial_score = 0
-
-    # Target selection (final blow ratio)
     final_blow_ratio =
       if participant[:kills] > 0 do
         participant[:final_blows] / participant[:kills]
@@ -81,26 +78,24 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.ExperienceAnalyzer do
         0
       end
 
-    score_with_targeting = initial_score + final_blow_ratio * 30
-
-    # Engagement timing (not always first to die)
-    score_with_survival =
-      if participant[:deaths] == 0 || participant[:survival_time] == :survived do
-        score_with_targeting + 40
-      else
-        score_with_targeting
-      end
-
-    # Fleet participation vs solo
-    final_score =
-      if participant[:appearances] > 10 do
-        score_with_survival + 30
-      else
-        score_with_survival
-      end
-
-    min(final_score, 100)
+    0
+    |> add_targeting_bonus(final_blow_ratio)
+    |> add_survival_bonus(participant[:deaths], participant[:survival_time])
+    |> add_fleet_participation_bonus(participant[:appearances])
+    |> min(100)
   end
+
+  defp add_targeting_bonus(score, final_blow_ratio), do: score + final_blow_ratio * 30
+
+  defp add_survival_bonus(score, deaths, survival_time)
+       when deaths == 0 or survival_time == :survived do
+    score + 40
+  end
+
+  defp add_survival_bonus(score, _deaths, _survival_time), do: score
+
+  defp add_fleet_participation_bonus(score, appearances) when appearances > 10, do: score + 30
+  defp add_fleet_participation_bonus(score, _appearances), do: score
 
   defp calculate_ship_progression(participant) do
     # Using appropriate ships for role shows experience
@@ -134,45 +129,41 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.ExperienceAnalyzer do
   end
 
   defp identify_experience_indicators(participant) do
-    initial_indicators = []
-
-    # Positive indicators
-    indicators_with_kd =
-      if participant[:kills] > participant[:deaths] * 2 do
-        ["positive_kd_ratio" | initial_indicators]
-      else
-        initial_indicators
-      end
-
-    indicators_with_survival =
-      if participant[:survival_time] == :survived && participant[:appearances] > 5 do
-        ["good_survival_instincts" | indicators_with_kd]
-      else
-        indicators_with_kd
-      end
-
-    indicators_with_efficiency =
-      if participant[:efficiency_rating] > 70 do
-        ["high_damage_efficiency" | indicators_with_survival]
-      else
-        indicators_with_survival
-      end
-
-    indicators_with_versatility =
-      if length(participant[:ships_used] || []) > 2 do
-        ["ship_versatility" | indicators_with_efficiency]
-      else
-        indicators_with_efficiency
-      end
-
-    # Negative indicators
-    final_indicators =
-      if participant[:deaths] > participant[:kills] * 2 do
-        ["poor_engagement_choices" | indicators_with_versatility]
-      else
-        indicators_with_versatility
-      end
-
-    final_indicators
+    []
+    |> maybe_add_kd_indicator(participant[:kills], participant[:deaths])
+    |> maybe_add_survival_indicator(participant[:survival_time], participant[:appearances])
+    |> maybe_add_efficiency_indicator(participant[:efficiency_rating])
+    |> maybe_add_versatility_indicator(participant[:ships_used])
+    |> maybe_add_poor_choices_indicator(participant[:deaths], participant[:kills])
   end
+
+  defp maybe_add_kd_indicator(indicators, kills, deaths) when kills > deaths * 2 do
+    ["positive_kd_ratio" | indicators]
+  end
+
+  defp maybe_add_kd_indicator(indicators, _kills, _deaths), do: indicators
+
+  defp maybe_add_survival_indicator(indicators, :survived, appearances) when appearances > 5 do
+    ["good_survival_instincts" | indicators]
+  end
+
+  defp maybe_add_survival_indicator(indicators, _survival_time, _appearances), do: indicators
+
+  defp maybe_add_efficiency_indicator(indicators, efficiency) when efficiency > 70 do
+    ["high_damage_efficiency" | indicators]
+  end
+
+  defp maybe_add_efficiency_indicator(indicators, _efficiency), do: indicators
+
+  defp maybe_add_versatility_indicator(indicators, ships_used) when length(ships_used) > 2 do
+    ["ship_versatility" | indicators]
+  end
+
+  defp maybe_add_versatility_indicator(indicators, _ships_used), do: indicators
+
+  defp maybe_add_poor_choices_indicator(indicators, deaths, kills) when deaths > kills * 2 do
+    ["poor_engagement_choices" | indicators]
+  end
+
+  defp maybe_add_poor_choices_indicator(indicators, _deaths, _kills), do: indicators
 end

@@ -169,6 +169,16 @@ defmodule EveDmv.StaticData.ShipTypes do
       # Mining
       "Mining Barge" -> :mining
       "Exhumer" -> :mining
+      # Structures
+      "Control Tower" -> :structure
+      "Citadel" -> :structure
+      "Engineering Complex" -> :structure
+      "Refinery" -> :structure
+      "POS Module" -> :structure
+      "Starbase" -> :structure
+      "Territorial Claim Unit" -> :structure
+      "Infrastructure Hub" -> :structure
+      "Sovereignty Blockade Unit" -> :structure
       # Default
       _ -> :unknown
     end
@@ -257,6 +267,24 @@ defmodule EveDmv.StaticData.ShipTypes do
 
   defp get_group_names_for_class(:mining) do
     ["Mining Barge", "Exhumer"]
+  end
+
+  defp get_group_names_for_class(:structure) do
+    [
+      "Control Tower",
+      "Citadel",
+      "Engineering Complex",
+      "Refinery",
+      "POS Module",
+      "Starbase",
+      "Territorial Claim Unit",
+      "Infrastructure Hub",
+      "Sovereignty Blockade Unit"
+    ]
+  end
+
+  defp get_group_names_for_class(:stealth_bomber) do
+    ["Stealth Bomber"]
   end
 
   defp get_group_names_for_class(_), do: []

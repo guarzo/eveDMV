@@ -348,16 +348,12 @@ defmodule EveDmv.Contexts.Intelligence.Services.ProfileService do
     base_value = threat_assessment.overall_score / 100
 
     # Add bonuses for interesting characteristics
-    bonus = 0
-
-    bonus =
-      if character_analysis.classifications.pilot_type == :elite_solo_hunter,
-        do: bonus + 0.2,
-        else: bonus
-
-    bonus = if length(character_analysis.notable_patterns) > 3, do: bonus + 0.1, else: bonus
-
-    total_value = min(base_value + bonus, 1.0)
+    total_value =
+      0
+      |> add_elite_hunter_bonus(character_analysis.classifications.pilot_type)
+      |> add_pattern_complexity_bonus(character_analysis.notable_patterns)
+      |> Kernel.+(base_value)
+      |> min(1.0)
 
     cond do
       total_value > 0.8 -> :very_high
@@ -367,6 +363,12 @@ defmodule EveDmv.Contexts.Intelligence.Services.ProfileService do
       true -> :minimal
     end
   end
+
+  defp add_elite_hunter_bonus(bonus, :elite_solo_hunter), do: bonus + 0.2
+  defp add_elite_hunter_bonus(bonus, _pilot_type), do: bonus
+
+  defp add_pattern_complexity_bonus(bonus, patterns) when length(patterns) > 3, do: bonus + 0.1
+  defp add_pattern_complexity_bonus(bonus, _patterns), do: bonus
 
   defp assess_recruitment_potential(character_analysis, performance_analysis) do
     # Based on skill level and performance trends
@@ -393,25 +395,22 @@ defmodule EveDmv.Contexts.Intelligence.Services.ProfileService do
   end
 
   defp extract_key_insights(character_analysis, threat_assessment) do
-    insights = []
-
-    # Threat-based insights
-    insights =
-      if threat_assessment.overall_score > 80 do
-        ["Extremely dangerous opponent" | insights]
-      else
-        insights
-      end
-
-    # Pattern-based insights
-    insights = character_analysis.notable_patterns ++ insights
-
-    # Strength-based insights
-    insights = character_analysis.strengths ++ insights
-
-    # Top 5 insights
-    Enum.take(insights, 5)
+    []
+    |> maybe_add_threat_insight(threat_assessment.overall_score)
+    |> add_pattern_insights(character_analysis.notable_patterns)
+    |> add_strength_insights(character_analysis.strengths)
+    |> Enum.take(5)
   end
+
+  defp maybe_add_threat_insight(insights, overall_score) when overall_score > 80 do
+    ["Extremely dangerous opponent" | insights]
+  end
+
+  defp maybe_add_threat_insight(insights, _overall_score), do: insights
+
+  defp add_pattern_insights(insights, patterns), do: patterns ++ insights
+
+  defp add_strength_insights(insights, strengths), do: strengths ++ insights
 
   defp summarize_threat_level(threat_assessment) do
     %{
@@ -426,29 +425,29 @@ defmodule EveDmv.Contexts.Intelligence.Services.ProfileService do
   end
 
   defp generate_tactical_notes(character_analysis) do
-    notes = []
+    []
+    |> add_pilot_type_notes(character_analysis.classifications.pilot_type)
+    |> add_engagement_style_notes(character_analysis.classifications.engagement_style)
+  end
 
-    # Based on pilot classification
-    notes =
-      case character_analysis.classifications.pilot_type do
-        :elite_solo_hunter -> ["Exceptionally dangerous in solo combat" | notes]
-        :solo_specialist -> ["Prefers solo engagements" | notes]
-        :fleet_pilot -> ["Operates primarily in fleets" | notes]
-        :gang_specialist -> ["Small gang specialist" | notes]
-        _ -> notes
-      end
+  defp add_pilot_type_notes(notes, pilot_type) do
+    case pilot_type do
+      :elite_solo_hunter -> ["Exceptionally dangerous in solo combat" | notes]
+      :solo_specialist -> ["Prefers solo engagements" | notes]
+      :fleet_pilot -> ["Operates primarily in fleets" | notes]
+      :gang_specialist -> ["Small gang specialist" | notes]
+      _ -> notes
+    end
+  end
 
-    # Based on engagement style
-    notes =
-      case character_analysis.classifications.engagement_style do
-        :hot_dropper -> ["Uses capital ships for surprise attacks" | notes]
-        :gate_camper -> ["Camps gates and choke points" | notes]
-        :roamer -> ["Roams across multiple systems" | notes]
-        :home_defender -> ["Defends home territory" | notes]
-        _ -> notes
-      end
-
-    notes
+  defp add_engagement_style_notes(notes, engagement_style) do
+    case engagement_style do
+      :hot_dropper -> ["Uses capital ships for surprise attacks" | notes]
+      :gate_camper -> ["Camps gates and choke points" | notes]
+      :roamer -> ["Roams across multiple systems" | notes]
+      :home_defender -> ["Defends home territory" | notes]
+      _ -> notes
+    end
   end
 
   defp assess_data_confidence(character_analysis) do
@@ -510,7 +509,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.ProfileService do
 
         <div class="section">
             <div class="header">Intelligence Summary</div>
-            #{Enum.map(profile.intelligence_summary.key_insights, fn insight -> "<li>#{insight}</li>" end) |> Enum.join("")}
+            #{Enum.map_join(profile.intelligence_summary.key_insights, "", fn insight -> "<li>#{insight}</li>" end)}
         </div>
     </body>
     </html>

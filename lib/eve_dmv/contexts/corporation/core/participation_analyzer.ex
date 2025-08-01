@@ -896,62 +896,68 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
   end
 
   defp generate_participation_recommendations(participation_data, fleet_data, timezone_data) do
-    initial_recommendations = []
-    _totalmembers = map_size(participation_data)
-
-    # Low participation recommendations
     summary = build_participation_summary(participation_data)
 
-    recommendations_with_participation =
-      if summary.participation_rate < 50 do
+    []
+    |> maybe_add_participation_recommendation(summary.participation_rate)
+    |> maybe_add_fleet_recommendation(fleet_data.avg_fleet_participation_rate)
+    |> maybe_add_timezone_recommendation(timezone_data)
+    |> maybe_add_leadership_recommendation(fleet_data.fleet_leadership_depth.potential_leaders)
+    |> finalize_participation_recommendations()
+  end
+
+  defp maybe_add_participation_recommendation(recommendations, participation_rate)
+       when participation_rate < 50 do
+    [
+      "Increase member engagement - only #{Float.round(participation_rate, 1)}% participation rate"
+      | recommendations
+    ]
+  end
+
+  defp maybe_add_participation_recommendation(recommendations, _participation_rate),
+    do: recommendations
+
+  defp maybe_add_fleet_recommendation(recommendations, fleet_participation_rate)
+       when fleet_participation_rate < 30 do
+    [
+      "Organize more fleet operations - low fleet participation (#{Float.round(fleet_participation_rate, 1)}%)"
+      | recommendations
+    ]
+  end
+
+  defp maybe_add_fleet_recommendation(recommendations, _fleet_participation_rate),
+    do: recommendations
+
+  defp maybe_add_timezone_recommendation(recommendations, timezone_data) do
+    case timezone_data.timezone_strength do
+      strength when strength in [:poor_coverage, :very_poor_coverage] ->
         [
-          "Increase member engagement - only #{Float.round(summary.participation_rate, 1)}% participation rate"
-          | initial_recommendations
+          "Improve timezone coverage - gaps identified in #{length(timezone_data.coverage_gaps)} hours"
+          | recommendations
         ]
-      else
-        initial_recommendations
-      end
 
-    # Fleet participation recommendations
-    recommendations_with_fleet =
-      if fleet_data.avg_fleet_participation_rate < 30 do
-        [
-          "Organize more fleet operations - low fleet participation (#{Float.round(fleet_data.avg_fleet_participation_rate, 1)}%)"
-          | recommendations_with_participation
-        ]
-      else
-        recommendations_with_participation
-      end
-
-    # Timezone coverage recommendations
-    recommendations_with_timezone =
-      case timezone_data.timezone_strength do
-        strength when strength in [:poor_coverage, :very_poor_coverage] ->
-          [
-            "Improve timezone coverage - gaps identified in #{length(timezone_data.coverage_gaps)} hours"
-            | recommendations_with_fleet
-          ]
-
-        _ ->
-          recommendations_with_fleet
-      end
-
-    # Leadership development recommendations
-    final_recommendations =
-      if fleet_data.fleet_leadership_depth.potential_leaders < 3 do
-        [
-          "Develop more fleet leaders - only #{fleet_data.fleet_leadership_depth.potential_leaders} potential leaders identified"
-          | recommendations_with_timezone
-        ]
-      else
-        recommendations_with_timezone
-      end
-
-    if Enum.empty?(final_recommendations) do
-      ["Maintain current participation levels and continue monitoring engagement"]
-    else
-      Enum.reverse(final_recommendations)
+      _ ->
+        recommendations
     end
+  end
+
+  defp maybe_add_leadership_recommendation(recommendations, potential_leaders)
+       when potential_leaders < 3 do
+    [
+      "Develop more fleet leaders - only #{potential_leaders} potential leaders identified"
+      | recommendations
+    ]
+  end
+
+  defp maybe_add_leadership_recommendation(recommendations, _potential_leaders),
+    do: recommendations
+
+  defp finalize_participation_recommendations([]) do
+    ["Maintain current participation levels and continue monitoring engagement"]
+  end
+
+  defp finalize_participation_recommendations(recommendations) do
+    Enum.reverse(recommendations)
   end
 
   defp analyze_participation_trends(_corporation_id, _participation_data) do

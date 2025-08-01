@@ -210,41 +210,26 @@ defmodule EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer do
 
   defp gather_character_data(character_id, opts) do
     # Gather all required data in parallel
-    tasks = []
+    base_tasks = [Task.async(fn -> get_character_stats(character_id) end)]
 
     tasks =
-      if Keyword.get(opts, :include_combat_stats, true) do
-        [Task.async(fn -> CombatStatsAnalyzer.analyze_combat_stats(character_id) end) | tasks]
-      else
-        tasks
-      end
-
-    tasks =
-      if Keyword.get(opts, :include_ship_prefs, true) do
-        [
-          Task.async(fn -> ShipPreferenceAnalyzer.analyze_ship_preferences(character_id) end)
-          | tasks
-        ]
-      else
-        tasks
-      end
-
-    tasks =
-      if Keyword.get(opts, :include_behavior, true) do
-        [Task.async(fn -> BehavioralPatternAnalyzer.analyze_behavior(character_id) end) | tasks]
-      else
-        tasks
-      end
-
-    tasks =
-      if Keyword.get(opts, :include_performance, true) do
-        [Task.async(fn -> PerformanceAnalyzer.analyze_performance(character_id) end) | tasks]
-      else
-        tasks
-      end
-
-    # Always get basic stats
-    tasks = [Task.async(fn -> get_character_stats(character_id) end) | tasks]
+      base_tasks
+      |> maybe_add_task(
+        Keyword.get(opts, :include_combat_stats, true),
+        Task.async(fn -> CombatStatsAnalyzer.analyze_combat_stats(character_id) end)
+      )
+      |> maybe_add_task(
+        Keyword.get(opts, :include_ship_prefs, true),
+        Task.async(fn -> ShipPreferenceAnalyzer.analyze_ship_preferences(character_id) end)
+      )
+      |> maybe_add_task(
+        Keyword.get(opts, :include_behavior, true),
+        Task.async(fn -> BehavioralPatternAnalyzer.analyze_behavior(character_id) end)
+      )
+      |> maybe_add_task(
+        Keyword.get(opts, :include_performance, true),
+        Task.async(fn -> PerformanceAnalyzer.analyze_performance(character_id) end)
+      )
 
     # Wait for all tasks
     results = Task.await_many(tasks, @analysis_timeout)
@@ -390,55 +375,21 @@ defmodule EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer do
   end
 
   defp identify_strengths(data) do
-    strengths = []
-
     combat = data[:combat_stats] || %{}
     ships = data[:ship_preferences] || %{}
 
-    strengths =
-      if combat[:kill_death_ratio] > 3 do
-        ["Excellent kill/death ratio" | strengths]
-      else
-        strengths
-      end
-
-    strengths =
-      if combat[:solo_effectiveness] > 0.7 do
-        ["Strong solo pilot" | strengths]
-      else
-        strengths
-      end
-
-    strengths =
-      if ships[:capital_usage] > 0.2 do
-        ["Capital ship pilot" | strengths]
-      else
-        strengths
-      end
-
-    strengths
+    []
+    |> maybe_add_strength(combat[:kill_death_ratio] > 3, "Excellent kill/death ratio")
+    |> maybe_add_strength(combat[:solo_effectiveness] > 0.7, "Strong solo pilot")
+    |> maybe_add_strength(ships[:capital_usage] > 0.2, "Capital ship pilot")
   end
 
   defp identify_weaknesses(data) do
-    weaknesses = []
-
     patterns = data[:behavioral_patterns] || %{}
 
-    weaknesses =
-      if patterns[:predictable_timezone] do
-        ["Predictable activity times" | weaknesses]
-      else
-        weaknesses
-      end
-
-    weaknesses =
-      if patterns[:limited_ship_variety] do
-        ["Limited ship variety" | weaknesses]
-      else
-        weaknesses
-      end
-
-    weaknesses
+    []
+    |> maybe_add_weakness(patterns[:predictable_timezone], "Predictable activity times")
+    |> maybe_add_weakness(patterns[:limited_ship_variety], "Limited ship variety")
   end
 
   defp identify_patterns(data) do
@@ -524,4 +475,13 @@ defmodule EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer do
       _ -> :generalist
     end
   end
+
+  defp maybe_add_task(tasks, true, task), do: [task | tasks]
+  defp maybe_add_task(tasks, false, _task), do: tasks
+
+  defp maybe_add_strength(strengths, true, strength_message), do: [strength_message | strengths]
+  defp maybe_add_strength(strengths, false, _strength_message), do: strengths
+
+  defp maybe_add_weakness(weaknesses, true, weakness_message), do: [weakness_message | weaknesses]
+  defp maybe_add_weakness(weaknesses, false, _weakness_message), do: weaknesses
 end

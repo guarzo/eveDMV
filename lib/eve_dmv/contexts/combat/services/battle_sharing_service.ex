@@ -573,25 +573,23 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
   defp format_timeline_markdown(timeline) do
     timeline.events
     |> Enum.take(10)
-    |> Enum.map(fn event ->
+    |> Enum.map_join("\n", fn event ->
       "- **#{format_time(event.time)}** - #{describe_event(event)}"
     end)
-    |> Enum.join("\n")
   end
 
   defp format_participants_markdown(participants) do
     participants.mvp_candidates
     |> Enum.take(5)
     |> Enum.with_index(1)
-    |> Enum.map(fn {participant, rank} ->
+    |> Enum.map_join("\n", fn {participant, rank} ->
       "#{rank}. **#{participant.character_name}** - #{participant.kills} kills, #{participant.deaths} deaths"
     end)
-    |> Enum.join("\n")
   end
 
   defp format_fleet_comp_markdown(fleet_comp) do
     fleet_comp.sides
-    |> Enum.map(fn {side, comp} ->
+    |> Enum.map_join("\n", fn {side, comp} ->
       """
       ### #{side}
       - Ships: #{comp.total_ships}
@@ -599,15 +597,13 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
       - Composition: #{format_ship_classes(comp.ship_classes)}
       """
     end)
-    |> Enum.join("\n")
   end
 
   defp format_tactical_markdown(patterns) do
     patterns
-    |> Enum.map(fn pattern ->
+    |> Enum.map_join("\n", fn pattern ->
       "- **#{pattern.type}**: #{describe_pattern(pattern)}"
     end)
-    |> Enum.join("\n")
   end
 
   defp format_time(datetime) do
@@ -620,10 +616,9 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
 
   defp format_ship_classes(ship_classes) do
     ship_classes
-    |> Enum.map(fn {class, data} ->
+    |> Enum.map_join(", ", fn {class, data} ->
       "#{class} (#{data.count})"
     end)
-    |> Enum.join(", ")
   end
 
   defp describe_pattern(pattern) do
@@ -659,7 +654,7 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
   defp format_timeline_html(timeline) do
     timeline.events
     |> Enum.take(10)
-    |> Enum.map(fn event ->
+    |> Enum.map_join("\n", fn event ->
       """
       <div class="event">
         <strong>#{format_time(event.time)}</strong><br>
@@ -667,7 +662,6 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
       </div>
       """
     end)
-    |> Enum.join("\n")
   end
 
   defp format_participants_html(participants) do
@@ -683,28 +677,25 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
     participants
     |> Enum.take(10)
     |> Enum.with_index(1)
-    |> Enum.map(fn {p, rank} ->
+    |> Enum.map_join("\n", fn {p, rank} ->
       "<tr><td>#{rank}</td><td>#{p.character_name}</td><td>#{p.kills}</td><td>#{p.deaths}</td></tr>"
     end)
-    |> Enum.join("\n")
   end
 
   defp format_top_killers_text(participants) do
     participants.mvp_candidates
     |> Enum.take(5)
     |> Enum.with_index(1)
-    |> Enum.map(fn {p, rank} ->
+    |> Enum.map_join("\n", fn {p, rank} ->
       "#{rank}. #{p.character_name} (#{p.kills} kills)"
     end)
-    |> Enum.join("\n")
   end
 
   defp format_timeline_text(timeline) do
     timeline.events
     |> Enum.take(5)
-    |> Enum.map(fn event ->
+    |> Enum.map_join("\n", fn event ->
       "#{format_time(event.time)} - #{describe_event(event)}"
     end)
-    |> Enum.join("\n")
   end
 end

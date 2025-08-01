@@ -9,9 +9,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
   - Analyzing recent changes and patterns
   """
 
-  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.Calculators.ThreatScoreCalculator
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.Calculators.ThreatScoreCalculator,
+    as: ThreatScoreCalculator
 
-  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.DataFetchers.CombatDataFetcher
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.DataFetchers.CombatDataFetcher,
+    as: CombatDataFetcher
 
   require Logger
 

@@ -9,10 +9,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
   - Managing battle visibility and access
   """
 
+  import Ash.Expr
+
   require Ash.Query
   require Logger
-
-  import Ash.Expr
 
   alias EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer
   alias EveDmv.Contexts.BattleAnalysis.Resources.Battle
@@ -422,10 +422,119 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
 
   defp format_stat_value(value), do: to_string(value)
 
-  defp get_participant_breakdown(_battle_id) do
-    # TODO: Once battles store killmail associations, retrieve and analyze participants
-    # For now, return empty breakdown
-    []
+  defp get_participant_breakdown(battle_id) do
+    # Retrieve and analyze participants from battle killmails
+    case BattleService.get_battle(battle_id) do
+      {:ok, battle} ->
+        analyze_battle_participants(battle)
+
+      {:error, _} ->
+        []
+    end
+  end
+
+  defp analyze_battle_participants(battle) do
+    # Get killmails for this battle and analyze participant breakdown
+    killmails = get_battle_killmails(battle.id)
+
+    if Enum.empty?(killmails) do
+      []
+    else
+      # Extract all participants from killmails
+      participants = extract_battle_participants(killmails)
+
+      # Group by affiliation and analyze
+      participants
+      |> group_participants_by_affiliation()
+      |> Enum.map(&format_participant_group/1)
+      |> Enum.sort_by(fn group -> group.participant_count end, :desc)
+    end
+  end
+
+  defp extract_battle_participants(killmails) do
+    killmails
+    |> Enum.flat_map(fn km ->
+      # Extract victim
+      victim = %{
+        character_id: km.victim["character_id"],
+        character_name: km.victim["character_name"],
+        corporation_id: km.victim["corporation_id"],
+        corporation_name: km.victim["corporation_name"],
+        alliance_id: km.victim["alliance_id"],
+        alliance_name: km.victim["alliance_name"],
+        ship_type_id: km.victim["ship_type_id"],
+        role: :victim
+      }
+
+      # Extract attackers
+      attackers =
+        (km.attackers || [])
+        |> Enum.map(fn attacker ->
+          %{
+            character_id: attacker["character_id"],
+            character_name: attacker["character_name"],
+            corporation_id: attacker["corporation_id"],
+            corporation_name: attacker["corporation_name"],
+            alliance_id: attacker["alliance_id"],
+            alliance_name: attacker["alliance_name"],
+            ship_type_id: attacker["ship_type_id"],
+            role: :attacker
+          }
+        end)
+        |> Enum.reject(fn attacker -> is_nil(attacker.character_id) end)
+
+      [victim | attackers]
+    end)
+    |> Enum.reject(fn participant -> is_nil(participant.character_id) end)
+    |> Enum.uniq_by(fn participant -> participant.character_id end)
+  end
+
+  defp group_participants_by_affiliation(participants) do
+    # Group by alliance first, then by corporation for non-alliance members
+    participants
+    |> Enum.group_by(fn participant ->
+      if participant.alliance_id && participant.alliance_id != 0 do
+        {:alliance, participant.alliance_id, participant.alliance_name}
+      else
+        {:corporation, participant.corporation_id, participant.corporation_name}
+      end
+    end)
+  end
+
+  defp format_participant_group({affiliation_key, group_participants}) do
+    {type, id, name} = affiliation_key
+
+    # Analyze ships used by this group
+    ship_breakdown =
+      group_participants
+      |> Enum.map(fn p -> p.ship_type_id end)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.frequencies()
+      |> Enum.map(fn {ship_type_id, count} ->
+        ship_class = EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
+        %{ship_type_id: ship_type_id, ship_class: ship_class, count: count}
+      end)
+      |> group_by_ship_class()
+
+    %{
+      affiliation_type: type,
+      affiliation_id: id,
+      affiliation_name: name || "Unknown",
+      participant_count: length(group_participants),
+      ship_classes: ship_breakdown,
+      # Sample of pilots
+      pilots: Enum.take(group_participants, 10)
+    }
+  end
+
+  defp group_by_ship_class(ship_breakdown) do
+    ship_breakdown
+    |> Enum.group_by(fn ship -> ship.ship_class end)
+    |> Enum.map(fn {class, ships} ->
+      total_count = Enum.reduce(ships, 0, fn ship, acc -> acc + ship.count end)
+      {class, total_count}
+    end)
+    |> Map.new()
   end
 
   defp format_isk_value(value) when value >= 1_000_000_000 do
@@ -583,25 +692,23 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
   defp format_timeline_markdown(timeline) do
     timeline.events
     |> Enum.take(10)
-    |> Enum.map(fn event ->
+    |> Enum.map_join("\n", fn event ->
       "- **#{format_time(event.time)}** - #{describe_event(event)}"
     end)
-    |> Enum.join("\n")
   end
 
   defp format_participants_markdown(participants) do
     participants.mvp_candidates
     |> Enum.take(5)
     |> Enum.with_index(1)
-    |> Enum.map(fn {participant, rank} ->
+    |> Enum.map_join("\n", fn {participant, rank} ->
       "#{rank}. **#{participant.character_name}** - #{participant.kills} kills, #{participant.deaths} deaths"
     end)
-    |> Enum.join("\n")
   end
 
   defp format_fleet_comp_markdown(fleet_comp) do
     fleet_comp.sides
-    |> Enum.map(fn {side, comp} ->
+    |> Enum.map_join("\n", fn {side, comp} ->
       """
       ### #{side}
       - Ships: #{comp.total_ships}
@@ -609,15 +716,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
       - Composition: #{format_ship_classes(comp.ship_classes)}
       """
     end)
-    |> Enum.join("\n")
   end
 
   defp format_tactical_markdown(patterns) do
     patterns
-    |> Enum.map(fn pattern ->
+    |> Enum.map_join("\n", fn pattern ->
       "- **#{pattern.type}**: #{describe_pattern(pattern)}"
     end)
-    |> Enum.join("\n")
   end
 
   defp format_time(datetime) do
@@ -630,10 +735,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
 
   defp format_ship_classes(ship_classes) do
     ship_classes
-    |> Enum.map(fn {class, data} ->
+    |> Enum.map_join(", ", fn {class, data} ->
       "#{class} (#{data.count})"
     end)
-    |> Enum.join(", ")
   end
 
   defp describe_pattern(pattern) do
@@ -669,7 +773,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
   defp format_timeline_html(timeline) do
     timeline.events
     |> Enum.take(10)
-    |> Enum.map(fn event ->
+    |> Enum.map_join("\n", fn event ->
       """
       <div class="event">
         <strong>#{format_time(event.time)}</strong><br>
@@ -677,7 +781,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
       </div>
       """
     end)
-    |> Enum.join("\n")
   end
 
   defp format_participants_html(participants) do
@@ -693,28 +796,25 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
     participants
     |> Enum.take(10)
     |> Enum.with_index(1)
-    |> Enum.map(fn {p, rank} ->
+    |> Enum.map_join("\n", fn {p, rank} ->
       "<tr><td>#{rank}</td><td>#{p.character_name}</td><td>#{p.kills}</td><td>#{p.deaths}</td></tr>"
     end)
-    |> Enum.join("\n")
   end
 
   defp format_top_killers_text(participants) do
     participants.mvp_candidates
     |> Enum.take(5)
     |> Enum.with_index(1)
-    |> Enum.map(fn {p, rank} ->
+    |> Enum.map_join("\n", fn {p, rank} ->
       "#{rank}. #{p.character_name} (#{p.kills} kills)"
     end)
-    |> Enum.join("\n")
   end
 
   defp format_timeline_text(timeline) do
     timeline.events
     |> Enum.take(5)
-    |> Enum.map(fn event ->
+    |> Enum.map_join("\n", fn event ->
       "#{format_time(event.time)} - #{describe_event(event)}"
     end)
-    |> Enum.join("\n")
   end
 end

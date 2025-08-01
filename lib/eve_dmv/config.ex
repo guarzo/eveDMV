@@ -97,7 +97,7 @@ defmodule EveDmv.Config do
   @doc """
   Get cache TTL for a specific cache type.
   """
-  @spec cache_ttl(atom(), integer()) :: integer()
+  @spec cache_ttl(atom(), integer() | nil) :: integer()
   def cache_ttl(cache_type, default \\ nil) do
     case Map.get(@cache_ttl_mappings, cache_type) do
       nil -> default || UnifiedConfig.get([:cache, :default_ttl_ms])

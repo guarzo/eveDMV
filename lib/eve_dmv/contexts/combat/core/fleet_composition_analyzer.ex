@@ -157,19 +157,8 @@ defmodule EveDmv.Contexts.Combat.Core.FleetCompositionAnalyzer do
   end
 
   defp classify_ship(ship_type_id) do
-    # TODO: Use actual ship classification from ShipTypes
-    # For now, use simplified classification
-    cond do
-      ship_type_id == 670 -> :capsule
-      ship_type_id < 1000 -> :frigate
-      ship_type_id < 2000 -> :destroyer
-      ship_type_id < 3000 -> :cruiser
-      ship_type_id < 4000 -> :battlecruiser
-      ship_type_id < 5000 -> :battleship
-      ship_type_id >= 20_000 && ship_type_id < 30_000 -> :capital
-      ship_type_id >= 30_000 -> :structure
-      true -> :unknown
-    end
+    # Use actual ship classification from ShipTypes using EVE static data
+    EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
   end
 
   defp calculate_composition_breakdown(ship_classes) do
@@ -201,9 +190,26 @@ defmodule EveDmv.Contexts.Combat.Core.FleetCompositionAnalyzer do
     end
   end
 
-  defp estimate_logistics_percentage(_ship_classes) do
-    # TODO: Implement actual logistics ship detection
-    5.0
+  defp estimate_logistics_percentage(ship_classes) do
+    total_ships = ship_classes |> Map.values() |> Enum.reduce(0, &(&1.count + &2))
+
+    if total_ships > 0 do
+      logistics_count = calculate_logistics_count(ship_classes)
+      Float.round(logistics_count / total_ships * 100, 1)
+    else
+      0.0
+    end
+  end
+
+  defp calculate_logistics_count(ship_classes) do
+    # Get actual logistics ship type IDs from the database
+    logistics_ids = EveDmv.StaticData.ShipTypes.logistics_ship_ids()
+
+    ship_classes
+    |> Enum.reduce(0, fn {_class, %{ships: ship_ids}}, acc ->
+      logistics_in_class = Enum.count(ship_ids, &(&1 in logistics_ids))
+      acc + logistics_in_class
+    end)
   end
 
   defp calculate_average_value(ships) do
@@ -262,9 +268,22 @@ defmodule EveDmv.Contexts.Combat.Core.FleetCompositionAnalyzer do
     battleship_weight + capital_weight + cruiser_weight
   end
 
-  defp estimate_ewar_capability(_ship_classes) do
-    # TODO: Implement actual EWAR ship detection
-    :moderate
+  defp estimate_ewar_capability(ship_classes) do
+    ewar_ids = EveDmv.StaticData.ShipTypes.ewar_ship_ids()
+
+    total_ewar_ships =
+      ship_classes
+      |> Enum.reduce(0, fn {_class, %{ships: ship_ids}}, acc ->
+        ewar_in_class = Enum.count(ship_ids, &(&1 in ewar_ids))
+        acc + ewar_in_class
+      end)
+
+    case total_ewar_ships do
+      0 -> :none
+      n when n <= 2 -> :light
+      n when n <= 5 -> :moderate
+      _ -> :heavy
+    end
   end
 
   defp assess_fleet_capabilities(ship_classes) do
@@ -307,50 +326,33 @@ defmodule EveDmv.Contexts.Combat.Core.FleetCompositionAnalyzer do
   end
 
   defp identify_weaknesses(ship_classes) do
-    weaknesses = []
-
-    # Check for lack of logistics
-    logistics_weaknesses =
-      if estimate_logistics_percentage(ship_classes) < 10 do
-        [:insufficient_logistics | weaknesses]
-      else
-        weaknesses
-      end
-
-    # Check for lack of tackle
     tackle_count = (ship_classes[:frigate][:count] || 0) + (ship_classes[:destroyer][:count] || 0)
 
-    tackle_weaknesses =
-      if tackle_count < 3 do
-        [:insufficient_tackle | logistics_weaknesses]
-      else
-        logistics_weaknesses
-      end
-
-    # Check for poor composition balance
     total_ships =
       ship_classes
       |> Map.values()
       |> Enum.reduce(0, &(&1.count + &2))
 
-    composition_weaknesses =
+    max_class_percentage =
       if total_ships > 0 do
-        max_class_percentage =
-          ship_classes
-          |> Map.values()
-          |> Enum.map(& &1.percentage)
-          |> Enum.max()
-
-        if max_class_percentage > 60 do
-          [:unbalanced_composition | tackle_weaknesses]
-        else
-          tackle_weaknesses
-        end
+        ship_classes
+        |> Map.values()
+        |> Enum.map(& &1.percentage)
+        |> Enum.max()
       else
-        tackle_weaknesses
+        0
       end
 
-    composition_weaknesses
+    []
+    |> maybe_add_fleet_weakness(
+      estimate_logistics_percentage(ship_classes) < 10,
+      :insufficient_logistics
+    )
+    |> maybe_add_fleet_weakness(tackle_count < 3, :insufficient_tackle)
+    |> maybe_add_fleet_weakness(
+      total_ships > 0 && max_class_percentage > 60,
+      :unbalanced_composition
+    )
   end
 
   defp compare_compositions(side_compositions) do
@@ -614,9 +616,95 @@ defmodule EveDmv.Contexts.Combat.Core.FleetCompositionAnalyzer do
     length(composition.weaknesses) * 15
   end
 
-  defp calculate_doctrine_bonus(_composition) do
-    # TODO: Implement actual doctrine effectiveness bonus
-    10
+  defp calculate_doctrine_bonus(composition) do
+    # Calculate doctrine effectiveness based on detected patterns and cohesion
+    doctrine_info = identify_doctrine_patterns(composition)
+
+    base_bonus =
+      case doctrine_info.primary_doctrine do
+        # Well-coordinated armor fleets are effective
+        :armor_doctrine -> 15
+        # Alpha doctrine provides tactical advantage
+        :alpha_strike -> 12
+        # Kiting requires good coordination
+        :kiting_doctrine -> 10
+        # Mixed doctrines are less optimal
+        :mixed_doctrine -> 5
+        _ -> 0
+      end
+
+    # Cohesion multiplier
+    cohesion_multiplier =
+      case doctrine_info.doctrine_cohesion do
+        # Highly cohesive fleets get bonus
+        :high_cohesion -> 1.5
+        # Moderate cohesion gets small bonus
+        :moderate_cohesion -> 1.2
+        # Low cohesion is neutral
+        :low_cohesion -> 1.0
+        # No cohesion penalizes effectiveness
+        :no_cohesion -> 0.8
+        _ -> 1.0
+      end
+
+    # Fleet size bonus - larger fleets benefit more from doctrine
+    size_bonus =
+      case composition.total_ships do
+        # Large fleets benefit from doctrine
+        n when n >= 50 -> 5
+        # Medium fleets get some benefit
+        n when n >= 20 -> 3
+        # Small fleets don't benefit much
+        _ -> 0
+      end
+
+    # Role balance bonus - balanced fleets are more effective
+    balance_bonus = calculate_role_balance_bonus(composition)
+
+    final_bonus = (base_bonus + size_bonus + balance_bonus) * cohesion_multiplier
+    Float.round(final_bonus, 1)
+  end
+
+  defp calculate_role_balance_bonus(composition) do
+    # Analyze role distribution for balance
+    logistics_pct = composition.composition_breakdown.logistics_percentage
+    dps_pct = composition.composition_breakdown.dps_percentage
+    support_pct = composition.composition_breakdown.support_percentage
+
+    # Ideal fleet composition bonuses
+    logistics_score =
+      cond do
+        # Optimal logistics ratio
+        logistics_pct >= 10 && logistics_pct <= 20 -> 5
+        # Good logistics ratio
+        logistics_pct >= 7 && logistics_pct <= 25 -> 3
+        # Minimal logistics
+        logistics_pct >= 4 -> 1
+        # No logistics penalty
+        true -> -2
+      end
+
+    dps_score =
+      cond do
+        # Good DPS backbone
+        dps_pct >= 40 && dps_pct <= 70 -> 3
+        # Adequate DPS
+        dps_pct >= 30 -> 1
+        # Insufficient DPS
+        true -> -1
+      end
+
+    support_score =
+      cond do
+        # Good support presence
+        support_pct >= 15 && support_pct <= 35 -> 2
+        # Some support
+        support_pct >= 10 -> 1
+        # No support bonus
+        true -> 0
+      end
+
+    logistics_score + dps_score + support_score
   end
 
   defp categorize_effectiveness(score) do
@@ -630,28 +718,31 @@ defmodule EveDmv.Contexts.Combat.Core.FleetCompositionAnalyzer do
   end
 
   defp generate_recommendations(composition, scores) do
-    recommendations = []
-
-    # Check composition balance
-    recommendations =
-      if scores.composition_score < 50 do
-        ["Improve fleet composition balance" | recommendations]
-      else
-        recommendations
-      end
-
-    # Check for specific weaknesses
-    recommendations =
-      recommendations ++
-        Enum.map(composition.weaknesses, fn weakness ->
-          case weakness do
-            :insufficient_logistics -> "Add more logistics ships"
-            :insufficient_tackle -> "Add more tackle frigates/dictors"
-            :unbalanced_composition -> "Diversify ship types"
-            _ -> "Address #{weakness}"
-          end
-        end)
-
-    recommendations
+    []
+    |> maybe_add_composition_recommendation(scores.composition_score < 50)
+    |> add_weakness_recommendations(composition.weaknesses)
   end
+
+  defp maybe_add_composition_recommendation(recommendations, true) do
+    ["Improve fleet composition balance" | recommendations]
+  end
+
+  defp maybe_add_composition_recommendation(recommendations, false), do: recommendations
+
+  defp add_weakness_recommendations(recommendations, weaknesses) do
+    weakness_recommendations =
+      Enum.map(weaknesses, fn weakness ->
+        case weakness do
+          :insufficient_logistics -> "Add more logistics ships"
+          :insufficient_tackle -> "Add more tackle frigates/dictors"
+          :unbalanced_composition -> "Diversify ship types"
+          _ -> "Address #{weakness}"
+        end
+      end)
+
+    recommendations ++ weakness_recommendations
+  end
+
+  defp maybe_add_fleet_weakness(weaknesses, true, weakness), do: [weakness | weaknesses]
+  defp maybe_add_fleet_weakness(weaknesses, false, _weakness), do: weaknesses
 end

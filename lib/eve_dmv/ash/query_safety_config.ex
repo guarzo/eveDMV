@@ -58,10 +58,8 @@ defmodule EveDmv.Ash.QuerySafetyConfig do
       if action_name in unsafe_actions() do
         query
       else
-        case safety_config_for(resource) do
-          nil -> query
-          config -> QuerySafety.prepare(query, config, %{})
-        end
+        config = safety_config_for(resource)
+        QuerySafety.prepare(query, config, %{})
       end
     else
       # If query doesn't have expected structure, return unchanged

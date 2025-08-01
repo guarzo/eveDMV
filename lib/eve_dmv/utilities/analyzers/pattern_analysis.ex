@@ -402,22 +402,19 @@ defmodule EveDmv.Intelligence.PatternAnalysis do
     kd_ratio = calculate_kill_death_ratio(stats)
 
     # High fleet participation + good performance suggests leadership
-    initial_leadership_score = 0.0
-
-    final_leadership_score =
-      initial_leadership_score +
-        cond do
-          fleet_ratio > 0.7 and kd_ratio > 2.0 -> 0.4
-          fleet_ratio > 0.5 and kd_ratio > 1.5 -> 0.3
-          fleet_ratio > 0.3 and total_kills > 200 -> 0.2
-          true -> 0.1
-        end
+    leadership_score =
+      cond do
+        fleet_ratio > 0.7 and kd_ratio > 2.0 -> 0.4
+        fleet_ratio > 0.5 and kd_ratio > 1.5 -> 0.3
+        fleet_ratio > 0.3 and total_kills > 200 -> 0.2
+        true -> 0.1
+      end
 
     # Experience factor
     has_command_experience = total_kills > 500 and fleet_ratio > 0.6
 
     %{
-      leadership_score: min(1.0, final_leadership_score),
+      leadership_score: min(1.0, leadership_score),
       command_experience: has_command_experience
     }
   end
@@ -428,29 +425,27 @@ defmodule EveDmv.Intelligence.PatternAnalysis do
     fleet_ratio = stats.fleet_ratio || 0.0
     gang_ratio = stats.gang_ratio || 0.0
 
-    # High activity with mixed group sizes suggests central position
-    initial_centrality_score = 0.0
-
     # Activity level contributes to centrality
-    centrality_with_activity =
-      initial_centrality_score +
-        cond do
-          total_activity > 1000 -> 0.3
-          total_activity > 500 -> 0.2
-          total_activity > 100 -> 0.1
-          true -> 0.05
-        end
-
-    # Mixed participation suggests bridge role
-    final_centrality_score =
-      if fleet_ratio > 0.3 and gang_ratio > 0.3 do
-        centrality_with_activity + 0.3
-      else
-        centrality_with_activity
+    activity_score =
+      cond do
+        total_activity > 1000 -> 0.3
+        total_activity > 500 -> 0.2
+        total_activity > 100 -> 0.1
+        true -> 0.05
       end
 
-    min(1.0, final_centrality_score)
+    # Mixed participation suggests bridge role
+    activity_score
+    |> add_bridge_role_bonus(fleet_ratio, gang_ratio)
+    |> min(1.0)
   end
+
+  defp add_bridge_role_bonus(score, fleet_ratio, gang_ratio)
+       when fleet_ratio > 0.3 and gang_ratio > 0.3 do
+    score + 0.3
+  end
+
+  defp add_bridge_role_bonus(score, _fleet_ratio, _gang_ratio), do: score
 
   defp calculate_social_influence_score(stats) do
     # Calculate social influence based on performance and participation
@@ -551,27 +546,20 @@ defmodule EveDmv.Intelligence.PatternAnalysis do
     kd_ratio = calculate_kill_death_ratio(stats)
 
     # High K/D with experience indicates strategy
-    initial_strategy_score = 0.0
-
     base_strategy_score =
       cond do
-        total_kills > 500 and kd_ratio > 2.0 ->
-          initial_strategy_score + 0.4
-
-        total_kills > 200 and kd_ratio > 1.5 ->
-          initial_strategy_score + 0.3
-
-        true ->
-          initial_strategy_score + 0.1
+        total_kills > 500 and kd_ratio > 2.0 -> 0.4
+        total_kills > 200 and kd_ratio > 1.5 -> 0.3
+        true -> 0.1
       end
 
     # Solo players need more strategy
-    if solo_ratio > 0.7 do
-      base_strategy_score + 0.2
-    else
-      base_strategy_score
-    end
+    base_strategy_score
+    |> add_solo_strategy_bonus(solo_ratio)
   end
+
+  defp add_solo_strategy_bonus(score, solo_ratio) when solo_ratio > 0.7, do: score + 0.2
+  defp add_solo_strategy_bonus(score, _solo_ratio), do: score
 
   defp check_activity_anomalies(anomalies, stats) do
     activity_score = (stats.total_kills || 0) + (stats.total_losses || 0)

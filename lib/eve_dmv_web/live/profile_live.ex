@@ -68,10 +68,8 @@ defmodule EveDmvWeb.ProfileLive do
   end
 
   defp get_character_combat_stats(character_id) do
-    case CharacterIntelligence.get_character_intelligence_report(character_id) do
-      {:ok, report} -> report.combat_stats
-      {:error, _} -> nil
-    end
+    {:ok, report} = CharacterIntelligence.get_character_intelligence_report(character_id)
+    report.combat_stats
   end
 
   defp get_character_ship_intelligence(character_id) do
@@ -96,11 +94,8 @@ defmodule EveDmvWeb.ProfileLive do
     }
 
     # Get character intelligence data
-    intelligence_data =
-      case CharacterIntelligence.get_character_intelligence_report(user.eve_character_id) do
-        {:ok, report} -> report
-        {:error, _} -> %{error: "Intelligence data not available"}
-      end
+    {:ok, intelligence_data} =
+      CharacterIntelligence.get_character_intelligence_report(user.eve_character_id)
 
     # Get threat scoring data
     threat_data =
@@ -174,19 +169,14 @@ defmodule EveDmvWeb.ProfileLive do
   def handle_event("export_data", _params, socket) do
     current_user = socket.assigns.current_user
 
-    case export_user_data(current_user) do
-      {:ok, _data} ->
-        # In a real implementation, this would trigger a download or email
-        {:noreply,
-         put_flash(
-           socket,
-           :info,
-           "Data export completed. Check your email for the download link."
-         )}
-
-      {:error, _reason} ->
-        {:noreply, put_flash(socket, :error, "Failed to export data")}
-    end
+    {:ok, _data} = export_user_data(current_user)
+    # In a real implementation, this would trigger a download or email
+    {:noreply,
+     put_flash(
+       socket,
+       :info,
+       "Data export completed. Check your email for the download link."
+     )}
   end
 
   @impl Phoenix.LiveView
