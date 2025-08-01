@@ -4,8 +4,8 @@ defmodule EveDmv.Contexts.Intelligence.Core.GangEffectivenessEngine do
   Part of the multi-dimensional threat assessment system.
   """
 
-  alias EveDmv.Database.KillmailRepository
   alias EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer
+  alias EveDmv.Database.KillmailRepository
 
   require Logger
 
@@ -252,15 +252,15 @@ defmodule EveDmv.Contexts.Intelligence.Core.GangEffectivenessEngine do
   defp detect_command_ship_usage(killmails, character_id) do
     command_ship_ids = [
       # Command Ships
-      22442,
-      22444,
-      22446,
-      22448,
+      22_442,
+      22_444,
+      22_446,
+      22_448,
       # Command Destroyers
-      37480,
-      37481,
-      37482,
-      37483
+      37_480,
+      37_481,
+      37_482,
+      37_483
     ]
 
     Enum.any?(killmails, fn km ->
