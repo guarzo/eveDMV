@@ -3,14 +3,11 @@ defmodule EveDmv.Contexts.Intelligence.Services.InsightGenerator do
   Service for generating tactical insights, mitigation strategies, and engagement recommendations.
   """
 
-  alias EveDmv.Contexts.Intelligence.Core.{
-    ThreatAssessmentEngine,
-    CharacterAnalyzer,
-    BehavioralPatternAnalyzer,
-    PerformanceAnalyzer
-  }
-
   alias EveDmv.Cache
+  alias EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer
+  alias EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer
+  alias EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer
+  alias EveDmv.Contexts.Intelligence.Core.ThreatAssessmentEngine
 
   require Logger
 
