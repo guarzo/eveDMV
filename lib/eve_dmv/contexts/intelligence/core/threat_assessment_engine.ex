@@ -131,7 +131,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.ThreatAssessmentEngine do
     with {:ok, aspect_scores} <- calculate_aspect_scores(character_id, opts),
          overall_score <- calculate_weighted_score(aspect_scores, weights),
          {:ok, analysis} <- perform_additional_analysis(character_id, opts) do
-      assessment = %{
+      initial_assessment = %{
         character_id: character_id,
         overall_score: overall_score,
         threat_level: categorize_threat_level(overall_score),
@@ -141,21 +141,21 @@ defmodule EveDmv.Contexts.Intelligence.Core.ThreatAssessmentEngine do
         assessed_at: DateTime.utc_now()
       }
 
-      assessment =
+      assessment_with_mitigation =
         if Keyword.get(opts, :include_mitigation, false) do
-          Map.put(assessment, :mitigation_strategies, generate_mitigation_strategies(assessment))
+          Map.put(initial_assessment, :mitigation_strategies, generate_mitigation_strategies(initial_assessment))
         else
-          assessment
+          initial_assessment
         end
 
-      assessment =
+      final_assessment =
         if Keyword.get(opts, :include_trends, false) do
-          Map.put(assessment, :trends, analyze_threat_trends(character_id, overall_score))
+          Map.put(assessment_with_mitigation, :trends, analyze_threat_trends(character_id, overall_score))
         else
-          assessment
+          assessment_with_mitigation
         end
 
-      {:ok, assessment}
+      {:ok, final_assessment}
     end
   end
 
@@ -379,38 +379,38 @@ defmodule EveDmv.Contexts.Intelligence.Core.ThreatAssessmentEngine do
   end
 
   defp generate_mitigation_strategies(assessment) do
-    strategies = []
+    initial_strategies = []
 
     # Add strategies based on high-scoring aspects
-    strategies =
+    strategies_with_combat =
       if assessment.aspect_scores.combat_effectiveness > 70 do
-        ["Avoid solo engagements" | strategies]
+        ["Avoid solo engagements" | initial_strategies]
       else
-        strategies
+        initial_strategies
       end
 
-    strategies =
+    strategies_with_tactical =
       if assessment.aspect_scores.tactical_sophistication > 70 do
-        ["Expect advanced tactics and baiting" | strategies]
+        ["Expect advanced tactics and baiting" | strategies_with_combat]
       else
-        strategies
+        strategies_with_combat
       end
 
-    strategies =
+    strategies_with_opsec =
       if assessment.aspect_scores.operational_security > 70 do
-        ["Difficult to track - use scouts" | strategies]
+        ["Difficult to track - use scouts" | strategies_with_tactical]
       else
-        strategies
+        strategies_with_tactical
       end
 
-    strategies =
+    final_strategies =
       if assessment.aspect_scores.network_influence > 70 do
-        ["Expect backup - check local for allies" | strategies]
+        ["Expect backup - check local for allies" | strategies_with_opsec]
       else
-        strategies
+        strategies_with_opsec
       end
 
-    strategies
+    final_strategies
   end
 
   defp analyze_threat_trends(character_id, current_score) do
