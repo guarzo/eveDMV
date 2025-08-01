@@ -399,7 +399,11 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
       avg_bloat_ratio:
         if(Enum.empty?(table_stats),
           do: 0,
-          else: Enum.sum(Enum.map(table_stats, & &1.bloat_ratio)) / length(table_stats)
+          else:
+            table_stats
+            |> Enum.map(& &1.bloat_ratio)
+            |> Enum.sum()
+            |> Kernel./(length(table_stats))
         ),
       highest_bloat:
         if(Enum.empty?(table_stats),
@@ -415,8 +419,10 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
         if(Enum.empty?(table_stats),
           do: 0,
           else:
-            Enum.sum(Enum.map(table_stats, & &1.usage_patterns.index_scan_ratio)) /
-              length(table_stats)
+            table_stats
+            |> Enum.map(& &1.usage_patterns.index_scan_ratio)
+            |> Enum.sum()
+            |> Kernel./(length(table_stats))
         ),
       tables_with_poor_efficiency:
         Enum.count(table_stats, &(&1.usage_patterns.sequential_scan_ratio > 0.5))

@@ -278,7 +278,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.CombatStatsAnalyzer do
         km.victim.character_id != character_id and
           Enum.any?(km.attackers, fn att ->
             att.character_id == character_id and
-              is_capital_or_blops(att.ship_type_id)
+              is_capital_or_blops?(att.ship_type_id)
           end)
       end)
       |> length()
@@ -337,7 +337,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.CombatStatsAnalyzer do
         km.victim.character_id != character_id and
           Enum.any?(km.attackers, fn att ->
             att.character_id == character_id and
-              is_brawling_ship(att.ship_type_id)
+              is_brawling_ship?(att.ship_type_id)
           end)
       end)
       |> length()
@@ -354,7 +354,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.CombatStatsAnalyzer do
         km.victim.character_id != character_id and
           Enum.any?(km.attackers, fn att ->
             att.character_id == character_id and
-              is_kiting_ship(att.ship_type_id)
+              is_kiting_ship?(att.ship_type_id)
           end)
       end)
       |> length()
@@ -367,7 +367,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.CombatStatsAnalyzer do
     Enum.count(killmails, fn km -> km.victim.character_id != character_id end)
   end
 
-  defp is_capital_or_blops(ship_type_id) do
+  defp is_capital_or_blops?(ship_type_id) do
     case ShipTypes.get_ship_class(ship_type_id) do
       {:ok, class} ->
         class in [:titan, :supercarrier, :carrier, :dreadnought, :fax, :black_ops]
@@ -377,7 +377,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.CombatStatsAnalyzer do
     end
   end
 
-  defp is_brawling_ship(ship_type_id) do
+  defp is_brawling_ship?(ship_type_id) do
     case ShipTypes.get_ship_attributes(ship_type_id) do
       {:ok, ship_info} ->
         # Ships known for close-range combat
@@ -398,7 +398,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.CombatStatsAnalyzer do
     end
   end
 
-  defp is_kiting_ship(ship_type_id) do
+  defp is_kiting_ship?(ship_type_id) do
     case ShipTypes.get_ship_attributes(ship_type_id) do
       {:ok, ship_info} ->
         # Ships known for long-range kiting

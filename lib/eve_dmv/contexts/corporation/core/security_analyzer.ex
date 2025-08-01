@@ -619,14 +619,20 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
 
     new_member_indicators =
       if infiltration_risks.new_member_ratio > 20 do
-        ["High ratio of new members (#{infiltration_risks.new_member_ratio}%)" | initial_indicators]
+        [
+          "High ratio of new members (#{infiltration_risks.new_member_ratio}%)"
+          | initial_indicators
+        ]
       else
         initial_indicators
       end
 
     final_indicators =
       if infiltration_risks.low_activity_count > 5 do
-        ["#{infiltration_risks.low_activity_count} low-activity members present" | new_member_indicators]
+        [
+          "#{infiltration_risks.low_activity_count} low-activity members present"
+          | new_member_indicators
+        ]
       else
         new_member_indicators
       end

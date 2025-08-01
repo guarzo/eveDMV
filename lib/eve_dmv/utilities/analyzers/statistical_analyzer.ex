@@ -71,7 +71,7 @@ defmodule EveDmv.Intelligence.Analyzers.StatisticalAnalyzer do
 
   def calculate_variance(values) when is_list(values) do
     mean = Enum.sum(values) / length(values)
-    sum_squared_diff = Enum.sum(Enum.map(values, &:math.pow(&1 - mean, 2)))
+    sum_squared_diff = values |> Enum.map(&:math.pow(&1 - mean, 2)) |> Enum.sum()
     sum_squared_diff / (length(values) - 1)
   end
 

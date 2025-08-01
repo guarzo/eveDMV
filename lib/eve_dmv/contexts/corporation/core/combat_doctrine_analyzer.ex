@@ -359,7 +359,10 @@ defmodule EveDmv.Contexts.Corporation.Core.CombatDoctrineAnalyzer do
 
     indicators_with_consistency =
       if class_consistency > 0.7 do
-        ["High ship class consistency (#{Float.round(class_consistency * 100, 1)}%)" | initial_indicators]
+        [
+          "High ship class consistency (#{Float.round(class_consistency * 100, 1)}%)"
+          | initial_indicators
+        ]
       else
         initial_indicators
       end
@@ -1136,7 +1139,10 @@ defmodule EveDmv.Contexts.Corporation.Core.CombatDoctrineAnalyzer do
           ["Establish clear combat doctrine and ship requirements" | initial_recommendations]
 
         :weak_doctrine ->
-          ["Strengthen doctrine adherence through training and ship programs" | initial_recommendations]
+          [
+            "Strengthen doctrine adherence through training and ship programs"
+            | initial_recommendations
+          ]
 
         _ ->
           initial_recommendations
@@ -1155,7 +1161,10 @@ defmodule EveDmv.Contexts.Corporation.Core.CombatDoctrineAnalyzer do
     # Specialization recommendations
     final_recommendations =
       if ship_usage.specialization_index > 50 do
-        ["Consider broadening ship usage to reduce over-specialization" | recommendations_with_diversity]
+        [
+          "Consider broadening ship usage to reduce over-specialization"
+          | recommendations_with_diversity
+        ]
       else
         recommendations_with_diversity
       end

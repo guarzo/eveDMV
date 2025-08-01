@@ -329,7 +329,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
   defp maybe_add_killmails(data, battle_id, true) do
     Map.put(data, :killmails, get_battle_killmails(battle_id))
   end
-  
+
   defp maybe_add_killmails(data, _battle_id, false), do: data
 
   defp maybe_add_analysis(data, battle_id, true) do
@@ -338,7 +338,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
       _ -> data
     end
   end
-  
+
   defp maybe_add_analysis(data, _battle_id, false), do: data
 
   defp serialize_battle(battle) do
@@ -557,13 +557,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
   defp maybe_add_duration_insight(insights, duration_variance) when duration_variance > 30 do
     ["Significant duration variance (#{duration_variance} minutes)" | insights]
   end
-  
+
   defp maybe_add_duration_insight(insights, _duration_variance), do: insights
 
   defp maybe_add_scale_insight(insights, participant_ratio) when participant_ratio > 3 do
     ["Large scale difference (#{Float.round(participant_ratio, 1)}x)" | insights]
   end
-  
+
   defp maybe_add_scale_insight(insights, _participant_ratio), do: insights
 
   # Formatting helpers

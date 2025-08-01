@@ -877,21 +877,25 @@ defmodule EveDmv.Contexts.Corporation.Services.RecruitmentService do
       end
 
     # Low cohort performance
-    final_risk_factors = if not Enum.empty?(retention_analysis.cohorts) do
-      avg_retention =
-        retention_analysis.cohorts
-        |> Enum.map(& &1.retention_rate)
-        |> Enum.sum()
-        |> Kernel./(length(retention_analysis.cohorts))
+    final_risk_factors =
+      if not Enum.empty?(retention_analysis.cohorts) do
+        avg_retention =
+          retention_analysis.cohorts
+          |> Enum.map(& &1.retention_rate)
+          |> Enum.sum()
+          |> Kernel./(length(retention_analysis.cohorts))
 
-      if avg_retention < 0.5 do
-        ["Low average retention rate (#{Float.round(avg_retention * 100, 1)}%)" | trend_risk_factors]
+        if avg_retention < 0.5 do
+          [
+            "Low average retention rate (#{Float.round(avg_retention * 100, 1)}%)"
+            | trend_risk_factors
+          ]
+        else
+          trend_risk_factors
+        end
       else
         trend_risk_factors
       end
-    else
-      trend_risk_factors
-    end
 
     Enum.reverse(final_risk_factors)
   end
@@ -1034,7 +1038,10 @@ defmodule EveDmv.Contexts.Corporation.Services.RecruitmentService do
 
     velocity_recommendations =
       if velocity < 1 do
-        ["Launch targeted recruitment campaign to increase pipeline velocity" | initial_recommendations]
+        [
+          "Launch targeted recruitment campaign to increase pipeline velocity"
+          | initial_recommendations
+        ]
       else
         initial_recommendations
       end
@@ -1050,8 +1057,13 @@ defmodule EveDmv.Contexts.Corporation.Services.RecruitmentService do
       end
 
     # Process improvement recommendations
-    dashboard_recommendations = ["Implement recruitment metrics dashboard" | effectiveness_recommendations]
-    final_recommendations = ["Establish recruiter performance tracking" | dashboard_recommendations]
+    dashboard_recommendations = [
+      "Implement recruitment metrics dashboard" | effectiveness_recommendations
+    ]
+
+    final_recommendations = [
+      "Establish recruiter performance tracking" | dashboard_recommendations
+    ]
 
     # Prioritize recommendations
     final_recommendations

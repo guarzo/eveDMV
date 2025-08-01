@@ -58,7 +58,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
     focus_fire_instances =
       killmails
       |> Enum.chunk_every(5, 1, :discard)
-      |> Enum.filter(&is_focus_fire_sequence?/1)
+      |> Enum.filter(&focus_fire_sequence?/1)
       |> Enum.map(&analyze_focus_fire/1)
 
     if length(focus_fire_instances) > 0 do
@@ -75,7 +75,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
     end
   end
 
-  defp is_focus_fire_sequence?(killmail_chunk) do
+  defp focus_fire_sequence?(killmail_chunk) do
     # Check if kills happen in rapid succession with overlapping attackers
     times = Enum.map(killmail_chunk, & &1.killmail_time)
 
@@ -222,8 +222,8 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
 
     style =
       cond do
-        is_kiting_pattern?(ranges, timeline) -> :kiting
-        is_brawling_pattern?(ranges) -> :brawling
+        kiting_pattern?(ranges, timeline) -> :kiting
+        brawling_pattern?(ranges) -> :brawling
         is_hit_and_run?(timeline) -> :hit_and_run
         is_gate_camp?(positions) -> :gate_camp
         true -> :mixed
@@ -269,7 +269,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
     end
   end
 
-  defp is_kiting_pattern?(ranges, _timeline) do
+  defp kiting_pattern?(ranges, _timeline) do
     # High average range with consistent distance maintenance
     avg_range = average(ranges)
     range_consistency = standard_deviation(ranges) / max(avg_range, 1)
@@ -277,7 +277,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
     avg_range > 30 && range_consistency < 0.3
   end
 
-  defp is_brawling_pattern?(ranges) do
+  defp brawling_pattern?(ranges) do
     # Close range engagement
     avg_range = average(ranges)
     avg_range < 10

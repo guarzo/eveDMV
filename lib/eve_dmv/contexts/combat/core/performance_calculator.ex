@@ -599,27 +599,27 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
     ship_type = get_in(killmail.victim, ["ship_type_id"])
 
     cond do
-      is_logistics_ship?(ship_type) -> :critical
-      is_command_ship?(ship_type) -> :high
-      is_ewar_ship?(ship_type) -> :high
-      is_capital_ship?(ship_type) -> :very_high
+      logistics_ship?(ship_type) -> :critical
+      command_ship?(ship_type) -> :high
+      ewar_ship?(ship_type) -> :high
+      capital_ship?(ship_type) -> :very_high
       true -> :standard
     end
   end
 
-  defp is_logistics_ship?(ship_type) do
+  defp logistics_ship?(ship_type) do
     EveDmv.StaticData.ShipRoles.is_logistics_ship?(ship_type)
   end
 
-  defp is_command_ship?(ship_type) do
+  defp command_ship?(ship_type) do
     EveDmv.StaticData.ShipRoles.is_command_ship?(ship_type)
   end
 
-  defp is_ewar_ship?(ship_type) do
+  defp ewar_ship?(ship_type) do
     EveDmv.StaticData.ShipRoles.is_ewar_ship?(ship_type)
   end
 
-  defp is_capital_ship?(ship_type), do: ship_type && ship_type >= 20_000
+  defp capital_ship?(ship_type), do: ship_type && ship_type >= 20_000
 
   defp calculate_hvt_priority(target_values) do
     # Check if high-value targets were killed early

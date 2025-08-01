@@ -31,10 +31,10 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.RoleClassifier do
       using_tackle_ship?(ship_types) -> :tackle
       using_capital_ship?(ship_types) -> :capital_pilot
       # Then behavior-based roles
-      is_fleet_commander?(participant) -> :fleet_commander
-      is_damage_dealer?(participant) -> :damage_dealer
-      is_scout?(participant) -> :scout
-      is_hunter?(participant) -> :hunter
+      fleet_commander?(participant) -> :fleet_commander
+      damage_dealer?(participant) -> :damage_dealer
+      scout?(participant) -> :scout
+      hunter?(participant) -> :hunter
       # Default role
       true -> :line_member
     end
@@ -45,7 +45,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.RoleClassifier do
 
     # A participant can have multiple secondary roles
     roles =
-      if is_high_damage_dealer?(participant) && primary_role != :damage_dealer do
+      if high_damage_dealer?(participant) && primary_role != :damage_dealer do
         [:damage_dealer | roles]
       else
         roles
@@ -102,7 +102,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.RoleClassifier do
     Enum.any?(ship_types, &(&1 in @capital_ships))
   end
 
-  defp is_fleet_commander?(participant) do
+  defp fleet_commander?(participant) do
     # FCs typically:
     # - Stay alive longer
     # - Are on many killmails but with lower damage
@@ -118,7 +118,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.RoleClassifier do
       avg_damage < 5000
   end
 
-  defp is_damage_dealer?(participant) do
+  defp damage_dealer?(participant) do
     total_damage = participant[:total_damage_done] || 0
     appearances = participant[:appearances] || 1
     avg_damage = total_damage / appearances
@@ -126,7 +126,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.RoleClassifier do
     avg_damage > 10_000 || participant[:final_blows] > 3
   end
 
-  defp is_scout?(participant) do
+  defp scout?(participant) do
     # Scouts typically:
     # - Use fast ships
     # - Have fewer kills but high survival
@@ -137,7 +137,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.RoleClassifier do
       participant[:appearances] >= 5
   end
 
-  defp is_hunter?(participant) do
+  defp hunter?(participant) do
     # Hunters have high solo kill ratios
     solo_kills = participant[:solo_kills] || 0
     total_kills = participant[:kills] || 0
@@ -145,7 +145,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.RoleClassifier do
     solo_kills > 0 && solo_kills / max(total_kills, 1) > 0.3
   end
 
-  defp is_high_damage_dealer?(participant) do
+  defp high_damage_dealer?(participant) do
     avg_damage = (participant[:total_damage_done] || 0) / max(participant[:appearances] || 1, 1)
     avg_damage > 20_000
   end

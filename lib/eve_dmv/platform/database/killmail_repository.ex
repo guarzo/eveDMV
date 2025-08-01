@@ -514,7 +514,7 @@ defmodule EveDmv.Database.KillmailRepository do
         system_id: system_id,
         engagement_time: hour,
         killmail_count: length(kms),
-        total_value: Enum.sum(Enum.map(kms, &(&1.total_value || 0))),
+        total_value: kms |> Enum.map(&(&1.total_value || 0)) |> Enum.sum(),
         ship_composition: ship_types,
         participant_count: kms |> Enum.flat_map(fn km -> km.participants || [] end) |> length()
       }

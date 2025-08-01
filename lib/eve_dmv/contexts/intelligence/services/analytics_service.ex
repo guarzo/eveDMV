@@ -781,7 +781,10 @@ defmodule EveDmv.Contexts.Intelligence.Services.AnalyticsService do
 
     high_correlation_recommendations =
       if length(high_correlations) > 0 do
-        ["Monitor highly correlated characters as potential coordinated group" | initial_recommendations]
+        [
+          "Monitor highly correlated characters as potential coordinated group"
+          | initial_recommendations
+        ]
       else
         initial_recommendations
       end
@@ -794,7 +797,10 @@ defmodule EveDmv.Contexts.Intelligence.Services.AnalyticsService do
 
     final_recommendations =
       if length(moderate_correlations) > 0 do
-        ["Investigate moderate correlations for potential relationships" | high_correlation_recommendations]
+        [
+          "Investigate moderate correlations for potential relationships"
+          | high_correlation_recommendations
+        ]
       else
         high_correlation_recommendations
       end
@@ -949,10 +955,17 @@ defmodule EveDmv.Contexts.Intelligence.Services.AnalyticsService do
     # Based on behavior classification
     classification_vectors =
       case behavioral_analysis.behavior_classification do
-        :disciplined_aggressor -> ["Direct confrontation", "Coordinated attacks" | initial_vectors]
-        :opportunistic_raider -> ["Hit-and-run tactics", "Exploitation of weaknesses" | initial_vectors]
-        :methodical_defender -> ["Defensive positioning", "Area denial" | initial_vectors]
-        _ -> ["Standard engagement patterns" | initial_vectors]
+        :disciplined_aggressor ->
+          ["Direct confrontation", "Coordinated attacks" | initial_vectors]
+
+        :opportunistic_raider ->
+          ["Hit-and-run tactics", "Exploitation of weaknesses" | initial_vectors]
+
+        :methodical_defender ->
+          ["Defensive positioning", "Area denial" | initial_vectors]
+
+        _ ->
+          ["Standard engagement patterns" | initial_vectors]
       end
 
     # Based on activity patterns

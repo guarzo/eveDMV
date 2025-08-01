@@ -656,9 +656,14 @@ defmodule EveDmv.Contexts.Corporation.Services.AnalyticsService do
     initial_recommendations = []
 
     # Collect recommendations from all analysis modules
-    recommendations_with_health = initial_recommendations ++ (data.health_analysis.recommendations || [])
-    recommendations_with_recruitment = recommendations_with_health ++ (data.recruitment_analysis.recommendations || [])
-    final_recommendations = recommendations_with_recruitment ++ generate_analytics_recommendations(data)
+    recommendations_with_health =
+      initial_recommendations ++ (data.health_analysis.recommendations || [])
+
+    recommendations_with_recruitment =
+      recommendations_with_health ++ (data.recruitment_analysis.recommendations || [])
+
+    final_recommendations =
+      recommendations_with_recruitment ++ generate_analytics_recommendations(data)
 
     # Prioritize and deduplicate
     final_recommendations

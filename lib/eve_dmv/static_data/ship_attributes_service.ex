@@ -7,7 +7,6 @@ defmodule EveDmv.StaticData.ShipAttributesService do
   """
 
   alias EveDmv.StaticData.ShipAttributes
-  import Ash.Query
   require Logger
 
   @doc """

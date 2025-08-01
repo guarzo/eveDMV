@@ -26,7 +26,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.AffiliationAnalyzer do
       participant
       |> Map.put(:affiliation, side)
       |> Map.put(:affiliation_strength, calculate_affiliation_strength(participant, side, sides))
-      |> Map.put(:is_third_party, is_third_party?(participant, sides))
+      |> Map.put(:is_third_party, third_party?(participant, sides))
     end)
   end
 
@@ -212,7 +212,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.AffiliationAnalyzer do
     end
   end
 
-  defp is_third_party?(participant, sides) do
+  defp third_party?(participant, sides) do
     side =
       Enum.find(sides, fn side ->
         MapSet.member?(side.members, participant.character_id)

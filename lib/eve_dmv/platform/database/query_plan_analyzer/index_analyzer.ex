@@ -110,7 +110,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
 
     # Index-only scan opportunities
     covering_index_recommendations =
-      if has_regular_index_scans_with_heap_fetches(analysis) do
+      if has_regular_index_scans_with_heap_fetches?(analysis) do
         [
           "Consider covering indexes to enable index-only scans and reduce heap fetches"
           | scan_index_recommendations
@@ -121,7 +121,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
 
     # Bitmap scan optimization
     bitmap_scan_recommendations =
-      if has_expensive_bitmap_scans(analysis) do
+      if has_expensive_bitmap_scans?(analysis) do
         [
           "Expensive bitmap index scans detected - consider composite indexes or query restructuring"
           | covering_index_recommendations
@@ -220,8 +220,8 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
     index_type =
       cond do
         length(columns) == 1 -> "btree"
-        has_range_conditions(scan_info) -> "btree"
-        has_equality_conditions_only(scan_info) -> "hash"
+        has_range_conditions?(scan_info) -> "btree"
+        has_equality_conditions_only?(scan_info) -> "hash"
         true -> "btree"
       end
 
@@ -321,12 +321,12 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
 
   defp extract_columns_from_filter(_), do: []
 
-  defp has_regular_index_scans_with_heap_fetches(analysis) do
+  defp has_regular_index_scans_with_heap_fetches?(analysis) do
     Map.get(analysis.index_types, "Index Only Scan", 0) == 0 and
       Map.get(analysis.index_types, "Index Scan", 0) > 0
   end
 
-  defp has_expensive_bitmap_scans(analysis) do
+  defp has_expensive_bitmap_scans?(analysis) do
     Map.get(analysis.index_types, "Bitmap Index Scan", 0) > 0 and
       not Enum.empty?(analysis.high_cost_indexes)
   end
@@ -340,14 +340,14 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
     end
   end
 
-  defp has_range_conditions(scan_info) do
+  defp has_range_conditions?(scan_info) do
     filter = scan_info.filter || ""
     String.contains?(filter, ["<", ">", "BETWEEN", ">=", "<="])
   end
 
-  defp has_equality_conditions_only(scan_info) do
+  defp has_equality_conditions_only?(scan_info) do
     filter = scan_info.filter || ""
-    String.contains?(filter, "=") and not has_range_conditions(scan_info)
+    String.contains?(filter, "=") and not has_range_conditions?(scan_info)
   end
 
   defp estimate_index_benefit(scan_info, selectivity) do

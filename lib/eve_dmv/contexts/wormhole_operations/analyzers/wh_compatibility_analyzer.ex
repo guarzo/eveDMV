@@ -120,12 +120,15 @@ defmodule EveDmv.Contexts.WormholeOperations.Analyzers.WhFleetAnalyzer.WormholeC
     case MassCalculator.calculate_fleet_mass(fleet_members) do
       {:ok, total_mass} ->
         member_count = length(fleet_members)
+
         if member_count > 0 do
           total_mass / member_count
         else
           0
         end
-      {:error, _} -> 0
+
+      {:error, _} ->
+        0
     end
   end
 

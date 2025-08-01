@@ -63,7 +63,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
 
   # Server Callbacks
 
-  @impl true
+  @impl GenServer
   def init(_opts) do
     state = %{
       active_battles: %{},
@@ -77,7 +77,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
     {:ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:detect_battles, killmails, opts}, _from, state) do
     time_window = Keyword.get(opts, :time_window, @time_window_minutes)
     spatial_threshold = Keyword.get(opts, :spatial_threshold, @spatial_threshold_au)
@@ -100,7 +100,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
     {:reply, {:ok, battles}, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:detect_timeframe, start_time, end_time, opts}, _from, state) do
     killmails = fetch_killmails_in_timeframe(start_time, end_time)
 
@@ -110,12 +110,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_active_battles, _from, state) do
     {:reply, {:ok, state.active_battles}, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast({:process_killmail, killmail}, state) do
     # Real-time processing: add to buffer and check for battle updates
     updated_state =
@@ -127,7 +127,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
     {:noreply, updated_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:cleanup_stale_battles, state) do
     now = DateTime.utc_now()
 

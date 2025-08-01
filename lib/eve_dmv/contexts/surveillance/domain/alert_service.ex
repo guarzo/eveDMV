@@ -575,16 +575,6 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
 
   # Helper functions for alert generation
 
-  defp create_alert_from_match(match) do
-    # This is a placeholder - in a real implementation would create a proper alert structure
-    %{
-      match_id: match.match_id || "unknown",
-      profile_id: match.profile_id,
-      killmail_id: match.killmail_id,
-      created_from_match: true
-    }
-  end
-
   defp calculate_alert_priority(match) do
     confidence = match.match_confidence || 0.0
     killmail_value = match.killmail_value || 0
@@ -594,18 +584,6 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
       confidence >= 0.8 or killmail_value > 500_000_000 -> @priority_high
       confidence >= 0.6 or killmail_value > 100_000_000 -> @priority_medium
       true -> @priority_low
-    end
-  end
-
-  defp determine_alert_type(match) do
-    criteria = match.matched_criteria || []
-
-    cond do
-      Enum.any?(criteria, fn c -> c.type == :character_victim end) -> :character_loss
-      Enum.any?(criteria, fn c -> c.type == :character_attacker end) -> :character_activity
-      Enum.any?(criteria, fn c -> c.type == :corporation_victim end) -> :corporation_loss
-      Enum.any?(criteria, fn c -> c.type == :system_match end) -> :system_activity
-      true -> :general_match
     end
   end
 

@@ -393,19 +393,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Api do
 
   defp validate_wormhole_class(_), do: {:error, :invalid_wormhole_class}
 
-  defp validate_wormhole_constraints(constraints) when is_map(constraints) do
-    allowed_fields = [:max_mass_kg, :max_ship_mass_kg, :max_total_mass_kg, :regeneration_rate]
-
-    filtered_constraints = Map.take(constraints, allowed_fields)
-
-    case validate_constraint_values(filtered_constraints) do
-      :ok -> {:ok, filtered_constraints}
-      {:error, reason} -> {:error, reason}
-    end
-  end
-
-  defp validate_wormhole_constraints(_), do: {:error, :invalid_constraints_format}
-
   defp validate_chain_data(chain_data) do
     required_fields = [:systems, :connections]
 

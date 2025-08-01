@@ -80,7 +80,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewQueryService do
          {:ok, %{columns: columns, rows: rows}} <- SQL.query(Repo, data_sql, [page_size, offset]) do
       data =
         Enum.map(rows, fn row ->
-          Map.new(Enum.zip(columns, row))
+          columns |> Enum.zip(row) |> Map.new()
         end)
 
       {:ok,

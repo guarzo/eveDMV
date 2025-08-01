@@ -359,9 +359,13 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
       avg_execution_time:
         if(Enum.empty?(slow_queries),
           do: 0,
-          else: Enum.sum(Enum.map(slow_queries, & &1.mean_time_ms)) / length(slow_queries)
+          else:
+            slow_queries
+            |> Enum.map(& &1.mean_time_ms)
+            |> Enum.sum()
+            |> Kernel./(length(slow_queries))
         ),
-      total_execution_time: Enum.sum(Enum.map(slow_queries, & &1.total_time_ms))
+      total_execution_time: slow_queries |> Enum.map(& &1.total_time_ms) |> Enum.sum()
     }
   end
 

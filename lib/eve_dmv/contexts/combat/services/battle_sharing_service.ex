@@ -545,7 +545,10 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
 
     final_insights =
       if participant_ratio > 3 do
-        ["Large scale difference (#{Float.round(participant_ratio, 1)}x)" | insights_with_duration]
+        [
+          "Large scale difference (#{Float.round(participant_ratio, 1)}x)"
+          | insights_with_duration
+        ]
       else
         insights_with_duration
       end

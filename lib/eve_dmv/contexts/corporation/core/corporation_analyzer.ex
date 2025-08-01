@@ -141,7 +141,7 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
     |> then(fn {successes, failures} ->
       {:ok,
        %{
-         analyses: Map.new(Enum.reverse(successes)),
+         analyses: successes |> Enum.reverse() |> Map.new(),
          failures: Enum.reverse(failures),
          comparative_assessment: generate_comparative_assessment(successes)
        }}
@@ -157,7 +157,7 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
 
   # Server Callbacks
 
-  @impl true
+  @impl GenServer
   def init(_opts) do
     state = %{
       active_analyses: %{},
@@ -171,7 +171,7 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
     {:ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:analyze_corporation, corporation_id, opts}, from, state) do
     cache_key = {:corporation_analysis, corporation_id, opts}
 
@@ -198,13 +198,13 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:get_profile, corporation_id}, _from, state) do
     profile = build_corporation_profile(corporation_id)
     {:reply, profile, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:analyze_batch, corporation_ids, opts}, _from, state) do
     results =
       corporation_ids
@@ -229,7 +229,7 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
     {:reply, {:ok, results}, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info({ref, result}, state) when is_reference(ref) do
     case Map.get(state.active_analyses, ref) do
       {from, cache_key} ->
@@ -256,7 +256,7 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_info({:DOWN, ref, :process, _pid, _reason}, state) do
     new_state = %{state | active_analyses: Map.delete(state.active_analyses, ref)}
 

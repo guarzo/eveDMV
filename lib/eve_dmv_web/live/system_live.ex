@@ -367,7 +367,7 @@ defmodule EveDmvWeb.SystemLive do
         %{hour: hour, count: count}
       end)
 
-    max_count = Map.get(Enum.max_by(activity_by_hour, & &1.count), :count, 1)
+    max_count = activity_by_hour |> Enum.max_by(& &1.count) |> Map.get(:count, 1)
 
     # Calculate percentages for visualization
     Enum.map(activity_by_hour, fn %{hour: hour, count: count} ->

@@ -129,7 +129,7 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
       members
       |> Enum.filter(fn member ->
         # Would check actual roles - simplified here
-        has_leadership_role(member) || has_high_activity_score(member)
+        has_leadership_role?(member) || has_high_activity_score?(member)
       end)
 
     total_members = length(members)
@@ -164,7 +164,7 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
     }
   end
 
-  defp has_leadership_role(member) do
+  defp has_leadership_role?(member) do
     # Would check actual role data - simplified
     if member.roles do
       leadership_roles = ["CEO", "Director", "Personnel Manager", "Diplomat", "Fleet Commander"]
@@ -174,7 +174,7 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
     end
   end
 
-  defp has_high_activity_score(member) do
+  defp has_high_activity_score?(member) do
     # Consider highly active members as informal leaders
     member.recent_activity_score && member.recent_activity_score > 80
   end
@@ -332,7 +332,7 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
     members
     |> Enum.filter(fn member ->
       # High activity, good tenure, not currently in leadership
-      not has_leadership_role(member) &&
+      not has_leadership_role?(member) &&
         (member.recent_activity_score || 0) > 60 &&
         calculate_tenure_days(member.join_date) > 90
     end)

@@ -293,7 +293,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.PlanAnalyzer do
     child_count =
       case node["Plans"] do
         nil -> 0
-        plans when is_list(plans) -> Enum.sum(Enum.map(plans, &count_total_nodes/1))
+        plans when is_list(plans) -> plans |> Enum.map(&count_total_nodes/1) |> Enum.sum()
       end
 
     1 + child_count

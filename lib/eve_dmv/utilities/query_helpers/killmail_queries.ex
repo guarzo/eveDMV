@@ -155,7 +155,7 @@ defmodule EveDmv.Shared.KillmailQueries do
       {:ok, %{rows: rows, columns: columns}} ->
         results =
           Enum.map(rows, fn row ->
-            Map.new(Enum.zip(columns, row))
+            columns |> Enum.zip(row) |> Map.new()
           end)
 
         {:ok, results}

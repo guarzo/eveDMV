@@ -87,7 +87,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer do
 
   # Server Callbacks
 
-  @impl true
+  @impl GenServer
   def init(_opts) do
     state = %{
       active_analyses: %{},
@@ -101,7 +101,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer do
     {:ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:analyze_character, character_id, opts}, from, state) do
     # Check cache first
     cache_key = {:character_analysis, character_id, opts}
@@ -129,13 +129,13 @@ defmodule EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:get_profile, character_id}, _from, state) do
     profile = build_character_profile(character_id)
     {:reply, profile, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:analyze_batch, character_ids, opts}, _from, state) do
     results =
       character_ids
@@ -160,7 +160,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer do
     {:reply, {:ok, results}, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info({ref, result}, state) when is_reference(ref) do
     case Map.get(state.active_analyses, ref) do
       {from, cache_key} ->
@@ -187,7 +187,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_info({:DOWN, ref, :process, _pid, _reason}, state) do
     # Clean up failed analysis
     new_state = %{state | active_analyses: Map.delete(state.active_analyses, ref)}

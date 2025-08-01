@@ -300,8 +300,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
     cond do
       capital_ratio > 0.3 -> :capital_brawl
       has_structure_kill?(killmails) -> :structure_bash
-      is_gate_camp?(killmails) -> :gate_camp
-      is_bombing_run?(killmails) -> :bombing_run
+      gate_camp?(killmails) -> :gate_camp
+      bombing_run?(killmails) -> :bombing_run
       true -> :fleet_fight
     end
   end
@@ -455,7 +455,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
     end)
   end
 
-  defp is_gate_camp?(killmails) do
+  defp gate_camp?(killmails) do
     if length(killmails) < 3,
       do: false,
       else:
@@ -486,7 +486,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
         )
   end
 
-  defp is_bombing_run?(killmails) do
+  defp bombing_run?(killmails) do
     if length(killmails) < 5,
       do: false,
       else:

@@ -433,8 +433,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
            %{
              count: length(events),
              percentage: length(events) / length(damage_events) * 100,
-             total_damage: Enum.sum(Enum.map(events, & &1.damage)),
-             avg_damage: Float.round(Enum.sum(Enum.map(events, & &1.damage)) / length(events), 1)
+             total_damage: events |> Enum.map(& &1.damage) |> Enum.sum(),
+             avg_damage:
+               Float.round((events |> Enum.map(& &1.damage) |> Enum.sum()) / length(events), 1)
            }}
         end)
         |> Enum.into(%{})

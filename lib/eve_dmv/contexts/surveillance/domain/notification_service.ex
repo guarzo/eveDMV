@@ -155,6 +155,73 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
     end
   end
 
+  def handle_call({:configure_notifications, profile_id, notification_config}, _from, state) do
+    # Validate configuration
+    case validate_notification_config(notification_config) do
+      {:ok, validated_config} ->
+        # Update profile with new notification configuration
+        case ProfileRepository.update_profile(profile_id, %{notification_config: validated_config}) do
+          {:ok, _updated_profile} ->
+            Logger.info("Updated notification config for profile #{profile_id}")
+            {:reply, {:ok, validated_config}, state}
+
+          {:error, reason} ->
+            {:reply, {:error, reason}, state}
+        end
+
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
+
+  def handle_call({:get_notification_history, profile_id, opts}, _from, state) do
+    limit = Keyword.get(opts, :limit, 50)
+    since = Keyword.get(opts, :since)
+
+    profile_history = Map.get(state.notification_history, profile_id, [])
+
+    filtered_history =
+      if since do
+        profile_history
+        |> Enum.filter(fn notification ->
+          DateTime.compare(notification.created_at, since) == :gt
+        end)
+      else
+        profile_history
+      end
+
+    limited_history = Enum.take(filtered_history, limit)
+
+    {:reply, {:ok, limited_history}, state}
+  end
+
+  def handle_call({:test_notification_delivery, profile_id}, _from, state) do
+    case ProfileRepository.get_profile(profile_id) do
+      {:ok, profile} ->
+        test_alert = create_test_alert(profile_id)
+        test_notifications = prepare_notifications(test_alert, profile)
+
+        # Send test notifications immediately (bypass rate limiting)
+        test_results =
+          Enum.map(test_notifications, fn notification ->
+            case deliver_notification(notification) do
+              {:ok, result} -> {:ok, notification.channel, result}
+              {:error, reason} -> {:error, notification.channel, reason}
+            end
+          end)
+
+        {:reply, {:ok, test_results}, state}
+
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
+
+  def handle_call({:get_notification_metrics, time_range}, _from, state) do
+    metrics = calculate_notification_metrics(state, time_range)
+    {:reply, {:ok, metrics}, state}
+  end
+
   @impl GenServer
   def handle_cast({:send_alert_notification, alert}, state) do
     # Get profile notification configuration
@@ -232,77 +299,6 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
 
         {:noreply, new_state}
     end
-  end
-
-  @impl GenServer
-  def handle_call({:configure_notifications, profile_id, notification_config}, _from, state) do
-    # Validate configuration
-    case validate_notification_config(notification_config) do
-      {:ok, validated_config} ->
-        # Update profile with new notification configuration
-        case ProfileRepository.update_profile(profile_id, %{notification_config: validated_config}) do
-          {:ok, _updated_profile} ->
-            Logger.info("Updated notification config for profile #{profile_id}")
-            {:reply, {:ok, validated_config}, state}
-
-          {:error, reason} ->
-            {:reply, {:error, reason}, state}
-        end
-
-      {:error, reason} ->
-        {:reply, {:error, reason}, state}
-    end
-  end
-
-  @impl GenServer
-  def handle_call({:get_notification_history, profile_id, opts}, _from, state) do
-    limit = Keyword.get(opts, :limit, 50)
-    since = Keyword.get(opts, :since)
-
-    profile_history = Map.get(state.notification_history, profile_id, [])
-
-    filtered_history =
-      if since do
-        profile_history
-        |> Enum.filter(fn notification ->
-          DateTime.compare(notification.created_at, since) == :gt
-        end)
-      else
-        profile_history
-      end
-
-    limited_history = Enum.take(filtered_history, limit)
-
-    {:reply, {:ok, limited_history}, state}
-  end
-
-  @impl GenServer
-  def handle_call({:test_notification_delivery, profile_id}, _from, state) do
-    case ProfileRepository.get_profile(profile_id) do
-      {:ok, profile} ->
-        test_alert = create_test_alert(profile_id)
-        test_notifications = prepare_notifications(test_alert, profile)
-
-        # Send test notifications immediately (bypass rate limiting)
-        test_results =
-          Enum.map(test_notifications, fn notification ->
-            case deliver_notification(notification) do
-              {:ok, result} -> {:ok, notification.channel, result}
-              {:error, reason} -> {:error, notification.channel, reason}
-            end
-          end)
-
-        {:reply, {:ok, test_results}, state}
-
-      {:error, reason} ->
-        {:reply, {:error, reason}, state}
-    end
-  end
-
-  @impl GenServer
-  def handle_call({:get_notification_metrics, time_range}, _from, state) do
-    metrics = calculate_notification_metrics(state, time_range)
-    {:reply, {:ok, metrics}, state}
   end
 
   @impl GenServer

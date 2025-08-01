@@ -191,11 +191,12 @@ defmodule Mix.Tasks.Eve.PartitionManager do
   defp parse_size_to_bytes(size_string) when is_binary(size_string) do
     case Regex.run(~r/(\d+\.?\d*)\s*(\w+)/, size_string) do
       [_, size_str, unit] ->
-        size = if String.contains?(size_str, ".") do
-          String.to_float(size_str)
-        else
-          String.to_integer(size_str) * 1.0
-        end
+        size =
+          if String.contains?(size_str, ".") do
+            String.to_float(size_str)
+          else
+            String.to_integer(size_str) * 1.0
+          end
 
         case String.upcase(unit) do
           "BYTES" -> size

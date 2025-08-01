@@ -838,7 +838,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
       killmails
       |> Enum.filter(fn km ->
         support_ship?(km.victim_ship_type_id) or
-          has_support_ship_in_attackers(km)
+          has_support_ship_in_attackers?(km)
       end)
 
     if Enum.empty?(support_ships_used) do
@@ -856,7 +856,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     end
   end
 
-  defp has_support_ship_in_attackers(killmail) do
+  defp has_support_ship_in_attackers?(killmail) do
     case killmail.raw_data do
       %{"attackers" => attackers} when is_list(attackers) ->
         Enum.any?(attackers, fn att ->

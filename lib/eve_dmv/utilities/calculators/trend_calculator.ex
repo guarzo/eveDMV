@@ -24,8 +24,10 @@ defmodule EveDmv.Intelligence.Calculators.TrendCalculator do
       mean = Enum.sum(activity_data) / length(activity_data)
 
       variance =
-        Enum.sum(Enum.map(activity_data, fn x -> :math.pow(x - mean, 2) end)) /
-          length(activity_data)
+        activity_data
+        |> Enum.map(fn x -> :math.pow(x - mean, 2) end)
+        |> Enum.sum()
+        |> Kernel./(length(activity_data))
 
       std_deviation = :math.sqrt(variance)
 
@@ -65,7 +67,7 @@ defmodule EveDmv.Intelligence.Calculators.TrendCalculator do
       0.0
     else
       mean = Enum.sum(data) / length(data)
-      Enum.sum(Enum.map(data, fn x -> :math.pow(x - mean, 2) end)) / length(data)
+      data |> Enum.map(fn x -> :math.pow(x - mean, 2) end) |> Enum.sum() |> Kernel./(length(data))
     end
   end
 

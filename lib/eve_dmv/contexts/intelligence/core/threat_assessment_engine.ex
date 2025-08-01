@@ -117,7 +117,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.ThreatAssessmentEngine do
     |> then(fn {successes, failures} ->
       {:ok,
        %{
-         assessments: Map.new(Enum.reverse(successes)),
+         assessments: successes |> Enum.reverse() |> Map.new(),
          failures: Enum.reverse(failures)
        }}
     end)

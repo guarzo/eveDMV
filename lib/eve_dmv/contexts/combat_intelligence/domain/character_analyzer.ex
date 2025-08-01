@@ -302,7 +302,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
         last_activity: last_event.killmail_time,
         days_with_activity: days_active,
         avg_attackers_per_event:
-          Float.round(Enum.sum(Enum.map(activity_data, & &1.attacker_count)) / total_events, 1)
+          Float.round(
+            (activity_data |> Enum.map(& &1.attacker_count) |> Enum.sum()) / total_events,
+            1
+          )
       }
     else
       %{

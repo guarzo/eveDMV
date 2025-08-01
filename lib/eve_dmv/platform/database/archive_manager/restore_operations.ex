@@ -94,7 +94,7 @@ defmodule EveDmv.Database.ArchiveManager.RestoreOperations do
         # Convert rows to maps for easier handling
         records =
           Enum.map(rows, fn row ->
-            Enum.into(Enum.zip(columns, row), %{})
+            columns |> Enum.zip(row) |> Enum.into(%{})
           end)
 
         {:ok, records}
