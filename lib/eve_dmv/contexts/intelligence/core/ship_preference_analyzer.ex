@@ -7,10 +7,11 @@ defmodule EveDmv.Contexts.Intelligence.Core.ShipPreferenceAnalyzer do
   - Character Intelligence ship analysis
   """
 
-  alias EveDmv.Database.{CharacterRepository, KillmailRepository}
   alias EveDmv.Cache
-  alias EveDmv.StaticData.ShipTypes
+  alias EveDmv.Database.CharacterRepository
+  alias EveDmv.Database.KillmailRepository
   alias EveDmv.Shared.ShipAnalysis
+  alias EveDmv.StaticData.ShipTypes
 
   require Logger
 
