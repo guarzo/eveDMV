@@ -39,6 +39,16 @@ defmodule EveDmv.Api do
 
     # Core intelligence resources
     resource(EveDmv.Intelligence.CharacterStats)
+    resource(EveDmv.Contexts.Intelligence.Resources.CharacterProfile)
+    # Corporation resources
+    resource(EveDmv.Contexts.Corporation.Resources.Alliance)
+    resource(EveDmv.Contexts.Corporation.Resources.Corporation)
+    resource(EveDmv.Contexts.Corporation.Resources.CorporationMember)
+    resource(EveDmv.Contexts.Corporation.Resources.ActivityMetric)
+    resource(EveDmv.Contexts.Corporation.Resources.RecruitmentApplication)
+    resource(EveDmv.Contexts.Corporation.Resources.MemberPerformanceSnapshot)
+    resource(EveDmv.Contexts.Corporation.Resources.MemberActivityLog)
+    resource(EveDmv.Contexts.Corporation.Resources.RecruitmentCampaign)
   end
 
   # Authorization configuration
