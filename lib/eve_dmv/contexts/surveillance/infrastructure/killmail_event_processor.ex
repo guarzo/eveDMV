@@ -19,8 +19,11 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.KillmailEventProcessor do
 
   use GenServer
 
-  alias EveDmv.Contexts.Surveillance.Domain.{MatchingEngine, AlertService, NotificationService}
-  alias EveDmv.Contexts.Surveillance.Infrastructure.{ProfileRepository, MatchCache}
+  alias EveDmv.Contexts.Surveillance.Domain.AlertService
+  alias EveDmv.Contexts.Surveillance.Domain.MatchingEngine
+  alias EveDmv.Contexts.Surveillance.Domain.NotificationService
+  alias EveDmv.Contexts.Surveillance.Infrastructure.MatchCache
+  alias EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository
   alias EveDmv.DomainEvents.KillmailReceived
 
   require Logger
