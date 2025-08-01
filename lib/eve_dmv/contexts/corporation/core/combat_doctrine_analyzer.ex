@@ -352,27 +352,27 @@ defmodule EveDmv.Contexts.Corporation.Core.CombatDoctrineAnalyzer do
 
   defp identify_doctrine_indicators(compositions) do
     # Look for indicators of organized doctrines
-    indicators = []
+    initial_indicators = []
 
     # High consistency in ship classes
     class_consistency = calculate_composition_consistency(compositions)
 
-    indicators =
+    indicators_with_consistency =
       if class_consistency > 0.7 do
-        ["High ship class consistency (#{Float.round(class_consistency * 100, 1)}%)" | indicators]
+        ["High ship class consistency (#{Float.round(class_consistency * 100, 1)}%)" | initial_indicators]
       else
-        indicators
+        initial_indicators
       end
 
     # Specific role compositions
-    indicators =
-      if has_balanced_composition(compositions) do
-        ["Balanced fleet compositions detected" | indicators]
+    final_indicators =
+      if has_balanced_composition?(compositions) do
+        ["Balanced fleet compositions detected" | indicators_with_consistency]
       else
-        indicators
+        indicators_with_consistency
       end
 
-    Enum.reverse(indicators)
+    Enum.reverse(final_indicators)
   end
 
   defp calculate_composition_consistency(compositions) do
@@ -385,7 +385,7 @@ defmodule EveDmv.Contexts.Corporation.Core.CombatDoctrineAnalyzer do
     end
   end
 
-  defp has_balanced_composition(compositions) do
+  defp has_balanced_composition?(compositions) do
     # Check if compositions show balance between roles
     # Simplified implementation
     balanced_count =
@@ -1127,40 +1127,40 @@ defmodule EveDmv.Contexts.Corporation.Core.CombatDoctrineAnalyzer do
   end
 
   defp generate_doctrine_recommendations(doctrines, ship_usage) do
-    recommendations = []
+    initial_recommendations = []
 
     # Doctrine strength recommendations
-    recommendations =
+    recommendations_with_doctrine =
       case doctrines.doctrine_strength do
         :no_clear_doctrine ->
-          ["Establish clear combat doctrine and ship requirements" | recommendations]
+          ["Establish clear combat doctrine and ship requirements" | initial_recommendations]
 
         :weak_doctrine ->
-          ["Strengthen doctrine adherence through training and ship programs" | recommendations]
+          ["Strengthen doctrine adherence through training and ship programs" | initial_recommendations]
 
         _ ->
-          recommendations
+          initial_recommendations
       end
 
     # Ship diversity recommendations
     class_count = length(ship_usage.ship_class_distribution)
 
-    recommendations =
+    recommendations_with_diversity =
       if class_count < 3 do
-        ["Increase ship class diversity for tactical flexibility" | recommendations]
+        ["Increase ship class diversity for tactical flexibility" | recommendations_with_doctrine]
       else
-        recommendations
+        recommendations_with_doctrine
       end
 
     # Specialization recommendations
-    recommendations =
+    final_recommendations =
       if ship_usage.specialization_index > 50 do
-        ["Consider broadening ship usage to reduce over-specialization" | recommendations]
+        ["Consider broadening ship usage to reduce over-specialization" | recommendations_with_diversity]
       else
-        recommendations
+        recommendations_with_diversity
       end
 
-    Enum.reverse(recommendations)
+    Enum.reverse(final_recommendations)
   end
 
   defp calculate_role_percentages(composition) do
