@@ -318,25 +318,28 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
       }
     }
 
-    data =
-      if include_killmails do
-        Map.put(base_data, :killmails, get_battle_killmails(battle.id))
-      else
-        base_data
-      end
+    final_data =
+      base_data
+      |> maybe_add_killmails(battle.id, include_killmails)
+      |> maybe_add_analysis(battle.id, include_analysis)
 
-    data =
-      if include_analysis do
-        case BattleAnalyzer.analyze_battle(battle.id) do
-          {:ok, analysis} -> Map.put(data, :analysis, analysis)
-          _ -> data
-        end
-      else
-        data
-      end
-
-    {:ok, data}
+    {:ok, final_data}
   end
+
+  defp maybe_add_killmails(data, battle_id, true) do
+    Map.put(data, :killmails, get_battle_killmails(battle_id))
+  end
+  
+  defp maybe_add_killmails(data, _battle_id, false), do: data
+
+  defp maybe_add_analysis(data, battle_id, true) do
+    case BattleAnalyzer.analyze_battle(battle_id) do
+      {:ok, analysis} -> Map.put(data, :analysis, analysis)
+      _ -> data
+    end
+  end
+  
+  defp maybe_add_analysis(data, _battle_id, false), do: data
 
   defp serialize_battle(battle) do
     Map.take(battle, [
@@ -540,30 +543,28 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
   end
 
   defp generate_comparison_insights(comparison) do
-    insights = []
+    base_insights = []
 
     # Duration insights
     duration_variance = comparison.duration.max - comparison.duration.min
-
-    insights =
-      if duration_variance > 30 do
-        ["Significant duration variance (#{duration_variance} minutes)" | insights]
-      else
-        insights
-      end
-
-    # Scale insights
     participant_ratio = comparison.participants.max / max(comparison.participants.min, 1)
 
-    insights =
-      if participant_ratio > 3 do
-        ["Large scale difference (#{Float.round(participant_ratio, 1)}x)" | insights]
-      else
-        insights
-      end
-
-    insights
+    base_insights
+    |> maybe_add_duration_insight(duration_variance)
+    |> maybe_add_scale_insight(participant_ratio)
   end
+
+  defp maybe_add_duration_insight(insights, duration_variance) when duration_variance > 30 do
+    ["Significant duration variance (#{duration_variance} minutes)" | insights]
+  end
+  
+  defp maybe_add_duration_insight(insights, _duration_variance), do: insights
+
+  defp maybe_add_scale_insight(insights, participant_ratio) when participant_ratio > 3 do
+    ["Large scale difference (#{Float.round(participant_ratio, 1)}x)" | insights]
+  end
+  
+  defp maybe_add_scale_insight(insights, _participant_ratio), do: insights
 
   # Formatting helpers
 
