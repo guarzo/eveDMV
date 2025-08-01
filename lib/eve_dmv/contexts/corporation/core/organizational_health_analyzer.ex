@@ -164,15 +164,6 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
     }
   end
 
-  defp has_leadership_role?(member) do
-    # Would check actual role data - simplified
-    if member.roles do
-      leadership_roles = ["CEO", "Director", "Personnel Manager", "Diplomat", "Fleet Commander"]
-      Enum.any?(leadership_roles, fn role -> role in member.roles end)
-    else
-      false
-    end
-  end
 
   defp has_high_activity_score?(member) do
     # Consider highly active members as informal leaders
@@ -223,10 +214,10 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
       end)
 
     gaps =
-      if not has_ceo do
-        ["No active CEO identified" | gaps]
-      else
+      if has_ceo do
         gaps
+      else
+        ["No active CEO identified" | gaps]
       end
 
     # Check leadership-to-member ratio for large corps
@@ -244,17 +235,17 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
       end)
 
     final_gaps =
-      if not has_fc do
-        ["No fleet commanders identified" | leadership_gaps]
-      else
+      if has_fc do
         leadership_gaps
+      else
+        ["No fleet commanders identified" | leadership_gaps]
       end
 
     Enum.reverse(final_gaps)
   end
 
   defp assess_leadership_activity(members) do
-    leaders = Enum.filter(members, &has_leadership_role/1)
+    leaders = Enum.filter(members, &has_leadership_role?/1)
 
     if Enum.empty?(leaders) do
       %{
@@ -295,7 +286,7 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   end
 
   defp assess_succession_planning(members) do
-    leaders = Enum.filter(members, &has_leadership_role/1)
+    leaders = Enum.filter(members, &has_leadership_role?/1)
     potential_leaders = identify_potential_leaders(members)
 
     # Assess age distribution of current leadership
@@ -393,7 +384,7 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   end
 
   defp analyze_leadership_distribution(members) do
-    leaders = Enum.filter(members, &has_leadership_role/1)
+    leaders = Enum.filter(members, &has_leadership_role?/1)
 
     # Analyze leadership by role type
     role_distribution =
@@ -1038,91 +1029,103 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   end
 
   defp identify_health_issues(health_metrics, leadership_data, stability_data) do
-    issues = []
+    []
+    |> maybe_add_activity_issue(health_metrics.activity_health)
+    |> maybe_add_leadership_issue(health_metrics.leadership_health)
+    |> maybe_add_stability_issue(stability_data.structural_stability)
+    |> maybe_add_succession_issue(leadership_data.succession_planning)
+    |> Enum.reverse()
+  end
 
-    # Activity issues
-    issues =
-      if health_metrics.activity_health < 50 do
-        ["Low member activity levels affecting corporation health" | issues]
-      else
-        issues
-      end
+  defp maybe_add_activity_issue(issues, activity_health) when activity_health < 50 do
+    ["Low member activity levels affecting corporation health" | issues]
+  end
 
-    # Leadership issues
-    issues =
-      if health_metrics.leadership_health < 50 do
-        ["Leadership effectiveness concerns" | issues]
-      else
-        issues
-      end
+  defp maybe_add_activity_issue(issues, _activity_health), do: issues
 
-    # Stability issues
-    stability = stability_data.structural_stability || %{}
+  defp maybe_add_leadership_issue(issues, leadership_health) when leadership_health < 50 do
+    ["Leadership effectiveness concerns" | issues]
+  end
 
-    issues =
-      if Map.get(stability, :stability_assessment) in [:unstable, :moderately_stable] do
-        ["Structural stability concerns" | issues]
-      else
-        issues
-      end
+  defp maybe_add_leadership_issue(issues, _leadership_health), do: issues
 
-    # Succession planning issues
-    succession = leadership_data.succession_planning || %{}
+  defp maybe_add_stability_issue(issues, stability) do
+    stability_data = stability || %{}
 
-    issues =
-      if Map.get(succession, :succession_health) in [:poor_succession, :limited_succession] do
-        ["Leadership succession planning inadequate" | issues]
-      else
-        issues
-      end
+    if Map.get(stability_data, :stability_assessment) in [:unstable, :moderately_stable] do
+      ["Structural stability concerns" | issues]
+    else
+      issues
+    end
+  end
 
-    Enum.reverse(issues)
+  defp maybe_add_succession_issue(issues, succession) do
+    succession_data = succession || %{}
+
+    if Map.get(succession_data, :succession_health) in [:poor_succession, :limited_succession] do
+      ["Leadership succession planning inadequate" | issues]
+    else
+      issues
+    end
   end
 
   defp generate_health_recommendations(health_metrics, _leadership_data, stability_data) do
-    recommendations = []
-
-    # Activity recommendations
-    recommendations =
-      if health_metrics.activity_health < 60 do
-        ["Implement member engagement initiatives to improve activity" | recommendations]
-      else
-        recommendations
-      end
-
-    # Leadership recommendations
-    recommendations =
-      if health_metrics.leadership_health < 60 do
-        ["Strengthen leadership structure and development programs" | recommendations]
-      else
-        recommendations
-      end
-
-    # Retention recommendations
-    recommendations =
-      if health_metrics.retention_health < 60 do
-        ["Address member retention issues through improved onboarding" | recommendations]
-      else
-        recommendations
-      end
-
-    # Stability recommendations
     stability = stability_data.structural_stability || %{}
     core_ratio = Map.get(stability, :core_member_ratio, 0)
 
-    recommendations =
-      if core_ratio < 25 do
-        ["Build core member base for long-term stability" | recommendations]
-      else
-        recommendations
-      end
-
-    Enum.reverse(recommendations)
+    []
+    |> maybe_add_activity_recommendation(health_metrics.activity_health)
+    |> maybe_add_leadership_recommendation(health_metrics.leadership_health)
+    |> maybe_add_retention_recommendation(health_metrics.retention_health)
+    |> maybe_add_stability_recommendation(core_ratio)
+    |> Enum.reverse()
   end
+
+  defp maybe_add_activity_recommendation(recommendations, activity_health) when activity_health < 60 do
+    ["Implement member engagement initiatives to improve activity" | recommendations]
+  end
+
+  defp maybe_add_activity_recommendation(recommendations, _activity_health), do: recommendations
+
+  defp maybe_add_leadership_recommendation(recommendations, leadership_health) when leadership_health < 60 do
+    ["Strengthen leadership structure and development programs" | recommendations]
+  end
+
+  defp maybe_add_leadership_recommendation(recommendations, _leadership_health), do: recommendations
+
+  defp maybe_add_retention_recommendation(recommendations, retention_health) when retention_health < 60 do
+    ["Address member retention issues through improved onboarding" | recommendations]
+  end
+
+  defp maybe_add_retention_recommendation(recommendations, _retention_health), do: recommendations
+
+  defp maybe_add_stability_recommendation(recommendations, core_ratio) when core_ratio < 25 do
+    ["Build core member base for long-term stability" | recommendations]
+  end
+
+  defp maybe_add_stability_recommendation(recommendations, _core_ratio), do: recommendations
 
   defp calculate_tenure_days(nil), do: 0
 
   defp calculate_tenure_days(join_date) do
     DateTime.diff(DateTime.utc_now(), join_date, :day)
+  end
+
+  defp has_leadership_role?(member) do
+    leadership_roles = [
+      "CEO",
+      "Director",
+      "Executor",
+      "Station Manager",
+      "Fleet Commander",
+      "Wing Commander",
+      "Squad Commander",
+      "Recruiter",
+      "Diplomat",
+      "Personnel Manager"
+    ]
+
+    roles = member.roles || []
+    Enum.any?(roles, fn role -> role in leadership_roles end)
   end
 end
