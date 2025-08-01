@@ -9,11 +9,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   """
 
   use GenServer
+  
   require Logger
+  import Ecto.Query
 
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Repo
-  import Ecto.Query
 
   # Configuration
   @time_window_minutes 10
