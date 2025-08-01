@@ -7,22 +7,17 @@ defmodule EveDmv.Contexts.Intelligence.Api do
   and performance metrics.
   """
 
-  alias EveDmv.Contexts.Intelligence.Core.{
-    ThreatAssessmentEngine,
-    CharacterAnalyzer,
-    CombatStatsAnalyzer,
-    ShipPreferenceAnalyzer,
-    PerformanceAnalyzer,
-    BehavioralPatternAnalyzer,
-    ThreatScoringCoordinator
-  }
-
-  alias EveDmv.Contexts.Intelligence.Services.{
-    CharacterService,
-    ComparisonService,
-    ProfileService,
-    InsightGenerator
-  }
+  alias EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer
+  alias EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer
+  alias EveDmv.Contexts.Intelligence.Core.CombatStatsAnalyzer
+  alias EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer
+  alias EveDmv.Contexts.Intelligence.Core.ShipPreferenceAnalyzer
+  alias EveDmv.Contexts.Intelligence.Core.ThreatAssessmentEngine
+  alias EveDmv.Contexts.Intelligence.Core.ThreatScoringCoordinator
+  alias EveDmv.Contexts.Intelligence.Services.CharacterService
+  alias EveDmv.Contexts.Intelligence.Services.ComparisonService
+  alias EveDmv.Contexts.Intelligence.Services.InsightGenerator
+  alias EveDmv.Contexts.Intelligence.Services.ProfileService
 
   # Threat Assessment
   defdelegate assess_threat(character_id, opts \\ []), to: ThreatAssessmentEngine
