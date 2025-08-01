@@ -9,9 +9,9 @@ defmodule EveDmv.Contexts.Combat.Services.CombatLogParser do
   - Converting log data to analyzable format
   """
 
+  alias EveDmv.Contexts.BattleAnalysis.Core.BattleDetector
   alias EveDmv.Contexts.Combat.Resources.CombatLog
   alias EveDmv.Contexts.Combat.Services.BattleService
-  alias EveDmv.Contexts.BattleAnalysis.Core.BattleDetector
 
   require Logger
 
