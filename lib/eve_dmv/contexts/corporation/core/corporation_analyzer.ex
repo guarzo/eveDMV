@@ -10,11 +10,8 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
 
   use GenServer
 
-  alias EveDmv.Contexts.Corporation.Core.{
-    MemberActivityAnalyzer,
-    OrganizationalHealthAnalyzer
-  }
-
+  alias EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer
+  alias EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
   alias EveDmv.Platform.Database.CorporationRepository
 
