@@ -166,8 +166,8 @@ defmodule EveDmv.Contexts.Combat.Core.FleetCompositionAnalyzer do
       ship_type_id < 3000 -> :cruiser
       ship_type_id < 4000 -> :battlecruiser
       ship_type_id < 5000 -> :battleship
-      ship_type_id >= 20000 && ship_type_id < 30000 -> :capital
-      ship_type_id >= 30000 -> :structure
+      ship_type_id >= 20_000 && ship_type_id < 30_000 -> :capital
+      ship_type_id >= 30_000 -> :structure
       true -> :unknown
     end
   end
