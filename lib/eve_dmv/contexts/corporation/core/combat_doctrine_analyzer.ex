@@ -7,9 +7,9 @@ defmodule EveDmv.Contexts.Corporation.Core.CombatDoctrineAnalyzer do
   - Corporation Intelligence fleet composition tracking
   """
 
-  alias EveDmv.Platform.Database.CorporationRepository
   alias EveDmv.Database.CharacterRepository
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
+  alias EveDmv.Platform.Database.CorporationRepository
   alias EveDmv.StaticData.ShipTypes
 
   require Logger
