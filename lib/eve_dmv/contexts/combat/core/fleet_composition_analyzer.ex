@@ -268,41 +268,42 @@ defmodule EveDmv.Contexts.Combat.Core.FleetCompositionAnalyzer do
   end
 
   defp assess_fleet_capabilities(ship_classes) do
-    capabilities = []
+    []
+    |> maybe_add_capital_warfare(ship_classes)
+    |> maybe_add_subcapital_superiority(ship_classes)
+    |> maybe_add_tackle_capability(ship_classes)
+  end
 
-    # Check for capital superiority
-    capabilities =
-      if (ship_classes[:capital][:count] || 0) > 0 do
-        [:capital_warfare | capabilities]
-      else
-        capabilities
-      end
+  defp maybe_add_capital_warfare(capabilities, ship_classes) do
+    if (ship_classes[:capital][:count] || 0) > 0 do
+      [:capital_warfare | capabilities]
+    else
+      capabilities
+    end
+  end
 
-    # Check for subcap dominance
+  defp maybe_add_subcapital_superiority(capabilities, ship_classes) do
     subcap_count =
       [:battleship, :battlecruiser, :cruiser]
       |> Enum.reduce(0, fn class, acc ->
         acc + (ship_classes[class][:count] || 0)
       end)
 
-    capabilities =
-      if subcap_count > 10 do
-        [:subcapital_superiority | capabilities]
-      else
-        capabilities
-      end
+    if subcap_count > 10 do
+      [:subcapital_superiority | capabilities]
+    else
+      capabilities
+    end
+  end
 
-    # Check for tackle capability
+  defp maybe_add_tackle_capability(capabilities, ship_classes) do
     tackle_count = (ship_classes[:frigate][:count] || 0) + (ship_classes[:destroyer][:count] || 0)
 
-    capabilities =
-      if tackle_count > 5 do
-        [:tackle_capability | capabilities]
-      else
-        capabilities
-      end
-
-    capabilities
+    if tackle_count > 5 do
+      [:tackle_capability | capabilities]
+    else
+      capabilities
+    end
   end
 
   defp identify_weaknesses(ship_classes) do
@@ -411,20 +412,23 @@ defmodule EveDmv.Contexts.Combat.Core.FleetCompositionAnalyzer do
 
   defp analyze_matchup(comp1, comp2) do
     # Analyze how well the compositions match up against each other
-    advantages = []
-
-    # Check capital advantage
     cap1 = get_in(comp1.ship_classes, [:capital, :count]) || 0
     cap2 = get_in(comp2.ship_classes, [:capital, :count]) || 0
 
-    advantages =
-      cond do
-        cap1 > cap2 * 2 -> [:capital_supremacy | advantages]
-        cap1 > cap2 -> [:capital_advantage | advantages]
-        true -> advantages
-      end
+    []
+    |> assess_capital_advantage(cap1, cap2)
+    |> maybe_add_anti_capital_advantage(comp1, cap2)
+  end
 
-    # Check anti-capital capability
+  defp assess_capital_advantage(advantages, cap1, cap2) do
+    cond do
+      cap1 > cap2 * 2 -> [:capital_supremacy | advantages]
+      cap1 > cap2 -> [:capital_advantage | advantages]
+      true -> advantages
+    end
+  end
+
+  defp maybe_add_anti_capital_advantage(advantages, comp1, cap2) do
     if cap2 > 0 && has_anti_capital_capability?(comp1) do
       [:anti_capital_doctrine | advantages]
     else
