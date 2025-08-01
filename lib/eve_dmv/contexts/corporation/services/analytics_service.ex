@@ -6,16 +6,13 @@ defmodule EveDmv.Contexts.Corporation.Services.AnalyticsService do
   performance tracking for corporations.
   """
 
-  alias EveDmv.Contexts.Corporation.Core.{
-    CorporationAnalyzer,
-    MemberActivityAnalyzer,
-    MemberRiskAssessment,
-    ParticipationAnalyzer,
-    RecruitmentAnalyzer,
-    CombatDoctrineAnalyzer,
-    OrganizationalHealthAnalyzer
-  }
-
+  alias EveDmv.Contexts.Corporation.Core.CombatDoctrineAnalyzer
+  alias EveDmv.Contexts.Corporation.Core.CorporationAnalyzer
+  alias EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer
+  alias EveDmv.Contexts.Corporation.Core.MemberRiskAssessment
+  alias EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer
+  alias EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer
+  alias EveDmv.Contexts.Corporation.Core.RecruitmentAnalyzer
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
 
   require Logger
