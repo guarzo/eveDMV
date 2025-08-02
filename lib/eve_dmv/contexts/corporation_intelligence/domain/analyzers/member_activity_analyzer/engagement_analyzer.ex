@@ -5,7 +5,6 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.EngagementAnalyze
   Handles all engagement score calculations, engagement grouping,
   and engagement distribution analysis for EVE Online members.
   """
-  """
 
   require Logger
 

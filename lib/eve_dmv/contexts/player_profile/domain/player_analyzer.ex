@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
   Provides comprehensive player profiling including combat statistics,
   behavioral patterns, ship preferences, and psychological profiling.
   """
-  """
 
   use GenServer
   use EveDmv.ErrorHandler

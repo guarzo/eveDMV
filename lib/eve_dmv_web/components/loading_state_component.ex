@@ -4,7 +4,6 @@ defmodule EveDmvWeb.Components.LoadingStateComponent do
 
   Provides consistent loading states across the application.
   """
-  """
 
   use Phoenix.Component
 

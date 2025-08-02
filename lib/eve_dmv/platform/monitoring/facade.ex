@@ -10,7 +10,6 @@ defmodule EveDmv.Shared.Monitoring.Facade do
 
   Maintains the same interface as the original MonitoringEngine.
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Shared.Monitoring.AlertManager

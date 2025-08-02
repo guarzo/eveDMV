@@ -2,7 +2,6 @@ defmodule EveDmv.Contexts.Intelligence.Services.InsightGenerator do
   @moduledoc """
   Service for generating tactical insights, mitigation strategies, and engagement recommendations.
   """
-  """
 
   alias EveDmv.Cache
   alias EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer

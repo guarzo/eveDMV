@@ -5,7 +5,6 @@ defmodule EveDmvWeb.SystemActivityLive do
   Shows current PvP activity, recent kills, and danger metrics
   for a selected solar system with automatic updates via PubSub.
   """
-  """
 
   use EveDmvWeb, :live_view
 

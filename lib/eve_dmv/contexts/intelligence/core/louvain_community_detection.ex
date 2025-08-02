@@ -10,7 +10,6 @@ defmodule EveDmv.Contexts.Intelligence.Core.LouvainCommunityDetection do
 
   These phases are repeated until no further improvement is possible.
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.CharacterRepository

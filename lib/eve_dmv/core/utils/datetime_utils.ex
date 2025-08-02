@@ -2,7 +2,6 @@ defmodule EveDmv.Core.Utils.DateTimeUtils do
   @moduledoc """
   Utility functions for handling DateTime and NaiveDateTime conversions.
   """
-  """
 
   @doc """
   Safely converts any datetime type to DateTime with UTC timezone.

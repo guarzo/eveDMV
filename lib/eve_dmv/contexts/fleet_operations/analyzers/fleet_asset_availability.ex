@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.FleetAssetAvailability do
   Handles real-time asset tracking through ESI integration and provides
   fallback placeholder data when authentication tokens are not available.
   """
-  """
 
   alias EveDmv.Intelligence.Analyzers.AssetAnalyzer
 

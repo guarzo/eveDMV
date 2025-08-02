@@ -5,7 +5,6 @@ defmodule EveDmv.Database.MaterializedViewRefresher do
   Refreshes character_activity_summary and corporation_member_summary views
   to ensure they contain up-to-date aggregated data for performance optimization.
   """
-  """
 
   use GenServer
 

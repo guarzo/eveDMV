@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Engage
   Analyzes specific engagement mechanics, coordination patterns, and tactical execution
   within individual battles or skirmishes.
   """
-  """
 
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Services.SideDeterminationService
   alias EveDmv.Core.Utils.DateTimeUtils

@@ -12,7 +12,6 @@ defmodule EveDmv.Contexts.Intelligence.Services.AnalyticsService do
   This module consolidates advanced analytics functionality that was previously
   scattered across multiple contexts during the namespace consolidation.
   """
-  """
 
   alias EveDmv.Core.Domain.Analytics.PatternAnalysis
   alias EveDmv.Core.Utils.DateTimeUtils

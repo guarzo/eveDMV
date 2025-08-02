@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.FleetOperations.Infrastructure.PilotDataProvider do
   Provides temporary stub implementation to resolve Dialyzer errors.
   This module should be fully implemented as part of the fleet operations feature.
   """
-  """
 
   @doc """
   Get pilot data including skills and experience.

@@ -7,7 +7,6 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
 
   Converted from GenServer to simple module for stateless operations.
   """
-  """
 
   use EveDmv.ErrorHandler
   alias EveDmv.DomainEvents.FleetAnalysisComplete

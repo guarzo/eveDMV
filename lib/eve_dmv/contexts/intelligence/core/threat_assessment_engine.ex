@@ -7,7 +7,6 @@ defmodule EveDmv.Contexts.Intelligence.Core.ThreatAssessmentEngine do
   - Character Intelligence threat assessment
   - Player Profile risk assessment
   """
-  """
 
   alias EveDmv.Cache
   alias EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer

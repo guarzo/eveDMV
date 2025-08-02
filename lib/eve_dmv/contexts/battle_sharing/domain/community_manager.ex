@@ -1,14 +1,12 @@
 defmodule EveDmv.Contexts.BattleSharing.Domain.CommunityManager do
   @moduledoc """
-
   Community management module for battle reports.
 
   Handles ratings, featured battle curation, search functionality, and community
   interactions extracted from the larger BattleCurator for better modularity.
   """
 
-    alias EveDmv.Core.Utils.DateTimeUtils
-  """
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 

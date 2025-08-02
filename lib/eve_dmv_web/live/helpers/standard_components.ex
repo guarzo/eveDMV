@@ -5,7 +5,6 @@ defmodule EveDmvWeb.Live.Helpers.StandardComponents do
   Provides reusable components for loading states, error displays, data tables,
   and common UI patterns used across intelligence and analysis pages.
   """
-  """
 
   use Phoenix.Component
 

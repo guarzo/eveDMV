@@ -5,7 +5,6 @@ defmodule EveDmvWeb.Plugs.AuthRateLimiter do
   This plug uses a token bucket algorithm to limit authentication attempts
   per IP address, preventing brute force attacks on the authentication system.
   """
-  """
 
   import Plug.Conn
   alias EveDmv.Security.AuditLogger

@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.BattleReportComment do
   Enables community discussion and tactical analysis commentary
   on shared battle reports.
   """
-  """
 
   use Ash.Resource,
     domain: EveDmv.Contexts.BattleAnalysis.Api,

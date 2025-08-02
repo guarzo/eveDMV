@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.StatisticsService do
   Provides aggregated statistics for systems, characters, corporations,
   and other entities based on killmail activity.
   """
-  """
 
   alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils

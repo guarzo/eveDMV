@@ -9,7 +9,6 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AdvancedFilterEngine do
   - Time-based conditions (time of day, day of week, duration since)
   - Performance-optimized evaluation
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.WandererClient

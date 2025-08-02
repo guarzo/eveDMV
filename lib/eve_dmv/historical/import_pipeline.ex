@@ -5,7 +5,6 @@ defmodule EveDmv.Historical.ImportPipeline do
   Optimized for processing millions of killmails with progress tracking,
   error recovery, and performance monitoring. Targets >10,000 killmails/minute.
   """
-  """
 
   use GenServer
 

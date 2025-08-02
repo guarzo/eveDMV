@@ -5,7 +5,6 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.AcquisitionPlanner do
   Provides recommendations for acquiring missing assets, including budget
   optimization, alternative ship suggestions, and market analysis.
   """
-  """
 
   alias EveDmv.Intelligence.Analyzers.FleetAssetManager.ShipCostCalculator
 

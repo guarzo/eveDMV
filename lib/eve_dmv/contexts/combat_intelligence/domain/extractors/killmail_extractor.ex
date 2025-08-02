@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ki
   Handles the extraction of structured data from raw killmail JSON and transforms
   it into formats suitable for battle analysis.
   """
-  """
 
   require Logger
 

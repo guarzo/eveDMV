@@ -5,7 +5,6 @@ defmodule EveDmv.Intelligence.Analyzers.CommunicationPatternAnalyzer do
   Analyzes Discord messages, forum posts, voice chat activity, and member
   communication behaviors to provide insights into community health and engagement.
   """
-  """
 
   @doc """
   Analyze communication patterns from member data.

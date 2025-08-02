@@ -12,7 +12,6 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
 
   All analysis is based on real killmail data from the database.
   """
-  """
 
   import Ecto.Query
 

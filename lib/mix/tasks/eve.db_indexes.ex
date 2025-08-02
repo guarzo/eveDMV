@@ -8,7 +8,6 @@ defmodule Mix.Tasks.Eve.DbIndexes do
       mix eve.db_indexes --create       # Create missing indexes
       mix eve.db_indexes --analyze      # Analyze query performance
   """
-  """
 
   @shortdoc "Manage database indexes for performance"
 

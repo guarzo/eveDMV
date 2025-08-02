@@ -8,7 +8,6 @@ defmodule EveDmv.Contexts.Combat.Services.ZkillboardImporter do
   - Battle timeline reconstruction from zkillboard data
   - Handling zkillboard API rate limits
   """
-  """
 
   alias EveDmv.Api
   alias EveDmv.Contexts.BattleAnalysis.Core.BattleDetector

@@ -5,7 +5,6 @@ defmodule EveDmv.Database.CacheInvalidator do
   Provides pattern-based and event-driven cache invalidation to ensure
   cached data remains consistent when underlying data changes.
   """
-  """
 
   use GenServer
 

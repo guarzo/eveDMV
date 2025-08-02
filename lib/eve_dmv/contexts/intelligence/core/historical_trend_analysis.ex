@@ -9,7 +9,6 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
   - Activity levels by timezone
   - Threat score evolution
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.KillmailRepository

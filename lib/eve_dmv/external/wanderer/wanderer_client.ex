@@ -5,7 +5,6 @@ defmodule EveDmv.Intelligence.WandererClient do
   Provides functions to fetch chain topology, system inhabitants,
   and maintain real-time connections via Server-Sent Events (SSE).
   """
-  """
 
   use GenServer
   alias EveDmv.Utils.DnsResolver
@@ -75,7 +74,6 @@ defmodule EveDmv.Intelligence.WandererClient do
 
   @doc """
   Fetch chain inhabitants for a map (alias for get_system_inhabitants).
-  """
   def get_chain_inhabitants(map_id) do
     get_system_inhabitants(map_id)
   end

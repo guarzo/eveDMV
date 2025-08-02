@@ -7,7 +7,6 @@ defmodule EveDmv.Enrichment.RealTimePriceUpdater do
   This service works alongside the ReEnrichmentWorker to provide instant
   notifications when killmail values change significantly.
   """
-  """
 
   use GenServer
 

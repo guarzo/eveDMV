@@ -12,7 +12,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
   """
 
     alias EveDmv.Core.Utils.DateTimeUtils
-  """
 
   require Logger
 

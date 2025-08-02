@@ -6,7 +6,6 @@ defmodule EveDmv.Users.TokenRefreshService do
   when they are within 5 minutes of expiring, ensuring seamless user experience
   without requiring manual re-authentication.
   """
-  """
 
   use GenServer
   import Ash.Query

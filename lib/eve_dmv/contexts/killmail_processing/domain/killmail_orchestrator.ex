@@ -8,7 +8,6 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.KillmailOrchestrator do
   3. Performance monitoring and metrics
   4. Error handling and recovery
   """
-  """
 
   use GenServer
   alias EveDmv.Contexts.KillmailProcessing.Domain

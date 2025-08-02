@@ -6,7 +6,6 @@ defmodule SQL do
   through Ecto.Adapters.SQL while maintaining backward compatibility
   with existing code that references the SQL module directly.
   """
-  """
 
   alias Ecto.Adapters.SQL, as: EctoSQL
 

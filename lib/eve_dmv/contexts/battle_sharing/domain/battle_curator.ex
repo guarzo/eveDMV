@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
   This module serves as the main coordinator for battle sharing functionality,
   delegating specific tasks to specialized modules for better maintainability.
   """
-  """
 
   alias EveDmv.Contexts.BattleAnalysis
   alias EveDmv.Contexts.BattleSharing.Domain.CommunityManager
@@ -44,6 +43,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
 
     with {:ok, battle_data} <- fetch_battle_data(battle_id) do
       create_battle_report_from_data(battle_data, creator_character_id, options)
+    else
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :battle_data_unavailable}
     end
   end
 
@@ -93,6 +95,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
   def rate_battle_report(report_id, rater_character_id, rating, options \\ []) do
     with {:ok, battle_report} <- fetch_battle_report(report_id) do
       CommunityManager.rate_battle_report(battle_report, rater_character_id, rating, options)
+    else
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :report_not_found}
     end
   end
 

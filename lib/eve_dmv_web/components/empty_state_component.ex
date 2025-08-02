@@ -4,7 +4,6 @@ defmodule EveDmvWeb.Components.EmptyStateComponent do
 
   Provides consistent empty state messaging across the application.
   """
-  """
 
   use Phoenix.Component
 

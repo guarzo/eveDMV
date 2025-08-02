@@ -5,7 +5,6 @@ defmodule EveDmv.Killmails.KillmailDataTransformer do
   Provides functions for building raw and enriched changeset data from
   various killmail data sources including SSE feeds and API responses.
   """
-  """
 
   require Logger
 

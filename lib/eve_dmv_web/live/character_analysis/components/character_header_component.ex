@@ -2,7 +2,6 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.CharacterHeaderComponent do
   @moduledoc """
   Character header component displaying character portrait, name, corporation, alliance, and threat score.
   """
-  """
 
   use EveDmvWeb, :live_component
   import EveDmvWeb.EveImageComponents

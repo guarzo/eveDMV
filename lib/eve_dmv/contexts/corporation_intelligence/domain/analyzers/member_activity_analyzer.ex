@@ -6,7 +6,6 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
   engagement metrics, and activity trends. Delegates to specialized helper modules
   for specific analysis tasks.
   """
-  """
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Core.Utils.DateTimeUtils

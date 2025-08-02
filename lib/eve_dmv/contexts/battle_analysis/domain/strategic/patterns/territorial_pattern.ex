@@ -8,7 +8,6 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
   - Control zone analysis
   - Territory stability assessment
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
 

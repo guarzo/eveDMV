@@ -12,7 +12,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
 
   Provides threat assessment and counter-strategy recommendations.
   """
-  """
 
   alias EveDmv.StaticData
 
@@ -141,6 +140,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
   def analyze_ewar_ship(ship_type_id) when is_integer(ship_type_id) do
     with {:ok, ship_info} <- get_ship_info(ship_type_id) do
       analyze_ewar_capabilities(ship_info)
+    else
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :ship_info_unavailable}
     end
   end
 

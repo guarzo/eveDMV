@@ -11,7 +11,6 @@ defmodule EveDmv.Eve.CircuitBreaker do
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
-  """
 
   use GenServer
   require Logger

@@ -4,7 +4,6 @@ defmodule EveDmv.Contexts.Corporation.Resources.Alliance do
 
   Represents alliances that contain multiple corporations.
   """
-  """
 
   use Ash.Resource,
     domain: EveDmv.Api,

@@ -6,7 +6,6 @@ defmodule EveDmv.Surveillance.Profile do
   notifications when matched. Each profile has a name, filter rules, and
   notification settings.
   """
-  """
 
   use Ash.Resource,
     otp_app: :eve_dmv,

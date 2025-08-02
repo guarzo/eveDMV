@@ -12,7 +12,6 @@ defmodule EveDmv.Contexts.Intelligence.Services.PlayerStatsEngine do
   This module consolidates player statistics functionality that was previously
   scattered across multiple contexts during the namespace consolidation.
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.CharacterRepository

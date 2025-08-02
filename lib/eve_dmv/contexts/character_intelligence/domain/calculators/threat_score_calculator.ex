@@ -8,7 +8,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Calculators
   - Determining threat levels and confidence scores
   - Processing recent activity metrics
   """
-  """
 
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.CombatThreatEngine
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.GangEffectivenessEngine

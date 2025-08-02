@@ -6,7 +6,6 @@ defmodule EveDmv.Market.ShipValuation do
   In the future, this should integrate with actual market data APIs
   or price services.
   """
-  """
 
   alias EveDmv.StaticData.ShipTypes
   require Logger

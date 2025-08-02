@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.BattleSharing do
   Provides the public API for creating shareable battle reports, managing
   video integration, and enabling community curation of battle content.
   """
-  """
 
   alias EveDmv.Contexts.BattleSharing.Domain.BattleCurator
   require Logger

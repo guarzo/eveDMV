@@ -12,7 +12,6 @@ defmodule EveDmv.StaticData do
   - High-performance caching with ETS for frequently accessed data
   - Batch query optimization for bulk operations
   """
-  """
 
   import Ash.Query
   alias EveDmv.Api

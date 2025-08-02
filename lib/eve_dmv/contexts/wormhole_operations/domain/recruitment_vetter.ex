@@ -9,7 +9,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
   - Wormhole experience evaluation
   - Cultural fit assessment
   """
-  """
 
   use GenServer
   use EveDmv.ErrorHandler

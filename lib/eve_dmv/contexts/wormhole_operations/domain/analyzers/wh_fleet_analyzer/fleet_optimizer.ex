@@ -6,7 +6,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.Analyzers.WhFleetAnalyzer.Fl
   recommendations, analyzing counter-doctrines, and creating
   situational variants of fleet compositions.
   """
-  """
 
   alias EveDmv.Intelligence.Fleet.FleetEffectivenessCalculator
 

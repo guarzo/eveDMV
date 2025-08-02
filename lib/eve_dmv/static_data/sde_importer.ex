@@ -3,7 +3,6 @@ defmodule EveDmv.StaticData.SdeImporter do
   Imports EVE Online Static Data Export (SDE) from Fuzzwork.
   Downloads and processes ship attributes and other static data.
   """
-  """
 
   alias EveDmv.Repo
 

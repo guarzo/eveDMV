@@ -1,14 +1,12 @@
 defmodule EveDmv.Intelligence.SystemInhabitant do
   @moduledoc """
-
   Tracks pilots present in wormhole systems within a chain.
 
   Provides real-time inhabitant tracking with threat assessment
   and historical presence data for chain-wide intelligence.
   """
 
-    alias EveDmv.Core.Utils.DateTimeUtils
-  """
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   use Ash.Resource,
     domain: EveDmv.Domains.Intelligence,

@@ -5,7 +5,6 @@ defmodule EveDmvWeb.CharacterComparisonLive do
   Provides detailed comparison of combat statistics, ship preferences,
   and engagement patterns between selected characters.
   """
-  """
 
   use EveDmvWeb, :live_view
   import EveDmvWeb.Components.PageHeaderComponent

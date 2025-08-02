@@ -27,7 +27,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   """
 
     alias EveDmv.Core.Utils.DateTimeUtils
-  """
 
   require Logger
 

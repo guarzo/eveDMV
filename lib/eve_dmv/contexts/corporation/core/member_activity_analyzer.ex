@@ -7,7 +7,6 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer do
   - Corporation Analysis member activity analyzer
   - Corporation Intelligence member activity analysis
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.CharacterRepository

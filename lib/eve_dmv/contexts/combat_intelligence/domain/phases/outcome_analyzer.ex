@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
   Analyzes the final results of battles, identifies decisive factors,
   and provides insights for future tactical improvements.
   """
-  """
 
   require Logger
 

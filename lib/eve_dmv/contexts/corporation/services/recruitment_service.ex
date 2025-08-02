@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.Corporation.Services.RecruitmentService do
   Handles recruitment process management, application processing,
   and recruitment optimization operations.
   """
-  """
 
   alias EveDmv.Contexts.Corporation.Core.RecruitmentAnalyzer
   alias EveDmv.Core.Utils.DateTimeUtils

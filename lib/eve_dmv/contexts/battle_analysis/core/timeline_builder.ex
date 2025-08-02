@@ -8,7 +8,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.TimelineBuilder do
   - Key moment detection
   - Tactical flow analysis
   """
-  """
 
   import Ecto.Query
   alias EveDmv.Core.Utils.DateTimeUtils

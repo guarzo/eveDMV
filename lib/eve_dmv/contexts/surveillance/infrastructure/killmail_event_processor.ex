@@ -16,7 +16,6 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.KillmailEventProcessor do
   - Dispatch notifications for matches
   - Maintain match history and statistics
   """
-  """
 
   use GenServer
 

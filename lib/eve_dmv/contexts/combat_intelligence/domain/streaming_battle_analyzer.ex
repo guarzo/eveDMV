@@ -12,7 +12,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
   - Chunked batch operations for database efficiency
   - Async processing for CPU-intensive analysis
   """
-  """
 
   use GenServer
   alias EveDmv.Contexts.CombatIntelligence.Domain.Shared.KillmailMapper

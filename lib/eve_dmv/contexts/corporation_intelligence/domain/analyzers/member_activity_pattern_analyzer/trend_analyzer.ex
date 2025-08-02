@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivit
   This module focuses on identifying trends, seasonal variations,
   and behavioral changes in member activity over time.
   """
-  """
 
   alias EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivityAnalyzer.ActivityHelpers
   alias EveDmv.Core.Utils.DateTimeUtils

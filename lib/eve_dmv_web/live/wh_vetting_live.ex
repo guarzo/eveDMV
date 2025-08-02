@@ -10,7 +10,6 @@ defmodule EveDmvWeb.WHVettingLive do
   - Alt character analysis
   - Small gang competency scoring
   """
-  """
 
   use EveDmvWeb, :live_view
 

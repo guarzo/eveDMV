@@ -29,7 +29,6 @@ defmodule EveDmv.Eve.EsiClient do
       # Market operations
       {:ok, orders} = EsiClient.get_market_orders(34, 10_000_002)
   """
-  """
 
   alias EveDmv.Eve.EsiCharacterClient
   alias EveDmv.Eve.EsiCorporationClient
@@ -54,7 +53,7 @@ defmodule EveDmv.Eve.EsiClient do
   Get character employment history.
   """
   @spec get_character_employment_history(integer()) ::
-          {:error, :invalid_response | :service_unavailable}
+          {:ok, list(map())} | {:error, :invalid_response | :service_unavailable}
   defdelegate get_character_employment_history(character_id), to: EsiCharacterClient
 
   @doc """
@@ -83,7 +82,8 @@ defmodule EveDmv.Eve.EsiClient do
   @doc """
   Get corporation members (requires authentication).
   """
-  @spec get_corporation_members(integer(), String.t()) :: {:error, :service_unavailable}
+  @spec get_corporation_members(integer(), String.t()) :: 
+          {:ok, list(map())} | {:error, :service_unavailable}
   defdelegate get_corporation_members(corporation_id, auth_token), to: EsiCorporationClient
 
   @doc """
@@ -148,14 +148,16 @@ defmodule EveDmv.Eve.EsiClient do
   @doc """
   Get market orders for a specific type in a region.
   """
-  @spec get_market_orders(integer(), integer(), atom()) :: {:error, :service_unavailable}
+  @spec get_market_orders(integer(), integer(), atom()) :: 
+          {:ok, list(map())} | {:error, :service_unavailable}
   defdelegate get_market_orders(type_id, region_id \\ 10_000_002, order_type \\ :all),
     to: EsiMarketClient
 
   @doc """
   Get market history for a specific type in a region.
   """
-  @spec get_market_history(integer(), integer()) :: {:error, :service_unavailable}
+  @spec get_market_history(integer(), integer()) :: 
+          {:ok, list(map())} | {:error, :service_unavailable}
   defdelegate get_market_history(type_id, region_id \\ 10_000_002), to: EsiMarketClient
 
   @doc """

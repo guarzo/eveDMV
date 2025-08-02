@@ -17,7 +17,6 @@ defmodule EveDmv.Workers.RealtimeTaskSupervisor do
   - **Per-User Limit**: None (system events)
   - **Restart Strategy**: temporary (failed tasks don't restart)
   """
-  """
 
   use EveDmv.Workers.GenericTaskSupervisor
 

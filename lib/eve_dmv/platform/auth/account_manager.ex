@@ -5,7 +5,6 @@ defmodule EveDmv.Users.AccountManager do
   Handles account creation, character linking, character switching,
   and account-level operations.
   """
-  """
 
   alias EveDmv.Api
   alias EveDmv.Users.Account

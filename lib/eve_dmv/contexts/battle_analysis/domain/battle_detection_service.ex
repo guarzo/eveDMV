@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
   Uses time-based clustering with spatial correlation and participant overlap
   to identify discrete battles from killmail data.
   """
-  """
 
   import Ash.Query
   alias EveDmv.Core.Utils.DateTimeUtils

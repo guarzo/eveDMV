@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
   Analyzes fleet role execution, leadership patterns, and gang coordination
   to determine gang effectiveness threat level.
   """
-  """
 
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   require Logger

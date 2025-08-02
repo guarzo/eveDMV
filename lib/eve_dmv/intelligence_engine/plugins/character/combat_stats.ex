@@ -5,7 +5,6 @@ defmodule EveDmv.IntelligenceEngine.Plugins.Character.CombatStats do
   This is a compatibility layer that bridges the old plugin system
   to the new bounded context analyzers.
   """
-  """
 
   @behaviour EveDmv.IntelligenceEngine.Plugin
 

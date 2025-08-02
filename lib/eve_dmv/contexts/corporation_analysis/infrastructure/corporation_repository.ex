@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
   Provides data access layer for corporation analysis operations using
   real killmail data from the database.
   """
-  """
 
   use EveDmv.ErrorHandler
 

@@ -8,7 +8,6 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
 
   API Documentation: https://janice.e-351.com/api/rest/v2
   """
-  """
 
   use GenServer
 

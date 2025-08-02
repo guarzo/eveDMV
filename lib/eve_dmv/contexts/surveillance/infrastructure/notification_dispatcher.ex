@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.NotificationDispatcher do
   Handles the low-level delivery of notifications through various channels
   including email services, webhook endpoints, and real-time connections.
   """
-  """
 
   use GenServer
   use EveDmv.ErrorHandler

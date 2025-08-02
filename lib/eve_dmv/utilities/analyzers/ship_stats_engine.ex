@@ -3,7 +3,6 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
   @moduledoc """
   Engine for calculating ship performance statistics.
   """
-  """
 
   alias EveDmv.Analytics.ShipStats
   alias EveDmv.Api

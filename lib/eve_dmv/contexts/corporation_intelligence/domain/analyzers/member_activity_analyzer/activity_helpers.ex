@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivit
   Provides utility functions for fleet participation metrics, communication patterns,
   and general activity calculations used across the member activity analyzer.
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.Analyzers.CommunicationPatternAnalyzer

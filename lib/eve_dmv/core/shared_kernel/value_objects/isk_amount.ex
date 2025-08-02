@@ -4,7 +4,6 @@ defmodule EveDmv.Core.SharedKernel.ValueObjects.IskAmount do
 
   ISK amounts are immutable monetary values with formatting and calculation utilities.
   """
-  """
 
   defstruct [:value]
 

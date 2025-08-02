@@ -2,7 +2,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   @moduledoc """
   Correlator for activity patterns across multiple systems.
   """
-  """
 
   import Ecto.Query
 

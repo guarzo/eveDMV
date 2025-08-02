@@ -5,7 +5,6 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
   Manages and orchestrates various intelligence analysis components, providing
   a unified interface for comprehensive intelligence gathering and analysis.
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.Analyzers.CharacterAnalyzer

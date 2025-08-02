@@ -5,7 +5,6 @@ defmodule EveDmv.Database.IncrementalViewRefresher do
   Instead of fully refreshing materialized views, this module implements
   an incremental refresh approach that only updates changed data.
   """
-  """
 
   use GenServer
 

@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
   Analyzes engagement patterns, ship selection variance, and tactical diversity
   to determine unpredictability threat level.
   """
-  """
 
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   alias EveDmv.Core.Utils.DateTimeUtils

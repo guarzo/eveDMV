@@ -13,7 +13,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   Uses advanced statistical analysis, behavioral pattern recognition, and machine learning
   techniques to provide actionable intelligence for fleet commanders and solo pilots.
   """
-  """
 
   alias EveDmv.Api
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities

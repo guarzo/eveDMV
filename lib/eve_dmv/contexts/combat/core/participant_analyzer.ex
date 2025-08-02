@@ -9,7 +9,6 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer do
   - Affiliation tracking
   - Activity patterns
   """
-  """
 
   alias EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.ActivityTracker
   alias EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.AffiliationAnalyzer

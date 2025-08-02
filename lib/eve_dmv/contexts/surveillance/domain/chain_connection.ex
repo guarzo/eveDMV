@@ -1,14 +1,12 @@
 defmodule EveDmv.Intelligence.ChainAnalysis.ChainConnection do
   @moduledoc """
-
   Represents wormhole connections within a chain topology.
 
   Tracks connection status, mass, time remaining, and signatures
   for wormhole intelligence and navigation planning.
   """
 
-    alias EveDmv.Core.Utils.DateTimeUtils
-  """
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   use Ash.Resource,
     domain: EveDmv.Domains.Intelligence,

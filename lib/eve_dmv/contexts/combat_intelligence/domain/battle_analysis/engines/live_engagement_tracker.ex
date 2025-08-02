@@ -9,7 +9,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.LiveE
   - Tracking engagement progression and participant flow
   - Cleaning up stale engagements
   """
-  """
 
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.PerformanceCalculator
   alias EveDmv.Core.Utils.DateTimeUtils

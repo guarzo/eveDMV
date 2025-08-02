@@ -5,7 +5,6 @@ defmodule EveDmvWeb.Components.CharacterSwitcher do
   Provides a dropdown menu for switching between characters
   in a multi-character account.
   """
-  """
 
   use Phoenix.Component
 

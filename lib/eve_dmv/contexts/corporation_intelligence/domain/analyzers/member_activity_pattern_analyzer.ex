@@ -13,7 +13,6 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivit
   The analyzer works with activity data collected by MemberActivityDataCollector
   and provides detailed pattern analysis for member intelligence systems.
   """
-  """
 
   alias EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivityPatternAnalyzer.AnomalyDetector
   alias EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivityPatternAnalyzer.ConsistencyCalculator

@@ -4,7 +4,6 @@ defmodule EveDmv.Historical.ImportProgressMonitor do
 
   Provides telemetry, metrics, and UI updates for import pipeline performance tracking.
   """
-  """
 
   use GenServer
 

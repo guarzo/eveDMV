@@ -8,7 +8,6 @@ defmodule EveDmv.Shared.Strategic.TerritorialAnalyzer do
   - Expansion opportunity detection
   - Territory stability assessment
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Shared.Strategic.Patterns.TerritorialPattern

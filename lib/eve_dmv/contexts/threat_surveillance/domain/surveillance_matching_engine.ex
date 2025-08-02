@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngine d
   Provides real-time matching of killmails against surveillance profiles
   with comprehensive criteria support and alert generation.
   """
-  """
 
   use GenServer
 

@@ -8,7 +8,6 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivit
   """
 
     alias EveDmv.Core.Utils.DateTimeUtils
-  """
 
   require Logger
 

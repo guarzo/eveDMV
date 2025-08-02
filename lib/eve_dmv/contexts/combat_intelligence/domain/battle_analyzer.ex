@@ -12,7 +12,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
 
   The consolidation improves maintainability while preserving all real analysis functionality.
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Core.Utils.DateTimeUtils

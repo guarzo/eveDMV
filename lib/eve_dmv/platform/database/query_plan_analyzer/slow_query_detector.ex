@@ -5,7 +5,6 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
   Detects slow-running queries using pg_stat_statements, analyzes their
   patterns, and provides recommendations for performance optimization.
   """
-  """
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Repo

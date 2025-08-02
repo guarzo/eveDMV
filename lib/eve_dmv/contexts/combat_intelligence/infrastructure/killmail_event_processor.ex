@@ -6,7 +6,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.KillmailEventProcess
   with additional data, preparing them for various combat intelligence operations
   including battle detection, participant analysis, and strategic assessment.
   """
-  """
 
   use GenServer
 

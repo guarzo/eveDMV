@@ -7,7 +7,6 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
   - Character Intelligence performance metrics
   - Player Profile performance analysis
   """
-  """
 
   alias EveDmv.Cache
   alias EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer

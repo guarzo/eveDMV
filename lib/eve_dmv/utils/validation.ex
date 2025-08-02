@@ -4,7 +4,6 @@ defmodule EveDmv.Utils.Validation do
 
   Part of Sprint 22 Quality Standards - Code Duplication Elimination.
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
 

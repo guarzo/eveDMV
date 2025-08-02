@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.FleetOperations.Core.MassCalculator do
   Provides functions to calculate ship mass, fleet composition mass efficiency,
   and wormhole mass limits for strategic planning.
   """
-  """
 
   alias EveDmv.Api
   alias EveDmv.StaticData.ShipTypes

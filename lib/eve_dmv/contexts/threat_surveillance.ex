@@ -15,7 +15,6 @@ defmodule EveDmv.Contexts.ThreatSurveillance do
   This unified context provides comprehensive threat detection and surveillance
   capabilities while eliminating overlap between threat assessment and surveillance.
   """
-  """
 
   use EveDmv.Contexts.BoundedContext, name: :threat_surveillance
   use Supervisor

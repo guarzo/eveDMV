@@ -4,7 +4,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Calculators
 
   Converts raw threat scores into actionable danger ratings and risk assessments.
   """
-  """
 
   require Logger
 

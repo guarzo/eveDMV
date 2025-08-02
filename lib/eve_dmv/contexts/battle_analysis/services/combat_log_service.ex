@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.CombatLogService do
   This module handles the business logic for combat log processing,
   reducing dependencies in the resource module.
   """
-  """
 
   alias EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser
   alias EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser

@@ -15,7 +15,6 @@ defmodule EveDmv.Workers.ReEnrichmentWorker do
   """
 
     alias EveDmv.Core.Utils.DateTimeUtils
-  """
 
   use GenServer
   require Logger

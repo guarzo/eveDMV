@@ -7,7 +7,6 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
   - Character Intelligence pattern analysis
   - Player Profile behavioral analysis
   """
-  """
 
   alias EveDmv.Cache
   alias EveDmv.Core.Utils.DateTimeUtils

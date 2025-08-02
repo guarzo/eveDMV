@@ -10,7 +10,6 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
   - Capital deployment strategies
   - Bombing runs
   """
-  """
 
   alias EveDmv.Contexts.Combat.Core.TimelineBuilder
   alias EveDmv.Core.Utils.DateTimeUtils

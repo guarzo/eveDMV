@@ -5,7 +5,6 @@ defmodule EveDmv.Quality.MetricsCollector.SecurityMetrics do
   Handles dependency auditing, code security scanning,
   authentication configuration analysis, and secrets detection.
   """
-  """
 
   @doc """
   Collects comprehensive security metrics.

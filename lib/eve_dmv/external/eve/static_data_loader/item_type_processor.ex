@@ -5,7 +5,6 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessor do
   Handles parsing and processing of item types, groups, and categories,
   including ship classification and other item type categorization.
   """
-  """
 
   alias EveDmv.Eve.StaticDataLoader.CsvParser
   require Logger

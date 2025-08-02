@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.StorageService do
   Provides temporary stub implementation to resolve Dialyzer errors.
   This module should be fully implemented as part of the killmail processing feature.
   """
-  """
 
   @doc """
   Store validated killmail and enriched data to the database.

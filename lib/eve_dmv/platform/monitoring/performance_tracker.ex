@@ -3,7 +3,6 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
   Tracks performance metrics for database queries and API calls.
   Provides real-time visibility into performance bottlenecks.
   """
-  """
 
   use GenServer
   alias __MODULE__, as: PerformanceTracker

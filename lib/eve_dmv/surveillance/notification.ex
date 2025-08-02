@@ -8,7 +8,6 @@ defmodule EveDmv.Surveillance.Notification do
   """
 
     alias EveDmv.Core.Utils.DateTimeUtils
-  """
 
   use Ash.Resource,
     otp_app: :eve_dmv,

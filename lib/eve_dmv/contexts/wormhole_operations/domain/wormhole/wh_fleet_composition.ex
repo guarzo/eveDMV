@@ -7,7 +7,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.Wormhole.WhFleetComposition 
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
-  """
 
   use Ash.Resource,
     domain: EveDmv.Domains.Intelligence,

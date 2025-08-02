@@ -74,7 +74,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
   - **Better Performance**: Optimized delegation reduces processing overhead
   - **Increased Extensibility**: Easy to add new analysis types through delegation
   """
-  """
 
   import Ecto.Query
 

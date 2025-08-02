@@ -5,7 +5,6 @@ defmodule EveDmvWeb.PlayerStatsComponent do
   Shows basic stats, solo vs gang performance, and ISK statistics
   in organized cards with proper formatting.
   """
-  """
 
   use EveDmvWeb, :live_component
   import EveDmvWeb.FormatHelpers

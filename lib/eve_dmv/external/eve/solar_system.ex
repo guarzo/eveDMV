@@ -5,7 +5,6 @@ defmodule EveDmv.Eve.SolarSystem do
   This resource contains static reference data for all solar systems in EVE Online.
   Used for system name lookups and location-based filtering.
   """
-  """
 
   use Ash.Resource,
     otp_app: :eve_dmv,

@@ -5,7 +5,6 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.ConnectionPoolMonitor do
   Tracks connection usage, pool utilization, and identifies potential
   connection-related issues.
   """
-  """
 
   alias Ecto.Adapters.SQL
   require Logger

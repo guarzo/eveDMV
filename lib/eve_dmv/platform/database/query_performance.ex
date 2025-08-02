@@ -5,7 +5,6 @@ defmodule EveDmv.Database.QueryPerformance do
   Provides macros and functions to easily track query performance
   and identify bottlenecks.
   """
-  """
 
   import EveDmv.Monitoring.PerformanceTracker, only: [time_query: 3]
   alias EveDmv.Monitoring.PerformanceTracker

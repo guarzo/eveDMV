@@ -3,7 +3,6 @@ defmodule EveDmv.Contexts.Intelligence.Resources.CharacterProfile do
   Ash resource for character intelligence profiles.
   Consolidates character data from previous character_intelligence and player_profile contexts.
   """
-  """
 
   use Ash.Resource,
     domain: EveDmv.Api,

@@ -12,7 +12,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.
   The Facade module coordinates these components while maintaining
   backward compatibility with the original MonitoringEngine interface.
   """
-  """
 
   # Delegate all functions to the new modular monitoring facade
   defdelegate establish_intelligence_baseline(monitored_systems, options \\ []),

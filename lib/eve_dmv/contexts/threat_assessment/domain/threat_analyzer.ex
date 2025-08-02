@@ -6,7 +6,6 @@ defmodule EveDmv.Contexts.ThreatAssessment.Domain.ThreatAnalyzer do
   behavioral analysis, tactical weakness identification, and security assessment
   for characters, corporations, and fleets.
   """
-  """
 
   use GenServer
   use EveDmv.ErrorHandler

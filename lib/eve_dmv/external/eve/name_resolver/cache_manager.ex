@@ -5,7 +5,6 @@ defmodule EveDmv.Eve.NameResolver.CacheManager do
   This module has been migrated from direct ETS usage to use the unified EveDmv.Cache system
   for better consistency and centralized cache management.
   """
-  """
 
   require Logger
 
@@ -144,7 +143,11 @@ defmodule EveDmv.Eve.NameResolver.CacheManager do
   """
   @spec get_cache_stats() :: map()
   def get_cache_stats do
-    EveDmv.Cache.stats(:hot_data)
+    case EveDmv.Cache.stats(:hot_data) do
+      {:ok, stats} -> stats
+      stats when is_map(stats) -> stats
+      _ -> %{cache_size: 0, hit_rate: 0.0, miss_rate: 0.0}
+    end
   end
 
   @doc """

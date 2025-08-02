@@ -4,7 +4,6 @@ defmodule EveDmvWeb.Plugs.RequireAuth do
 
   Redirects unauthenticated users to the login page.
   """
-  """
 
   import Plug.Conn
   import Phoenix.Controller

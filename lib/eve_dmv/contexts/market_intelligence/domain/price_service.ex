@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
   This service coordinates price fetching from multiple sources,
   manages caching strategies, and publishes price update events.
   """
-  """
 
   use GenServer
 
@@ -52,7 +51,10 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
   """
   @spec get_cache_stats() :: map()
   def get_cache_stats do
-    UnifiedCache.get_domain_stats(:market)
+    case UnifiedCache.get_domain_stats(:market) do
+      {:ok, stats} -> stats
+      _ -> %{cache_size: 0, hit_rate: 0.0, miss_rate: 0.0}
+    end
   end
 
   @doc """

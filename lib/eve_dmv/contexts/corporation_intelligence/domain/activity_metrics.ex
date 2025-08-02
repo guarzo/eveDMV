@@ -8,7 +8,6 @@ defmodule EveDmv.Shared.ActivityMetrics do
   """
 
     alias EveDmv.Core.Utils.DateTimeUtils
-  """
 
   @doc """
   Calculate activity score based on kills, losses, and recency.

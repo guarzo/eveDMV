@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer do
   Provides comprehensive corporation analysis including member activity,
   organizational health, recruitment effectiveness, and leadership assessment.
   """
-  """
 
   use GenServer
   use EveDmv.ErrorHandler

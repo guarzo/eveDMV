@@ -9,7 +9,6 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
   - Fleet composition changes
   - Key moment highlights
   """
-  """
 
   use Phoenix.Component
 

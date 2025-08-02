@@ -9,7 +9,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Pe
   - Identifying top performers and engagement metrics
   - Processing side-by-side performance comparisons
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
   require Logger

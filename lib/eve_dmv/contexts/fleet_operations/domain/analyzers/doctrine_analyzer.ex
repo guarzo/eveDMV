@@ -5,7 +5,6 @@ defmodule EveDmv.Intelligence.Analyzers.DoctrineAnalyzer do
   Analyzes ship usage patterns, doctrine adherence, and fleet composition
   to provide insights into tactical preferences and capabilities.
   """
-  """
 
   require Logger
 

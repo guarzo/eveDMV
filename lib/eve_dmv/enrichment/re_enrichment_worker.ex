@@ -16,7 +16,6 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
   - Name resolution: Every 24 hours (names rarely change)
   - Static data refresh: Every week (very stable data)
   """
-  """
 
   use GenServer
   alias EveDmv.Api

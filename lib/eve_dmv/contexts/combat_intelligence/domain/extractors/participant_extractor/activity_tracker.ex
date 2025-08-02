@@ -8,7 +8,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
   """
 
     alias EveDmv.Core.Utils.DateTimeUtils
-  """
 
   require Logger
 

@@ -5,7 +5,6 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
   Manages the actual archiving process including batch processing, data validation,
   and transaction safety for moving data between tables.
   """
-  """
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Core.Utils.DateTimeUtils

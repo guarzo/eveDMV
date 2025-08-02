@@ -3,7 +3,6 @@ defmodule EveDmv.Contexts.Intelligence.Core.UnpredictabilityEngine do
   Analyzes operational security and unpredictability patterns.
   Part of the multi-dimensional threat assessment system.
   """
-  """
 
   alias EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer
   alias EveDmv.Core.Utils.DateTimeUtils

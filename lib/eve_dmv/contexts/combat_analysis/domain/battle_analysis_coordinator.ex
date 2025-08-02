@@ -3,7 +3,6 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleAnalysisCoordinator do
   Coordinates comprehensive battle analysis including timeline reconstruction,
   tactical analysis, and fleet effectiveness evaluation.
   """
-  """
 
   use GenServer
 

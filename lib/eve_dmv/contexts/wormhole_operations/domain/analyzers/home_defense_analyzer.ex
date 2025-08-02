@@ -5,7 +5,6 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
   Provides clear, focused analysis of timezone coverage, member activity,
   and defensive capabilities without over-engineering.
   """
-  """
 
   alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils

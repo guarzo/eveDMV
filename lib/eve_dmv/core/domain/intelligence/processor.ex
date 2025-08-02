@@ -5,7 +5,6 @@ defmodule EveDmv.Shared.Intelligence.Processor do
   This module is responsible for taking raw intelligence data and converting it
   into a standardized format that can be used by the fusion engine.
   """
-  """
 
   alias EveDmv.Shared.Intelligence.SourceHandlers.KillmailHandler
 

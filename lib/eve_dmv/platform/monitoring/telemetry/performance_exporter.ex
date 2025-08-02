@@ -7,7 +7,6 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
   - Generate performance reports for analysis
   - Create sanitized data dumps for development testing
   """
-  """
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Core.Utils.DateTimeUtils

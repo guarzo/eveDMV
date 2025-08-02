@@ -5,7 +5,6 @@ defmodule EveDmv.Eve.StaticDataLoader.CsvParser do
   Provides common parsing functions for different CSV file types and
   type conversion utilities.
   """
-  """
 
   alias NimbleCSV.RFC4180, as: CSVParser
 

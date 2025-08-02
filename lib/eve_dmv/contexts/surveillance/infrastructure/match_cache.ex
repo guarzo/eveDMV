@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
   Provides fast access to match results and prevents duplicate processing
   of killmails against surveillance profiles.
   """
-  """
 
   use GenServer
 

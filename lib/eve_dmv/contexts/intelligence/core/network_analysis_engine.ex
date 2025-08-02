@@ -9,7 +9,6 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
   - Influence networks
   - Community detection
   """
-  """
 
   alias EveDmv.Contexts.Intelligence.Core.LouvainCommunityDetection
   alias EveDmv.Core.Utils.DateTimeUtils

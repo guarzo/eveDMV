@@ -5,7 +5,6 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   Provides real-time battle analysis, fleet composition breakdowns,
   tactical recommendations, and historical battle comparisons.
   """
-  """
 
   use EveDmvWeb, :live_view
   import EveDmvWeb.BattleAnalysisLive.Helpers

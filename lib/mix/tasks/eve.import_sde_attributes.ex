@@ -21,7 +21,6 @@ defmodule Mix.Tasks.Eve.ImportSdeAttributes do
       # Force re-import
       mix eve.import_sde_attributes --force
   """
-  """
 
   @shortdoc "Import EVE Online SDE ship attributes"
 

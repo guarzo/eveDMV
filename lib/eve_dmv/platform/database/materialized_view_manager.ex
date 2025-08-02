@@ -5,7 +5,6 @@ defmodule EveDmv.Database.MaterializedViewManager do
   Creates and maintains materialized views for frequently accessed aggregated data,
   automatically refreshing them based on data changes and schedules.
   """
-  """
 
   use GenServer
 

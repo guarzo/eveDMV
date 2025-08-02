@@ -9,7 +9,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.PerformanceMe
   - Victory determination and factor analysis
   - Timeline tracking and flow metrics
   """
-  """
 
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.OutcomeAnalyzer
   alias EveDmv.Core.Utils.DateTimeUtils

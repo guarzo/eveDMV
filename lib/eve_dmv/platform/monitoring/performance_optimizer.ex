@@ -6,7 +6,6 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
   Provides tools for optimizing query performance, batch processing,
   and resource management for intelligence operations.
   """
-  """
 
   alias EveDmv.Api
   alias EveDmv.Contexts.WormholeOperations.Domain.Wormhole.WhVetting

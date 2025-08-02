@@ -29,7 +29,6 @@ defmodule EveDmv.Platform.PubSub.NotificationHub do
   - `:system_activity` - System activity updates
   - `:intelligence` - Intelligence updates
   """
-  """
 
   alias Phoenix.PubSub
   require Logger

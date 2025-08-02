@@ -4,7 +4,6 @@ defmodule EveDmvWeb.Helpers.PriceHelper do
 
   Provides on-demand price lookups and formatting functions for killmail values.
   """
-  """
 
   alias EveDmv.Market.PriceService
   require Logger

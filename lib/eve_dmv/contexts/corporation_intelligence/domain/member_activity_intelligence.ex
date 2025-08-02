@@ -7,7 +7,6 @@ defmodule EveDmv.Intelligence.MemberActivityIntelligence do
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
-  """
 
   use Ash.Resource,
     domain: EveDmv.Domains.Intelligence,

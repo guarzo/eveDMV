@@ -6,7 +6,6 @@ defmodule EveDmv.Surveillance.NotificationService do
   managing user notification preferences, and delivering notifications
   via various channels (LiveView, email, webhooks, etc.).
   """
-  """
 
   alias EveDmv.Api.SurveillanceApi
   alias EveDmv.Surveillance.Notification

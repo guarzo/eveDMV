@@ -22,7 +22,6 @@ defmodule EveDmv.Result do
     Result.map_error(&add_context/1)    # Add context to error
     Result.unwrap_or("default")         # "default"
   """
-  """
 
   alias EveDmv.Error
 

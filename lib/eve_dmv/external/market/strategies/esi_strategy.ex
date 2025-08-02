@@ -5,7 +5,6 @@ defmodule EveDmv.Market.Strategies.EsiStrategy do
   This strategy queries the EVE Online ESI API for market data,
   typically from major trade hubs like Jita.
   """
-  """
 
   @behaviour EveDmv.Market.PricingStrategy
 

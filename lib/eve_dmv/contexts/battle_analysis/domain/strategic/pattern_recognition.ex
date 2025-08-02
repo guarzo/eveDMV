@@ -8,7 +8,6 @@ defmodule EveDmv.Shared.Strategic.PatternRecognition do
   - Confidence assessment
   - Pattern classification
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Shared.Strategic.Patterns.ResourcePattern

@@ -14,7 +14,6 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
   - **Chain Operations**: Wormhole chain activities across multiple systems
   - **Solo Activities**: Individual activities without fleet participation
   """
-  """
 
   use EveDmv.ErrorHandler
   alias EveDmv.Contexts.CorporationAnalysis.Infrastructure.ParticipationDataProvider

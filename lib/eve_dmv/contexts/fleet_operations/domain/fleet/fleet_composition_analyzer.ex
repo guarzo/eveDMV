@@ -5,7 +5,6 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
   Provides detailed ship-by-ship analysis, role balance evaluation,
   wormhole compatibility assessment, and doctrine compliance scoring.
   """
-  """
 
   alias EveDmv.Intelligence.Analyzers.MassCalculator
 

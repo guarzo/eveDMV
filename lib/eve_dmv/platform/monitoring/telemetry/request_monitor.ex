@@ -5,7 +5,6 @@ defmodule EveDmv.Telemetry.RequestMonitor do
   This module tracks request metrics to help identify performance
   bottlenecks and reliability issues with ESI API calls.
   """
-  """
 
   @doc """
   Track an ESI request with duration and status.

@@ -4,7 +4,6 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
   Broadway producer using HTTPoison's built-in streaming - the industry standard approach.
   Uses: HTTPoison.get!(url, [], recv_timeout: :infinity, stream_to: self())
   """
-  """
 
   use GenStage
 

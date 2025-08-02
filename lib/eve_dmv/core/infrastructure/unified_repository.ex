@@ -18,7 +18,6 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   - Batch operations and bulk loading
   - Domain-specific query builders
   """
-  """
 
   import Ecto.Query
 

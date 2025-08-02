@@ -2,7 +2,6 @@ defmodule EveDmvWeb.SurveillanceProfilesLive.Helpers do
   @moduledoc """
   Helper functions for the Surveillance Profiles LiveView.
   """
-  """
 
   use Phoenix.Component
 

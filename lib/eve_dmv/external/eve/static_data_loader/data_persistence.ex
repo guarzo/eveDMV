@@ -5,7 +5,6 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
   Provides optimized bulk creation operations for item types and solar systems
   with error handling and progress reporting.
   """
-  """
 
   alias EveDmv.Eve.ItemType
   alias EveDmv.Eve.SolarSystem

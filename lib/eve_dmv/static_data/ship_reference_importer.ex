@@ -6,7 +6,6 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
   populates the ship_role_patterns and doctrine_patterns tables with
   baseline role classifications and fleet doctrine information.
   """
-  """
 
   import Ecto.Query
   alias EveDmv.Repo

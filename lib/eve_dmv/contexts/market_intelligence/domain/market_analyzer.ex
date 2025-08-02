@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.MarketAnalyzer do
   Provides temporary stub implementation to resolve Dialyzer errors.
   This module should be fully implemented as part of the market intelligence feature.
   """
-  """
 
   @doc """
   Analyze market trends for given type IDs over a time period.

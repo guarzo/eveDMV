@@ -5,7 +5,6 @@ defmodule EveDmvWeb.Plugs.SecurityHeaders do
   This plug sets comprehensive security headers including CSP to protect against
   XSS attacks, clickjacking, and other common web vulnerabilities.
   """
-  """
 
   @behaviour Plug
 

@@ -5,7 +5,6 @@ defmodule EveDmv.Killmails.ParticipantBuilder do
   Extracts victim and attacker information from raw killmail data and
   creates properly formatted participant records for database insertion.
   """
-  """
 
   require Logger
 

@@ -8,7 +8,6 @@ defmodule EveDmvWeb.Plugs.RequireAdmin do
 
   Redirects non-admin users with appropriate error messages.
   """
-  """
 
   import Plug.Conn
   import Phoenix.Controller

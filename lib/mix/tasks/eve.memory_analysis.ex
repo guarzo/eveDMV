@@ -10,7 +10,6 @@ defmodule Mix.Tasks.Eve.MemoryAnalysis do
       mix eve.memory_analysis --optimize         # Run memory optimization
       mix eve.memory_analysis --leak-detection   # Run memory leak detection
   """
-  """
 
   use Mix.Task
   alias EveDmv.Performance.MemoryProfiler

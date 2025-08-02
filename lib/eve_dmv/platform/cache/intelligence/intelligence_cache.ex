@@ -5,7 +5,6 @@ defmodule EveDmv.Intelligence.Cache.IntelligenceCache do
   This module provides a backward-compatible interface for intelligence caching
   while using the new unified cache system with the :analysis cache type.
   """
-  """
 
   alias EveDmv.Cache
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator

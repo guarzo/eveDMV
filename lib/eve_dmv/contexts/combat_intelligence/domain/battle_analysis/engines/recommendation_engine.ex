@@ -8,7 +8,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Recom
   - Doctrine evolution and counter-strategies
   - Training focus areas and skill development
   """
-  """
 
   require Logger
 

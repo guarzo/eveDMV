@@ -8,7 +8,6 @@ defmodule EveDmv.Intelligence.CacheCleanupWorker do
   - Cache statistics reporting
   - Proactive cache warming for popular entities
   """
-  """
 
   use GenServer
 

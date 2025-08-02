@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Com
   Analyzes kill/death ratios, ISK efficiency, survival rates, target selection,
   and damage efficiency to determine combat threat level.
   """
-  """
 
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedCalculations
   alias EveDmv.Market.ShipValuation

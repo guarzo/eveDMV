@@ -5,7 +5,6 @@ defmodule EveDmv.Eve.EsiUniverseClient do
   This module handles all universe-related API calls including
   solar systems, types, groups, categories, alliances, and search.
   """
-  """
 
   alias EveDmv.Eve.EsiCache
   alias EveDmv.Eve.EsiParsers

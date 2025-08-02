@@ -5,7 +5,6 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.ShipCostCalculator do
   Provides cost estimation capabilities for ships based on categories, roles,
   and market analysis for fleet planning and budgeting purposes.
   """
-  """
 
   @doc """
   Estimate ship cost based on category and role.

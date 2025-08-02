@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.BoundedContext do
   Defines the contract for context management, event handling,
   and anti-corruption layers.
   """
-  """
 
   alias __MODULE__, as: BoundedContext
   alias EveDmv.Infrastructure.EventBus

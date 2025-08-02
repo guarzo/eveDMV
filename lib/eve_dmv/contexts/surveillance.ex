@@ -11,7 +11,6 @@ defmodule EveDmv.Contexts.Surveillance do
   This context consumes killmail events and produces surveillance
   alerts when matches are found against configured profiles.
   """
-  """
 
   use EveDmv.Contexts.BoundedContext, name: :surveillance
   use Supervisor

@@ -5,7 +5,6 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeStartupService do
   This service runs once during startup and checks if new SDE data is available.
   If updates are found, it automatically downloads and processes the new data.
   """
-  """
 
   use GenServer
 

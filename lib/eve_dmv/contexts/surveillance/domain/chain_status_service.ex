@@ -4,7 +4,6 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainStatusService do
 
   Handles status queries and data formatting for chain surveillance.
   """
-  """
 
   require Logger
 

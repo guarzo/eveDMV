@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
   Provides the public API for corporation threat assessment, doctrine recognition,
   and tactical intelligence gathering.
   """
-  """
 
   alias EveDmv.Api
   alias EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer

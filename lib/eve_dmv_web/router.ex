@@ -3,7 +3,6 @@ defmodule EveDmvWeb.Router do
   @moduledoc """
   Phoenix router defining application routes and pipelines.
   """
-  """
 
   use EveDmvWeb, :router
   use AshAuthentication.Phoenix.Router

@@ -12,7 +12,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainTracker do
   - Chain depth and path calculations
   - Basic threat assessment based on chain activity
   """
-  """
 
   import Ecto.Query
 
@@ -213,6 +212,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainTracker do
       }
 
       {:ok, chain_analysis}
+    else
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :validation_failed}
     end
   end
 

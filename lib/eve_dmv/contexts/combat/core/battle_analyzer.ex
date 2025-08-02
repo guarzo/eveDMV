@@ -8,7 +8,6 @@ defmodule EveDmv.Contexts.Combat.Core.BattleAnalyzer do
   - Strategic recommendations
   - Combat effectiveness evaluation
   """
-  """
 
   import Ecto.Query
 

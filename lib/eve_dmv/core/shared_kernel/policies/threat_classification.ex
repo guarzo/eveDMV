@@ -6,7 +6,6 @@ defmodule EveDmv.Core.SharedKernel.Policies.ThreatClassification do
   used by different bounded contexts for threat assessment, alerting,
   and prioritization.
   """
-  """
 
   alias EveDmv.Core.SharedKernel.ValueObjects.IskAmount
 

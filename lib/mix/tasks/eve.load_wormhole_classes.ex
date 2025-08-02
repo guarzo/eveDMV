@@ -21,7 +21,6 @@ defmodule Mix.Tasks.Eve.LoadWormholeClasses do
       mix eve.load_wormhole_classes --dry-run
       mix eve.load_wormhole_classes --force
   """
-  """
 
   @shortdoc "Load wormhole class data from Fuzzwork"
 

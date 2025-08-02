@@ -26,7 +26,6 @@ defmodule Mix.Tasks.Eve.ImportHistoricalKillmails do
     * `--batch-size` - Number of records per batch (default: 500)
     * `--skip-validation` - Skip data validation (faster but riskier)
   """
-  """
 
   @shortdoc "Import historical killmail data from JSON archives"
 

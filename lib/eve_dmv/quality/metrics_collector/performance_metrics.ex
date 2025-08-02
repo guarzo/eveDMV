@@ -5,7 +5,6 @@ defmodule EveDmv.Quality.MetricsCollector.PerformanceMetrics do
   Handles test execution performance, benchmarks,
   database performance, and memory usage analysis.
   """
-  """
 
   @doc """
   Collects comprehensive performance metrics.

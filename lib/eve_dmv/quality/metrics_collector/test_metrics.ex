@@ -5,7 +5,6 @@ defmodule EveDmv.Quality.MetricsCollector.TestMetrics do
   Handles all test-related metrics including coverage, execution time,
   test categorization, and critical path analysis.
   """
-  """
 
   @doc """
   Collects comprehensive test metrics.

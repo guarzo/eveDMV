@@ -5,7 +5,6 @@ defmodule EveDmv.Core.SharedKernel.ValueObjects.CharacterId do
   Character IDs are immutable identifiers for EVE characters, with specific
   validation rules and formatting requirements.
   """
-  """
 
   defstruct [:value]
 

@@ -6,7 +6,6 @@ defmodule EveDmv.Intelligence.IntelligenceScoring do
   Provides advanced scoring mechanisms for character analysis, threat assessment,
   and recruitment vetting using multiple data sources and statistical methods.
   """
-  """
 
   alias EveDmv.Api
   alias EveDmv.Intelligence.AdvancedAnalytics

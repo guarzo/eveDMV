@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ProfileManager do
   Handles CRUD operations for surveillance profiles, including
   validation, activation/deactivation, and profile lifecycle management.
   """
-  """
 
   use EveDmv.ErrorHandler
 

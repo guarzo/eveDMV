@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivit
   This module focuses on understanding when members are active,
   identifying their primary timezone, and calculating timezone consistency.
   """
-  """
 
   require Logger
 

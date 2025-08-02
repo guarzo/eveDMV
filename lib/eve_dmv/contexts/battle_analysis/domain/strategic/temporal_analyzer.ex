@@ -8,7 +8,6 @@ defmodule EveDmv.Shared.Strategic.TemporalAnalyzer do
   - Time window pattern detection
   - Peak activity identification
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
 

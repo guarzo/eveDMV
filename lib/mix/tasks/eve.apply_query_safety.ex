@@ -9,7 +9,6 @@ defmodule Mix.Tasks.Eve.ApplyQuerySafety do
     mix eve.apply_query_safety --dry-run    # Show what would be changed
     mix eve.apply_query_safety               # Apply changes
   """
-  """
 
   @shortdoc "Apply query safety to Ash resources"
 

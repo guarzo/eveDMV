@@ -23,7 +23,6 @@ defmodule EveDmv.Analytics.ModuleClassifier do
   - Ship class appropriateness
   - Overall fitting coherence
   """
-  """
 
   @type role :: :tackle | :logistics | :ewar | :dps | :command | :support
   @type confidence :: float()

@@ -6,7 +6,6 @@ defmodule EveDmv.Intelligence.ThreatAssessment do
   tactical sophistication, intelligence gathering capabilities, network influence,
   and operational security assessment with mitigation strategy recommendations.
   """
-  """
 
   alias EveDmv.Api
   alias EveDmv.Intelligence.CharacterStats

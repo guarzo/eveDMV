@@ -2,7 +2,6 @@ defmodule EveDmv.Contexts.Corporation.Resources.ActivityMetric do
   @moduledoc """
   Corporation activity metrics resource for tracking organizational performance over time.
   """
-  """
 
   use Ash.Resource,
     domain: EveDmv.Api,

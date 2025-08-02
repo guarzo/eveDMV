@@ -8,7 +8,6 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
 
   Implements the Intelligence.Analyzer behavior for consistent interface and telemetry.
   """
-  """
 
   use EveDmv.Intelligence.Analyzer
 

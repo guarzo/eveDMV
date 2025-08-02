@@ -5,7 +5,6 @@ defmodule EveDmv.Intelligence.Fleet.FleetEffectivenessCalculator do
   Provides comprehensive effectiveness metrics including DPS, tank, mobility,
   and utility ratings based on pilot assignments and fleet composition.
   """
-  """
 
   @doc """
   Calculate overall fleet effectiveness based on composition and pilot assignments.

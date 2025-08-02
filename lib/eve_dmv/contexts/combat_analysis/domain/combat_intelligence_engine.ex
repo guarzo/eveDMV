@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CombatIntelligenceEngine do
   Provides comprehensive combat intelligence including character analysis,
   threat assessment, fleet effectiveness, and tactical recommendations.
   """
-  """
 
   use GenServer
 

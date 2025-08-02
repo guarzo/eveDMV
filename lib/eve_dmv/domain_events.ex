@@ -6,7 +6,6 @@ defmodule EveDmv.DomainEvents do
   without creating direct dependencies. Each event should be self-contained
   with all necessary data for subscribers to process it.
   """
-  """
 
   # Killmail Processing Events
 

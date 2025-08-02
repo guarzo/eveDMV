@@ -2,7 +2,6 @@ defmodule EveDmv.Contexts.Intelligence.Services.ProfileService do
   @moduledoc """
   Service for generating comprehensive character profiles and handling exports.
   """
-  """
 
   alias EveDmv.Cache
   alias EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer

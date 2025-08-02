@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
   Handles the delivery of surveillance alerts through various channels
   including email, webhooks, and in-app notifications.
   """
-  """
 
   use GenServer
   use EveDmv.ErrorHandler

@@ -7,7 +7,6 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   - Corporation Analysis organizational metrics
   - Corporation Intelligence health monitoring
   """
-  """
 
   alias EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer
   alias EveDmv.Contexts.Corporation.Core.MemberRiskAssessment

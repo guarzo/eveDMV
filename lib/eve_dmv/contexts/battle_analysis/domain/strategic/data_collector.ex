@@ -7,7 +7,6 @@ defmodule EveDmv.Shared.Strategic.DataCollector do
   - Basic metric calculations
   - Data preparation for analysis
   """
-  """
 
   alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils

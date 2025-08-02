@@ -11,7 +11,6 @@ defmodule EveDmv.Shared.Strategic.CorrelationEngine do
   """
 
     alias EveDmv.Core.Utils.DateTimeUtils
-  """
 
   require Logger
 

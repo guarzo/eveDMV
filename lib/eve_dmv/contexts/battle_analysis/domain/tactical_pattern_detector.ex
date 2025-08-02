@@ -10,7 +10,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
   Sprint 17 BA-005 implementation with real data analysis.
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
 

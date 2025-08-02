@@ -11,7 +11,6 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.AffiliationAnalyzer do
   """
 
     alias EveDmv.Core.Utils.DateTimeUtils
-  """
 
   @doc """
   Analyze affiliations and group participants into sides.

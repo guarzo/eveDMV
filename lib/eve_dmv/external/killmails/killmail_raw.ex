@@ -5,7 +5,6 @@ defmodule EveDmv.Killmails.KillmailRaw do
   This resource stores the unprocessed killmail data as received from external
   sources, partitioned by killmail_time for optimal performance.
   """
-  """
 
   use Ash.Resource,
     otp_app: :eve_dmv,

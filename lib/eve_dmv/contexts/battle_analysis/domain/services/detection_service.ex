@@ -5,7 +5,6 @@ defmodule EveDmv.Analytics.BattleDetector do
   A "battle" is defined as a cluster of killmails that occurred within a
   short time window and geographical area with multiple participants.
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Repo

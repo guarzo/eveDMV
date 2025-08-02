@@ -8,7 +8,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.DataCollector
   - Optimizing data collection strategies based on dataset size
   - Handling streaming vs standard fetch decisions
   """
-  """
 
   alias EveDmv.Contexts.CombatIntelligence.Domain.Shared.KillmailMapper
   alias EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer

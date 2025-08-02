@@ -13,7 +13,6 @@ defmodule EveDmv.Workers.CacheWarmingWorker do
   - **Incremental warming**: Warms data in batches to avoid overwhelming the system
   - **Cache hit tracking**: Uses analytics to prioritize which data to warm
   """
-  """
 
   use GenServer
 

@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
   Analyzes the sequence of events, identifies key moments, tracks fleet
   compositions over time, and provides insights into battle progression.
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Core.Utils.DateTimeUtils

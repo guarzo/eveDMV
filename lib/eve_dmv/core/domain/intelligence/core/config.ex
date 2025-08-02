@@ -5,7 +5,6 @@ defmodule EveDmv.Intelligence.Core.Config do
   Provides consistent configuration patterns, environment-specific settings,
   and shared constants used across the intelligence system.
   """
-  """
 
   @doc """
   Get cache TTL for different analysis types.

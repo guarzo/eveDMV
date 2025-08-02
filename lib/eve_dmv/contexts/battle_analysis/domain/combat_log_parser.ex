@@ -8,7 +8,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
   - Fleet broadcasts and target calling
   - Range and transversal data
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
 

@@ -5,7 +5,6 @@ defmodule EveDmvWeb.Api.CorporationDoctrineController do
   Provides endpoints for analyzing combat doctrines, fleet
   compositions, and tactical preferences of corporations.
   """
-  """
 
   use EveDmvWeb, :controller
 

@@ -3,7 +3,6 @@ defmodule EveDmv.Quality.MetricsCollector do
   Quality metrics collection and reporting for Team Delta quality gates.
   Collects comprehensive quality metrics across all aspects of the codebase.
   """
-  """
 
   alias EveDmv.Quality.MetricsCollector.CiCdMetrics
   alias EveDmv.Quality.MetricsCollector.CodeQualityMetrics

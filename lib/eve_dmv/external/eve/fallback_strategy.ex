@@ -8,7 +8,6 @@ defmodule EveDmv.Eve.FallbackStrategy do
   - Partial data with warnings
   - Service degradation modes
   """
-  """
 
   alias EveDmv.Cache
   alias EveDmv.Core.Utils.DateTimeUtils

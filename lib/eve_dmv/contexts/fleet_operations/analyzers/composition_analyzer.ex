@@ -6,7 +6,6 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
   tactical capabilities, and effectiveness ratings. Provides insights
   into fleet strengths, weaknesses, and optimization opportunities.
   """
-  """
 
   use EveDmv.ErrorHandler
   alias Ecto.Adapters.SQL

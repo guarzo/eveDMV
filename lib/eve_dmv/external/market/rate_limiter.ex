@@ -5,7 +5,6 @@ defmodule EveDmv.Market.RateLimiter do
   This module provides rate limiting functionality using a token bucket algorithm
   to prevent hitting API rate limits.
   """
-  """
 
   use GenServer
 

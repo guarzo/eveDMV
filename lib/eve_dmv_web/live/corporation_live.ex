@@ -1,23 +1,6 @@
 # credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 # credo:disable-for-this-file Credo.Check.Readability.StrictModuleLayout
 defmodule EveDmvWeb.CorporationLive do
-
-  @moduledoc """
-
-  import EveDmvWeb.Components.ErrorStateComponent
-  import EveDmvWeb.Components.EmptyStateComponent
-  import EveDmvWeb.Components.ThreatLevelComponent
-  import EveDmvWeb.Components.ActivityOverviewComponent
-  import EveDmvWeb.Components.IskStatsComponent
-  import EveDmvWeb.EveImageComponents
-  import EveDmvWeb.FormatHelpers
-  alias EveDmv.Analytics.BattleDetector
-  alias EveDmv.Cache.AnalysisCache
-  alias EveDmv.Contexts.CorporationIntelligence
-  alias EveDmv.Pagination.CursorPaginator
-  alias EveDmvWeb.CorporationLive.DataLoader
-  alias EveDmvWeb.Helpers.TimeFormatter
-  require Logger
   @moduledoc """
   LiveView for displaying corporation overview and member activity.
 
@@ -27,9 +10,26 @@ defmodule EveDmvWeb.CorporationLive do
 
   use EveDmvWeb, :live_view
 
+  import EveDmvWeb.Components.ErrorStateComponent
+  import EveDmvWeb.Components.EmptyStateComponent
+  import EveDmvWeb.Components.ThreatLevelComponent
+  import EveDmvWeb.Components.ActivityOverviewComponent
+  import EveDmvWeb.Components.IskStatsComponent
+  import EveDmvWeb.EveImageComponents
+  import EveDmvWeb.FormatHelpers
+
+  alias EveDmv.Analytics.BattleDetector
+  alias EveDmv.Cache.AnalysisCache
+  alias EveDmv.Contexts.CorporationIntelligence
+  alias EveDmv.Pagination.CursorPaginator
+  alias EveDmvWeb.CorporationLive.DataLoader
+  alias EveDmvWeb.Helpers.TimeFormatter
+
+  require Logger
+
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
-  # Import reusable components
+
   # Template helper functions
   def format_relative_time(datetime) do
     TimeFormatter.format_friendly_time(datetime)

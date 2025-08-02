@@ -13,7 +13,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   This service processes killmail data to provide actionable intelligence
   for fleet commanders and strategic planners.
   """
-  """
 
   use GenServer
   use EveDmv.ErrorHandler

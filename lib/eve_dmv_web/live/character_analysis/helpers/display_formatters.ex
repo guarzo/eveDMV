@@ -2,7 +2,6 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.DisplayFormatters do
   @moduledoc """
   Helper module for formatting display data in character analysis views.
   """
-  """
 
   @doc """
   Format ISK values with appropriate suffixes (K, M, B, T).

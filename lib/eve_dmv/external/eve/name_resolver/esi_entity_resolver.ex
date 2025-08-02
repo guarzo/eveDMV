@@ -6,7 +6,6 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
   the EVE Swagger Interface (ESI) API. These entities can change names
   and require more frequent cache updates.
   """
-  """
 
   alias EveDmv.Eve.EsiClient
   alias EveDmv.Eve.NameResolver.BatchProcessor

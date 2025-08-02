@@ -1,6 +1,5 @@
 defmodule EveDmv.Shared.Intelligence.SourceHandlers.KillmailHandler do
   @moduledoc """
-
   Handles killmail-specific intelligence processing.
 
   Responsible for extracting meaningful intelligence from killmail data,
@@ -8,7 +7,6 @@ defmodule EveDmv.Shared.Intelligence.SourceHandlers.KillmailHandler do
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
-  """
 
   require Logger
 

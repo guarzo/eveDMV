@@ -5,7 +5,6 @@ defmodule EveDmvWeb.LiveHelpers.SocketHelpers do
   Provides standardized functions for assigning values to socket,
   handling nil values, and updating nested assigns safely.
   """
-  """
 
   import Phoenix.Component
 

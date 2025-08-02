@@ -3,7 +3,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
   Utility module for extracting participant information from killmail data.
   Handles comprehensive attacker extraction from killmail raw_data JSON.
   """
-  """
 
   @doc """
   Extracts all participant character IDs from a killmail.

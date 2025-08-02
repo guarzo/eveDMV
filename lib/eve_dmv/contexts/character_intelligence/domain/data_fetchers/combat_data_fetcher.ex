@@ -8,7 +8,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.DataFetcher
   - Processing and structuring combat data
   - Validating data quality for analysis
   """
-  """
 
   alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils

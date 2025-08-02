@@ -5,7 +5,6 @@ defmodule EveDmvWeb.LiveHelpers.LiveViewPatternTemplate do
   This module provides standard patterns and helper functions to ensure consistent
   error handling and pattern matching across all LiveView modules.
   """
-  """
 
   import Phoenix.LiveView
   import Phoenix.Component

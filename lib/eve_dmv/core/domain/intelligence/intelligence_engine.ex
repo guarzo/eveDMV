@@ -5,7 +5,6 @@ defmodule IntelligenceEngine do
   This module provides the primary interface for running various intelligence
   analyses on characters, corporations, and other game entities.
   """
-  """
 
   alias EveDmv.Intelligence.Core.IntelligenceCoordinator
 

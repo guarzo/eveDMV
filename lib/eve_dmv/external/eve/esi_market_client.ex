@@ -5,7 +5,6 @@ defmodule EveDmv.Eve.EsiMarketClient do
   This module handles all market-related API calls including
   market orders, market history, and price calculations.
   """
-  """
 
   alias EveDmv.Eve.EsiRequestClient
 

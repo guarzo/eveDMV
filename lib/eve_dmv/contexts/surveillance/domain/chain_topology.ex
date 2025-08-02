@@ -5,7 +5,6 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainTopology do
   Integrates with Wanderer API to track chain structure, inhabitants,
   and real-time changes for wormhole intelligence.
   """
-  """
 
   use Ash.Resource,
     domain: EveDmv.Domains.Intelligence,

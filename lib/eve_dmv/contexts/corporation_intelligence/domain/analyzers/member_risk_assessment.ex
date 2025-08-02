@@ -10,7 +10,6 @@ defmodule EveDmv.Intelligence.Analyzers.MemberRiskAssessment do
 
   See individual function documentation for detailed usage examples.
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.Metrics.MemberActivityMetrics

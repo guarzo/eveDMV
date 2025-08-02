@@ -11,7 +11,6 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ProfileManagementService do
 
   Works with real surveillance profile data stored in the database.
   """
-  """
 
   alias EveDmv.Api
   alias EveDmv.Contexts.Surveillance.Domain.AdvancedFilterEngine
@@ -448,6 +447,9 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ProfileManagementService do
          created_at: profile.created_at,
          updated_at: profile.updated_at
        }}
+    else
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :profile_not_found}
     end
   end
 

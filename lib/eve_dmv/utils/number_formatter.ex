@@ -5,7 +5,6 @@ defmodule EveDmv.Utils.NumberFormatter do
   Provides functions to format numbers in human-readable formats,
   replacing the Number.Human dependency with local implementations.
   """
-  """
 
   @doc """
   Format a number in human-readable format with appropriate suffixes.

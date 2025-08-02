@@ -10,7 +10,6 @@ defmodule EveDmv.Intelligence.Analyzers.MassCalculator do
   - Transport requirement calculations
   - Jump sequence optimization
   """
-  """
 
   @doc """
   Calculate mass efficiency for a fleet doctrine.

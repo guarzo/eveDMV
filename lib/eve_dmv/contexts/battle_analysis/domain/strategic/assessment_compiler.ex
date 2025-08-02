@@ -11,7 +11,6 @@ defmodule EveDmv.Shared.Strategic.AssessmentCompiler do
   """
 
     alias EveDmv.Core.Utils.DateTimeUtils
-  """
 
   require Logger
 

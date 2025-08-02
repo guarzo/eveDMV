@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
   Orchestrates the various analysis phases and combines their results into
   a comprehensive battle analysis.
   """
-  """
 
   use GenServer
   use EveDmv.ErrorHandler

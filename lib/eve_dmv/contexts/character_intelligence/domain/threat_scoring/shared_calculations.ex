@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedCalcu
   Contains common functions used across multiple threat scoring engines
   to ensure consistency and reduce code duplication.
   """
-  """
 
   @doc """
   Calculate survival rate based on combat data and victim killmails.

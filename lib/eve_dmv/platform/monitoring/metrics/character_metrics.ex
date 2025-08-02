@@ -5,7 +5,6 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
   This module handles all numerical calculations, score computations,
   and metric derivations for character intelligence analysis.
   """
-  """
 
   alias EveDmv.Intelligence.Metrics.CombatMetricsCalculator
   alias EveDmv.Intelligence.Metrics.GeographicAnalysisCalculator

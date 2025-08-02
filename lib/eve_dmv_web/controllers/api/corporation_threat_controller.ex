@@ -5,7 +5,6 @@ defmodule EveDmvWeb.Api.CorporationThreatController do
   Provides comprehensive threat analysis and intelligence
   reports for EVE Online corporations.
   """
-  """
 
   use EveDmvWeb, :controller
 

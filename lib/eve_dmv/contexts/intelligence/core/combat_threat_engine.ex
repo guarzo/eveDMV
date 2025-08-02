@@ -3,7 +3,6 @@ defmodule EveDmv.Contexts.Intelligence.Core.CombatThreatEngine do
   Analyzes combat effectiveness and threat level based on killmail data.
   Part of the multi-dimensional threat assessment system.
   """
-  """
 
   alias EveDmv.Contexts.Intelligence.Core.CombatStatsAnalyzer
   alias EveDmv.Core.Utils.DateTimeUtils

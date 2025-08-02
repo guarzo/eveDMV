@@ -8,7 +8,6 @@ defmodule EveDmv.Intelligence.Core.ValidationHelper do
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
-  """
 
   @type validation_result :: :ok | {:error, String.t()}
   @type entity_id :: integer()

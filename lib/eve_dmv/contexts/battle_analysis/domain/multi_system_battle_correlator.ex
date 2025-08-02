@@ -14,7 +14,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
   4. **Combat Flow Analysis**: Tracks pursuit and engagement patterns
   5. **Multi-System Battle Merge**: Combines correlated battles into coherent narratives
   """
-  """
 
   alias EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor
   alias EveDmv.Core.Utils.DateTimeUtils
@@ -659,7 +658,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
       0
     else
       n = length(values)
-      indices = 1..Enum.to_list(n)
+      indices = 1..n |> Enum.to_list()
 
       sum_x = Enum.sum(indices)
       sum_y = Enum.sum(values)

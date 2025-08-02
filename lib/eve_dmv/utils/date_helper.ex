@@ -6,7 +6,6 @@ defmodule EveDmv.Utils.DateHelper do
   used throughout the EVE DMV application, replacing deprecated or
   non-existent Elixir Date functions.
   """
-  """
 
   @doc """
   Get the year from a DateTime struct.

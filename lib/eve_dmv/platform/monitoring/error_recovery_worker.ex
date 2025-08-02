@@ -8,7 +8,6 @@ defmodule EveDmv.Monitoring.ErrorRecoveryWorker do
   - Adjusting rate limits
   - Triggering circuit breakers
   """
-  """
 
   use GenServer
   alias ErrorCodes

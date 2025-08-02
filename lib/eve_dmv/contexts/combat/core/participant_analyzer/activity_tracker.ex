@@ -4,7 +4,6 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.ActivityTracker do
   """
 
     alias EveDmv.Core.Utils.DateTimeUtils
-  """
   @doc """
   Build an activity timeline showing participant engagement over time.
   """

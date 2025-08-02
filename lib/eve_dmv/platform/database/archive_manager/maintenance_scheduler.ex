@@ -5,7 +5,6 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
   Manages cleanup operations, archive health checks, and automated
   maintenance tasks to keep the archive system running efficiently.
   """
-  """
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Core.Utils.DateTimeUtils

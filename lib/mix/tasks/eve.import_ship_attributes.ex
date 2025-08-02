@@ -15,7 +15,6 @@ defmodule Mix.Tasks.Eve.ImportShipAttributes do
       --force - Force re-import even if attributes already exist
       --limit N - Only import N ships (for testing)
   """
-  """
 
   @shortdoc "Import ship attributes into database"
 

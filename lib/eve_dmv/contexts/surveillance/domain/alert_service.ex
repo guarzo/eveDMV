@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
   Handles the creation, prioritization, and lifecycle management of alerts
   generated from surveillance profile matches.
   """
-  """
 
   use GenServer
   use EveDmv.ErrorHandler

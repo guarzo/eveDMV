@@ -5,7 +5,6 @@ defmodule EveDmv.Performance.MemoryProfiler do
   Provides tools to analyze memory usage patterns, identify memory leaks,
   and optimize memory consumption across the application.
   """
-  """
 
   require Logger
 

@@ -8,7 +8,6 @@ defmodule EveDmv.Contexts.Combat.Services.BattleService do
   - Battle metadata updates
   - Battle search and filtering
   """
-  """
 
   import Ecto.Query
 

@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   Simplified character analysis module that provides direct analysis operations
   without GenServer overhead.
   """
-  """
 
   import Ecto.Query
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator

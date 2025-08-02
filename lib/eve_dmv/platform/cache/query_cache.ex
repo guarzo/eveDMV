@@ -4,7 +4,6 @@ defmodule EveDmv.Cache.QueryCache do
 
   Provides automatic caching with TTL, invalidation, and performance tracking.
   """
-  """
 
   use GenServer
 

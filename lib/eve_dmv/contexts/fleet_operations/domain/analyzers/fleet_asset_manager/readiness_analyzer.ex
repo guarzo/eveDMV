@@ -5,7 +5,6 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.ReadinessAnalyzer do
   Analyzes fleet readiness for immediate deployment based on asset availability,
   ship requirements, and critical role coverage.
   """
-  """
 
   @doc """
   Analyze asset readiness for immediate fleet deployment.

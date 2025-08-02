@@ -5,7 +5,6 @@ defmodule EveDmv.Market.PricingStrategy do
   Each strategy implements a different method of obtaining item price data.
   Strategies are executed in order of priority until one succeeds.
   """
-  """
 
   @type price_data :: %{
           type_id: integer(),

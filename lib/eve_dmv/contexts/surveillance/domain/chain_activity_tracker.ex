@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainActivityTracker do
   Handles activity event processing, timeline management,
   and activity pattern analysis.
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.DomainEvents.ChainActivityPrediction

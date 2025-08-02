@@ -11,7 +11,6 @@ defmodule EveDmv.Market.PriceService do
   Strategies are executed in priority order until one succeeds.
   All prices are cached to reduce API calls.
   """
-  """
 
   alias EveDmv.Market.Strategies.BasePriceStrategy
   alias EveDmv.Market.Strategies.EsiStrategy

@@ -5,7 +5,6 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.CombatScoring do
   Handles assessment of combat effectiveness, tactical decision-making,
   operational value, and combat-related intelligence metrics.
   """
-  """
 
   @doc """
   Calculate combat competency score based on character statistics.

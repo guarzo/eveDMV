@@ -4,7 +4,6 @@ defmodule EveDmvWeb.Components.ErrorStateComponent do
 
   Provides consistent error messaging across the application.
   """
-  """
 
   use Phoenix.Component
 

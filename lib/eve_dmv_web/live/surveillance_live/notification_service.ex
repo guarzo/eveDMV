@@ -5,7 +5,6 @@ defmodule EveDmvWeb.SurveillanceLive.NotificationService do
   Handles loading, marking as read, and managing surveillance
   notifications with proper error handling.
   """
-  """
 
   alias EveDmv.Api.SurveillanceApi
   alias EveDmv.Surveillance.Notification

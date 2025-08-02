@@ -6,7 +6,6 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
   Uses the enhanced SSE endpoint to preload up to 90 days of historical data for a character,
   then disconnects once all historical data is received (detected by multiple heartbeats).
   """
-  """
 
   alias EveDmv.Api
   # REMOVED: KillmailEnriched - see /docs/architecture/enriched-raw-analysis.md

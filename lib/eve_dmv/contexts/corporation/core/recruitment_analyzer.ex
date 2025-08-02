@@ -6,7 +6,6 @@ defmodule EveDmv.Contexts.Corporation.Core.RecruitmentAnalyzer do
   - Corporation Intelligence recruitment analysis
   - Corporation Analysis recruitment metrics
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Platform.Cache.Corporation.CorporationCache

@@ -2,7 +2,6 @@ defmodule EveDmvWeb.Components.ActivityOverviewComponent do
   @moduledoc """
   Reusable activity overview component for characters and corporations.
   """
-  """
   use Phoenix.Component
 
   @doc """

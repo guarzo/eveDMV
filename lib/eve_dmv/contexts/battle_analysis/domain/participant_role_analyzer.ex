@@ -443,20 +443,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
   defp classify_ship_role(ship_type_id) do
     case ship_type_id do
       # Logistics ships
-      # Scythe
+      # Scimitar
       11_978 -> :logistics
       # Scythe
       11_129 -> :logistics
-      # Osprey
+      # Basilisk
       11_985 -> :logistics
-      # Scimitar
-      11_978 -> :logistics
       # Guardian
       11_987 -> :logistics
       # Oneiros
       11_989 -> :logistics
-      # Basilisk
-      11_985 -> :logistics
       
       # EWAR ships
       # Blackbird

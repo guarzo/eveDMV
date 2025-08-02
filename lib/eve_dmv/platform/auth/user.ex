@@ -5,7 +5,6 @@ defmodule EveDmv.Users.User do
   Each user represents an EVE character and can have multiple characters
   linked to the same account for character switching functionality.
   """
-  """
 
   use Ash.Resource,
     otp_app: :eve_dmv,

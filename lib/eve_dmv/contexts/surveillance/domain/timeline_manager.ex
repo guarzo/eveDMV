@@ -9,7 +9,6 @@ defmodule EveDmv.Shared.Correlation.TimelineManager do
   - Detecting coordinated operations
   - Calculating timeline statistics
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
 

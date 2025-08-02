@@ -6,7 +6,6 @@ defmodule EveDmv.IntelligenceEngine.PluginRegistry do
   analyzers. This module provides backward compatibility for the old
   plugin registry API.
   """
-  """
 
   use GenServer
   require Logger

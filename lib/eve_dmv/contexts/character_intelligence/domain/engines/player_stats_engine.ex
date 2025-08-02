@@ -2,7 +2,6 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
   @moduledoc """
   Engine for calculating player performance statistics.
   """
-  """
 
   alias EveDmv.Analytics.PlayerStats
   alias EveDmv.Api

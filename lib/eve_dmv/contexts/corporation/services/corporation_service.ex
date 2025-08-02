@@ -4,7 +4,6 @@ defmodule EveDmv.Contexts.Corporation.Services.CorporationService do
 
   Handles corporation creation, updates, search, and caching operations.
   """
-  """
 
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
   alias EveDmv.Platform.Database.CorporationRepository

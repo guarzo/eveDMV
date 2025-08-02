@@ -2,7 +2,6 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.IntelligenceSummaryComponent do
   @moduledoc """
   Intelligence summary component displaying peak activity, location patterns, and timezone information.
   """
-  """
 
   use EveDmvWeb, :live_component
 

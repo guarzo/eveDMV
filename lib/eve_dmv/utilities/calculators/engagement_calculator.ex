@@ -5,7 +5,6 @@ defmodule EveDmv.Intelligence.EngagementCalculator do
   This module consolidates all engagement calculation logic into reusable functions
   that can be used across different intelligence analysis modules.
   """
-  """
 
   @doc """
   Calculate overall engagement score from member data.

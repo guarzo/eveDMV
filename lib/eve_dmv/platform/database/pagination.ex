@@ -4,7 +4,6 @@ defmodule EveDmv.Database.Pagination do
 
   Provides cursor-based and offset-based pagination for large datasets.
   """
-  """
 
   alias EveDmv.Repo
 

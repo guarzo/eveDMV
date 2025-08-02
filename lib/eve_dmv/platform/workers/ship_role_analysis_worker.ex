@@ -8,7 +8,6 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
 
   Note: Designed to be easily migrated to Oban when available.
   """
-  """
 
   use GenServer
   import Ecto.Query

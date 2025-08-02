@@ -5,7 +5,6 @@ defmodule EveDmv.Logging.StructuredLogger do
   Provides consistent structured logging patterns for different types of events
   and operations throughout the application.
   """
-  """
 
   require Logger
 

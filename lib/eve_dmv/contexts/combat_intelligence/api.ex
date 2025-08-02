@@ -5,10 +5,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   This module provides the external interface for intelligence analysis,
   threat assessment, and tactical decision support.
   """
-  """
 
   alias EveDmv.Contexts.CombatIntelligence.Domain
-  alias EveDmv.Result
 
   @type analysis_options :: [
           analysis_type: :full | :quick | :threat_only | :activity_only,
@@ -47,7 +45,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
       iex> analyze_character(123456789, analysis_type: :threat_only)
       {:ok, %{threat_level: %ThreatLevel{level: :medium, score: 0.6}, ...}}
   """
-  @spec analyze_character(integer(), analysis_options()) :: Result.t(intelligence_result())
+  @spec analyze_character(integer(), analysis_options()) :: {:ok, intelligence_result()} | {:error, atom()}
   def analyze_character(character_id, opts \\ []) do
     with :ok <- validate_analysis_options(opts),
          {:ok, analysis_result} <- Domain.CharacterAnalyzer.analyze(character_id, opts) do
@@ -62,7 +60,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   or triggers a new analysis if cache is stale.
   """
   @spec get_character_intelligence(integer()) ::
-          Result.t(intelligence_result()) | Result.t(:not_found)
+          {:ok, intelligence_result()} | {:error, atom()} | {:error, :not_found}
   def get_character_intelligence(character_id) do
     Domain.CharacterAnalyzer.get_intelligence(character_id)
   end
@@ -73,7 +71,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   Provides insights into corporation member activity, timezone coverage,
   and overall combat effectiveness.
   """
-  @spec analyze_corporation(integer(), analysis_options()) :: Result.t(map())
+  @spec analyze_corporation(integer(), analysis_options()) :: {:ok, map()} | {:error, atom()}
   def analyze_corporation(corporation_id, opts \\ []) do
     with :ok <- validate_analysis_options(opts),
          {:ok, analysis_result} <- Domain.CorporationAnalyzer.analyze(corporation_id, opts) do
@@ -84,7 +82,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   @doc """
   Get cached corporation intelligence data.
   """
-  @spec get_corporation_intelligence(integer()) :: Result.t(map()) | Result.t(:not_found)
+  @spec get_corporation_intelligence(integer()) :: {:ok, map()} | {:error, atom()} | {:error, :not_found}
   def get_corporation_intelligence(corporation_id) do
     Domain.CorporationAnalyzer.get_intelligence(corporation_id)
   end
@@ -105,7 +103,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
       iex> assess_threat(123456789, :wormhole_operations)
       {:ok, %{threat_level: :high, factors: [...], recommendations: [...]}}
   """
-  @spec assess_threat(integer(), atom()) :: Result.t(map())
+  @spec assess_threat(integer(), atom()) :: {:ok, map()} | {:error, atom()}
   def assess_threat(character_id, context \\ :general) do
     with :ok <- validate_threat_context(context),
          {:ok, assessment} <- Domain.ThreatAssessor.assess_threat(character_id, context) do
@@ -116,7 +114,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   @doc """
   Get cached threat assessment data.
   """
-  @spec get_threat_assessment(integer()) :: Result.t(map()) | Result.t(:not_found)
+  @spec get_threat_assessment(integer()) :: {:ok, map()} | {:error, atom()} | {:error, :not_found}
   def get_threat_assessment(character_id) do
     Domain.ThreatAssessor.get_assessment(character_id)
   end
@@ -131,7 +129,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   - `:solo_pilot_score` - Solo PvP effectiveness
   - `:awox_risk_score` - Risk of betrayal/awoxing
   """
-  @spec calculate_intelligence_score(integer(), atom()) :: Result.t(map())
+  @spec calculate_intelligence_score(integer(), atom()) :: {:ok, map()} | {:error, atom()}
   def calculate_intelligence_score(character_id, scoring_type) do
     with :ok <- validate_scoring_type(scoring_type),
          {:ok, score_result} <-
@@ -146,7 +144,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   Returns actionable intelligence based on the character's patterns,
   strengths, and weaknesses.
   """
-  @spec get_character_recommendations(integer()) :: Result.t([map()])
+  @spec get_character_recommendations(integer()) :: {:ok, [map()]} | {:error, atom()}
   def get_character_recommendations(character_id) do
     Domain.IntelligenceScoring.get_recommendations(character_id)
   end
@@ -161,7 +159,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   - `%{min_kills: 100, preferred_ship_class: :cruiser, timezone: "US"}`
   - `%{corporation_id: 123, hunter_score: 0.8}`
   """
-  @spec search_characters_by_criteria(map()) :: Result.t([intelligence_result()])
+  @spec search_characters_by_criteria(map()) :: {:ok, [intelligence_result()]} | {:error, atom()}
   def search_characters_by_criteria(criteria) when is_map(criteria) do
     with :ok <- validate_search_criteria(criteria),
          {:ok, matching_characters} <- Domain.CharacterAnalyzer.search_by_criteria(criteria) do
@@ -179,7 +177,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
 
   Returns temporal activity patterns, timezone preferences, and behavioral trends.
   """
-  @spec get_activity_patterns(integer(), keyword()) :: Result.t(map())
+  @spec get_activity_patterns(integer(), keyword()) :: {:ok, map()} | {:error, atom()}
   def get_activity_patterns(character_id, opts \\ []) do
     Domain.CharacterAnalyzer.get_activity_patterns(character_id, opts)
   end
@@ -190,7 +188,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   Useful for recruitment decisions or identifying the most dangerous
   opponents in a group.
   """
-  @spec compare_characters([integer()]) :: Result.t(map())
+  @spec compare_characters([integer()]) :: {:ok, map()} | {:error, atom()}
   def compare_characters(character_ids) when is_list(character_ids) do
     with :ok <- validate_character_ids(character_ids),
          {:ok, comparison} <- Domain.CharacterAnalyzer.compare_characters(character_ids) do
@@ -203,7 +201,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   @doc """
   Get cache statistics for monitoring and debugging.
   """
-  @spec get_intelligence_cache_stats() :: Result.t(map())
+  @spec get_intelligence_cache_stats() :: {:ok, map()} | {:error, atom()}
   def get_intelligence_cache_stats do
     stats = Domain.CharacterAnalyzer.get_cache_stats()
     {:ok, stats}
@@ -215,7 +213,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   Returns corporations and alliances the character has flown with but are not part of their own.
   Useful for understanding social connections and potential allies.
   """
-  @spec get_external_groups(integer(), DateTime.t()) :: Result.t(list())
+  @spec get_external_groups(integer(), DateTime.t()) :: {:ok, list()} | {:error, atom()}
   def get_external_groups(character_id, since_date) do
     Domain.ExternalGroupAnalyzer.analyze(character_id, since_date)
   end

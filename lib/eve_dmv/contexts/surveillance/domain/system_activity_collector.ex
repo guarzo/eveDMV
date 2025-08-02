@@ -9,7 +9,6 @@ defmodule EveDmv.Shared.Correlation.SystemActivityCollector do
   - Creating temporal markers for correlation analysis
   - Classifying activity types and participants
   """
-  """
 
   alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils

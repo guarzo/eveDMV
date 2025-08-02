@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
   Monitors corporation activities and member behaviors to identify
   emerging threats, suspicious activities, and security incidents.
   """
-  """
 
   alias EveDmv.Contexts.Corporation.Core.SecurityAnalyzer
   alias EveDmv.Core.Utils.DateTimeUtils

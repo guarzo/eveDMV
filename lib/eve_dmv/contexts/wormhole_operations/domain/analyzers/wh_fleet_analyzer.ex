@@ -6,7 +6,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.Analyzers.WhFleetAnalyzer do
   Provides intelligent fleet composition recommendations, skill gap analysis,
   mass calculations, and doctrine effectiveness evaluation for wormhole operations.
   """
-  """
 
   alias EveDmv.Contexts.FleetOperations.Domain.Analyzers.FleetPilotAnalyzer
   alias EveDmv.Contexts.WormholeOperations.Domain.Analyzers.WhFleetAnalyzer.DoctrineManager

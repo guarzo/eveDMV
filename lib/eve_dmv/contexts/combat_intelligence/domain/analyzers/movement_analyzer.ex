@@ -4,7 +4,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Mov
 
   Extracts and analyzes movement-related functions from the tactical analysis system.
   """
-  """
 
   require Logger
 

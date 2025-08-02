@@ -12,7 +12,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
   - Signature strength analysis for site difficulty
   - Integration with chain tracking for connection management
   """
-  """
 
   alias EveDmv.Contexts.WormholeOperations.Domain.ChainTracker
   alias EveDmv.Core.Utils.DateTimeUtils
@@ -74,6 +73,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
         |> handle_status_transition()
 
       {:ok, updated_sig}
+    else
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :validation_failed}
     end
   end
 
@@ -125,6 +127,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
       }
 
       {:ok, analysis}
+    else
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :validation_failed}
     end
   end
 

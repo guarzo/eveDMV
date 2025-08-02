@@ -7,7 +7,6 @@ defmodule EveDmv.CacheSupervisor do
   - API responses cache: External API responses with longer TTL
   - Analysis cache: Intelligence analysis results
   """
-  """
 
   use Supervisor
 

@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Infrastructure.VettingRepository do
   Provides temporary stub implementation to resolve Dialyzer errors.
   This module should be fully implemented as part of the wormhole operations feature.
   """
-  """
 
   @doc """
   Store a vetting report for a character.

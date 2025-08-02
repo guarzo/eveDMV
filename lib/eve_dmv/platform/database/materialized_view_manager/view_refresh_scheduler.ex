@@ -5,7 +5,6 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewRefreshScheduler do
   Manages refresh strategies (full, incremental, concurrent), schedules
   automatic refreshes, and handles cache-invalidation-triggered refreshes.
   """
-  """
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Core.Utils.DateTimeUtils

@@ -5,7 +5,6 @@ defmodule EveDmv.Quality.MetricsCollector.DocumentationMetrics do
   Handles README quality, code documentation coverage,
   API documentation, and architecture documentation checks.
   """
-  """
 
   @doc """
   Collects comprehensive documentation metrics.

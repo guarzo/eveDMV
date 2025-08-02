@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.EnrichmentService do
   Provides temporary stub implementation to resolve Dialyzer errors.
   This module should be fully implemented as part of the killmail processing feature.
   """
-  """
 
   @doc """
   Enrich killmail data with additional context and information.

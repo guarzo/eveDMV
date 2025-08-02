@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.AlertManagementService do
   Handles alert configuration, processing surveillance matches,
   and coordinating alert delivery across multiple channels.
   """
-  """
 
   use GenServer
 

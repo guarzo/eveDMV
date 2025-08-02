@@ -6,7 +6,6 @@ defmodule EveDmv.Intelligence.ChainAnalysis.SystemInhabitantsManager do
   within wormhole chain systems, including arrivals, departures, and
   ship changes.
   """
-  """
 
   alias EveDmv.Api
   alias EveDmv.Intelligence.SystemInhabitant

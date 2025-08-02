@@ -6,7 +6,6 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivit
   This module focuses on calculating consistency patterns in member activity,
   including weekly patterns, overall consistency, and activity regularity.
   """
-  """
 
   alias EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivityPatternAnalyzer.TimezoneAnalyzer
 

@@ -2,7 +2,6 @@ defmodule EveDmvWeb.Utils.FormattingUtils do
   @moduledoc """
   Shared formatting utilities for the EVE DMV web interface.
   """
-  """
 
   @doc """
   Formats ISK values in short form (K, M, B).

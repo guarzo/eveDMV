@@ -6,7 +6,6 @@ defmodule EveDmv.Shared.Intelligence.Collector do
   supporting multiple source types including killmails, player reports, scanning data,
   market activity, and jump logs.
   """
-  """
 
   alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils

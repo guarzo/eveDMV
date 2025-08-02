@@ -5,7 +5,6 @@ defmodule EveDmv.Monitoring.ErrorTracker do
   Tracks errors across the application, maintains statistics,
   and provides reporting capabilities for error patterns.
   """
-  """
 
   use GenServer
   alias EveDmv.Core.Utils.DateTimeUtils

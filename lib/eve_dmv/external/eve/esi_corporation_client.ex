@@ -5,7 +5,6 @@ defmodule EveDmv.Eve.EsiCorporationClient do
   This module handles all corporation-specific API calls including
   basic corporation information, members, and assets.
   """
-  """
 
   alias EveDmv.Eve.EsiCache
   alias EveDmv.Eve.EsiParsers

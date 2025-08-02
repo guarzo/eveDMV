@@ -9,7 +9,6 @@ defmodule EveDmv.StaticData.ShipTypes do
   For optimal performance, ship classifications are cached at compile time,
   but the module also provides runtime queries against the database.
   """
-  """
 
   import Ecto.Query
   alias EveDmv.Api

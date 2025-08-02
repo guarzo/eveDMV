@@ -11,7 +11,6 @@ defmodule EveDmv.Ash.Preparations.ApplyQuerySafety do
         EveDmv.Ash.Preparations.ApplyQuerySafety.default_safety(prepare), for: :read
       end
   """
-  """
 
   @doc """
   Apply query safety to all read actions in a resource.

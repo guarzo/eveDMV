@@ -7,7 +7,6 @@ defmodule EveDmv.Logging.StructuredFormatter do
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
-  """
 
   @behaviour :logger_formatter
 

@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAssessmentEngine do
   Provides comprehensive threat analysis for characters and corporations
   including behavioral analysis, risk assessment, and threat scoring.
   """
-  """
 
   use GenServer
 

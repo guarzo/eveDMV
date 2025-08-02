@@ -5,7 +5,6 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
   MVP: Simple kill/death analysis with real data from killmails_raw table.
   This is our first real intelligence feature - no mock data!
   """
-  """
 
   use EveDmvWeb, :live_view
 

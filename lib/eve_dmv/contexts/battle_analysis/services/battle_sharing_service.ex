@@ -8,7 +8,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
   - Exporting battle data in various formats
   - Managing battle visibility and access
   """
-  """
 
   import Ash.Expr
 

@@ -6,7 +6,6 @@ defmodule EveDmvWeb.Endpoint do
   Handles HTTP requests, WebSocket connections, and static file serving
   for the EVE Online PvP data tracking application.
   """
-  """
 
   use Phoenix.Endpoint, otp_app: :eve_dmv
 

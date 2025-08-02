@@ -2,7 +2,6 @@ defmodule EveDmvWeb.ErrorHTML do
   @moduledoc """
   Error page rendering for HTML requests.
   """
-  """
   use EveDmvWeb, :html
 
   # Default 404 and 500 error pages

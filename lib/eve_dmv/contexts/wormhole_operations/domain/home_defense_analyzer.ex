@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
   Provides comprehensive analysis of home defense readiness, vulnerabilities,
   and strategic recommendations for wormhole operations.
   """
-  """
 
   import Ecto.Query
 

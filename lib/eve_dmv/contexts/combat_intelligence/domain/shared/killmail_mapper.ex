@@ -2,7 +2,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.Shared.KillmailMapper do
   @moduledoc """
   Shared utilities for mapping killmail data across combat intelligence services.
   """
-  """
 
   @doc """
   Maps a killmail database row to a structured killmail record.

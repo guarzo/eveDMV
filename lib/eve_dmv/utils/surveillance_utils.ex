@@ -9,7 +9,6 @@ defmodule EveDmv.Utils.SurveillanceUtils do
   - Data confidence assessment
   - Statistical calculations
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
 

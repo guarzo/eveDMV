@@ -1,6 +1,5 @@
 defmodule EveDmv.Intelligence.AlertSystem do
   @moduledoc """
-
   Real-time intelligence alert system.
 
   Monitors intelligence data for significant events and threats,
@@ -8,7 +7,6 @@ defmodule EveDmv.Intelligence.AlertSystem do
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
-  """
 
   use GenServer
 

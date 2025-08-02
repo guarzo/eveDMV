@@ -6,7 +6,6 @@ defmodule EveDmv.Pagination.CursorPaginator do
   without OFFSET performance degradation. Uses cursor-based pagination
   with proper ordering and memory bounds.
   """
-  """
 
   import Ecto.Query
   alias EveDmv.Repo

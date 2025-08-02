@@ -6,7 +6,6 @@ defmodule EveDmv.Contexts.Corporation.Core.CombatDoctrineAnalyzer do
   - Corporation Analysis doctrine analysis
   - Corporation Intelligence fleet composition tracking
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.CharacterRepository

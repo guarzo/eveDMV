@@ -6,7 +6,6 @@ defmodule EveDmv.Contexts.Intelligence.Core.ShipPreferenceAnalyzer do
   - Player Profile ship preferences
   - Character Intelligence ship analysis
   """
-  """
 
   alias EveDmv.Cache
   alias EveDmv.Core.Utils.DateTimeUtils

@@ -6,7 +6,6 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityDataCollector do
   including fetching character information, killmail data, and corporation member data.
   It provides a clean separation between data collection and analysis logic.
   """
-  """
 
   alias EveDmv.Api
   alias EveDmv.Database.CharacterRepository

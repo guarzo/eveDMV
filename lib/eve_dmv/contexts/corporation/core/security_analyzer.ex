@@ -6,7 +6,6 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
   Provides comprehensive security analysis for corporation management
   to identify potential threats and security vulnerabilities.
   """
-  """
 
   alias EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer
   alias EveDmv.Contexts.Corporation.Core.MemberRiskAssessment

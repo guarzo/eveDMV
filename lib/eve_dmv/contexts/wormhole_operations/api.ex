@@ -6,7 +6,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Api do
   operations including recruitment vetting, home defense analysis,
   mass optimization, and operational security monitoring.
   """
-  """
 
   use EveDmv.ErrorHandler
   alias EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer

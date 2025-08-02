@@ -5,7 +5,6 @@ defmodule EveDmv.Utils.KillmailUtils do
   This module provides safe accessor functions to prevent KeyError exceptions
   when accessing potentially missing keys in killmail maps.
   """
-  """
 
   @doc """
   Safely get victim character ID from killmail data.

@@ -6,7 +6,6 @@ defmodule EveDmv.Contexts.Corporation.Api do
   intelligence functionality, including member activity analysis, recruitment
   insights, and organizational health metrics.
   """
-  """
 
   alias EveDmv.Contexts.Corporation.Core.CombatDoctrineAnalyzer
   alias EveDmv.Contexts.Corporation.Core.CorporationAnalyzer

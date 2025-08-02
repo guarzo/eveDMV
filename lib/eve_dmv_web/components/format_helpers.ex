@@ -5,7 +5,6 @@ defmodule EveDmvWeb.FormatHelpers do
   Provides consistent formatting for numbers, ISK values, percentages,
   ratios, and other common data types across the application.
   """
-  """
 
   @doc """
   Formats numbers with proper comma separators and unit suffixes.

@@ -5,7 +5,6 @@ defmodule EveDmv.Core.SharedKernel.ValueObjects.CorporationId do
   Corporation IDs are immutable identifiers for EVE corporations, with specific
   validation rules and formatting requirements.
   """
-  """
 
   defstruct [:value]
 

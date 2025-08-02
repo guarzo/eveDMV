@@ -5,7 +5,6 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
   Displays comprehensive threat scoring, behavioral patterns, and tactical recommendations
   for EVE Online characters based on their combat history.
   """
-  """
 
   use EveDmvWeb, :live_view
 

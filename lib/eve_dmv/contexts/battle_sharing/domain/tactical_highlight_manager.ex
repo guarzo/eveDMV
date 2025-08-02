@@ -13,7 +13,6 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
   Uses sophisticated pattern recognition and tactical analysis to identify
   and manage the most educational and strategically significant battle moments.
   """
-  """
 
   alias EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor
   alias EveDmv.Core.Utils.DateTimeUtils

@@ -9,7 +9,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.Wormhole.WhVetting do
   """
 
     alias EveDmv.Core.Utils.DateTimeUtils
-  """
 
   use Ash.Resource,
     domain: EveDmv.Domains.Intelligence,

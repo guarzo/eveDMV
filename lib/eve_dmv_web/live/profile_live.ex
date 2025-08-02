@@ -2,7 +2,6 @@ defmodule EveDmvWeb.ProfileLive do
   @moduledoc """
   User profile LiveView for managing account settings and preferences.
   """
-  """
 
   use EveDmvWeb, :live_view
 

@@ -4,7 +4,6 @@ defmodule EveDmvWeb.Components.DataTableComponent do
 
   Provides sortable columns, responsive design, and hover effects.
   """
-  """
 
   use Phoenix.Component
 

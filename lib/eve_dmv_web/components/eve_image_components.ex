@@ -3,7 +3,6 @@ defmodule EveDmvWeb.EveImageComponents do
   Components for displaying EVE Online images including character portraits,
   corporation logos, alliance logos, and ship renders.
   """
-  """
   use Phoenix.Component
 
   @doc """

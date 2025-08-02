@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
   Analyzes the sequence of events in a battle to understand the flow of combat,
   identify key moments, and provide temporal context for tactical analysis.
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
   require Logger

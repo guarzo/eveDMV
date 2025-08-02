@@ -4,7 +4,6 @@ defmodule EveDmvWeb.AuthController do
 
   Manages user authentication via EVE Online SSO and session handling.
   """
-  """
 
   use EveDmvWeb, :controller
   use AshAuthentication.Phoenix.Controller

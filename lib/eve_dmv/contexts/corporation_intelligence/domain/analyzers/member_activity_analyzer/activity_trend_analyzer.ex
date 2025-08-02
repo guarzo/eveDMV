@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivit
   Analyzes activity patterns over time including trend detection,
   seasonal patterns, peak identification, and predictive insights.
   """
-  """
 
   alias EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivityAnalyzer.ActivityHelpers
   alias EveDmv.Core.Utils.DateTimeUtils

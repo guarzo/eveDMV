@@ -3,7 +3,6 @@ defmodule EveDmv.Eve.StaticDataLoader.WormholeEffectsLoader do
   Loads wormhole effect types from reference data and updates the solar systems
   table with wormhole effect information.
   """
-  """
 
   alias EveDmv.Api
   alias EveDmv.Eve.SolarSystem

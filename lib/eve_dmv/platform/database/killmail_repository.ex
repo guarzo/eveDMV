@@ -6,7 +6,6 @@ defmodule EveDmv.Database.KillmailRepository do
   for common EVE DMV use cases like character/corporation analysis and
   intelligence gathering.
   """
-  """
 
   use EveDmv.Database.Repository,
     resource: EveDmv.Killmails.KillmailEnriched,

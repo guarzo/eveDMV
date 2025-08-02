@@ -5,7 +5,6 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveMetrics do
   Handles collection and reporting of archive performance metrics,
   storage statistics, and operational insights for monitoring and optimization.
   """
-  """
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Core.Utils.DateTimeUtils

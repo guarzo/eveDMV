@@ -5,7 +5,6 @@ defmodule EveDmv.Infrastructure.EventBusSupervisor do
   Manages the event bus and related processes for reliable
   event delivery between bounded contexts.
   """
-  """
 
   use Supervisor
 

@@ -4,7 +4,6 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
 
   Displays system performance metrics, alerts, and trends for administrators.
   """
-  """
 
   use EveDmvWeb, :live_view
 

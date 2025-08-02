@@ -14,7 +14,6 @@ defmodule EveDmv.Contexts.WormholeOperations do
   focusing on recruitment safety, home defense capabilities, and
   operational effectiveness in J-space environments.
   """
-  """
 
   use EveDmv.Contexts.BoundedContext, name: :wormhole_operations
   use Supervisor

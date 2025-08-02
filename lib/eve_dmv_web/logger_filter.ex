@@ -2,7 +2,6 @@ defmodule EveDmvWeb.LoggerFilter do
   @moduledoc """
   Logger filters to reduce noise from database connection pool messages.
   """
-  """
 
   def filter_db_connection_noise(event, _config) do
     case event do

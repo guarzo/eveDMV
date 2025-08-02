@@ -9,7 +9,6 @@ defmodule EveDmv.Analytics.FleetAnalyzer do
   Uses reference data from ship_info.md and real-time ship role analysis
   to provide comprehensive fleet analysis capabilities.
   """
-  """
 
   import Ecto.Query
   alias EveDmv.Repo

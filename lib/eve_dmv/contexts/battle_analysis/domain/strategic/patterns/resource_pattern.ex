@@ -8,7 +8,6 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
   - Strategic value assessment
   - Resource flow tracking
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
 

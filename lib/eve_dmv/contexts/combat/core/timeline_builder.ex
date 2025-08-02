@@ -10,7 +10,6 @@ defmodule EveDmv.Contexts.Combat.Core.TimelineBuilder do
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
-  """
 
   @doc """
   Build a complete battle timeline from killmails.

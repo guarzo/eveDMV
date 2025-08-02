@@ -5,7 +5,6 @@ defmodule EveDmv.Monitoring.PipelineMonitor do
   Tracks pipeline health, performance metrics, and error patterns
   to provide visibility into the data ingestion process.
   """
-  """
 
   use GenServer
 

@@ -4,7 +4,6 @@ defmodule EveDmvWeb.PageHTML do
 
   See the `page_html` directory for all templates.
   """
-  """
   use EveDmvWeb, :html
 
   embed_templates("page_html/*")

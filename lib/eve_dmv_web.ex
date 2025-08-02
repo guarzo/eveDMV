@@ -17,7 +17,6 @@ defmodule EveDmvWeb do
   below. Instead, define additional modules and import
   those modules here.
   """
-  """
 
   def static_paths,
     do:

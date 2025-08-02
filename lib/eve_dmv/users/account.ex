@@ -5,7 +5,6 @@ defmodule EveDmv.Users.Account do
   This allows players to manage multiple EVE characters under a single login session,
   enabling character switching without re-authentication.
   """
-  """
 
   use Ash.Resource,
     otp_app: :eve_dmv,

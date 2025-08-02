@@ -5,7 +5,6 @@ defmodule EveDmvWeb.PriceMonitorComponent do
   This component subscribes to price update events and displays
   them in real-time to users monitoring killmail values.
   """
-  """
 
   use EveDmvWeb, :live_component
 

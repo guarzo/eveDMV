@@ -5,7 +5,6 @@ defmodule EveDmv.Shared.MetricsCalculator do
   Eliminates code duplication across corporation, player, and threat analyzers
   by providing common metrics calculation functions.
   """
-  """
 
   @doc """
   Calculate current metrics including average analysis time.

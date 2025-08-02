@@ -5,7 +5,6 @@ defmodule EveDmvWeb.Api.ApiKeysController do
   Provides endpoints for creating, listing, and revoking API keys
   for authenticated users.
   """
-  """
 
   use EveDmvWeb, :controller
 

@@ -6,7 +6,6 @@ defmodule EveDmv.Intelligence.Calculators.TrendCalculator do
   volatility detection, and activity pattern recognition using mathematical
   variance and standard deviation calculations.
   """
-  """
 
   @doc """
   Calculate trend direction from activity data.

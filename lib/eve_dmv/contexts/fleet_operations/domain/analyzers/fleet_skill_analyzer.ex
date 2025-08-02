@@ -8,7 +8,6 @@ defmodule EveDmv.Intelligence.Analyzers.FleetSkillAnalyzer do
 
   See individual function documentation for usage examples.
   """
-  """
 
   require Logger
 

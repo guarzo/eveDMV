@@ -8,7 +8,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Analyzers.T
   - Predicting future threat levels
   - Analyzing recent changes and patterns
   """
-  """
 
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Calculators.ThreatScoreCalculator,
     as: ThreatScoreCalculator

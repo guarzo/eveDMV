@@ -5,7 +5,6 @@ defmodule EveDmv.Intelligence.Fleet.FleetReadinessCalculator do
   Provides fleet readiness metrics including skill readiness assessment,
   pilot availability analysis, and form-up time estimation.
   """
-  """
 
   @doc """
   Calculate comprehensive fleet readiness metrics.

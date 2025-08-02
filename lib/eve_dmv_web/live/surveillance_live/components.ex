@@ -5,7 +5,6 @@ defmodule EveDmvWeb.SurveillanceLive.Components do
   Provides data loading, formatting, and display functions used in the surveillance
   interface templates.
   """
-  """
 
   alias EveDmv.Api.SurveillanceApi
   alias EveDmv.Surveillance.MatchingEngine

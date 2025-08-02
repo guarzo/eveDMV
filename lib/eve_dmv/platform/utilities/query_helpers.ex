@@ -6,7 +6,6 @@ defmodule EveDmv.Platform.Utilities.QueryHelpers do
   and database interaction helpers to ensure consistent and efficient
   database operations.
   """
-  """
 
   import Ecto.Query
 

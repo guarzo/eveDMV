@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.BattleReportRating do
   Stores detailed ratings and reviews for battle reports, enabling
   sophisticated community feedback and curation systems.
   """
-  """
 
   use Ash.Resource,
     domain: EveDmv.Contexts.BattleAnalysis.Api,

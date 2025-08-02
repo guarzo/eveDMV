@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.Corporation.Resources.RecruitmentApplication do
   Represents applications submitted to corporations for membership,
   including application status, review data, and processing history.
   """
-  """
 
   use Ash.Resource,
     domain: EveDmv.Api,

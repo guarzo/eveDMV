@@ -8,7 +8,6 @@ defmodule EveDmv.Core.Domain.Analytics.PatternAnalysis do
   This module consolidates pattern analysis functionality that was previously
   scattered across multiple contexts during the namespace consolidation.
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Utils.DateHelper

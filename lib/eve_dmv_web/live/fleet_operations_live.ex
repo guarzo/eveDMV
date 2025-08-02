@@ -5,7 +5,6 @@ defmodule EveDmvWeb.FleetOperationsLive do
   Provides comprehensive fleet composition analysis, effectiveness metrics,
   doctrine compliance checking, and fleet optimization recommendations.
   """
-  """
 
   use EveDmvWeb, :live_view
 

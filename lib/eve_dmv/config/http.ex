@@ -5,7 +5,6 @@ defmodule EveDmv.Config.Http do
   Centralizes HTTP timeout values, retry logic, and connection settings
   across all external API clients.
   """
-  """
 
   alias EveDmv.Config
 

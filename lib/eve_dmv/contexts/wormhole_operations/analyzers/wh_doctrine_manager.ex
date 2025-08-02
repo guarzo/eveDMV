@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Analyzers.WhFleetAnalyzer.DoctrineM
   This module provides functionality for creating fleet doctrines,
   generating counter-doctrines, and managing doctrine templates.
   """
-  """
 
   alias EveDmv.Contexts.FleetOperations.Domain.Analyzers.FleetPilotAnalyzer
   alias EveDmv.Contexts.FleetOperations.Domain.Fleet.DoctrineTemplateBuilder

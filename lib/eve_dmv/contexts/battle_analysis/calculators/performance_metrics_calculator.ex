@@ -9,7 +9,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Calculators.PerformanceMetricsCalculato
   - Role effectiveness (how well ships fulfilled their intended role)
   - Threat assessments (danger level posed by each ship)
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
 

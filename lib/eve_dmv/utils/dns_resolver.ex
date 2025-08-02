@@ -5,7 +5,6 @@ defmodule EveDmv.Utils.DnsResolver do
   Handles DNS resolution issues by providing alternative URLs
   and checking connectivity before making requests.
   """
-  """
 
   require Logger
 

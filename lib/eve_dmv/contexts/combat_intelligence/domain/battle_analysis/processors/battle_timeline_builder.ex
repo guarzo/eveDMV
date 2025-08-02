@@ -8,7 +8,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Ba
   - Extracting battle participants and their activities
   - Organizing event data for analysis
   """
-  """
 
   require Logger
 

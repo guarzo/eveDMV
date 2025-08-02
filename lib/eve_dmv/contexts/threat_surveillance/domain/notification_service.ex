@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.NotificationService do
   Handles multi-channel notification delivery including in-app notifications,
   webhooks, email alerts, and real-time push notifications.
   """
-  """
 
   use GenServer
 

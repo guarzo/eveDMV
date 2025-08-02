@@ -5,7 +5,6 @@ defmodule EveDmv.Intelligence.CharacterStats do
   This resource tracks patterns and statistics about a character's PvP behavior,
   focusing on information useful for hunters making engagement decisions.
   """
-  """
 
   use Ash.Resource,
     domain: EveDmv.Api,

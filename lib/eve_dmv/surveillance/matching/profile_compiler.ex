@@ -5,7 +5,6 @@ defmodule EveDmv.Surveillance.Matching.ProfileCompiler do
   This module compiles profile filter trees into optimized anonymous functions
   that can be efficiently evaluated against killmail data.
   """
-  """
 
   alias EveDmv.Surveillance.Matching.KillmailFieldExtractor
   require Logger

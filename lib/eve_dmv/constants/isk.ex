@@ -5,7 +5,6 @@ defmodule EveDmv.Constants.Isk do
   Centralizes all ISK-related multipliers and calculations to ensure consistency
   across the application and make it easier to maintain.
   """
-  """
 
   # ISK multiplier constants
   @thousand 1_000

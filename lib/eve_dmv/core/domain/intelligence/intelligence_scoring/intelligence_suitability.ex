@@ -5,7 +5,6 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
   Handles evaluation of character suitability for intelligence and reconnaissance
   operations, including stealth capability, analytical thinking, and operational security.
   """
-  """
 
   alias EveDmv.Intelligence.AdvancedAnalytics
   require Logger

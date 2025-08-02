@@ -4,7 +4,6 @@ defmodule EveDmv.Domains.Intelligence do
   Contains advanced intelligence resources that are used less frequently
   than the core CharacterStats resource which remains in the main API.
   """
-  """
 
   use Ash.Domain,
     otp_app: :eve_dmv

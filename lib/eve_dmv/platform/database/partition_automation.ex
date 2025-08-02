@@ -8,7 +8,6 @@ defmodule EveDmv.Database.PartitionAutomation do
   - Monitor partition health and statistics
   - Manual partition management for edge cases
   """
-  """
 
   alias EveDmv.Repo
   require Logger

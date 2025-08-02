@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.FleetOperations.Infrastructure.KillmailFleetProcessor 
   This module handles the processing of killmail events to extract
   fleet-related information and patterns.
   """
-  """
 
   alias EveDmv.DomainEvents.KillmailEnriched
   require Logger

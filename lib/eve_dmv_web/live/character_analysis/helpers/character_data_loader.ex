@@ -13,7 +13,6 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
   The module now serves as a lightweight coordinator that calls context functions
   and aggregates the results for the LiveView.
   """
-  """
 
   alias EveDmv.Contexts.CharacterIntelligence
   alias EveDmv.Contexts.CombatIntelligence

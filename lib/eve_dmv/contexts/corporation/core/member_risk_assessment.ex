@@ -6,7 +6,6 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberRiskAssessment do
   - Corporation Intelligence member risk assessment
   - Corporation Analysis risk analytics
   """
-  """
 
   alias EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer
   alias EveDmv.Core.Utils.DateTimeUtils

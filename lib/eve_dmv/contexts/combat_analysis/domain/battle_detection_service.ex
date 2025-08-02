@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService do
   Uses temporal and spatial clustering to identify when multiple killmails
   represent a single engagement or battle.
   """
-  """
 
   use GenServer
 

@@ -8,7 +8,6 @@ defmodule Mix.Tasks.Eve.QueryPerformance do
       mix eve.query_performance --analyze  # Run deep analysis on slow queries
       mix eve.query_performance --reset    # Reset performance metrics
   """
-  """
 
   use Mix.Task
   alias EveDmv.Database.QueryPlanAnalyzer

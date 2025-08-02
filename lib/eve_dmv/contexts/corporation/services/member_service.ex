@@ -4,7 +4,6 @@ defmodule EveDmv.Contexts.Corporation.Services.MemberService do
 
   Handles member addition, updates, removal, and querying operations.
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.CharacterRepository

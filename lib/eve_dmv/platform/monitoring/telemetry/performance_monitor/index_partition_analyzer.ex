@@ -5,7 +5,6 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer do
   Monitors index effectiveness, identifies unused indexes, and tracks
   partition health for optimal database performance.
   """
-  """
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Core.Utils.DateTimeUtils

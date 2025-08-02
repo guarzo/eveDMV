@@ -4,7 +4,6 @@ defmodule EveDmv.Contexts.Combat.Resources.BattleKillmail do
 
   Many-to-many relationship between battles and killmails.
   """
-  """
 
   use Ash.Resource,
     domain: EveDmv.Contexts.BattleAnalysis.Api,

@@ -23,7 +23,6 @@ defmodule Mix.Tasks.Eve.UpdateSde do
       mix eve.update_sde --check-only
       mix eve.update_sde --verbose
   """
-  """
 
   @shortdoc "Update EVE SDE data from Fuzzwork"
 

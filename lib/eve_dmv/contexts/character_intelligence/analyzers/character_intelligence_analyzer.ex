@@ -14,7 +14,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
   All analysis functions use cached queries for performance and return structured
   intelligence data about character combat patterns and behaviors.
   """
-  """
 
   alias EveDmv.Cache.QueryCache
   alias EveDmv.Core.Utils.DateTimeUtils

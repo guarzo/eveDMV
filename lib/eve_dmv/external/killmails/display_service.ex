@@ -2,7 +2,6 @@ defmodule EveDmv.Killmails.DisplayService do
   @moduledoc """
   Business logic for killmail display and formatting
   """
-  """
 
   alias EveDmv.Api
   alias EveDmv.Constants.Isk

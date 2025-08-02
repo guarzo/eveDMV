@@ -9,7 +9,6 @@ defmodule EveDmv.Telemetry.OtelSpans do
   automatically use them. Until then, it provides a no-op implementation that
   maintains the same API.
   """
-  """
 
   require Logger
 

@@ -5,7 +5,6 @@ defmodule EveDmvWeb.Components.PaginationComponent do
   Provides navigation controls for large datasets with proper accessibility
   and performance considerations.
   """
-  """
 
   use Phoenix.Component
 

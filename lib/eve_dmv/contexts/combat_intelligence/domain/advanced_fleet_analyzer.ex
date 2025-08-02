@@ -12,7 +12,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
   Provides actionable intelligence for fleet commanders and strategic planners.
   """
-  """
 
   alias EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer
   alias EveDmv.Contexts.CombatIntelligence.Domain.ShipStatsCalculator

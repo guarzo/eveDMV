@@ -5,7 +5,6 @@ defmodule EveDmv.StaticData.ShipRoles do
   Provides functions to identify logistics, command, and electronic warfare ships
   using actual EVE ship type IDs from the static data export.
   """
-  """
 
   # T2 Logistics Cruisers
   @t2_logistics_cruisers [

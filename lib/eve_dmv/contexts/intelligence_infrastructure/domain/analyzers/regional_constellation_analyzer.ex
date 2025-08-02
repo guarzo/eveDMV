@@ -70,7 +70,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   clean codebase principles by providing real insights where data is available
   and clear frameworks for expansion.
   """
-  """
 
   import Ecto.Query
 

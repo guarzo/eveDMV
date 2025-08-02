@@ -9,7 +9,6 @@ defmodule Mix.Tasks.Eve.Benchmark do
       mix eve.benchmark corporation  # Run corporation query benchmarks
       mix eve.benchmark --compare    # Compare with and without cache
   """
-  """
 
   @shortdoc "Run performance benchmarks"
 

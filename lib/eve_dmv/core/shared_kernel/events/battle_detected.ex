@@ -5,7 +5,6 @@ defmodule EveDmv.Core.SharedKernel.Events.BattleDetected do
   This event is published by the battle detection engine and consumed
   by various contexts for further analysis and notification.
   """
-  """
 
   alias EveDmv.Core.SharedKernel.ValueObjects.IskAmount
   alias EveDmv.Core.SharedKernel.ValueObjects.SystemId

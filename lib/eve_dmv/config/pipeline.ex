@@ -5,7 +5,6 @@ defmodule EveDmv.Config.Pipeline do
   Centralizes Broadway pipeline settings, batch processing parameters,
   and concurrent task limits across the application.
   """
-  """
 
   alias EveDmv.Config
 

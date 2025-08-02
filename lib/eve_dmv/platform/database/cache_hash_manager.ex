@@ -6,7 +6,6 @@ defmodule EveDmv.Database.CacheHashManager do
   and improve cache hit ratios. Uses SHA256 hashes of query parameters and results
   to detect when cached data is still valid even after related updates.
   """
-  """
 
   use GenServer
 

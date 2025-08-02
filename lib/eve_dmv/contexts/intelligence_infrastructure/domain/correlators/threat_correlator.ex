@@ -2,7 +2,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   @moduledoc """
   Correlator for threat patterns across multiple systems.
   """
-  """
 
   import Ecto.Query
 

@@ -9,7 +9,6 @@ defmodule EveDmv.Shared.Monitoring.AnomalyDetector do
   - Adaptive threshold management
   - Anomaly classification and severity assessment
   """
-  """
 
   require Logger
 

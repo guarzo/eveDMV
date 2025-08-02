@@ -5,7 +5,6 @@ defmodule EveDmv.IntelligenceEngine do
   This module provides the old IntelligenceEngine API while delegating to the
   new bounded context system via the migration adapter.
   """
-  """
 
   alias EveDmv.IntelligenceMigrationAdapter
   require Logger

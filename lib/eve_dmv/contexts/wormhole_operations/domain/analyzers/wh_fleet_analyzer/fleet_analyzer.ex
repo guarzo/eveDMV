@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.Analyzers.WhFleetAnalyzer.Fl
   This module provides comprehensive fleet analysis including composition,
   doctrine compliance, effectiveness metrics, and role distribution.
   """
-  """
 
   alias EveDmv.Intelligence.Analyzers.MassCalculator
   alias EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer

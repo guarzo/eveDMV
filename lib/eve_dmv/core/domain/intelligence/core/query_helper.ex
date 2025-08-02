@@ -5,7 +5,6 @@ defmodule EveDmv.Intelligence.Core.QueryHelper do
   Provides standardized query patterns, result aggregation, and data
   transformation utilities used across multiple intelligence analyzers.
   """
-  """
 
   alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils

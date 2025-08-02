@@ -5,7 +5,6 @@ defmodule EveDmv.Intelligence.Generators.RecruitmentInsightGenerator do
   Provides comprehensive recruitment analysis including priority assessment,
   target member profiles, and capacity evaluation for corporation growth.
   """
-  """
 
   @doc """
   Generate recruitment insights from activity data.

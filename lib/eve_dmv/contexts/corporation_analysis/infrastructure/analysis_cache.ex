@@ -4,7 +4,6 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.AnalysisCache do
 
   Provides caching capabilities for expensive corporation analysis operations.
   """
-  """
 
   use GenServer
   require Logger

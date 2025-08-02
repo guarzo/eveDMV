@@ -7,7 +7,6 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
   - Corporation Analysis participation analyzer
   - Corporation Intelligence participation tracking
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.CharacterRepository

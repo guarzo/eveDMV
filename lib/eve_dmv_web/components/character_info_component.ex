@@ -4,7 +4,6 @@ defmodule EveDmvWeb.Components.CharacterInfoComponent do
 
   Shows character details with avatar, name, and additional info.
   """
-  """
 
   use Phoenix.Component
 

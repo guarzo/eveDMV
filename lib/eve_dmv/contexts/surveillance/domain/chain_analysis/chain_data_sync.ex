@@ -5,7 +5,6 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainDataSync do
   This module handles the synchronization of chain topology data,
   system inhabitants, and connections from the Wanderer API.
   """
-  """
 
   alias EveDmv.Api
   alias EveDmv.Intelligence.ChainAnalysis.ChainConnection

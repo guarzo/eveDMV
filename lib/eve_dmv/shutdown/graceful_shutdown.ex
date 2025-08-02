@@ -5,7 +5,6 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
   Handles SIGTERM/SIGINT signals and orchestrates orderly shutdown
   of all application components with proper cleanup.
   """
-  """
 
   use GenServer
   alias EveDmv.Logging.StructuredLogger

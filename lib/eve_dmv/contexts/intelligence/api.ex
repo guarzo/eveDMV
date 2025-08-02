@@ -6,7 +6,6 @@ defmodule EveDmv.Contexts.Intelligence.Api do
   player profiling functionality, including threat assessment, behavioral analysis,
   and performance metrics.
   """
-  """
 
   alias EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer
   alias EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer

@@ -10,7 +10,6 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
 
   Acts as the central integration point for ship intelligence across the application.
   """
-  """
 
   import Ecto.Query
   alias EveDmv.Analytics.FleetAnalyzer

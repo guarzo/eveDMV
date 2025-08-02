@@ -5,7 +5,6 @@ defmodule EveDmvWeb.Components.ApiErrorHandler do
   Provides consistent error handling across all LiveView pages,
   with user-friendly error messages and fallback strategies.
   """
-  """
 
   use Phoenix.Component
   import Phoenix.LiveView

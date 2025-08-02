@@ -4,7 +4,6 @@ defmodule EveDmvWeb.LiveHelpers.ApiErrorHelper do
 
   Import this module in LiveViews to get convenient error handling functions.
   """
-  """
 
   import Phoenix.Component
   alias EveDmvWeb.Components.ApiErrorHandler

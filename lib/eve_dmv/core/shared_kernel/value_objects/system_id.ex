@@ -5,7 +5,6 @@ defmodule EveDmv.Core.SharedKernel.ValueObjects.SystemId do
   System IDs are immutable identifiers for EVE solar systems, with specific
   validation rules based on the EVE static data export.
   """
-  """
 
   defstruct [:value]
 

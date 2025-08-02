@@ -2,7 +2,6 @@ defmodule EveDmv.Contexts.Intelligence.Services.ComparisonService do
   @moduledoc """
   Service for comparing characters across various metrics and finding similar pilots.
   """
-  """
 
   alias EveDmv.Cache
   alias EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer

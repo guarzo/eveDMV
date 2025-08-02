@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.FleetOperations.Infrastructure.FleetRepository do
   Provides persistence and retrieval operations for fleet-related data
   including doctrines, engagements, and fleet compositions.
   """
-  """
 
   require Logger
 

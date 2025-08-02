@@ -5,7 +5,6 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.PerformanceTracker do
   Handles telemetry events for database queries, API calls, bulk operations,
   cache access, and LiveView rendering with configurable thresholds.
   """
-  """
 
   require Logger
 

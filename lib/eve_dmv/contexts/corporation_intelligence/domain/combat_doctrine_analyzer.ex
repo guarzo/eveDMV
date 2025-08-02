@@ -13,7 +13,6 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
   Uses advanced statistical analysis, clustering algorithms, and tactical pattern matching
   to provide comprehensive intelligence on corporation combat capabilities and preferences.
   """
-  """
 
   alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils
@@ -204,6 +203,9 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
       }
 
       {:ok, counter_recommendations}
+    else
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :analysis_failed}
     end
   end
 

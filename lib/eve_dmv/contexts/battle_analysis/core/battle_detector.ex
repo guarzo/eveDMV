@@ -7,7 +7,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
 
   This module provides comprehensive battle detection from killmail streams.
   """
-  """
 
   use GenServer
 

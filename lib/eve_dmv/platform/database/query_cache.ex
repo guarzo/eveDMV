@@ -5,7 +5,6 @@ defmodule EveDmv.Database.QueryCache do
   This module maintains the same interface as before but delegates
   to the unified cache implementation.
   """
-  """
 
   alias EveDmv.Utils.Cache
 

@@ -2,7 +2,6 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.StatisticsPanelComponent do
   @moduledoc """
   Statistics panel component displaying combat statistics and ISK efficiency.
   """
-  """
 
   use EveDmvWeb, :live_component
 

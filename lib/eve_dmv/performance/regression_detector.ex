@@ -8,7 +8,6 @@ defmodule EveDmv.Performance.RegressionDetector do
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
-  """
 
   use GenServer
   require Logger

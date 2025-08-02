@@ -8,7 +8,6 @@ defmodule EveDmv.Platform.Utilities.DataHelpers do
   - Format conversion
   - Common calculations
   """
-  """
 
   require Logger
 

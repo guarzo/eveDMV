@@ -5,7 +5,6 @@ defmodule EveDmv.Eve.NameResolver.BatchProcessor do
   Handles efficient batch resolution of multiple IDs, cache optimization,
   and parallel processing for both static data and ESI entities.
   """
-  """
 
   alias EveDmv.Eve.NameResolver.CacheManager
   alias EveDmv.Eve.NameResolver.EsiEntityResolver

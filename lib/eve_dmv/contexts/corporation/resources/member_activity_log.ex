@@ -2,7 +2,6 @@ defmodule EveDmv.Contexts.Corporation.Resources.MemberActivityLog do
   @moduledoc """
   Member activity log resource for tracking individual member activities and events.
   """
-  """
 
   use Ash.Resource,
     domain: EveDmv.Api,

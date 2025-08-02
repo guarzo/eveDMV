@@ -9,7 +9,6 @@ defmodule EveDmv.Database.QueryHelpers do
   - Add query hints for optimization
   - Batch large queries for memory efficiency
   """
-  """
 
   import Ecto.Query
 

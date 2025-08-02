@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   Provides data access for player analysis including combat statistics,
   ship preferences, activity patterns, and affiliations.
   """
-  """
 
   alias EveDmv.Cache.QueryCache
   alias EveDmv.Core.Utils.DateTimeUtils

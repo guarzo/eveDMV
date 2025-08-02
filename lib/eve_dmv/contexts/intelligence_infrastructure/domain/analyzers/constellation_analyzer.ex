@@ -3,9 +3,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   Analyzer for constellation-wide pattern analysis.
   """
 
-    alias EveDmv.Core.Utils.DateTimeUtils
-  """
-
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Api
   alias EveDmv.Eve.SolarSystem
   alias EveDmv.Killmails.KillmailRaw
@@ -34,7 +32,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
   defp assess_tactical_significance(constellation_id, _cutoff_time) do
     # Analyze tactical significance based on system activity and positioning
-    systems_query = Ash.Query.filter(SolarSystem, constellation_id == ^constellation_id)
+    systems_query = SolarSystem |> Ash.Query.filter(constellation_id == ^constellation_id)
 
     case Ash.read(systems_query, domain: Api) do
       {:ok, systems} ->
@@ -117,7 +115,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
   defp analyze_control_patterns(constellation_id, _cutoff_time) do
     # Analyze which entities control the constellation
-    systems_query = Ash.Query.filter(SolarSystem, constellation_id == ^constellation_id)
+    systems_query = SolarSystem |> Ash.Query.filter(constellation_id == ^constellation_id)
 
     case Ash.read(systems_query, domain: Api) do
       {:ok, systems} ->
@@ -194,7 +192,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
   defp assess_strategic_value(constellation_id) do
     # Assess strategic value based on constellation characteristics
-    systems_query = Ash.Query.filter(SolarSystem, constellation_id == ^constellation_id)
+    systems_query = SolarSystem |> Ash.Query.filter(constellation_id == ^constellation_id)
 
     case Ash.read(systems_query, domain: Api) do
       {:ok, systems} ->
@@ -259,7 +257,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
   defp assess_constellation_threats(constellation_id, _cutoff_time) do
     # Assess threats within the constellation
-    systems_query = Ash.Query.filter(SolarSystem, constellation_id == ^constellation_id)
+    systems_query = SolarSystem |> Ash.Query.filter(constellation_id == ^constellation_id)
 
     case Ash.read(systems_query, domain: Api) do
       {:ok, systems} ->

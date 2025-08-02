@@ -5,7 +5,6 @@ defmodule EveDmv.StaticData.ShipAttributesService do
   Provides convenient access to ship statistics for replacing hardcoded values
   in battle analysis and fleet composition modules.
   """
-  """
 
   alias EveDmv.StaticData.ShipAttributes
   require Logger

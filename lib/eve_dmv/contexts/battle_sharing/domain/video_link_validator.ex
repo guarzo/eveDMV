@@ -13,7 +13,6 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoLinkValidator do
   Uses platform-specific APIs and validation techniques to ensure high-quality
   video content integration while maintaining security and performance.
   """
-  """
 
   require Logger
 

@@ -7,7 +7,6 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
-  """
 
   use EveDmv.ErrorHandler
 

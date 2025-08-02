@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
   Contains business logic and utility functions that don't require
   direct access to the GenServer state.
   """
-  """
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Contexts.Surveillance.Domain.AlertService

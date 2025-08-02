@@ -5,7 +5,6 @@ defmodule EveDmv.Shared.KillmailQueries do
   Provides reusable query builders for common killmail data patterns used by
   both character analysis and corporation intelligence features.
   """
-  """
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Core.Utils.DateTimeUtils

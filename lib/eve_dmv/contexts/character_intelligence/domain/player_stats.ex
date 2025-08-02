@@ -6,7 +6,6 @@ defmodule EveDmv.Analytics.PlayerStats do
   and overall PvP performance tracking. Supplements the intelligence-focused
   CharacterStats with player-facing analytics.
   """
-  """
 
   use Ash.Resource,
     domain: EveDmv.Api.AnalyticsApi,

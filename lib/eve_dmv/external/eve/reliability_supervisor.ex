@@ -5,7 +5,6 @@ defmodule EveDmv.Eve.ReliabilitySupervisor do
   Manages circuit breakers and other reliability infrastructure
   for the ESI client components.
   """
-  """
 
   use Supervisor
 

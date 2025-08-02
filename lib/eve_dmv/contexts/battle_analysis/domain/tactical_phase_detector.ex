@@ -10,7 +10,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
   Uses k-means clustering on damage rate, engagement distance, and ship movement vectors
   to detect phase transitions and classify combat periods.
   """
-  """
 
   alias EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor
   alias EveDmv.Core.Utils.DateTimeUtils

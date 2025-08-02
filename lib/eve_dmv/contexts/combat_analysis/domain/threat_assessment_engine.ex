@@ -11,7 +11,6 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
 
   All assessments are based on actual killmail data and combat patterns.
   """
-  """
 
   use GenServer
 

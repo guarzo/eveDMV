@@ -3,7 +3,6 @@ defmodule EveDmv.Contexts.Intelligence.Services.CharacterService do
   Application service for character intelligence operations.
   Handles CRUD operations, caching, and real-time updates.
   """
-  """
 
   alias EveDmv.Api
   alias EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer

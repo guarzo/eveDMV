@@ -5,7 +5,6 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
   Analyzes index usage patterns, identifies missing indexes, and provides
   optimization recommendations for query performance improvement.
   """
-  """
 
   require Logger
 

@@ -4,7 +4,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.Analyzers.ModuleClassifier do
 
   Classifies ship roles based on their fitted modules and combat behavior.
   """
-  """
 
   require Logger
 

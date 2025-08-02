@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache do
   This module was removed during namespace consolidation.
   Caching functionality has been moved to the unified cache system.
   """
-  """
 
   require Logger
 

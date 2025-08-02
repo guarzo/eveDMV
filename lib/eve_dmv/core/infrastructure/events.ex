@@ -5,7 +5,6 @@ defmodule EveDmv.Intelligence.Events do
   These events are published when intelligence data changes and need to be
   broadcast to connected clients for real-time UI updates.
   """
-  """
 
   defmodule ThreatLevelUpdated do
     @moduledoc """

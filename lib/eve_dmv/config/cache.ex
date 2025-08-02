@@ -4,10 +4,6 @@ defmodule EveDmv.Config.Cache do
 
   Centralizes all cache-related configuration including TTL values,
   size limits, and cleanup intervals across the application.
-
-  This module now uses the unified configuration system for consistent
-  cache configuration access and environment variable handling.
-  """
   """
 
   alias EveDmv.Config.UnifiedConfig

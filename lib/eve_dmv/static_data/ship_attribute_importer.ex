@@ -8,7 +8,6 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
   Phase 1: Use basic ship data and estimates
   Phase 2: Import full dogma attributes when available
   """
-  """
 
   use GenServer
 

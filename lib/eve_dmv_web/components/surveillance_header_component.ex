@@ -5,7 +5,6 @@ defmodule EveDmvWeb.SurveillanceHeaderComponent do
   Provides navigation, batch mode controls, and action buttons
   for managing surveillance profiles.
   """
-  """
 
   use EveDmvWeb, :live_component
 

@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.FleetOperations.Resources.FleetDoctrine do
   Doctrines define standard fleet setups including ship requirements,
   role distributions, and operational parameters.
   """
-  """
 
   use Ash.Resource,
     otp_app: :eve_dmv,

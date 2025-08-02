@@ -7,7 +7,6 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Formatters.MemberActivityDisplayFo
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
-  """
 
   @doc """
   Format member summaries for corporation reports.

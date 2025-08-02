@@ -6,7 +6,6 @@ defmodule EveDmv.IntelligenceMigrationAdapter do
   redirecting calls from the old IntelligenceEngine API to the new bounded
   context implementations.
   """
-  """
 
   alias EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache
   alias EveDmv.Contexts.Corporation.Core.CorporationAnalyzer

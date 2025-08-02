@@ -8,7 +8,6 @@ defmodule EveDmv.Intelligence.AnalysisScheduler do
   - Corporation activity monitoring
   - Analysis result freshness maintenance
   """
-  """
 
   use GenServer
   alias EveDmv.Contexts.WormholeOperations.Domain.Analyzers.WhFleetAnalyzer

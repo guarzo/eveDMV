@@ -1,18 +1,6 @@
 # credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 # credo:disable-for-this-file Credo.Check.Readability.StrictModuleLayout
 defmodule EveDmvWeb.AllianceLive do
-
-  @moduledoc """
-
-  import EveDmvWeb.Components.PageHeaderComponent
-  import EveDmvWeb.Components.StatsGridComponent
-  import EveDmvWeb.Components.ErrorStateComponent
-  import EveDmvWeb.Components.EmptyStateComponent
-  import EveDmvWeb.FormatHelpers
-  alias EveDmv.Api
-  alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Killmails.Participant
-  alias EveDmvWeb.Helpers.TimeFormatter
   @moduledoc """
   LiveView for displaying alliance analytics dashboard.
 
@@ -22,9 +10,20 @@ defmodule EveDmvWeb.AllianceLive do
 
   use EveDmvWeb, :live_view
 
+  import EveDmvWeb.Components.PageHeaderComponent
+  import EveDmvWeb.Components.StatsGridComponent
+  import EveDmvWeb.Components.ErrorStateComponent
+  import EveDmvWeb.Components.EmptyStateComponent
+  import EveDmvWeb.FormatHelpers
+
+  alias EveDmv.Api
+  alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Killmails.Participant
+  alias EveDmvWeb.Helpers.TimeFormatter
+
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
-  # Import reusable components
+
   # Helper function for template
   defp time_ago(datetime), do: TimeFormatter.format_relative_time(datetime)
   @impl Phoenix.LiveView

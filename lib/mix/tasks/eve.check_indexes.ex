@@ -2,7 +2,6 @@ defmodule Mix.Tasks.Eve.CheckIndexes do
   @moduledoc """
   Mix task to check current database indexes and suggest missing ones.
   """
-  """
 
   @shortdoc "Check database indexes and suggest optimizations"
 

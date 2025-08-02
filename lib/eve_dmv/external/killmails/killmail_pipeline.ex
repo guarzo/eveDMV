@@ -6,7 +6,6 @@ defmodule EveDmv.Killmails.KillmailPipeline do
   transforms the JSON data into database records, and handles bulk insertion
   with proper error handling and retries.
   """
-  """
 
   use Broadway
   use EveDmv.ErrorHandler

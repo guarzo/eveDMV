@@ -8,7 +8,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting do
   - In-game fitting links
   - Manual entry
   """
-  """
 
   use Ash.Resource,
     domain: EveDmv.Contexts.BattleAnalysis.Api,

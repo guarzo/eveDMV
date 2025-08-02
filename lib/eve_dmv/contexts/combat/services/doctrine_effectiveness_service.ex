@@ -6,7 +6,6 @@ defmodule EveDmv.Contexts.Combat.Services.DoctrineEffectivenessService do
   by querying actual battle outcomes and killmail data to determine how different
   fleet compositions perform against each other.
   """
-  """
 
   alias EveDmv.Database.KillmailRepository
   alias EveDmv.StaticData.ShipTypes

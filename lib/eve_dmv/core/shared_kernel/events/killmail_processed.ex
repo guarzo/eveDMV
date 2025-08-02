@@ -6,7 +6,6 @@ defmodule EveDmv.Core.SharedKernel.Events.KillmailProcessed do
   This event is published by the killmail ingestion pipeline and consumed
   by various analysis engines across the system.
   """
-  """
 
   alias EveDmv.Core.SharedKernel.Entities.Killmail
   alias EveDmv.Core.SharedKernel.ValueObjects.CharacterId

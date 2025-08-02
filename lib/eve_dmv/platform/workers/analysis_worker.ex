@@ -5,7 +5,6 @@ defmodule EveDmv.Intelligence.AnalysisWorker do
   Each worker handles a single analysis operation with proper error handling,
   timeout management, and telemetry instrumentation.
   """
-  """
 
   use GenServer
 

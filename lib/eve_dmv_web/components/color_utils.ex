@@ -5,7 +5,6 @@ defmodule EveDmvWeb.Components.ColorUtils do
   Provides standardized color classes for common UI elements like security levels,
   threat levels, and status indicators.
   """
-  """
 
   # Color mappings for consistent styling
   @security_colors %{

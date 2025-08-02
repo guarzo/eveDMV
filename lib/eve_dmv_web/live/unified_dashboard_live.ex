@@ -5,7 +5,6 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
   This module provides a centralized dashboard that can display different views
   based on the route accessed (surveillance-dashboard, intelligence-dashboard, etc.)
   """
-  """
 
   use EveDmvWeb, :live_view
 
@@ -84,13 +83,39 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
   # PubSub handlers
 
   @impl Phoenix.LiveView
-  def handle_info({:surveillance_alert, _alert}, socket) do
-    {:noreply, load_dashboard_data(socket)}
+  def handle_info({:surveillance_alert, alert}, socket) do
+    # Only reload dashboard data for surveillance dashboard and if it's a meaningful alert
+    if socket.assigns.dashboard_type == :surveillance and should_reload_for_alert?(alert) do
+      {:noreply, load_dashboard_data(socket)}
+    else
+      {:noreply, socket}
+    end
   end
 
   @impl Phoenix.LiveView
-  def handle_info({:intelligence_update, _update}, socket) do
-    {:noreply, load_dashboard_data(socket)}
+  def handle_info({:intelligence_update, update}, socket) do
+    # Only reload dashboard data for intelligence dashboard and if it's a meaningful update
+    if socket.assigns.dashboard_type == :intelligence and should_reload_for_update?(update) do
+      {:noreply, load_dashboard_data(socket)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl Phoenix.LiveView
+  def handle_info({:alert_updated, _alert_id}, socket) do
+    # Only reload for surveillance dashboard when alerts are updated
+    if socket.assigns.dashboard_type == :surveillance do
+      {:noreply, load_dashboard_data(socket)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl Phoenix.LiveView
+  def handle_info(_msg, socket) do
+    # Ignore other PubSub messages to prevent unnecessary reloads
+    {:noreply, socket}
   end
 
   # Private functions
@@ -216,4 +241,21 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
   defp get_base_path(:intelligence, _socket), do: "/intelligence-dashboard"
   defp get_base_path(:monitoring, _socket), do: "/monitoring"
   defp get_base_path(_, _socket), do: "/dashboard"
+
+  defp should_reload_for_alert?(alert) do
+    # Only reload for high priority alerts or specific alert types that affect dashboard metrics
+    case alert do
+      %{priority: priority} when priority in [1, 2] -> true  # Critical or High priority
+      %{alert_type: type} when type in ["new_profile", "profile_updated", "metrics_updated"] -> true
+      _ -> false
+    end
+  end
+
+  defp should_reload_for_update?(update) do
+    # Only reload for intelligence updates that affect dashboard data
+    case update do
+      %{type: type} when type in ["analysis_completed", "threat_assessment_updated", "batch_processed"] -> true
+      _ -> false
+    end
+  end
 end

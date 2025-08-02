@@ -1,6 +1,5 @@
 defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.WormholeChainAnalyzer do
   @moduledoc """
-
   Specialized analyzer for wormhole chain mapping and analysis.
 
   Handles all wormhole-specific analysis including:
@@ -11,8 +10,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.
   - Strategic value assessment of connections
   """
 
-    alias EveDmv.Core.Utils.DateTimeUtils
-  """
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 

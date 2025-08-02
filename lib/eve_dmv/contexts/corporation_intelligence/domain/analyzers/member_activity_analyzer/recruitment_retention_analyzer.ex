@@ -5,7 +5,6 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.RecruitmentRetent
   Identifies retention risks, generates recruitment insights, and provides
   recommendations for improving member retention and recruitment strategies.
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.Analyzers.MemberRiskAssessment

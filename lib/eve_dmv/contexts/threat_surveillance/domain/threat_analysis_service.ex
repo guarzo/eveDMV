@@ -12,7 +12,6 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
   All analysis is based on real killmail data, behavioral patterns,
   and threat scoring from the ThreatAssessmentEngine.
   """
-  """
 
   import Ecto.Query
 
@@ -61,6 +60,9 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
         with {:ok, analysis} <- perform_comprehensive_analysis(entity_id, entity_type, options) do
           UnifiedCache.put(:threat_surveillance, cache_key, analysis, @cache_ttl)
           {:ok, analysis}
+        else
+          {:error, reason} -> {:error, reason}
+          _ -> {:error, :analysis_failed}
         end
     end
   end

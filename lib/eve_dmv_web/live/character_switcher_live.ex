@@ -5,7 +5,6 @@ defmodule EveDmvWeb.CharacterSwitcherLive do
   Displays all characters associated with the current account and
   allows switching between them without re-authentication.
   """
-  """
 
   use EveDmvWeb, :live_view
 

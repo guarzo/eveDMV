@@ -16,7 +16,6 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
   analyzing pilot capabilities, preferences, and availability to
   optimize fleet effectiveness and readiness.
   """
-  """
 
   use EveDmv.ErrorHandler
   alias EveDmv.Contexts.FleetOperations.Infrastructure.PilotDataProvider

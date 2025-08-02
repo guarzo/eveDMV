@@ -13,7 +13,6 @@ defmodule EveDmv.Intelligence.RealTimeCoordinator do
   - Filter and prioritize events for publishing
   - Manage real-time subscriptions and client updates
   """
-  """
 
   use GenServer
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator

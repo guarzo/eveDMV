@@ -15,7 +15,6 @@ defmodule EveDmv.Shared.ChainIntelligence do
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
-  """
 
   use EveDmv.ErrorHandler
   require Logger

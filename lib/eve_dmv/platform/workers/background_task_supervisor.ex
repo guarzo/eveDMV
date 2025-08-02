@@ -17,7 +17,6 @@ defmodule EveDmv.Workers.BackgroundTaskSupervisor do
   - **Memory Limit**: Monitoring and alerts for high memory usage
   - **Restart Strategy**: temporary (manual restart required)
   """
-  """
 
   use DynamicSupervisor
   require Logger

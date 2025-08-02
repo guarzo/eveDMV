@@ -5,7 +5,6 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
   Provides real-time metrics, alerts, and performance insights for EVE DMV.
   Integrates with Telemetry for event-driven monitoring.
   """
-  """
 
   use GenServer
 

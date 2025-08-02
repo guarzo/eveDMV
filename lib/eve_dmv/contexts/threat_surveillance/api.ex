@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Api do
   Provides a clean interface for all threat surveillance functionality
   including threat assessment, surveillance matching, and alert management.
   """
-  """
 
   alias EveDmv.Contexts.ThreatSurveillance
 

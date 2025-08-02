@@ -6,7 +6,6 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
   Handles multiple tactical pattern types in a single module since they
   share similar analysis approaches.
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
 

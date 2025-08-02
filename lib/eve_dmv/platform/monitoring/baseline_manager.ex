@@ -9,7 +9,6 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
   - Threat baseline calculation
   - Baseline validation and quality assessment
   """
-  """
 
   alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils

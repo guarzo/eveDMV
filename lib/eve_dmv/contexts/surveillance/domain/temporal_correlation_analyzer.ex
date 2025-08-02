@@ -9,7 +9,6 @@ defmodule EveDmv.Shared.Correlation.TemporalCorrelationAnalyzer do
   - Activity dependencies analysis
   - Cross-system correlation metrics
   """
-  """
 
   alias EveDmv.Core.Utils.DateTimeUtils
 

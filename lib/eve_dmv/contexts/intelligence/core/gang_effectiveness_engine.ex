@@ -3,7 +3,6 @@ defmodule EveDmv.Contexts.Intelligence.Core.GangEffectivenessEngine do
   Analyzes gang participation and coordination effectiveness.
   Part of the multi-dimensional threat assessment system.
   """
-  """
 
   alias EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer
   alias EveDmv.Core.Utils.DateTimeUtils

@@ -17,7 +17,6 @@ defmodule EveDmv.Workers.UITaskSupervisor do
   - **Global Concurrent Limit**: 100 tasks
   - **Restart Strategy**: temporary (failed tasks don't restart)
   """
-  """
 
   use EveDmv.Workers.GenericTaskSupervisor
 

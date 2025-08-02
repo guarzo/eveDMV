@@ -5,7 +5,6 @@ defmodule EveDmvWeb.IntelligenceComponents do
   Provides sophisticated visualization components for character analysis,
   threat assessment, and intelligence scoring with improved user experience.
   """
-  """
 
   use Phoenix.Component
   alias EveDmvWeb.Helpers.TimeFormatter

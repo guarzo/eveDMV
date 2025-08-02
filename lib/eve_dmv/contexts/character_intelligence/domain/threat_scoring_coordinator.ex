@@ -24,7 +24,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScori
       {:ok, comparison} = ThreatScoringCoordinator.compare_threat_levels([id1, id2, id3])
       {:ok, trends} = ThreatScoringCoordinator.analyze_threat_trends(character_id)
   """
-  """
 
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Analyzers.TrendAnalyzer
 

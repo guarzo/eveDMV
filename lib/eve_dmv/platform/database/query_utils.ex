@@ -5,7 +5,6 @@ defmodule EveDmv.Database.QueryUtils do
   This module consolidates repeated database query patterns to provide
   consistent querying interfaces and reduce code duplication.
   """
-  """
 
   alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils

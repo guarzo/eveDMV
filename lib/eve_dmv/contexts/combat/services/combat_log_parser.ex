@@ -8,7 +8,6 @@ defmodule EveDmv.Contexts.Combat.Services.CombatLogParser do
   - Reconstructing battles from log data
   - Converting log data to analyzable format
   """
-  """
 
   alias EveDmv.Contexts.BattleAnalysis.Core.BattleDetector
   alias EveDmv.Contexts.Combat.Resources.CombatLog

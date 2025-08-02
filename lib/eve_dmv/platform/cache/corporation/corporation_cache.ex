@@ -5,7 +5,6 @@ defmodule EveDmv.Platform.Cache.Corporation.CorporationCache do
   Provides caching functionality for corporation analysis data
   to improve performance of repeated queries.
   """
-  """
 
   require Logger
 

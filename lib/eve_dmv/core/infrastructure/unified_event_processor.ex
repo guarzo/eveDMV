@@ -16,7 +16,6 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedEventProcessor do
   - Event batching and throttling
   - Performance monitoring and statistics
   """
-  """
 
   use GenServer
 

@@ -7,7 +7,6 @@ defmodule EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer do
   - Character Intelligence character analysis
   - Player Profile player analyzer
   """
-  """
 
   use GenServer
 

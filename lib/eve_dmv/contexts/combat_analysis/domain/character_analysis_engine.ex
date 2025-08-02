@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CharacterAnalysisEngine do
   Provides detailed analysis of character combat patterns, ship preferences,
   tactical behavior, and performance metrics.
   """
-  """
 
   use GenServer
 

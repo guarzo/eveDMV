@@ -11,7 +11,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.
   The Facade module coordinates these components while maintaining
   backward compatibility with the original ActivityCorrelator interface.
   """
-  """
 
   # Delegate all functions to the new modular correlation facade
   defdelegate fetch_system_activities(system_ids, time_window_hours),

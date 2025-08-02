@@ -2,7 +2,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.StaticDataEventProce
   @moduledoc """
   Processes static data updates for combat intelligence.
   """
-  """
 
   use GenServer
   require Logger

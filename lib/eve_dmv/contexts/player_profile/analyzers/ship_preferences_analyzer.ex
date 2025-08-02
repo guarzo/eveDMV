@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
   Analyzes individual character ship usage patterns, preferences, and specializations
   including ship roles, fitting patterns, and tactical deployment preferences.
   """
-  """
 
   use EveDmv.ErrorHandler
 

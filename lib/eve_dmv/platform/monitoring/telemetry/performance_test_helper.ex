@@ -8,7 +8,6 @@ defmodule EveDmv.Telemetry.PerformanceTestHelper do
   - Benchmark query performance changes
   - Generate test data that matches production patterns
   """
-  """
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Repo

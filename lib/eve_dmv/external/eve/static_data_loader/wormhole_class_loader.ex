@@ -3,7 +3,6 @@ defmodule EveDmv.Eve.StaticDataLoader.WormholeClassLoader do
   Loads wormhole class data from Fuzzwork's mapLocationWormholeClasses.csv
   and updates the solar systems table with wormhole class information.
   """
-  """
 
   alias EveDmv.Api
   alias EveDmv.Eve.SolarSystem

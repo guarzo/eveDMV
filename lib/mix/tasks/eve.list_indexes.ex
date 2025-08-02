@@ -2,7 +2,6 @@ defmodule Mix.Tasks.Eve.ListIndexes do
   @moduledoc """
   Mix task to list all indexes in the database.
   """
-  """
 
   @shortdoc "List all database indexes"
 

@@ -2,7 +2,6 @@ defmodule EveDmv.Domains.Surveillance do
   @moduledoc """
   Surveillance domain for profiles, matches, and notifications.
   """
-  """
 
   use Ash.Domain,
     otp_app: :eve_dmv

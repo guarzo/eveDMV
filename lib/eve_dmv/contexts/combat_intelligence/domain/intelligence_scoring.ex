@@ -9,7 +9,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
   Simplified intelligence scoring module that provides direct scoring operations
   without GenServer overhead.
   """
-  """
 
   import Ash.Expr
   alias EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache

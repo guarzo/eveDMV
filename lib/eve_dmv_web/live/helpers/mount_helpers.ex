@@ -5,7 +5,6 @@ defmodule EveDmvWeb.LiveHelpers.MountHelpers do
   Provides consistent mount patterns for authenticated and public LiveViews,
   handling common initialization tasks and error scenarios.
   """
-  """
 
   import Phoenix.LiveView
   import Phoenix.Component

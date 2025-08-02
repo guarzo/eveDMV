@@ -6,7 +6,6 @@ defmodule EveDmv.Database.HealthCheck do
   This module provides health checks for database connectivity, performance,
   partitions, indexes, and overall system health.
   """
-  """
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Telemetry.PerformanceMonitor

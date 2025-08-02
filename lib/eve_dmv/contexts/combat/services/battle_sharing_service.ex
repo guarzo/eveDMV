@@ -8,7 +8,6 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
   - Exporting battle data in various formats
   - Managing battle visibility and access
   """
-  """
 
   alias EveDmv.Contexts.Combat.Core.BattleAnalyzer
   alias EveDmv.Contexts.Combat.Core.ParticipantAnalyzer

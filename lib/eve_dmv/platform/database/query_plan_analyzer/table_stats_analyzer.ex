@@ -5,7 +5,6 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
   Analyzes table usage patterns, bloat ratios, index effectiveness,
   and provides maintenance recommendations for optimal database performance.
   """
-  """
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Core.Utils.DateTimeUtils

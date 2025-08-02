@@ -9,7 +9,6 @@ defmodule EveDmv.Shared.Correlation.Facade do
 
   Maintains the same interface as the original ActivityCorrelator.
   """
-  """
 
   alias EveDmv.Shared.Correlation.SystemActivityCollector
   alias EveDmv.Shared.Correlation.TemporalCorrelationAnalyzer

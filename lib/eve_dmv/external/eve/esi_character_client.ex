@@ -5,7 +5,6 @@ defmodule EveDmv.Eve.EsiCharacterClient do
   This module handles all character-specific API calls including
   basic character information, skills, assets, and employment history.
   """
-  """
 
   alias EveDmv.Eve.EsiCache
   alias EveDmv.Eve.EsiParsers
@@ -123,7 +122,7 @@ defmodule EveDmv.Eve.EsiCharacterClient do
         {:ok, results, :partial} ->
           fetched = build_character_map(missing, results)
           all_characters = Map.merge(cached, fetched)
-          {:ok, all_characters}
+          {:ok, all_characters, :partial}
 
         {:error, reason} ->
           Logger.error("Failed to fetch characters in parallel", %{

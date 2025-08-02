@@ -7,7 +7,6 @@ defmodule Mix.Tasks.Eve.Stats do
       mix eve.stats
       mix eve.stats --verbose
   """
-  """
 
   @shortdoc "Display EVE DMV database statistics"
 

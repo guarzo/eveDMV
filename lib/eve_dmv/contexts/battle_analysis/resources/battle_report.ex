@@ -9,7 +9,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.BattleReport do
   - Community ratings and feedback
   - Educational content and analysis
   """
-  """
 
   use Ash.Resource,
     domain: EveDmv.Contexts.BattleAnalysis.Api,

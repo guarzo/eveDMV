@@ -5,7 +5,6 @@ defmodule EveDmvWeb.SystemLive do
   Displays real killmail data, structure kills, danger assessment,
   and corporation/alliance presence for a specific solar system.
   """
-  """
 
   use EveDmvWeb, :live_view
 

@@ -7,7 +7,6 @@ defmodule EveDmv.Contexts.Intelligence.Core.CombatStatsAnalyzer do
   - Character Intelligence combat metrics
   - Player Profile combat analysis
   """
-  """
 
   alias EveDmv.Cache
   alias EveDmv.Core.Utils.DateTimeUtils

@@ -14,7 +14,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   Uses real combat data, ship statistics, and advanced algorithms to provide
   actionable intelligence for fleet commanders and individual pilots.
   """
-  """
 
   alias EveDmv.Analytics.FleetAnalyzer
   alias EveDmv.Core.Utils.DateTimeUtils
@@ -1925,7 +1924,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   defp calculate_trend(values) do
     # Simple linear trend calculation
     n = length(values)
-    indices = 1..Enum.to_list(n)
+    indices = 1..n |> Enum.to_list()
 
     sum_x = Enum.sum(indices)
     sum_y = Enum.sum(values)

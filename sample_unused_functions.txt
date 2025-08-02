@@ -1,0 +1,29 @@
+warning: function analyze_target_selection/1 is unused
+└─ lib/eve_dmv/contexts/intelligence/core/ml_scoring_engine.ex:280:8: EveDmv.Contexts.Intelligence.Core.MLScoringEngine (module)
+
+warning: function calculate_activity_entropy/1 is unused
+└─ lib/eve_dmv/contexts/intelligence/core/ml_scoring_engine.ex:287:8: EveDmv.Contexts.Intelligence.Core.MLScoringEngine (module)
+
+warning: function calculate_activity_variance/1 is unused
+└─ lib/eve_dmv/contexts/intelligence/core/ml_scoring_engine.ex:259:8: EveDmv.Contexts.Intelligence.Core.MLScoringEngine (module)
+
+warning: function calculate_alliance_participation/1 is unused
+└─ lib/eve_dmv/contexts/intelligence/core/ml_scoring_engine.ex:273:8: EveDmv.Contexts.Intelligence.Core.MLScoringEngine (module)
+
+warning: function calculate_average_gang_size/1 is unused
+└─ lib/eve_dmv/contexts/intelligence/core/ml_scoring_engine.ex:263:8: EveDmv.Contexts.Intelligence.Core.MLScoringEngine (module)
+
+warning: function calculate_average_value/1 is unused
+└─ lib/eve_dmv/contexts/intelligence/core/ml_scoring_engine.ex:266:8: EveDmv.Contexts.Intelligence.Core.MLScoringEngine (module)
+
+warning: function calculate_capital_usage/1 is unused
+└─ lib/eve_dmv/contexts/intelligence/core/ml_scoring_engine.ex:265:8: EveDmv.Contexts.Intelligence.Core.MLScoringEngine (module)
+
+warning: function calculate_corp_diversity/1 is unused
+└─ lib/eve_dmv/contexts/intelligence/core/ml_scoring_engine.ex:272:8: EveDmv.Contexts.Intelligence.Core.MLScoringEngine (module)
+
+warning: function calculate_defensive_losses/1 is unused
+└─ lib/eve_dmv/contexts/intelligence/core/ml_scoring_engine.ex:294:8: EveDmv.Contexts.Intelligence.Core.MLScoringEngine (module)
+
+warning: function calculate_engagement_complexity/1 is unused
+└─ lib/eve_dmv/contexts/intelligence/core/ml_scoring_engine.ex:296:8: EveDmv.Contexts.Intelligence.Core.MLScoringEngine (module)

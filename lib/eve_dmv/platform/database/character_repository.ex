@@ -5,7 +5,6 @@ defmodule EveDmv.Database.CharacterRepository do
   Provides optimized access to character intelligence data with caching
   and performance monitoring specifically designed for hunter analysis.
   """
-  """
 
   use EveDmv.Database.Repository,
     resource: EveDmv.Intelligence.CharacterStats,

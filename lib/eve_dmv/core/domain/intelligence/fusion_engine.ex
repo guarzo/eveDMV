@@ -8,7 +8,6 @@ defmodule EveDmv.Shared.Intelligence.FusionEngine do
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
-  """
 
   require Logger
 

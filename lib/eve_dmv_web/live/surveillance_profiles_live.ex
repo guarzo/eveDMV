@@ -8,7 +8,6 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   - Real-time preview against last 1000 killmails
   - Chain filter validation with live Wanderer data
   """
-  """
 
   use EveDmvWeb, :live_view
 

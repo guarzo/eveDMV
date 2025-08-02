@@ -5,7 +5,6 @@ defmodule EveDmv.StaticData.SystemData do
   Provides consistent system classification and data across the application.
   This module should be enhanced with actual EVE static data when available.
   """
-  """
 
   import Ecto.Query
   alias EveDmv.Repo

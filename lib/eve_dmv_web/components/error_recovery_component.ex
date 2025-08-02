@@ -4,7 +4,6 @@ defmodule EveDmvWeb.Components.ErrorRecoveryComponent do
 
   Provides consistent error display and recovery options across the application.
   """
-  """
 
   use Phoenix.Component
 

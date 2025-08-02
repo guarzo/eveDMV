@@ -8,7 +8,6 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
   - Alert acknowledgment and resolution
   - Alert details and context
   """
-  """
 
   use EveDmvWeb, :live_view
 

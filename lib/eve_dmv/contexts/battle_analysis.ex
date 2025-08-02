@@ -4,7 +4,6 @@ defmodule EveDmv.Contexts.BattleAnalysis do
 
   This module provides the public API for battle detection, analysis, and reconstruction.
   """
-  """
 
   alias EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService
   alias EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService

@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.Analyzers.FleetPilotAnalyzer do
   Provides capabilities for analyzing available pilots, their skills, and optimizing
   pilot-to-ship assignments for maximum fleet effectiveness.
   """
-  """
 
   alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils

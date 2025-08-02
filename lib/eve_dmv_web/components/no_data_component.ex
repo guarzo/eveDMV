@@ -5,7 +5,6 @@ defmodule EveDmvWeb.NoDataComponent do
   Shows a friendly message when no player statistics are available,
   with options to generate statistics and view available intelligence data.
   """
-  """
 
   use EveDmvWeb, :live_component
 

@@ -5,7 +5,6 @@ defmodule EveDmv.Intelligence.Analyzer do
   Defines a consistent interface for analysis modules with
   standardized telemetry, logging, and error handling.
   """
-  """
 
   @type analysis_result :: {:ok, term()} | {:error, term()}
   @type analysis_options :: map()
