@@ -5,8 +5,10 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
   Monitors corporation activities and member behaviors to identify
   emerging threats, suspicious activities, and security incidents.
   """
+  """
 
   alias EveDmv.Contexts.Corporation.Core.SecurityAnalyzer
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.KillmailRepository
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
   alias EveDmv.Platform.Database.CorporationRepository
@@ -19,6 +21,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
   @doc """
   Detect active threats to the corporation.
   """
+  @spec detect_active_threats(integer()) :: {:ok, map()} | {:error, term()}
   def detect_active_threats(corporation_id) do
     cache_key = {:active_threats, corporation_id}
 
@@ -41,6 +44,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
   @doc """
   Monitor real-time threat indicators.
   """
+  @spec monitor_threat_indicators(integer()) :: {:ok, map()} | {:error, term()}
   def monitor_threat_indicators(corporation_id) do
     with {:ok, current_threats} <- detect_active_threats(corporation_id),
          {:ok, threat_trends} <- analyze_threat_trends(corporation_id) do
@@ -62,6 +66,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
   @doc """
   Analyze specific threat patterns.
   """
+  @spec analyze_threat_pattern(integer(), atom()) :: {:ok, map()} | {:error, term()}
   def analyze_threat_pattern(corporation_id, pattern_type) do
     case pattern_type do
       :infiltration -> detect_infiltration_patterns(corporation_id)
@@ -75,6 +80,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
   @doc """
   Get threat detection alerts for a corporation.
   """
+  @spec get_threat_alerts(integer(), atom()) :: {:ok, list(map())} | {:error, term()}
   def get_threat_alerts(corporation_id, time_window \\ :hour) do
     with {:ok, threats} <- detect_active_threats(corporation_id) do
       alerts = filter_alerts_by_time_window(threats.threat_alerts, time_window)
@@ -114,7 +120,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
 
   defp get_recent_corporation_activity(corporation_id) do
     # Get activity from last 24 hours
-    start_time = DateTime.utc_now() |> DateTime.add(-24, :hour)
+    start_time = DateTime.utc_now() |> DateTimeUtils.add(-24 * 60 * 60, :second)
 
     with {:ok, members} <- CorporationRepository.get_corporation_members(corporation_id),
          {:ok, killmails} <- get_recent_corporation_killmails(members, start_time) do
@@ -144,7 +150,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
     recent_logins =
       members
       |> Enum.filter(fn member ->
-        member.last_seen && DateTime.compare(member.last_seen, start_time) == :gt
+        member.last_seen && DateTimeUtils.compare(member.last_seen, start_time) == :gt
       end)
 
     %{
@@ -175,24 +181,24 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
 
   defp count_new_member_logins(recent_logins) do
     # Count logins from members who joined in last 7 days
-    new_member_cutoff = DateTime.utc_now() |> DateTime.add(-7, :day)
+    new_member_cutoff = DateTime.utc_now() |> DateTimeUtils.add(-7 * 24 * 60 * 60, :second)
 
     Enum.count(recent_logins, fn member ->
-      member.join_date && DateTime.compare(member.join_date, new_member_cutoff) == :gt
+      member.join_date && DateTimeUtils.compare(member.join_date, new_member_cutoff) == :gt
     end)
   end
 
   defp detect_dormant_reactivations(members, start_time) do
     # Detect previously inactive members who suddenly became active
     # 30 days of inactivity
-    dormant_period = DateTime.add(start_time, -30, :day)
+    dormant_period = DateTimeUtils.add(start_time, -30 * 24 * 60 * 60, :second)
 
     reactivated =
       members
       |> Enum.filter(fn member ->
         if member.last_seen do
-          was_dormant = DateTime.compare(member.last_seen, dormant_period) == :lt
-          now_active = DateTime.compare(member.last_seen, start_time) == :gt
+          was_dormant = DateTimeUtils.compare(member.last_seen, dormant_period) == :lt
+          now_active = DateTimeUtils.compare(member.last_seen, start_time) == :gt
           was_dormant && now_active
         else
           false
@@ -201,7 +207,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
       |> Enum.map(fn member ->
         %{
           character_name: member.character_name,
-          dormant_days: DateTime.diff(start_time, member.last_seen, :day),
+          dormant_days: DateTimeUtils.diff(start_time, member.last_seen, :day),
           reactivation_flag: :suspicious
         }
       end)
@@ -278,11 +284,11 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
     events = []
 
     # Mass logout event
-    recent_cutoff = DateTime.utc_now() |> DateTime.add(-1, :hour)
+    recent_cutoff = DateTime.utc_now() |> DateTimeUtils.add(-1 * 60 * 60, :second)
 
     recent_active =
       Enum.count(members, fn m ->
-        m.last_seen && DateTime.compare(m.last_seen, recent_cutoff) == :gt
+        m.last_seen && DateTimeUtils.compare(m.last_seen, recent_cutoff) == :gt
       end)
 
     logout_events =
@@ -295,7 +301,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
     # Sudden spike in losses
     recent_losses =
       Enum.count(killmails, fn km ->
-        DateTime.compare(km.killmail_time, recent_cutoff) == :gt
+        DateTimeUtils.compare(km.killmail_time, recent_cutoff) == :gt
       end)
 
     loss_events =
@@ -323,11 +329,11 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
     anomalies = []
 
     # Multiple new members logging in together
-    new_member_cutoff = DateTime.utc_now() |> DateTime.add(-24, :hour)
+    new_member_cutoff = DateTime.utc_now() |> DateTimeUtils.add(-24 * 60 * 60, :second)
 
     new_member_logins =
       Enum.count(members, fn m ->
-        m.join_date && DateTime.compare(m.join_date, new_member_cutoff) == :gt
+        m.join_date && DateTimeUtils.compare(m.join_date, new_member_cutoff) == :gt
       end)
 
     login_anomalies =
@@ -432,18 +438,18 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
   end
 
   defp count_recent_joins(members, days) do
-    cutoff = DateTime.utc_now() |> DateTime.add(-days, :day)
+    cutoff = DateTime.utc_now() |> DateTimeUtils.add(-days * 24 * 60 * 60, :second)
 
     Enum.count(members, fn member ->
-      member.join_date && DateTime.compare(member.join_date, cutoff) == :gt
+      member.join_date && DateTimeUtils.compare(member.join_date, cutoff) == :gt
     end)
   end
 
   defp count_inactive_members(members) do
-    cutoff = DateTime.utc_now() |> DateTime.add(-7, :day)
+    cutoff = DateTime.utc_now() |> DateTimeUtils.add(-7 * 24 * 60 * 60, :second)
 
     Enum.count(members, fn member ->
-      is_nil(member.last_seen) || DateTime.compare(member.last_seen, cutoff) == :lt
+      is_nil(member.last_seen) || DateTimeUtils.compare(member.last_seen, cutoff) == :lt
     end)
   end
 
@@ -937,14 +943,14 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
   defp filter_alerts_by_time_window(alerts, time_window) do
     cutoff_time =
       case time_window do
-        :hour -> DateTime.utc_now() |> DateTime.add(-1, :hour)
-        :day -> DateTime.utc_now() |> DateTime.add(-24, :hour)
-        :week -> DateTime.utc_now() |> DateTime.add(-7 * 24, :hour)
-        _ -> DateTime.utc_now() |> DateTime.add(-1, :hour)
+        :hour -> DateTime.utc_now() |> DateTimeUtils.add(-1 * 60 * 60, :second)
+        :day -> DateTime.utc_now() |> DateTimeUtils.add(-24 * 60 * 60, :second)
+        :week -> DateTime.utc_now() |> DateTimeUtils.add(-7 * 24 * 60 * 60, :second)
+        _ -> DateTime.utc_now() |> DateTimeUtils.add(-1 * 60 * 60, :second)
       end
 
     Enum.filter(alerts, fn alert ->
-      DateTime.compare(alert.timestamp, cutoff_time) == :gt
+      DateTimeUtils.compare(alert.timestamp, cutoff_time) == :gt
     end)
   end
 

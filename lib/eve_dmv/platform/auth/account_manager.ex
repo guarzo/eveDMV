@@ -5,6 +5,7 @@ defmodule EveDmv.Users.AccountManager do
   Handles account creation, character linking, character switching,
   and account-level operations.
   """
+  """
 
   alias EveDmv.Api
   alias EveDmv.Users.Account
@@ -166,7 +167,9 @@ defmodule EveDmv.Users.AccountManager do
   def update_account_activity(account_id) do
     account = get_account!(account_id)
 
-    Ash.update!(account, %{last_login_at: DateTime.utc_now()}, domain: Api)
+    account
+    |> Ash.Changeset.for_update(:update_last_login, %{})
+    |> Ash.update!(domain: Api)
   end
 
   # Private functions

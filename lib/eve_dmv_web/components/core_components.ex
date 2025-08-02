@@ -5,6 +5,7 @@ defmodule EveDmvWeb.CoreComponents do
   This module provides the core UI components needed throughout the application,
   including both Phoenix defaults and custom EVE DMV components.
   """
+  """
 
   use Phoenix.Component
   alias Phoenix.LiveView.JS

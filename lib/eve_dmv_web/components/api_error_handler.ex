@@ -5,6 +5,7 @@ defmodule EveDmvWeb.Components.ApiErrorHandler do
   Provides consistent error handling across all LiveView pages,
   with user-friendly error messages and fallback strategies.
   """
+  """
 
   use Phoenix.Component
   import Phoenix.LiveView
@@ -30,9 +31,6 @@ defmodule EveDmvWeb.Components.ApiErrorHandler do
 
       :warning ->
         Logger.warning("API Warning in #{context}: #{inspect(error)}")
-
-      :info ->
-        Logger.info("API Info in #{context}: #{inspect(error)}")
     end
 
     # Show user-friendly message
@@ -53,9 +51,6 @@ defmodule EveDmvWeb.Components.ApiErrorHandler do
 
       :warning ->
         Logger.warning("API Warning in #{context}: #{inspect(error)}")
-
-      :info ->
-        Logger.info("API Info in #{context}: #{inspect(error)}")
     end
 
     # Build message with retry option if available

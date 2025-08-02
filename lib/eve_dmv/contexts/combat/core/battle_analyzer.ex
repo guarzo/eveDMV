@@ -8,6 +8,7 @@ defmodule EveDmv.Contexts.Combat.Core.BattleAnalyzer do
   - Strategic recommendations
   - Combat effectiveness evaluation
   """
+  """
 
   import Ecto.Query
 
@@ -17,6 +18,7 @@ defmodule EveDmv.Contexts.Combat.Core.BattleAnalyzer do
   alias EveDmv.Contexts.Combat.Core.PerformanceCalculator
   alias EveDmv.Contexts.Combat.Core.TacticalPatternDetector
   alias EveDmv.Contexts.Combat.Core.TimelineBuilder
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Repo
 
@@ -163,7 +165,7 @@ defmodule EveDmv.Contexts.Combat.Core.BattleAnalyzer do
   defp calculate_duration(killmails) do
     first = List.first(killmails).killmail_time
     last = List.last(killmails).killmail_time
-    DateTime.diff(last, first, :minute)
+    DateTimeUtils.diff(last, first, :minute)
   end
 
   defp calculate_total_isk(killmails) do
@@ -390,7 +392,7 @@ defmodule EveDmv.Contexts.Combat.Core.BattleAnalyzer do
     sorted = Enum.sort_by(killmails, & &1.killmail_time)
     first = List.first(sorted).killmail_time
     last = List.last(sorted).killmail_time
-    DateTime.diff(last, first, :second)
+    DateTimeUtils.diff(last, first, :second)
   end
 
   defp calculate_isk_efficiency(killmails, participants) do

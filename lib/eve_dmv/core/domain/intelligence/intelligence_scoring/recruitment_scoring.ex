@@ -5,6 +5,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.RecruitmentScoring do
   Handles assessment of candidate suitability for corporation recruitment,
   including skill fit, cultural alignment, security clearance, and growth potential.
   """
+  """
 
   require Logger
 

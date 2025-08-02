@@ -1,9 +1,13 @@
 defmodule EveDmv.Surveillance.Notification do
   @moduledoc """
+
   Notification resource for surveillance profile matches and other system events.
 
   Stores notifications for users about surveillance profile matches, allowing
   for persistent notification history and user notification preferences.
+  """
+
+    alias EveDmv.Core.Utils.DateTimeUtils
   """
 
   use Ash.Resource,
@@ -241,7 +245,7 @@ defmodule EveDmv.Surveillance.Notification do
 
         records
         |> Enum.map(fn record ->
-          DateTime.diff(now, record.inserted_at, :minute)
+          DateTimeUtils.diff(now, record.inserted_at, :minute)
         end)
       end)
     end

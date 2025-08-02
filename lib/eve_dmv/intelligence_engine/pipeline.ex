@@ -5,6 +5,7 @@ defmodule EveDmv.IntelligenceEngine.Pipeline do
   Provides the old Pipeline API while delegating to bounded context
   implementations.
   """
+  """
 
   require Logger
 

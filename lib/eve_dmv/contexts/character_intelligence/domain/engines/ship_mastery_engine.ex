@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
   Analyzes ship class mastery, tactical usage patterns, and fitting optimization
   to determine ship mastery threat level.
   """
+  """
 
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   alias EveDmv.StaticData.ShipTypes

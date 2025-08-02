@@ -3,6 +3,8 @@ defmodule EveDmvWeb.Helpers.TimeFormatter do
   Shared time formatting functions for LiveView modules.
   """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
+
   # Time constants in seconds
   @seconds_per_minute 60
   @seconds_per_hour 3_600
@@ -25,7 +27,7 @@ defmodule EveDmvWeb.Helpers.TimeFormatter do
   """
   @spec format_relative_time(DateTime.t() | nil) :: String.t()
   def format_relative_time(%DateTime{} = datetime) do
-    diff = DateTime.diff(DateTime.utc_now(), datetime)
+    diff = DateTimeUtils.diff(DateTime.utc_now(), datetime, :second)
 
     cond do
       diff < @seconds_per_minute -> "#{diff}s ago"
@@ -62,7 +64,7 @@ defmodule EveDmvWeb.Helpers.TimeFormatter do
 
   def format_friendly_time(%DateTime{} = datetime) do
     now = DateTime.utc_now()
-    diff_days = DateTime.diff(now, datetime, :day)
+    diff_days = DateTimeUtils.diff(now, datetime, :day)
 
     cond do
       diff_days == 0 -> "Today"
@@ -76,7 +78,7 @@ defmodule EveDmvWeb.Helpers.TimeFormatter do
   def format_friendly_time(%NaiveDateTime{} = datetime) do
     # Convert NaiveDateTime to DateTime (assuming UTC)
     datetime
-    |> DateTime.from_naive!("Etc/UTC")
+    |> DateTimeUtils.to_datetime()
     |> format_friendly_time()
   end
 
@@ -94,9 +96,9 @@ defmodule EveDmvWeb.Helpers.TimeFormatter do
   end
 
   def format_time_ago(%NaiveDateTime{} = datetime) do
-    case DateTime.from_naive(datetime, "Etc/UTC") do
-      {:ok, dt} -> format_relative_time(dt)
-      _ -> "Unknown"
+    case DateTimeUtils.to_datetime(datetime) do
+      nil -> "Unknown"
+      dt -> format_relative_time(dt)
     end
   rescue
     _ -> "Unknown"

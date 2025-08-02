@@ -5,6 +5,7 @@ defmodule EveDmv.Intelligence.Core.Supervisor do
   Manages analysis jobs using DynamicSupervisor to allow for
   concurrent analysis tasks with proper supervision and fault tolerance.
   """
+  """
 
   use Supervisor
 

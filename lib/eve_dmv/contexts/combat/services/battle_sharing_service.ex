@@ -8,10 +8,12 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
   - Exporting battle data in various formats
   - Managing battle visibility and access
   """
+  """
 
   alias EveDmv.Contexts.Combat.Core.BattleAnalyzer
   alias EveDmv.Contexts.Combat.Core.ParticipantAnalyzer
   alias EveDmv.Contexts.Combat.Services.BattleService
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Utils.NumberFormatter
   require Ash.Query
 
@@ -175,7 +177,7 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
   end
 
   defp calculate_expiry(%{expires_in: hours}) when is_number(hours) do
-    DateTime.add(DateTime.utc_now(), hours * 3600, :second)
+    DateTimeUtils.add(DateTime.utc_now(), hours * 3600, :second)
   end
 
   # No expiry by default
@@ -470,7 +472,7 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
         {:error, :sharing_disabled}
 
       battle.share_expires_at &&
-          DateTime.compare(DateTime.utc_now(), battle.share_expires_at) == :gt ->
+          DateTimeUtils.compare(DateTime.utc_now(), battle.share_expires_at) == :gt ->
         {:error, :share_expired}
 
       true ->

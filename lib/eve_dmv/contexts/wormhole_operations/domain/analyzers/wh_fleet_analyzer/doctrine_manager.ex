@@ -1,15 +1,16 @@
-defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.DoctrineManager do
+defmodule EveDmv.Contexts.WormholeOperations.Domain.Analyzers.WhFleetAnalyzer.DoctrineManager do
   @moduledoc """
   Handles doctrine creation, management, and counter-doctrine generation.
 
   This module provides functionality for creating fleet doctrines,
   generating counter-doctrines, and managing doctrine templates.
   """
+  """
 
+  alias EveDmv.Contexts.FleetOperations.Domain.Analyzers.FleetPilotAnalyzer
   alias EveDmv.Contexts.FleetOperations.Domain.Fleet.DoctrineTemplateBuilder
+  alias EveDmv.Contexts.WormholeOperations.Domain.Wormhole.WhFleetComposition
   alias EveDmv.Eve.EsiClient
-  alias EveDmv.Intelligence.Analyzers.FleetPilotAnalyzer
-  alias EveDmv.Intelligence.Wormhole.FleetComposition
 
   require Logger
 
@@ -48,7 +49,7 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.DoctrineManager do
         created_by: Keyword.get(options, :created_by)
       }
 
-      case FleetComposition.create(composition_data) do
+      case WhFleetComposition.create(composition_data) do
         {:ok, composition} ->
           # Return composition for immediate analysis by caller
           {:ok, composition}

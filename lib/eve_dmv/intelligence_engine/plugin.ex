@@ -5,6 +5,7 @@ defmodule EveDmv.IntelligenceEngine.Plugin do
   This defines the contract that all plugins must implement for
   backward compatibility with the old plugin system.
   """
+  """
 
   @doc """
   Returns plugin metadata including name, description, version, and dependencies.

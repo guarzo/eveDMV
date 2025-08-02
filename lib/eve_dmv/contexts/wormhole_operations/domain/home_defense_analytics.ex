@@ -6,6 +6,9 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalytics do
   and response times to threats for comprehensive home defense assessment.
   """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
+  """
+
   use Ash.Resource,
     domain: EveDmv.Domains.Intelligence,
     data_layer: AshPostgres.DataLayer
@@ -388,7 +391,7 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalytics do
         now = DateTime.utc_now()
 
         Enum.map(records, fn record ->
-          DateTime.diff(now, record.last_updated_at, :day)
+          DateTimeUtils.diff(now, record.last_updated_at, :day)
         end)
       end)
     end

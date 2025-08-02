@@ -24,6 +24,7 @@ defmodule EveDmv.Market.JaniceClient do
       # Appraise a ship fitting
       {:ok, appraisal} = JaniceClient.appraise_fit(fitting_text)
   """
+  """
 
   alias EveDmv.Config.Api
   alias EveDmv.Config.Http

@@ -5,6 +5,7 @@ defmodule EveDmv.Intelligence.Metrics.GeographicAnalysisCalculator do
   This module provides location-based analysis including system activity,
   security space distribution, wormhole analysis, and geographic diversity.
   """
+  """
 
   @doc """
   Calculate geographic activity patterns from killmail data.

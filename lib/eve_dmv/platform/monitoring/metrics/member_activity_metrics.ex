@@ -5,6 +5,7 @@ defmodule EveDmv.Intelligence.Metrics.MemberActivityMetrics do
   This module handles all numerical calculations, score computations,
   and metric derivations for member activity intelligence.
   """
+  """
 
   @doc """
   Calculate overall engagement score from activity and participation data.

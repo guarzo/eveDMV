@@ -4,6 +4,7 @@ defmodule EveDmvWeb.Components.ButtonComponent do
 
   Provides standardized button variants and sizes across the application.
   """
+  """
 
   use Phoenix.Component
 

@@ -5,6 +5,7 @@ defmodule EveDmv.Killmails.KillmailRaw do
   This resource stores the unprocessed killmail data as received from external
   sources, partitioned by killmail_time for optimal performance.
   """
+  """
 
   use Ash.Resource,
     otp_app: :eve_dmv,
@@ -13,6 +14,7 @@ defmodule EveDmv.Killmails.KillmailRaw do
     authorizers: [Ash.Policy.Authorizer]
 
   alias EveDmv.Ash.Preparations.QuerySafety
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   postgres do
     table("killmails_raw")
@@ -91,6 +93,13 @@ defmodule EveDmv.Killmails.KillmailRaw do
       default("wanderer-kills")
       constraints(max_length: 50)
       description("Source of the killmail data (wanderer-kills, zkillboard, etc.)")
+    end
+
+    # Participants JSONB column for efficient querying
+    attribute :participants_data, :map do
+      allow_nil?(true)
+      description("Denormalized participant data for efficient battle detection queries")
+      source(:participants)  # Map to the actual database column name
     end
 
     # Automatic timestamp
@@ -248,7 +257,7 @@ defmodule EveDmv.Killmails.KillmailRaw do
 
       calculation(fn records, _context ->
         Enum.map(records, fn record ->
-          DateTime.diff(DateTime.utc_now(), record.killmail_time, :hour)
+          DateTimeUtils.diff(DateTime.utc_now(), record.killmail_time, :hour)
         end)
       end)
     end

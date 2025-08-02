@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter do
   Provides formatted output for character analysis results including
   combat summaries, ship usage patterns, and behavioral insights.
   """
+  """
 
   # alias EveDmv.Presentation.Formatters
   alias EveDmv.Utils.MathUtils

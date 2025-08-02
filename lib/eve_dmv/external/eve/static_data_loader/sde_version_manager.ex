@@ -5,6 +5,7 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManager do
   This module checks for new SDE versions on startup and coordinates
   the download and processing of updated data if necessary.
   """
+  """
 
   alias EveDmv.Api
   alias EveDmv.Eve.SolarSystem

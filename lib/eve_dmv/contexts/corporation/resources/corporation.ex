@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.Corporation.Resources.Corporation do
   Represents corporation entities with comprehensive data management
   for membership, analytics, and operational data.
   """
+  """
 
   use Ash.Resource,
     domain: EveDmv.Api,

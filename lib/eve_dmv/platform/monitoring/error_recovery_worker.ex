@@ -8,9 +8,11 @@ defmodule EveDmv.Monitoring.ErrorRecoveryWorker do
   - Adjusting rate limits
   - Triggering circuit breakers
   """
+  """
 
   use GenServer
   alias ErrorCodes
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Monitoring.ErrorTracker
   alias EveDmv.Monitoring.PipelineMonitor
   alias KillmailPipeline
@@ -117,7 +119,7 @@ defmodule EveDmv.Monitoring.ErrorRecoveryWorker do
         state
 
       last_success ->
-        minutes_since_success = DateTime.diff(DateTime.utc_now(), last_success, :minute)
+        minutes_since_success = DateTimeUtils.diff(DateTime.utc_now(), last_success, :minute)
 
         if minutes_since_success > @stall_threshold_minutes do
           take_recovery_action(state, %RecoveryAction{

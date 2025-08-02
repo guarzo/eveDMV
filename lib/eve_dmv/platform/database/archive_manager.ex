@@ -5,6 +5,7 @@ defmodule EveDmv.Database.ArchiveManager do
   Implements automated archiving strategies to move older data to separate storage
   while maintaining query performance and managing storage costs.
   """
+  """
 
   use GenServer
 

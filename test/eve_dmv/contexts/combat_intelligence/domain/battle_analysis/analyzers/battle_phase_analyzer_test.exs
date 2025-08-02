@@ -255,7 +255,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
     end
 
     test "identifies hot drop for high intensity initial phase" do
-      phase = %{intensity: 3.0, duration_seconds: 60, kills: 10}
+      phase = %{intensity: 5.5, duration_seconds: 60, kills: 10}
       assert BattlePhaseAnalyzer.determine_phase_type(phase, 0, 3) == :hot_drop
     end
 

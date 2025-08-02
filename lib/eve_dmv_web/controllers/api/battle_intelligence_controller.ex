@@ -5,6 +5,7 @@ defmodule EveDmvWeb.Api.BattleIntelligenceController do
   Provides endpoints for retrieving comprehensive intelligence
   summaries and analysis for specific battles.
   """
+  """
 
   use EveDmvWeb, :controller
 

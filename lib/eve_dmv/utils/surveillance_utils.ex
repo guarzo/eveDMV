@@ -9,6 +9,9 @@ defmodule EveDmv.Utils.SurveillanceUtils do
   - Data confidence assessment
   - Statistical calculations
   """
+  """
+
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
@@ -256,11 +259,11 @@ defmodule EveDmv.Utils.SurveillanceUtils do
       # Compare recent vs older activity
       now = DateTime.utc_now()
       # Last 2 hours
-      recent_cutoff = DateTime.add(now, -2 * 3600, :second)
+      recent_cutoff = DateTimeUtils.add(now, -2 * 3600, :second)
 
       recent_count =
         Enum.count(recent_activity, fn %{killmail_time: time} ->
-          DateTime.compare(time, recent_cutoff) != :lt
+          DateTimeUtils.compare(time, recent_cutoff) != :lt
         end)
 
       older_count = length(recent_activity) - recent_count
@@ -326,7 +329,7 @@ defmodule EveDmv.Utils.SurveillanceUtils do
         |> Enum.map(& &1.detected_at)
         |> Enum.min_by(&DateTime.to_unix/1, DateTime)
 
-      days_span = max(1, DateTime.diff(now, oldest_threat, :day))
+      days_span = max(1, DateTimeUtils.diff(now, oldest_threat, :day))
       length(threat_history) / days_span
     end
   end

@@ -5,6 +5,7 @@ defmodule EveDmvWeb.Api.MultiSystemBattleController do
   Provides endpoints for analyzing correlated battles across
   multiple star systems and combat flow patterns.
   """
+  """
 
   use EveDmvWeb, :controller
 

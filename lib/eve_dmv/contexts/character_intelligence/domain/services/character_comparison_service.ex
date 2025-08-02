@@ -12,11 +12,13 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
 
   All analysis is based on real killmail data from the database.
   """
+  """
 
   import Ecto.Query
 
   # alias EveDmv.Api
   alias EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Shared.Infrastructure.UnifiedCache
@@ -121,7 +123,7 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
   # Private implementation functions
 
   defp fetch_character_data(character_ids, timeframe) do
-    since = DateTime.add(DateTime.utc_now(), -timeframe * 24, :hour)
+    since = DateTimeUtils.add(DateTime.utc_now(), -timeframe * 24 * 60 * 60, :second)
 
     # Fetch stats from materialized view
     stats_query =

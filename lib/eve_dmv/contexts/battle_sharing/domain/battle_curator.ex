@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
   This module serves as the main coordinator for battle sharing functionality,
   delegating specific tasks to specialized modules for better maintainability.
   """
+  """
 
   alias EveDmv.Contexts.BattleAnalysis
   alias EveDmv.Contexts.BattleSharing.Domain.CommunityManager

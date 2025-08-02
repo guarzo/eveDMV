@@ -8,9 +8,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.DataCollector
   - Optimizing data collection strategies based on dataset size
   - Handling streaming vs standard fetch decisions
   """
+  """
 
   alias EveDmv.Contexts.CombatIntelligence.Domain.Shared.KillmailMapper
   alias EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer
+  alias EveDmv.Core.Utils.DateTimeUtils
   require Logger
 
   @doc """
@@ -82,7 +84,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.DataCollector
   def fetch_recent_system_kills(system_id, seconds_back) do
     Logger.debug("Fetching kills in system #{system_id} from last #{seconds_back} seconds")
 
-    cutoff_time = DateTime.add(DateTime.utc_now(), -seconds_back, :second)
+    cutoff_time = DateTimeUtils.add(DateTime.utc_now(), -seconds_back, :second)
 
     # Use streaming for large time windows (> 4 hours) or when expecting > 1000 kills
     if seconds_back > 14_400 do
@@ -96,7 +98,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.DataCollector
   Standard fetch implementation for smaller datasets.
   """
   def use_standard_fetch(system_id, cutoff_time) do
-    seconds_back_calculated = DateTime.diff(DateTime.utc_now(), cutoff_time, :second)
+    seconds_back_calculated = DateTimeUtils.diff(DateTime.utc_now(), cutoff_time, :second)
 
     query = """
     SELECT
@@ -175,13 +177,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.DataCollector
 
         {:error, reason} ->
           Logger.error("Streaming fetch failed: #{inspect(reason)}")
-          smaller_cutoff = DateTime.add(DateTime.utc_now(), -3600, :second)
+          smaller_cutoff = DateTimeUtils.add(DateTime.utc_now(), -3600, :second)
           use_standard_fetch(system_id, smaller_cutoff)
       end
     rescue
       error ->
         Logger.error("Exception in streaming fetch: #{inspect(error)}")
-        smaller_cutoff = DateTime.add(DateTime.utc_now(), -3600, :second)
+        smaller_cutoff = DateTimeUtils.add(DateTime.utc_now(), -3600, :second)
         use_standard_fetch(system_id, smaller_cutoff)
     end
   end
@@ -223,8 +225,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.DataCollector
   defp calculate_optimal_battle_window(_system_id, battle_time) do
     # Create intelligent time window around the battle based on activity patterns
     # For now, use a standard 2-hour window around the battle time
-    start_time = DateTime.add(battle_time, -3600, :second)
-    end_time = DateTime.add(battle_time, 3600, :second)
+    start_time = DateTimeUtils.add(battle_time, -3600, :second)
+    end_time = DateTimeUtils.add(battle_time, 3600, :second)
 
     {start_time, end_time}
   end

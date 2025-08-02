@@ -5,6 +5,7 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
   Handles resolution of ship types, item types, and solar systems from
   static EVE database data. These entities have stable names that rarely change.
   """
+  """
 
   alias EveDmv.Cache
   alias EveDmv.Cache.StaticDataCache

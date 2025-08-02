@@ -5,6 +5,7 @@ defmodule EveDmvWeb.Components.ReusableComponents do
   Consolidates imports for all reusable components including page headers,
   stats grids, data tables, and various state components.
   """
+  """
 
   defmacro __using__(_) do
     quote do

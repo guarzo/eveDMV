@@ -6,11 +6,13 @@ defmodule EveDmv.Contexts.Combat.Services.DoctrineEffectivenessService do
   by querying actual battle outcomes and killmail data to determine how different
   fleet compositions perform against each other.
   """
+  """
 
   alias EveDmv.Database.KillmailRepository
   alias EveDmv.StaticData.ShipTypes
   # alias EveDmv.Contexts.Combat.Core.BattleAnalyzer
   alias EveDmv.Cache
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
@@ -174,7 +176,7 @@ defmodule EveDmv.Contexts.Combat.Services.DoctrineEffectivenessService do
 
   defp find_similar_battles(composition, time_window_days) do
     # Find battles with similar fleet compositions
-    start_date = DateTime.add(DateTime.utc_now(), -time_window_days * 24 * 3600, :second)
+    start_date = DateTimeUtils.add(DateTime.utc_now(), -time_window_days * 24 * 3600, :second)
 
     case KillmailRepository.get_battles_since(start_date) do
       {:ok, battles} ->
@@ -360,7 +362,7 @@ defmodule EveDmv.Contexts.Combat.Services.DoctrineEffectivenessService do
 
   defp analyze_common_doctrines(time_window_days) do
     # Analyze recent battles to identify common fleet compositions
-    start_date = DateTime.add(DateTime.utc_now(), -time_window_days * 24 * 3600, :second)
+    start_date = DateTimeUtils.add(DateTime.utc_now(), -time_window_days * 24 * 3600, :second)
 
     case KillmailRepository.get_popular_fleet_compositions(start_date, limit: 10) do
       {:ok, compositions} ->

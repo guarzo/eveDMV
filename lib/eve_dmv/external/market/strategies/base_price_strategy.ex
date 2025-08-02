@@ -5,6 +5,7 @@ defmodule EveDmv.Market.Strategies.BasePriceStrategy do
   This strategy uses the base NPC prices from the Static Data Export
   as a last resort when no market data is available.
   """
+  """
 
   @behaviour EveDmv.Market.PricingStrategy
 

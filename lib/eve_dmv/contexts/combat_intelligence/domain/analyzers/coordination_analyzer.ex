@@ -4,6 +4,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Coo
 
   Extracts and analyzes coordination-related functions from the tactical analysis system.
   """
+  """
 
   require Logger
 

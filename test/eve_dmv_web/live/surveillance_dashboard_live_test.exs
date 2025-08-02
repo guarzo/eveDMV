@@ -3,6 +3,7 @@ defmodule EveDmvWeb.SurveillanceDashboardLiveTest do
 
   import Phoenix.LiveViewTest
   import EveDmvWeb.LiveViewTestHelpers
+  import EveDmv.Factories
 
   describe "surveillance dashboard live" do
     setup :setup_authenticated_conn

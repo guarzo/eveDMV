@@ -5,6 +5,7 @@ defmodule EveDmv.Database.PartitionManager do
   Handles monthly partitions for killmails_raw table,
   automatically creating future partitions and managing partition lifecycle.
   """
+  """
 
   use GenServer
 

@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.ParticipationDataPr
   Provides temporary stub implementation to resolve Dialyzer errors.
   This module should be fully implemented as part of the corporation analysis feature.
   """
+  """
 
   @doc """
   Get participation data for a character over a time period.

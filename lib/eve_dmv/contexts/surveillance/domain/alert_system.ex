@@ -1,9 +1,13 @@
 defmodule EveDmv.Intelligence.AlertSystem do
   @moduledoc """
+
   Real-time intelligence alert system.
 
   Monitors intelligence data for significant events and threats,
   generating real-time alerts for security personnel and administrators.
+  """
+
+  alias EveDmv.Core.Utils.DateTimeUtils
   """
 
   use GenServer
@@ -281,7 +285,7 @@ defmodule EveDmv.Intelligence.AlertSystem do
 
   defp monitor_new_threats do
     # Query recent character analyses with high threat ratings
-    cutoff_date = DateTime.add(DateTime.utc_now(), -24, :hour)
+    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -24 * 60 * 60, :second)
 
     try do
       # This would query the character stats for recent high-threat individuals

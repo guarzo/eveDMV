@@ -8,8 +8,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.TimelineBuilder do
   - Key moment detection
   - Tactical flow analysis
   """
+  """
 
   import Ecto.Query
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   @doc """
   Build a complete battle timeline from killmails.
@@ -37,10 +39,22 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.TimelineBuilder do
   @doc """
   Build timeline for a specific battle.
   """
-  def build_battle_timeline(_battle_id) do
-    # In real implementation, would fetch killmails for battle
-    # For now, return error
-    {:error, :not_implemented}
+  def build_battle_timeline(battle_id) do
+    # Fetch killmails for the battle
+    with {:ok, battle} <- EveDmv.Contexts.BattleAnalysis.Services.BattleService.get_battle(battle_id),
+         {:ok, killmails} <- get_battle_killmails(battle) do
+      build_timeline(killmails)
+    end
+  end
+
+  defp get_battle_killmails(battle) do
+    killmails =
+      EveDmv.Killmails.KillmailRaw
+      |> where([k], k.killmail_id in ^(battle.killmail_ids || []))
+      |> order_by([k], asc: k.killmail_time)
+      |> EveDmv.Repo.all()
+
+    {:ok, killmails}
   end
 
   @doc """
@@ -130,7 +144,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.TimelineBuilder do
     |> Enum.map(fn {event, index} ->
       if index > 0 do
         previous_event = Enum.at(events, index - 1)
-        delta = DateTime.diff(event.time, previous_event.time, :second)
+        delta = DateTimeUtils.diff(event.time, previous_event.time, :second)
         Map.put(event, :time_since_last, delta)
       else
         Map.put(event, :time_since_last, 0)
@@ -220,7 +234,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.TimelineBuilder do
 
   defp should_start_new_phase?(event, [last | _]) do
     # New phase if more than 5 minutes since last kill
-    DateTime.diff(event.time, last.time, :minute) > 5
+    DateTimeUtils.diff(event.time, last.time, :minute) > 5
   end
 
   defp analyze_phase(events) do
@@ -241,7 +255,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.TimelineBuilder do
   defp calculate_phase_duration(events) do
     first = List.first(events).time
     last = List.last(events).time
-    DateTime.diff(last, first, :minute)
+    DateTimeUtils.diff(last, first, :minute)
   end
 
   defp calculate_phase_intensity(events) do
@@ -280,7 +294,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.TimelineBuilder do
   defp rapid_succession?(events) do
     avg_time_between =
       if length(events) > 1 do
-        total_duration = DateTime.diff(List.last(events).time, List.first(events).time, :second)
+        total_duration = DateTimeUtils.diff(List.last(events).time, List.first(events, :second).time)
         total_duration / (length(events) - 1)
       else
         999
@@ -342,7 +356,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.TimelineBuilder do
   end
 
   defp should_merge_phases?(phase1, phase2) do
-    gap = DateTime.diff(phase2.start_time, phase1.end_time, :minute)
+    gap = DateTimeUtils.diff(phase2.start_time, phase1.end_time, :minute)
     phase1.duration < 3 || phase2.duration < 3 || gap < 2
   end
 
@@ -351,7 +365,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.TimelineBuilder do
       id: phase1.id,
       start_time: phase1.start_time,
       end_time: phase2.end_time,
-      duration: DateTime.diff(phase2.end_time, phase1.start_time, :minute),
+      duration: DateTimeUtils.diff(phase2.end_time, phase1.start_time, :minute),
       events: phase1.events ++ phase2.events,
       kill_count: phase1.kill_count + phase2.kill_count,
       isk_destroyed: phase1.isk_destroyed + phase2.isk_destroyed,
@@ -458,7 +472,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.TimelineBuilder do
   defp calculate_total_duration(events) do
     first = List.first(events).time
     last = List.last(events).time
-    DateTime.diff(last, first, :minute)
+    DateTimeUtils.diff(last, first, :minute)
   end
 
   defp calculate_average_intensity(phases) do

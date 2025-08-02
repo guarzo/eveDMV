@@ -6,6 +6,7 @@ defmodule EveDmv.Core.SharedKernel.Policies.SecurityClassification do
   bounded contexts, including threat assessment, operational planning, and
   risk evaluation.
   """
+  """
 
   alias EveDmv.Core.SharedKernel.ValueObjects.SystemId
 

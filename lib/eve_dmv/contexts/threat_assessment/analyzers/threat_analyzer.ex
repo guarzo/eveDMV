@@ -13,6 +13,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
   - Associate network analysis
   - Bulk threat assessment capabilities
   """
+  """
 
   use EveDmv.ErrorHandler
 

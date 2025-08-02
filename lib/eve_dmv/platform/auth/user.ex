@@ -5,6 +5,7 @@ defmodule EveDmv.Users.User do
   Each user represents an EVE character and can have multiple characters
   linked to the same account for character switching functionality.
   """
+  """
 
   use Ash.Resource,
     otp_app: :eve_dmv,
@@ -14,6 +15,7 @@ defmodule EveDmv.Users.User do
     authorizers: [Ash.Policy.Authorizer]
 
   alias Ash.Changeset
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Eve.EsiRequestClient
 
   require Logger
@@ -295,6 +297,12 @@ defmodule EveDmv.Users.User do
       description("Promote a user to admin status")
       accept([:is_admin])
     end
+
+    # Link to account action (for testing and multi-character support)
+    update :link_to_account do
+      description("Link user to an account")
+      accept([:account_id])
+    end
   end
 
   # Authorization policies
@@ -528,7 +536,7 @@ defmodule EveDmv.Users.User do
           nil
 
         expires_in when is_integer(expires_in) ->
-          DateTime.add(DateTime.utc_now(), expires_in, :second)
+          DateTimeUtils.add(DateTime.utc_now(), expires_in, :second)
 
         _ ->
           nil

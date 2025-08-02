@@ -6,6 +6,7 @@ defmodule EveDmvWeb.FallbackController do
   for all API controllers that use action_fallback/1. It handles both
   JSON API responses and HTML view responses based on the request content type.
   """
+  """
 
   use EveDmvWeb, :controller
   require Logger

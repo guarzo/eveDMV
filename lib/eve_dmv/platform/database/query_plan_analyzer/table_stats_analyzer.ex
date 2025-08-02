@@ -5,8 +5,10 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
   Analyzes table usage patterns, bloat ratios, index effectiveness,
   and provides maintenance recommendations for optimal database performance.
   """
+  """
 
   alias Ecto.Adapters.SQL
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Repo
   require Logger
 
@@ -346,12 +348,12 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
 
       date when is_binary(date) ->
         case DateTime.from_iso8601(date) do
-          {:ok, datetime, _} -> DateTime.diff(DateTime.utc_now(), datetime, :day) > 7
+          {:ok, datetime, _} -> DateTimeUtils.diff(DateTime.utc_now(), datetime, :day) > 7
           _ -> true
         end
 
       %DateTime{} = datetime ->
-        DateTime.diff(DateTime.utc_now(), datetime, :day) > 7
+        DateTimeUtils.diff(DateTime.utc_now(), datetime, :day) > 7
 
       _ ->
         true

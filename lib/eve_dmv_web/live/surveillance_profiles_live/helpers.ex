@@ -2,9 +2,11 @@ defmodule EveDmvWeb.SurveillanceProfilesLive.Helpers do
   @moduledoc """
   Helper functions for the Surveillance Profiles LiveView.
   """
+  """
 
   use Phoenix.Component
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmvWeb.Helpers.TimeFormatter
 
   def format_filter_type(type) do
@@ -282,9 +284,9 @@ defmodule EveDmvWeb.SurveillanceProfilesLive.Helpers do
   def format_timestamp(_), do: "Unknown"
 
   defp format_naive_datetime(ndt) do
-    case DateTime.from_naive(ndt, "Etc/UTC") do
-      {:ok, dt} -> TimeFormatter.format_relative_time(dt)
-      _ -> "Unknown"
+    case DateTimeUtils.to_datetime(ndt) do
+      nil -> "Unknown"
+      dt -> TimeFormatter.format_relative_time(dt)
     end
   end
 end

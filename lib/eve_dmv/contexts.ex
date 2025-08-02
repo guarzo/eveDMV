@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts do
   This module serves as the context map, documenting how different bounded
   contexts relate to each other and what events they publish/subscribe to.
   """
+  """
 
   @contexts %{
     killmail_processing: %{

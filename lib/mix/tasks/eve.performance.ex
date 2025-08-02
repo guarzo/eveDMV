@@ -11,6 +11,7 @@ defmodule Mix.Tasks.Eve.Performance do
       mix eve.performance --regression-check   # Check for performance regressions
       mix eve.performance --report             # Generate performance report
   """
+  """
 
   use Mix.Task
 

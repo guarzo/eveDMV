@@ -5,8 +5,10 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveMetrics do
   Handles collection and reporting of archive performance metrics,
   storage statistics, and operational insights for monitoring and optimization.
   """
+  """
 
   alias Ecto.Adapters.SQL
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.ArchiveManager.ArchiveOperations
   alias EveDmv.Database.ArchiveManager.PartitionManager
   alias EveDmv.Repo
@@ -302,7 +304,7 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveMetrics do
   defp calculate_date_span(_, nil), do: 0
 
   defp calculate_date_span(start_date, end_date) do
-    DateTime.diff(end_date, start_date, :day)
+    DateTimeUtils.diff(end_date, start_date, :day)
   end
 
   defp calculate_summary_statistics(table_stats) do

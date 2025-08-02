@@ -5,6 +5,7 @@ defmodule EveDmv.Analytics.PerformanceCalculator do
   This module extracts common calculation logic used by both player and ship statistics
   to ensure consistency and reduce code duplication.
   """
+  """
 
   @doc """
   Calculate kill/death ratio with safe division handling.

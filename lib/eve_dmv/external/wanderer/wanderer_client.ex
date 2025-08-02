@@ -5,6 +5,7 @@ defmodule EveDmv.Intelligence.WandererClient do
   Provides functions to fetch chain topology, system inhabitants,
   and maintain real-time connections via Server-Sent Events (SSE).
   """
+  """
 
   use GenServer
   alias EveDmv.Utils.DnsResolver

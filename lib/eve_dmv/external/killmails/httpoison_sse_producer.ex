@@ -4,10 +4,12 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
   Broadway producer using HTTPoison's built-in streaming - the industry standard approach.
   Uses: HTTPoison.get!(url, [], recv_timeout: :infinity, stream_to: self())
   """
+  """
 
   use GenStage
 
   alias Broadway.Message
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
@@ -32,7 +34,7 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
       connected_at: nil,
       buffer: "",
       killmail_count: 0,
-      last_summary_time: DateTime.utc_now(),
+      last_summary_time: DateTimeUtils.utc_now(),
       summary_timer: summary_timer
     }
 
@@ -57,7 +59,7 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
              | connected: true,
                demand: new_demand,
                retry_delay: @default_retry_delay,
-               connected_at: DateTime.utc_now()
+               connected_at: DateTimeUtils.utc_now()
            }}
 
         {:error, reason} ->
@@ -148,7 +150,7 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
   def handle_info(%HTTPoison.AsyncEnd{}, state) do
     duration =
       if state.connected_at,
-        do: DateTime.diff(DateTime.utc_now(), state.connected_at, :second),
+        do: DateTimeUtils.diff(DateTimeUtils.utc_now(), state.connected_at, :second),
         else: 0
 
     Logger.info("HTTPoison SSE stream ended after #{duration}s")
@@ -159,7 +161,7 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
   def handle_info(%HTTPoison.Error{reason: reason}, state) do
     duration =
       if state.connected_at,
-        do: DateTime.diff(DateTime.utc_now(), state.connected_at, :second),
+        do: DateTimeUtils.diff(DateTimeUtils.utc_now(), state.connected_at, :second),
         else: 0
 
     Logger.warning("🔌 HTTPoison SSE error after #{duration}s - Reason: #{inspect(reason)}")
@@ -168,15 +170,15 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
   end
 
   def handle_info(:log_summary, state) do
-    now = DateTime.utc_now()
-    duration = DateTime.diff(now, state.last_summary_time, :second)
+    now = DateTimeUtils.utc_now()
+    duration = DateTimeUtils.diff(now, state.last_summary_time, :second)
 
     rate = if duration > 0, do: Float.round(state.killmail_count / (duration / 60), 1), else: 0.0
 
     connection_status = if state.connected, do: "Connected", else: "Disconnected"
 
     connection_duration =
-      if state.connected_at, do: DateTime.diff(now, state.connected_at, :second), else: 0
+      if state.connected_at, do: DateTimeUtils.diff(now, state.connected_at, :second), else: 0
 
     Logger.info(
       "📊 EVE DMV Killmail Summary: #{state.killmail_count} kills received in last #{duration}s (#{rate}/min) | Status: #{connection_status} for #{connection_duration}s"
@@ -200,7 +202,7 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
            | connected: true,
              retry_delay: @default_retry_delay,
              retry_timer: nil,
-             connected_at: DateTime.utc_now(),
+             connected_at: DateTimeUtils.utc_now(),
              buffer: ""
          }}
 

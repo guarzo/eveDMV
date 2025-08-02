@@ -7,10 +7,12 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   - Corporation Analysis organizational metrics
   - Corporation Intelligence health monitoring
   """
+  """
 
   alias EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer
   alias EveDmv.Contexts.Corporation.Core.MemberRiskAssessment
   alias EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
   alias EveDmv.Platform.Database.CorporationRepository
   alias EveDmv.Utils.DateHelper
@@ -247,7 +249,7 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
       inactive_leaders =
         Enum.count(leaders, fn leader ->
           is_nil(leader.last_seen) ||
-            DateTime.diff(DateTime.utc_now(), leader.last_seen, :day) > 30
+            DateTimeUtils.diff(DateTime.utc_now(), leader.last_seen, :day) > 30
         end)
 
       assessment =
@@ -470,20 +472,20 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
     total_members = length(members)
 
     # Recent recruits (last 90 days)
-    recent_cutoff = DateTime.utc_now() |> DateTime.add(-90, :day)
+    recent_cutoff = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
 
     recent_recruits =
       Enum.count(members, fn member ->
-        member.join_date && DateTime.compare(member.join_date, recent_cutoff) == :gt
+        member.join_date && DateTimeUtils.compare(member.join_date, recent_cutoff) == :gt
       end)
 
     # Inactive members (30+ days)
-    inactive_cutoff = DateTime.utc_now() |> DateTime.add(-30, :day)
+    inactive_cutoff = DateTime.utc_now() |> DateTimeUtils.add(-30 * 24 * 60 * 60, :second)
 
     inactive_members =
       Enum.count(members, fn member ->
         is_nil(member.last_seen) ||
-          DateTime.compare(member.last_seen, inactive_cutoff) == :lt
+          DateTimeUtils.compare(member.last_seen, inactive_cutoff) == :lt
       end)
 
     recruitment_rate =
@@ -835,7 +837,7 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
     recent_recruits =
       Enum.count(members, fn member ->
         if member.join_date do
-          DateTime.diff(DateTime.utc_now(), member.join_date, :day) <= 90
+          DateTimeUtils.diff(DateTime.utc_now(), member.join_date, :day) <= 90
         else
           false
         end
@@ -1094,7 +1096,7 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   defp calculate_tenure_days(nil), do: 0
 
   defp calculate_tenure_days(join_date) do
-    DateTime.diff(DateTime.utc_now(), join_date, :day)
+    DateTimeUtils.diff(DateTime.utc_now(), join_date, :day)
   end
 
   defp has_leadership_role?(member) do

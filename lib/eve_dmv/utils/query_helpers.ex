@@ -4,6 +4,7 @@ defmodule EveDmv.Utils.QueryHelpers do
 
   Part of Sprint 22 Quality Standards - Code Duplication Elimination.
   """
+  """
 
   import Ecto.Query
   require Logger

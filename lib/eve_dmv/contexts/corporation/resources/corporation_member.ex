@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.Corporation.Resources.CorporationMember do
   Represents individual members within corporations with activity tracking,
   role management, and analytics data.
   """
+  """
 
   use Ash.Resource,
     domain: EveDmv.Api,

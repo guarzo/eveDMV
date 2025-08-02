@@ -22,6 +22,7 @@ defmodule Mix.Tasks.Eve.PartitionManager do
       # Show partition statistics
       mix eve.partition_manager stats
   """
+  """
 
   @shortdoc "Manage database table partitions"
 

@@ -5,6 +5,7 @@ defmodule EveDmv.Shared.ShipAnalysis do
   Contains common functions for analyzing ship usage patterns, roles,
   specializations, and other ship-related metrics across the application.
   """
+  """
 
   @doc """
   Analyze ship usage patterns for character statistics.

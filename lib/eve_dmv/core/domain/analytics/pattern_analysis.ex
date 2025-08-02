@@ -8,7 +8,9 @@ defmodule EveDmv.Core.Domain.Analytics.PatternAnalysis do
   This module consolidates pattern analysis functionality that was previously
   scattered across multiple contexts during the namespace consolidation.
   """
+  """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Utils.DateHelper
 
   require Logger
@@ -642,7 +644,7 @@ defmodule EveDmv.Core.Domain.Analytics.PatternAnalysis do
       first_kill = List.first(sorted_kills)
       last_kill = List.last(sorted_kills)
 
-      time_span_days = abs(DateTime.diff(last_kill.killmail_time, first_kill.killmail_time, :day))
+      time_span_days = abs(DateTimeUtils.diff(last_kill.killmail_time, first_kill.killmail_time, :day))
 
       if time_span_days < 30 do
         0.0

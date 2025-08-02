@@ -343,7 +343,7 @@ defmodule EveDmv.StaticData.ShipAttributesTest do
       # If no constraints are enforced, this test may need adjustment
       result = ShipAttributes.create(attrs_with_negative_dps)
       # Should either succeed (if no constraints) or fail gracefully
-      assert {:ok, _} = result or {:error, _} = result
+      assert match?({:ok, _}, result) or match?({:error, _}, result)
     end
 
     test "handles decimal precision correctly" do

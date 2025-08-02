@@ -11,6 +11,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ProfileManagementService do
 
   Works with real surveillance profile data stored in the database.
   """
+  """
 
   alias EveDmv.Api
   alias EveDmv.Contexts.Surveillance.Domain.AdvancedFilterEngine

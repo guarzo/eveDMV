@@ -4,6 +4,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.Analyzers.ModuleClassifier do
 
   Classifies ship roles based on their fitted modules and combat behavior.
   """
+  """
 
   require Logger
 
@@ -152,24 +153,39 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.Analyzers.ModuleClassifier do
   @doc """
   Get ship DPS classification.
   """
-  def get_dps_class(_ship_data) do
-    Logger.info("DPS classification not yet implemented")
-    :unknown
+  def get_dps_class(ship_data) do
+    ship_type_id = ship_data[:ship_type_id] || ship_data["ship_type_id"]
+    if ship_type_id do
+      ship_class = EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
+      classify_dps_capability(ship_class)
+    else
+      :unknown
+    end
   end
 
   @doc """
   Get ship tank classification.
   """
-  def get_tank_type(_ship_data) do
-    Logger.info("Tank classification not yet implemented")
-    :unknown
+  def get_tank_type(ship_data) do
+    ship_type_id = ship_data[:ship_type_id] || ship_data["ship_type_id"]
+    if ship_type_id do
+      ship_class = EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
+      classify_tank_capability(ship_class)
+    else
+      :unknown
+    end
   end
 
   @doc """
   Get ship mobility classification.
   """
-  def get_mobility_class(_ship_data) do
-    Logger.info("Mobility classification not yet implemented")
-    :unknown
+  def get_mobility_class(ship_data) do
+    ship_type_id = ship_data[:ship_type_id] || ship_data["ship_type_id"]
+    if ship_type_id do
+      ship_class = EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
+      classify_mobility_capability(ship_class)
+    else
+      :unknown
+    end
   end
 end

@@ -5,6 +5,7 @@ defmodule EveDmvWeb.Api.BattleShareController do
   Enables users to create shareable battle reports with
   custom metadata, visibility settings, and external links.
   """
+  """
 
   use EveDmvWeb, :controller
 

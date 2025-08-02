@@ -2,6 +2,7 @@ defmodule EveDmv.Presentation.Formatters do
   @moduledoc """
   Formatting utilities for UI presentation
   """
+  """
 
   alias EveDmv.Constants.Isk
 

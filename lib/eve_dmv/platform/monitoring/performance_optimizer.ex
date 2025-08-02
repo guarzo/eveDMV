@@ -6,11 +6,13 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
   Provides tools for optimizing query performance, batch processing,
   and resource management for intelligence operations.
   """
+  """
 
   alias EveDmv.Api
+  alias EveDmv.Contexts.WormholeOperations.Domain.Wormhole.WhVetting
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.Cache.IntelligenceCache
   alias EveDmv.Intelligence.CharacterStats
-  alias EveDmv.Intelligence.Wormhole.Vetting, as: WHVetting
   alias EveDmv.Killmails.Participant
 
   require Logger
@@ -53,7 +55,7 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
     date_range =
       date_range ||
         {
-          DateTime.add(DateTime.utc_now(), -365, :day),
+          DateTimeUtils.add(DateTime.utc_now(), -365 * 24 * 60 * 60, :second),
           DateTime.utc_now()
         }
 
@@ -258,7 +260,7 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
     |> Enum.chunk_every(100)
     |> Enum.flat_map(fn batch ->
       Enum.map(batch, fn char_id ->
-        case WHVetting.get_by_character(char_id) do
+        case WhVetting.get_by_character(char_id) do
           {:ok, [vetting]} -> {char_id, vetting}
           _ -> {char_id, nil}
         end
@@ -271,7 +273,7 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
     Logger.debug("Preloading killmail data for #{length(character_ids)} characters")
 
     # This would use an optimized bulk query in a real implementation
-    _cutoff_date = DateTime.add(DateTime.utc_now(), -90, :day)
+    _cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -90 * 24 * 60 * 60, :second)
 
     character_ids
     |> Enum.chunk_every(50)

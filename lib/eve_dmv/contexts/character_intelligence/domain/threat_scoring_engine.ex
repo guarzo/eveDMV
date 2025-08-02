@@ -13,9 +13,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   Uses advanced statistical analysis, behavioral pattern recognition, and machine learning
   techniques to provide actionable intelligence for fleet commanders and solo pilots.
   """
+  """
 
   alias EveDmv.Api
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
+  alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
 
   require Ash.Query
@@ -177,7 +180,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
 
   defp fetch_character_combat_data(character_id, analysis_window_days) do
     cutoff_date =
-      NaiveDateTime.add(NaiveDateTime.utc_now(), -analysis_window_days * 24 * 60 * 60, :second)
+      DateTimeUtils.add(NaiveDateTime.utc_now(), -analysis_window_days * 24 * 60 * 60, :second)
 
     # Fetch killmails where character was victim
     victim_query =
@@ -421,11 +424,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
 
   defp calculate_recent_activity_score(combat_data, weight_recent) do
     if weight_recent do
-      recent_cutoff = NaiveDateTime.add(NaiveDateTime.utc_now(), -30 * 24 * 60 * 60, :second)
+      recent_cutoff = DateTimeUtils.add(NaiveDateTime.utc_now(), -30 * 24 * 60 * 60, :second)
 
       recent_killmails =
         Enum.filter(combat_data.killmails, fn km ->
-          NaiveDateTime.compare(km.killmail_time, recent_cutoff) != :lt
+          DateTimeUtils.compare(km.killmail_time, recent_cutoff) != :lt
         end)
 
       if length(recent_killmails) < 3 do
@@ -797,7 +800,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
         |> Enum.sort_by(& &1.killmail_time)
         |> Enum.chunk_every(2, 1, :discard)
         |> Enum.count(fn [km1, km2] ->
-          time_diff = NaiveDateTime.diff(km2.killmail_time, km1.killmail_time, :second)
+          time_diff = DateTimeUtils.diff(km2.killmail_time, km1.killmail_time, :second)
           # Within 5 minutes
           time_diff < 300
         end)

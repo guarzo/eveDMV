@@ -2,11 +2,13 @@ defmodule EveDmv.Contexts.Intelligence.Services.ProfileService do
   @moduledoc """
   Service for generating comprehensive character profiles and handling exports.
   """
+  """
 
   alias EveDmv.Cache
   alias EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer
   alias EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer
   alias EveDmv.Contexts.Intelligence.Core.ThreatAssessmentEngine
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
@@ -96,7 +98,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.ProfileService do
         {:error, :not_found}
 
       share_record ->
-        if DateTime.compare(DateTime.utc_now(), share_record.expires_at) == :lt do
+        if DateTimeUtils.compare(DateTime.utc_now(), share_record.expires_at) == :lt do
           {:ok, share_record.profile_data}
         else
           {:error, :expired}
@@ -541,11 +543,11 @@ defmodule EveDmv.Contexts.Intelligence.Services.ProfileService do
         expiry
 
       days when is_integer(days) ->
-        DateTime.utc_now() |> DateTime.add(days * 24 * 60 * 60, :second)
+        DateTime.utc_now() |> DateTimeUtils.add(days * 24 * 60 * 60, :second)
 
       # Default 7 days
       _ ->
-        DateTime.utc_now() |> DateTime.add(7 * 24 * 60 * 60, :second)
+        DateTime.utc_now() |> DateTimeUtils.add(7 * 24 * 60 * 60, :second)
     end
   end
 

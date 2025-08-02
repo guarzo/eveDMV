@@ -5,6 +5,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.FleetScoring do
   Handles assessment of fleet composition, command structure, tactical coherence,
   and multi-character collaboration effectiveness.
   """
+  """
 
   alias EveDmv.Intelligence.AdvancedAnalytics
   require Logger

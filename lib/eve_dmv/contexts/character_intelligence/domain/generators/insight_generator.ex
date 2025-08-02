@@ -7,6 +7,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Generators.
 
   All insights are based on real data analysis and statistical patterns.
   """
+  """
 
   alias EveDmv.Killmails.KillmailRaw
 

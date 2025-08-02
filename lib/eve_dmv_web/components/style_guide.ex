@@ -5,6 +5,7 @@ defmodule EveDmvWeb.Components.StyleGuide do
   This module provides a centralized reference for all UI components
   and their proper usage patterns.
   """
+  """
 
   use Phoenix.Component
   import EveDmvWeb.Components.ButtonComponent

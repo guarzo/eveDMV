@@ -9,7 +9,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Pe
   - Identifying top performers and engagement metrics
   - Processing side-by-side performance comparisons
   """
+  """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   require Logger
 
   @doc """
@@ -215,13 +217,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Pe
       timeline_data =
         time_buckets
         |> Enum.map(fn bucket_start ->
-          bucket_end = DateTime.add(bucket_start, 60, :second)
+          bucket_end = DateTimeUtils.add(bucket_start, 60, :second)
 
           # Find kills in this bucket
           bucket_kills =
             Enum.filter(sorted_kills, fn km ->
-              DateTime.compare(km.killmail_time, bucket_start) != :lt and
-                DateTime.compare(km.killmail_time, bucket_end) == :lt
+              DateTimeUtils.compare(km.killmail_time, bucket_start) != :lt and
+                DateTimeUtils.compare(km.killmail_time, bucket_end) == :lt
             end)
 
           # Calculate bucket metrics
@@ -287,7 +289,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Pe
       sorted_kills = Enum.sort_by(killmails, & &1.killmail_time)
 
       duration_seconds =
-        DateTime.diff(
+        DateTimeUtils.diff(
           List.last(sorted_kills).killmail_time,
           List.first(sorted_kills).killmail_time
         )
@@ -342,7 +344,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Pe
 
           duration_minutes =
             max(
-              DateTime.diff(
+              DateTimeUtils.diff(
                 List.last(sorted_kills).killmail_time,
                 List.first(sorted_kills).killmail_time
               ) / 60,
@@ -425,12 +427,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Pe
   end
 
   defp create_time_buckets(start_time, end_time, interval_seconds) do
-    duration_seconds = DateTime.diff(end_time, start_time)
+    duration_seconds = DateTimeUtils.diff(end_time, start_time, :second)
     bucket_count = max(div(duration_seconds, interval_seconds), 1)
 
     0..(bucket_count - 1)
     |> Enum.map(fn i ->
-      DateTime.add(start_time, i * interval_seconds, :second)
+      DateTimeUtils.add(start_time, i * interval_seconds, :second)
     end)
   end
 
@@ -565,4 +567,5 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Pe
       true -> :unknown
     end
   end
+
 end

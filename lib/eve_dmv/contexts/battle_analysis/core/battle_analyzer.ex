@@ -11,12 +11,14 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
 
   import Ecto.Query
 
+  alias EveDmv.Contexts.BattleAnalysis.Api, as: BattleApi
   alias EveDmv.Contexts.BattleAnalysis.Resources.Battle
   alias EveDmv.Contexts.Combat.Core.FleetCompositionAnalyzer
   alias EveDmv.Contexts.Combat.Core.ParticipantAnalyzer
   alias EveDmv.Contexts.Combat.Core.PerformanceCalculator
   alias EveDmv.Contexts.Combat.Core.TacticalPatternDetector
   alias EveDmv.Contexts.Combat.Core.TimelineBuilder
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Repo
 
@@ -51,6 +53,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
          performance_metrics: performance,
          recommendations: generate_recommendations(tactics, fleet_comp, performance)
        }}
+    else
+      {:error, _} = error -> error
+      _ -> {:error, :analysis_failed}
     end
   end
 
@@ -82,34 +87,40 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
   Generate a battle summary suitable for display.
   """
   def get_battle_summary(battle_id) do
-    with {:ok, analysis} <- analyze_battle(battle_id) do
-      summary = %{
-        headline: generate_headline(analysis),
-        key_stats: extract_key_stats(analysis),
-        winning_side: determine_winner(analysis),
-        mvp_pilot: find_mvp(analysis),
-        turning_point: identify_turning_point(analysis),
-        notable_kills: find_notable_kills(analysis)
-      }
+    case analyze_battle(battle_id) do
+      {:ok, analysis} ->
+        summary = %{
+          headline: generate_headline(analysis),
+          key_stats: extract_key_stats(analysis),
+          winning_side: determine_winner(analysis),
+          mvp_pilot: find_mvp(analysis),
+          turning_point: identify_turning_point(analysis),
+          notable_kills: find_notable_kills(analysis)
+        }
 
-      {:ok, summary}
+        {:ok, summary}
+
+      {:error, _reason} = error ->
+        error
     end
   end
 
   # Private Functions
 
   defp get_battle_data(battle_id) do
-    case Repo.get(Battle, battle_id) do
-      nil -> {:error, :battle_not_found}
-      battle -> {:ok, battle}
+    case Ash.get(Battle, battle_id, domain: BattleApi) do
+      {:ok, battle} -> {:ok, battle}
+      {:error, %Ash.Error.Query.NotFound{}} -> {:error, :battle_not_found}
+      {:error, error} -> {:error, error}
     end
   end
 
   defp get_battle_killmails(battle) do
     killmails =
-      KillmailRaw
-      |> where([k], k.killmail_id in ^battle.killmail_ids)
-      |> order_by([k], asc: k.killmail_time)
+      from(k in KillmailRaw,
+        where: k.killmail_id in ^battle.killmail_ids,
+        order_by: [asc: k.killmail_time]
+      )
       |> Repo.all()
 
     {:ok, killmails}
@@ -163,7 +174,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
   defp calculate_duration(killmails) do
     first = List.first(killmails).killmail_time
     last = List.last(killmails).killmail_time
-    DateTime.diff(last, first, :minute)
+    DateTimeUtils.diff(last, first, :minute)
   end
 
   defp calculate_total_isk(killmails) do
@@ -261,8 +272,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
   defp find_peak_activity(killmails) do
     killmails
     |> Enum.group_by(fn km ->
-      km.killmail_time
-      |> DateTime.truncate(:minute)
+      time = km.killmail_time
+
+      case time do
+        %DateTime{} = dt -> DateTime.truncate(dt, :second)
+        %NaiveDateTime{} = ndt -> NaiveDateTime.truncate(ndt, :second)
+        _ -> time
+      end
     end)
     |> Enum.max_by(fn {_time, kms} -> length(kms) end, fn -> {nil, []} end)
     |> elem(0)
@@ -467,7 +483,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
             sorted_killmails
             |> Enum.chunk_every(2, 1, :discard)
             |> Enum.map(fn [km1, km2] ->
-              DateTime.diff(km2.killmail_time, km1.killmail_time, :second)
+              DateTimeUtils.diff(km2.killmail_time, km1.killmail_time, :second)
             end)
 
           # Gate camps have consistent short intervals between kills
@@ -515,7 +531,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
           kill_times = Enum.map(killmails, & &1.killmail_time)
           min_time = Enum.min(kill_times)
           max_time = Enum.max(kill_times)
-          time_span = DateTime.diff(max_time, min_time, :second)
+          time_span = DateTimeUtils.diff(max_time, min_time, :second)
 
           # Bombing run if multiple bombers and kills within short timespan
           bomber_count >= 3 and time_span <= 30

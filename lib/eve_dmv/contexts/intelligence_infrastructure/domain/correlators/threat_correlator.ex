@@ -2,9 +2,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   @moduledoc """
   Correlator for threat patterns across multiple systems.
   """
+  """
 
   import Ecto.Query
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Repo
   require Logger
 
@@ -301,7 +303,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
   defp fetch_threat_data(system_ids) do
     # Fetch killmail data for threat analysis
-    start_time = DateTime.add(DateTime.utc_now(), -24 * 3600, :second)
+    start_time = DateTimeUtils.add(DateTime.utc_now(), -24 * 3600, :second)
 
     query =
       from(k in "killmails_enriched",
@@ -449,7 +451,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
   defp fetch_threat_timeline(system_ids) do
     # Fetch time-ordered threat data for spillover analysis
-    start_time = DateTime.add(DateTime.utc_now(), -48 * 3600, :second)
+    start_time = DateTimeUtils.add(DateTime.utc_now(), -48 * 3600, :second)
 
     query =
       from(k in "killmails_enriched",
@@ -488,14 +490,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
           |> Enum.chunk_every(2, 1, :discard)
           |> Enum.filter(fn [e1, e2] ->
             e1.solar_system_id != e2.solar_system_id and
-              DateTime.diff(e2.killmail_time, e1.killmail_time, :hour) < 3
+              DateTimeUtils.diff(e2.killmail_time, e1.killmail_time, :hour) < 3
           end)
           |> Enum.map(fn [e1, e2] ->
             %{
               entity: entity,
               from_system: e1.solar_system_id,
               to_system: e2.solar_system_id,
-              time_gap: DateTime.diff(e2.killmail_time, e1.killmail_time, :minute),
+              time_gap: DateTimeUtils.diff(e2.killmail_time, e1.killmail_time, :minute),
               confidence: 0.7
             }
           end)
@@ -539,14 +541,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
   defp fetch_recent_threat_metrics(system_ids) do
     # Get metrics for last 24 hours
-    start_time = DateTime.add(DateTime.utc_now(), -24 * 3600, :second)
+    start_time = DateTimeUtils.add(DateTime.utc_now(), -24 * 3600, :second)
     fetch_threat_metrics(system_ids, start_time)
   end
 
   defp fetch_historical_threat_metrics(system_ids) do
     # Get metrics for 3-7 days ago
-    start_time = DateTime.add(DateTime.utc_now(), -7 * 24 * 3600, :second)
-    end_time = DateTime.add(DateTime.utc_now(), -3 * 24 * 3600, :second)
+    start_time = DateTimeUtils.add(DateTime.utc_now(), -7 * 24 * 3600, :second)
+    end_time = DateTimeUtils.add(DateTime.utc_now(), -3 * 24 * 3600, :second)
     fetch_threat_metrics(system_ids, start_time, end_time)
   end
 
@@ -569,7 +571,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
     result = Repo.one(query) || %{}
 
-    hours = DateTime.diff(end_time, start_time, :hour)
+    hours = DateTimeUtils.diff(end_time, start_time, :hour)
     kill_count = Map.get(result, :kill_count, 0)
 
     %{

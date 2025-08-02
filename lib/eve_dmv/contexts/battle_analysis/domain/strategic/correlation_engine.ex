@@ -1,5 +1,6 @@
 defmodule EveDmv.Shared.Strategic.CorrelationEngine do
   @moduledoc """
+
   Handles cross-system correlations and clustering for strategic analysis.
 
   Responsible for:
@@ -7,6 +8,9 @@ defmodule EveDmv.Shared.Strategic.CorrelationEngine do
   - Graph algorithms for connectivity
   - Activity clustering
   - Relationship detection
+  """
+
+    alias EveDmv.Core.Utils.DateTimeUtils
   """
 
   require Logger
@@ -146,10 +150,10 @@ defmodule EveDmv.Shared.Strategic.CorrelationEngine do
       min_time = Enum.min_by(killmails, & &1.timestamp).timestamp
       max_time = Enum.max_by(killmails, & &1.timestamp).timestamp
 
-      hours_diff = div(DateTime.diff(max_time, min_time, :second), 3600)
+      hours_diff = div(DateTimeUtils.diff(max_time, min_time, :second), 3600)
 
       Enum.map(0..hours_diff, fn h ->
-        DateTime.add(min_time, h * 3600, :second)
+        DateTimeUtils.add(min_time, h * 3600, :second)
       end)
     end
   end
@@ -158,7 +162,7 @@ defmodule EveDmv.Shared.Strategic.CorrelationEngine do
     kill_times =
       MapSet.new(killmails, fn km ->
         DateTime.truncate(km.timestamp, :second)
-        |> DateTime.add(-rem(km.timestamp.minute, 60) * 60 - km.timestamp.second, :second)
+        |> DateTimeUtils.add(-rem(km.timestamp.minute, 60) * 60 - km.timestamp.second, :second)
       end)
 
     Enum.map(windows, fn window ->
@@ -442,7 +446,7 @@ defmodule EveDmv.Shared.Strategic.CorrelationEngine do
     else
       min_time = Enum.min_by(killmails, & &1.timestamp).timestamp
       max_time = Enum.max_by(killmails, & &1.timestamp).timestamp
-      DateTime.diff(max_time, min_time, :hour)
+      DateTimeUtils.diff(max_time, min_time, :hour)
     end
   end
 
@@ -623,7 +627,7 @@ defmodule EveDmv.Shared.Strategic.CorrelationEngine do
     else
       first = Enum.min_by(pilot_kills, & &1.timestamp).timestamp
       last = Enum.max_by(pilot_kills, & &1.timestamp).timestamp
-      DateTime.diff(last, first, :hour)
+      DateTimeUtils.diff(last, first, :hour)
     end
   end
 
@@ -658,7 +662,7 @@ defmodule EveDmv.Shared.Strategic.CorrelationEngine do
           %{
             engagements: [e1.killmail_id, e2.killmail_id],
             shared_participants: MapSet.to_list(shared),
-            time_diff: abs(DateTime.diff(e1.timestamp, e2.timestamp, :minute)),
+            time_diff: abs(DateTimeUtils.diff(e1.timestamp, e2.timestamp, :minute)),
             same_system: e1.system_id == e2.system_id
           }
         else

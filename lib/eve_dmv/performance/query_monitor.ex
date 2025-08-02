@@ -5,6 +5,7 @@ defmodule EveDmv.Performance.QueryMonitor do
   Tracks query execution times, identifies slow queries, and provides
   performance metrics for database operations.
   """
+  """
 
   alias EveDmv.Database.QueryPlanAnalyzer
 

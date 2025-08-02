@@ -5,14 +5,15 @@ defmodule EveDmv.Core.SharedKernel.ValueObjects.SystemId do
   System IDs are immutable identifiers for EVE solar systems, with specific
   validation rules based on the EVE static data export.
   """
+  """
+
+  defstruct [:value]
 
   # Solar system IDs are between 30,000,000 and 32,000,000
   @min_system_id 30_000_000
   @max_system_id 32_000_000
 
   @type t :: %__MODULE__{value: integer()}
-
-  defstruct [:value]
 
   @doc """
   Create a new SystemId from an integer.

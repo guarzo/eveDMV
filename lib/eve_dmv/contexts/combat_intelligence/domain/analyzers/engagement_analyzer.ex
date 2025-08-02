@@ -4,6 +4,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Eng
 
   Extracts and analyzes engagement-related functions from the tactical analysis system.
   """
+  """
 
   require Logger
 

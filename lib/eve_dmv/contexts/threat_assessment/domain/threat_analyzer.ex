@@ -6,11 +6,13 @@ defmodule EveDmv.Contexts.ThreatAssessment.Domain.ThreatAnalyzer do
   behavioral analysis, tactical weakness identification, and security assessment
   for characters, corporations, and fleets.
   """
+  """
 
   use GenServer
   use EveDmv.ErrorHandler
 
   alias EveDmv.Contexts.ThreatAssessment.Analyzers.VulnerabilityScanner
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.CharacterRepository
   alias EveDmv.Database.KillmailRepository
   alias EveDmv.Platform.Database.CorporationRepository
@@ -273,7 +275,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Domain.ThreatAnalyzer do
         # Get recent killmails for character
         case KillmailRepository.get_by_character(
                entity_id,
-               DateTime.add(DateTime.utc_now(), -90 * 24 * 60 * 60, :second)
+               DateTimeUtils.add(DateTime.utc_now(), -90 * 24 * 60 * 60, :second)
              ) do
           {:ok, killmails} -> %{recent_killmails: killmails}
           _ -> %{recent_killmails: []}
@@ -517,7 +519,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Domain.ThreatAnalyzer do
 
   defp cache_valid?(timestamp, opts) do
     ttl = Keyword.get(opts, :cache_ttl_seconds, 300)
-    age = DateTime.diff(DateTime.utc_now(), timestamp, :second)
+    age = DateTimeUtils.diff(DateTime.utc_now(), timestamp, :second)
     age < ttl
   end
 

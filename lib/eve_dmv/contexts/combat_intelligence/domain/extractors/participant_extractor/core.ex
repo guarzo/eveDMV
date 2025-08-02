@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
   Handles the fundamental participant extraction and enrichment operations,
   including basic data gathering and participant metric calculations.
   """
+  """
 
   require Logger
 

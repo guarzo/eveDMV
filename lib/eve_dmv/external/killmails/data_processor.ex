@@ -5,6 +5,7 @@ defmodule EveDmv.Killmails.DataProcessor do
   This module consolidates the transformation logic to reduce coupling
   between pipeline stages and provide a single point of data processing.
   """
+  """
 
   alias EveDmv.Eve.NameResolver
   alias EveDmv.Killmails.KillmailDataTransformer

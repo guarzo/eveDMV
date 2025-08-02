@@ -13,30 +13,52 @@ defmodule EveDmvWeb.AuthControllerTest do
   # Make sure mocks are verified when the test exits
   setup :verify_on_exit!
 
+  # Helper function to create a user with an account
+  defp create_user_with_account(character_id \\ 123_456, character_name \\ "TestPilot") do
+    user_info = %{
+      "CharacterID" => character_id,
+      "CharacterName" => character_name
+    }
+
+    oauth_tokens = %{
+      "access_token" => "valid_access_token",
+      "refresh_token" => "valid_refresh_token",
+      "expires_in" => 3600
+    }
+
+    {:ok, user} =
+      Ash.create(
+        User,
+        %{
+          user_info: user_info,
+          oauth_tokens: oauth_tokens
+        },
+        action: :register_with_eve_sso,
+        domain: Api
+      )
+
+    # Create an account for the user
+    {:ok, account} =
+      EveDmv.Users.Account
+      |> Ash.Changeset.for_create(:create, %{
+        primary_character_id: user.id,
+        is_admin: false
+      })
+      |> Ash.create(domain: Api)
+
+    # Link user to account using the new link_to_account action
+    {:ok, linked_user} =
+      user
+      |> Ash.Changeset.for_update(:link_to_account, %{account_id: account.id})
+      |> Ash.update(domain: Api)
+
+    {:ok, linked_user, account}
+  end
+
   describe "success/2 - OAuth success callback" do
     test "creates new user and redirects to dashboard on successful EVE SSO", %{conn: conn} do
-      # Create a test user using EVE SSO action
-      user_info = %{
-        "CharacterID" => 123_456,
-        "CharacterName" => "TestPilot"
-      }
-
-      oauth_tokens = %{
-        "access_token" => "valid_access_token",
-        "refresh_token" => "valid_refresh_token",
-        "expires_in" => 3600
-      }
-
-      {:ok, user} =
-        Ash.create(
-          User,
-          %{
-            user_info: user_info,
-            oauth_tokens: oauth_tokens
-          },
-          action: :register_with_eve_sso,
-          domain: Api
-        )
+      # Create a test user with account
+      {:ok, user, _account} = create_user_with_account()
 
       # Call the success function directly
       conn =
@@ -55,28 +77,8 @@ defmodule EveDmvWeb.AuthControllerTest do
     end
 
     test "updates existing user and redirects on re-authentication", %{conn: conn} do
-      # Create existing user
-      user_info = %{
-        "CharacterID" => 123_456,
-        "CharacterName" => "TestPilot"
-      }
-
-      oauth_tokens = %{
-        "access_token" => "old_token",
-        "refresh_token" => "old_refresh",
-        "expires_in" => 3600
-      }
-
-      {:ok, existing_user} =
-        Ash.create(
-          User,
-          %{
-            user_info: user_info,
-            oauth_tokens: oauth_tokens
-          },
-          action: :register_with_eve_sso,
-          domain: Api
-        )
+      # Create existing user with account
+      {:ok, existing_user, _account} = create_user_with_account()
 
       # Update the user with new tokens
       {:ok, updated_user} =
@@ -116,28 +118,8 @@ defmodule EveDmvWeb.AuthControllerTest do
     end
 
     test "handles sign out", %{conn: conn} do
-      # Create and sign in a user
-      user_info = %{
-        "CharacterID" => 123_456,
-        "CharacterName" => "TestPilot"
-      }
-
-      oauth_tokens = %{
-        "access_token" => "valid_token",
-        "refresh_token" => "valid_refresh",
-        "expires_in" => 3600
-      }
-
-      {:ok, user} =
-        Ash.create(
-          User,
-          %{
-            user_info: user_info,
-            oauth_tokens: oauth_tokens
-          },
-          action: :register_with_eve_sso,
-          domain: Api
-        )
+      # Create and sign in a user with account
+      {:ok, user, _account} = create_user_with_account()
 
       # Set up session
       conn =
@@ -194,28 +176,8 @@ defmodule EveDmvWeb.AuthControllerTest do
 
   describe "sign_out/2" do
     setup %{conn: conn} do
-      # Create and sign in a user
-      user_info = %{
-        "CharacterID" => 123_456,
-        "CharacterName" => "TestPilot"
-      }
-
-      oauth_tokens = %{
-        "access_token" => "test_token",
-        "refresh_token" => "test_refresh",
-        "expires_in" => 3600
-      }
-
-      {:ok, user} =
-        Ash.create(
-          User,
-          %{
-            user_info: user_info,
-            oauth_tokens: oauth_tokens
-          },
-          action: :register_with_eve_sso,
-          domain: Api
-        )
+      # Create and sign in a user with account
+      {:ok, user, _account} = create_user_with_account()
 
       conn =
         conn
@@ -257,28 +219,8 @@ defmodule EveDmvWeb.AuthControllerTest do
 
   describe "session security" do
     test "prevents session fixation attacks", %{conn: conn} do
-      # Create a test user
-      user_info = %{
-        "CharacterID" => 123_456,
-        "CharacterName" => "TestPilot"
-      }
-
-      oauth_tokens = %{
-        "access_token" => "token",
-        "refresh_token" => "refresh",
-        "expires_in" => 3600
-      }
-
-      {:ok, user} =
-        Ash.create(
-          User,
-          %{
-            user_info: user_info,
-            oauth_tokens: oauth_tokens
-          },
-          action: :register_with_eve_sso,
-          domain: Api
-        )
+      # Create a test user with account
+      {:ok, user, _account} = create_user_with_account()
 
       # Authenticate
       auth_conn =
@@ -292,28 +234,8 @@ defmodule EveDmvWeb.AuthControllerTest do
     end
 
     test "handles concurrent authentication attempts", %{conn: _conn} do
-      # Create a test user
-      user_info = %{
-        "CharacterID" => 123_456,
-        "CharacterName" => "TestPilot"
-      }
-
-      oauth_tokens = %{
-        "access_token" => "token",
-        "refresh_token" => "refresh",
-        "expires_in" => 3600
-      }
-
-      {:ok, user} =
-        Ash.create(
-          User,
-          %{
-            user_info: user_info,
-            oauth_tokens: oauth_tokens
-          },
-          action: :register_with_eve_sso,
-          domain: Api
-        )
+      # Create a test user with account
+      {:ok, user, _account} = create_user_with_account()
 
       # Simulate multiple concurrent requests
       tasks =
@@ -344,28 +266,8 @@ defmodule EveDmvWeb.AuthControllerTest do
   @tag timeout: 60_000
   property "auth controller handles various character ID formats" do
     check all(character_id <- character_id_generator(), max_runs: 10) do
-      # Create user with various character IDs
-      user_info = %{
-        "CharacterID" => character_id,
-        "CharacterName" => "TestPilot"
-      }
-
-      oauth_tokens = %{
-        "access_token" => "token",
-        "refresh_token" => "refresh",
-        "expires_in" => 3600
-      }
-
-      {:ok, user} =
-        Ash.create(
-          User,
-          %{
-            user_info: user_info,
-            oauth_tokens: oauth_tokens
-          },
-          action: :register_with_eve_sso,
-          domain: Api
-        )
+      # Create user with various character IDs and account
+      {:ok, user, _account} = create_user_with_account(character_id, "TestPilot")
 
       conn = build_conn()
 
@@ -392,27 +294,7 @@ defmodule EveDmvWeb.AuthControllerTest do
     test "maintains stability under rapid authentication attempts" do
       # Rename to reflect actual behavior
       # This test validates stability, not rate limiting
-      user_info = %{
-        "CharacterID" => 123_456,
-        "CharacterName" => "TestPilot"
-      }
-
-      oauth_tokens = %{
-        "access_token" => "token",
-        "refresh_token" => "refresh",
-        "expires_in" => 3600
-      }
-
-      {:ok, user} =
-        Ash.create(
-          User,
-          %{
-            user_info: user_info,
-            oauth_tokens: oauth_tokens
-          },
-          action: :register_with_eve_sso,
-          domain: Api
-        )
+      {:ok, user, _account} = create_user_with_account()
 
       # Make 10 rapid requests
       results =
@@ -434,27 +316,7 @@ defmodule EveDmvWeb.AuthControllerTest do
 
     test "handles concurrent authentication attempts" do
       # Test concurrent access to ensure thread safety
-      user_info = %{
-        "CharacterID" => 123_457,
-        "CharacterName" => "ConcurrentPilot"
-      }
-
-      oauth_tokens = %{
-        "access_token" => "concurrent_token",
-        "refresh_token" => "concurrent_refresh",
-        "expires_in" => 3600
-      }
-
-      {:ok, user} =
-        Ash.create(
-          User,
-          %{
-            user_info: user_info,
-            oauth_tokens: oauth_tokens
-          },
-          action: :register_with_eve_sso,
-          domain: Api
-        )
+      {:ok, user, _account} = create_user_with_account(123_457, "ConcurrentPilot")
 
       # Launch concurrent authentication attempts
       tasks =
@@ -486,28 +348,7 @@ defmodule EveDmvWeb.AuthControllerTest do
       # Test that concurrent sessions don't interfere with each other
       users =
         for i <- 1..3 do
-          user_info = %{
-            "CharacterID" => 200_000 + i,
-            "CharacterName" => "IsolatedPilot#{i}"
-          }
-
-          oauth_tokens = %{
-            "access_token" => "isolated_token_#{i}",
-            "refresh_token" => "isolated_refresh_#{i}",
-            "expires_in" => 3600
-          }
-
-          {:ok, user} =
-            Ash.create(
-              User,
-              %{
-                user_info: user_info,
-                oauth_tokens: oauth_tokens
-              },
-              action: :register_with_eve_sso,
-              domain: Api
-            )
-
+          {:ok, user, _account} = create_user_with_account(200_000 + i, "IsolatedPilot#{i}")
           user
         end
 

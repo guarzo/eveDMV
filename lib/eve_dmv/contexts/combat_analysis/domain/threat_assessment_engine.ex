@@ -11,12 +11,14 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
 
   All assessments are based on actual killmail data and combat patterns.
   """
+  """
 
   use GenServer
 
   import Ecto.Query
 
   alias EveDmv.Api
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Shared.Infrastructure.UnifiedCache
@@ -268,7 +270,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
 
   defp fetch_combat_stats(entity_id, :corporation) do
     # For corporations, aggregate member stats
-    since = DateTime.add(DateTime.utc_now(), -90 * 24, :hour)
+    since = DateTimeUtils.add(DateTime.utc_now(), -90 * 24 * 60 * 60, :second)
 
     query =
       from(k in KillmailRaw,
@@ -295,7 +297,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
   end
 
   defp fetch_recent_activity(entity_id, entity_type, timeframe_days) do
-    since = DateTime.add(DateTime.utc_now(), -timeframe_days * 24, :hour)
+    since = DateTimeUtils.add(DateTime.utc_now(), -timeframe_days * 24 * 60 * 60, :second)
 
     query =
       case entity_type do

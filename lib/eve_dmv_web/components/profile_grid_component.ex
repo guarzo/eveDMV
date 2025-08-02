@@ -5,6 +5,7 @@ defmodule EveDmvWeb.ProfileGridComponent do
   Handles profile cards with stats, batch selection, filter previews,
   and profile action buttons (activate/pause/delete).
   """
+  """
 
   use EveDmvWeb, :live_component
 

@@ -5,9 +5,11 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngine d
   Provides real-time matching of killmails against surveillance profiles
   with comprehensive criteria support and alert generation.
   """
+  """
 
   use GenServer
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.DomainEvents.KillmailEnriched
   alias EveDmv.DomainEvents.SurveillanceMatch
   alias EveDmv.Infrastructure.EventBus
@@ -138,7 +140,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngine d
   @impl GenServer
   def handle_call({:get_recent_matches, options}, _from, state) do
     limit = Keyword.get(options, :limit, 50)
-    since = Keyword.get(options, :since, DateTime.add(DateTime.utc_now(), -24 * 3600, :second))
+    since = Keyword.get(options, :since, DateTimeUtils.add(DateTime.utc_now(), -24 * 3600, :second))
 
     case get_recent_matches_from_cache_or_db(since, limit) do
       {:ok, matches} -> {:reply, {:ok, matches}, state}
@@ -151,7 +153,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngine d
     limit = Keyword.get(options, :limit, 50)
 
     since =
-      Keyword.get(options, :since, DateTime.add(DateTime.utc_now(), -7 * 24 * 3600, :second))
+      Keyword.get(options, :since, DateTimeUtils.add(DateTime.utc_now(), -7 * 24 * 3600, :second))
 
     case get_profile_matches_from_cache_or_db(profile_id, since, limit) do
       {:ok, matches} -> {:reply, {:ok, matches}, state}

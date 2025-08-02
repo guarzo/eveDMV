@@ -2,6 +2,7 @@ defmodule EveDmvWeb.HomeLive do
   @moduledoc """
   LiveView home page with integrated universal search functionality.
   """
+  """
 
   use EveDmvWeb, :live_view
 

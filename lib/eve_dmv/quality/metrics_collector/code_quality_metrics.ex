@@ -5,6 +5,7 @@ defmodule EveDmv.Quality.MetricsCollector.CodeQualityMetrics do
   Handles Credo analysis, Dialyzer checks, code complexity,
   dependency analysis, and maintainability calculations.
   """
+  """
 
   @doc """
   Collects comprehensive code quality metrics.

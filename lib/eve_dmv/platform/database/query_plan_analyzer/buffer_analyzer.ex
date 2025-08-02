@@ -5,6 +5,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.BufferAnalyzer do
   Analyzes shared buffer usage, cache hit ratios, and temporary file usage
   to identify I/O bottlenecks and memory optimization opportunities.
   """
+  """
 
   require Logger
 

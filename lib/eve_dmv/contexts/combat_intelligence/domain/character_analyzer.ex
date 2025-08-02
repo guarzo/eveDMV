@@ -5,10 +5,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   Simplified character analysis module that provides direct analysis operations
   without GenServer overhead.
   """
+  """
 
   import Ecto.Query
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator
   alias EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Repo
   require Logger
 
@@ -128,7 +130,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
     limit = Map.get(criteria, :limit, 100)
 
     # Search for characters with recent activity
-    cutoff_date = DateTime.add(DateTime.utc_now(), -activity_days, :day)
+    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -activity_days, :day)
 
     # Query for characters with killmail activity in the specified timeframe
     query =
@@ -191,7 +193,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
     include_kills = Keyword.get(opts, :include_kills, true)
 
     # Date range for analysis
-    cutoff_date = DateTime.add(DateTime.utc_now(), -days_back, :day)
+    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -days_back, :day)
 
     # Get character's killmail activity
     activity_data =
@@ -293,7 +295,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
       last_event = Enum.max_by(activity_data, & &1.killmail_time)
 
       days_active =
-        max(1, DateTime.diff(last_event.killmail_time, first_event.killmail_time, :day))
+        max(1, DateTimeUtils.diff(last_event.killmail_time, first_event.killmail_time, :day))
 
       %{
         total_events: total_events,
@@ -738,7 +740,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   end
 
   defp get_recent_activity_count(character_id, days_back) do
-    cutoff_date = DateTime.add(DateTime.utc_now(), -days_back, :day)
+    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -days_back, :day)
 
     query =
       from(k in "killmails_raw",

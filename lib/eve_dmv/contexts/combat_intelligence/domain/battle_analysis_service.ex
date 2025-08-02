@@ -13,6 +13,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   This service processes killmail data to provide actionable intelligence
   for fleet commanders and strategic planners.
   """
+  """
 
   use GenServer
   use EveDmv.ErrorHandler
@@ -27,9 +28,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   alias EveDmv.Contexts.Combat.Core.FleetCompositionAnalyzer
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.BattlePhaseAnalyzer
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleComparisonEngine
-
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.DataCollectors.BattleDataCollector
-
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.FleetComparisonEngine
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.LiveEngagementTracker
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.RecommendationEngine
@@ -38,6 +37,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.BattleTimelineBuilder
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.PerformanceCalculator
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.TacticalAnalysisEngine
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.DomainEvents.BattleAnalysisComplete
   alias EveDmv.DomainEvents.TacticalInsightGenerated
   alias EveDmv.Infrastructure.EventBus
@@ -477,7 +477,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     else
       first = List.first(timeline)
       last = List.last(timeline)
-      DateTime.diff(last.timestamp, first.timestamp)
+      DateTimeUtils.diff(last.timestamp, first.timestamp, :second)
     end
   end
 

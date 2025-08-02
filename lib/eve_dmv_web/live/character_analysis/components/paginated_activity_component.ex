@@ -2,6 +2,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.PaginatedActivityComponent do
   @moduledoc """
   LiveComponent for displaying paginated character activity.
   """
+  """
 
   use EveDmvWeb, :live_component
   import EveDmvWeb.Helpers.TimeFormatter

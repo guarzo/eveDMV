@@ -9,9 +9,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
   Simplified intelligence scoring module that provides direct scoring operations
   without GenServer overhead.
   """
+  """
 
   import Ash.Expr
   alias EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache
+  alias EveDmv.Core.Utils.DateTimeUtils
   require Logger
   require Ash.Query
 
@@ -138,7 +140,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
   defp calculate_danger_rating(character_id) do
     # Calculate danger rating based on recent kills, kill frequency, and ship values destroyed
     # Get recent activity (last 30 days)
-    thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30 * 24 * 60 * 60, :second)
+    thirty_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-30 * 24 * 60 * 60, :second)
 
     query =
       EveDmv.Killmails.KillmailRaw
@@ -244,7 +246,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
 
   defp calculate_hunter_score(character_id) do
     # Analyze hunting patterns: solo kills, tackle usage, target selection
-    ninety_days_ago = DateTime.utc_now() |> DateTime.add(-90 * 24 * 60 * 60, :second)
+    ninety_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
 
     query =
       EveDmv.Killmails.KillmailRaw
@@ -342,7 +344,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
 
   defp calculate_fleet_commander_score(character_id) do
     # Analyze fleet leadership: large gang participation, consistent fleet members
-    ninety_days_ago = DateTime.utc_now() |> DateTime.add(-90 * 24 * 60 * 60, :second)
+    ninety_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
 
     query =
       EveDmv.Killmails.KillmailRaw
@@ -459,7 +461,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
 
   defp calculate_solo_pilot_score(character_id) do
     # Analyze solo combat effectiveness and survival
-    ninety_days_ago = DateTime.utc_now() |> DateTime.add(-90 * 24 * 60 * 60, :second)
+    ninety_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
 
     query =
       EveDmv.Killmails.KillmailRaw

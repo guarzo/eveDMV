@@ -5,6 +5,7 @@ defmodule EveDmv.Database.CharacterRepository do
   Provides optimized access to character intelligence data with caching
   and performance monitoring specifically designed for hunter analysis.
   """
+  """
 
   use EveDmv.Database.Repository,
     resource: EveDmv.Intelligence.CharacterStats,
@@ -12,6 +13,7 @@ defmodule EveDmv.Database.CharacterRepository do
 
   alias EveDmv.Api
   alias EveDmv.Cache
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.Repository.CacheHelper
   alias EveDmv.Database.Repository.QueryBuilder
   alias EveDmv.Database.Repository.TelemetryHelper
@@ -160,7 +162,7 @@ defmodule EveDmv.Database.CharacterRepository do
 
           query =
             if active_only do
-              cutoff_date = DateTime.add(DateTime.utc_now(), -min_activity_days, :day)
+              cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -min_activity_days, :day)
               Ash.Query.filter(query, last_calculated_at >= ^cutoff_date)
             else
               query

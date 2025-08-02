@@ -8,11 +8,14 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
 
   Note: Designed to be easily migrated to Oban when available.
   """
+  """
 
   use GenServer
   import Ecto.Query
   alias EveDmv.Analytics.ModuleClassifier
   alias EveDmv.Repo
+
+  alias EveDmv.Core.Utils.DateTimeUtils
   require Logger
   # Configuration
   # 6 hours
@@ -182,7 +185,7 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
   end
 
   defp fetch_recent_killmail_data do
-    cutoff_date = DateTime.utc_now() |> DateTime.add(-@recent_data_days, :day)
+    cutoff_date = DateTime.utc_now() |> DateTimeUtils.add(-@recent_data_days * 24 * 60 * 60, :second)
     # Query recent killmails with victim ship data
     query =
       from(k in "killmails_raw",

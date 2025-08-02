@@ -5,11 +5,13 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository do
   Provides persistence and retrieval operations for surveillance profiles
   using Ash framework resources.
   """
+  """
 
   use GenServer
   use EveDmv.ErrorHandler
 
   alias Ecto.Adapters.SQL
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Repo
   require Logger
 
@@ -308,7 +310,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository do
         # Profile is inactive and last updated before cutoff
         not profile.is_active and
           not profile.is_archived and
-          DateTime.compare(profile.updated_at, cutoff_date) == :lt
+          DateTimeUtils.compare(profile.updated_at, cutoff_date) == :lt
       end)
 
     {:reply, {:ok, inactive_profiles}, state}
@@ -389,7 +391,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository do
 
           # Calculate average matches per day
           profile = Map.get(new_profiles, profile_id)
-          days_since_creation = DateTime.diff(current_time, profile.created_at, :day)
+          days_since_creation = DateTimeUtils.diff(current_time, profile.created_at, :day)
 
           average_matches_per_day =
             if days_since_creation > 0 do
@@ -420,7 +422,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository do
 
   defp calculate_matches_in_period(profile_id, state, current_time, period_seconds) do
     # Calculate matches in the specified time period
-    cutoff_time = DateTime.add(current_time, -period_seconds, :second)
+    cutoff_time = DateTimeUtils.add(current_time, -period_seconds, :second)
 
     # Get profile from state
     profile = Map.get(state.profiles, profile_id)

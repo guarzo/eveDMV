@@ -5,6 +5,7 @@ defmodule EveDmv.Eve.ReliabilityConfig do
   Provides configurable timeouts, retry policies, circuit breaker settings,
   and fallback strategies with environment-specific overrides.
   """
+  """
 
   # Default timeout configurations (in milliseconds)
   @default_timeouts %{

@@ -5,6 +5,7 @@ defmodule EveDmv.Database.SurveillanceRepository do
   Provides optimized database access for surveillance profiles, matches,
   and related data with proper preloading and caching.
   """
+  """
 
   alias EveDmv.Api.SurveillanceApi
   alias EveDmv.Cache

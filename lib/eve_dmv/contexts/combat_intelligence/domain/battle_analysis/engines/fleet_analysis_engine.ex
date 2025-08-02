@@ -9,6 +9,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
   - Calculating logistics ratios
   - Classifying ship roles and types
   """
+  """
 
   @doc """
   Analyze ship composition for a side in the battle.

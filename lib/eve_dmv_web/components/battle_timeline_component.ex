@@ -9,8 +9,11 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
   - Fleet composition changes
   - Key moment highlights
   """
+  """
 
   use Phoenix.Component
+
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   @doc """
   Renders a battle timeline visualization.
@@ -595,7 +598,7 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
   defp calculate_event_position(event, timeline_data) do
     if timeline_data.duration > 0 do
       first_event = List.first(timeline_data.events)
-      event_offset = DateTime.diff(event.timestamp, first_event.timestamp)
+      event_offset = DateTimeUtils.diff(event.timestamp, first_event.timestamp, :second)
       event_offset / timeline_data.duration * 100
     else
       0
@@ -605,7 +608,7 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
   defp calculate_phase_position(timestamp, timeline_data) do
     if timeline_data.duration > 0 && not Enum.empty?(timeline_data.events) do
       first_event = List.first(timeline_data.events)
-      offset = DateTime.diff(timestamp, first_event.timestamp)
+      offset = DateTimeUtils.diff(timestamp, first_event.timestamp, :second)
       offset / timeline_data.duration * 100
     else
       0

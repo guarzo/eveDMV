@@ -4,6 +4,7 @@ defmodule EveDmv.Domains.Intelligence do
   Contains advanced intelligence resources that are used less frequently
   than the core CharacterStats resource which remains in the main API.
   """
+  """
 
   use Ash.Domain,
     otp_app: :eve_dmv
@@ -13,9 +14,9 @@ defmodule EveDmv.Domains.Intelligence do
     resource(EveDmv.Intelligence.ChainAnalysis.ChainTopology)
     resource(EveDmv.Intelligence.SystemInhabitant)
     resource(EveDmv.Intelligence.ChainAnalysis.ChainConnection)
-    resource(EveDmv.Intelligence.Wormhole.Vetting)
+    resource(EveDmv.Contexts.WormholeOperations.Domain.Wormhole.WhVetting)
     resource(EveDmv.Intelligence.HomeDefenseAnalytics)
-    resource(EveDmv.Intelligence.Wormhole.FleetComposition)
+    resource(EveDmv.Contexts.WormholeOperations.Domain.Wormhole.WhFleetComposition)
     resource(EveDmv.Intelligence.MemberActivityIntelligence)
   end
 

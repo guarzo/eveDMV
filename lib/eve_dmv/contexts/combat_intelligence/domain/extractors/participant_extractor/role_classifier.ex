@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
   Analyzes ship classes, weapon types, and engagement patterns to determine
   tactical roles like DPS, logistics, tackle, etc.
   """
+  """
 
   require Logger
 

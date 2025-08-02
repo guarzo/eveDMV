@@ -7,6 +7,7 @@ defmodule EveDmv.Eve.EsiRequestClient do
   including circuit breakers, intelligent retries, rate limiting,
   error classification, and fallback strategies.
   """
+  """
 
   alias EveDmv.Eve.CircuitBreaker
   alias EveDmv.Eve.ErrorClassifier

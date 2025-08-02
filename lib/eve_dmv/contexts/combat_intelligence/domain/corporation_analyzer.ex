@@ -9,6 +9,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CorporationAnalyzer do
   Simplified corporation analysis module that provides direct analysis operations
   without GenServer overhead.
   """
+  """
 
   alias EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache
 

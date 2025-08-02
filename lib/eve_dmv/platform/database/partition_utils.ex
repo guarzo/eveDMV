@@ -4,6 +4,7 @@ defmodule EveDmv.Database.PartitionUtils do
 
   Provides helpers for partition-aware queries and partition metadata.
   """
+  """
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Repo

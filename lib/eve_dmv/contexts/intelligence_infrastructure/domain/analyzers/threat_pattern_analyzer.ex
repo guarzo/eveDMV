@@ -1,5 +1,6 @@
 defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzers.ThreatPatternAnalyzer do
   @moduledoc """
+
   Specialized analyzer for threat pattern analysis across multiple systems.
 
   This module handles threat-related analysis including threat correlation,
@@ -23,6 +24,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
       # Detect coordinated threats
       coordinated = ThreatPatternAnalyzer.identify_coordinated_threats(threat_data)
+  """
+
+    alias EveDmv.Core.Utils.DateTimeUtils
   """
 
   require Logger
@@ -288,7 +292,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
       time_diffs =
         Enum.sort(times)
         |> Enum.chunk_every(2, 1, :discard)
-        |> Enum.map(fn [t1, t2] -> DateTime.diff(t2, t1, :minute) end)
+        |> Enum.map(fn [t1, t2] -> DateTimeUtils.diff(t2, t1, :minute) end)
 
       avg_diff = Enum.sum(time_diffs) / length(time_diffs)
 
@@ -351,7 +355,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     times = Enum.map(killmails, & &1.killmail_time)
     min_time = Enum.min(times)
     max_time = Enum.max(times)
-    DateTime.diff(max_time, min_time, :minute)
+    DateTimeUtils.diff(max_time, min_time, :minute)
   end
 
   defp analyze_threat_migration_patterns(_threat_patterns), do: []

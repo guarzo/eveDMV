@@ -12,10 +12,12 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
 
   All analysis is based on real killmail data from the database.
   """
+  """
 
   import Ecto.Query
 
   # alias EveDmv.Api
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Shared.Infrastructure.UnifiedCache
   alias EveDmv.StaticData
@@ -133,7 +135,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
   # Private implementation functions
 
   defp fetch_entity_killmails(entity_id, :character, days) do
-    since = DateTime.add(DateTime.utc_now(), -days * 24, :hour)
+    since = DateTimeUtils.add(DateTime.utc_now(), -days * 24 * 60 * 60, :second)
 
     # Get killmails where character was victim
     victim_query =
@@ -156,7 +158,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
   end
 
   defp fetch_entity_killmails(entity_id, :corporation, days) do
-    since = DateTime.add(DateTime.utc_now(), -days * 24, :hour)
+    since = DateTimeUtils.add(DateTime.utc_now(), -days * 24 * 60 * 60, :second)
 
     # Get killmails where corporation members were victims
     victim_query =
@@ -335,7 +337,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
         sorted_killmails
         |> Enum.chunk_every(2, 1, :discard)
         |> Enum.map(fn [km1, km2] ->
-          DateTime.diff(km2.killmail_time, km1.killmail_time, :second) / 3600
+          DateTimeUtils.diff(km2.killmail_time, km1.killmail_time, :second) / 3600
         end)
 
       %{

@@ -1,5 +1,6 @@
 defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzers.IntelligenceQualityAnalyzer do
   @moduledoc """
+
   Specialized analyzer for intelligence quality assessment across multiple systems.
 
   This module handles intelligence-related analysis including quality assessment,
@@ -23,6 +24,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
       # Identify intelligence gaps
       gaps = IntelligenceQualityAnalyzer.identify_intelligence_gaps(system_ids, killmails)
+  """
+
+    alias EveDmv.Core.Utils.DateTimeUtils
   """
 
   require Logger
@@ -264,7 +268,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
   defp calculate_recency_bonus(intel_data) do
     last_update = Map.get(intel_data, :last_update, DateTime.utc_now())
-    hours_old = DateTime.diff(DateTime.utc_now(), last_update, :hour)
+    hours_old = DateTimeUtils.diff(DateTime.utc_now(), last_update, :hour)
 
     cond do
       hours_old < 6 -> 0.2
@@ -307,7 +311,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
   defp assess_data_freshness(intel_data) do
     last_update = Map.get(intel_data, :last_update, DateTime.utc_now())
-    hours_old = DateTime.diff(DateTime.utc_now(), last_update, :hour)
+    hours_old = DateTimeUtils.diff(DateTime.utc_now(), last_update, :hour)
 
     cond do
       hours_old < 1 -> :very_fresh
@@ -477,6 +481,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     times = Enum.map(killmails, & &1.killmail_time)
     min_time = Enum.min(times)
     max_time = Enum.max(times)
-    DateTime.diff(max_time, min_time, :minute)
+    DateTimeUtils.diff(max_time, min_time, :minute)
   end
 end

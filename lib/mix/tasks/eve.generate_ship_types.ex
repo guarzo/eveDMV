@@ -6,6 +6,7 @@ defmodule Mix.Tasks.Eve.GenerateShipTypes do
 
       mix eve.generate_ship_types
   """
+  """
 
   @shortdoc "Generate ship type classifications from EVE static data"
 

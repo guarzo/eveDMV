@@ -6,6 +6,7 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
   doctrine management, and fleet operations intelligence. All operations
   are validated and provide comprehensive fleet insights.
   """
+  """
 
   use EveDmv.ErrorHandler
   alias EveDmv.Utils.ValidationUtils

@@ -5,6 +5,7 @@ defmodule EveDmv.Surveillance.ProfileMatch do
   This resource tracks when profiles successfully match killmails,
   providing an audit trail and enabling performance analytics.
   """
+  """
 
   use Ash.Resource,
     otp_app: :eve_dmv,

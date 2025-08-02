@@ -8,6 +8,7 @@ defmodule EveDmv.Eve.ErrorClassifier do
   - Retry strategy: retryable vs not_retryable
   - User impact: user_facing vs system_only
   """
+  """
 
   @type error_category :: :transient | :permanent | :configuration | :unknown
   @type error_severity :: :critical | :high | :medium | :low | :info

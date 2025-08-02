@@ -5,6 +5,7 @@ defmodule EveDmv.Killmails.KillmailBroadcaster do
   Provides PubSub broadcasting to LiveView clients and surveillance profile
   matching for real-time notifications.
   """
+  """
 
   alias Broadway.Message
   alias EveDmv.Surveillance.MatchingEngine

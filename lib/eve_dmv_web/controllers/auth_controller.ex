@@ -4,6 +4,7 @@ defmodule EveDmvWeb.AuthController do
 
   Manages user authentication via EVE Online SSO and session handling.
   """
+  """
 
   use EveDmvWeb, :controller
   use AshAuthentication.Phoenix.Controller
@@ -17,20 +18,26 @@ defmodule EveDmvWeb.AuthController do
     AuditLogger.log_auth_attempt(user.id, client_ip, true)
 
     # Ensure user has an account (for multi-character support)
-    {:ok, account} = AccountManager.ensure_user_account(user)
+    case AccountManager.ensure_user_account(user) do
+      {:ok, account} ->
+        # Update account activity
+        AccountManager.update_account_activity(account.id)
 
-    # Update account activity
-    AccountManager.update_account_activity(account.id)
+        conn
+        |> store_in_session(user)
+        |> assign(:current_user, user)
+        |> assign(:current_account, account)
+        |> put_session("current_user_id", user.id)
+        |> put_session("current_account_id", account.id)
+        |> put_session("last_activity", System.system_time(:millisecond))
+        |> put_flash(:info, "Welcome back, #{user.eve_character_name || "pilot"}!")
+        |> redirect(to: ~p"/dashboard")
 
-    conn
-    |> store_in_session(user)
-    |> assign(:current_user, user)
-    |> assign(:current_account, account)
-    |> put_session("current_user_id", user.id)
-    |> put_session("current_account_id", account.id)
-    |> put_session("last_activity", System.system_time(:millisecond))
-    |> put_flash(:info, "Welcome back, #{user.eve_character_name || "pilot"}!")
-    |> redirect(to: ~p"/dashboard")
+      {:error, reason} ->
+        conn
+        |> put_flash(:error, "Account setup failed: #{inspect(reason)}")
+        |> redirect(to: ~p"/")
+    end
   end
 
   def failure(conn, _activity, _reason) do

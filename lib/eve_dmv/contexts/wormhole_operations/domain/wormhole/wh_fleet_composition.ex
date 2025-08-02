@@ -1,4 +1,4 @@
-defmodule EveDmv.Intelligence.Wormhole.FleetComposition do
+defmodule EveDmv.Contexts.WormholeOperations.Domain.Wormhole.WhFleetComposition do
   @moduledoc """
   Wormhole fleet composition analysis and optimization tools.
 
@@ -6,10 +6,12 @@ defmodule EveDmv.Intelligence.Wormhole.FleetComposition do
   and ship availability tracking specifically designed for wormhole operations.
   """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
+  """
+
   use Ash.Resource,
     domain: EveDmv.Domains.Intelligence,
     data_layer: AshPostgres.DataLayer
-
   postgres do
     table("wh_fleet_composition")
     repo(EveDmv.Repo)
@@ -414,7 +416,7 @@ defmodule EveDmv.Intelligence.Wormhole.FleetComposition do
         now = DateTime.utc_now()
 
         Enum.map(records, fn record ->
-          DateTime.diff(now, record.last_updated_at, :day)
+          DateTimeUtils.diff(now, record.last_updated_at, :day)
         end)
       end)
     end

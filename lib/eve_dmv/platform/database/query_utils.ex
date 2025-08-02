@@ -5,8 +5,10 @@ defmodule EveDmv.Database.QueryUtils do
   This module consolidates repeated database query patterns to provide
   consistent querying interfaces and reduce code duplication.
   """
+  """
 
   alias EveDmv.Api
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Killmails.KillmailEnriched
   alias EveDmv.Killmails.Participant
@@ -184,7 +186,7 @@ defmodule EveDmv.Database.QueryUtils do
     query =
       if active_only do
         # Add filter for active members (example: last seen within 30 days)
-        cutoff_date = DateTime.add(DateTime.utc_now(), -30, :day)
+        cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
         Ash.Query.filter(base_query, last_seen >= ^cutoff_date)
       else
         base_query
@@ -224,7 +226,7 @@ defmodule EveDmv.Database.QueryUtils do
   """
   def calculate_date_range(days_back) when is_integer(days_back) do
     end_date = DateTime.utc_now()
-    start_date = DateTime.add(end_date, -days_back, :day)
+    start_date = DateTimeUtils.add(end_date, -days_back, :day)
     {start_date, end_date}
   end
 
@@ -240,7 +242,7 @@ defmodule EveDmv.Database.QueryUtils do
   """
   def calculate_precise_date_range(days_back) when is_integer(days_back) do
     end_date = DateTime.utc_now()
-    start_date = DateTime.add(end_date, -days_back * 24 * 60 * 60, :second)
+    start_date = DateTimeUtils.add(end_date, -days_back * 24 * 60 * 60, :second)
     {start_date, end_date}
   end
 
@@ -320,7 +322,7 @@ defmodule EveDmv.Database.QueryUtils do
   """
   def days_between(start_datetime, end_datetime)
       when is_struct(start_datetime, DateTime) and is_struct(end_datetime, DateTime) do
-    DateTime.diff(end_datetime, start_datetime, :day)
+    DateTimeUtils.diff(end_datetime, start_datetime, :day)
   end
 
   @doc """
@@ -345,6 +347,6 @@ defmodule EveDmv.Database.QueryUtils do
   """
   def hours_between(start_datetime, end_datetime)
       when is_struct(start_datetime, DateTime) and is_struct(end_datetime, DateTime) do
-    DateTime.diff(end_datetime, start_datetime, :hour)
+    DateTimeUtils.diff(end_datetime, start_datetime, :hour)
   end
 end

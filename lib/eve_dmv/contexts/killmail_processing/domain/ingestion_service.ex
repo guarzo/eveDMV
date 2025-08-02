@@ -8,6 +8,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.IngestionService do
   - Managing storage operations
   - Publishing appropriate domain events
   """
+  """
 
   alias EveDmv.Contexts.KillmailProcessing.Domain
   alias EveDmv.Contexts.KillmailProcessing.Infrastructure

@@ -5,6 +5,7 @@ defmodule EveDmv.Surveillance.Matching.KillmailFieldExtractor do
   This module provides utilities for extracting and transforming field values
   from killmail data structures for use in surveillance profile matching.
   """
+  """
 
   @doc """
   Extract field values from killmail data.

@@ -5,6 +5,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.CorporationAnalyz
   Handles corporation-level analysis including activity reports, member attention lists,
   and overall corporation engagement health assessments.
   """
+  """
 
   alias EveDmv.Api
   alias EveDmv.Intelligence.Analyzers.MemberActivityDataCollector

@@ -14,8 +14,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   Uses real combat data, ship statistics, and advanced algorithms to provide
   actionable intelligence for fleet commanders and individual pilots.
   """
+  """
 
   alias EveDmv.Analytics.FleetAnalyzer
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Eve.NameResolver
   alias EveDmv.Integrations.ShipIntelligenceBridge
 
@@ -491,7 +493,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
     else
       # Calculate how long the ship survived vs expectations
       battle_start_time = estimate_battle_start_time(instance)
-      actual_survival_time = NaiveDateTime.diff(instance.death_time, battle_start_time, :second)
+      actual_survival_time = DateTimeUtils.diff(instance.death_time, battle_start_time, :second)
       expected_survival_time = instance.theoretical_stats.expected_survival_time
 
       base_score =
@@ -637,11 +639,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
     estimated_battle_duration = round(instance.battle_context.battle_duration * 60)
 
     if instance.death_time do
-      NaiveDateTime.add(instance.death_time, -estimated_battle_duration, :second)
+      DateTimeUtils.add(instance.death_time, -estimated_battle_duration, :second)
     else
       # For attackers without death_time, use battle end time minus duration
       # This is a fallback - ideally we'd have actual battle start DateTime.utc_now(time) |> DateTime.to_naive()
-      NaiveDateTime.add(-estimated_battle_duration, :second)
+      DateTimeUtils.add(DateTime.utc_now(), -estimated_battle_duration, :second)
     end
   end
 
@@ -1664,7 +1666,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
         end_time = if death, do: death.timestamp, else: last.timestamp
 
-        NaiveDateTime.diff(end_time, first.timestamp, :second)
+        DateTimeUtils.diff(end_time, first.timestamp, :second)
       end
     else
       # Fallback to killmail timestamps
@@ -1678,7 +1680,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
         first = Enum.min(timestamps)
         last = Enum.max(timestamps)
 
-        NaiveDateTime.diff(last, first, :second)
+        DateTimeUtils.diff(last, first, :second)
       end
     end
   end

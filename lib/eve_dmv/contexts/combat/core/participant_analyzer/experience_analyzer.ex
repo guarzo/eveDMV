@@ -2,6 +2,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.ExperienceAnalyzer do
   @moduledoc """
   Analyzes participant experience levels based on combat patterns and historical data.
   """
+  """
 
   @doc """
   Analyze and estimate experience level of a participant.

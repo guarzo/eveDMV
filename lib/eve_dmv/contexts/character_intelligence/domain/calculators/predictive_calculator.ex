@@ -4,6 +4,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Calculators
 
   Analyzes historical threat data to predict future threat levels and identify trends.
   """
+  """
 
   require Logger
 

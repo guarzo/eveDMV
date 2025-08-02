@@ -3,6 +3,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.ShipMasteryEngine do
   Analyzes ship mastery and specialization levels.
   Part of the multi-dimensional threat assessment system.
   """
+  """
 
   alias EveDmv.Contexts.Intelligence.Core.ShipPreferenceAnalyzer
   alias EveDmv.Database.CharacterRepository

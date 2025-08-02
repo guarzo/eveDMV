@@ -4,6 +4,7 @@ defmodule EveDmvWeb.Components.Icons do
 
   Provides centralized icon management with consistent styling.
   """
+  """
 
   use Phoenix.Component
 

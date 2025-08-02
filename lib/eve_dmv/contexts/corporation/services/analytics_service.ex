@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.Corporation.Services.AnalyticsService do
   Handles comprehensive analytics generation, comparative analysis, and
   performance tracking for corporations.
   """
+  """
 
   alias EveDmv.Contexts.Corporation.Core.CombatDoctrineAnalyzer
   alias EveDmv.Contexts.Corporation.Core.CorporationAnalyzer

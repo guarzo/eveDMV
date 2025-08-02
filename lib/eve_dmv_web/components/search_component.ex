@@ -3,6 +3,7 @@ defmodule EveDmvWeb.SearchComponent do
   Reusable search component for system, character, and corporation searches.
   Can be embedded in any LiveView page.
   """
+  """
 
   use EveDmvWeb, :live_component
 

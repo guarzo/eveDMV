@@ -2,6 +2,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.ThreatScoringCoordinator do
   @moduledoc """
   Coordinates threat scoring across multiple characters and provides comparative analysis.
   """
+  """
 
   alias EveDmv.Contexts.Intelligence.Core.ThreatAssessmentEngine
 

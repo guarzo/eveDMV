@@ -10,6 +10,8 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
   - Damage application metrics
   """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
+
   @doc """
   Calculate comprehensive performance metrics for a battle.
   """
@@ -80,7 +82,7 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
       killmails
       |> Enum.chunk_every(2, 1, :discard)
       |> Enum.map(fn [km1, km2] ->
-        DateTime.diff(km2.killmail_time, km1.killmail_time, :second)
+        DateTimeUtils.diff(km2.killmail_time, km1.killmail_time, :second)
       end)
       # Only consider kills within 5 minutes
       |> Enum.filter(&(&1 < 300))
@@ -97,7 +99,7 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
       0
     else
       duration =
-        DateTime.diff(
+        DateTimeUtils.diff(
           List.last(killmails).killmail_time,
           List.first(killmails).killmail_time,
           :minute
@@ -121,7 +123,7 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
       total_isk
     else
       duration =
-        DateTime.diff(
+        DateTimeUtils.diff(
           List.last(killmails).killmail_time,
           List.first(killmails).killmail_time,
           :minute
@@ -143,7 +145,7 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
       |> Enum.filter(fn window ->
         first = List.first(window).killmail_time
         last = List.last(window).killmail_time
-        DateTime.diff(last, first, :minute) <= 5
+        DateTimeUtils.diff(last, first, :minute) <= 5
       end)
       |> Enum.map(fn window ->
         %{
@@ -623,7 +625,8 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
     EveDmv.StaticData.ShipRoles.ewar_ship?(ship_type)
   end
 
-  defp capital_ship?(ship_type), do: ship_type && ship_type >= 20_000
+  defp capital_ship?(ship_type) when is_integer(ship_type), do: ship_type >= 20_000
+  defp capital_ship?(_), do: false
 
   defp calculate_hvt_priority(target_values) do
     # Check if high-value targets were killed early
@@ -767,7 +770,7 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
     killmails
     |> Enum.chunk_every(2, 1, :discard)
     |> Enum.count(fn [km1, km2] ->
-      DateTime.diff(km2.killmail_time, km1.killmail_time, :second) <= 30
+      DateTimeUtils.diff(km2.killmail_time, km1.killmail_time, :second) <= 30
     end)
   end
 
@@ -1008,17 +1011,17 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
       start_time = List.first(sorted).killmail_time
       end_time = List.last(sorted).killmail_time
 
-      slot_count = div(DateTime.diff(end_time, start_time, :minute), slot_duration_minutes) + 1
+      slot_count = div(DateTimeUtils.diff(end_time, start_time, :minute), slot_duration_minutes) + 1
 
       0..(slot_count - 1)
       |> Enum.map(fn i ->
-        slot_start = DateTime.add(start_time, i * slot_duration_minutes * 60)
-        slot_end = DateTime.add(slot_start, slot_duration_minutes * 60)
+        slot_start = DateTimeUtils.add(start_time, i * slot_duration_minutes * 60, :second)
+        slot_end = DateTimeUtils.add(slot_start, slot_duration_minutes * 60, :second)
 
         kills_in_slot =
           Enum.filter(sorted, fn km ->
-            DateTime.compare(km.killmail_time, slot_start) != :lt &&
-              DateTime.compare(km.killmail_time, slot_end) == :lt
+            DateTimeUtils.compare(km.killmail_time, slot_start) != :lt &&
+              DateTimeUtils.compare(km.killmail_time, slot_end) == :lt
           end)
 
         %{
@@ -1090,7 +1093,7 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
       :inconclusive
     else
       duration =
-        DateTime.diff(
+        DateTimeUtils.diff(
           List.last(killmails).killmail_time,
           List.first(killmails).killmail_time,
           :minute

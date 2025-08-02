@@ -12,6 +12,7 @@ defmodule EveDmv.Contexts.CombatIntelligence do
   This context consumes killmail events and produces intelligence
   analysis for tactical decision-making in EVE Online.
   """
+  """
 
   use EveDmv.Contexts.BoundedContext, name: :combat_intelligence
   use Supervisor

@@ -1,4 +1,4 @@
-defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer do
+defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivityPatternAnalyzer do
   @moduledoc """
   Specialized analyzer for member activity patterns and behavior analysis.
 
@@ -13,11 +13,12 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer do
   The analyzer works with activity data collected by MemberActivityDataCollector
   and provides detailed pattern analysis for member intelligence systems.
   """
+  """
 
-  alias EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.AnomalyDetector
-  alias EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.ConsistencyCalculator
-  alias EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TimezoneAnalyzer
-  alias EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TrendAnalyzer
+  alias EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivityPatternAnalyzer.AnomalyDetector
+  alias EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivityPatternAnalyzer.ConsistencyCalculator
+  alias EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivityPatternAnalyzer.TimezoneAnalyzer
+  alias EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivityPatternAnalyzer.TrendAnalyzer
 
   require Logger
 

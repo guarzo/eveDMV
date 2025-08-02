@@ -9,6 +9,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   alias EveDmv.Api
   alias EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceAnalyzer
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Eve.EsiCharacterClient
   alias EveDmv.Eve.NameResolver
   alias EveDmv.Integrations.ShipIntelligenceBridge
@@ -32,7 +33,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
         recent_activity: %{...}
       }}
   """
-  @spec analyze_character_threat(integer()) :: {:ok, map()}
+  @spec analyze_character_threat(integer()) :: {:ok, map()} | {:error, atom()}
   def analyze_character_threat(character_id) do
     case ThreatScoringEngine.calculate_threat_score(character_id) do
       {:ok, threat_data} ->
@@ -76,7 +77,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   - Specialist
   - Opportunist
   """
-  @spec detect_behavioral_patterns(integer()) :: {:ok, map()}
+  @spec detect_behavioral_patterns(integer()) :: {:ok, map()} | {:error, atom()}
   def detect_behavioral_patterns(character_id) do
     # Since ThreatScoringEngine includes behavioral analysis in the threat score,
     # we'll extract it from there
@@ -104,15 +105,17 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Compares threat levels between multiple characters.
   Useful for identifying the most dangerous opponents in a group.
   """
-  @spec compare_character_threats([integer()]) :: {:ok, [{integer(), map()}]}
+  @spec compare_character_threats([integer()]) :: {:ok, [{integer(), map()}]} | {:error, atom()}
   def compare_character_threats(character_ids) when is_list(character_ids) do
     threat_analyses =
       character_ids
       |> Enum.map(fn id ->
         case analyze_character_threat(id) do
           {:ok, analysis} -> {id, analysis}
+          {:error, _} -> nil
         end
       end)
+      |> Enum.reject(&is_nil/1)
       |> Enum.sort_by(fn {_id, analysis} -> analysis.threat_score end, :desc)
 
     {:ok, threat_analyses}
@@ -243,25 +246,30 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
 
   # Private helper functions
   defp enhance_with_ship_intelligence(threat_data, character_id) do
-    {:ok, ship_intelligence} = ShipIntelligenceBridge.calculate_ship_specialization(character_id)
+    case ShipIntelligenceBridge.calculate_ship_specialization(character_id) do
+      {:ok, ship_intelligence} ->
+        # Enhance ship mastery dimension with detailed analysis
+        enhanced_dimensions =
+          Map.update(
+            threat_data.dimensions,
+            :ship_mastery,
+            0,
+            fn base_score ->
+              # Combine base score with specialization insights
+              specialization_bonus = calculate_specialization_bonus(ship_intelligence)
+              min(100, base_score + specialization_bonus)
+            end
+          )
 
-    # Enhance ship mastery dimension with detailed analysis
-    enhanced_dimensions =
-      Map.update(
-        threat_data.dimensions,
-        :ship_mastery,
-        0,
-        fn base_score ->
-          # Combine base score with specialization insights
-          specialization_bonus = calculate_specialization_bonus(ship_intelligence)
-          min(100, base_score + specialization_bonus)
-        end
-      )
+        # Add ship intelligence to threat data
+        threat_data
+        |> Map.put(:ship_specialization, format_ship_specialization(ship_intelligence))
+        |> Map.put(:dimensions, enhanced_dimensions)
 
-    # Add ship intelligence to threat data
-    threat_data
-    |> Map.put(:ship_specialization, format_ship_specialization(ship_intelligence))
-    |> Map.put(:dimensions, enhanced_dimensions)
+      {:error, _reason} ->
+        # Return threat_data unchanged if ship intelligence fails
+        threat_data
+    end
   end
 
   defp calculate_specialization_bonus(ship_intelligence) do
@@ -383,10 +391,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   end
 
   defp count_recent_activity(kills, days) do
-    cutoff = NaiveDateTime.add(NaiveDateTime.utc_now(), -days * 24 * 60 * 60, :second)
+    cutoff = DateTimeUtils.add(NaiveDateTime.utc_now(), -days * 24 * 60 * 60, :second)
 
     Enum.count(kills, fn km ->
-      NaiveDateTime.compare(km.killmail_time, cutoff) == :gt
+      DateTimeUtils.compare(km.killmail_time, cutoff) == :gt
     end)
   end
 
@@ -491,10 +499,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
 
     threat_level =
       case threat_analysis.threat_score do
-        score when score >= 90 -> "Extreme"
-        score when score >= 75 -> "High"
-        score when score >= 50 -> "Moderate"
-        score when score >= 25 -> "Low"
+        score when is_number(score) and score >= 90 -> "Extreme"
+        score when is_number(score) and score >= 75 -> "High"
+        score when is_number(score) and score >= 50 -> "Moderate"
+        score when is_number(score) and score >= 25 -> "Low"
         _ -> "Minimal"
       end
 

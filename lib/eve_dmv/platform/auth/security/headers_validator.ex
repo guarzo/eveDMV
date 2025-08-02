@@ -5,6 +5,7 @@ defmodule EveDmv.Security.HeadersValidator do
   Provides periodic validation of security headers and monitoring for potential
   security issues with incoming requests.
   """
+  """
 
   use GenServer
   require Logger

@@ -1,5 +1,6 @@
 defmodule EveDmv.Workers.ReEnrichmentWorker do
   @moduledoc """
+
   Dedicated worker for killmail re-enrichment operations.
 
   This worker replaces the Task.Supervisor usage in re_enrichment_worker.ex
@@ -11,6 +12,9 @@ defmodule EveDmv.Workers.ReEnrichmentWorker do
   - **Retry logic**: Automatic retry for failed enrichment attempts
   - **Rate limiting**: Respects external API limits
   - **Progress tracking**: Comprehensive metrics and status reporting
+  """
+
+    alias EveDmv.Core.Utils.DateTimeUtils
   """
 
   use GenServer
@@ -537,7 +541,7 @@ defmodule EveDmv.Workers.ReEnrichmentWorker do
 
   defp get_next_processing_time(state) do
     if state.enabled and state.processing_timer do
-      DateTime.add(DateTime.utc_now(), div(state.processing_interval, 1000), :second)
+      DateTimeUtils.add(DateTime.utc_now(), div(state.processing_interval, 1000), :second)
     else
       nil
     end

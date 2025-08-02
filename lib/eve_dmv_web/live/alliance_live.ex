@@ -1,15 +1,18 @@
 # credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 # credo:disable-for-this-file Credo.Check.Readability.StrictModuleLayout
 defmodule EveDmvWeb.AllianceLive do
+
+  @moduledoc """
+
   import EveDmvWeb.Components.PageHeaderComponent
   import EveDmvWeb.Components.StatsGridComponent
   import EveDmvWeb.Components.ErrorStateComponent
   import EveDmvWeb.Components.EmptyStateComponent
   import EveDmvWeb.FormatHelpers
   alias EveDmv.Api
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.Participant
   alias EveDmvWeb.Helpers.TimeFormatter
-
   @moduledoc """
   LiveView for displaying alliance analytics dashboard.
 
@@ -280,8 +283,8 @@ defmodule EveDmvWeb.AllianceLive do
   end
 
   defp calculate_week_activity(alliance_id, weeks_ago, end_date) do
-    week_end = DateTime.add(end_date, -weeks_ago * 7 * 24 * 60 * 60, :second)
-    week_start = DateTime.add(week_end, -7 * 24 * 60 * 60, :second)
+    week_end = DateTimeUtils.add(end_date, -weeks_ago * 7 * 24 * 60 * 60, :second)
+    week_start = DateTimeUtils.add(week_end, -7 * 24 * 60 * 60, :second)
 
     case Ash.read(Participant,
            filter: %{

@@ -9,6 +9,7 @@ defmodule EveDmv.Utils.FleetUtils do
   - Performance scoring and metrics
   - Data formatting and display
   """
+  """
 
   @doc """
   Estimate ship value based on ship type ID.

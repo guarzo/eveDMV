@@ -5,6 +5,7 @@ defmodule EveDmvWeb.Components.ErrorHandler do
   Provides consistent error handling patterns, user-friendly error messages,
   and proper logging with user context.
   """
+  """
 
   import Phoenix.Component, only: [assign: 3]
   require Logger

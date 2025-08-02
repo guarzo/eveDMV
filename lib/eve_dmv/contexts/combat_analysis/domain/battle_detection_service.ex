@@ -5,11 +5,13 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService do
   Uses temporal and spatial clustering to identify when multiple killmails
   represent a single engagement or battle.
   """
+  """
 
   use GenServer
 
   import Ecto.Query
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.DomainEvents.KillmailEnriched
   alias EveDmv.Infrastructure.EventBus
   alias EveDmv.Shared.Infrastructure.UnifiedCache
@@ -124,7 +126,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService do
   @impl GenServer
   def handle_call({:get_battles, options}, _from, state) do
     limit = Keyword.get(options, :limit, 50)
-    since = Keyword.get(options, :since, DateTime.add(DateTime.utc_now(), -24 * 3600, :second))
+    since = Keyword.get(options, :since, DateTimeUtils.add(DateTime.utc_now(), -24 * 3600, :second))
 
     battles = get_recent_battles(since, limit)
     {:reply, {:ok, battles}, state}
@@ -221,12 +223,12 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService do
   end
 
   defp find_potential_battles(killmail, state) do
-    time_cutoff = DateTime.add(killmail.killmail_time, -@battle_time_window, :second)
+    time_cutoff = DateTimeUtils.add(killmail.killmail_time, -@battle_time_window, :second)
 
     state.active_battles
     |> Enum.filter(fn {_battle_id, battle} ->
       battle.system_id == killmail.solar_system_id and
-        DateTime.compare(battle.last_activity, time_cutoff) == :gt
+        DateTimeUtils.compare(battle.last_activity, time_cutoff) == :gt
     end)
     |> Enum.map(fn {battle_id, _battle} -> battle_id end)
     |> Enum.sort_by(
@@ -310,7 +312,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService do
   end
 
   defp perform_recent_battle_detection(hours_back, options) do
-    since = DateTime.add(DateTime.utc_now(), -hours_back * 3600, :second)
+    since = DateTimeUtils.add(DateTime.utc_now(), -hours_back * 3600, :second)
     min_participants = Keyword.get(options, :min_participants, @min_participants)
     min_value = Keyword.get(options, :min_value, 10_000_000)
 
@@ -370,7 +372,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService do
 
         [current_group | rest] ->
           last_time = List.last(current_group).killmail_time
-          time_diff = DateTime.diff(km.killmail_time, last_time)
+          time_diff = DateTimeUtils.diff(km.killmail_time, last_time, :second)
 
           if time_diff <= window_seconds do
             # Add to current group

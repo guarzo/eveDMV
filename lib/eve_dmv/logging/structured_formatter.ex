@@ -6,6 +6,9 @@ defmodule EveDmv.Logging.StructuredFormatter do
   monitoring, and log aggregation systems.
   """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
+  """
+
   @behaviour :logger_formatter
 
   @impl :logger_formatter
@@ -70,7 +73,7 @@ defmodule EveDmv.Logging.StructuredFormatter do
 
         unix_timestamp
         |> DateTime.from_unix!(:second)
-        |> DateTime.add(micro, :microsecond)
+        |> DateTimeUtils.add(micro, :microsecond)
         |> DateTime.to_iso8601()
 
       timestamp when is_integer(timestamp) ->

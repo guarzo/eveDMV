@@ -5,6 +5,7 @@ defmodule EveDmvWeb.SurveillanceStatsComponent do
   Displays active profiles count, matches processed, last reload time,
   and a list of recent profile matches with killmail details.
   """
+  """
 
   use EveDmvWeb, :live_component
 

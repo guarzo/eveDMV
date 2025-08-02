@@ -10,7 +10,9 @@ defmodule EveDmv.Shared.Monitoring.Facade do
 
   Maintains the same interface as the original MonitoringEngine.
   """
+  """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Shared.Monitoring.AlertManager
   alias EveDmv.Shared.Monitoring.AnomalyDetector
   alias EveDmv.Shared.Monitoring.BaselineManager
@@ -469,7 +471,7 @@ defmodule EveDmv.Shared.Monitoring.Facade do
     start_time = monitoring_setup.setup_timestamp
     current_time = DateTime.utc_now()
 
-    uptime_seconds = DateTime.diff(current_time, start_time, :second)
+    uptime_seconds = DateTimeUtils.diff(current_time, start_time, :second)
 
     # Convert to hours and round
     Float.round(uptime_seconds / 3600, 2)

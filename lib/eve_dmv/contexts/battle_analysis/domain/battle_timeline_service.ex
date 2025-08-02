@@ -5,7 +5,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
   Analyzes the sequence of events, identifies key moments, tracks fleet
   compositions over time, and provides insights into battle progression.
   """
+  """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Core.Utils.DateTimeUtils
   require Logger
 
   @doc """
@@ -187,7 +190,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
         # Find the initial burst of activity
         initial_events =
           Enum.take_while(events, fn event ->
-            time_diff = NaiveDateTime.diff(event.timestamp, first.timestamp, :second)
+            time_diff = DateTimeUtils.diff(event.timestamp, first.timestamp, :second)
             # Within 2 minutes of first kill
             time_diff <= 120
           end)
@@ -211,7 +214,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
     end)
     |> Enum.filter(fn analysis ->
       analysis.is_escalation and
-        NaiveDateTime.compare(analysis.start_time, initial_phase.end_time) == :gt
+        DateTimeUtils.compare(analysis.start_time, initial_phase.end_time) == :gt
     end)
     |> Enum.map(fn analysis ->
       %{
@@ -227,7 +230,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
   defp analyze_kill_rate_change(events) do
     first = List.first(events)
     last = List.last(events)
-    duration_seconds = NaiveDateTime.diff(last.timestamp, first.timestamp, :second)
+    duration_seconds = DateTimeUtils.diff(last.timestamp, first.timestamp, :second)
 
     kill_rate =
       if duration_seconds > 0 do
@@ -250,7 +253,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
     # Find events after the last identified phase
     final_events =
       Enum.filter(events, fn event ->
-        NaiveDateTime.compare(event.timestamp, last_phase_end) == :gt
+        DateTimeUtils.compare(event.timestamp, last_phase_end) == :gt
       end)
 
     case final_events do
@@ -310,9 +313,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
       [first | _] ->
         events
         |> Enum.group_by(fn event ->
-          seconds_since_start = NaiveDateTime.diff(event.timestamp, first.timestamp, :second)
+          seconds_since_start = DateTimeUtils.diff(event.timestamp, first.timestamp, :second)
           window_index = div(seconds_since_start, window_seconds)
-          NaiveDateTime.add(first.timestamp, window_index * window_seconds, :second)
+          DateTimeUtils.add(first.timestamp, window_index * window_seconds, :second)
         end)
         |> Enum.sort_by(fn {timestamp, _} -> timestamp end)
     end
@@ -746,7 +749,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
     end_time1 = List.last(battle1.killmails).killmail_time
     start_time2 = List.first(battle2.killmails).killmail_time
 
-    NaiveDateTime.diff(start_time2, end_time1, :second) / 60
+    DateTimeUtils.diff(start_time2, end_time1, :second) / 60
   end
 
   defp extract_all_participants(battle) do
@@ -812,4 +815,5 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
       end)
     end)
   end
+
 end

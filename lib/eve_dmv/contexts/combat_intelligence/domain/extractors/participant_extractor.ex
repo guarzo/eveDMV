@@ -11,6 +11,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
 
   All functionality is preserved through delegation to the appropriate sub-modules.
   """
+  """
 
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.ParticipantExtractor.ActivityTracker
 

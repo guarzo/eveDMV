@@ -12,6 +12,7 @@ defmodule Mix.Tasks.Security.Audit do
       mix security.audit --container
       mix security.audit --format json
   """
+  """
 
   @shortdoc "Run security audits for database and container infrastructure"
 

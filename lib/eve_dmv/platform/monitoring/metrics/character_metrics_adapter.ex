@@ -8,6 +8,7 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetricsAdapter do
 
   This allows gradual migration of callers to the new system without breaking changes.
   """
+  """
 
   alias EveDmv.Intelligence.Metrics.CharacterMetrics
 

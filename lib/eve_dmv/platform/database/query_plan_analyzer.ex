@@ -7,6 +7,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer do
   Provides automated query plan analysis, slow query detection, and
   optimization recommendations for the EVE DMV application.
   """
+  """
 
   use GenServer
 

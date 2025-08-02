@@ -6,6 +6,7 @@ defmodule EveDmv.Database.KillmailRepository do
   for common EVE DMV use cases like character/corporation analysis and
   intelligence gathering.
   """
+  """
 
   use EveDmv.Database.Repository,
     resource: EveDmv.Killmails.KillmailEnriched,
@@ -13,6 +14,7 @@ defmodule EveDmv.Database.KillmailRepository do
 
   alias EveDmv.Api
   alias EveDmv.Cache
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.Repository.CacheHelper
   alias EveDmv.Database.Repository.QueryBuilder
   alias EveDmv.Database.Repository.TelemetryHelper
@@ -241,7 +243,7 @@ defmodule EveDmv.Database.KillmailRepository do
         TelemetryHelper.measure_query("killmail", :get_popular_compositions, fn ->
           # Simplified implementation - analyze ship types from recent killmails
           days_back = Keyword.get(opts, :days_back, 30)
-          since_date = DateTime.add(DateTime.utc_now(), -days_back, :day)
+          since_date = DateTimeUtils.add(DateTime.utc_now(), -days_back, :day)
 
           query =
             Ash.Query.new(KillmailEnriched)
@@ -351,7 +353,7 @@ defmodule EveDmv.Database.KillmailRepository do
     hours_back = Keyword.get(opts, :hours_back, 24)
     wormhole_only = Keyword.get(opts, :wormhole_only, false)
 
-    cutoff_time = DateTime.add(DateTime.utc_now(), -hours_back, :hour)
+    cutoff_time = DateTimeUtils.add(DateTime.utc_now(), -hours_back * 60 * 60, :second)
 
     query =
       Ash.Query.new(KillmailEnriched)
@@ -370,7 +372,7 @@ defmodule EveDmv.Database.KillmailRepository do
 
   defp calculate_kill_stats(entity_type, entity_id, opts) do
     days_back = Keyword.get(opts, :days_back, 90)
-    start_date = DateTime.add(DateTime.utc_now(), -days_back, :day)
+    start_date = DateTimeUtils.add(DateTime.utc_now(), -days_back, :day)
 
     # This would use more sophisticated database aggregation in practice
     # For now, provide a basic implementation structure
@@ -453,7 +455,7 @@ defmodule EveDmv.Database.KillmailRepository do
     case Keyword.get(opts, key) do
       nil ->
         case default_opts do
-          [days_ago: days] -> DateTime.add(DateTime.utc_now(), -days, :day)
+          [days_ago: days] -> DateTimeUtils.add(DateTime.utc_now(), -days, :day)
           datetime -> datetime
         end
 

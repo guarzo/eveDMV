@@ -10,6 +10,7 @@ defmodule EveDmv.Intelligence.WandererSSE do
 
   Reuses the existing SSE infrastructure from wanderer-kills integration.
   """
+  """
 
   use GenServer
   require Logger

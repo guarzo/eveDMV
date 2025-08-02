@@ -13,6 +13,7 @@ defmodule EveDmv.Contexts.FleetOperations do
   This context consumes killmail events to analyze fleet engagements
   and provides insights for fleet commanders and doctrine planners.
   """
+  """
 
   use EveDmv.Contexts.BoundedContext, name: :fleet_operations
   use Supervisor

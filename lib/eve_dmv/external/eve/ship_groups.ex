@@ -6,6 +6,7 @@ defmodule EveDmv.Eve.ShipGroups do
   based on actual EVE SDE data. Used by StaticData and other modules
   for consistent ship categorization.
   """
+  """
 
   # Primary ship group classifications
   @ship_groups %{

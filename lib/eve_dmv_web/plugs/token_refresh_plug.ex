@@ -5,6 +5,7 @@ defmodule EveDmvWeb.TokenRefreshPlug do
   This plug runs before authenticated routes and ensures that user tokens are
   refreshed if they're about to expire, providing a seamless user experience.
   """
+  """
 
   import Plug.Conn
   alias EveDmv.Users.TokenRefreshService

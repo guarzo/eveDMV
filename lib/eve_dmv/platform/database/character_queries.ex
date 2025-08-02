@@ -4,6 +4,7 @@ defmodule EveDmv.Database.CharacterQueries do
 
   Uses materialized views and efficient indexing to avoid expensive JSONB operations.
   """
+  """
 
   alias EveDmv.Cache.QueryCache
   alias EveDmv.Database.Pagination

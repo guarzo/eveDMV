@@ -5,8 +5,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Engage
   Analyzes specific engagement mechanics, coordination patterns, and tactical execution
   within individual battles or skirmishes.
   """
+  """
 
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Services.SideDeterminationService
+  alias EveDmv.Core.Utils.DateTimeUtils
   require Logger
 
   @doc """
@@ -212,7 +214,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Engage
       first_kill = List.first(sorted_killmails)
       last_kill = List.last(sorted_killmails)
 
-      DateTime.diff(last_kill.killmail_time, first_kill.killmail_time, :second)
+      DateTimeUtils.diff(last_kill.killmail_time, first_kill.killmail_time, :second)
     end
   end
 
@@ -317,7 +319,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Engage
     |> Enum.sort_by(& &1.killmail_time)
     |> Enum.chunk_every(2, 1, :discard)
     |> Enum.map(fn [first, second] ->
-      DateTime.diff(second.killmail_time, first.killmail_time, :second)
+      DateTimeUtils.diff(second.killmail_time, first.killmail_time, :second)
     end)
   end
 

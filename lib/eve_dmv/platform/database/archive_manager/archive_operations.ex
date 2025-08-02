@@ -5,8 +5,10 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
   Manages the actual archiving process including batch processing, data validation,
   and transaction safety for moving data between tables.
   """
+  """
 
   alias Ecto.Adapters.SQL
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Repo
   require Logger
 
@@ -14,7 +16,7 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
   Check if a table needs archiving and perform the archive operation.
   """
   def check_and_archive_table(policy) do
-    cutoff_date = DateTime.add(DateTime.utc_now(), -policy.archive_after_days, :day)
+    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -policy.archive_after_days, :day)
 
     # Check how many records need archiving
     count_query = """
@@ -266,7 +268,7 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
   Count records eligible for archiving.
   """
   def count_eligible_records(policy) do
-    cutoff_date = DateTime.add(DateTime.utc_now(), -policy.archive_after_days, :day)
+    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -policy.archive_after_days, :day)
 
     query = """
     SELECT COUNT(*)

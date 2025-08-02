@@ -36,6 +36,7 @@ defmodule EveDmv.Workers.GenericTaskSupervisor do
   - `:max_per_user` - Maximum tasks per user (for UI supervisors)
   - `:capacity_check` - Function to check capacity limits
   """
+  """
   @callback config() :: keyword()
 
   defmacro __using__(_opts) do

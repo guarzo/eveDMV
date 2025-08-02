@@ -1,9 +1,13 @@
 defmodule EveDmv.Shared.Intelligence.SourceHandlers.KillmailHandler do
   @moduledoc """
+
   Handles killmail-specific intelligence processing.
 
   Responsible for extracting meaningful intelligence from killmail data,
   including threat indicators, activity patterns, and engagement analysis.
+  """
+
+  alias EveDmv.Core.Utils.DateTimeUtils
   """
 
   require Logger
@@ -294,7 +298,7 @@ defmodule EveDmv.Shared.Intelligence.SourceHandlers.KillmailHandler do
     first = List.first(sorted)
     last = List.last(sorted)
 
-    DateTime.diff(last.occurred_at, first.occurred_at)
+    DateTimeUtils.diff(last.occurred_at, first.occurred_at, :second)
   end
 
   defp find_most_dangerous_system(system_groups) do

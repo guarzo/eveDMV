@@ -5,6 +5,7 @@ defmodule EveDmvWeb.CharacterComparisonLive do
   Provides detailed comparison of combat statistics, ship preferences,
   and engagement patterns between selected characters.
   """
+  """
 
   use EveDmvWeb, :live_view
   import EveDmvWeb.Components.PageHeaderComponent
@@ -212,21 +213,29 @@ defmodule EveDmvWeb.CharacterComparisonLive do
       [character_id] = socket.assigns.selected_characters
       socket = assign(socket, :loading, true)
 
-      {:ok, result} =
-        CharacterComparisonService.find_similar_characters(
-          character_id,
-          socket.assigns.timeframe,
-          10
-        )
+      case CharacterComparisonService.find_similar_characters(
+             character_id,
+             socket.assigns.timeframe,
+             10
+           ) do
+        {:ok, result} ->
+          socket =
+            socket
+            |> assign(:similarity_result, result)
+            |> assign(:comparison_result, nil)
+            |> assign(:loading, false)
+            |> assign(:error, nil)
 
-      socket =
-        socket
-        |> assign(:similarity_result, result)
-        |> assign(:comparison_result, nil)
-        |> assign(:loading, false)
-        |> assign(:error, nil)
+          {:noreply, socket}
 
-      {:noreply, socket}
+        {:error, reason} ->
+          socket =
+            socket
+            |> assign(:loading, false)
+            |> assign(:error, reason)
+
+          {:noreply, put_flash(socket, :error, "Similarity search failed: #{reason}")}
+      end
     end
   end
 

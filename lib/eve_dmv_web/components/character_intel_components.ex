@@ -3,6 +3,7 @@ defmodule EveDmvWeb.CharacterIntelComponents do
   Reusable UI components for Character Intelligence pages.
   Provides loading states, error handling, and data visualization components.
   """
+  """
   use Phoenix.Component
   alias EveDmvWeb.Utils.FormattingUtils
 

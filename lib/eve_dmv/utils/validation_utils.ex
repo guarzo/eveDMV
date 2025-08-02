@@ -2,6 +2,7 @@ defmodule EveDmv.Utils.ValidationUtils do
   @moduledoc """
   Shared validation utilities for the EveDmv application.
   """
+  """
 
   @doc """
   Validates that all required fields are present in the provided data.

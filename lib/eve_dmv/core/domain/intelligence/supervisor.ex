@@ -9,6 +9,7 @@ defmodule EveDmv.Intelligence.Supervisor do
   Provides fault tolerance and process lifecycle management for
   the unified intelligence analyzer architecture.
   """
+  """
 
   use Supervisor
 

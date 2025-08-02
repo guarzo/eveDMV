@@ -6,6 +6,7 @@ defmodule EveDmv.Cache.AnalysisCache do
   timezone analysis, and location data to improve page load performance.
   """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   use GenServer
 
   require Logger
@@ -81,7 +82,7 @@ defmodule EveDmv.Cache.AnalysisCache do
   Put data into cache with TTL.
   """
   def put(cache_key, data, ttl \\ @default_ttl) do
-    expires_at = DateTime.add(DateTime.utc_now(), ttl, :millisecond)
+    expires_at = DateTimeUtils.add(DateTime.utc_now(), ttl, :millisecond)
     :ets.insert(@cache_table, {cache_key, data, expires_at})
     :ok
   end

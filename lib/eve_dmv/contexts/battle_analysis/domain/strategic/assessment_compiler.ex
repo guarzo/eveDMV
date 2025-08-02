@@ -1,5 +1,6 @@
 defmodule EveDmv.Shared.Strategic.AssessmentCompiler do
   @moduledoc """
+
   Compiles comprehensive strategic assessments from various analyses.
 
   Responsible for:
@@ -7,6 +8,9 @@ defmodule EveDmv.Shared.Strategic.AssessmentCompiler do
   - Environment classification
   - Strategic posture recommendations
   - Executive summary generation
+  """
+
+    alias EveDmv.Core.Utils.DateTimeUtils
   """
 
   require Logger
@@ -110,7 +114,7 @@ defmodule EveDmv.Shared.Strategic.AssessmentCompiler do
       start_date: strategic_data.time_range.since,
       end_date: strategic_data.time_range.until,
       duration_days:
-        DateTime.diff(
+        DateTimeUtils.diff(
           strategic_data.time_range.until,
           strategic_data.time_range.since,
           :day
@@ -1178,7 +1182,7 @@ defmodule EveDmv.Shared.Strategic.AssessmentCompiler do
       end
 
     DateTime.utc_now()
-    |> DateTime.add(days_until_review * 24 * 3600, :second)
+    |> DateTimeUtils.add(days_until_review * 24 * 3600, :second)
     |> DateTime.truncate(:second)
   end
 

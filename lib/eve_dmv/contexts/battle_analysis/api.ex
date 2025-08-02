@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Api do
   This domain manages resources related to combat log analysis,
   ship fittings, and battle correlation functionality.
   """
+  """
 
   use Ash.Domain,
     otp_app: :eve_dmv

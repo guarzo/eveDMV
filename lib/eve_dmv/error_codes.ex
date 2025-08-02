@@ -6,6 +6,7 @@ defmodule EveDmv.ErrorCodes do
   system identify the type of service causing issues and take appropriate
   recovery actions.
   """
+  """
 
   @doc """
   Categorizes an error code based on its pattern or source.

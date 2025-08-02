@@ -2,12 +2,14 @@ defmodule EveDmvWeb.ProfileLive do
   @moduledoc """
   User profile LiveView for managing account settings and preferences.
   """
+  """
 
   use EveDmvWeb, :live_view
 
   alias EveDmv.Contexts.CharacterIntelligence
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator
   alias EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Integrations.ShipIntelligenceBridge
 
   # Load current user from session on mount
@@ -68,13 +70,17 @@ defmodule EveDmvWeb.ProfileLive do
   end
 
   defp get_character_combat_stats(character_id) do
-    {:ok, report} = CharacterIntelligence.get_character_intelligence_report(character_id)
-    report.combat_stats
+    case CharacterIntelligence.get_character_intelligence_report(character_id) do
+      {:ok, report} -> report.combat_stats
+      {:error, _} -> %{}
+    end
   end
 
   defp get_character_ship_intelligence(character_id) do
-    {:ok, intelligence} = ShipIntelligenceBridge.calculate_ship_specialization(character_id)
-    intelligence
+    case ShipIntelligenceBridge.calculate_ship_specialization(character_id) do
+      {:ok, intelligence} -> intelligence
+      {:error, _} -> %{}
+    end
   end
 
   defp export_user_data(user) do
@@ -92,8 +98,11 @@ defmodule EveDmvWeb.ProfileLive do
     }
 
     # Get character intelligence data
-    {:ok, intelligence_data} =
-      CharacterIntelligence.get_character_intelligence_report(user.eve_character_id)
+    intelligence_data =
+      case CharacterIntelligence.get_character_intelligence_report(user.eve_character_id) do
+        {:ok, data} -> data
+        {:error, _} -> %{error: "Intelligence data not available"}
+      end
 
     # Get threat scoring data
     threat_data =
@@ -167,14 +176,19 @@ defmodule EveDmvWeb.ProfileLive do
   def handle_event("export_data", _params, socket) do
     current_user = socket.assigns.current_user
 
-    {:ok, _data} = export_user_data(current_user)
-    # In a real implementation, this would trigger a download or email
-    {:noreply,
-     put_flash(
-       socket,
-       :info,
-       "Data export completed. Check your email for the download link."
-     )}
+    case export_user_data(current_user) do
+      {:ok, _data} ->
+        # In a real implementation, this would trigger a download or email
+        {:noreply,
+         put_flash(
+           socket,
+           :info,
+           "Data export completed. Check your email for the download link."
+         )}
+
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, "Failed to export data: #{reason}")}
+    end
   end
 
   @impl Phoenix.LiveView
@@ -330,7 +344,7 @@ defmodule EveDmvWeb.ProfileLive do
               <div class="bg-gray-700 px-3 py-2 rounded-md text-white">
                 <%= if @current_user.token_expires_at do %>
                   <div class="flex items-center">
-                    <%= if DateTime.compare(@current_user.token_expires_at, DateTime.utc_now()) == :gt do %>
+                    <%= if DateTimeUtils.compare(@current_user.token_expires_at, DateTime.utc_now()) == :gt do %>
                       <svg class="w-4 h-4 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
                         <path
                           fill-rule="evenodd"

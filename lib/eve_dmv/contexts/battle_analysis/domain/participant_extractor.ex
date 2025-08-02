@@ -3,6 +3,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
   Utility module for extracting participant information from killmail data.
   Handles comprehensive attacker extraction from killmail raw_data JSON.
   """
+  """
 
   @doc """
   Extracts all participant character IDs from a killmail.
@@ -177,7 +178,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
   end
 
   defp normalize_character_id(id) when is_binary(id) do
-    case Integer.parse(id) do
+    # Remove underscores from string numbers before parsing
+    cleaned_id = String.replace(id, "_", "")
+    case Integer.parse(cleaned_id) do
       {int_id, ""} -> int_id
       _ -> nil
     end

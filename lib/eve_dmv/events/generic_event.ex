@@ -5,6 +5,7 @@ defmodule EveDmv.Events.GenericEvent do
   This struct provides a flexible container for domain events that don't
   have their own specific struct definition.
   """
+  """
 
   defstruct [
     :event_type,

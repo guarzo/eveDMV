@@ -1,5 +1,6 @@
 defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.WormholeChainAnalyzer do
   @moduledoc """
+
   Specialized analyzer for wormhole chain mapping and analysis.
 
   Handles all wormhole-specific analysis including:
@@ -8,6 +9,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.
   - Mass capacity and stability calculations
   - Traffic volume estimation
   - Strategic value assessment of connections
+  """
+
+    alias EveDmv.Core.Utils.DateTimeUtils
   """
 
   require Logger
@@ -109,7 +113,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.
   end
 
   defp get_system_activity_data(system_id, time_window_hours) do
-    cutoff_time = DateTime.add(DateTime.utc_now(), -trunc(time_window_hours * 3600), :second)
+    cutoff_time = DateTimeUtils.add(DateTime.utc_now(), -trunc(time_window_hours * 3600), :second)
 
     case EveDmv.Repo.query(
            """
@@ -552,7 +556,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.
 
   defp get_recent_system_activity(system_id) do
     # Get killmail count for last 24 hours in system
-    cutoff_time = DateTime.add(DateTime.utc_now(), -24, :hour)
+    cutoff_time = DateTimeUtils.add(DateTime.utc_now(), -24 * 60 * 60, :second)
 
     case EveDmv.Repo.query(
            """

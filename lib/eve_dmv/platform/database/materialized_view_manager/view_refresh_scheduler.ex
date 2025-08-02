@@ -5,8 +5,10 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewRefreshScheduler do
   Manages refresh strategies (full, incremental, concurrent), schedules
   automatic refreshes, and handles cache-invalidation-triggered refreshes.
   """
+  """
 
   alias Ecto.Adapters.SQL
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.MaterializedViewManager.ViewDefinitions
   alias EveDmv.Repo
   require Logger
@@ -304,10 +306,10 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewRefreshScheduler do
     # Calculate based on refresh strategy
     case view_def.refresh_strategy do
       :incremental ->
-        DateTime.add(DateTime.utc_now(), @incremental_refresh_interval, :millisecond)
+        DateTimeUtils.add(DateTime.utc_now(), @incremental_refresh_interval, :millisecond)
 
       _ ->
-        DateTime.add(DateTime.utc_now(), @refresh_interval, :millisecond)
+        DateTimeUtils.add(DateTime.utc_now(), @refresh_interval, :millisecond)
     end
   end
 

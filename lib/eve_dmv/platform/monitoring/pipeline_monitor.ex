@@ -5,9 +5,11 @@ defmodule EveDmv.Monitoring.PipelineMonitor do
   Tracks pipeline health, performance metrics, and error patterns
   to provide visibility into the data ingestion process.
   """
+  """
 
   use GenServer
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Error
   alias EveDmv.Monitoring.ErrorTracker
 
@@ -301,7 +303,7 @@ defmodule EveDmv.Monitoring.PipelineMonitor do
       errors: metrics.errors_by_type,
       last_success: metrics.last_success,
       last_failure: metrics.last_failure,
-      uptime_minutes: DateTime.diff(DateTime.utc_now(), metrics.last_reset, :minute)
+      uptime_minutes: DateTimeUtils.diff(DateTime.utc_now(), metrics.last_reset, :minute)
     }
   end
 
@@ -346,7 +348,7 @@ defmodule EveDmv.Monitoring.PipelineMonitor do
     # Check for recent failures
     failure_issues =
       if metrics.last_failure &&
-           DateTime.diff(DateTime.utc_now(), metrics.last_failure, :minute) < 5 do
+           DateTimeUtils.diff(DateTime.utc_now(), metrics.last_failure, :minute) < 5 do
         ["Recent failures detected" | success_rate_issues]
       else
         success_rate_issues
@@ -355,7 +357,7 @@ defmodule EveDmv.Monitoring.PipelineMonitor do
     # Check for stalled pipeline
     stall_issues =
       if metrics.last_success &&
-           DateTime.diff(DateTime.utc_now(), metrics.last_success, :minute) > 10 do
+           DateTimeUtils.diff(DateTime.utc_now(), metrics.last_success, :minute) > 10 do
         ["No successful processing in last 10 minutes" | failure_issues]
       else
         failure_issues

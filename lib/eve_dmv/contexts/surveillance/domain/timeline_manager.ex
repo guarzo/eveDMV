@@ -9,6 +9,9 @@ defmodule EveDmv.Shared.Correlation.TimelineManager do
   - Detecting coordinated operations
   - Calculating timeline statistics
   """
+  """
+
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
@@ -51,7 +54,7 @@ defmodule EveDmv.Shared.Correlation.TimelineManager do
     |> Enum.map(fn {window_start, events} ->
       %{
         window_start: window_start,
-        window_end: DateTime.add(window_start, window_size_seconds, :second),
+        window_end: DateTimeUtils.add(window_start, window_size_seconds, :second),
         event_count: length(events),
         unique_entities: count_unique_entities(events),
         unique_systems: count_unique_systems(events),
@@ -83,8 +86,8 @@ defmodule EveDmv.Shared.Correlation.TimelineManager do
       |> Enum.map(fn {window_start, window_end} ->
         events_in_window =
           Enum.filter(timeline_events, fn event ->
-            DateTime.compare(event.timestamp, window_start) != :lt and
-              DateTime.compare(event.timestamp, window_end) == :lt
+            DateTimeUtils.compare(event.timestamp, window_start) != :lt and
+              DateTimeUtils.compare(event.timestamp, window_end) == :lt
           end)
 
         %{
@@ -247,7 +250,7 @@ defmodule EveDmv.Shared.Correlation.TimelineManager do
     else
       start_time = get_timeline_start(events)
       end_time = get_timeline_end(events)
-      DateTime.diff(end_time, start_time)
+      DateTimeUtils.diff(end_time, start_time, :second)
     end
   end
 
@@ -290,8 +293,8 @@ defmodule EveDmv.Shared.Correlation.TimelineManager do
   end
 
   defp create_windows_recursive(current, end_time, window_size_seconds, acc) do
-    if DateTime.compare(current, end_time) == :lt do
-      window_end = DateTime.add(current, window_size_seconds, :second)
+    if DateTimeUtils.compare(current, end_time) == :lt do
+      window_end = DateTimeUtils.add(current, window_size_seconds, :second)
       new_window = {current, window_end}
       create_windows_recursive(window_end, end_time, window_size_seconds, [new_window | acc])
     else
@@ -334,7 +337,7 @@ defmodule EveDmv.Shared.Correlation.TimelineManager do
     else
       first = List.first(events).timestamp
       last = List.last(events).timestamp
-      DateTime.diff(last, first)
+      DateTimeUtils.diff(last, first, :second)
     end
   end
 
@@ -448,7 +451,7 @@ defmodule EveDmv.Shared.Correlation.TimelineManager do
     |> Enum.sort_by(& &1.timestamp, DateTime)
     |> Enum.chunk_every(2, 1, :discard)
     |> Enum.map(fn [prev, curr] ->
-      gap_seconds = DateTime.diff(curr.timestamp, prev.timestamp)
+      gap_seconds = DateTimeUtils.diff(curr.timestamp, prev.timestamp, :second)
 
       %{
         start: prev.timestamp,
@@ -463,4 +466,5 @@ defmodule EveDmv.Shared.Correlation.TimelineManager do
     end)
     |> Enum.sort_by(& &1.gap_seconds, :desc)
   end
+
 end

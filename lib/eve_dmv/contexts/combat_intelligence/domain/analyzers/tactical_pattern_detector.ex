@@ -1,5 +1,6 @@
 defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.TacticalPatternDetector do
   @moduledoc """
+
   Detects and analyzes tactical patterns in battle timelines.
 
   Responsible for:
@@ -8,6 +9,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
   - Analyzing engagement flow and battle phases
   - Measuring focus fire effectiveness
   - Evaluating target selection strategies
+  """
+
+    alias EveDmv.Core.Utils.DateTimeUtils
   """
 
   require Logger
@@ -287,7 +291,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
             start_timestamp: List.first(first_window).timestamp,
             end_timestamp: List.last(last_window).timestamp,
             duration_seconds:
-              DateTime.diff(
+              DateTimeUtils.diff(
                 List.last(last_window).timestamp,
                 List.first(first_window).timestamp
               ),
@@ -334,7 +338,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
             start_timestamp: List.first(first_window).timestamp,
             end_timestamp: List.last(last_window).timestamp,
             duration_seconds:
-              DateTime.diff(
+              DateTimeUtils.diff(
                 List.last(last_window).timestamp,
                 List.first(first_window).timestamp
               ),
@@ -412,7 +416,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
     time_score =
       if length(window) > 1 do
         time_spread =
-          DateTime.diff(
+          DateTimeUtils.diff(
             List.last(window).timestamp,
             List.first(window).timestamp
           )
@@ -492,7 +496,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
             start_time: List.first(phase_events).timestamp,
             end_time: List.last(phase_events).timestamp,
             duration_seconds:
-              DateTime.diff(
+              DateTimeUtils.diff(
                 List.last(phase_events).timestamp,
                 List.first(phase_events).timestamp
               ),
@@ -500,7 +504,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
             intensity:
               length(phase_events) /
                 max(
-                  DateTime.diff(
+                  DateTimeUtils.diff(
                     List.last(phase_events).timestamp,
                     List.first(phase_events).timestamp
                   ) / 60,
@@ -520,7 +524,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
 
       _ ->
         last_event = List.first(acc)
-        gap_seconds = DateTime.diff(event.timestamp, last_event.timestamp)
+        gap_seconds = DateTimeUtils.diff(event.timestamp, last_event.timestamp, :second)
 
         # 5 minute gap
         if gap_seconds > 300 do
@@ -549,7 +553,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
         |> Enum.chunk_every(3, 1, :discard)
         |> Enum.map(fn window ->
           duration_minutes =
-            DateTime.diff(
+            DateTimeUtils.diff(
               List.last(window).timestamp,
               List.first(window).timestamp
             ) / 60

@@ -6,6 +6,7 @@ defmodule EveDmv.Intelligence.PatternAnalysis do
   for character behavioral assessment, including activity rhythm,
   engagement patterns, risk progression, and anomaly detection.
   """
+  """
 
   @doc """
   Analyze activity rhythm patterns in character behavior.

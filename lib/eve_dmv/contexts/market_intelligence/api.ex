@@ -6,6 +6,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Api do
   can use to interact with market intelligence functionality.
   All functions return either {:ok, result} or {:error, reason}.
   """
+  """
 
   alias EveDmv.Contexts.MarketIntelligence.Domain
   alias EveDmv.Result

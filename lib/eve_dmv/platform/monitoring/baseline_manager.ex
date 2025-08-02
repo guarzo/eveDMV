@@ -9,8 +9,10 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
   - Threat baseline calculation
   - Baseline validation and quality assessment
   """
+  """
 
   alias EveDmv.Api
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
 
   require Logger
@@ -56,7 +58,7 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
        %{
          monitored_systems: monitored_systems,
          baseline_window:
-           {DateTime.utc_now() |> DateTime.add(-baseline_window_hours * 3600, :second),
+           {DateTime.utc_now() |> DateTimeUtils.add(-baseline_window_hours * 3600, :second),
             DateTime.utc_now()},
          activity_baseline: activity_baseline,
          pattern_baseline: pattern_baseline,
@@ -75,7 +77,7 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
   # Private functions
 
   defp collect_baseline_data(monitored_systems, baseline_window_hours) do
-    since = DateTime.utc_now() |> DateTime.add(-baseline_window_hours * 3600, :second)
+    since = DateTime.utc_now() |> DateTimeUtils.add(-baseline_window_hours * 3600, :second)
 
     try do
       system_data =
@@ -209,7 +211,7 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
     else
       first = Enum.min_by(killmails, & &1.timestamp).timestamp
       last = Enum.max_by(killmails, & &1.timestamp).timestamp
-      max(1.0, DateTime.diff(last, first, :hour))
+      max(1.0, DateTimeUtils.diff(last, first, :hour))
     end
   end
 
@@ -354,7 +356,7 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
   defp build_cluster(cluster, [next | rest], max_gap_seconds) do
     last_time = List.last(cluster).timestamp
 
-    if DateTime.diff(next.timestamp, last_time, :second) <= max_gap_seconds do
+    if DateTimeUtils.diff(next.timestamp, last_time, :second) <= max_gap_seconds do
       build_cluster(cluster ++ [next], rest, max_gap_seconds)
     else
       {cluster, [next | rest]}
@@ -369,7 +371,7 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
         killmails
         |> Enum.sort_by(& &1.timestamp, DateTime)
         |> Enum.chunk_every(2, 1, :discard)
-        |> Enum.map(fn [k1, k2] -> DateTime.diff(k2.timestamp, k1.timestamp, :second) end)
+        |> Enum.map(fn [k1, k2] -> DateTimeUtils.diff(k2.timestamp, k1.timestamp, :second) end)
 
       if Enum.empty?(intervals) do
         1.0

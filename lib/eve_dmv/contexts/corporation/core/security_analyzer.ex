@@ -6,9 +6,11 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
   Provides comprehensive security analysis for corporation management
   to identify potential threats and security vulnerabilities.
   """
+  """
 
   alias EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer
   alias EveDmv.Contexts.Corporation.Core.MemberRiskAssessment
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.CharacterRepository
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
   alias EveDmv.Platform.Database.CorporationRepository
@@ -120,11 +122,11 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
     # Analyze factors that indicate infiltration risk
 
     # New members (joined in last 30 days)
-    recent_cutoff = DateTime.utc_now() |> DateTime.add(-30, :day)
+    recent_cutoff = DateTime.utc_now() |> DateTimeUtils.add(-30 * 24 * 60 * 60, :second)
 
     new_members =
       Enum.filter(members, fn member ->
-        member.join_date && DateTime.compare(member.join_date, recent_cutoff) == :gt
+        member.join_date && DateTimeUtils.compare(member.join_date, recent_cutoff) == :gt
       end)
 
     # Members with low activity but present
@@ -133,7 +135,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
     low_activity_members =
       Enum.filter(member_metrics, fn metric ->
         metric.activity_score < 20 && metric.last_seen &&
-          DateTime.diff(DateTime.utc_now(), metric.last_seen, :day) < 7
+          DateTimeUtils.diff(DateTime.utc_now(), metric.last_seen, :day) < 7
       end)
 
     # Members with suspicious activity patterns
@@ -238,7 +240,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
   defp days_since_join(nil), do: "unknown"
 
   defp days_since_join(join_date) do
-    DateTime.diff(DateTime.utc_now(), join_date, :day)
+    DateTimeUtils.diff(DateTime.utc_now(), join_date, :day)
   end
 
   defp analyze_awox_risks(_members, risk_assessment) do
@@ -331,7 +333,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
         # Low combat participation but active
         indicators =
           if metric.total_killmails < 5 && metric.last_seen &&
-               DateTime.diff(DateTime.utc_now(), metric.last_seen, :day) < 7 do
+               DateTimeUtils.diff(DateTime.utc_now(), metric.last_seen, :day) < 7 do
             ["Active but minimal combat participation" | indicators]
           else
             indicators
@@ -509,20 +511,20 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
     # Categorize by join date
     well_vetted =
       Enum.count(members, fn member ->
-        member.join_date && DateTime.diff(DateTime.utc_now(), member.join_date, :day) > 90
+        member.join_date && DateTimeUtils.diff(DateTime.utc_now(), member.join_date, :day) > 90
       end)
 
     recently_vetted =
       Enum.count(members, fn member ->
         member.join_date &&
-          DateTime.diff(DateTime.utc_now(), member.join_date, :day) <= 90 &&
-          DateTime.diff(DateTime.utc_now(), member.join_date, :day) > 30
+          DateTimeUtils.diff(DateTime.utc_now(), member.join_date, :day) <= 90 &&
+          DateTimeUtils.diff(DateTime.utc_now(), member.join_date, :day) > 30
       end)
 
     unvetted =
       Enum.count(members, fn member ->
         is_nil(member.join_date) ||
-          DateTime.diff(DateTime.utc_now(), member.join_date, :day) <= 30
+          DateTimeUtils.diff(DateTime.utc_now(), member.join_date, :day) <= 30
       end)
 
     %{
@@ -557,7 +559,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
       member_metrics
       |> Enum.filter(fn m ->
         m.activity_score < 10 && m.last_seen &&
-          DateTime.diff(DateTime.utc_now(), m.last_seen, :day) < 7
+          DateTimeUtils.diff(DateTime.utc_now(), m.last_seen, :day) < 7
       end)
       |> length()
 
@@ -788,7 +790,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
 
   defp get_character_killmail_history(character_id) do
     # 6 months
-    start_date = DateTime.utc_now() |> DateTime.add(-180, :day)
+    start_date = DateTime.utc_now() |> DateTimeUtils.add(-180 * 24 * 60 * 60, :second)
 
     case CharacterRepository.get_character_killmails_since(character_id, start_date) do
       {:ok, killmails} ->
@@ -826,7 +828,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
 
   defp get_character_activity_pattern(character_id) do
     # Use killmail data to infer activity patterns
-    start_date = DateTime.utc_now() |> DateTime.add(-90, :day)
+    start_date = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
 
     case CharacterRepository.get_character_killmails_since(character_id, start_date) do
       {:ok, killmails} when killmails != [] ->
@@ -854,7 +856,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
 
   defp get_character_affiliations(character_id) do
     # Extract affiliation data from killmail history
-    start_date = DateTime.utc_now() |> DateTime.add(-180, :day)
+    start_date = DateTime.utc_now() |> DateTimeUtils.add(-180 * 24 * 60 * 60, :second)
 
     case CharacterRepository.get_character_killmails_since(character_id, start_date) do
       {:ok, killmails} ->
@@ -1003,13 +1005,13 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
       |> Enum.sort_by(& &1.killmail_time, DateTime)
       |> Enum.chunk_every(2, 1, :discard)
       |> Enum.filter(fn [km1, km2] ->
-        DateTime.diff(km2.killmail_time, km1.killmail_time, :day) > 7
+        DateTimeUtils.diff(km2.killmail_time, km1.killmail_time, :day) > 7
       end)
       |> Enum.map(fn [km1, km2] ->
         %{
           start_date: km1.killmail_time,
           end_date: km2.killmail_time,
-          gap_days: DateTime.diff(km2.killmail_time, km1.killmail_time, :day)
+          gap_days: DateTimeUtils.diff(km2.killmail_time, km1.killmail_time, :day)
         }
       end)
     end
@@ -1036,7 +1038,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
         |> Enum.min_by(& &1.killmail_time)
         |> Map.get(:killmail_time)
 
-      total_days = DateTime.diff(max_time, min_time, :day)
+      total_days = DateTimeUtils.diff(max_time, min_time, :day)
 
       if total_days > 0 do
         round(days_with_activity / total_days * 100)
@@ -1080,7 +1082,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
           from_corporation: corp1,
           to_corporation: corp2,
           change_date: time2,
-          days_in_previous: DateTime.diff(time2, time1, :day)
+          days_in_previous: DateTimeUtils.diff(time2, time1, :day)
         }
       end)
 

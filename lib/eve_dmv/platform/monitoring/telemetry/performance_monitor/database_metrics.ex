@@ -5,6 +5,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.DatabaseMetrics do
   Provides insights into table statistics, slow queries, table sizes,
   and overall database performance.
   """
+  """
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Telemetry.QueryMonitor

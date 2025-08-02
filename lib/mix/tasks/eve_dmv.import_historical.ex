@@ -31,11 +31,13 @@ defmodule Mix.Tasks.EveDmv.ImportHistorical do
       # Resume failed import from line 50_000
       mix eve_dmv.import_historical /data/killmails.jsonl --resume-from 50_000
   """
+  """
 
   @shortdoc "Import historical killmail data"
 
   use Mix.Task
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Historical.ImportPipeline
   alias EveDmv.Historical.ImportProgressMonitor
 
@@ -132,7 +134,7 @@ defmodule Mix.Tasks.EveDmv.ImportHistorical do
           "unknown"
 
         end_time ->
-          seconds = DateTime.diff(end_time, state.start_time, :second)
+          seconds = DateTimeUtils.diff(end_time, state.start_time, :second)
           format_duration(seconds)
       end
 

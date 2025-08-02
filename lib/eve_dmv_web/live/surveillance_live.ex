@@ -5,6 +5,7 @@ defmodule EveDmvWeb.SurveillanceLive do
   Allows users to create, edit, and manage killmail surveillance profiles
   with real-time notifications when profiles match incoming killmails.
   """
+  """
 
   use EveDmvWeb, :live_view
   import EveDmvWeb.LiveHelpers.ApiErrorHelper

@@ -5,10 +5,12 @@ defmodule EveDmv.Database.IncrementalViewRefresher do
   Instead of fully refreshing materialized views, this module implements
   an incremental refresh approach that only updates changed data.
   """
+  """
 
   use GenServer
 
   alias Ecto.Adapters.SQL
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
@@ -151,7 +153,7 @@ defmodule EveDmv.Database.IncrementalViewRefresher do
           true
 
         timestamp ->
-          time_since = DateTime.diff(DateTime.utc_now(), timestamp, :millisecond)
+          time_since = DateTimeUtils.diff(DateTime.utc_now(), timestamp, :millisecond)
           time_since > config.full_refresh_interval
       end
 
@@ -210,7 +212,7 @@ defmodule EveDmv.Database.IncrementalViewRefresher do
   # Specific refresh implementations
 
   def refresh_character_activity(last_refresh) do
-    cutoff_time = last_refresh || DateTime.add(DateTime.utc_now(), -86_400, :second)
+    cutoff_time = last_refresh || DateTimeUtils.add(DateTime.utc_now(), -86_400, :second)
 
     sql = """
     WITH recent_kills AS (
@@ -284,7 +286,7 @@ defmodule EveDmv.Database.IncrementalViewRefresher do
 
   def refresh_system_heatmap(last_refresh) do
     # 7 days
-    cutoff_time = last_refresh || DateTime.add(DateTime.utc_now(), -604_800, :second)
+    cutoff_time = last_refresh || DateTimeUtils.add(DateTime.utc_now(), -604_800, :second)
 
     sql = """
     WITH recent_activity AS (

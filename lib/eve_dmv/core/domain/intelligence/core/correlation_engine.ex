@@ -6,6 +6,7 @@ defmodule EveDmv.Intelligence.Core.CorrelationEngine do
   to provide comprehensive insights that span character analysis, vetting,
   and threat assessment systems.
   """
+  """
 
   alias EveDmv.Intelligence.Analyzers.CharacterAnalyzer
   alias EveDmv.Intelligence.Analyzers.WHVettingAnalyzer

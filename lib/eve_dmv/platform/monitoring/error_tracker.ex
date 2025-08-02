@@ -5,8 +5,10 @@ defmodule EveDmv.Monitoring.ErrorTracker do
   Tracks errors across the application, maintains statistics,
   and provides reporting capabilities for error patterns.
   """
+  """
 
   use GenServer
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Error
   alias EveDmv.ErrorCodes
 
@@ -193,7 +195,7 @@ defmodule EveDmv.Monitoring.ErrorTracker do
 
   @impl GenServer
   def handle_call({:get_recent_errors, minutes}, _from, state) do
-    cutoff = DateTime.add(DateTime.utc_now(), -minutes * 60, :second)
+    cutoff = DateTimeUtils.add(DateTime.utc_now(), -minutes * 60, :second)
 
     errors =
       cutoff
@@ -213,7 +215,7 @@ defmodule EveDmv.Monitoring.ErrorTracker do
   def handle_call(:get_summary_report, _from, state) do
     report = %{
       start_time: state.start_time,
-      uptime_hours: DateTime.diff(DateTime.utc_now(), state.start_time, :hour),
+      uptime_hours: DateTimeUtils.diff(DateTime.utc_now(), state.start_time, :hour),
       total_errors: state.total_errors,
       errors_by_category: state.errors_by_category,
       top_errors: get_top_errors(10),
@@ -309,7 +311,7 @@ defmodule EveDmv.Monitoring.ErrorTracker do
   end
 
   defp calculate_error_rate(state) do
-    uptime_minutes = max(1, DateTime.diff(DateTime.utc_now(), state.start_time, :minute))
+    uptime_minutes = max(1, DateTimeUtils.diff(DateTime.utc_now(), state.start_time, :minute))
     state.total_errors / uptime_minutes
   end
 
@@ -352,7 +354,7 @@ defmodule EveDmv.Monitoring.ErrorTracker do
   end
 
   defp cleanup_old_errors do
-    cutoff = DateTime.add(DateTime.utc_now(), -@error_ttl, :millisecond)
+    cutoff = DateTimeUtils.add(DateTime.utc_now(), -@error_ttl, :millisecond)
 
     # Remove old error records
     old_records =

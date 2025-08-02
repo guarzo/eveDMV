@@ -5,6 +5,7 @@ defmodule EveDmv.Database.QueryOptimizations do
   This module implements optimized query patterns to eliminate N+1 queries
   and improve overall database performance.
   """
+  """
 
   import Ecto.Query
   alias EveDmv.Repo

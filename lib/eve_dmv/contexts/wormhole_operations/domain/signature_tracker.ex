@@ -12,8 +12,10 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
   - Signature strength analysis for site difficulty
   - Integration with chain tracking for connection management
   """
+  """
 
   alias EveDmv.Contexts.WormholeOperations.Domain.ChainTracker
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.StaticData
   require Logger
 
@@ -135,12 +137,12 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
   - Chain rolling (systematic connection cycling)
   """
   def detect_activity_patterns(_system_id, signature_history, time_window_minutes \\ 60) do
-    cutoff_time = DateTime.add(DateTime.utc_now(), -time_window_minutes * 60, :second)
+    cutoff_time = DateTimeUtils.add(DateTime.utc_now(), -time_window_minutes * 60, :second)
 
     # Filter recent signatures
     recent_sigs =
       Enum.filter(signature_history, fn sig ->
-        DateTime.compare(sig.created_at, cutoff_time) == :gt
+        DateTimeUtils.compare(sig.created_at, cutoff_time) == :gt
       end)
 
     # Group by signature ID to track lifecycle
@@ -572,7 +574,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
 
   defp calculate_lifetime(signature) do
     if signature.created_at and Map.get(signature, :collapsed_at) do
-      DateTime.diff(signature.collapsed_at, signature.created_at, :minute)
+      DateTimeUtils.diff(signature.collapsed_at, signature.created_at, :minute)
     else
       0
     end
@@ -584,7 +586,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
     if length(sorted) >= 2 do
       first = List.first(sorted)
       last = List.last(sorted)
-      DateTime.diff(last.created_at, first.created_at, :minute)
+      DateTimeUtils.diff(last.created_at, first.created_at, :minute)
     else
       0
     end

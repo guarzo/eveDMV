@@ -6,6 +6,7 @@ defmodule EveDmv.Intelligence.LegacyAdapter do
   plugin system with the old analyzer interfaces. This allows existing code to continue
   working while we migrate to the new system.
   """
+  """
 
   alias EveDmv.IntelligenceEngine
 

@@ -5,6 +5,7 @@ defmodule EveDmvWeb.Api.CharacterBehaviorController do
   Provides endpoints for analyzing and retrieving behavioral
   patterns and characteristics of EVE Online characters.
   """
+  """
 
   use EveDmvWeb, :controller
 

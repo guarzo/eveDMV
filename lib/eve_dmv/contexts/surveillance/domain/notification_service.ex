@@ -5,10 +5,12 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
   Handles the delivery of surveillance alerts through various channels
   including email, webhooks, and in-app notifications.
   """
+  """
 
   use GenServer
   use EveDmv.ErrorHandler
   alias EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
@@ -184,7 +186,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
       if since do
         profile_history
         |> Enum.filter(fn notification ->
-          DateTime.compare(notification.created_at, since) == :gt
+          DateTimeUtils.compare(notification.created_at, since) == :gt
         end)
       else
         profile_history
@@ -337,7 +339,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
     new_rate_limits =
       Map.new(state.rate_limits, fn {profile_id, limits} ->
         current_time = DateTime.utc_now()
-        reset_time = DateTime.add(current_time, 3600, :second)
+        reset_time = DateTimeUtils.add(current_time, 3600, :second)
         {profile_id, %{limits | current_count: 0, reset_at: reset_time}}
       end)
 
@@ -499,15 +501,15 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
       Map.get(rate_limits, profile_id, %{
         current_count: 0,
         max_per_hour: 10,
-        reset_at: DateTime.add(current_time, 3600, :second)
+        reset_at: DateTimeUtils.add(current_time, 3600, :second)
       })
 
-    if DateTime.compare(current_time, profile_limits.reset_at) == :gt do
+    if DateTimeUtils.compare(current_time, profile_limits.reset_at) == :gt do
       # Reset period has passed
       new_limits = %{
         profile_limits
         | current_count: 1,
-          reset_at: DateTime.add(current_time, 3600, :second)
+          reset_at: DateTimeUtils.add(current_time, 3600, :second)
       }
 
       {:ok, Map.put(rate_limits, profile_id, new_limits)}
@@ -695,16 +697,16 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
 
     cutoff_time =
       case time_range do
-        :last_hour -> DateTime.add(current_time, -3600, :second)
-        :last_24h -> DateTime.add(current_time, -24 * 3600, :second)
-        :last_7d -> DateTime.add(current_time, -7 * 24 * 3600, :second)
-        :last_30d -> DateTime.add(current_time, -30 * 24 * 3600, :second)
+        :last_hour -> DateTimeUtils.add(current_time, -3600, :second)
+        :last_24h -> DateTimeUtils.add(current_time, -24 * 3600, :second)
+        :last_7d -> DateTimeUtils.add(current_time, -7 * 24 * 3600, :second)
+        :last_30d -> DateTimeUtils.add(current_time, -30 * 24 * 3600, :second)
       end
 
     recent_notifications =
       state.notifications
       |> Map.values()
-      |> Enum.filter(&(DateTime.compare(&1.created_at, cutoff_time) == :gt))
+      |> Enum.filter(&(DateTimeUtils.compare(&1.created_at, cutoff_time) == :gt))
 
     channel_distribution =
       recent_notifications

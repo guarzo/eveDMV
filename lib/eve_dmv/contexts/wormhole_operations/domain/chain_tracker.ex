@@ -12,9 +12,11 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainTracker do
   - Chain depth and path calculations
   - Basic threat assessment based on chain activity
   """
+  """
 
   import Ecto.Query
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Repo
   alias EveDmv.StaticData
 
@@ -254,7 +256,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainTracker do
   - Potential hostile fleet movements
   """
   def monitor_chain_activity(chain_systems, time_window_hours \\ 24) do
-    cutoff_time = DateTime.add(DateTime.utc_now(), -time_window_hours * 3600, :second)
+    cutoff_time = DateTimeUtils.add(DateTime.utc_now(), -time_window_hours * 3600, :second)
 
     # Query recent killmails in chain systems
     activity_query =

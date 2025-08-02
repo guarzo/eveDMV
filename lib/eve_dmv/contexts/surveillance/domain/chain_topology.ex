@@ -5,10 +5,13 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainTopology do
   Integrates with Wanderer API to track chain structure, inhabitants,
   and real-time changes for wormhole intelligence.
   """
+  """
 
   use Ash.Resource,
     domain: EveDmv.Domains.Intelligence,
     data_layer: AshPostgres.DataLayer
+
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   postgres do
     table("chain_topologies")
@@ -188,7 +191,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainTopology do
               0
 
             activity_time ->
-              hours_ago = DateTime.diff(DateTime.utc_now(), activity_time, :hour)
+              hours_ago = DateTimeUtils.diff(DateTime.utc_now(), activity_time, :hour)
               # Score decreases over 25 hours
               max(0, 100 - hours_ago * 4)
           end
@@ -200,12 +203,12 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainTopology do
       description("Whether chain had activity in last 4 hours")
 
       calculation(fn records, _context ->
-        cutoff = DateTime.add(DateTime.utc_now(), -4, :hour)
+        cutoff = DateTimeUtils.add(DateTime.utc_now(), -4 * 60 * 60, :second)
 
         Enum.map(records, fn record ->
           case record.last_activity_at do
             nil -> false
-            activity_time -> DateTime.compare(activity_time, cutoff) == :gt
+            activity_time -> DateTimeUtils.compare(activity_time, cutoff) == :gt
           end
         end)
       end)

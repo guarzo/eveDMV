@@ -16,6 +16,7 @@ defmodule EveDmv.Eve.StaticDataLoader do
   {:ok, count} = StaticDataLoader.load_solar_systems()
   ```
   """
+  """
 
   alias EveDmv.Eve.ItemType
   alias EveDmv.Eve.SolarSystem

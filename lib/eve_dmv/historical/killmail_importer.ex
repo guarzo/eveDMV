@@ -5,6 +5,7 @@ defmodule EveDmv.Historical.KillmailImporter do
   This module contains the core logic extracted from the Mix task to reduce
   module dependencies and improve maintainability.
   """
+  """
 
   require Logger
 

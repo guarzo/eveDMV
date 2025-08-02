@@ -10,8 +10,10 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
   - Capital deployment strategies
   - Bombing runs
   """
+  """
 
   alias EveDmv.Contexts.Combat.Core.TimelineBuilder
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.StaticData.ShipTypes
 
   @doc """
@@ -82,7 +84,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
     # All kills within 2 minutes
     first_time = List.first(times)
     last_time = List.last(times)
-    time_span = DateTime.diff(last_time, first_time, :second)
+    time_span = DateTimeUtils.diff(last_time, first_time, :second)
 
     if time_span <= 120 do
       # Check for overlapping attackers
@@ -291,7 +293,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
       phases
       |> Enum.chunk_every(2, 1, :discard)
       |> Enum.count(fn [p1, p2] ->
-        DateTime.diff(p2.start_time, p1.end_time, :minute) > 5
+        DateTimeUtils.diff(p2.start_time, p1.end_time, :minute) > 5
       end)
 
     gap_count > 2
@@ -417,7 +419,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
         first_capital: List.first(times),
         escalation_duration:
           if length(times) > 1 do
-            DateTime.diff(List.last(times), List.first(times), :minute)
+            DateTimeUtils.diff(List.last(times), List.first(times), :minute)
           else
             0
           end
@@ -582,7 +584,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
         |> Enum.map(fn seq ->
           first = List.first(seq).killmail_time
           last = List.last(seq).killmail_time
-          DateTime.diff(last, first, :second)
+          DateTimeUtils.diff(last, first, :second)
         end)
         |> average()
 
@@ -740,8 +742,8 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
       case pattern do
         %{instances: instances} ->
           Enum.any?(instances, fn instance ->
-            DateTime.compare(instance.start_time, time) != :gt &&
-              DateTime.compare(instance.end_time, time) != :lt
+            DateTimeUtils.compare(instance.start_time, time) != :gt &&
+              DateTimeUtils.compare(instance.end_time, time) != :lt
           end)
 
         _ ->
@@ -891,7 +893,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
       first = List.first(times)
       last = List.last(times)
 
-      DateTime.diff(last, first, :second) / (length(killmail_sequence) - 1)
+      DateTimeUtils.diff(last, first, :second) / (length(killmail_sequence) - 1)
     else
       0
     end

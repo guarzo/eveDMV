@@ -5,6 +5,7 @@ defmodule EveDmv.IntelligenceEngine.Config do
   Provides configuration for the bounded context system while maintaining
   the old IntelligenceEngine.Config API.
   """
+  """
 
   @default_config %{
     analysis: %{

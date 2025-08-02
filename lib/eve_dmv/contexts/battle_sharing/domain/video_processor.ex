@@ -55,6 +55,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoProcessor do
   - Implement platform-specific thumbnail generation
   - Enhance metadata extraction with API integrations
   """
+  """
 
   require Logger
 

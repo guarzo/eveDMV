@@ -4,6 +4,7 @@ defmodule EveDmv.Utils.DataTransform do
 
   Part of Sprint 22 Quality Standards - Code Duplication Elimination.
   """
+  """
 
   @doc """
   Safe integer parsing with default.

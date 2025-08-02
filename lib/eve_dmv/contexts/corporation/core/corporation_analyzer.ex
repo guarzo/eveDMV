@@ -7,11 +7,13 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
   - Corporation Analysis domain analyzers
   - Corporation Intelligence analyzers
   """
+  """
 
   use GenServer
 
   alias EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer
   alias EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
   alias EveDmv.Platform.Database.CorporationRepository
 
@@ -635,15 +637,15 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
     Enum.count(members, fn member ->
       # Simplified check
       member.join_date &&
-        DateTime.diff(DateTime.utc_now(), member.join_date, :day) > 365
+        DateTimeUtils.diff(DateTime.utc_now(), member.join_date, :day) > 365
     end)
   end
 
   defp count_recent_recruits(members) do
-    cutoff = DateTime.utc_now() |> DateTime.add(-30, :day)
+    cutoff = DateTime.utc_now() |> DateTimeUtils.add(-30 * 24 * 60 * 60, :second)
 
     Enum.count(members, fn member ->
-      member.join_date && DateTime.compare(member.join_date, cutoff) == :gt
+      member.join_date && DateTimeUtils.compare(member.join_date, cutoff) == :gt
     end)
   end
 
@@ -655,7 +657,7 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
     inactive_count =
       Enum.count(members, fn member ->
         is_nil(member.last_seen) ||
-          DateTime.diff(DateTime.utc_now(), member.last_seen, :day) > 30
+          DateTimeUtils.diff(DateTime.utc_now(), member.last_seen, :day) > 30
       end)
 
     final_gaps =

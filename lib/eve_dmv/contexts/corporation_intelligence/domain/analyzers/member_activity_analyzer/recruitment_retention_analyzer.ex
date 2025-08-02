@@ -5,7 +5,9 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.RecruitmentRetent
   Identifies retention risks, generates recruitment insights, and provides
   recommendations for improving member retention and recruitment strategies.
   """
+  """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.Analyzers.MemberRiskAssessment
   alias EveDmv.Intelligence.Generators.RecommendationGenerator
   alias EveDmv.Intelligence.Generators.RecruitmentInsightGenerator
@@ -78,7 +80,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.RecruitmentRetent
   """
   def days_since_last_activity(last_activity, current_time) do
     if last_activity do
-      DateTime.diff(current_time, last_activity, :day)
+      DateTimeUtils.diff(current_time, last_activity, :day)
     else
       # Very old if no activity recorded
       999

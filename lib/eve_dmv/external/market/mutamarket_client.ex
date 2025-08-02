@@ -21,6 +21,7 @@ defmodule EveDmv.Market.MutamarketClient do
       # Search for similar modules
       {:ok, modules} = MutamarketClient.search_similar(type_id, attributes)
   """
+  """
 
   require Logger
 

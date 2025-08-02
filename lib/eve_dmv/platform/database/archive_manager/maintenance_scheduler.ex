@@ -5,8 +5,10 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
   Manages cleanup operations, archive health checks, and automated
   maintenance tasks to keep the archive system running efficiently.
   """
+  """
 
   alias Ecto.Adapters.SQL
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.ArchiveManager.ArchiveOperations
   alias EveDmv.Database.ArchiveManager.PartitionManager
   alias EveDmv.Repo
@@ -79,7 +81,7 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
   """
   def cleanup_archive_table(policy) do
     retention_cutoff =
-      DateTime.add(DateTime.utc_now(), -policy.retention_years * 365, :day)
+      DateTimeUtils.add(DateTime.utc_now(), -policy.retention_years * 365, :day)
 
     Logger.info(
       "Cleaning up #{policy.archive_table} - removing records older than #{retention_cutoff}"

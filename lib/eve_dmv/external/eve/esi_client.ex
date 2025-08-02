@@ -29,6 +29,7 @@ defmodule EveDmv.Eve.EsiClient do
       # Market operations
       {:ok, orders} = EsiClient.get_market_orders(34, 10_000_002)
   """
+  """
 
   alias EveDmv.Eve.EsiCharacterClient
   alias EveDmv.Eve.EsiCorporationClient

@@ -6,6 +6,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Api do
   operations including recruitment vetting, home defense analysis,
   mass optimization, and operational security monitoring.
   """
+  """
 
   use EveDmv.ErrorHandler
   alias EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer
@@ -74,6 +75,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Api do
   - {:ok, vetting_report} with comprehensive analysis and recommendations
   - {:error, reason} on failure
   """
+  @spec vet_recruitment_candidate(integer(), map()) :: {:ok, map()} | {:error, atom()}
   def vet_recruitment_candidate(character_id, vetting_criteria) do
     with {:ok, validated_criteria} <- validate_vetting_criteria(vetting_criteria),
          {:ok, vetting_report} <-
@@ -90,6 +92,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Api do
   @doc """
   Get a previously generated vetting report.
   """
+  @spec get_vetting_report(String.t()) :: {:ok, map()} | {:error, atom()}
   def get_vetting_report(vetting_id) do
     VettingRepository.get_vetting_report(vetting_id)
   end
@@ -97,6 +100,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Api do
   @doc """
   Get recruitment recommendations based on character analysis.
   """
+  @spec get_recruitment_recommendations(integer()) :: {:ok, map()} | {:error, atom()}
   def get_recruitment_recommendations(character_id) do
     RecruitmentVetter.generate_recruitment_recommendations(character_id)
   end
@@ -104,6 +108,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Api do
   @doc """
   Update corporation vetting criteria.
   """
+  @spec update_vetting_criteria(integer(), map()) :: {:ok, map()} | {:error, atom()}
   def update_vetting_criteria(corporation_id, criteria) do
     with {:ok, validated_criteria} <- validate_vetting_criteria(criteria),
          {:ok, updated_criteria} <-

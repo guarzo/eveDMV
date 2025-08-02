@@ -6,6 +6,7 @@ defmodule EveDmv.Intelligence.TelemetryReporter do
   providing observability into analysis performance, cache effectiveness,
   and system health.
   """
+  """
 
   use GenServer
   require Logger

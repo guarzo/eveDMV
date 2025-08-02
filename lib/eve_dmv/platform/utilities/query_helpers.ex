@@ -6,10 +6,12 @@ defmodule EveDmv.Platform.Utilities.QueryHelpers do
   and database interaction helpers to ensure consistent and efficient
   database operations.
   """
-
-  alias EveDmv.Repo
+  """
 
   import Ecto.Query
+
+  alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Repo
 
   require Logger
 
@@ -259,7 +261,7 @@ defmodule EveDmv.Platform.Utilities.QueryHelpers do
   """
   @spec recent_filter(Ecto.Query.t(), atom(), integer()) :: Ecto.Query.t()
   def recent_filter(query, field, days) do
-    cutoff_date = DateTime.utc_now() |> DateTime.add(-days, :day)
+    cutoff_date = DateTime.utc_now() |> DateTimeUtils.add(-days * 24 * 60 * 60, :second)
     where(query, [q], field(q, ^field) >= ^cutoff_date)
   end
 

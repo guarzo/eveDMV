@@ -2,6 +2,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.RoleClassifier do
   @moduledoc """
   Classifies participant roles based on their ship types, damage patterns, and behavior.
   """
+  """
 
   # Ship type ID ranges for classification (simplified)
   @logistics_ships [11_985, 11_987, 11_989, 11_978, 11_969, 11_940, 11_936, 11_938]

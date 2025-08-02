@@ -1,23 +1,24 @@
 # credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
-defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer do
+defmodule EveDmv.Contexts.WormholeOperations.Domain.Analyzers.WhFleetAnalyzer do
   @moduledoc """
   Wormhole fleet composition analysis and optimization engine.
 
   Provides intelligent fleet composition recommendations, skill gap analysis,
   mass calculations, and doctrine effectiveness evaluation for wormhole operations.
   """
+  """
 
+  alias EveDmv.Contexts.FleetOperations.Domain.Analyzers.FleetPilotAnalyzer
+  alias EveDmv.Contexts.WormholeOperations.Domain.Analyzers.WhFleetAnalyzer.DoctrineManager
+  alias EveDmv.Contexts.WormholeOperations.Domain.Analyzers.WhFleetAnalyzer.FleetAnalyzer
+  alias EveDmv.Contexts.WormholeOperations.Domain.Analyzers.WhFleetAnalyzer.FleetOptimizer
+  alias EveDmv.Contexts.WormholeOperations.Domain.Analyzers.WhFleetAnalyzer.WormholeCompatibility
+  alias EveDmv.Contexts.WormholeOperations.Domain.Wormhole.WhFleetComposition
   alias EveDmv.Intelligence.Analyzers.FleetAssetManager
-  alias EveDmv.Intelligence.Analyzers.FleetPilotAnalyzer
   alias EveDmv.Intelligence.Analyzers.FleetSkillAnalyzer
   alias EveDmv.Intelligence.Analyzers.MassCalculator
-  alias EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.DoctrineManager
-  alias EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetAnalyzer
-  alias EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetOptimizer
-  alias EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.WormholeCompatibility
   alias EveDmv.Intelligence.Core.TimeoutHelper
   alias EveDmv.Intelligence.Fleet.FleetReadinessCalculator
-  alias EveDmv.Intelligence.Wormhole.FleetComposition
 
   require Ash.Query
   require Logger
@@ -117,7 +118,7 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer do
             optimization_results["fleet_effectiveness"]["overall_rating"] || 0.0
         }
 
-        FleetComposition.update_doctrine(composition, updated_composition)
+        WhFleetComposition.update_doctrine(composition, updated_composition)
       rescue
         error ->
           Logger.error("Error in fleet composition analysis calculation: #{inspect(error)}")
@@ -151,7 +152,7 @@ defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer do
 
   # Helper functions for composition analysis
   defp get_composition_record(composition_id) do
-    case Ash.get(FleetComposition, composition_id, domain: EveDmv.Api) do
+    case Ash.get(WhFleetComposition, composition_id, domain: EveDmv.Api) do
       {:ok, composition} -> {:ok, composition}
       {:error, reason} -> {:error, "Composition not found: #{reason}"}
     end

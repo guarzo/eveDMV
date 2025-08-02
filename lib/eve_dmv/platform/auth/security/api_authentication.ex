@@ -4,6 +4,7 @@ defmodule EveDmv.Security.ApiAuthentication do
 
   Handles creation, validation, and revocation of API keys for external access.
   """
+  """
 
   use Ash.Resource,
     domain: EveDmv.Api,

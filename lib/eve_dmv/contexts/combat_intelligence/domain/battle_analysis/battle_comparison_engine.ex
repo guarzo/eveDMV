@@ -10,9 +10,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleCompari
   - Adaptation detection and effectiveness measurement
   - Multi-battle comparison logic
   """
+  """
 
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.FleetComparisonEngine
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.TacticalAnalysisEngine
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
@@ -597,7 +599,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleCompari
       last_time = get_battle_timestamp(List.last(sorted_battles))
 
       # Calculate difference in days
-      NaiveDateTime.diff(last_time, first_time, :day)
+      DateTimeUtils.diff(last_time, first_time, :day)
     end
   end
 

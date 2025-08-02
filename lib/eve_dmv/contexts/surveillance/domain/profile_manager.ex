@@ -5,11 +5,13 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ProfileManager do
   Handles CRUD operations for surveillance profiles, including
   validation, activation/deactivation, and profile lifecycle management.
   """
+  """
 
   use EveDmv.ErrorHandler
 
   alias EveDmv.Contexts.Surveillance.Domain.MatchingEngine
   alias EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
@@ -137,7 +139,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ProfileManager do
   """
   def archive_inactive_profiles(inactive_days \\ 90) do
     current_time = DateTime.utc_now()
-    cutoff_date = DateTime.add(current_time, -inactive_days * 24 * 3600, :second)
+    cutoff_date = DateTimeUtils.add(current_time, -inactive_days * 24 * 3600, :second)
 
     with {:ok, inactive_profiles} <- ProfileRepository.get_inactive_profiles_before(cutoff_date),
          {:ok, archived_count} <-

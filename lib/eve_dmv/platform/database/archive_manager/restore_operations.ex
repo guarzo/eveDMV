@@ -5,6 +5,7 @@ defmodule EveDmv.Database.ArchiveManager.RestoreOperations do
   Manages data restoration including validation, data integrity checks,
   and safe restoration of archived data when needed.
   """
+  """
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Database.ArchiveManager.ArchiveOperations

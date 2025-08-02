@@ -6,8 +6,10 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
   engagement metrics, and activity trends. Delegates to specialized helper modules
   for specific analysis tasks.
   """
+  """
 
   alias Ecto.Adapters.SQL
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.CorporationAnalyzer
   alias EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.EngagementAnalyzer
 
@@ -399,7 +401,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
   Calculate days since last activity.
   """
   def days_since_last_activity(last_activity, current_time) do
-    DateTime.diff(current_time, last_activity, :day)
+    DateTimeUtils.diff(current_time, last_activity, :day)
   end
 
   @doc """
@@ -478,14 +480,14 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
 
     days_since_last =
       if last_activity do
-        DateTime.diff(current_time, last_activity, :day)
+        DateTimeUtils.diff(current_time, last_activity, :day)
       else
         999
       end
 
     days_since_join =
       if join_date do
-        DateTime.diff(current_time, join_date, :day)
+        DateTimeUtils.diff(current_time, join_date, :day)
       else
         0
       end

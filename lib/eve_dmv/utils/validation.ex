@@ -4,6 +4,9 @@ defmodule EveDmv.Utils.Validation do
 
   Part of Sprint 22 Quality Standards - Code Duplication Elimination.
   """
+  """
+
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   @doc """
   Validate character ID format.
@@ -52,7 +55,7 @@ defmodule EveDmv.Utils.Validation do
   def validate_date_range(start_date, end_date) do
     with {:ok, start_dt} <- parse_date(start_date),
          {:ok, end_dt} <- parse_date(end_date) do
-      if DateTime.compare(start_dt, end_dt) == :lt do
+      if DateTimeUtils.compare(start_dt, end_dt) == :lt do
         {:ok, {start_dt, end_dt}}
       else
         {:error, "Start date must be before end date"}

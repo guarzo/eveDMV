@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.HistoricalService do
   This module manages the asynchronous fetching of historical killmail data
   from external sources and integration with the main killmail processing pipeline.
   """
+  """
 
   require Logger
 

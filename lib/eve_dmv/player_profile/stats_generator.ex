@@ -6,6 +6,7 @@ defmodule EveDmv.PlayerProfile.StatsGenerator do
   including calculation of derived metrics, gang preferences, activity
   classification, and statistical transformations.
   """
+  """
 
   alias EveDmv.Analytics.PlayerStats
   alias EveDmv.Api

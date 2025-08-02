@@ -5,6 +5,7 @@ defmodule EveDmv.Quality.MetricsCollector.CiCdMetrics do
   Handles GitHub Actions analysis, script quality checks,
   deployment configuration, and monitoring setup verification.
   """
+  """
 
   import Bitwise
 

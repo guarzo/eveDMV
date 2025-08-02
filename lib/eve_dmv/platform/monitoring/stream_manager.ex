@@ -10,6 +10,7 @@ defmodule EveDmv.Shared.Monitoring.StreamManager do
   - Stream statistics and performance tracking
   """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   require Logger
 
   @doc """
@@ -242,7 +243,7 @@ defmodule EveDmv.Shared.Monitoring.StreamManager do
   """
   def get_stream_metrics(stream_state) do
     stats = stream_state.stream_statistics
-    uptime = DateTime.diff(DateTime.utc_now(), stats.stream_start_time, :second)
+    uptime = DateTimeUtils.diff(DateTime.utc_now(), stats.stream_start_time, :second)
 
     %{
       uptime_seconds: uptime,

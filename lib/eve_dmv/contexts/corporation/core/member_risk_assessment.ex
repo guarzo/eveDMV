@@ -6,8 +6,10 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberRiskAssessment do
   - Corporation Intelligence member risk assessment
   - Corporation Analysis risk analytics
   """
+  """
 
   alias EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
   alias EveDmv.Platform.Database.CorporationRepository
 
@@ -195,7 +197,7 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberRiskAssessment do
     # Days since last activity
     days_inactive =
       if member_activity.last_seen do
-        DateTime.diff(DateTime.utc_now(), member_activity.last_seen, :day)
+        DateTimeUtils.diff(DateTime.utc_now(), member_activity.last_seen, :day)
       else
         # Very high if never seen
         999
@@ -317,7 +319,7 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberRiskAssessment do
     # Inactivity indicators
     indicators_with_inactivity =
       if member.last_seen do
-        days_inactive = DateTime.diff(DateTime.utc_now(), member.last_seen, :day)
+        days_inactive = DateTimeUtils.diff(DateTime.utc_now(), member.last_seen, :day)
 
         if days_inactive > 14 do
           ["Extended inactivity (#{days_inactive} days)" | initial_indicators]
@@ -453,12 +455,12 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberRiskAssessment do
 
   defp assess_member_integration(risk_data, members) do
     # Focus on recent recruits (last 90 days)
-    recent_cutoff = DateTime.utc_now() |> DateTime.add(-90, :day)
+    recent_cutoff = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
 
     recent_recruits =
       members
       |> Enum.filter(fn member ->
-        member.join_date && DateTime.compare(member.join_date, recent_cutoff) == :gt
+        member.join_date && DateTimeUtils.compare(member.join_date, recent_cutoff) == :gt
       end)
 
     if Enum.empty?(recent_recruits) do
@@ -477,7 +479,7 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberRiskAssessment do
             character_id: member.character_id,
             character_name: member.character_name,
             integration_score: integration_score,
-            days_since_join: DateTime.diff(DateTime.utc_now(), member.join_date, :day),
+            days_since_join: DateTimeUtils.diff(DateTime.utc_now(), member.join_date, :day),
             integration_status: categorize_integration_status(integration_score)
           }
         end)
@@ -721,6 +723,6 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberRiskAssessment do
   defp calculate_tenure_days(nil), do: 0
 
   defp calculate_tenure_days(join_date) do
-    DateTime.diff(DateTime.utc_now(), join_date, :day)
+    DateTimeUtils.diff(DateTime.utc_now(), join_date, :day)
   end
 end

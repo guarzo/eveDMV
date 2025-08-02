@@ -9,12 +9,13 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
   - Wormhole experience evaluation
   - Cultural fit assessment
   """
+  """
 
   use GenServer
   use EveDmv.ErrorHandler
 
   alias EveDmv.Contexts.WormholeOperations.Infrastructure.VettingRepository
-
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.DomainEvents.VettingComplete
   alias EveDmv.Infrastructure.EventBus
 
@@ -217,7 +218,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
         improvement_areas: identify_improvement_areas(vetting_scores),
         vetted_at: DateTime.utc_now(),
         # 30 days
-        expires_at: DateTime.add(DateTime.utc_now(), 30 * 24 * 3600, :second)
+        expires_at: DateTimeUtils.add(DateTime.utc_now(), 30 * 24 * 3600, :second)
       }
 
       {:ok, vetting_report}
@@ -401,7 +402,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
 
   defp assess_character_metrics(character_data) do
     # Character age assessment
-    character_age_days = DateTime.diff(DateTime.utc_now(), character_data.creation_date, :day)
+    character_age_days = DateTimeUtils.diff(DateTime.utc_now(), character_data.creation_date, :day)
     age_score = calculate_age_score(character_age_days)
 
     # Skill point assessment
@@ -495,7 +496,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
           |> Enum.with_index()
           |> Enum.map(fn {[corp_id, corp_name, first_seen, last_seen, activity_count], index} ->
             is_current = index == length(rows) - 1
-            tenure_days = DateTime.diff(last_seen, first_seen, :day)
+            tenure_days = DateTimeUtils.diff(last_seen, first_seen, :day)
 
             %{
               corporation_id: corp_id,
@@ -626,9 +627,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
          ) do
       {:ok, %{rows: [[char_id, char_name, corp_id, corp_name, first_seen, last_seen]]}} ->
         # Calculate approximate character age from first activity
-        _days_since_first_seen = DateTime.diff(DateTime.utc_now(), first_seen, :day)
+        _days_since_first_seen = DateTimeUtils.diff(DateTime.utc_now(), first_seen, :day)
         # Assume 30 days before first killmail
-        estimated_creation = DateTime.add(first_seen, -30, :day)
+        estimated_creation = DateTimeUtils.add(first_seen, -30 * 24 * 60 * 60, :second)
 
         {:ok,
          %{
@@ -796,11 +797,11 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
   end
 
   defp count_recent_corp_changes(corp_history, days) do
-    cutoff_date = DateTime.add(DateTime.utc_now(), -days * 24 * 3600, :second)
+    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -days * 24 * 3600, :second)
 
     Enum.count(corp_history, fn corp_entry ->
       not is_nil(corp_entry.left_at) and
-        DateTime.compare(corp_entry.left_at, cutoff_date) == :gt
+        DateTimeUtils.compare(corp_entry.left_at, cutoff_date) == :gt
     end)
   end
 
@@ -1122,7 +1123,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
 
   defp assess_spy_risk_indicators(character_data) do
     # Very new character with high SP
-    character_age_days = DateTime.diff(DateTime.utc_now(), character_data.creation_date, :day)
+    character_age_days = DateTimeUtils.diff(DateTime.utc_now(), character_data.creation_date, :day)
     sp_per_day = character_data.total_sp / max(character_age_days, 1)
 
     # Unrealistically high SP gain

@@ -4,7 +4,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
   """
   use EveDmv.DataCase, async: false
 
-  alias EveDmv.Intelligence.Analyzers.WhFleetAnalyzer
+  alias EveDmv.Contexts.WormholeOperations.Domain.Analyzers.WhFleetAnalyzer
   alias EveDmv.TestMocks
 
   # Wormhole type constants for testing

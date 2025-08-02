@@ -5,6 +5,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor do
   This module provides telemetry events and metrics tracking for
   database queries, API calls, and processing times.
   """
+  """
 
   alias EveDmv.Telemetry.PerformanceMonitor.ConnectionPoolMonitor
   alias EveDmv.Telemetry.PerformanceMonitor.DatabaseMetrics

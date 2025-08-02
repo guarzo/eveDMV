@@ -13,6 +13,7 @@ defmodule EveDmv.Workers.AnalysisWorkerPool do
   - **Result caching**: Integrates with the unified cache system
   - **Telemetry**: Comprehensive metrics for analysis performance
   """
+  """
 
   use GenServer
 

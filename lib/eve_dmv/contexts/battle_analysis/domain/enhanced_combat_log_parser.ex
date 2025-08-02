@@ -1,5 +1,6 @@
 defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
   @moduledoc """
+
   Enhanced parser for EVE Online combat logs with comprehensive tactical analysis.
 
   Extracts detailed combat information including:
@@ -8,6 +9,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
   - Tactical patterns (target selection, defensive reactions)
   - Range management and application efficiency
   - Module usage effectiveness
+  """
+
+    alias EveDmv.Core.Utils.DateTimeUtils
   """
 
   require Logger
@@ -659,7 +663,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
       _ ->
         start_time = Enum.min(timestamps)
         end_time = Enum.max(timestamps)
-        NaiveDateTime.diff(end_time, start_time, :second) / 60
+        DateTimeUtils.diff(end_time, start_time, :second) / 60
     end
   end
 

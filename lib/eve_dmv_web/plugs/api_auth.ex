@@ -5,6 +5,7 @@ defmodule EveDmvWeb.Plugs.ApiAuth do
   This plug validates API keys for internal endpoints and ensures
   the requesting client has the necessary permissions.
   """
+  """
 
   import Plug.Conn
   alias EveDmv.Security.ApiAuthentication

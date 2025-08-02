@@ -5,6 +5,7 @@ defmodule EveDmv.Intelligence.Calculators.FleetParticipationCalculator do
   Provides comprehensive fleet participation metrics including participation rates,
   high-performer identification, leadership distribution analysis, and fleet readiness scoring.
   """
+  """
 
   @doc """
   Calculate comprehensive fleet participation metrics.

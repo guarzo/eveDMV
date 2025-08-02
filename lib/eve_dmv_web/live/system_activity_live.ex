@@ -5,12 +5,14 @@ defmodule EveDmvWeb.SystemActivityLive do
   Shows current PvP activity, recent kills, and danger metrics
   for a selected solar system with automatic updates via PubSub.
   """
+  """
 
   use EveDmvWeb, :live_view
 
   import EveDmvWeb.Components.PageHeaderComponent
   import EveDmvWeb.Components.StatsGridComponent
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Presentation.Formatters
 
   @topic "system_activity"
@@ -242,7 +244,7 @@ defmodule EveDmvWeb.SystemActivityLive do
   end
 
   def format_datetime_ago(datetime) do
-    diff_seconds = DateTime.diff(DateTime.utc_now(), datetime, :second)
+    diff_seconds = DateTimeUtils.diff(DateTime.utc_now(), datetime, :second)
 
     cond do
       diff_seconds < 60 -> "#{diff_seconds}s ago"
@@ -430,45 +432,45 @@ defmodule EveDmvWeb.SystemActivityLive do
   defp get_killmails_for_timeframe(timeframe) do
     case timeframe do
       :last_24h ->
-        since = DateTime.add(DateTime.utc_now(), -24, :hour)
+        since = DateTimeUtils.add(DateTime.utc_now(), -24 * 60 * 60, :second)
 
         EveDmv.Api.read(EveDmv.Killmails.KillmailRaw,
           query: [filter: [killmail_time: [greater_than: since]]]
         )
 
       :previous_24h ->
-        since = DateTime.add(DateTime.utc_now(), -48, :hour)
-        until = DateTime.add(DateTime.utc_now(), -24, :hour)
+        since = DateTimeUtils.add(DateTime.utc_now(), -48 * 60 * 60, :second)
+        until = DateTimeUtils.add(DateTime.utc_now(), -24 * 60 * 60, :second)
 
         EveDmv.Api.read(EveDmv.Killmails.KillmailRaw,
           query: [filter: [killmail_time: [greater_than: since, less_than: until]]]
         )
 
       :last_7d ->
-        since = DateTime.add(DateTime.utc_now(), -7, :day)
+        since = DateTimeUtils.add(DateTime.utc_now(), -7 * 24 * 60 * 60, :second)
 
         EveDmv.Api.read(EveDmv.Killmails.KillmailRaw,
           query: [filter: [killmail_time: [greater_than: since]]]
         )
 
       :previous_7d ->
-        since = DateTime.add(DateTime.utc_now(), -14, :day)
-        until = DateTime.add(DateTime.utc_now(), -7, :day)
+        since = DateTimeUtils.add(DateTime.utc_now(), -14 * 24 * 60 * 60, :second)
+        until = DateTimeUtils.add(DateTime.utc_now(), -7 * 24 * 60 * 60, :second)
 
         EveDmv.Api.read(EveDmv.Killmails.KillmailRaw,
           query: [filter: [killmail_time: [greater_than: since, less_than: until]]]
         )
 
       :last_30d ->
-        since = DateTime.add(DateTime.utc_now(), -30, :day)
+        since = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
 
         EveDmv.Api.read(EveDmv.Killmails.KillmailRaw,
           query: [filter: [killmail_time: [greater_than: since]]]
         )
 
       :previous_30d ->
-        since = DateTime.add(DateTime.utc_now(), -60, :day)
-        until = DateTime.add(DateTime.utc_now(), -30, :day)
+        since = DateTimeUtils.add(DateTime.utc_now(), -60 * 24 * 60 * 60, :second)
+        until = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
 
         EveDmv.Api.read(EveDmv.Killmails.KillmailRaw,
           query: [filter: [killmail_time: [greater_than: since, less_than: until]]]

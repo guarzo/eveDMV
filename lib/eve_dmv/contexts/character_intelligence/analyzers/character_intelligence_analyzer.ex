@@ -14,8 +14,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
   All analysis functions use cached queries for performance and return structured
   intelligence data about character combat patterns and behaviors.
   """
+  """
 
   alias EveDmv.Cache.QueryCache
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Shared.KillmailQueries
   alias EveDmv.StaticData
   require Logger
@@ -714,7 +716,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
   This function combines all analysis types into a single comprehensive report.
   """
   def analyze_comprehensive(character_id, since_date \\ nil) do
-    since_date = since_date || DateTime.add(DateTime.utc_now(), -90, :day)
+    since_date = since_date || DateTimeUtils.add(DateTime.utc_now(), -90 * 24 * 60 * 60, :second)
 
     with {:ok, weapon_analysis} <- analyze_weapon_preferences(character_id, since_date),
          {:ok, ship_analysis} <- analyze_ship_preferences(character_id, since_date),
@@ -728,7 +730,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
         analysis_period: %{
           from: since_date,
           to: DateTime.utc_now(),
-          days: DateTime.diff(DateTime.utc_now(), since_date, :day)
+          days: DateTimeUtils.diff(DateTime.utc_now(), since_date, :day)
         },
         weapon_preferences: weapon_analysis,
         ship_preferences: ship_analysis,

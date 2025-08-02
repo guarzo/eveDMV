@@ -10,9 +10,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.TacticalAnaly
   - Positioning and timing pattern analysis
   - Command pattern detection
   """
+  """
 
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.BattlePhaseAnalyzer
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.TacticalExtractor
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
@@ -377,8 +379,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.TacticalAnaly
   def calculate_dominant_side_for_phase(timeline, phase) do
     phase_events =
       Enum.filter(timeline, fn event ->
-        DateTime.compare(event.timestamp, phase.start_time) != :lt and
-          DateTime.compare(event.timestamp, phase.end_time) != :gt
+        DateTimeUtils.compare(event.timestamp, phase.start_time) != :lt and
+          DateTimeUtils.compare(event.timestamp, phase.end_time) != :gt
       end)
 
     if Enum.empty?(phase_events) do
@@ -409,8 +411,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.TacticalAnaly
   def identify_key_events_in_phase(timeline, phase) do
     phase_events =
       Enum.filter(timeline, fn event ->
-        DateTime.compare(event.timestamp, phase.start_time) != :lt and
-          DateTime.compare(event.timestamp, phase.end_time) != :gt
+        DateTimeUtils.compare(event.timestamp, phase.start_time) != :lt and
+          DateTimeUtils.compare(event.timestamp, phase.end_time) != :gt
       end)
 
     phase_events
@@ -507,13 +509,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.TacticalAnaly
             start_time: List.first(timeline).timestamp,
             end_time: List.last(timeline).timestamp,
             duration_seconds:
-              DateTime.diff(List.last(timeline).timestamp, List.first(timeline).timestamp),
+              DateTimeUtils.diff(List.last(timeline).timestamp, List.first(timeline, :second).timestamp),
             kills: length(timeline),
             intensity:
               length(timeline) /
                 max(
                   1,
-                  DateTime.diff(List.last(timeline).timestamp, List.first(timeline).timestamp)
+                  DateTimeUtils.diff(List.last(timeline).timestamp, List.first(timeline, :second).timestamp)
                 )
           }
         ]
@@ -718,7 +720,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.TacticalAnaly
     else
       first = List.first(events)
       last = List.last(events)
-      DateTime.diff(last.timestamp, first.timestamp)
+      DateTimeUtils.diff(last.timestamp, first.timestamp, :second)
     end
   end
 

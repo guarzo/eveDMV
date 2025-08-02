@@ -5,6 +5,7 @@ defmodule EveDmv.Eve.NameResolver.CacheManager do
   This module has been migrated from direct ETS usage to use the unified EveDmv.Cache system
   for better consistency and centralized cache management.
   """
+  """
 
   require Logger
 

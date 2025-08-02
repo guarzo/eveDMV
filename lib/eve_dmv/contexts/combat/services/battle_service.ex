@@ -8,14 +8,16 @@ defmodule EveDmv.Contexts.Combat.Services.BattleService do
   - Battle metadata updates
   - Battle search and filtering
   """
+  """
+
+  import Ecto.Query
 
   alias EveDmv.Api
   alias EveDmv.Contexts.BattleAnalysis.Core.BattleDetector
   alias EveDmv.Contexts.BattleAnalysis.Resources.Battle
   alias EveDmv.Contexts.BattleAnalysis.Resources.BattleKillmail
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Repo
-
-  import Ecto.Query
 
   require Ash.Query
 
@@ -390,7 +392,7 @@ defmodule EveDmv.Contexts.Combat.Services.BattleService do
   defp split_killmails_by_time(killmails, split_time) do
     {before, after_split} =
       Enum.split_with(killmails, fn km ->
-        DateTime.compare(km.killmail_time, split_time) == :lt
+        DateTimeUtils.compare(km.killmail_time, split_time) == :lt
       end)
 
     {before, after_split}

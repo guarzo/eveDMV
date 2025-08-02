@@ -5,6 +5,7 @@ defmodule EveDmv.Eve.StaticDataLoader.SolarSystemProcessor do
   Handles parsing and processing of solar systems, regions, and constellations,
   including security classification and spatial coordinates.
   """
+  """
 
   alias EveDmv.Eve.StaticDataLoader.CsvParser
   require Logger

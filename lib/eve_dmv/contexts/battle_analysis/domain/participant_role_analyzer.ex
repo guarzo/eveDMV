@@ -449,6 +449,39 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
       11_129 -> :logistics
       # Osprey
       11_985 -> :logistics
+      # Scimitar
+      11_978 -> :logistics
+      # Guardian
+      11_987 -> :logistics
+      # Oneiros
+      11_989 -> :logistics
+      # Basilisk
+      11_985 -> :logistics
+      
+      # EWAR ships
+      # Blackbird
+      632 -> :ewar
+      # Crucifier
+      2161 -> :ewar
+      # Griffin
+      584 -> :ewar
+      # Maulus
+      609 -> :ewar
+      # Kitsune
+      11_174 -> :ewar
+      # Rook
+      11_957 -> :ewar
+      # Falcon
+      11_959 -> :ewar
+      # Arazu
+      11_969 -> :ewar
+      # Lachesis
+      11_971 -> :ewar
+      # Curse
+      11_965 -> :ewar
+      # Pilgrim
+      11_963 -> :ewar
+      
       # DPS ships
       # Rifter
       587 -> :dps

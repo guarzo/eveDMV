@@ -6,6 +6,9 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
   including damage efficiency, survival rates, and tactical effectiveness.
   """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
+  """
+
   use EveDmv.ErrorHandler
 
   require Logger
@@ -302,7 +305,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
       time_gaps =
         loss_times
         |> Enum.zip(tl(loss_times))
-        |> Enum.map(fn {t1, t2} -> DateTime.diff(t2, t1, :second) end)
+        |> Enum.map(fn {t1, t2} -> DateTimeUtils.diff(t2, t1, :second) end)
 
       avg_gap = Enum.sum(time_gaps) / length(time_gaps)
 

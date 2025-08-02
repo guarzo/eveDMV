@@ -10,6 +10,7 @@ defmodule EveDmv.External.Eve.MarketDataService do
 
   Used by fleet cost calculators to provide accurate ship pricing.
   """
+  """
 
   use GenServer
   alias EveDmv.Cache

@@ -5,6 +5,7 @@ defmodule EveDmvWeb.Api.CharacterThreatController do
   Provides endpoints for analyzing and retrieving threat scores
   and risk assessments for EVE Online characters.
   """
+  """
 
   use EveDmvWeb, :controller
 

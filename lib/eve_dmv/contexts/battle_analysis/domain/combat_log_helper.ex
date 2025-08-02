@@ -19,34 +19,30 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogHelper do
 
     Logger.info("🔍 USING ENHANCED PARSER for combat log")
 
-    case EnhancedCombatLogParser.parse_combat_log(
+    {:ok,
+     %{
+       events: events,
+       summary: summary,
+       metadata: metadata,
+       tactical_analysis: tactical_analysis,
+       recommendations: recommendations
+     }} = EnhancedCombatLogParser.parse_combat_log(
            content,
            pilot_name: pilot_name
-         ) do
-      {:ok,
-       %{
+         )
+
+    {:ok,
+     %{
+       parsed_data: %{
          events: events,
-         summary: summary,
-         metadata: metadata,
          tactical_analysis: tactical_analysis,
          recommendations: recommendations
-       }} ->
-        {:ok,
-         %{
-           parsed_data: %{
-             events: events,
-             tactical_analysis: tactical_analysis,
-             recommendations: recommendations
-           },
-           summary: summary,
-           event_count: length(events),
-           start_time: metadata[:start_time],
-           end_time: metadata[:end_time]
-         }}
-
-      {:error, reason} ->
-        {:error, reason}
-    end
+       },
+       summary: summary,
+       event_count: length(events),
+       start_time: metadata[:start_time],
+       end_time: metadata[:end_time]
+     }}
   end
 
   @doc """

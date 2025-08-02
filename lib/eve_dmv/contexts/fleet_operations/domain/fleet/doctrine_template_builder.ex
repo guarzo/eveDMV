@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.Fleet.DoctrineTemplateBuilder d
   Handles the creation and standardization of fleet doctrine templates,
   including size categorization and pilot count calculations.
   """
+  """
 
   @doc """
   Build a standardized doctrine template from raw doctrine parameters.

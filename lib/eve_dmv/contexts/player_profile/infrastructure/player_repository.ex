@@ -5,8 +5,10 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   Provides data access for player analysis including combat statistics,
   ship preferences, activity patterns, and affiliations.
   """
+  """
 
   alias EveDmv.Cache.QueryCache
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.CharacterQueries
   alias EveDmv.Database.QueryPerformance
   alias EveDmv.Shared.KillmailQueries
@@ -50,7 +52,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   """
   @spec get_killmail_stats(integer()) :: {:ok, map()} | {:error, term()}
   def get_killmail_stats(character_id) do
-    get_killmail_stats(character_id, DateTime.utc_now() |> DateTime.add(-90, :day))
+    get_killmail_stats(character_id, DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second))
   end
 
   @doc """
@@ -90,7 +92,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   """
   @spec get_activity_data(integer()) :: {:ok, map()} | {:error, term()}
   def get_activity_data(character_id) do
-    get_activity_data(character_id, DateTime.utc_now() |> DateTime.add(-30, :day))
+    get_activity_data(character_id, DateTime.utc_now() |> DateTimeUtils.add(-30 * 24 * 60 * 60, :second))
   end
 
   @doc """

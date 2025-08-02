@@ -9,8 +9,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.PerformanceMe
   - Victory determination and factor analysis
   - Timeline tracking and flow metrics
   """
+  """
 
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.OutcomeAnalyzer
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
@@ -73,8 +75,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.PerformanceMe
             |> Enum.filter(fn km ->
               kill_time = km.killmail_time
 
-              NaiveDateTime.compare(kill_time, window_start) in [:eq, :gt] and
-                NaiveDateTime.compare(kill_time, window_end) == :lt
+              DateTimeUtils.compare(kill_time, window_start) in [:eq, :gt] and
+                DateTimeUtils.compare(kill_time, window_end) == :lt
             end)
             |> Enum.flat_map(&extract_participants_from_killmail/1)
             |> Enum.uniq()
@@ -109,19 +111,19 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.PerformanceMe
   """
   def create_participant_tracking_windows(start_time, end_time, interval_seconds) do
     # Create time windows optimized for participant tracking
-    duration_seconds = NaiveDateTime.diff(end_time, start_time, :second)
+    duration_seconds = DateTimeUtils.diff(end_time, start_time, :second)
 
     # Use minimum of 2 windows even for very short battles
     bucket_count = max(2, div(duration_seconds, interval_seconds))
 
     0..(bucket_count - 1)
     |> Enum.map(fn bucket_index ->
-      bucket_start = NaiveDateTime.add(start_time, bucket_index * interval_seconds, :second)
-      bucket_end = NaiveDateTime.add(start_time, (bucket_index + 1) * interval_seconds, :second)
+      bucket_start = DateTimeUtils.add(start_time, bucket_index * interval_seconds, :second)
+      bucket_end = DateTimeUtils.add(start_time, (bucket_index + 1) * interval_seconds, :second)
 
       # Ensure the last bucket covers until the actual end time
       bucket_end =
-        if NaiveDateTime.compare(bucket_end, end_time) == :gt, do: end_time, else: bucket_end
+        if DateTimeUtils.compare(bucket_end, end_time) == :gt, do: end_time, else: bucket_end
 
       {bucket_start, bucket_end}
     end)
@@ -276,7 +278,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.PerformanceMe
     else
       first_event = List.first(timeline)
       last_event = List.last(timeline)
-      DateTime.diff(last_event.timestamp, first_event.timestamp)
+      DateTimeUtils.diff(last_event.timestamp, first_event.timestamp, :second)
     end
   end
 

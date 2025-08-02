@@ -4,6 +4,7 @@ defmodule EveDmvWeb.Components.TabNavigationComponent do
 
   Provides consistent tab styling and navigation across pages.
   """
+  """
 
   use Phoenix.Component
 

@@ -6,6 +6,7 @@ defmodule EveDmv.Eve.EsiUtils do
   intelligence modules to provide consistent error handling, logging, and
   fallback strategies.
   """
+  """
 
   alias EveDmv.Eve.EsiClient
 

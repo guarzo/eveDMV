@@ -1,6 +1,9 @@
 # credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 # credo:disable-for-this-file Credo.Check.Readability.StrictModuleLayout
 defmodule EveDmvWeb.CorporationLive do
+
+  @moduledoc """
+
   import EveDmvWeb.Components.ErrorStateComponent
   import EveDmvWeb.Components.EmptyStateComponent
   import EveDmvWeb.Components.ThreatLevelComponent
@@ -15,7 +18,6 @@ defmodule EveDmvWeb.CorporationLive do
   alias EveDmvWeb.CorporationLive.DataLoader
   alias EveDmvWeb.Helpers.TimeFormatter
   require Logger
-
   @moduledoc """
   LiveView for displaying corporation overview and member activity.
 
@@ -235,11 +237,8 @@ defmodule EveDmvWeb.CorporationLive do
     {:ok, victim_stats} = DataLoader.load_corporation_info(corporation_id)
 
     # Load intelligence data
-    intelligence_data =
-      case CorporationIntelligence.get_corporation_intelligence_report(corporation_id) do
-        {:ok, data} -> data
-        {:error, _} -> nil
-      end
+    # get_corporation_intelligence_report always returns {:ok, map()} per its spec
+    {:ok, intelligence_data} = CorporationIntelligence.get_corporation_intelligence_report(corporation_id)
 
     # Load battle data
     battles = BattleDetector.detect_corporation_battles(corporation_id, 10)

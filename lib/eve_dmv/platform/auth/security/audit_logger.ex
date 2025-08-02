@@ -4,6 +4,7 @@ defmodule EveDmv.Security.AuditLogger do
 
   Captures and logs security-relevant events for compliance and monitoring.
   """
+  """
 
   require Logger
 

@@ -4,9 +4,11 @@ defmodule EveDmvWeb.CorporationLive.DataLoader do
   """
 
   alias EveDmv.Cache.AnalysisCache
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.CorporationQueries
   alias EveDmv.Database.QueryPerformance
   alias EveDmv.Eve.EsiCorporationClient
+
   require Logger
 
   @doc """
@@ -91,9 +93,9 @@ defmodule EveDmvWeb.CorporationLive.DataLoader do
   Load corporation statistics (kills, losses, efficiency).
   """
   def load_corporation_stats(corporation_id) do
-    ninety_days_ago = DateTime.utc_now() |> DateTime.add(-90, :day)
-    thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30, :day)
-    seven_days_ago = DateTime.utc_now() |> DateTime.add(-7, :day)
+    ninety_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
+    thirty_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-30 * 24 * 60 * 60, :second)
+    seven_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-7 * 24 * 60 * 60, :second)
 
     AnalysisCache.get_or_compute(
       "corp_stats:#{corporation_id}",
@@ -132,7 +134,7 @@ defmodule EveDmvWeb.CorporationLive.DataLoader do
   Load top active members.
   """
   def load_top_members(corporation_id, limit \\ 20) do
-    thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30, :day)
+    thirty_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-30 * 24 * 60 * 60, :second)
 
     QueryPerformance.tracked_query(
       "corp_top_members",
@@ -160,7 +162,7 @@ defmodule EveDmvWeb.CorporationLive.DataLoader do
   Load timezone activity pattern.
   """
   def load_timezone_activity(corporation_id) do
-    seven_days_ago = DateTime.utc_now() |> DateTime.add(-7, :day)
+    seven_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-7 * 24 * 60 * 60, :second)
 
     AnalysisCache.get_or_compute(
       AnalysisCache.corp_timezone_key(corporation_id),
@@ -198,7 +200,7 @@ defmodule EveDmvWeb.CorporationLive.DataLoader do
   Load ship usage statistics.
   """
   def load_ship_usage(corporation_id, limit \\ 25) do
-    thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30, :day)
+    thirty_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-30 * 24 * 60 * 60, :second)
 
     AnalysisCache.get_or_compute(
       "corp_ships:#{corporation_id}",

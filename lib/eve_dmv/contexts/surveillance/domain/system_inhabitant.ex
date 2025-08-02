@@ -1,9 +1,13 @@
 defmodule EveDmv.Intelligence.SystemInhabitant do
   @moduledoc """
+
   Tracks pilots present in wormhole systems within a chain.
 
   Provides real-time inhabitant tracking with threat assessment
   and historical presence data for chain-wide intelligence.
+  """
+
+    alias EveDmv.Core.Utils.DateTimeUtils
   """
 
   use Ash.Resource,
@@ -294,11 +298,11 @@ defmodule EveDmv.Intelligence.SystemInhabitant do
 
         Enum.map(records, fn record ->
           if record.present do
-            DateTime.diff(now, record.first_seen_at, :minute)
+            DateTimeUtils.diff(now, record.first_seen_at, :minute)
           else
             case record.departure_time do
               nil -> 0
-              departure -> DateTime.diff(departure, record.first_seen_at, :minute)
+              departure -> DateTimeUtils.diff(departure, record.first_seen_at, :minute)
             end
           end
         end)
@@ -312,7 +316,7 @@ defmodule EveDmv.Intelligence.SystemInhabitant do
         now = DateTime.utc_now()
 
         Enum.map(records, fn record ->
-          DateTime.diff(now, record.last_seen_at, :minute)
+          DateTimeUtils.diff(now, record.last_seen_at, :minute)
         end)
       end)
     end
@@ -325,7 +329,7 @@ defmodule EveDmv.Intelligence.SystemInhabitant do
 
         Enum.map(records, fn record ->
           if record.present do
-            minutes = DateTime.diff(now, record.first_seen_at, :minute)
+            minutes = DateTimeUtils.diff(now, record.first_seen_at, :minute)
 
             if minutes < 60 do
               "Present (#{minutes}m)"
@@ -339,7 +343,7 @@ defmodule EveDmv.Intelligence.SystemInhabitant do
                 "Unknown"
 
               departure ->
-                minutes = DateTime.diff(now, departure, :minute)
+                minutes = DateTimeUtils.diff(now, departure, :minute)
 
                 if minutes < 60 do
                   "Left #{minutes}m ago"

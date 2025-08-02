@@ -2,6 +2,7 @@ defmodule EveDmvWeb.Components.CssUtils do
   @moduledoc """
   Common CSS utility classes to reduce repetition across templates.
   """
+  """
 
   @doc """
   Small gray text for secondary information.

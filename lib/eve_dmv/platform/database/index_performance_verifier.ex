@@ -5,6 +5,7 @@ defmodule EveDmv.Database.IndexPerformanceVerifier do
   This module is used to validate that the Sprint 17 DB-002 performance indexes
   are being utilized correctly by PostgreSQL query planner.
   """
+  """
 
   alias EveDmv.Repo
 

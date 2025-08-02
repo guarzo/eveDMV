@@ -28,6 +28,7 @@ defmodule EveDmv.Platform.PubSub.EventBus do
   - `:threat_assessment_updated` - Threat score recalculated
   - `:surveillance_alert_triggered` - Alert condition met
   """
+  """
 
   use GenServer
 

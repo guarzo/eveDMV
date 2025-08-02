@@ -8,6 +8,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
   - Fleet broadcasts and target calling
   - Range and transversal data
   """
+  """
+
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
@@ -353,8 +356,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
 
   defp filter_by_time(events, start_time, end_time) do
     Enum.filter(events, fn event ->
-      start_ok = !start_time || NaiveDateTime.compare(event.timestamp, start_time) != :lt
-      end_ok = !end_time || NaiveDateTime.compare(event.timestamp, end_time) != :gt
+      start_ok = !start_time || DateTimeUtils.compare(event.timestamp, start_time) != :lt
+      end_ok = !end_time || DateTimeUtils.compare(event.timestamp, end_time) != :gt
       start_ok && end_ok
     end)
   end
@@ -450,7 +453,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
     Enum.group_by(events, fn event ->
       if event.timestamp do
         # Round to nearest window
-        unix = event.timestamp |> DateTime.from_naive!("Etc/UTC") |> DateTime.to_unix()
+        unix = event.timestamp |> DateTimeUtils.to_datetime() |> DateTime.to_unix()
         div(unix, window_seconds) * window_seconds
       else
         nil
@@ -459,7 +462,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
   end
 
   defp find_events_near_time(event_windows, target_time) do
-    target_unix = target_time |> DateTime.from_naive!("Etc/UTC") |> DateTime.to_unix()
+    target_unix = target_time |> DateTimeUtils.to_datetime() |> DateTime.to_unix()
 
     # Look for events within 5 minutes
     Enum.flat_map(-5..5, fn offset ->
@@ -495,7 +498,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
       Enum.filter(events, fn event ->
         event.type == :damage &&
           event.to == killmail.victim_character_name &&
-          NaiveDateTime.diff(killmail.killmail_time, event.timestamp, :second) <= 10
+          DateTimeUtils.diff(killmail.killmail_time, event.timestamp, :second) <= 10
       end)
 
     %{
@@ -550,7 +553,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser do
       _ ->
         start_time = Enum.min(timestamps)
         end_time = Enum.max(timestamps)
-        NaiveDateTime.diff(end_time, start_time, :second) / 60
+        DateTimeUtils.diff(end_time, start_time, :second) / 60
     end
   end
 end

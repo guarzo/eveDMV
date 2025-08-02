@@ -20,6 +20,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
   - StrategicPatternAnalyzer: Strategic pattern analysis
   - MonitoringEngine: Real-time monitoring and alerting
   """
+  """
 
   alias EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.ActivityCorrelator
   alias EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.MonitoringEngine

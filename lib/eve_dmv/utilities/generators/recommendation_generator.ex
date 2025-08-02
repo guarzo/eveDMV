@@ -5,6 +5,7 @@ defmodule EveDmv.Intelligence.Generators.RecommendationGenerator do
   Provides comprehensive recommendation analysis based on activity trends,
   engagement metrics, fleet participation, and communication patterns.
   """
+  """
 
   @doc """
   Generate comprehensive activity recommendations based on analysis data.

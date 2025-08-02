@@ -5,6 +5,7 @@ defmodule EveDmv.Monitoring.MissingDataTracker do
   This module collects statistics about missing ship types and provides
   reporting capabilities for the monitoring dashboard.
   """
+  """
 
   use GenServer
   require Logger

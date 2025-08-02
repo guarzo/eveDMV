@@ -5,6 +5,7 @@ defmodule EveDmv.Intelligence.AdvancedAnalytics do
   Provides sophisticated statistical analysis, pattern recognition, and
   predictive modeling for EVE Online intelligence operations.
   """
+  """
 
   alias EveDmv.Api
   alias EveDmv.Intelligence.CharacterStats

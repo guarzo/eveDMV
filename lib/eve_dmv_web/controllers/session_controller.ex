@@ -2,6 +2,7 @@ defmodule EveDmvWeb.SessionController do
   @moduledoc """
   Controller for session management operations.
   """
+  """
 
   use EveDmvWeb, :controller
 

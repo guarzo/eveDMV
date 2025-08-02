@@ -7,8 +7,10 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
   - Generate performance reports for analysis
   - Create sanitized data dumps for development testing
   """
+  """
 
   alias Ecto.Adapters.SQL
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Repo
   alias EveDmv.Telemetry.QueryMonitor
 
@@ -240,7 +242,7 @@ defmodule EveDmv.Telemetry.PerformanceExporter do
 
   defp get_recent_alerts(hours_back) do
     # Get recent performance alerts from the last N hours
-    cutoff_time = DateTime.add(DateTime.utc_now(), -hours_back, :hour)
+    cutoff_time = DateTimeUtils.add(DateTime.utc_now(), -hours_back * 60 * 60, :second)
 
     # Check for database connection issues
     db_alerts = check_database_alerts(cutoff_time)

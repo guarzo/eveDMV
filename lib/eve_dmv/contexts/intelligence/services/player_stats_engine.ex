@@ -12,7 +12,9 @@ defmodule EveDmv.Contexts.Intelligence.Services.PlayerStatsEngine do
   This module consolidates player statistics functionality that was previously
   scattered across multiple contexts during the namespace consolidation.
   """
+  """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.CharacterRepository
   alias EveDmv.Intelligence.Cache.IntelligenceCache
 
@@ -49,7 +51,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.PlayerStatsEngine do
       character_id: character_id
     )
 
-    since_date = DateTime.utc_now() |> DateTime.add(-time_period * 24 * 3600, :second)
+    since_date = DateTime.utc_now() |> DateTimeUtils.add(-time_period * 24 * 3600, :second)
 
     with {:ok, character_stats} <- CharacterRepository.get_character_stats(character_id),
          {:ok, combat_stats} <- calculate_combat_statistics(character_stats, since_date),
@@ -492,7 +494,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.PlayerStatsEngine do
 
   defp filter_by_date(events, since_date) do
     Enum.filter(events, fn event ->
-      DateTime.compare(event.killmail_time, since_date) != :lt
+      DateTimeUtils.compare(event.killmail_time, since_date) != :lt
     end)
   end
 
@@ -606,7 +608,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.PlayerStatsEngine do
     if Enum.empty?(engagements) do
       0.0
     else
-      days_in_period = max(1, DateTime.diff(DateTime.utc_now(), since_date, :day))
+      days_in_period = max(1, DateTimeUtils.diff(DateTime.utc_now(), since_date, :day))
       Float.round(length(engagements) / days_in_period, 2)
     end
   end

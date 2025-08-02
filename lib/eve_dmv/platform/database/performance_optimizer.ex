@@ -43,7 +43,7 @@ defmodule EveDmv.Database.PerformanceOptimizer do
 
   defp validate_table_name(table_name) when table_name in @allowed_tables do
     # Quote the identifier to prevent injection
-    ~s("#{table_name}")
+    table_name
   end
 
   defp validate_table_name(_), do: nil
@@ -61,28 +61,28 @@ defmodule EveDmv.Database.PerformanceOptimizer do
       %Postgrex.Error{postgres: %{code: code}} ->
         case code do
           :undefined_table ->
-            Logger.error("Database table not found during #{operation}", error_details)
+            Logger.error("Database table not found during #{error_details.operation}", error_details)
             {:error, :database_error, "Required database table not found"}
 
           :undefined_column ->
-            Logger.error("Database column not found during #{operation}", error_details)
+            Logger.error("Database column not found during #{error_details.operation}", error_details)
             {:error, :database_error, "Required database column not found"}
 
           :insufficient_privilege ->
-            Logger.error("Insufficient database privileges for #{operation}", error_details)
+            Logger.error("Insufficient database privileges for #{error_details.operation}", error_details)
             {:error, :database_error, "Insufficient database privileges"}
 
           _ ->
-            Logger.error("Database error during #{operation}", error_details)
+            Logger.error("Database error during #{error_details.operation}", error_details)
             {:error, :database_error, "Database operation failed: #{code}"}
         end
 
       %DBConnection.ConnectionError{} ->
-        Logger.error("Database connection error during #{operation}", error_details)
+        Logger.error("Database connection error during #{error_details.operation}", error_details)
         {:error, :connection_error, "Database connection failed"}
 
       _ ->
-        Logger.error("Unexpected error during #{operation}", error_details)
+        Logger.error("Unexpected error during #{error_details.operation}", error_details)
         {:error, :query_error, "Query execution failed"}
     end
   end
@@ -217,7 +217,7 @@ defmodule EveDmv.Database.PerformanceOptimizer do
       JOIN pg_stat_all_indexes psai ON x.indexrelid = psai.indexrelid
     ) AS foo ON t.tablename = foo.ctablename
     WHERE t.schemaname='public'
-    ORDER BY 1,2
+    ORDER BY 1, 2
     """
 
     case Repo.query(query) do

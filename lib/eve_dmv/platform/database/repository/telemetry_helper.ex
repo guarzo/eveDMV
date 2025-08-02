@@ -5,6 +5,7 @@ defmodule EveDmv.Database.Repository.TelemetryHelper do
   Provides query performance tracking, slow query detection, and database
   operation metrics for repository-based database access.
   """
+  """
 
   require Logger
 

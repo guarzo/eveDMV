@@ -11,6 +11,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ShipStatsCalculator do
   Uses EVE static data and common fitting patterns to provide accurate estimates
   even when exact fitting data is unavailable.
   """
+  """
 
   alias EveDmv.StaticData
 

@@ -13,8 +13,10 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
   Uses sophisticated pattern recognition and tactical analysis to identify
   and manage the most educational and strategically significant battle moments.
   """
+  """
 
   alias EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
   # Highlight management parameters
@@ -485,7 +487,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
   defp calculate_killmail_timestamp_offset(killmail, battle_data) do
     # Calculate offset from battle start
     battle_start = List.first(battle_data.killmails).killmail_time
-    NaiveDateTime.diff(killmail.killmail_time, battle_start, :second)
+    DateTimeUtils.diff(killmail.killmail_time, battle_start, :second)
   end
 
   defp analyze_tactical_situation(killmails) do

@@ -5,6 +5,7 @@ defmodule EveDmv.Intelligence.Metrics.ShipAnalysisCalculator do
   This module provides ship usage pattern analysis, categorization,
   and preference identification for character intelligence analysis.
   """
+  """
 
   @doc """
   Calculate ship usage patterns and preferences from killmail data.

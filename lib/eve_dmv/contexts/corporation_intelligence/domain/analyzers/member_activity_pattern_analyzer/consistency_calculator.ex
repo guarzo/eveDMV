@@ -1,12 +1,14 @@
-defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.ConsistencyCalculator do
+defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivityPatternAnalyzer.
+  ConsistencyCalculator do
   @moduledoc """
   Specialized calculator for activity consistency metrics.
 
   This module focuses on calculating consistency patterns in member activity,
   including weekly patterns, overall consistency, and activity regularity.
   """
+  """
 
-  alias EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TimezoneAnalyzer
+  alias EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivityPatternAnalyzer.TimezoneAnalyzer
 
   @doc """
   Analyze consistency patterns in activity data.

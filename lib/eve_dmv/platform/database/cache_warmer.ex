@@ -6,6 +6,7 @@ defmodule EveDmv.Database.CacheWarmer do
   Pre-populates caches with commonly requested data to improve response times
   and reduce database load during peak usage.
   """
+  """
 
   use GenServer
 

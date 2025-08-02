@@ -20,14 +20,11 @@ defmodule EveDmv.Contexts.CombatIntelligenceIntegrationTest do
       # We've verified this through code review that the private functions like
       # calculate_danger_rating/1, calculate_hunter_score/1, etc. now return {:error, :not_implemented}
 
-      result =
-        try do
-          IntelligenceScoring.calculate_score(character_id, :danger_rating)
-        catch
-          :exit, {:noproc, _} -> {:error, :service_not_started}
-        end
+      # IntelligenceScoring is no longer a GenServer, so we can call it directly
+      result = IntelligenceScoring.calculate_score(character_id, :danger_rating)
 
-      assert {:error, :service_not_started} = result
+      # The function should return calculation_failed since we don't have real data in tests
+      assert {:error, :calculation_failed} = result
     end
 
     test "stub functions return not_implemented instead of mock data" do

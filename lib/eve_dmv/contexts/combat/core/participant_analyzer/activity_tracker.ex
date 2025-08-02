@@ -3,6 +3,8 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.ActivityTracker do
   Tracks participant activity patterns and builds activity timelines.
   """
 
+    alias EveDmv.Core.Utils.DateTimeUtils
+  """
   @doc """
   Build an activity timeline showing participant engagement over time.
   """
@@ -65,8 +67,8 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.ActivityTracker do
       Enum.map(slots, fn slot ->
         km_in_slot =
           Enum.filter(sorted, fn km ->
-            DateTime.compare(km.killmail_time, slot.start) != :lt &&
-              DateTime.compare(km.killmail_time, slot.end) == :lt
+            DateTimeUtils.compare(km.killmail_time, slot.start) != :lt &&
+              DateTimeUtils.compare(km.killmail_time, slot.end) == :lt
           end)
 
         %{
@@ -79,12 +81,12 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.ActivityTracker do
   end
 
   defp generate_time_slots(start_time, end_time, interval_minutes) do
-    total_minutes = DateTime.diff(end_time, start_time, :minute)
+    total_minutes = DateTimeUtils.diff(end_time, start_time, :minute)
     slot_count = div(total_minutes, interval_minutes) + 1
 
     Enum.map(0..(slot_count - 1), fn i ->
-      slot_start = DateTime.add(start_time, i * interval_minutes * 60, :second)
-      slot_end = DateTime.add(slot_start, interval_minutes * 60, :second)
+      slot_start = DateTimeUtils.add(start_time, i * interval_minutes * 60, :second)
+      slot_end = DateTimeUtils.add(slot_start, interval_minutes * 60, :second)
 
       %{
         start: slot_start,
@@ -191,7 +193,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.ActivityTracker do
       sorted = Enum.sort_by(killmails, & &1.killmail_time)
       first = List.first(sorted).killmail_time
       last = List.last(sorted).killmail_time
-      DateTime.diff(last, first, :minute)
+      DateTimeUtils.diff(last, first, :minute)
     end
   end
 
@@ -285,7 +287,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.ActivityTracker do
     case {find_first_appearance(killmails), find_last_appearance(killmails)} do
       {nil, _} -> 0
       {_, nil} -> 0
-      {first, last} -> DateTime.diff(last, first, :minute)
+      {first, last} -> DateTimeUtils.diff(last, first, :minute)
     end
   end
 
@@ -301,7 +303,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.ActivityTracker do
       %{
         start: t1,
         end: t2,
-        duration: DateTime.diff(t2, t1, :minute)
+        duration: DateTimeUtils.diff(t2, t1, :minute)
       }
     end)
     # Gaps longer than 5 minutes
@@ -324,7 +326,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.ActivityTracker do
       times
       |> Enum.sort()
       |> Enum.zip(Enum.drop(Enum.sort(times), 1))
-      |> Enum.map(fn {t1, t2} -> DateTime.diff(t2, t1, :minute) end)
+      |> Enum.map(fn {t1, t2} -> DateTimeUtils.diff(t2, t1, :minute) end)
 
     Enum.all?(gaps, &(&1 <= 3))
   end
@@ -334,7 +336,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.ActivityTracker do
       times
       |> Enum.sort()
       |> Enum.zip(Enum.drop(Enum.sort(times), 1))
-      |> Enum.map(fn {t1, t2} -> DateTime.diff(t2, t1, :minute) end)
+      |> Enum.map(fn {t1, t2} -> DateTimeUtils.diff(t2, t1, :minute) end)
 
     Enum.any?(gaps, &(&1 > 10))
   end

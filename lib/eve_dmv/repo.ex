@@ -6,6 +6,7 @@ defmodule EveDmv.Repo do
   with PostgreSQL, including support for partitioned tables and
   advanced EVE Online data processing features.
   """
+  """
 
   use AshPostgres.Repo,
     otp_app: :eve_dmv

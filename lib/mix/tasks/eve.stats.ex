@@ -7,12 +7,16 @@ defmodule Mix.Tasks.Eve.Stats do
       mix eve.stats
       mix eve.stats --verbose
   """
+  """
 
   @shortdoc "Display EVE DMV database statistics"
 
   use Mix.Task
 
   import Ecto.Query
+
+  alias EveDmv.Core.Utils.DateTimeUtils
+
   require Logger
 
   def run(args) do
@@ -63,7 +67,7 @@ defmodule Mix.Tasks.Eve.Stats do
       # Killmails by month
       Logger.info("\nKillmails by Month (last 6 months):")
 
-      six_months_ago = DateTime.add(DateTime.utc_now(), -180, :day)
+      six_months_ago = DateTimeUtils.add(DateTime.utc_now(), -180 * 24 * 60 * 60, :second)
 
       monthly_counts =
         from(k in "killmails_raw",

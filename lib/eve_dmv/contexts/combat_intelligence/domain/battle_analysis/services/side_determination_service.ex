@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Services.Side
   Uses alliance and corporation relationships, attack patterns, and kill/death
   relationships to group participants into opposing sides.
   """
+  """
 
   require Logger
 

@@ -2,6 +2,7 @@ defmodule EveDmvWeb.Components.ThreatLevelComponent do
   @moduledoc """
   Reusable threat level display component for characters and corporations.
   """
+  """
   use Phoenix.Component
 
   @doc """

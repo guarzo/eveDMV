@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Infrastructure.WormholeEventProcess
   Processes incoming events from other contexts and initiates wormhole-specific
   analysis including character vetting, threat assessment, and fleet optimization.
   """
+  """
 
   alias EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer
   alias EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter

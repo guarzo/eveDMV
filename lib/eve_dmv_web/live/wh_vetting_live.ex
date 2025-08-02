@@ -10,12 +10,14 @@ defmodule EveDmvWeb.WHVettingLive do
   - Alt character analysis
   - Small gang competency scoring
   """
+  """
 
   use EveDmvWeb, :live_view
 
+  alias EveDmv.Contexts.WormholeOperations.Domain.Wormhole.WhVetting, as: WHVetting
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Domains.Intelligence
   alias EveDmv.Eve.EsiClient
-  alias EveDmv.Intelligence.Wormhole.Vetting, as: WHVetting
   alias EveDmv.IntelligenceMigrationAdapter
 
   require Logger
@@ -59,8 +61,13 @@ defmodule EveDmvWeb.WHVettingLive do
   def handle_event("search_character", %{"search" => %{"query" => query}}, socket) do
     if String.length(query) >= 3 do
       # Search for characters by name
-      {:ok, results} = search_characters(query)
-      {:noreply, assign(socket, :search_results, results)}
+      case search_characters(query) do
+        {:ok, results} ->
+          {:noreply, assign(socket, :search_results, results)}
+
+        {:error, _} ->
+          {:noreply, assign(socket, :search_results, [])}
+      end
     else
       {:noreply, assign(socket, :search_results, [])}
     end
@@ -151,12 +158,15 @@ defmodule EveDmvWeb.WHVettingLive do
     case result do
       {:ok, analysis_result} ->
         # Transform Intelligence Engine result to vetting record if needed
-        {:ok, _vetting_record} =
-          transform_analysis_to_vetting_record(character_id, analysis_result)
+        case transform_analysis_to_vetting_record(character_id, analysis_result) do
+          {:ok, _vetting_record} ->
+            socket = put_flash(socket, :info, "Vetting analysis completed successfully")
+            send(self(), :load_vetting_records)
+            {:noreply, socket}
 
-        socket = put_flash(socket, :info, "Vetting analysis completed successfully")
-        send(self(), :load_vetting_records)
-        {:noreply, socket}
+          {:error, reason} ->
+            {:noreply, put_flash(socket, :error, "Failed to transform analysis: #{inspect(reason)}")}
+        end
 
       {:error, reason} ->
         Logger.error("Vetting analysis failed for character #{character_id}: #{inspect(reason)}")
@@ -261,9 +271,15 @@ defmodule EveDmvWeb.WHVettingLive do
 
   defp process_character_search_results(character_ids) do
     # Fetch character details for the found IDs
-    {:ok, character_details} = EsiClient.get_characters(character_ids)
-    formatted_results = format_character_details(character_details)
-    {:ok, Enum.take(formatted_results, 10)}
+    case EsiClient.get_characters(character_ids) do
+      {:ok, character_details} ->
+        formatted_results = format_character_details(character_details)
+        {:ok, Enum.take(formatted_results, 10)}
+
+      {:error, reason} ->
+        Logger.warning("Failed to fetch character details: #{inspect(reason)}")
+        {:ok, []}
+    end
   end
 
   defp format_character_details(character_details) do
@@ -324,9 +340,9 @@ defmodule EveDmvWeb.WHVettingLive do
   defp format_date(nil), do: "N/A"
 
   defp format_date(datetime) do
-    case DateTime.from_naive(datetime, "Etc/UTC") do
-      {:ok, dt} -> Calendar.strftime(dt, "%Y-%m-%d %H:%M")
-      _ -> "Invalid date"
+    case DateTimeUtils.to_datetime(datetime) do
+      nil -> "Invalid date"
+      dt -> Calendar.strftime(dt, "%Y-%m-%d %H:%M")
     end
   end
 

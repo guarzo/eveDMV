@@ -11,6 +11,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ExternalGroupAnalyzer do
   @doc """
   Analyze external groups for a character within a given time range.
   """
+  @spec analyze(integer(), DateTime.t()) :: {:ok, list()}
   def analyze(character_id, since_date) do
     # Delegate to PlayerRepository which now contains the consolidated external groups logic
     external_groups =

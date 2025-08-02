@@ -5,10 +5,12 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
   Provides data access layer for corporation analysis operations using
   real killmail data from the database.
   """
+  """
 
   use EveDmv.ErrorHandler
 
   alias Ecto.Adapters.SQL
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Repo
   alias EveDmv.Result
   alias EveDmv.Shared.ActivityMetrics
@@ -75,7 +77,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
     # Get real member activity data
     case KillmailQueries.execute(
            KillmailQueries.corporation_members_activity_query(corporation_id, 90),
-           [corporation_id, DateTime.add(DateTime.utc_now(), -90 * 24 * 60 * 60, :second)]
+           [corporation_id, DateTimeUtils.add(DateTime.utc_now(), -90 * 24 * 60 * 60, :second)]
          ) do
       {:ok, members} ->
         # Get timezone data for each member
@@ -178,7 +180,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
   def get_activity_timeline(corporation_id, days_back \\ 30) do
     case KillmailQueries.execute(
            KillmailQueries.daily_activity_query(:corporation, corporation_id, days_back),
-           [corporation_id, DateTime.add(DateTime.utc_now(), -days_back * 24 * 60 * 60, :second)]
+           [corporation_id, DateTimeUtils.add(DateTime.utc_now(), -days_back * 24 * 60 * 60, :second)]
          ) do
       {:ok, timeline_data} ->
         timeline =
@@ -208,7 +210,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
   def get_timezone_distribution(corporation_id) do
     case KillmailQueries.execute(
            KillmailQueries.timezone_activity_query(:corporation, corporation_id, 30),
-           [corporation_id, DateTime.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)]
+           [corporation_id, DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)]
          ) do
       {:ok, hourly_data} ->
         # Convert to hourly activity map
@@ -238,7 +240,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
   defp get_member_hourly_activity(character_id, days) do
     case KillmailQueries.execute(
            KillmailQueries.timezone_activity_query(:character, character_id, days),
-           [character_id, DateTime.add(DateTime.utc_now(), -days * 24 * 60 * 60, :second)]
+           [character_id, DateTimeUtils.add(DateTime.utc_now(), -days * 24 * 60 * 60, :second)]
          ) do
       {:ok, data} ->
         hourly_activity =
@@ -307,7 +309,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
   defp get_activity_trend(corporation_id, days) do
     case KillmailQueries.execute(
            KillmailQueries.daily_activity_query(:corporation, corporation_id, days),
-           [corporation_id, DateTime.add(DateTime.utc_now(), -days * 24 * 60 * 60, :second)]
+           [corporation_id, DateTimeUtils.add(DateTime.utc_now(), -days * 24 * 60 * 60, :second)]
          ) do
       {:ok, data} ->
         trend_data =

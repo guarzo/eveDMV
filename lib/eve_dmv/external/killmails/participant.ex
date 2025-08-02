@@ -5,6 +5,7 @@ defmodule EveDmv.Killmails.Participant do
   This resource stores information about each participant (both attackers and victim)
   in a killmail, including their ship, weapon used, damage dealt, and final blow status.
   """
+  """
 
   use Ash.Resource,
     otp_app: :eve_dmv,

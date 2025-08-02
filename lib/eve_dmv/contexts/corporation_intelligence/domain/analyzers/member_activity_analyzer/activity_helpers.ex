@@ -1,11 +1,13 @@
-defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityHelpers do
+defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivityAnalyzer.ActivityHelpers do
   @moduledoc """
   Helper functions for member activity calculations and analysis.
 
   Provides utility functions for fleet participation metrics, communication patterns,
   and general activity calculations used across the member activity analyzer.
   """
+  """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.Analyzers.CommunicationPatternAnalyzer
   alias EveDmv.Intelligence.Calculators.FleetParticipationCalculator
   alias EveDmv.Intelligence.MemberActivityIntelligence
@@ -66,7 +68,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityHelpers d
 
         # Create analysis for the last 30 days
         end_date = DateTime.utc_now()
-        start_date = DateTime.add(end_date, -30, :day)
+        start_date = DateTimeUtils.add(end_date, -30 * 24 * 60 * 60, :second)
 
         # This would typically call back to the main analyzer
         # but we avoid circular dependencies by returning an instruction
@@ -128,7 +130,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityHelpers d
     Enum.filter(member_activities, fn member ->
       case Map.get(member, :last_seen) do
         nil -> false
-        last_seen -> DateTime.compare(last_seen, cutoff_date) != :lt
+        last_seen -> DateTimeUtils.compare(last_seen, cutoff_date) != :lt
       end
     end)
   end

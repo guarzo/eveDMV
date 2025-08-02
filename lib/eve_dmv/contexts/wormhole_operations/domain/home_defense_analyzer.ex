@@ -5,9 +5,11 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
   Provides comprehensive analysis of home defense readiness, vulnerabilities,
   and strategic recommendations for wormhole operations.
   """
+  """
 
   import Ecto.Query
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Repo
 
   require Logger
@@ -315,7 +317,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
 
   defp get_corporation_member_activity(corporation_id, days_back) do
     # Get recent killmail activity for corporation members
-    start_time = DateTime.add(DateTime.utc_now(), -days_back * 24 * 3600, :second)
+    start_time = DateTimeUtils.add(DateTime.utc_now(), -days_back * 24 * 3600, :second)
 
     query =
       from(k in "killmails_enriched",
@@ -340,7 +342,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
 
   defp get_corporation_member_ships(corporation_id) do
     # Simplified ship analysis based on recent killmail data
-    start_time = DateTime.add(DateTime.utc_now(), -30 * 24 * 3600, :second)
+    start_time = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 3600, :second)
 
     query =
       from(k in "killmails_enriched",
@@ -386,11 +388,11 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
   defp calculate_recent_activity_factor(member_activity) do
     # Calculate activity in last 7 days vs last 30 days
     now = DateTime.utc_now()
-    seven_days_ago = DateTime.add(now, -7 * 24 * 3600, :second)
+    seven_days_ago = DateTimeUtils.add(now, -7 * 24 * 3600, :second)
 
     recent_activity =
       Enum.count(member_activity, fn activity ->
-        DateTime.compare(activity.killmail_time, seven_days_ago) == :gt
+        DateTimeUtils.compare(activity.killmail_time, seven_days_ago) == :gt
       end)
 
     total_activity = length(member_activity)
@@ -700,7 +702,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
 
   defp get_system_activity(system_id, days_back) do
     # Get recent activity in the system
-    start_time = DateTime.add(DateTime.utc_now(), -days_back * 24 * 3600, :second)
+    start_time = DateTimeUtils.add(DateTime.utc_now(), -days_back * 24 * 3600, :second)
 
     query =
       from(k in "killmails_enriched",
@@ -903,7 +905,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
   defp query_wormhole_connections(system_id) do
     # Query wormhole connections from killmail data and system activity
     # Look for jumps and activity patterns that indicate connections
-    cutoff_time = DateTime.add(DateTime.utc_now(), -24, :hour)
+    cutoff_time = DateTimeUtils.add(DateTime.utc_now(), -24 * 60 * 60, :second)
 
     case Repo.query(
            """
@@ -1182,7 +1184,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
 
   defp estimate_time_remaining(last_activity) do
     # Estimate time remaining based on when last activity occurred
-    hours_since_activity = DateTime.diff(DateTime.utc_now(), last_activity, :hour)
+    hours_since_activity = DateTimeUtils.diff(DateTime.utc_now(), last_activity, :hour)
 
     # Assume wormholes have 16-24 hour lifetime
     # hours
@@ -1419,11 +1421,11 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
 
   defp count_recent_kills(system_activity) do
     # Count kills in last 7 days
-    seven_days_ago = DateTime.add(DateTime.utc_now(), -7 * 24 * 3600, :second)
+    seven_days_ago = DateTimeUtils.add(DateTime.utc_now(), -7 * 24 * 3600, :second)
 
     system_activity
     |> Enum.count(fn activity ->
-      DateTime.compare(activity.killmail_time, seven_days_ago) == :gt
+      DateTimeUtils.compare(activity.killmail_time, seven_days_ago) == :gt
     end)
   end
 

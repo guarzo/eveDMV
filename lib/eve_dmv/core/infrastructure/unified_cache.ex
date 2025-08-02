@@ -16,6 +16,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedCache do
   - Performance monitoring and statistics
   - Cache warming and invalidation
   """
+  """
 
   use GenServer
   require Logger

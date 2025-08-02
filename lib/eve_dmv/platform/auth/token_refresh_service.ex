@@ -6,10 +6,12 @@ defmodule EveDmv.Users.TokenRefreshService do
   when they are within 5 minutes of expiring, ensuring seamless user experience
   without requiring manual re-authentication.
   """
+  """
 
   use GenServer
   import Ash.Query
   alias EveDmv.Api
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Users.User
   require Logger
 
@@ -39,7 +41,7 @@ defmodule EveDmv.Users.TokenRefreshService do
         false
 
       expires_at ->
-        threshold = DateTime.add(DateTime.utc_now(), @refresh_threshold_minutes * 60, :second)
+        threshold = DateTimeUtils.add(DateTime.utc_now(), @refresh_threshold_minutes * 60, :second)
         DateTime.compare(expires_at, threshold) == :lt
     end
   end
@@ -82,7 +84,7 @@ defmodule EveDmv.Users.TokenRefreshService do
       refreshes_performed: state.refreshes_performed,
       errors_encountered: state.errors_encountered,
       last_check_at: state.last_check_at,
-      service_uptime_seconds: DateTime.diff(DateTime.utc_now(), state.last_check_at)
+      service_uptime_seconds: DateTimeUtils.diff(DateTime.utc_now(), state.last_check_at, :second)
     }
 
     {:reply, stats, state}
@@ -118,7 +120,7 @@ defmodule EveDmv.Users.TokenRefreshService do
 
   defp check_and_refresh_tokens(state) do
     # Find users with tokens that are about to expire
-    _threshold = DateTime.add(DateTime.utc_now(), @refresh_threshold_minutes * 60, :second)
+    _threshold = DateTimeUtils.add(DateTime.utc_now(), @refresh_threshold_minutes * 60, :second)
 
     query =
       User
@@ -298,11 +300,11 @@ defmodule EveDmv.Users.TokenRefreshService do
   defp calculate_token_expiration(token_data) do
     case Map.get(token_data, "expires_in") do
       expires_in when is_integer(expires_in) ->
-        DateTime.add(DateTime.utc_now(), expires_in, :second)
+        DateTimeUtils.add(DateTime.utc_now(), expires_in, :second)
 
       _ ->
         # Default to 20 minutes if no expires_in provided
-        DateTime.add(DateTime.utc_now(), 20 * 60, :second)
+        DateTimeUtils.add(DateTime.utc_now(), 20 * 60, :second)
     end
   end
 end

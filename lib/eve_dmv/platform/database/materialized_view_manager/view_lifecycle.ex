@@ -5,6 +5,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewLifecycle do
   Handles creation, dropping, and existence checking of materialized views,
   including index creation and view status management.
   """
+  """
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Database.MaterializedViewManager.ViewDefinitions

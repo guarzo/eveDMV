@@ -2,6 +2,7 @@ defmodule EveDmvWeb.KillmailLive do
   @moduledoc """
   LiveView for displaying individual killmail details.
   """
+  """
 
   use EveDmvWeb, :live_view
 

@@ -5,6 +5,7 @@ defmodule EveDmv.Eve.EsiParsers do
   This module handles parsing and transforming raw ESI API responses
   into normalized data structures used by the application.
   """
+  """
 
   alias EveDmv.Utils.ParsingUtils
 

@@ -6,8 +6,10 @@ defmodule EveDmv.Shared.Intelligence.Collector do
   supporting multiple source types including killmails, player reports, scanning data,
   market activity, and jump logs.
   """
+  """
 
   alias EveDmv.Api
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
 
   require Logger
@@ -75,7 +77,7 @@ defmodule EveDmv.Shared.Intelligence.Collector do
 
   defp collect_from_source(:killmails, analysis_area, time_window_hours) do
     system_ids = extract_system_ids(analysis_area)
-    since = DateTime.add(DateTime.utc_now(), -time_window_hours * 3600, :second)
+    since = DateTimeUtils.add(DateTime.utc_now(), -time_window_hours * 3600, :second)
 
     Logger.debug("Collecting killmails for systems: #{inspect(system_ids)} since: #{since}")
 
@@ -86,7 +88,7 @@ defmodule EveDmv.Shared.Intelligence.Collector do
     # Generate intelligence reports from killmail analysis patterns
     # This analyzes killmail data to infer player activity reports
     system_ids = extract_system_ids(analysis_area)
-    since = DateTime.add(DateTime.utc_now(), -time_window_hours * 3600, :second)
+    since = DateTimeUtils.add(DateTime.utc_now(), -time_window_hours * 3600, :second)
 
     case collect_killmail_data(system_ids, since) do
       {:ok, killmail_data} ->
@@ -115,7 +117,7 @@ defmodule EveDmv.Shared.Intelligence.Collector do
     # Generate scanning data from killmail participant analysis
     # This analyzes ship presence patterns from killmail data
     system_ids = extract_system_ids(analysis_area)
-    since = DateTime.add(DateTime.utc_now(), -time_window_hours * 3600, :second)
+    since = DateTimeUtils.add(DateTime.utc_now(), -time_window_hours * 3600, :second)
 
     case collect_killmail_data(system_ids, since) do
       {:ok, killmail_data} ->
@@ -157,7 +159,7 @@ defmodule EveDmv.Shared.Intelligence.Collector do
     # Generate jump activity from killmail participant movements
     # This analyzes character movement patterns from killmail data
     system_ids = extract_system_ids(analysis_area)
-    since = DateTime.add(DateTime.utc_now(), -time_window_hours * 3600, :second)
+    since = DateTimeUtils.add(DateTime.utc_now(), -time_window_hours * 3600, :second)
 
     case collect_killmail_data(system_ids, since) do
       {:ok, killmail_data} ->

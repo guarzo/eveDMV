@@ -5,6 +5,7 @@ defmodule EveDmvWeb.SystemLive do
   Displays real killmail data, structure kills, danger assessment,
   and corporation/alliance presence for a specific solar system.
   """
+  """
 
   use EveDmvWeb, :live_view
 
@@ -13,6 +14,7 @@ defmodule EveDmvWeb.SystemLive do
   alias Ecto.Adapters.SQL
   alias EveDmv.Analytics.BattleDetector
   alias EveDmv.Cache.AnalysisCache
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Eve.SolarSystem
   alias EveDmv.Repo
 
@@ -132,7 +134,7 @@ defmodule EveDmvWeb.SystemLive do
 
   # Get activity statistics for the last 30 days
   defp get_activity_statistics(system_id) do
-    thirty_days_ago = DateTime.add(DateTime.utc_now(), -30, :day)
+    thirty_days_ago = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
 
     # Query killmail activity in this system
     killmail_query = """
@@ -169,7 +171,7 @@ defmodule EveDmvWeb.SystemLive do
 
   # Get structure and citadel kills
   defp get_structure_kills(system_id) do
-    thirty_days_ago = DateTime.add(DateTime.utc_now(), -30, :day)
+    thirty_days_ago = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
 
     structure_query = """
     SELECT
@@ -219,7 +221,7 @@ defmodule EveDmvWeb.SystemLive do
 
   # Get corporation and alliance presence
   defp get_corporation_presence(system_id) do
-    thirty_days_ago = DateTime.add(DateTime.utc_now(), -30, :day)
+    thirty_days_ago = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
 
     presence_query = """
     SELECT
@@ -276,8 +278,8 @@ defmodule EveDmvWeb.SystemLive do
 
   # Calculate danger assessment score
   defp calculate_danger_assessment(system_id) do
-    seven_days_ago = DateTime.add(DateTime.utc_now(), -7, :day)
-    thirty_days_ago = DateTime.add(DateTime.utc_now(), -30, :day)
+    seven_days_ago = DateTimeUtils.add(DateTime.utc_now(), -7 * 24 * 60 * 60, :second)
+    thirty_days_ago = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
 
     danger_query = """
     SELECT
@@ -336,7 +338,7 @@ defmodule EveDmvWeb.SystemLive do
 
   # Get 24-hour activity heatmap
   defp get_activity_heatmap(system_id) do
-    thirty_days_ago = DateTime.add(DateTime.utc_now(), -30, :day)
+    thirty_days_ago = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
 
     heatmap_query = """
     SELECT

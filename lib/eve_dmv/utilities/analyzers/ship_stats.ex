@@ -6,6 +6,7 @@ defmodule EveDmv.Analytics.ShipStats do
   across all killmail data. Provides insights into ship balance, popular fits,
   and combat effectiveness.
   """
+  """
 
   use Ash.Resource,
     domain: EveDmv.Api.AnalyticsApi,

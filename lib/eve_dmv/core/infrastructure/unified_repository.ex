@@ -18,10 +18,12 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   - Batch operations and bulk loading
   - Domain-specific query builders
   """
+  """
 
   import Ecto.Query
 
   alias EveDmv.Api
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Shared.Infrastructure.UnifiedCache
 
   require Logger
@@ -154,11 +156,14 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   @spec bulk_create(domain(), resource(), list(map()), options()) ::
           {:ok, list()} | {:error, term()}
   def bulk_create(domain, resource, attrs_list, opts \\ []) do
-    case Api.bulk_create(resource, attrs_list, opts) do
-      {:ok, created_resources} ->
+    case Api.bulk_create(attrs_list, resource, :create, opts) do
+      %Ash.BulkResult{records: created_resources} ->
         invalidate_resource_cache(domain, resource)
         track_write_operation(domain, resource, :bulk_create, length(created_resources))
         {:ok, created_resources}
+
+      %Ash.BulkResult{errors: errors} ->
+        {:error, errors}
 
       error ->
         error
@@ -191,7 +196,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   """
   @spec get_recent_high_threats(options()) :: {:ok, list()} | {:error, term()}
   def get_recent_high_threats(opts \\ []) do
-    since = Keyword.get(opts, :since, DateTime.add(DateTime.utc_now(), -24 * 3600, :second))
+    since = Keyword.get(opts, :since, DateTimeUtils.add(DateTimeUtils.utc_now(), -24 * 3600, :second))
     limit = Keyword.get(opts, :limit, 50)
 
     filter = [
@@ -222,7 +227,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   """
   @spec get_recent_fleet_engagements(options()) :: {:ok, list()} | {:error, term()}
   def get_recent_fleet_engagements(opts \\ []) do
-    since = Keyword.get(opts, :since, DateTime.add(DateTime.utc_now(), -48 * 3600, :second))
+    since = Keyword.get(opts, :since, DateTimeUtils.add(DateTimeUtils.utc_now(), -48 * 3600, :second))
     limit = Keyword.get(opts, :limit, 100)
 
     filter = [
@@ -345,7 +350,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   """
   @spec get_recent_wormhole_signatures(integer(), options()) :: {:ok, list()} | {:error, term()}
   def get_recent_wormhole_signatures(system_id, opts \\ []) do
-    since = Keyword.get(opts, :since, DateTime.add(DateTime.utc_now(), -24 * 3600, :second))
+    since = Keyword.get(opts, :since, DateTimeUtils.add(DateTimeUtils.utc_now(), -24 * 3600, :second))
 
     filter = [
       solar_system_id: system_id,
@@ -539,7 +544,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   Build a filter for recent records.
   """
   @spec recent_filter(DateTime.t()) :: keyword()
-  def recent_filter(since \\ DateTime.add(DateTime.utc_now(), -24 * 3600, :second)) do
+  def recent_filter(since \\ DateTimeUtils.add(DateTimeUtils.utc_now(), -24 * 3600, :second)) do
     [updated_at: [greater_than: since]]
   end
 
@@ -602,7 +607,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   """
   @spec get_alliance_activity(integer(), integer()) :: {:ok, map()} | {:error, term()}
   def get_alliance_activity(alliance_id, days_back) do
-    since = DateTime.add(DateTime.utc_now(), -days_back * 24, :hour)
+    since = DateTimeUtils.add(DateTimeUtils.utc_now(), -days_back * 24 * 60 * 60, :second)
 
     query =
       from(k in EveDmv.Killmails.KillmailRaw,

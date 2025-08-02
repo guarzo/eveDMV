@@ -5,9 +5,11 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
   Provides real-time metrics, alerts, and performance insights for EVE DMV.
   Integrates with Telemetry for event-driven monitoring.
   """
+  """
 
   use GenServer
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias Phoenix.PubSub
 
   require Logger
@@ -131,14 +133,14 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
       state.alerts
       |> Enum.take(50)
       |> Enum.map(fn alert ->
-        Map.put(alert, :age_seconds, DateTime.diff(DateTime.utc_now(), alert.timestamp))
+        Map.put(alert, :age_seconds, DateTimeUtils.diff(DateTime.utc_now(), alert.timestamp, :second))
       end)
 
     {:reply, recent_alerts, state}
   end
 
   def handle_call({:get_history, duration_minutes}, _from, state) do
-    cutoff = DateTime.add(DateTime.utc_now(), -duration_minutes, :minute)
+    cutoff = DateTimeUtils.add(DateTime.utc_now(), -duration_minutes * 60, :second)
 
     history =
       state.history
@@ -455,7 +457,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
   end
 
   defp add_uptime(metrics, start_time) do
-    uptime_seconds = DateTime.diff(DateTime.utc_now(), start_time)
+    uptime_seconds = DateTimeUtils.diff(DateTime.utc_now(), start_time, :second)
     Map.put(metrics, :uptime_seconds, uptime_seconds)
   end
 

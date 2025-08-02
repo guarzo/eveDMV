@@ -70,10 +70,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   clean codebase principles by providing real insights where data is available
   and clear frameworks for expansion.
   """
+  """
 
   import Ecto.Query
 
   alias EveDmv.Api
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
 
   require Ash.Query
@@ -87,7 +89,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
     # 7 days
     analysis_window = Keyword.get(options, :analysis_window, 168)
-    start_time = DateTime.add(DateTime.utc_now(), -analysis_window * 3_600, :second)
+    start_time = DateTimeUtils.add(DateTime.utc_now(), -analysis_window * 3_600, :second)
     include_predictions = Keyword.get(options, :include_predictions, true)
 
     # Get all systems in the region
@@ -146,7 +148,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
     # 3 days
     analysis_window = Keyword.get(options, :analysis_window, 72)
-    start_time = DateTime.add(DateTime.utc_now(), -analysis_window * 3_600, :second)
+    start_time = DateTimeUtils.add(DateTime.utc_now(), -analysis_window * 3_600, :second)
     include_projections = Keyword.get(options, :include_projections, true)
 
     # Get all systems in the constellation
@@ -218,7 +220,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   """
   def analyze_constellation_control_patterns(_constellation_id) do
     # Analyze who controls the constellation based on kill patterns
-    start_time = DateTime.add(DateTime.utc_now(), -14 * 24 * 3_600, :second)
+    start_time = DateTimeUtils.add(DateTime.utc_now(), -14 * 24 * 3_600, :second)
 
     query =
       KillmailRaw
@@ -675,13 +677,13 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
       :insufficient_data
     else
       # Split kills into recent and older
-      midpoint = DateTime.add(DateTime.utc_now(), -7 * 24 * 3_600, :second)
+      midpoint = DateTimeUtils.add(DateTime.utc_now(), -7 * 24 * 3_600, :second)
 
       recent_kills =
-        Enum.filter(killmails, fn km -> DateTime.compare(km.killmail_time, midpoint) == :gt end)
+        Enum.filter(killmails, fn km -> DateTimeUtils.compare(km.killmail_time, midpoint) == :gt end)
 
       older_kills =
-        Enum.filter(killmails, fn km -> DateTime.compare(km.killmail_time, midpoint) == :lt end)
+        Enum.filter(killmails, fn km -> DateTimeUtils.compare(km.killmail_time, midpoint) == :lt end)
 
       # Get top alliance in each period
       recent_top = get_top_alliance(recent_kills)

@@ -1,9 +1,10 @@
-defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.WormholeCompatibility do
+defmodule EveDmv.Contexts.WormholeOperations.Domain.Analyzers.WhFleetAnalyzer.WormholeCompatibility do
   @moduledoc """
   Handles wormhole compatibility analysis and mass calculations.
 
   This module provides functionality for calculating fleet mass,
   wormhole viability, jump sequences, and mass efficiency.
+  """
   """
 
   alias EveDmv.Intelligence.Analyzers.MassCalculator

@@ -5,6 +5,7 @@ defmodule EveDmv.Platform.Database.CorporationRepository do
   Provides centralized access to corporation-related data
   from the database with optimized queries.
   """
+  """
 
   alias EveDmv.Api
   alias EveDmv.Contexts.Corporation.Resources.ActivityMetric

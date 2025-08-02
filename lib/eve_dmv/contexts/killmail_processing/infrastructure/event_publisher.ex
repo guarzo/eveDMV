@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Infrastructure.EventPublisher do
   Provides temporary stub implementation to resolve Dialyzer errors.
   This module should be fully implemented as part of the killmail processing feature.
   """
+  """
 
   @doc """
   Publish multiple killmail processing events.

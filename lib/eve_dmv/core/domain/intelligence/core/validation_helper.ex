@@ -1,9 +1,13 @@
 defmodule EveDmv.Intelligence.Core.ValidationHelper do
   @moduledoc """
+
   Parameter validation utilities for intelligence analyzers.
 
   Provides standardized validation functions for common parameter types
   and analysis options used across intelligence modules.
+  """
+
+  alias EveDmv.Core.Utils.DateTimeUtils
   """
 
   @type validation_result :: :ok | {:error, String.t()}
@@ -133,7 +137,7 @@ defmodule EveDmv.Intelligence.Core.ValidationHelper do
       DateTime.compare(start_date, end_date) == :gt ->
         {:error, "Start date must be before end date"}
 
-      DateTime.diff(end_date, start_date, :day) > 365 ->
+      DateTimeUtils.diff(end_date, start_date, :day) > 365 ->
         {:error, "Time range too large: maximum 365 days"}
 
       DateTime.compare(start_date, DateTime.utc_now()) == :gt ->

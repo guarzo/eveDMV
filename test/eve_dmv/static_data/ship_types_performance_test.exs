@@ -3,8 +3,8 @@ defmodule EveDmv.StaticData.ShipTypesPerformanceTest do
   alias EveDmv.Eve.ItemType
   alias EveDmv.StaticData.ShipTypes
 
-  @tag :performance
   describe "performance benchmarks" do
+    @describetag :performance
     setup do
       # Create a realistic set of ship data
       ship_groups = [
@@ -113,10 +113,9 @@ defmodule EveDmv.StaticData.ShipTypesPerformanceTest do
         # Warm up
         getter_fn.()
 
-        {time_micro, ids} = :timer.tc(getter_fn)
+        {time_micro, _ids} = :timer.tc(getter_fn)
         time_ms = time_micro / 1000
 
-        # #{role}_ship_ids: #{Float.round(time_ms, 2)}ms (#{length(ids)} ships)
         assert time_ms < 30.0, "#{role} query time #{time_ms}ms exceeds 30ms threshold"
       end
     end
@@ -189,7 +188,7 @@ defmodule EveDmv.StaticData.ShipTypesPerformanceTest do
 
       # Analyze results
       valid_times = Enum.filter(task_times, &(&1 != nil))
-      avg_time = Enum.sum(valid_times) / length(valid_times)
+      _avg_time = Enum.sum(valid_times) / length(valid_times)
       max_time = Enum.max(valid_times)
 
       # Concurrent query performance (10 concurrent tasks)
@@ -201,9 +200,9 @@ defmodule EveDmv.StaticData.ShipTypesPerformanceTest do
     end
   end
 
-  @tag :performance
-  @tag :cache_impact
   describe "cache impact analysis" do
+    @describetag :performance
+    @describetag :cache_impact
     setup do
       # Create ships for testing
       for i <- 1..10 do
@@ -252,8 +251,8 @@ defmodule EveDmv.StaticData.ShipTypesPerformanceTest do
     end
   end
 
-  @tag :performance
   describe "recommendations for production use" do
+    @describetag :performance
     test "verify performance recommendations are documented" do
       # Performance recommendations documented in comments:
       # 1. Consider implementing application-level caching for classify_ship_type/1

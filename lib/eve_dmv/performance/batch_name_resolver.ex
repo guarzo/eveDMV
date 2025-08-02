@@ -5,6 +5,7 @@ defmodule EveDmv.Performance.BatchNameResolver do
   This module provides efficient batch loading of names for various entities
   to prevent individual lookups during rendering.
   """
+  """
 
   alias EveDmv.Eve.NameResolver
   alias EveDmv.Eve.NameResolver.CacheManager

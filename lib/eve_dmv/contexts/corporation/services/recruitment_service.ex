@@ -5,8 +5,10 @@ defmodule EveDmv.Contexts.Corporation.Services.RecruitmentService do
   Handles recruitment process management, application processing,
   and recruitment optimization operations.
   """
+  """
 
   alias EveDmv.Contexts.Corporation.Core.RecruitmentAnalyzer
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
   alias EveDmv.Platform.PubSub.CorporationUpdates
 
@@ -556,7 +558,7 @@ defmodule EveDmv.Contexts.Corporation.Services.RecruitmentService do
 
   defp suggest_interview_time(application) do
     # Would consider timezone and availability
-    base_time = DateTime.utc_now() |> DateTime.add(3, :day)
+    base_time = DateTime.utc_now() |> DateTimeUtils.add(3 * 24 * 60 * 60, :second)
 
     # Adjust for applicant timezone if available
     adjusted_time =

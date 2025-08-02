@@ -5,6 +5,7 @@ defmodule EveDmv.Killmails.DatabaseInserter do
   Provides efficient bulk insertion methods for raw killmails, enriched killmails,
   and participants using Ash bulk operations with proper error handling and logging.
   """
+  """
 
   alias EveDmv.Api
   # REMOVED: KillmailEnriched - see /docs/architecture/enriched-raw-analysis.md

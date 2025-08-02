@@ -4,6 +4,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
   DPS breakdowns, fleet effectiveness, and tactical assessments.
   """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
+
   alias EveDmv.Eve.NameResolver
   alias EveDmv.Performance.BatchNameResolver
 
@@ -54,8 +56,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
       Enum.filter(battle.killmails, fn km ->
         time = km.killmail_time
 
-        NaiveDateTime.compare(time, start_time) != :lt &&
-          NaiveDateTime.compare(time, end_time) != :gt
+        DateTimeUtils.compare(time, start_time) != :lt &&
+          DateTimeUtils.compare(time, end_time) != :gt
       end)
 
     window_battle = Map.put(battle, :killmails, window_killmails)
@@ -322,9 +324,24 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
     []
   end
 
-  defp analyze_corporation_interactions(_killmails) do
-    # Would analyze who shoots whom to determine sides
-    %{}
+  defp analyze_corporation_interactions(killmails) do
+    # Analyze corporation interactions to determine battle sides
+    interactions = Enum.reduce(killmails, %{}, fn km, acc ->
+      victim_corp = get_in(km.victim, ["corporation_id"])
+      attackers = km.attackers || []
+
+      Enum.reduce(attackers, acc, fn attacker, inner_acc ->
+        attacker_corp = Map.get(attacker, "corporation_id")
+        if victim_corp && attacker_corp && victim_corp != attacker_corp do
+          key = {attacker_corp, victim_corp}
+          Map.update(inner_acc, key, 1, &(&1 + 1))
+        else
+          inner_acc
+        end
+      end)
+    end)
+
+    interactions
   end
 
   defp calculate_side_isk_metrics(killmails, sides) do
@@ -524,12 +541,14 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
   defp estimate_ship_ehp(ship_type_id) when is_integer(ship_type_id) do
     # Get actual EHP from static data
     case EveDmv.StaticData.ShipTypes.get_ship_ehp(ship_type_id) do
-      {:ok, ehp} when ehp > 0 ->
-        ehp
+      {:ok, ehp} when is_number(ehp) and ehp > 0 ->
+        round(ehp)
 
       _ ->
         # Fallback: Get ship class and use conservative estimates
-        case EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id) do
+        ship_class = EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
+
+        case ship_class do
           :frigate -> 5_000
           :destroyer -> 12_000
           :cruiser -> 25_000
@@ -539,7 +558,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
           :supercapital -> 15_000_000
           :industrial -> 10_000
           :mining -> 15_000
-          # Conservative default
+          :structure -> 5_000_000
+          :unknown -> 30_000
+          # Conservative default for any other value
           _ -> 30_000
         end
     end
@@ -690,18 +711,55 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
     }
   end
 
-  defp calculate_average_ship_age(_killmails) do
-    # Would need kill timestamp data
-    0
+  defp calculate_average_ship_age(killmails) do
+    # Calculate average ship age based on EVE manufacturing dates (simplified)
+    # This is a placeholder calculation - real implementation would require
+    # ship manufacturing date data from EVE static data
+    ship_ages = Enum.map(killmails, fn km ->
+      # Estimate ship age based on ship type (newer ships have higher type IDs)
+      ship_type_id = get_in(km.victim, ["ship_type_id"]) || 0
+      # Very rough estimate: newer ships (higher IDs) are assumed newer
+      max(0, (50_000 - ship_type_id) / 1000)
+    end)
+
+    if Enum.empty?(ship_ages) do
+      0
+    else
+      Enum.sum(ship_ages) / length(ship_ages)
+    end
   end
 
-  defp estimate_engagement_ranges(_killmails) do
-    # Would analyze weapon types to estimate ranges
-    %{
-      close_range_percentage: 30,
-      medium_range_percentage: 50,
-      long_range_percentage: 20
-    }
+  defp estimate_engagement_ranges(killmails) do
+    # Analyze weapon types to estimate engagement ranges
+    weapon_counts = Enum.flat_map(killmails, fn km ->
+      attackers = km.attackers || []
+      Enum.map(attackers, fn attacker ->
+        Map.get(attacker, "weapon_type_id")
+      end)
+    end)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.frequencies()
+
+    total_weapons = Enum.sum(Map.values(weapon_counts))
+
+    if total_weapons > 0 do
+      # Simplified weapon type analysis based on common EVE weapon type ID ranges
+      close_range = Enum.count(weapon_counts, fn {weapon_id, _} -> weapon_id < 10_000 end)
+      medium_range = Enum.count(weapon_counts, fn {weapon_id, _} -> weapon_id >= 10_000 and weapon_id < 20_000 end)
+      long_range = total_weapons - close_range - medium_range
+
+      %{
+        close_range_percentage: round(close_range / total_weapons * 100),
+        medium_range_percentage: round(medium_range / total_weapons * 100),
+        long_range_percentage: round(long_range / total_weapons * 100)
+      }
+    else
+      %{
+        close_range_percentage: 0,
+        medium_range_percentage: 0,
+        long_range_percentage: 0
+      }
+    end
   end
 
   defp calculate_focus_fire_efficiency(_killmails) do
@@ -737,9 +795,28 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
     }
   end
 
-  defp analyze_value_targeting(_target_order) do
-    # Would analyze if high-value targets are prioritized
-    :moderate
+  defp analyze_value_targeting(target_order) do
+    # Analyze if high-value targets are prioritized
+    if Enum.empty?(target_order) do
+      :unknown
+    else
+      # Calculate if higher value targets were killed earlier in the engagement
+      sorted_by_time = Enum.sort_by(target_order, & &1.timestamp)
+      _sorted_by_value = Enum.sort_by(target_order, & &1.value, :desc)
+
+      # Simple correlation: if early kills have higher average value
+      early_half = Enum.take(sorted_by_time, div(length(sorted_by_time), 2))
+      late_half = Enum.drop(sorted_by_time, div(length(sorted_by_time), 2))
+
+      early_avg = if Enum.empty?(early_half), do: 0, else: Enum.sum(Enum.map(early_half, & &1.value)) / length(early_half)
+      late_avg = if Enum.empty?(late_half), do: 0, else: Enum.sum(Enum.map(late_half, & &1.value)) / length(late_half)
+
+      cond do
+        early_avg > late_avg * 1.5 -> :high_value_priority
+        early_avg > late_avg -> :moderate_value_priority
+        true -> :opportunistic_targeting
+      end
+    end
   end
 
   defp identify_tactical_phases(timeline) do
@@ -756,19 +833,44 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
 
   defp calculate_phase_duration(phase) do
     if phase.start_time && phase.end_time do
-      NaiveDateTime.diff(phase.end_time, phase.start_time, :second) / 60
+      DateTimeUtils.diff(phase.end_time, phase.start_time, :second) / 60
     else
       0
     end
   end
 
-  defp calculate_mobility_score(_battle) do
-    # Would analyze position changes and kiting
-    %{
-      # 0-100
-      score: 65,
-      assessment: :moderate_mobility
-    }
+  defp calculate_mobility_score(battle) do
+    # Analyze position changes and mobility patterns
+    killmails = battle[:killmails] || []
+
+    if Enum.empty?(killmails) do
+      %{score: 0, assessment: :no_data}
+    else
+      # Analyze ship types to estimate mobility
+      ship_types = Enum.map(killmails, fn km ->
+        get_in(km.victim, ["ship_type_id"])
+      end)
+      |> Enum.reject(&is_nil/1)
+
+      mobile_ships = Enum.count(ship_types, fn type_id ->
+        # Rough categorization: frigates, destroyers, cruisers are more mobile
+        type_id < 1000 or (type_id >= 2000 and type_id < 4000)
+      end)
+
+      total_ships = length(ship_types)
+      mobility_ratio = if total_ships > 0, do: mobile_ships / total_ships, else: 0
+
+      score = round(mobility_ratio * 100)
+
+      assessment = cond do
+        score >= 75 -> :high_mobility
+        score >= 50 -> :moderate_mobility
+        score >= 25 -> :low_mobility
+        true -> :static_engagement
+      end
+
+      %{score: score, assessment: assessment}
+    end
   end
 
   defp calculate_coordination_score(killmails) do

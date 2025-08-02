@@ -5,7 +5,9 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainActivityTracker do
   Handles activity event processing, timeline management,
   and activity pattern analysis.
   """
+  """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.DomainEvents.ChainActivityPrediction
   alias EveDmv.DomainEvents.HostileMovement
   alias EveDmv.Infrastructure.EventBus
@@ -16,7 +18,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainActivityTracker do
   Get activity timeline for a chain.
   """
   def get_activity_timeline(map_id, state, hours_back \\ 24) do
-    cutoff_time = DateTime.add(DateTime.utc_now(), -hours_back * 3600, :second)
+    cutoff_time = DateTimeUtils.add(DateTime.utc_now(), -hours_back * 3600, :second)
 
     timeline =
       state
@@ -35,7 +37,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainActivityTracker do
     updated_timeline = [activity_event | current_timeline]
 
     # Keep only recent activity (last 7 days)
-    cutoff_time = DateTime.add(DateTime.utc_now(), -7 * 24 * 3600, :second)
+    cutoff_time = DateTimeUtils.add(DateTime.utc_now(), -7 * 24 * 3600, :second)
     trimmed_timeline = filter_timeline_since(updated_timeline, cutoff_time)
 
     put_in(state, [:chains, map_id, :activity_timeline], trimmed_timeline)
@@ -159,7 +161,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainActivityTracker do
   defp filter_timeline_since(timeline, cutoff_time) do
     Enum.filter(timeline, fn event ->
       event_time = Map.get(event, :timestamp, DateTime.utc_now())
-      DateTime.compare(event_time, cutoff_time) != :lt
+      DateTimeUtils.compare(event_time, cutoff_time) != :lt
     end)
   end
 

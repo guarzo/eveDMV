@@ -2,6 +2,7 @@ defmodule EveDmvWeb.Components.IskStatsComponent do
   @moduledoc """
   Reusable ISK statistics component showing destroyed/lost values and efficiency.
   """
+  """
   use Phoenix.Component
 
   @doc """

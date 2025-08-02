@@ -10,6 +10,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
   Sprint 17 BA-005 implementation with real data analysis.
   """
+  """
+
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
@@ -29,7 +32,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
       tactical_phases: identify_tactical_phases(killmails),
       pattern_summary: generate_pattern_summary(killmails),
       analysis_metadata: %{
-        analyzed_at: DateTime.utc_now(),
+        analyzed_at: DateTimeUtils.utc_now(),
         killmail_count: length(killmails),
         options: options
       }
@@ -53,7 +56,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
         %{
           window_start: window_start,
-          window_end: DateTime.add(window_start, 30, :second),
+          window_end: DateTimeUtils.add(window_start, 30, :second),
           killmail_count: length(window_killmails),
           focus_score: metrics.focus_score,
           target_concentration: metrics.target_concentration,
@@ -305,7 +308,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
             {:cont, [km]}
 
           [last | _] ->
-            gap = DateTime.diff(km.killmail_time, last.killmail_time)
+            gap = DateTimeUtils.diff(km.killmail_time, last.killmail_time, :second)
 
             if gap > gap_seconds do
               {:cont, Enum.reverse(acc), [km]}
@@ -360,7 +363,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
     victim_ships ++ attacker_ships
   end
 
-  defp categorize_ship_role(ship_type_id) do
+  defp categorize_ship_role(ship_type_id) when is_integer(ship_type_id) do
     # Simplified ship role categorization
     # In production, this would use actual EVE ship data
     case ship_type_id do
@@ -371,6 +374,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
       _ -> :dps
     end
   end
+
+  defp categorize_ship_role(_), do: :dps
 
   defp detect_formation_type(ship_composition) do
     # Analyze composition to determine formation type
@@ -401,7 +406,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
       times = Enum.map(killmails, & &1.killmail_time)
       first_time = Enum.min(times)
       last_time = Enum.max(times)
-      duration = DateTime.diff(last_time, first_time)
+      duration = DateTimeUtils.diff(last_time, first_time, :second)
 
       # Ideal cohesion: all kills within short timeframe
       # Degrade score based on time spread
@@ -540,7 +545,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
             from_target: prev_target,
             to_target: curr_target,
             switch_time: curr_time,
-            time_on_prev_target: DateTime.diff(curr_time, prev_time)
+            time_on_prev_target: DateTimeUtils.diff(curr_time, prev_time, :second)
           }
         end)
 
@@ -559,7 +564,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
       if length(times) > 1 do
         first_time = List.first(times)
         last_time = List.last(times)
-        duration_minutes = DateTime.diff(last_time, first_time) / 60
+        duration_minutes = DateTimeUtils.diff(last_time, first_time, :second) / 60
 
         if duration_minutes > 0 do
           Float.round(length(switches) / duration_minutes, 2)
@@ -660,7 +665,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
         # Get time gap between victim groups
         last_time1 = victim1_kms |> Enum.map(& &1.killmail_time) |> Enum.max()
         first_time2 = victim2_kms |> Enum.map(& &1.killmail_time) |> Enum.min()
-        time_gap = DateTime.diff(first_time2, last_time1)
+        time_gap = DateTimeUtils.diff(first_time2, last_time1, :second)
 
         # Consider it coordinated if multiple attackers switch within reasonable time
         if switching_attackers >= 3 and time_gap <= 30 do
@@ -914,7 +919,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
       times = Enum.map(phase_killmails, & &1.killmail_time)
       first = Enum.min(times)
       last = Enum.max(times)
-      DateTime.diff(last, first)
+      DateTimeUtils.diff(last, first, :second)
     end
   end
 

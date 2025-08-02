@@ -5,6 +5,7 @@ defmodule EveDmv.Market.PriceCache do
   This module provides a backward-compatible interface for price caching
   while using the new unified cache system with the :api_responses cache type.
   """
+  """
 
   alias EveDmv.Cache
 

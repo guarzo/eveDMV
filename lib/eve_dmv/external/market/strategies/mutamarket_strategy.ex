@@ -5,6 +5,7 @@ defmodule EveDmv.Market.Strategies.MutamarketStrategy do
   This strategy has the highest priority for abyssal modules as it provides
   the most accurate pricing for mutated modules with custom attributes.
   """
+  """
 
   @behaviour EveDmv.Market.PricingStrategy
 

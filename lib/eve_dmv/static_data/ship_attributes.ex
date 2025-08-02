@@ -7,6 +7,7 @@ defmodule EveDmv.StaticData.ShipAttributes do
 
   Used by fleet analysis to replace hardcoded values with real ship performance metrics.
   """
+  """
 
   use Ash.Resource,
     otp_app: :eve_dmv,

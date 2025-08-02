@@ -8,7 +8,9 @@ defmodule EveDmv.Shared.Strategic.PatternRecognition do
   - Confidence assessment
   - Pattern classification
   """
+  """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Shared.Strategic.Patterns.ResourcePattern
   alias EveDmv.Shared.Strategic.Patterns.TacticalPatterns
   alias EveDmv.Shared.Strategic.Patterns.TerritorialPattern
@@ -226,11 +228,11 @@ defmodule EveDmv.Shared.Strategic.PatternRecognition do
   end
 
   defp max_datetime(dt1, dt2) do
-    if DateTime.compare(dt1, dt2) == :gt, do: dt1, else: dt2
+    if DateTimeUtils.compare(dt1, dt2) == :gt, do: dt1, else: dt2
   end
 
   defp min_datetime(dt1, dt2) do
-    if DateTime.compare(dt1, dt2) == :lt, do: dt1, else: dt2
+    if DateTimeUtils.compare(dt1, dt2) == :lt, do: dt1, else: dt2
   end
 
   defp calculate_spatial_overlap(spatial1, spatial2) do
@@ -299,7 +301,7 @@ defmodule EveDmv.Shared.Strategic.PatternRecognition do
 
   defp calculate_time_coverage(strategic_data) do
     time_range = strategic_data.time_range
-    total_hours = DateTime.diff(time_range.until, time_range.since, :hour)
+    total_hours = DateTimeUtils.diff(time_range.until, time_range.since, :hour)
 
     killmails =
       case strategic_data.scope do
@@ -412,8 +414,8 @@ defmodule EveDmv.Shared.Strategic.PatternRecognition do
           event_time = Map.get(event, :timestamp)
 
           event_time &&
-            DateTime.compare(event_time, time_window.start) != :lt &&
-            DateTime.compare(event_time, time_window.end) == :lt
+            DateTimeUtils.compare(event_time, time_window.start) != :lt &&
+            DateTimeUtils.compare(event_time, time_window.end) == :lt
         end)
 
       Float.round(events_in_window / max(1, time_window.duration_hours), 3)
@@ -490,11 +492,11 @@ defmodule EveDmv.Shared.Strategic.PatternRecognition do
   end
 
   defp calculate_overlap_ratio(overlap_start, overlap_end, start1, start2, end1, end2) do
-    if DateTime.compare(overlap_start, overlap_end) == :lt do
-      overlap_duration = DateTime.diff(overlap_end, overlap_start, :second)
+    if DateTimeUtils.compare(overlap_start, overlap_end) == :lt do
+      overlap_duration = DateTimeUtils.diff(overlap_end, overlap_start, :second)
 
       total_duration =
-        DateTime.diff(
+        DateTimeUtils.diff(
           max_datetime(end1, end2),
           min_datetime(start1, start2),
           :second

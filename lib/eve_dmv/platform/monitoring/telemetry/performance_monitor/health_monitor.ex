@@ -5,6 +5,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
   Monitors query health, lock contention, replication lag, and provides
   comprehensive health status reporting.
   """
+  """
 
   alias Ecto.Adapters.SQL
   require Logger

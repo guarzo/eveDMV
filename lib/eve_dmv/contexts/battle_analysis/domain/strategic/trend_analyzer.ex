@@ -8,6 +8,7 @@ defmodule EveDmv.Shared.Strategic.TrendAnalyzer do
   - Momentum calculations
   - Trend prediction
   """
+  """
 
   require Logger
 

@@ -27,6 +27,7 @@ defmodule EveDmv.Database.Repository do
   - **N+1 prevention**: Optimized preloading and batch operations
   - **Query composition**: Composable filters and query building
   """
+  """
 
   defmacro __using__(opts) do
     resource = Keyword.fetch!(opts, :resource)

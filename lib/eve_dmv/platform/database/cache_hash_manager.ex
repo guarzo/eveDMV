@@ -6,6 +6,7 @@ defmodule EveDmv.Database.CacheHashManager do
   and improve cache hit ratios. Uses SHA256 hashes of query parameters and results
   to detect when cached data is still valid even after related updates.
   """
+  """
 
   use GenServer
 
@@ -13,6 +14,7 @@ defmodule EveDmv.Database.CacheHashManager do
 
   alias EveDmv.Api
   alias EveDmv.Cache.QueryCache
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.CacheInvalidator
   require Logger
 
@@ -328,7 +330,7 @@ defmodule EveDmv.Database.CacheHashManager do
     alias EveDmv.Killmails.KillmailRaw
 
     # Last 7 days
-    cutoff_date = DateTime.add(DateTime.utc_now(), -7, :day)
+    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -7 * 24 * 60 * 60, :second)
 
     # Get recent corporation activity from killmails (victim side only for simplicity)
     corp_query =
@@ -381,7 +383,7 @@ defmodule EveDmv.Database.CacheHashManager do
       last_activity =
         if Enum.empty?(all_killmails) do
           # Default to 30 days ago
-          DateTime.add(DateTime.utc_now(), -30, :day)
+          DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
         else
           all_killmails
           |> Enum.max_by(& &1.killmail_time, DateTime)
@@ -403,7 +405,7 @@ defmodule EveDmv.Database.CacheHashManager do
         {:ok,
          %{
            member_count: 0,
-           last_activity: DateTime.add(DateTime.utc_now(), -30, :day),
+           last_activity: DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second),
            total_kills: 0,
            total_losses: 0
          }}
@@ -414,7 +416,7 @@ defmodule EveDmv.Database.CacheHashManager do
     # Consider data changed if member count differs by >5% or last activity is >1 hour different
     member_change = abs(old_data.member_count - new_data.member_count) / old_data.member_count
 
-    time_diff = DateTime.diff(new_data.last_activity, old_data.last_activity, :second)
+    time_diff = DateTimeUtils.diff(new_data.last_activity, old_data.last_activity, :second)
 
     member_change > 0.05 or abs(time_diff) > 3600
   end

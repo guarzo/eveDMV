@@ -8,6 +8,7 @@ defmodule EveDmv.Shared.Strategic.OpportunityIdentifier do
   - Risk evaluation
   - Timing analysis
   """
+  """
 
   require Logger
 

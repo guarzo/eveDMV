@@ -8,6 +8,7 @@ defmodule EveDmv.Contexts.Combat.Core.FleetCompositionAnalyzer do
   - Fleet effectiveness evaluation
   - Force comparison
   """
+  """
 
   alias EveDmv.Contexts.Combat.Core.ParticipantAnalyzer
 

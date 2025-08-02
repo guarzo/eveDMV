@@ -1,9 +1,10 @@
-defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TimezoneAnalyzer do
+defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivityPatternAnalyzer.TimezoneAnalyzer do
   @moduledoc """
   Specialized analyzer for timezone pattern analysis.
 
   This module focuses on understanding when members are active,
   identifying their primary timezone, and calculating timezone consistency.
+  """
   """
 
   require Logger

@@ -35,6 +35,7 @@ defmodule EveDmv.Config.UnifiedConfig do
   Environment variables take precedence over application config when present.
   Naming convention: `EVE_DMV_<CATEGORY>_<SETTING>` or service-specific prefixes.
   """
+  """
 
   require Logger
 

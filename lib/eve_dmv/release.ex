@@ -3,6 +3,7 @@ defmodule EveDmv.Release do
   Used for executing DB release tasks when run in production without Mix
   installed.
   """
+  """
   require Logger
   @app :eve_dmv
 

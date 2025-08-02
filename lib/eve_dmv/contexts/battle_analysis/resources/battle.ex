@@ -4,6 +4,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.Battle do
 
   Links killmails together into battles for analysis and tracking.
   """
+  """
 
   use Ash.Resource,
     domain: EveDmv.Contexts.BattleAnalysis.Api,

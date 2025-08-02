@@ -8,6 +8,7 @@ defmodule EveDmv.Cache.StaticDataCache do
   - In-memory caching using ETS for sub-millisecond lookups
   - Automatic cache warming for frequently accessed data
   """
+  """
 
   use GenServer
   import Ash.Query

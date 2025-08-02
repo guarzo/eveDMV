@@ -2,6 +2,7 @@ defmodule EveDmv.Shared.ErrorFormatter do
   @moduledoc """
   Consistent error response formatting across the application.
   """
+  """
 
   @doc """
   Formats various error types into a consistent error response format.

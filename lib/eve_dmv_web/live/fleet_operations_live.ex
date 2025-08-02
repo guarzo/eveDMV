@@ -5,13 +5,15 @@ defmodule EveDmvWeb.FleetOperationsLive do
   Provides comprehensive fleet composition analysis, effectiveness metrics,
   doctrine compliance checking, and fleet optimization recommendations.
   """
+  """
 
   use EveDmvWeb, :live_view
 
   alias EveDmv.Contexts.BattleAnalysis
   alias EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer
+  alias EveDmv.Contexts.WormholeOperations.Domain.Analyzers.WhFleetAnalyzer
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Eve.NameResolver
-  alias EveDmv.Intelligence.Analyzers.WhFleetAnalyzer
 
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
@@ -339,7 +341,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
     # Battles are generated dynamically, so we need to regenerate them to find the specific battle
     end_time = DateTime.utc_now()
     # Look back 48 hours
-    start_time = DateTime.add(end_time, -48, :hour)
+    start_time = DateTimeUtils.add(end_time, -48 * 60 * 60, :second)
 
     case BattleAnalysis.detect_battles(start_time, end_time) do
       {:ok, battles} ->
@@ -388,7 +390,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
     # This is not ideal for performance, but battles aren't persisted yet
     end_time = DateTime.utc_now()
     # Look back 48 hours
-    start_time = DateTime.add(end_time, -48, :hour)
+    start_time = DateTimeUtils.add(end_time, -48 * 60 * 60, :second)
 
     case BattleAnalysis.detect_battles(start_time, end_time) do
       {:ok, battles} ->

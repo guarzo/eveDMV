@@ -16,6 +16,7 @@ defmodule Mix.Tasks.Cache.Stats do
       # Clear all cache
       mix cache.stats --clear-all
   """
+  """
 
   @shortdoc "Show cache statistics and manage cache entries"
 

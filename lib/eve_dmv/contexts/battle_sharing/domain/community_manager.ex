@@ -1,9 +1,13 @@
 defmodule EveDmv.Contexts.BattleSharing.Domain.CommunityManager do
   @moduledoc """
+
   Community management module for battle reports.
 
   Handles ratings, featured battle curation, search functionality, and community
   interactions extracted from the larger BattleCurator for better modularity.
+  """
+
+    alias EveDmv.Core.Utils.DateTimeUtils
   """
 
   require Logger
@@ -179,7 +183,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.CommunityManager do
   # Private helper functions for curation
 
   defp fetch_candidate_reports(time_window_days, min_rating) do
-    cutoff_date = DateTime.add(DateTime.utc_now(), -time_window_days * 24 * 3600, :second)
+    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -time_window_days * 24 * 3600, :second)
 
     # In a real implementation, this would query the database
     # For now, generate sample data to demonstrate the curation logic

@@ -5,9 +5,11 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CharacterAnalysisEngine do
   Provides detailed analysis of character combat patterns, ship preferences,
   tactical behavior, and performance metrics.
   """
+  """
 
   use GenServer
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.DomainEvents.KillmailEnriched
   alias EveDmv.Shared.Infrastructure.UnifiedCache
   alias EveDmv.Shared.Infrastructure.UnifiedRepository
@@ -402,7 +404,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CharacterAnalysisEngine do
 
   defp get_character_kills_count(character_id, time_range) do
     seconds_ago = Map.get(@time_ranges, time_range, @time_ranges.last_30_days)
-    time_threshold = DateTime.add(DateTime.utc_now(), -seconds_ago, :second)
+    time_threshold = DateTimeUtils.add(DateTime.utc_now(), -seconds_ago, :second)
 
     case EveDmv.Api.read(EveDmv.Killmails.Participant,
            filter: [character_id: character_id, is_victim: false],
@@ -415,7 +417,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CharacterAnalysisEngine do
 
   defp get_character_losses_count(character_id, time_range) do
     seconds_ago = Map.get(@time_ranges, time_range, @time_ranges.last_30_days)
-    time_threshold = DateTime.add(DateTime.utc_now(), -seconds_ago, :second)
+    time_threshold = DateTimeUtils.add(DateTime.utc_now(), -seconds_ago, :second)
 
     case EveDmv.Api.read(EveDmv.Killmails.Participant,
            filter: [character_id: character_id, is_victim: true],
@@ -466,7 +468,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CharacterAnalysisEngine do
 
   defp calculate_average_gang_size(character_id, time_range) do
     seconds_ago = Map.get(@time_ranges, time_range, @time_ranges.last_30_days)
-    time_threshold = DateTime.add(DateTime.utc_now(), -seconds_ago, :second)
+    time_threshold = DateTimeUtils.add(DateTime.utc_now(), -seconds_ago, :second)
 
     # Get killmails where character participated as attacker
     case EveDmv.Api.read(EveDmv.Killmails.Participant,
@@ -498,7 +500,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CharacterAnalysisEngine do
 
   defp calculate_solo_percentage(character_id, time_range) do
     seconds_ago = Map.get(@time_ranges, time_range, @time_ranges.last_30_days)
-    time_threshold = DateTime.add(DateTime.utc_now(), -seconds_ago, :second)
+    time_threshold = DateTimeUtils.add(DateTime.utc_now(), -seconds_ago, :second)
 
     case EveDmv.Api.read(EveDmv.Killmails.Participant,
            filter: [character_id: character_id, is_victim: false],
@@ -662,7 +664,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CharacterAnalysisEngine do
 
   defp analyze_ship_usage_patterns(character_id, time_range) do
     seconds_ago = Map.get(@time_ranges, time_range, @time_ranges.last_30_days)
-    time_threshold = DateTime.add(DateTime.utc_now(), -seconds_ago, :second)
+    time_threshold = DateTimeUtils.add(DateTime.utc_now(), -seconds_ago, :second)
 
     case EveDmv.Api.read(EveDmv.Killmails.Participant,
            filter: [character_id: character_id],

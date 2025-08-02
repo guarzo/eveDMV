@@ -6,6 +6,9 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
   Handles multiple tactical pattern types in a single module since they
   share similar analysis approaches.
   """
+  """
+
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
@@ -253,8 +256,8 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
         window_kills =
           killmails
           |> Enum.filter(fn km ->
-            DateTime.compare(km.timestamp, window) != :lt &&
-              DateTime.compare(km.timestamp, DateTime.add(window, 3600, :second)) == :lt
+            DateTimeUtils.compare(km.timestamp, window) != :lt &&
+              DateTimeUtils.compare(km.timestamp, DateTimeUtils.add(window, 3600, :second)) == :lt
           end)
 
         if Enum.empty?(window_kills) do
@@ -279,10 +282,10 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
       min_time = Enum.min_by(killmails, & &1.timestamp).timestamp
       max_time = Enum.max_by(killmails, & &1.timestamp).timestamp
 
-      hours_diff = div(DateTime.diff(max_time, min_time, :second), 3600)
+      hours_diff = div(DateTimeUtils.diff(max_time, min_time, :second), 3600)
 
       Enum.map(0..hours_diff, fn h ->
-        DateTime.add(min_time, h * 3600, :second)
+        DateTimeUtils.add(min_time, h * 3600, :second)
       end)
     end
   end
@@ -454,7 +457,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
     |> Enum.sort_by(& &1.timestamp, DateTime)
     |> Enum.chunk_every(2, 1, :discard)
     |> Enum.map(fn [km1, km2] ->
-      DateTime.diff(km2.timestamp, km1.timestamp, :hour)
+      DateTimeUtils.diff(km2.timestamp, km1.timestamp, :hour)
     end)
   end
 
@@ -463,7 +466,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
       0.0
     else
       time_span =
-        DateTime.diff(
+        DateTimeUtils.diff(
           Enum.max_by(killmails, & &1.timestamp).timestamp,
           Enum.min_by(killmails, & &1.timestamp).timestamp,
           :hour
@@ -982,7 +985,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
         |> Enum.sort_by(& &1.timestamp, DateTime)
         |> Enum.chunk_every(2, 1, :discard)
         |> Enum.map(fn [k1, k2] ->
-          DateTime.diff(k2.timestamp, k1.timestamp, :hour)
+          DateTimeUtils.diff(k2.timestamp, k1.timestamp, :hour)
         end)
 
       if Enum.empty?(intervals) do
@@ -1128,15 +1131,15 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
   end
 
   defp create_time_windows(time_range) do
-    duration_days = DateTime.diff(time_range.until, time_range.since, :day)
+    duration_days = DateTimeUtils.diff(time_range.until, time_range.since, :day)
     window_size = max(1, div(duration_days, 7))
 
     Stream.unfold(time_range.since, fn current ->
-      if DateTime.compare(current, time_range.until) == :lt do
-        window_end = DateTime.add(current, window_size * 24 * 3600, :second)
+      if DateTimeUtils.compare(current, time_range.until) == :lt do
+        window_end = DateTimeUtils.add(current, window_size * 24 * 3600, :second)
 
         window_end =
-          if DateTime.compare(window_end, time_range.until) == :gt do
+          if DateTimeUtils.compare(window_end, time_range.until) == :gt do
             time_range.until
           else
             window_end
@@ -1155,8 +1158,8 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
 
     killmails
     |> Enum.filter(fn km ->
-      DateTime.compare(km.timestamp, start_time) != :lt &&
-        DateTime.compare(km.timestamp, end_time) == :lt
+      DateTimeUtils.compare(km.timestamp, start_time) != :lt &&
+        DateTimeUtils.compare(km.timestamp, end_time) == :lt
     end)
     |> Enum.flat_map(fn km ->
       [km.victim.character_id | Enum.map(km.attackers, & &1.character_id)]
@@ -1171,8 +1174,8 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
 
     killmails
     |> Enum.filter(fn km ->
-      DateTime.compare(km.timestamp, start_time) != :lt &&
-        DateTime.compare(km.timestamp, end_time) == :lt
+      DateTimeUtils.compare(km.timestamp, start_time) != :lt &&
+        DateTimeUtils.compare(km.timestamp, end_time) == :lt
     end)
     |> Enum.count(fn km ->
       ship_class = classify_ship_type(km.victim.ship_type_id)
@@ -1377,7 +1380,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
         sorted_kills
         |> Enum.chunk_every(3, 1, :discard)
         |> Enum.filter(fn [k1, _k2, k3] ->
-          DateTime.diff(k3.timestamp, k1.timestamp, :minute) <= 30
+          DateTimeUtils.diff(k3.timestamp, k1.timestamp, :minute) <= 30
         end)
 
       %{
@@ -1518,7 +1521,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
       start_time: strategic_data.time_range.since,
       end_time: strategic_data.time_range.until,
       duration_days:
-        DateTime.diff(
+        DateTimeUtils.diff(
           strategic_data.time_range.until,
           strategic_data.time_range.since,
           :day
@@ -1556,8 +1559,48 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
   end
 
   defp classify_ship_type(ship_type_id) do
-    # Use actual ship classification from static data
-    EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
+    # Map specific ship type IDs to their roles
+    # This is based on EVE Online ship type IDs
+    case ship_type_id do
+      # Freighters
+      20183 -> :freighter   # Providence
+      20185 -> :freighter   # Charon
+      20187 -> :freighter   # Obelisk
+      20189 -> :freighter   # Fenrir
+      
+      # Jump Freighters
+      28844 -> :freighter   # Rhea
+      28846 -> :freighter   # Nomad
+      28848 -> :freighter   # Anshar
+      28850 -> :freighter   # Ark
+      
+      # Deep Space Transports
+      12729 -> :transport   # Crane
+      12731 -> :transport   # Bustard
+      12733 -> :transport   # Mastodon
+      12735 -> :transport   # Impel
+      
+      # Blockade Runners
+      12743 -> :transport   # Prowler
+      12745 -> :transport   # Viator
+      12747 -> :transport   # Prorator
+      12749 -> :transport   # Wideload
+      
+      # Assault Frigates
+      11184 -> :assault_frigate   # Enyo
+      11186 -> :assault_frigate   # Ishkur  
+      11200 -> :assault_frigate   # Vengeance
+      11202 -> :assault_frigate   # Retribution
+      12042 -> :assault_frigate   # Harpy
+      12044 -> :assault_frigate   # Wolf
+      12034 -> :assault_frigate   # Hawk
+      12038 -> :assault_frigate   # Jaguar
+      
+      # Default classification based on group
+      _ ->
+        # Use static data classification
+        EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
+    end
   end
 
   defp average(list) do

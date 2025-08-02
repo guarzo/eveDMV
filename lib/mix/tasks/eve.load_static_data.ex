@@ -22,6 +22,7 @@ defmodule Mix.Tasks.Eve.LoadStaticData do
       Loaded 38,453 item types
       Static data loading complete!
   """
+  """
 
   @shortdoc "Load EVE static data if not already present"
 

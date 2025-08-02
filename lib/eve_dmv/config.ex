@@ -41,6 +41,7 @@ defmodule EveDmv.Config do
   All functions maintain backward compatibility while using the unified
   configuration system internally.
   """
+  """
 
   alias EveDmv.Config.UnifiedConfig
 

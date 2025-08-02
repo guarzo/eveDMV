@@ -5,9 +5,11 @@ defmodule EveDmv.Historical.ImportPipeline do
   Optimized for processing millions of killmails with progress tracking,
   error recovery, and performance monitoring. Targets >10,000 killmails/minute.
   """
+  """
 
   use GenServer
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.PubSub, as: AppPubSub
   alias Phoenix.PubSub
@@ -541,7 +543,7 @@ defmodule EveDmv.Historical.ImportPipeline do
   defp calculate_elapsed(nil), do: 0
 
   defp calculate_elapsed(start_time) do
-    DateTime.diff(DateTime.utc_now(), start_time, :second)
+    DateTimeUtils.diff(DateTime.utc_now(), start_time, :second)
   end
 
   defp calculate_current_rate(%{start_time: nil}), do: 0
@@ -590,7 +592,7 @@ defmodule EveDmv.Historical.ImportPipeline do
 
   defp complete_import(state) do
     end_time = DateTime.utc_now()
-    duration = DateTime.diff(end_time, state.start_time, :second)
+    duration = DateTimeUtils.diff(end_time, state.start_time, :second)
 
     Logger.info("""
     ✅ Import Complete: #{state.import_id}

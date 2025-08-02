@@ -3,6 +3,7 @@ defmodule EveDmvWeb.BattleAnalysisLive.Helpers do
   Helper functions for BattleAnalysisLive to reduce dependency count.
   Contains utility functions for formatting, name resolution, and data manipulation.
   """
+  """
 
   alias EveDmv.Eve.NameResolver
   alias EveDmvWeb.Utils.FormattingUtils

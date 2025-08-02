@@ -65,6 +65,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Shi
   - **Threat Assessment**: Evaluating enemy fleet capabilities
   - **Strategic Planning**: Supporting fleet composition decisions
   """
+  """
 
   require Logger
 

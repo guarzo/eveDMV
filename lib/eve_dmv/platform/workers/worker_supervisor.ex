@@ -13,6 +13,7 @@ defmodule EveDmv.Workers.WorkerSupervisor do
   - **Data Workers**: Re-enrichment, price updates, name resolution
   - **Event Workers**: Real-time event processing, surveillance matching
   """
+  """
 
   use Supervisor
   require Logger

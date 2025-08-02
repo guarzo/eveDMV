@@ -1,12 +1,14 @@
-defmodule EveDmv.Intelligence.Analyzers.FleetPilotAnalyzer do
+defmodule EveDmv.Contexts.FleetOperations.Domain.Analyzers.FleetPilotAnalyzer do
   @moduledoc """
   Fleet pilot analysis module for optimizing pilot assignments and fleet composition.
 
   Provides capabilities for analyzing available pilots, their skills, and optimizing
   pilot-to-ship assignments for maximum fleet effectiveness.
   """
+  """
 
   alias EveDmv.Api
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.CharacterStats
 
   require Ash.Query
@@ -136,7 +138,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetPilotAnalyzer do
 
       last_date ->
         # Consider pilot available if active within last 30 days
-        days_since_activity = DateTime.diff(DateTime.utc_now(), last_date, :day)
+        days_since_activity = DateTimeUtils.diff(DateTime.utc_now(), last_date, :day)
         days_since_activity <= 30
     end
   end
@@ -348,7 +350,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetPilotAnalyzer do
         total_sp: 50_000_000 + i * 10_000_000,
         total_kills: i * 20,
         total_losses: i * 5,
-        last_killmail_date: DateTime.add(DateTime.utc_now(), -i * 86_400, :second)
+        last_killmail_date: DateTimeUtils.add(DateTime.utc_now(), -i * 86_400, :second)
       }
     end)
   end

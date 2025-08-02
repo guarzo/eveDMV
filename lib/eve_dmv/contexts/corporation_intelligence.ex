@@ -5,9 +5,11 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
   Provides the public API for corporation threat assessment, doctrine recognition,
   and tactical intelligence gathering.
   """
+  """
 
   alias EveDmv.Api
   alias EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Eve.NameResolver
   alias EveDmv.Killmails.Participant
   alias EveDmv.Utils.TimezoneAnalyzer
@@ -158,7 +160,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
     alias EveDmv.Contexts.CharacterIntelligence
 
     # Get active members from last 60 days
-    sixty_days_ago = DateTime.utc_now() |> DateTime.add(-60, :day)
+    sixty_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-60 * 24 * 60 * 60, :second)
 
     case Participant
          |> Ash.Query.for_read(:by_corporation, %{corporation_id: corporation_id})
@@ -222,7 +224,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
   """
   @spec calculate_activity_metrics(integer(), integer()) :: {:ok, map()} | {:error, atom()}
   def calculate_activity_metrics(corporation_id, days_back \\ 30) do
-    time_cutoff = DateTime.utc_now() |> DateTime.add(-days_back, :day)
+    time_cutoff = DateTime.utc_now() |> DateTimeUtils.add(-days_back * 24 * 60 * 60, :second)
 
     query =
       Participant
@@ -558,7 +560,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
 
   defp get_member_count(corporation_id) do
     # Count unique members from killmail data in last 90 days
-    ninety_days_ago = DateTime.utc_now() |> DateTime.add(-90, :day)
+    ninety_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
 
     query =
       Participant
@@ -585,10 +587,10 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
   defp calculate_activity_trend(participants, days_back) when days_back >= 14 do
     # Split into two periods and compare
     half_period = div(days_back, 2)
-    cutoff_time = DateTime.utc_now() |> DateTime.add(-half_period, :day)
+    cutoff_time = DateTime.utc_now() |> DateTimeUtils.add(-half_period * 24 * 60 * 60, :second)
 
     recent_count =
-      participants |> Enum.count(&(DateTime.compare(&1.killmail_time, cutoff_time) == :gt))
+      participants |> Enum.count(&(DateTimeUtils.compare(&1.killmail_time, cutoff_time) == :gt))
 
     older_count = length(participants) - recent_count
 
@@ -627,7 +629,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
   # Generate fallback intelligence analysis from participant data when fleet data is insufficient
   defp generate_fallback_analysis(corporation_id) do
     # Get recent participant data for analysis
-    ninety_days_ago = DateTime.utc_now() |> DateTime.add(-90, :day)
+    ninety_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
 
     query =
       Participant

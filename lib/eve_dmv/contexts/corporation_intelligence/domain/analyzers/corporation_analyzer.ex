@@ -7,9 +7,11 @@ defmodule EveDmv.Intelligence.Analyzers.CorporationAnalyzer do
 
   Implements the Intelligence.Analyzer behavior for consistent interface and telemetry.
   """
+  """
 
   use EveDmv.Intelligence.Analyzer
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.QueryUtils
   alias EveDmv.Intelligence.Core.CacheHelper
   alias EveDmv.Intelligence.Core.Config
@@ -145,7 +147,7 @@ defmodule EveDmv.Intelligence.Analyzers.CorporationAnalyzer do
     killmails =
       QueryUtils.query_killmails_by_corporation(
         corporation_id,
-        DateTime.add(DateTime.utc_now(), -days_back, :day),
+        DateTimeUtils.add(DateTime.utc_now(), -days_back, :day),
         DateTime.utc_now(),
         limit
       )

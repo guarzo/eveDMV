@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
   Evaluates player experience based on various factors including security status,
   ship choices, combat performance, and historical patterns.
   """
+  """
 
   require Logger
 

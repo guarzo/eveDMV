@@ -5,15 +5,17 @@ defmodule EveDmv.Shared.KillmailQueries do
   Provides reusable query builders for common killmail data patterns used by
   both character analysis and corporation intelligence features.
   """
+  """
 
   alias Ecto.Adapters.SQL
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Repo
 
   @doc """
   Get kills and losses for a single character.
   """
   def character_activity_query(_character_id, time_window_days \\ 90) do
-    _since_date = DateTime.add(DateTime.utc_now(), -time_window_days * 24 * 60 * 60, :second)
+    _since_date = DateTimeUtils.add(DateTime.utc_now(), -time_window_days * 24 * 60 * 60, :second)
 
     """
     WITH character_activity AS (
@@ -40,7 +42,7 @@ defmodule EveDmv.Shared.KillmailQueries do
   Get activity for all members of a corporation.
   """
   def corporation_members_activity_query(_corporation_id, time_window_days \\ 90) do
-    _since_date = DateTime.add(DateTime.utc_now(), -time_window_days * 24 * 60 * 60, :second)
+    _since_date = DateTimeUtils.add(DateTime.utc_now(), -time_window_days * 24 * 60 * 60, :second)
 
     """
     SELECT
@@ -64,7 +66,7 @@ defmodule EveDmv.Shared.KillmailQueries do
   Get timezone activity pattern (kills/losses by hour).
   """
   def timezone_activity_query(filter_type, _filter_id, time_window_days \\ 30) do
-    _since_date = DateTime.add(DateTime.utc_now(), -time_window_days * 24 * 60 * 60, :second)
+    _since_date = DateTimeUtils.add(DateTime.utc_now(), -time_window_days * 24 * 60 * 60, :second)
 
     filter_column =
       case filter_type do
@@ -92,7 +94,7 @@ defmodule EveDmv.Shared.KillmailQueries do
   Get ship usage statistics.
   """
   def ship_usage_query(filter_type, _filter_id, time_window_days \\ 90) do
-    _since_date = DateTime.add(DateTime.utc_now(), -time_window_days * 24 * 60 * 60, :second)
+    _since_date = DateTimeUtils.add(DateTime.utc_now(), -time_window_days * 24 * 60 * 60, :second)
 
     filter_column =
       case filter_type do
@@ -123,7 +125,7 @@ defmodule EveDmv.Shared.KillmailQueries do
   Get daily activity for trend analysis.
   """
   def daily_activity_query(filter_type, _filter_id, days_back \\ 30) do
-    _since_date = DateTime.add(DateTime.utc_now(), -days_back * 24 * 60 * 60, :second)
+    _since_date = DateTimeUtils.add(DateTime.utc_now(), -days_back * 24 * 60 * 60, :second)
 
     filter_column =
       case filter_type do

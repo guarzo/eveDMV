@@ -7,6 +7,7 @@ defmodule EveDmv.Infrastructure.EventBus do
   reliable message delivery and supports both synchronous and asynchronous
   event handling.
   """
+  """
 
   use GenServer
 

@@ -2,6 +2,7 @@ defmodule EveDmv.Domains.Analytics do
   @moduledoc """
   Analytics domain for player and ship statistics.
   """
+  """
 
   use Ash.Domain,
     otp_app: :eve_dmv

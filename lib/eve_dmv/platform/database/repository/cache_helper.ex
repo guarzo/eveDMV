@@ -5,6 +5,7 @@ defmodule EveDmv.Database.Repository.CacheHelper do
   Provides cache key generation, invalidation patterns, and TTL management
   specifically designed for database repository caching needs.
   """
+  """
 
   alias EveDmv.Cache
 

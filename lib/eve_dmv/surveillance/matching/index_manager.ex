@@ -5,6 +5,7 @@ defmodule EveDmv.Surveillance.Matching.IndexManager do
   This module manages the creation, population, and querying of inverted indexes
   that enable efficient candidate profile lookup during killmail matching.
   """
+  """
 
   alias EveDmv.Surveillance.Matching.KillmailFieldExtractor
 

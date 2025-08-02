@@ -9,7 +9,9 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AdvancedFilterEngine do
   - Time-based conditions (time of day, day of week, duration since)
   - Performance-optimized evaluation
   """
+  """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.WandererClient
 
   @doc """
@@ -264,7 +266,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AdvancedFilterEngine do
         day in condition.value
 
       "time_since" ->
-        diff_seconds = DateTime.diff(DateTime.utc_now(), killmail_time, :second)
+        diff_seconds = DateTimeUtils.diff(DateTime.utc_now(), killmail_time, :second)
 
         case condition.operator do
           :within_minutes ->

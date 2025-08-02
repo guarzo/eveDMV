@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleSharingService do
   Provides battle report creation, video integration, community curation,
   and sharing functionality.
   """
+  """
 
   use GenServer
 

@@ -5,6 +5,7 @@ defmodule EveDmvWeb.Plugs.SessionActivity do
   Updates the last_activity timestamp in the session for authenticated users
   to enable proper session timeout functionality.
   """
+  """
 
   import Plug.Conn
 

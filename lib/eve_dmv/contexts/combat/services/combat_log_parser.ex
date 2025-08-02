@@ -8,10 +8,12 @@ defmodule EveDmv.Contexts.Combat.Services.CombatLogParser do
   - Reconstructing battles from log data
   - Converting log data to analyzable format
   """
+  """
 
   alias EveDmv.Contexts.BattleAnalysis.Core.BattleDetector
   alias EveDmv.Contexts.Combat.Resources.CombatLog
   alias EveDmv.Contexts.Combat.Services.BattleService
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
@@ -195,7 +197,7 @@ defmodule EveDmv.Contexts.Combat.Services.CombatLogParser do
             String.to_integer(second)
           )
 
-        DateTime.from_naive!(datetime, "Etc/UTC")
+        DateTimeUtils.to_datetime(datetime)
 
       _ ->
         DateTime.utc_now()
@@ -314,7 +316,7 @@ defmodule EveDmv.Contexts.Combat.Services.CombatLogParser do
     %{
       start: first,
       end: last,
-      duration: DateTime.diff(last, first, :second)
+      duration: DateTimeUtils.diff(last, first, :second)
     }
   end
 

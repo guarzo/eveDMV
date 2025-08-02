@@ -1,10 +1,14 @@
-defmodule EveDmv.Intelligence.Wormhole.Vetting do
+defmodule EveDmv.Contexts.WormholeOperations.Domain.Wormhole.WhVetting do
   @moduledoc """
+
   Wormhole-specific vetting analysis for corporation recruitment.
 
   This resource provides comprehensive vetting information for evaluating
   potential recruits in wormhole corporations, focusing on J-space experience,
   security risks, and competency assessment.
+  """
+
+    alias EveDmv.Core.Utils.DateTimeUtils
   """
 
   use Ash.Resource,
@@ -389,7 +393,7 @@ defmodule EveDmv.Intelligence.Wormhole.Vetting do
         now = DateTime.utc_now()
 
         Enum.map(records, fn record ->
-          DateTime.diff(now, record.vetting_requested_at, :day)
+          DateTimeUtils.diff(now, record.vetting_requested_at, :day)
         end)
       end)
     end

@@ -1,4 +1,8 @@
 defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzers.ActivityCorrelationAnalyzer do
+
+  @moduledoc """
+
+  alias EveDmv.Core.Utils.DateTimeUtils
   @moduledoc """
   Activity correlation and pattern analysis module for cross-system intelligence.
 
@@ -298,7 +302,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
         buckets =
           system_kills
           |> Enum.group_by(fn kill ->
-            hours_ago = DateTime.diff(DateTime.utc_now(), kill.killmail_time, :hour)
+            hours_ago = DateTimeUtils.diff(DateTime.utc_now(), kill.killmail_time, :hour)
             div(hours_ago, bucket_size)
           end)
 

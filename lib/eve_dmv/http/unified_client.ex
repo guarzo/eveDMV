@@ -9,6 +9,7 @@ defmodule EveDmv.Http.UnifiedClient do
   - Rate limiting compliance
   - Error handling and logging
   """
+  """
 
   require Logger
 

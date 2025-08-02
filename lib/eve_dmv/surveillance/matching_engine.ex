@@ -19,6 +19,7 @@ defmodule EveDmv.Surveillance.MatchingEngine do
   - Sub-millisecond candidate lookup via ETS indexes
   - Parallel evaluation for maximum throughput
   """
+  """
 
   use GenServer
   alias EveDmv.Api.SurveillanceApi

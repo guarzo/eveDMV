@@ -74,6 +74,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
   - **Better Performance**: Optimized delegation reduces processing overhead
   - **Increased Extensibility**: Easy to add new analysis types through delegation
   """
+  """
 
   import Ecto.Query
 
@@ -92,6 +93,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
 
   alias EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzers.IntelligenceQualityAnalyzer
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Repo
 
   require Logger
@@ -103,7 +105,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     Logger.info("Analyzing cross-system patterns for #{length(system_ids)} systems")
 
     analysis_window = Keyword.get(options, :analysis_window, 24)
-    start_time = DateTime.add(DateTime.utc_now(), -analysis_window * 3_600, :second)
+    start_time = DateTimeUtils.add(DateTime.utc_now(), -analysis_window * 3_600, :second)
 
     # Fetch killmail data for all systems
     killmails = fetch_multi_system_killmails(system_ids, start_time)
@@ -354,7 +356,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
 
     time_buckets =
       Enum.group_by(killmails, fn kill ->
-        hours_ago = DateTime.diff(DateTime.utc_now(), kill.killmail_time, :hour)
+        hours_ago = DateTimeUtils.diff(DateTime.utc_now(), kill.killmail_time, :hour)
         div(hours_ago, bucket_hours)
       end)
 
@@ -430,12 +432,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     # Detect escalating threat patterns
     recent_kills =
       Enum.filter(killmails, fn kill ->
-        DateTime.diff(DateTime.utc_now(), kill.killmail_time, :hour) <= 24
+        DateTimeUtils.diff(DateTime.utc_now(), kill.killmail_time, :hour) <= 24
       end)
 
     older_kills =
       Enum.filter(killmails, fn kill ->
-        hours_ago = DateTime.diff(DateTime.utc_now(), kill.killmail_time, :hour)
+        hours_ago = DateTimeUtils.diff(DateTime.utc_now(), kill.killmail_time, :hour)
         hours_ago > 24 and hours_ago <= 72
       end)
 
@@ -533,7 +535,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
       |> Enum.map(fn {system_id, kills} ->
         recent_kills =
           Enum.filter(kills, fn k ->
-            DateTime.diff(DateTime.utc_now(), k.killmail_time, :hour) <= 48
+            DateTimeUtils.diff(DateTime.utc_now(), k.killmail_time, :hour) <= 48
           end)
 
         trend_score = length(recent_kills) / max(length(kills), 1)

@@ -3,9 +3,11 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
   @moduledoc """
   Engine for calculating ship performance statistics.
   """
+  """
 
   alias EveDmv.Analytics.ShipStats
   alias EveDmv.Api
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Eve.ItemType
   alias EveDmv.Killmails.Participant
 
@@ -27,7 +29,7 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
     days = Keyword.get(opts, :days, @default_days)
     min_usage = Keyword.get(opts, :min_usage, @default_min_usage)
     now = DateTime.utc_now()
-    start_date = DateTime.add(now, -days * 86_400, :second)
+    start_date = DateTimeUtils.add(now, -days * 86_400, :second)
 
     Logger.info("Starting ship statistics for last #{days} days")
 
@@ -225,7 +227,7 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
 
   defp calculate_time_metrics do
     now = DateTime.utc_now()
-    first = DateTime.add(now, -30 * 86_400, :second)
+    first = DateTimeUtils.add(now, -30 * 86_400, :second)
 
     %{
       peak_activity_hour: 18,

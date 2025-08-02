@@ -5,7 +5,9 @@ defmodule EveDmv.Analytics.BattleDetector do
   A "battle" is defined as a cluster of killmails that occurred within a
   short time window and geographical area with multiple participants.
   """
+  """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Repo
   require Logger
 
@@ -513,7 +515,7 @@ defmodule EveDmv.Analytics.BattleDetector do
   # Private functions
 
   defp thirty_days_ago do
-    DateTime.add(DateTime.utc_now(), -30, :day)
+    DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
   end
 
   defp group_battles_by_proximity(battles) do
@@ -527,9 +529,9 @@ defmodule EveDmv.Analytics.BattleDetector do
       time_bucket =
         if time do
           time
-          |> DateTime.from_naive!("Etc/UTC")
-          |> DateTime.add(
-            -rem(DateTime.to_unix(DateTime.from_naive!(time, "Etc/UTC")), 1800),
+          |> DateTimeUtils.to_datetime()
+          |> DateTimeUtils.add(
+            -rem(DateTime.to_unix(DateTimeUtils.to_datetime(time)), 1800),
             :second
           )
           |> DateTime.to_unix()

@@ -3,10 +3,12 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleAnalysisCoordinator do
   Coordinates comprehensive battle analysis including timeline reconstruction,
   tactical analysis, and fleet effectiveness evaluation.
   """
+  """
 
   use GenServer
 
   alias EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Shared.Infrastructure.UnifiedCache
 
   require Logger
@@ -213,7 +215,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleAnalysisCoordinator do
       %{
         phase: :main_engagement,
         start_time:
-          DateTime.add(battle_data[:started_at] || battle_data.started_at, 180, :second),
+          DateTimeUtils.add(battle_data[:started_at] || battle_data.started_at, 180, :second),
         duration_seconds: 600,
         description: "Primary combat phase with sustained engagement",
         key_events: ["Primary targets engaged", "Fleet maneuvers"]
@@ -221,7 +223,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleAnalysisCoordinator do
       %{
         phase: :resolution,
         start_time:
-          DateTime.add(battle_data[:started_at] || battle_data.started_at, 780, :second),
+          DateTimeUtils.add(battle_data[:started_at] || battle_data.started_at, 780, :second),
         duration_seconds: 120,
         description: "Battle conclusion and disengagement",
         key_events: ["Fleet withdrawal", "Field control"]
@@ -259,7 +261,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleAnalysisCoordinator do
         significance: :high
       },
       %{
-        timestamp: DateTime.add(battle_data[:started_at] || battle_data.started_at, 300, :second),
+        timestamp: DateTimeUtils.add(battle_data[:started_at] || battle_data.started_at, 300, :second),
         moment_type: :turning_point,
         description: "Significant shift in battle momentum",
         significance: :critical
@@ -295,7 +297,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleAnalysisCoordinator do
 
       last_activity ->
         started_at = battle_data[:started_at] || battle_data.started_at
-        DateTime.diff(last_activity, started_at, :second)
+        DateTimeUtils.diff(last_activity, started_at, :second)
     end
   end
 

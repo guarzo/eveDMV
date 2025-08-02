@@ -16,6 +16,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.KillmailEventProcessor do
   - Dispatch notifications for matches
   - Maintain match history and statistics
   """
+  """
 
   use GenServer
 
@@ -24,6 +25,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.KillmailEventProcessor do
   alias EveDmv.Contexts.Surveillance.Domain.NotificationService
   alias EveDmv.Contexts.Surveillance.Infrastructure.MatchCache
   alias EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.DomainEvents.KillmailReceived
 
   require Logger
@@ -164,7 +166,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.KillmailEventProcessor do
 
   @impl GenServer
   def handle_call(:get_statistics, _from, state) do
-    uptime_seconds = DateTime.diff(DateTime.utc_now(), state.start_time)
+    uptime_seconds = DateTimeUtils.diff(DateTime.utc_now(), state.start_time, :second)
 
     statistics = %{
       uptime_seconds: uptime_seconds,

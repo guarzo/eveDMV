@@ -6,6 +6,7 @@ defmodule EveDmv.PlayerProfile.DataLoader do
   information retrieval, and historical killmail loading with proper error
   handling and timeout management.
   """
+  """
 
   alias EveDmv.Eve.EsiClient
   alias EveDmv.Killmails.HistoricalKillmailFetcher

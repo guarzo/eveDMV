@@ -5,6 +5,7 @@ defmodule EveDmv.Config.CircuitBreaker do
   Centralizes circuit breaker thresholds and timeouts for system stability
   and fault tolerance across external service integrations.
   """
+  """
 
   alias EveDmv.Config
 

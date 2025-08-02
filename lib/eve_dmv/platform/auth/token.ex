@@ -5,6 +5,7 @@ defmodule EveDmv.Users.Token do
   This resource is automatically used by AshAuthentication to store
   and manage authentication tokens for users.
   """
+  """
 
   use Ash.Resource,
     otp_app: :eve_dmv,

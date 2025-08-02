@@ -10,6 +10,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzerS
   - ActivityCorrelator: Cross-system activity pattern correlation
   - ThreatCorrelator: Multi-system threat pattern analysis
   """
+  """
 
   alias EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzers.ConstellationAnalyzer
 

@@ -2,9 +2,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   @moduledoc """
   Correlator for intelligence data across multiple systems.
   """
+  """
 
   import Ecto.Query
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Repo
   require Logger
 
@@ -317,7 +319,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
   defp fetch_intelligence_coverage(system_ids) do
     # Fetch intelligence data coverage for systems
-    start_time = DateTime.add(DateTime.utc_now(), -72 * 3600, :second)
+    start_time = DateTimeUtils.add(DateTime.utc_now(), -72 * 3600, :second)
 
     query =
       from(k in "killmails_enriched",
@@ -410,7 +412,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
   defp fetch_cross_system_intelligence(system_ids) do
     # Fetch detailed intelligence data for cross-system analysis
-    start_time = DateTime.add(DateTime.utc_now(), -48 * 3600, :second)
+    start_time = DateTimeUtils.add(DateTime.utc_now(), -48 * 3600, :second)
 
     query =
       from(k in "killmails_enriched",
@@ -544,7 +546,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
   defp analyze_single_system_coverage(system_id) do
     # Analyze coverage for a single system
-    start_time = DateTime.add(DateTime.utc_now(), -72 * 3600, :second)
+    start_time = DateTimeUtils.add(DateTime.utc_now(), -72 * 3600, :second)
 
     query =
       from(k in "killmails_enriched",
@@ -564,7 +566,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
     kill_count = Map.get(result, :kill_count, 0)
     latest = Map.get(result, :latest_activity, start_time)
-    data_age_hours = DateTime.diff(DateTime.utc_now(), latest, :hour)
+    data_age_hours = DateTimeUtils.diff(DateTime.utc_now(), latest, :hour)
 
     %{
       coverage_score: calculate_coverage_score(kill_count, data_age_hours),
@@ -601,10 +603,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   defp fetch_system_quality_metrics(system_id) do
     # Fetch quality metrics for a single system
     time_windows = [
-      {1, DateTime.add(DateTime.utc_now(), -1 * 3600, :second)},
-      {6, DateTime.add(DateTime.utc_now(), -6 * 3600, :second)},
-      {24, DateTime.add(DateTime.utc_now(), -24 * 3600, :second)},
-      {72, DateTime.add(DateTime.utc_now(), -72 * 3600, :second)}
+      {1, DateTimeUtils.add(DateTime.utc_now(), -1 * 3600, :second)},
+      {6, DateTimeUtils.add(DateTime.utc_now(), -6 * 3600, :second)},
+      {24, DateTimeUtils.add(DateTime.utc_now(), -24 * 3600, :second)},
+      {72, DateTimeUtils.add(DateTime.utc_now(), -72 * 3600, :second)}
     ]
 
     metrics =
@@ -639,7 +641,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     if metrics.kill_count == 0 do
       0.0
     else
-      time_span = DateTime.diff(metrics.latest_activity, metrics.earliest_activity, :hour)
+      time_span = DateTimeUtils.diff(metrics.latest_activity, metrics.earliest_activity, :hour)
 
       if time_span > 0 do
         density = metrics.kill_count / time_span
@@ -656,7 +658,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     # Calculate how well the time period is covered
     # hours
     expected_span = 72
-    actual_span = DateTime.diff(metrics.latest_activity, metrics.earliest_activity, :hour)
+    actual_span = DateTimeUtils.diff(metrics.latest_activity, metrics.earliest_activity, :hour)
     min(1.0, actual_span / expected_span)
   end
 
@@ -670,8 +672,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
         for {s1, start1, end1} <- system_times,
             {s2, start2, end2} <- system_times,
             s1 < s2,
-            DateTime.compare(start1, end2) != :gt,
-            DateTime.compare(end1, start2) != :lt,
+            DateTimeUtils.compare(start1, end2) != :gt,
+            DateTimeUtils.compare(end1, start2) != :lt,
             do: calculate_overlap_duration(start1, end1, start2, end2)
 
       if Enum.empty?(overlaps) do
@@ -685,9 +687,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   end
 
   defp calculate_overlap_duration(start1, end1, start2, end2) do
-    overlap_start = if DateTime.compare(start1, start2) == :gt, do: start1, else: start2
-    overlap_end = if DateTime.compare(end1, end2) == :lt, do: end1, else: end2
-    DateTime.diff(overlap_end, overlap_start, :hour)
+    overlap_start = if DateTimeUtils.compare(start1, start2) == :gt, do: start1, else: start2
+    overlap_end = if DateTimeUtils.compare(end1, end2) == :lt, do: end1, else: end2
+    DateTimeUtils.diff(overlap_end, overlap_start, :hour)
   end
 
   defp calculate_time_span(items) do
@@ -699,7 +701,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       last = List.last(times)
 
       %{
-        hours: DateTime.diff(last, first, :hour),
+        hours: DateTimeUtils.diff(last, first, :hour),
         start: first,
         end: last
       }
@@ -947,7 +949,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   defp estimate_structure_presence_score(system_id) do
     # Placeholder - would query structure data when available
     # For now, estimate based on recent kill activity involving structures
-    start_time = DateTime.add(DateTime.utc_now(), -30 * 24 * 3600, :second)
+    start_time = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 3600, :second)
 
     query =
       from(k in "killmails_enriched",
@@ -976,7 +978,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
   defp calculate_activity_score(system_id) do
     # Recent PvP activity levels
-    start_time = DateTime.add(DateTime.utc_now(), -7 * 24 * 3600, :second)
+    start_time = DateTimeUtils.add(DateTime.utc_now(), -7 * 24 * 3600, :second)
 
     query =
       from(k in "killmails_enriched",
@@ -1007,7 +1009,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   defp estimate_sovereignty_importance(system_id) do
     # Placeholder - would query sovereignty data when available
     # For now, estimate based on alliance activity concentration
-    start_time = DateTime.add(DateTime.utc_now(), -30 * 24 * 3600, :second)
+    start_time = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 3600, :second)
 
     query =
       from(k in "killmails_enriched",

@@ -7,7 +7,9 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer do
   - Corporation Analysis member activity analyzer
   - Corporation Intelligence member activity analysis
   """
+  """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.CharacterRepository
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
   alias EveDmv.Platform.Database.CorporationRepository
@@ -84,13 +86,13 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer do
   """
   def get_inactive_members(corporation_id, threshold \\ 30) do
     with {:ok, members} <- CorporationRepository.get_corporation_members(corporation_id) do
-      cutoff_date = DateTime.utc_now() |> DateTime.add(-threshold, :day)
+      cutoff_date = DateTime.utc_now() |> DateTimeUtils.add(-threshold * 24 * 60 * 60, :second)
 
       inactive_members =
         members
         |> Enum.filter(fn member ->
           is_nil(member.last_seen) ||
-            DateTime.compare(member.last_seen, cutoff_date) == :lt
+            DateTimeUtils.compare(member.last_seen, cutoff_date) == :lt
         end)
         |> Enum.map(fn member ->
           %{
@@ -204,11 +206,11 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer do
   end
 
   defp calculate_start_date(days: days) do
-    DateTime.utc_now() |> DateTime.add(-days * 24 * 60 * 60, :second)
+    DateTime.utc_now() |> DateTimeUtils.add(-days * 24 * 60 * 60, :second)
   end
 
   defp calculate_start_date(weeks: weeks) do
-    DateTime.utc_now() |> DateTime.add(-weeks * 7 * 24 * 60 * 60, :second)
+    DateTime.utc_now() |> DateTimeUtils.add(-weeks * 7 * 24 * 60 * 60, :second)
   end
 
   defp collect_member_activity(member, start_date) do
@@ -247,7 +249,7 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer do
     # Tenure bonus (longer members get slightly higher scores for same activity)
     tenure_days =
       if member.join_date do
-        DateTime.diff(DateTime.utc_now(), member.join_date, :day)
+        DateTimeUtils.diff(DateTime.utc_now(), member.join_date, :day)
       else
         0
       end
@@ -258,7 +260,7 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer do
     # Recency bonus (recent activity weighted higher)
     recency_bonus =
       if member.last_seen do
-        days_since = DateTime.diff(DateTime.utc_now(), member.last_seen, :day)
+        days_since = DateTimeUtils.diff(DateTime.utc_now(), member.last_seen, :day)
         # More recent = higher bonus
         max(0, 20 - days_since)
       else
@@ -285,7 +287,7 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer do
   end
 
   defp calculate_avg_daily_activity(killmails, start_date) do
-    days_in_period = DateTime.diff(DateTime.utc_now(), start_date, :day)
+    days_in_period = DateTimeUtils.diff(DateTime.utc_now(), start_date, :day)
 
     if days_in_period > 0 do
       Float.round(length(killmails) / days_in_period, 2)
@@ -807,12 +809,12 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer do
   defp calculate_days_inactive(nil), do: nil
 
   defp calculate_days_inactive(last_seen) do
-    DateTime.diff(DateTime.utc_now(), last_seen, :day)
+    DateTimeUtils.diff(DateTime.utc_now(), last_seen, :day)
   end
 
   defp calculate_tenure(nil), do: 0
 
   defp calculate_tenure(join_date) do
-    DateTime.diff(DateTime.utc_now(), join_date, :day)
+    DateTimeUtils.diff(DateTime.utc_now(), join_date, :day)
   end
 end

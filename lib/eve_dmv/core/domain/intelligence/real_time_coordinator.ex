@@ -13,9 +13,11 @@ defmodule EveDmv.Intelligence.RealTimeCoordinator do
   - Filter and prioritize events for publishing
   - Manage real-time subscriptions and client updates
   """
+  """
 
   use GenServer
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Infrastructure.EventBus
   alias EveDmv.Intelligence.EventPublisher
   require Logger
@@ -471,7 +473,7 @@ defmodule EveDmv.Intelligence.RealTimeCoordinator do
 
   defp cleanup_old_data(state) do
     # Clean up data older than 1 hour
-    cutoff_time = DateTime.add(DateTime.utc_now(), -3600, :second)
+    cutoff_time = DateTimeUtils.add(DateTime.utc_now(), -3600, :second)
 
     # Filter recent battles
     new_recent_battles =
@@ -485,6 +487,6 @@ defmodule EveDmv.Intelligence.RealTimeCoordinator do
   defp get_uptime do
     # Simple uptime calculation
     {:ok, started_at} = Application.get_env(:eve_dmv, :started_at, DateTime.utc_now())
-    DateTime.diff(DateTime.utc_now(), started_at, :second)
+    DateTimeUtils.diff(DateTime.utc_now(), started_at, :second)
   end
 end

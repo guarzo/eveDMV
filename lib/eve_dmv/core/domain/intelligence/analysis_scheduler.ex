@@ -8,12 +8,14 @@ defmodule EveDmv.Intelligence.AnalysisScheduler do
   - Corporation activity monitoring
   - Analysis result freshness maintenance
   """
+  """
 
   use GenServer
+  alias EveDmv.Contexts.WormholeOperations.Domain.Analyzers.WhFleetAnalyzer
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.Analyzers.CorporationAnalyzer
   alias EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer
   alias EveDmv.Intelligence.Analyzers.ThreatAnalyzer
-  alias EveDmv.Intelligence.Analyzers.WhFleetAnalyzer
   alias EveDmv.Intelligence.Analyzers.WHVettingAnalyzer
   alias EveDmv.Intelligence.Core.Config
   require Logger
@@ -221,7 +223,7 @@ defmodule EveDmv.Intelligence.AnalysisScheduler do
   defp should_run_task?(task, now) do
     task.enabled and
       (is_nil(task.last_run) or
-         DateTime.diff(now, task.last_run, :minute) >= task.interval)
+         DateTimeUtils.diff(now, task.last_run, :minute) >= task.interval)
   end
 
   defp execute_task_batch(tasks) do

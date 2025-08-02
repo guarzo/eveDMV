@@ -2,6 +2,7 @@ defmodule EveDmv.Contexts.Corporation.Resources.RecruitmentCampaign do
   @moduledoc """
   Recruitment campaign resource for tracking corporation recruitment efforts.
   """
+  """
 
   use Ash.Resource,
     domain: EveDmv.Api,

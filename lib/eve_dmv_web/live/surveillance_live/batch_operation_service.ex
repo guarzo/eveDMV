@@ -5,6 +5,7 @@ defmodule EveDmvWeb.SurveillanceLive.BatchOperationService do
   Handles batch deletion, enabling/disabling, and other
   bulk operations on multiple surveillance profiles.
   """
+  """
 
   alias EveDmv.Api.SurveillanceApi
   alias EveDmv.Surveillance.MatchingEngine

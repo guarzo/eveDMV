@@ -5,11 +5,13 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer do
   Provides comprehensive corporation analysis including member activity,
   organizational health, recruitment effectiveness, and leadership assessment.
   """
+  """
 
   use GenServer
   use EveDmv.ErrorHandler
   alias EveDmv.Contexts.CorporationAnalysis.Analyzers.MemberActivityAnalyzer
   alias EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationRepository
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Result
   alias EveDmv.Shared.MetricsCalculator
   # Import analyzers
@@ -365,7 +367,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer do
 
   defp cache_valid?(timestamp, opts) do
     ttl = Keyword.get(opts, :cache_ttl_seconds, 600)
-    age = DateTime.diff(DateTime.utc_now(), timestamp, :second)
+    age = DateTimeUtils.diff(DateTime.utc_now(), timestamp, :second)
     age < ttl
   end
 

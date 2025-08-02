@@ -6,6 +6,7 @@ defmodule EveDmv.Eve.ItemType do
   and other objects in EVE Online. Used for ship/module name lookups and
   fuzzy search capabilities.
   """
+  """
 
   use Ash.Resource,
     otp_app: :eve_dmv,

@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
   Provides comprehensive player profiling including combat statistics,
   behavioral patterns, ship preferences, and psychological profiling.
   """
+  """
 
   use GenServer
   use EveDmv.ErrorHandler
@@ -12,6 +13,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
   alias EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer
   alias EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer
   alias EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Shared.MetricsCalculator
 
   require Logger
@@ -335,7 +337,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
 
   defp cache_valid?(timestamp, opts) do
     ttl = Keyword.get(opts, :cache_ttl_seconds, 600)
-    age = DateTime.diff(DateTime.utc_now(), timestamp, :second)
+    age = DateTimeUtils.diff(DateTime.utc_now(), timestamp, :second)
     age < ttl
   end
 

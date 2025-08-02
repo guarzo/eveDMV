@@ -13,8 +13,10 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
   Uses advanced statistical analysis, clustering algorithms, and tactical pattern matching
   to provide comprehensive intelligence on corporation combat capabilities and preferences.
   """
+  """
 
   alias EveDmv.Api
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
 
   require Ash.Query
@@ -252,7 +254,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
 
   defp fetch_corporation_combat_data(corporation_id, analysis_window_days) do
     cutoff_date =
-      NaiveDateTime.add(NaiveDateTime.utc_now(), -analysis_window_days * 24 * 60 * 60, :second)
+      DateTimeUtils.add(NaiveDateTime.utc_now(), -analysis_window_days * 24 * 60 * 60, :second)
 
     # Fetch killmails where corporation members were involved
     victim_query =
@@ -464,7 +466,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
     matching =
       Enum.find(engagements, fn engagement ->
         # Check time proximity
-        time_diff = NaiveDateTime.diff(killmail.killmail_time, engagement.end_time, :second)
+        time_diff = DateTimeUtils.diff(killmail.killmail_time, engagement.end_time, :second)
         within_time_window = time_diff <= time_window_seconds and time_diff >= 0
 
         # Check participant overlap
@@ -509,7 +511,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
       %{
         engagement_id: generate_engagement_id(engagement),
         timestamp: engagement.start_time,
-        duration_seconds: NaiveDateTime.diff(engagement.end_time, engagement.start_time, :second),
+        duration_seconds: DateTimeUtils.diff(engagement.end_time, engagement.start_time, :second),
         participant_count: length(participants),
         ship_composition: ship_analysis,
         role_distribution: role_analysis,
@@ -783,7 +785,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
     # Analyze tactical patterns and coordination indicators
     %{
       engagement_duration:
-        NaiveDateTime.diff(engagement.end_time, engagement.start_time, :second),
+        DateTimeUtils.diff(engagement.end_time, engagement.start_time, :second),
       multi_system: length(engagement.systems) > 1,
       killmail_density: calculate_killmail_density(engagement),
       coordination_indicators: analyze_coordination_quality(engagement),
@@ -794,7 +796,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
 
   defp calculate_killmail_density(engagement) do
     duration_minutes =
-      NaiveDateTime.diff(engagement.end_time, engagement.start_time, :second) / 60
+      DateTimeUtils.diff(engagement.end_time, engagement.start_time, :second) / 60
 
     if duration_minutes > 0 do
       length(engagement.killmails) / duration_minutes

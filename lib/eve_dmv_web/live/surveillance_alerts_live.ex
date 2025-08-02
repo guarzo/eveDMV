@@ -8,11 +8,13 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
   - Alert acknowledgment and resolution
   - Alert details and context
   """
+  """
 
   use EveDmvWeb, :live_view
 
   alias EveDmv.Contexts.Surveillance.Domain.AlertService
   alias EveDmv.Contexts.Surveillance.Domain.NotificationService
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmvWeb.Helpers.TimeFormatter
 
   require Logger
@@ -370,9 +372,9 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
   def format_timestamp(_), do: "Unknown"
 
   defp format_naive_datetime(ndt) do
-    case DateTime.from_naive(ndt, "Etc/UTC") do
-      {:ok, dt} -> TimeFormatter.format_relative_time(dt)
-      _ -> "Unknown"
+    case DateTimeUtils.to_datetime(ndt) do
+      nil -> "Unknown"
+      dt -> TimeFormatter.format_relative_time(dt)
     end
   end
 

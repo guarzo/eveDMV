@@ -5,6 +5,7 @@ defmodule EveDmv.Intelligence.Formatters.MemberActivityFormatter do
   Provides functions to format and summarize member activity analysis results
   for display in reports and dashboards.
   """
+  """
 
   @doc """
   Generate a risk summary from member analyses.

@@ -9,8 +9,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.LiveE
   - Tracking engagement progression and participant flow
   - Cleaning up stale engagements
   """
+  """
 
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.PerformanceCalculator
+  alias EveDmv.Core.Utils.DateTimeUtils
   require Logger
 
   # Constants
@@ -50,7 +52,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.LiveE
       system_id: engagement.system_id,
       start_time: engagement.start_time,
       last_activity: engagement.last_activity,
-      duration_seconds: DateTime.diff(engagement.last_activity, engagement.start_time),
+      duration_seconds: DateTimeUtils.diff(engagement.last_activity, engagement.start_time, :second),
       participant_count: participant_count,
       kill_count: length(engagement.killmails),
       kill_rate_per_minute: kill_rate,
@@ -68,11 +70,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.LiveE
   Clean up stale engagements older than threshold.
   """
   def cleanup_stale_engagements(active_engagements) do
-    cutoff_time = DateTime.add(DateTime.utc_now(), -@stale_engagement_minutes, :minute)
+    cutoff_time = DateTimeUtils.add(DateTime.utc_now(), -@stale_engagement_minutes * 60, :second)
 
     active_engagements
     |> Enum.reject(fn {_system_id, engagement} ->
-      DateTime.compare(engagement.last_activity, cutoff_time) == :lt
+      DateTimeUtils.compare(engagement.last_activity, cutoff_time) == :lt
     end)
     |> Map.new()
   end
@@ -170,7 +172,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.LiveE
     else
       first = List.first(killmails).timestamp
       last = List.last(killmails).timestamp
-      max(DateTime.diff(last, first) / 60, 1)
+      max(DateTimeUtils.diff(last, first, :second) / 60, 1)
     end
   end
 
@@ -231,6 +233,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.LiveE
   end
 
   defp max_datetime(dt1, dt2) do
-    if DateTime.compare(dt1, dt2) == :gt, do: dt1, else: dt2
+    if DateTimeUtils.compare(dt1, dt2) == :gt, do: dt1, else: dt2
   end
 end

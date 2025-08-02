@@ -5,10 +5,12 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
   This service coordinates price fetching from multiple sources,
   manages caching strategies, and publishes price update events.
   """
+  """
 
   use GenServer
 
   alias EveDmv.Contexts.MarketIntelligence.Infrastructure
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.DomainEvents
   alias EveDmv.Infrastructure.EventBus
   alias EveDmv.Shared.Infrastructure.UnifiedCache
@@ -24,6 +26,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
   @doc """
   Get price for a single item type.
   """
+  @spec get_price(integer(), keyword()) :: {:ok, map()} | {:error, atom()}
   def get_price(type_id, options \\ []) do
     GenServer.call(__MODULE__, {:get_price, type_id, options})
   end
@@ -31,6 +34,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
   @doc """
   Get prices for multiple item types.
   """
+  @spec get_prices([integer()], keyword()) :: {:ok, map()} | {:error, atom()}
   def get_prices(type_ids, options \\ []) do
     GenServer.call(__MODULE__, {:get_prices, type_ids, options})
   end
@@ -38,6 +42,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
   @doc """
   Refresh prices bypassing cache.
   """
+  @spec refresh_prices([integer()], keyword()) :: {:ok, map()} | {:error, atom()}
   def refresh_prices(type_ids, options \\ []) do
     GenServer.call(__MODULE__, {:refresh_prices, type_ids, options})
   end
@@ -45,6 +50,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
   @doc """
   Get cache statistics.
   """
+  @spec get_cache_stats() :: map()
   def get_cache_stats do
     UnifiedCache.get_domain_stats(:market)
   end
@@ -52,6 +58,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
   @doc """
   Refresh commonly used items (called during static data updates).
   """
+  @spec refresh_common_items() :: :ok
   def refresh_common_items do
     GenServer.cast(__MODULE__, :refresh_common_items)
   end
@@ -298,7 +305,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
 
   defp price_fresh?(price_data, cache_ttl) do
     updated_at = Map.get(price_data, :updated_at, DateTime.utc_now())
-    age_seconds = DateTime.diff(DateTime.utc_now(), updated_at, :second)
+    age_seconds = DateTimeUtils.diff(DateTime.utc_now(), updated_at, :second)
     age_seconds < cache_ttl
   end
 

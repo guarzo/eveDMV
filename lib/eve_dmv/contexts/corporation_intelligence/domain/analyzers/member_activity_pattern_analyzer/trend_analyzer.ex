@@ -1,12 +1,14 @@
-defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TrendAnalyzer do
+defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivityPatternAnalyzer.TrendAnalyzer do
   @moduledoc """
   Specialized analyzer for activity trend analysis.
 
   This module focuses on identifying trends, seasonal variations,
   and behavioral changes in member activity over time.
   """
+  """
 
-  alias EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityHelpers
+  alias EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivityAnalyzer.ActivityHelpers
+  alias EveDmv.Core.Utils.DateTimeUtils
   require Logger
 
   @doc """
@@ -127,7 +129,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TrendAnaly
   """
   def days_since_last_activity(last_activity, current_time) do
     if last_activity do
-      DateTime.diff(current_time, last_activity, :day)
+      DateTimeUtils.diff(current_time, last_activity, :day)
     else
       # Very old if no activity recorded
       999
@@ -177,7 +179,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TrendAnaly
   end
 
   defp perform_simple_trend_analysis(member_activities, days) do
-    cutoff_date = DateTime.add(DateTime.utc_now(), -days, :day)
+    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -days, :day)
     recent_activities = filter_recent_activities(member_activities, cutoff_date)
 
     activity_metrics = calculate_activity_metrics(member_activities, recent_activities)
@@ -288,7 +290,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.TrendAnaly
     Enum.filter(member_activities, fn member ->
       case Map.get(member, :last_seen) do
         nil -> false
-        last_seen -> DateTime.compare(last_seen, cutoff_date) != :lt
+        last_seen -> DateTimeUtils.compare(last_seen, cutoff_date) != :lt
       end
     end)
   end

@@ -1,5 +1,6 @@
 defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.AffiliationAnalyzer do
   @moduledoc """
+
   Analyzes participant affiliations to determine sides in a battle.
 
   Uses multiple signals to group participants:
@@ -7,6 +8,9 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.AffiliationAnalyzer do
   - Damage patterns (who shoots whom)
   - Temporal clustering (who arrives together)
   - Fleet composition patterns
+  """
+
+    alias EveDmv.Core.Utils.DateTimeUtils
   """
 
   @doc """
@@ -247,7 +251,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.AffiliationAnalyzer do
     # Find overlapping time windows
     Enum.any?(times1, fn t1 ->
       Enum.any?(times2, fn t2 ->
-        DateTime.diff(t1, t2, :minute) <= 5
+        DateTimeUtils.diff(t1, t2, :minute) <= 5
       end)
     end)
   end

@@ -2,6 +2,7 @@ defmodule Mix.Tasks.Eve.AnalyzePerformance do
   @moduledoc """
   Mix task to analyze database performance and provide optimization recommendations.
   """
+  """
 
   @shortdoc "Analyze database performance and provide optimization recommendations"
 

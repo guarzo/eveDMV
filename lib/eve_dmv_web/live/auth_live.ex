@@ -2,6 +2,7 @@ defmodule EveDmvWeb.AuthLive do
   @moduledoc """
   Authentication LiveView modules for handling user sign-in flows.
   """
+  """
 
   import Phoenix.LiveView
   import Phoenix.Component

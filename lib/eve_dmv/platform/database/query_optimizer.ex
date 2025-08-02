@@ -8,6 +8,7 @@ defmodule EveDmv.Database.QueryOptimizer do
   - Implement efficient batch loading
   - Monitor query performance
   """
+  """
 
   import Ecto.Query
   alias EveDmv.Repo

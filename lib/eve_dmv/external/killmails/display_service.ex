@@ -2,9 +2,11 @@ defmodule EveDmv.Killmails.DisplayService do
   @moduledoc """
   Business logic for killmail display and formatting
   """
+  """
 
   alias EveDmv.Api
   alias EveDmv.Constants.Isk
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Eve.NameResolver
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Utils.ParsingUtils
@@ -232,7 +234,7 @@ defmodule EveDmv.Killmails.DisplayService do
       attacker_count: raw.attacker_count,
       final_blow_character_id: get_in(final_blow, ["character_id"]),
       final_blow_character_name: get_in(final_blow, ["character_name"]),
-      age_minutes: DateTime.diff(now, raw.killmail_time, :minute),
+      age_minutes: DateTimeUtils.diff(now, raw.killmail_time, :minute),
       is_expensive: expensive_kill_wanderer(raw.raw_data)
     }
   end

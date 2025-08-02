@@ -6,7 +6,9 @@ defmodule EveDmv.Contexts.Corporation.Core.RecruitmentAnalyzer do
   - Corporation Intelligence recruitment analysis
   - Corporation Analysis recruitment metrics
   """
+  """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
   alias EveDmv.Platform.Database.CorporationRepository
   alias EveDmv.Utils.DateHelper
@@ -105,12 +107,12 @@ defmodule EveDmv.Contexts.Corporation.Core.RecruitmentAnalyzer do
 
   defp gather_recruitment_data(members) do
     # Analyze recruitment patterns over time
-    cutoff_date = DateTime.utc_now() |> DateTime.add(-365, :day)
+    cutoff_date = DateTime.utc_now() |> DateTimeUtils.add(-365 * 24 * 60 * 60, :second)
 
     recent_recruits =
       members
       |> Enum.filter(fn member ->
-        member.join_date && DateTime.compare(member.join_date, cutoff_date) == :gt
+        member.join_date && DateTimeUtils.compare(member.join_date, cutoff_date) == :gt
       end)
       |> Enum.sort_by(& &1.join_date)
 
@@ -157,22 +159,22 @@ defmodule EveDmv.Contexts.Corporation.Core.RecruitmentAnalyzer do
     else
       # Calculate recruits per week over last 12 weeks
       # 12 weeks
-      recent_cutoff = DateTime.utc_now() |> DateTime.add(-84, :day)
+      recent_cutoff = DateTime.utc_now() |> DateTimeUtils.add(-84 * 24 * 60 * 60, :second)
 
       recent_recruits =
         Enum.filter(recruits, fn member ->
-          DateTime.compare(member.join_date, recent_cutoff) == :gt
+          DateTimeUtils.compare(member.join_date, recent_cutoff) == :gt
         end)
 
       velocity = length(recent_recruits) / 12
 
       # Determine trend by comparing first half vs second half
       # 6 weeks ago
-      mid_point = DateTime.utc_now() |> DateTime.add(-42, :day)
+      mid_point = DateTime.utc_now() |> DateTimeUtils.add(-42 * 24 * 60 * 60, :second)
 
       first_half =
         Enum.count(recent_recruits, fn member ->
-          DateTime.compare(member.join_date, mid_point) == :lt
+          DateTimeUtils.compare(member.join_date, mid_point) == :lt
         end)
 
       second_half = length(recent_recruits) - first_half
@@ -613,15 +615,15 @@ defmodule EveDmv.Contexts.Corporation.Core.RecruitmentAnalyzer do
 
   defp analyze_retention_by_cohort(members, cohort_period) do
     # Group members by join period cohorts
-    cutoff_date = DateTime.utc_now() |> DateTime.add(-365, :day)
+    cutoff_date = DateTime.utc_now() |> DateTimeUtils.add(-365 * 24 * 60 * 60, :second)
 
     cohorts =
       members
       |> Enum.filter(fn member ->
-        member.join_date && DateTime.compare(member.join_date, cutoff_date) == :gt
+        member.join_date && DateTimeUtils.compare(member.join_date, cutoff_date) == :gt
       end)
       |> Enum.group_by(fn member ->
-        days_since_join = DateTime.diff(DateTime.utc_now(), member.join_date, :day)
+        days_since_join = DateTimeUtils.diff(DateTime.utc_now(), member.join_date, :day)
         cohort_number = div(days_since_join, cohort_period)
         cohort_number
       end)
@@ -633,7 +635,7 @@ defmodule EveDmv.Contexts.Corporation.Core.RecruitmentAnalyzer do
           Enum.count(cohort_members, fn member ->
             # Would check actual activity - simplified here
             member.last_seen &&
-              DateTime.diff(DateTime.utc_now(), member.last_seen, :day) < 30
+              DateTimeUtils.diff(DateTime.utc_now(), member.last_seen, :day) < 30
           end)
 
         retention_rate =

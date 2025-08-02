@@ -6,6 +6,7 @@ defmodule WandererClient do
   defdelegate get_chain_topology(map_id), to: RealClient
 
   @doc """
+  @doc """
   Check if a system is present in any monitored chain.
 
   ## Parameters

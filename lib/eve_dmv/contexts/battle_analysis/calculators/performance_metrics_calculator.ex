@@ -9,6 +9,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Calculators.PerformanceMetricsCalculato
   - Role effectiveness (how well ships fulfilled their intended role)
   - Threat assessments (danger level posed by each ship)
   """
+  """
+
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
@@ -82,7 +85,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Calculators.PerformanceMetricsCalculato
       battle_start_time = estimate_battle_start_time(instance)
 
       actual_survival_seconds =
-        NaiveDateTime.diff(instance.death_time, battle_start_time, :second)
+        DateTimeUtils.diff(instance.death_time, battle_start_time, :second)
 
       expected_survival_time = instance.theoretical_stats.expected_survival_time
 
@@ -273,7 +276,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Calculators.PerformanceMetricsCalculato
     # Estimate when the battle started relative to this ship's death
     death_time = instance.death_time
     battle_duration_minutes = instance.battle_context.battle_duration
-    estimated_start = NaiveDateTime.add(death_time, -round(battle_duration_minutes * 60), :second)
+    estimated_start = DateTimeUtils.add(death_time, -round(battle_duration_minutes * 60), :second)
     estimated_start
   end
 
@@ -294,7 +297,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Calculators.PerformanceMetricsCalculato
   defp calculate_survival_time(instance) do
     if instance.death_time do
       battle_start = estimate_battle_start_time(instance)
-      NaiveDateTime.diff(instance.death_time, battle_start, :second)
+      DateTimeUtils.diff(instance.death_time, battle_start, :second)
     else
       round(instance.battle_context.battle_duration * 60)
     end

@@ -10,6 +10,7 @@ defmodule EveDmv.Intelligence.Analyzers.CharacterAnalyzer do
   - Uses CombatStats, BehavioralPatterns, and ShipPreferences plugins
   - Maintains full backward compatibility via LegacyAdapter
   """
+  """
 
   alias EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter
   alias EveDmv.Intelligence.LegacyAdapter

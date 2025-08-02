@@ -5,8 +5,12 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
   Provides fast access to match results and prevents duplicate processing
   of killmails against surveillance profiles.
   """
+  """
 
   use GenServer
+
+  alias EveDmv.Core.Utils.DateTimeUtils
+
   require Logger
 
   # ETS table names
@@ -120,7 +124,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
       killmail_id: killmail_id,
       match_data: match_data,
       cached_at: DateTime.utc_now(),
-      expires_at: DateTime.add(DateTime.utc_now(), @default_ttl, :second)
+      expires_at: DateTimeUtils.add(DateTime.utc_now(), @default_ttl, :second)
     }
 
     :ets.insert(@matches_table, {cache_key, cache_entry})
@@ -138,7 +142,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
     case :ets.lookup(@matches_table, cache_key) do
       [{^cache_key, cache_entry}] ->
         # Check if entry has expired
-        if DateTime.compare(DateTime.utc_now(), cache_entry.expires_at) == :lt do
+        if DateTimeUtils.compare(DateTime.utc_now(), cache_entry.expires_at) == :lt do
           update_cache_stats(:hit)
           {:reply, {:ok, cache_entry.match_data}, state}
         else
@@ -282,7 +286,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
     expired_keys =
       :ets.foldl(
         fn {key, entry}, acc ->
-          if DateTime.compare(current_time, entry.expires_at) != :lt do
+          if DateTimeUtils.compare(current_time, entry.expires_at) != :lt do
             [key | acc]
           else
             acc
@@ -311,4 +315,5 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
       Logger.debug("Cleaned up #{length(expired_keys)} expired cache entries")
     end
   end
+
 end

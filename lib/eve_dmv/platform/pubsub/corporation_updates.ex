@@ -5,6 +5,7 @@ defmodule EveDmv.Platform.PubSub.CorporationUpdates do
   Handles broadcasting of corporation updates, recruitment events,
   and member activity changes to interested subscribers.
   """
+  """
 
   alias Phoenix.PubSub
 

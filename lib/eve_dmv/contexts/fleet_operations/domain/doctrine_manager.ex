@@ -7,6 +7,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
 
   Converted from GenServer to simple module for stateless operations.
   """
+  """
 
   use EveDmv.ErrorHandler
 

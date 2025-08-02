@@ -8,8 +8,10 @@ defmodule EveDmv.Eve.FallbackStrategy do
   - Partial data with warnings
   - Service degradation modes
   """
+  """
 
   alias EveDmv.Cache
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Eve.CircuitBreaker
   alias EveDmv.Eve.ErrorClassifier
   alias EveDmv.Eve.EsiCache
@@ -304,7 +306,7 @@ defmodule EveDmv.Eve.FallbackStrategy do
     # Check for expired cache entries that are still within the acceptable stale period
     case get_cache_with_timestamp(cache_key) do
       {:ok, data, timestamp} ->
-        age_seconds = DateTime.diff(DateTime.utc_now(), timestamp, :second)
+        age_seconds = DateTimeUtils.diff(DateTime.utc_now(), timestamp, :second)
 
         if age_seconds <= max_stale_age do
           {:ok, data, :stale}

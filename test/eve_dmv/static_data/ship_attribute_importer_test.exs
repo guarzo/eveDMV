@@ -152,7 +152,7 @@ defmodule EveDmv.StaticData.ShipAttributeImporterTest do
       {:ok, importer_pid: pid}
     end
 
-    test "calculates realistic attributes for different ship classes", %{importer_pid: pid} do
+    test "calculates realistic attributes for different ship classes", %{importer_pid: _pid} do
       # Import the test ship
       assert :ok = ShipAttributeImporter.import_ship_attributes(2001)
 

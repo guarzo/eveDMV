@@ -6,6 +6,7 @@ defmodule EveDmv.Contexts.Surveillance.Api do
   matching operations, and alert notifications. All public operations are validated
   and logged through this interface.
   """
+  """
 
   use EveDmv.ErrorHandler
   alias EveDmv.Utils.ValidationUtils

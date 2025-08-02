@@ -13,11 +13,12 @@ defmodule EveDmv.Workers.CacheWarmingWorker do
   - **Incremental warming**: Warms data in batches to avoid overwhelming the system
   - **Cache hit tracking**: Uses analytics to prioritize which data to warm
   """
+  """
 
   use GenServer
 
   alias EveDmv.Cache
-  alias EveDmv.Database.CacheWarmer
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
@@ -365,14 +366,22 @@ defmodule EveDmv.Workers.CacheWarmingWorker do
     :ok
   end
 
-  defp warm_full_cache_data(_batch_size) do
+  defp warm_full_cache_data(batch_size) do
     Logger.info("Starting full cache warming cycle")
 
-    # Delegate to CacheWarmer for comprehensive warming
-    # This triggers all cache warming functions including hot characters,
-    # active systems, recent killmails, frequent items, and alliance data
-    CacheWarmer.warm_cache()
+    # Perform comprehensive cache warming by calling all warming strategies
+    # This ensures all cache layers are populated with frequently accessed data
 
+    # Start with critical data that's most frequently accessed
+    warm_critical_cache_data(batch_size)
+
+    # Then warm priority data that's commonly accessed
+    warm_priority_cache_data(batch_size)
+
+    # Finally warm regular data for general cache population
+    warm_regular_cache_data(batch_size)
+
+    Logger.info("Completed full cache warming cycle")
     :ok
   end
 
@@ -503,7 +512,7 @@ defmodule EveDmv.Workers.CacheWarmingWorker do
   defp get_next_warming_time(state) do
     if state.warming_enabled and state.warming_timer do
       # Calculate approximate next warming time
-      DateTime.add(DateTime.utc_now(), div(state.warming_interval, 1000), :second)
+      DateTimeUtils.add(DateTime.utc_now(), div(state.warming_interval, 1000), :second)
     else
       nil
     end

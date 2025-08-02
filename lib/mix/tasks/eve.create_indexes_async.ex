@@ -17,6 +17,7 @@ defmodule Mix.Tasks.Eve.CreateIndexesAsync do
     * `--check-only` - Only check if indexes exist, don't create them
     * `--timeout` - Set timeout in seconds (default: 3600)
   """
+  """
 
   @shortdoc "Creates database indexes asynchronously with progress monitoring"
 

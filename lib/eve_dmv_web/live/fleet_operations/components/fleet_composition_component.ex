@@ -2,6 +2,7 @@ defmodule EveDmvWeb.Live.FleetOperations.Components.FleetCompositionComponent do
   @moduledoc """
   Component for displaying fleet composition analysis and doctrine compliance.
   """
+  """
 
   use Phoenix.LiveComponent
   alias EveDmvWeb.Utils.FormattingUtils

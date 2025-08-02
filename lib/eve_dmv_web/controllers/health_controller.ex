@@ -2,6 +2,7 @@ defmodule EveDmvWeb.HealthController do
   @moduledoc """
   Health check endpoint for deployment verification and monitoring.
   """
+  """
 
   use EveDmvWeb, :controller
 

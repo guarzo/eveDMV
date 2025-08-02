@@ -2,6 +2,7 @@ defmodule EveDmvWeb.Telemetry do
   @moduledoc """
   Telemetry supervisor for monitoring and metrics collection.
   """
+  """
 
   use Supervisor
   import Telemetry.Metrics

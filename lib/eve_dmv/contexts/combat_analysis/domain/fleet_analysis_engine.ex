@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.FleetAnalysisEngine do
   Provides comprehensive fleet analysis including composition optimization,
   doctrine effectiveness, and tactical recommendations.
   """
+  """
 
   use GenServer
 

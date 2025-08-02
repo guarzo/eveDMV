@@ -6,6 +6,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
   battle analysis. The actual analysis logic has been refactored into specialized
   analyzer modules to improve maintainability and avoid parsing timeouts.
   """
+  """
 
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.CoordinationAnalyzer
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.EngagementAnalyzer

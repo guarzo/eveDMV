@@ -4,6 +4,7 @@ defmodule EveDmvWeb.CharacterSwitchController do
 
   Provides endpoints for switching between characters in a multi-character account.
   """
+  """
 
   use EveDmvWeb, :controller
 

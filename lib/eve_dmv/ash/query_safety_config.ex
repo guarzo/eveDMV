@@ -5,6 +5,7 @@ defmodule EveDmv.Ash.QuerySafetyConfig do
   This module provides a centralized way to configure query safety
   for all resources without modifying each resource file.
   """
+  """
 
   alias EveDmv.Ash.Preparations.QuerySafety
 

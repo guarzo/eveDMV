@@ -6,6 +6,7 @@ defmodule EveDmv.Intelligence.Metrics.CombatMetricsCalculator do
   metrics including damage dealt, damage received, lethality scoring, and
   activity scoring.
   """
+  """
 
   @doc """
   Calculate combat effectiveness metrics from killmail data.

@@ -9,12 +9,14 @@ defmodule Mix.Tasks.Eve.Benchmark do
       mix eve.benchmark corporation  # Run corporation query benchmarks
       mix eve.benchmark --compare    # Compare with and without cache
   """
+  """
 
   @shortdoc "Run performance benchmarks"
 
   use Mix.Task
 
   alias EveDmv.Cache.QueryCache
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.CharacterQueries
   alias EveDmv.Database.CorporationQueries
 
@@ -63,7 +65,7 @@ defmodule Mix.Tasks.Eve.Benchmark do
     # Test data
     # Example character ID
     character_id = 2_112_625_428
-    since_date = DateTime.add(DateTime.utc_now(), -30, :day)
+    since_date = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
 
     if opts[:compare] do
       # Clear cache for fair comparison
@@ -123,7 +125,7 @@ defmodule Mix.Tasks.Eve.Benchmark do
     # Test data
     # Example corporation ID
     corporation_id = 98_726_879
-    since_date = DateTime.add(DateTime.utc_now(), -30, :day)
+    since_date = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
 
     if opts[:compare] do
       # Clear cache for fair comparison

@@ -34,6 +34,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager do
   requirements = FleetAssetManager.build_ship_requirements(doctrine_template, ship_data)
   ```
   """
+  """
 
   use EveDmv.Intelligence.Analyzer
 

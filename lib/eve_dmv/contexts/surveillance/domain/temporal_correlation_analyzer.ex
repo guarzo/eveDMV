@@ -9,6 +9,9 @@ defmodule EveDmv.Shared.Correlation.TemporalCorrelationAnalyzer do
   - Activity dependencies analysis
   - Cross-system correlation metrics
   """
+  """
+
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
@@ -355,8 +358,8 @@ defmodule EveDmv.Shared.Correlation.TemporalCorrelationAnalyzer do
       Enum.map(windows, fn {window_start, window_end} ->
         count =
           Enum.count(activities, fn activity ->
-            DateTime.compare(activity.timestamp, window_start) != :lt and
-              DateTime.compare(activity.timestamp, window_end) == :lt
+            DateTimeUtils.compare(activity.timestamp, window_start) != :lt and
+              DateTimeUtils.compare(activity.timestamp, window_end) == :lt
           end)
 
         %{window_start: window_start, count: count}
@@ -367,7 +370,7 @@ defmodule EveDmv.Shared.Correlation.TemporalCorrelationAnalyzer do
   defp apply_lag_to_series(series, lag_minutes) do
     # Shift series forward by lag_minutes
     Enum.map(series, fn point ->
-      %{point | window_start: DateTime.add(point.window_start, lag_minutes * 60, :second)}
+      %{point | window_start: DateTimeUtils.add(point.window_start, lag_minutes * 60, :second)}
     end)
   end
 
@@ -674,8 +677,8 @@ defmodule EveDmv.Shared.Correlation.TemporalCorrelationAnalyzer do
   end
 
   defp create_windows_recursive(current, end_time, window_seconds, acc) do
-    if DateTime.compare(current, end_time) == :lt do
-      window_end = DateTime.add(current, window_seconds, :second)
+    if DateTimeUtils.compare(current, end_time) == :lt do
+      window_end = DateTimeUtils.add(current, window_seconds, :second)
       new_window = {current, window_end}
       create_windows_recursive(window_end, end_time, window_seconds, [new_window | acc])
     else
@@ -767,4 +770,5 @@ defmodule EveDmv.Shared.Correlation.TemporalCorrelationAnalyzer do
       end
     end
   end
+
 end

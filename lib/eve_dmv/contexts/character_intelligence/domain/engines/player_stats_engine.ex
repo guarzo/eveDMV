@@ -2,10 +2,12 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
   @moduledoc """
   Engine for calculating player performance statistics.
   """
+  """
 
   alias EveDmv.Analytics.PlayerStats
   alias EveDmv.Api
   alias EveDmv.Constants.Isk
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.Participant
 
   require Logger
@@ -28,7 +30,7 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
     batch_size = Keyword.get(opts, :batch_size, @default_batch_size)
     min_activity = Keyword.get(opts, :min_activity, @default_min_activity)
     now = DateTime.utc_now()
-    start_date = DateTime.add(now, -days * 86_400, :second)
+    start_date = DateTimeUtils.add(now, -days * 86_400, :second)
 
     Logger.info("Starting player statistics for last #{days} days")
 
@@ -319,7 +321,7 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
       avg_per_week = if weeks > 0, do: total_kills / weeks, else: 0
 
       %{
-        first_kill: DateTime.add(now, -30 * 86_400, :second),
+        first_kill: DateTimeUtils.add(now, -30 * 86_400, :second),
         last_kill: now,
         active_days: 30,
         avg_per_week: avg_per_week

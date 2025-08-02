@@ -5,8 +5,10 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
   Provides clear, focused analysis of timezone coverage, member activity,
   and defensive capabilities without over-engineering.
   """
+  """
 
   alias EveDmv.Api
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.QueryUtils
   alias EveDmv.Intelligence.HomeDefenseAnalytics
   require Logger
@@ -23,7 +25,7 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
 
     period_days = Keyword.get(options, :period_days, 90)
     end_date = DateTime.utc_now()
-    start_date = DateTime.add(end_date, -period_days, :day)
+    start_date = DateTimeUtils.add(end_date, -period_days, :day)
 
     with {:ok, corp_info} <- get_corporation_info(corporation_id),
          {:ok, members} <- get_corporation_members(corporation_id),
@@ -246,7 +248,7 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
   defp get_members_from_killmails(corporation_id) do
     # Extract member list from recent killmail activity
     # Last 30 days
-    cutoff_time = DateTime.add(DateTime.utc_now(), -30 * 24, :hour)
+    cutoff_time = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
 
     case EveDmv.Repo.query(
            """

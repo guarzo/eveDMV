@@ -6,6 +6,9 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Formatters.MemberActivityDisplayFo
   and data formatting for member activity intelligence.
   """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
+  """
+
   @doc """
   Format member summaries for corporation reports.
   """
@@ -161,7 +164,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Formatters.MemberActivityDisplayFo
 
   defp format_relative_time(datetime) do
     now = DateTime.utc_now()
-    diff_seconds = DateTime.diff(now, datetime)
+    diff_seconds = DateTimeUtils.diff(now, datetime, :second)
 
     cond do
       diff_seconds < 3600 -> "#{div(diff_seconds, 60)} minutes ago"

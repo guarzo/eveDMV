@@ -5,6 +5,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer.PlanAnalyzer do
   Handles parsing PostgreSQL JSON execution plans and extracting performance
   metrics including node types, expensive operations, and row estimation errors.
   """
+  """
 
   require Logger
 

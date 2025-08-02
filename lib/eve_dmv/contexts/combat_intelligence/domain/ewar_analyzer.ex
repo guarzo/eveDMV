@@ -12,6 +12,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
 
   Provides threat assessment and counter-strategy recommendations.
   """
+  """
 
   alias EveDmv.StaticData
 

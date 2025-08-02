@@ -6,6 +6,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainEventHandlers do
   real-time SSE streams and WebSocket connections, updating the local
   chain state accordingly.
   """
+  """
 
   alias EveDmv.Api
   alias EveDmv.Intelligence.ChainAnalysis.ChainConnection

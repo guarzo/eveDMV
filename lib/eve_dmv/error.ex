@@ -18,6 +18,7 @@ defmodule EveDmv.Error do
       EveDmv.Error.normalize({:error, "Some error"})
       EveDmv.Error.normalize({:error, :timeout})
   """
+  """
 
   defstruct [:code, :message, :details, :context, :stacktrace]
 

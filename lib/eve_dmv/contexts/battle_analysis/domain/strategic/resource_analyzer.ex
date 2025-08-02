@@ -9,6 +9,7 @@ defmodule EveDmv.Shared.Strategic.ResourceAnalyzer do
   - Resource flow analysis
   """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Shared.Strategic.Patterns.ResourcePattern
 
   require Logger
@@ -112,16 +113,16 @@ defmodule EveDmv.Shared.Strategic.ResourceAnalyzer do
 
   defp create_analysis_windows(strategic_data) do
     time_range = strategic_data.time_range
-    duration_hours = DateTime.diff(time_range.until, time_range.since, :hour)
+    duration_hours = DateTimeUtils.diff(time_range.until, time_range.since, :hour)
     # At least daily windows
     window_size = max(24, div(duration_hours, 7))
 
     Stream.unfold(time_range.since, fn current ->
-      if DateTime.compare(current, time_range.until) == :lt do
-        window_end = DateTime.add(current, window_size * 3600, :second)
+      if DateTimeUtils.compare(current, time_range.until) == :lt do
+        window_end = DateTimeUtils.add(current, window_size * 3600, :second)
 
         window_end =
-          if DateTime.compare(window_end, time_range.until) == :gt do
+          if DateTimeUtils.compare(window_end, time_range.until) == :gt do
             time_range.until
           else
             window_end
@@ -173,8 +174,8 @@ defmodule EveDmv.Shared.Strategic.ResourceAnalyzer do
       :single_system ->
         strategic_data.killmails
         |> Enum.filter(fn km ->
-          DateTime.compare(km.timestamp, start_time) != :lt &&
-            DateTime.compare(km.timestamp, end_time) == :lt &&
+          DateTimeUtils.compare(km.timestamp, start_time) != :lt &&
+            DateTimeUtils.compare(km.timestamp, end_time) == :lt &&
             classify_ship_type(km.victim.ship_type_id) in resource_types
         end)
 
@@ -182,8 +183,8 @@ defmodule EveDmv.Shared.Strategic.ResourceAnalyzer do
         strategic_data.killmail_data
         |> Enum.flat_map(& &1.killmails)
         |> Enum.filter(fn km ->
-          DateTime.compare(km.timestamp, start_time) != :lt &&
-            DateTime.compare(km.timestamp, end_time) == :lt &&
+          DateTimeUtils.compare(km.timestamp, start_time) != :lt &&
+            DateTimeUtils.compare(km.timestamp, end_time) == :lt &&
             classify_ship_type(km.victim.ship_type_id) in resource_types
         end)
     end
@@ -398,7 +399,7 @@ defmodule EveDmv.Shared.Strategic.ResourceAnalyzer do
       else
         last = List.last(acc)
 
-        if DateTime.diff(item.timestamp, last.timestamp, :hour) <= 2 do
+        if DateTimeUtils.diff(item.timestamp, last.timestamp, :hour) <= 2 do
           {:cont, acc ++ [item]}
         else
           {:cont, acc, [item]}
@@ -525,7 +526,7 @@ defmodule EveDmv.Shared.Strategic.ResourceAnalyzer do
 
   defp estimate_resource_value(extraction_rate, strategic_data) do
     time_factor =
-      DateTime.diff(
+      DateTimeUtils.diff(
         strategic_data.time_range.until,
         strategic_data.time_range.since,
         :hour
@@ -551,7 +552,7 @@ defmodule EveDmv.Shared.Strategic.ResourceAnalyzer do
 
   defp calculate_hourly_value(total_value, strategic_data) do
     hours =
-      DateTime.diff(
+      DateTimeUtils.diff(
         strategic_data.time_range.until,
         strategic_data.time_range.since,
         :hour
@@ -618,8 +619,49 @@ defmodule EveDmv.Shared.Strategic.ResourceAnalyzer do
   end
 
   defp classify_ship_type(ship_type_id) do
-    # Use actual ship classification from static data
-    ship_class = EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
-    if ship_class == :unknown, do: :other, else: ship_class
+    # Map specific ship type IDs to their roles
+    # This is based on EVE Online ship type IDs
+    case ship_type_id do
+      # Freighters
+      20183 -> :freighter   # Providence
+      20185 -> :freighter   # Charon
+      20187 -> :freighter   # Obelisk
+      20189 -> :freighter   # Fenrir
+      
+      # Jump Freighters  
+      28844 -> :freighter   # Rhea
+      28846 -> :freighter   # Nomad
+      28848 -> :freighter   # Anshar
+      28850 -> :freighter   # Ark
+      
+      # Deep Space Transports
+      12729 -> :transport   # Crane
+      12731 -> :transport   # Bustard
+      12733 -> :transport   # Mastodon
+      12735 -> :transport   # Impel
+      
+      # Blockade Runners
+      12743 -> :transport   # Prowler
+      12745 -> :transport   # Viator
+      12747 -> :transport   # Prorator
+      12749 -> :transport   # Wideload
+      
+      # T1 Haulers
+      648 -> :hauler        # Badger
+      649 -> :hauler        # Tayra
+      650 -> :hauler        # Nereus
+      651 -> :hauler        # Hoarder
+      652 -> :hauler        # Mammoth
+      653 -> :hauler        # Wreathe
+      654 -> :hauler        # Kryos
+      655 -> :hauler        # Epithal
+      656 -> :hauler        # Miasmos
+      657 -> :hauler        # Iteron Mark V
+      
+      # Default classification based on group
+      _ ->
+        ship_class = EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
+        if ship_class == :unknown, do: :other, else: ship_class
+    end
   end
 end

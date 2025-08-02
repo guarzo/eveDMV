@@ -5,6 +5,7 @@ defmodule EveDmvWeb.Layouts do
   See the `layouts` directory for all templates available.
   The "root" layout is a skeleton rendered around other layouts.
   """
+  """
   use EveDmvWeb, :html
 
   embed_templates("layouts/*")

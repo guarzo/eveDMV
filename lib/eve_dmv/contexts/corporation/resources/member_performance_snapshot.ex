@@ -2,6 +2,7 @@ defmodule EveDmv.Contexts.Corporation.Resources.MemberPerformanceSnapshot do
   @moduledoc """
   Member performance snapshot resource for tracking historical performance data.
   """
+  """
 
   use Ash.Resource,
     domain: EveDmv.Api,

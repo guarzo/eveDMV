@@ -8,6 +8,9 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
   - Control zone analysis
   - Territory stability assessment
   """
+  """
+
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
@@ -111,16 +114,16 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
   end
 
   defp create_analysis_windows(time_range) do
-    total_duration = DateTime.diff(time_range.until, time_range.since, :hour)
+    total_duration = DateTimeUtils.diff(time_range.until, time_range.since, :hour)
     # At least daily windows
     window_size = max(24, div(total_duration, 7))
 
     Stream.unfold(time_range.since, fn current ->
-      if DateTime.compare(current, time_range.until) == :lt do
-        window_end = DateTime.add(current, window_size * 3600, :second)
+      if DateTimeUtils.compare(current, time_range.until) == :lt do
+        window_end = DateTimeUtils.add(current, window_size * 3600, :second)
 
         window_end =
-          if DateTime.compare(window_end, time_range.until) == :gt do
+          if DateTimeUtils.compare(window_end, time_range.until) == :gt do
             time_range.until
           else
             window_end
@@ -155,8 +158,8 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
 
   defp has_activity_in_window?(killmails, window_start, window_end) do
     Enum.any?(killmails, fn km ->
-      DateTime.compare(km.timestamp, window_start) != :lt &&
-        DateTime.compare(km.timestamp, window_end) == :lt
+      DateTimeUtils.compare(km.timestamp, window_start) != :lt &&
+        DateTimeUtils.compare(km.timestamp, window_end) == :lt
     end)
   end
 
@@ -165,8 +168,8 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
     |> Enum.flat_map(fn system_data ->
       system_data.killmails
       |> Enum.filter(fn km ->
-        DateTime.compare(km.timestamp, window_start) != :lt &&
-          DateTime.compare(km.timestamp, window_end) == :lt
+        DateTimeUtils.compare(km.timestamp, window_start) != :lt &&
+          DateTimeUtils.compare(km.timestamp, window_end) == :lt
       end)
       |> Enum.flat_map(fn km ->
         entities =
@@ -195,13 +198,13 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
       strategic_data.killmail_data
       |> Enum.map(fn system_data ->
         Enum.count(system_data.killmails, fn km ->
-          DateTime.compare(km.timestamp, window_start) != :lt &&
-            DateTime.compare(km.timestamp, window_end) == :lt
+          DateTimeUtils.compare(km.timestamp, window_start) != :lt &&
+            DateTimeUtils.compare(km.timestamp, window_end) == :lt
         end)
       end)
       |> Enum.sum()
 
-    hours = DateTime.diff(window_end, window_start, :hour)
+    hours = DateTimeUtils.diff(window_end, window_start, :hour)
     if hours > 0, do: kill_count / hours, else: 0.0
   end
 
@@ -462,7 +465,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
       killmails
       |> Enum.chunk_every(2, 1, :discard)
       |> Enum.map(fn [km1, km2] ->
-        DateTime.diff(km2.timestamp, km1.timestamp, :minute)
+        DateTimeUtils.diff(km2.timestamp, km1.timestamp, :minute)
       end)
       # Responses within 30 minutes
       |> Enum.filter(&(&1 <= 30))
@@ -608,7 +611,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
       start_time: strategic_data.time_range.since,
       end_time: strategic_data.time_range.until,
       duration_days:
-        DateTime.diff(
+        DateTimeUtils.diff(
           strategic_data.time_range.until,
           strategic_data.time_range.since,
           :day
@@ -691,8 +694,8 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
         time_windows
         |> Enum.map(fn {start_time, end_time} ->
           Enum.count(system_data.killmails, fn km ->
-            DateTime.compare(km.timestamp, start_time) != :lt &&
-              DateTime.compare(km.timestamp, end_time) == :lt
+            DateTimeUtils.compare(km.timestamp, start_time) != :lt &&
+              DateTimeUtils.compare(km.timestamp, end_time) == :lt
           end)
         end)
 
@@ -791,4 +794,5 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
     |> Enum.sum()
     |> Kernel./(length(values))
   end
+
 end

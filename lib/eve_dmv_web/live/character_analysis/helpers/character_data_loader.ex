@@ -13,9 +13,11 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
   The module now serves as a lightweight coordinator that calls context functions
   and aggregates the results for the LiveView.
   """
+  """
 
   alias EveDmv.Contexts.CharacterIntelligence
   alias EveDmv.Contexts.CombatIntelligence
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.CharacterQueries
   alias EveDmv.Database.QueryPerformance
   require Logger
@@ -27,7 +29,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
     Logger.info("Starting analysis for character #{character_id}")
 
     # Use optimized queries from CharacterQueries module
-    ninety_days_ago = DateTime.utc_now() |> DateTime.add(-90, :day)
+    ninety_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
 
     # Get character stats using optimized query
     stats =
@@ -78,10 +80,13 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
       end
 
     # Get external groups analysis (15-day window for more recent activity)
-    fifteen_days_ago = DateTime.utc_now() |> DateTime.add(-15, :day)
+    fifteen_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-15 * 24 * 60 * 60, :second)
 
-    {:ok, external_groups} =
-      CombatIntelligence.get_external_groups(character_id, fifteen_days_ago)
+    external_groups =
+      case CombatIntelligence.get_external_groups(character_id, fifteen_days_ago) do
+        {:ok, groups} -> groups
+        {:error, _} -> %{alliances: [], corporations: []}
+      end
 
     # Get gang size patterns
     gang_size_patterns =
@@ -94,7 +99,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
       end
 
     # Calculate activity metrics for the last 30 days
-    thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30, :day)
+    thirty_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-30 * 24 * 60 * 60, :second)
 
     activity_stats =
       case CharacterIntelligence.calculate_activity_stats(character_id, thirty_days_ago) do

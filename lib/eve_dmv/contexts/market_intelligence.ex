@@ -10,6 +10,7 @@ defmodule EveDmv.Contexts.MarketIntelligence do
 
   This context serves as a pilot implementation of the DDD approach.
   """
+  """
 
   use EveDmv.Contexts.BoundedContext, name: :market_intelligence
   use Supervisor

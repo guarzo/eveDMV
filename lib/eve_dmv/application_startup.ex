@@ -5,6 +5,7 @@ defmodule EveDmv.ApplicationStartup do
   Handles initialization tasks that need to run when the application starts,
   including DNS resolution, connectivity checks, and environment setup.
   """
+  """
 
   alias EveDmv.Utils.DnsResolver
   alias EveDmvWeb.Telemetry.PerformanceTelemetry

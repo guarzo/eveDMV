@@ -8,8 +8,8 @@ defmodule EveDmv.Api.WormholeOperationsApi do
 
   resources do
     resource(EveDmv.Intelligence.HomeDefenseAnalytics)
-    resource(EveDmv.Intelligence.Wormhole.FleetComposition)
-    resource(EveDmv.Intelligence.Wormhole.Vetting)
+    resource(EveDmv.Contexts.WormholeOperations.Domain.Wormhole.WhFleetComposition)
+    resource(EveDmv.Contexts.WormholeOperations.Domain.Wormhole.WhVetting)
   end
 
   authorization do

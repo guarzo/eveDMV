@@ -5,7 +5,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
   Analyzes the sequence of events in a battle to understand the flow of combat,
   identify key moments, and provide temporal context for tactical analysis.
   """
+  """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   require Logger
 
   @doc """
@@ -263,7 +265,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
       first_event = List.first(timeline_events)
       last_event = List.last(timeline_events)
 
-      DateTime.diff(last_event.timestamp, first_event.timestamp, :second)
+      DateTimeUtils.diff(last_event.timestamp, first_event.timestamp, :second)
     end
   end
 
@@ -358,19 +360,19 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
       # Create 1-minute time windows
       start_time = List.first(timeline_events).timestamp
       end_time = List.last(timeline_events).timestamp
-      duration_seconds = DateTime.diff(end_time, start_time, :second)
+      duration_seconds = DateTimeUtils.diff(end_time, start_time, :second)
       window_count = max(1, div(duration_seconds, 60))
 
       # Calculate intensity for each time window
       Enum.map(0..window_count, fn window_index ->
-        window_start = DateTime.add(start_time, window_index * 60, :second)
-        window_end = DateTime.add(window_start, 60, :second)
+        window_start = DateTimeUtils.add(start_time, window_index * 60, :second)
+        window_end = DateTimeUtils.add(window_start, 60, :second)
 
         # Get events in this window
         window_events =
           Enum.filter(timeline_events, fn event ->
-            DateTime.compare(event.timestamp, window_start) != :lt and
-              DateTime.compare(event.timestamp, window_end) == :lt
+            DateTimeUtils.compare(event.timestamp, window_start) != :lt and
+              DateTimeUtils.compare(event.timestamp, window_end) == :lt
           end)
 
         # Calculate intensity based on multiple factors
@@ -507,7 +509,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
   defp calculate_time_since_last(_killmail, nil), do: 0
 
   defp calculate_time_since_last(killmail, prev_killmail) do
-    DateTime.diff(killmail.killmail_time, prev_killmail.killmail_time, :second)
+    DateTimeUtils.diff(killmail.killmail_time, prev_killmail.killmail_time, :second)
   end
 
   defp calculate_accumulated_value(killmails, index) do
@@ -524,7 +526,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
       avg_time_between =
         timeline_events
         |> Enum.chunk_every(2, 1, :discard)
-        |> Enum.map(fn [e1, e2] -> DateTime.diff(e2.timestamp, e1.timestamp, :second) end)
+        |> Enum.map(fn [e1, e2] -> DateTimeUtils.diff(e2.timestamp, e1.timestamp, :second) end)
         |> Enum.sum()
         |> Kernel./(length(timeline_events) - 1)
 
@@ -574,7 +576,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
       |> Enum.group_by(fn event ->
         # Group by time window
         start_time = List.first(events).timestamp
-        seconds_since_start = DateTime.diff(event.timestamp, start_time, :second)
+        seconds_since_start = DateTimeUtils.diff(event.timestamp, start_time, :second)
         div(seconds_since_start, window_seconds)
       end)
       |> Enum.sort_by(&elem(&1, 0))
@@ -1138,8 +1140,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
       |> Enum.chunk_every(3, 1, :discard)
       |> Enum.filter(fn [e1, e2, e3] ->
         # 5+ minute gaps
-        DateTime.diff(e2.timestamp, e1.timestamp, :second) > 300 or
-          DateTime.diff(e3.timestamp, e2.timestamp, :second) > 300
+        DateTimeUtils.diff(e2.timestamp, e1.timestamp, :second) > 300 or
+          DateTimeUtils.diff(e3.timestamp, e2.timestamp, :second) > 300
       end)
       |> Enum.map(fn [_, e2, _] ->
         %{
@@ -1180,7 +1182,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
         events
         |> Enum.chunk_every(2, 1, :discard)
         |> Enum.map(fn [e1, e2] ->
-          DateTime.diff(e2.timestamp, e1.timestamp, :second)
+          DateTimeUtils.diff(e2.timestamp, e1.timestamp, :second)
         end)
 
       avg_gap = average(time_gaps)
@@ -1205,7 +1207,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
         events
         |> Enum.chunk_every(2, 1, :discard)
         |> Enum.map(fn [e1, e2] ->
-          DateTime.diff(e2.timestamp, e1.timestamp, :second)
+          DateTimeUtils.diff(e2.timestamp, e1.timestamp, :second)
         end)
 
       # Count gaps under 2 minutes
@@ -1219,7 +1221,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
     events
     |> Enum.chunk_every(2, 1, :discard)
     |> Enum.filter(fn [e1, e2] ->
-      gap = DateTime.diff(e2.timestamp, e1.timestamp, :second)
+      gap = DateTimeUtils.diff(e2.timestamp, e1.timestamp, :second)
       # 2-10 minute gaps
       gap > 120 and gap < 600
     end)
@@ -1281,12 +1283,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
       sorted = Enum.sort_by(killmails, & &1.killmail_time)
       start_time = List.first(sorted).killmail_time
       end_time = List.last(sorted).killmail_time
-      battle_duration = DateTime.diff(end_time, start_time, :second)
+      battle_duration = DateTimeUtils.diff(end_time, start_time, :second)
 
       if battle_duration == 0 do
         1.0
       else
-        time_into_battle = DateTime.diff(timestamp, start_time, :second)
+        time_into_battle = DateTimeUtils.diff(timestamp, start_time, :second)
         progress = time_into_battle / battle_duration
 
         # Early and late kills have more impact
@@ -1328,4 +1330,5 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
   defp ascending_values?(values) do
     values == Enum.sort(values)
   end
+
 end

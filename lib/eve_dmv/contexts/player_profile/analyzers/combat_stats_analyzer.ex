@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
   Analyzes individual character combat performance including kill/death ratios,
   ISK efficiency, weapon preferences, and engagement patterns.
   """
+  """
 
   use EveDmv.ErrorHandler
 

@@ -9,8 +9,10 @@ defmodule EveDmv.Shared.Correlation.SystemActivityCollector do
   - Creating temporal markers for correlation analysis
   - Classifying activity types and participants
   """
+  """
 
   alias EveDmv.Api
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
 
   require Logger
@@ -19,7 +21,7 @@ defmodule EveDmv.Shared.Correlation.SystemActivityCollector do
   Fetches activity data for multiple systems within a time window.
   """
   def fetch_system_activities(system_ids, time_window_hours) do
-    since = DateTime.utc_now() |> DateTime.add(-time_window_hours * 3600, :second)
+    since = DateTime.utc_now() |> DateTimeUtils.add(-time_window_hours * 3600, :second)
 
     activities =
       Enum.map(system_ids, fn system_id ->
@@ -322,7 +324,7 @@ defmodule EveDmv.Shared.Correlation.SystemActivityCollector do
   defp calculate_time_gaps([_]), do: []
 
   defp calculate_time_gaps([t1, t2 | rest]) do
-    gap_minutes = DateTime.diff(t2, t1, :minute)
+    gap_minutes = DateTimeUtils.diff(t2, t1, :minute)
     [gap_minutes | calculate_time_gaps([t2 | rest])]
   end
 
@@ -428,7 +430,7 @@ defmodule EveDmv.Shared.Correlation.SystemActivityCollector do
     else
       first = List.first(timestamps)
       last = List.last(timestamps)
-      DateTime.diff(last, first, :hour)
+      DateTimeUtils.diff(last, first, :hour)
     end
   end
 
@@ -547,9 +549,9 @@ defmodule EveDmv.Shared.Correlation.SystemActivityCollector do
       timestamps
       |> Enum.group_by(fn ts ->
         # Calculate which window this timestamp falls into
-        seconds_since_first = DateTime.diff(ts, first_timestamp, :second)
+        seconds_since_first = DateTimeUtils.diff(ts, first_timestamp, :second)
         window_index = div(seconds_since_first, window_size_seconds)
-        DateTime.add(first_timestamp, window_index * window_size_seconds, :second)
+        DateTimeUtils.add(first_timestamp, window_index * window_size_seconds, :second)
       end)
       |> Enum.to_list()
     end

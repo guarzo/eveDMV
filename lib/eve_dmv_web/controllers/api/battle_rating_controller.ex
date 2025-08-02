@@ -5,6 +5,7 @@ defmodule EveDmvWeb.Api.BattleRatingController do
   Allows users to rate shared battle reports and manages
   the rating aggregation system.
   """
+  """
 
   use EveDmvWeb, :controller
 

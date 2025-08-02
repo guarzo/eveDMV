@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.BattleSharing do
   Provides the public API for creating shareable battle reports, managing
   video integration, and enabling community curation of battle content.
   """
+  """
 
   alias EveDmv.Contexts.BattleSharing.Domain.BattleCurator
   require Logger
@@ -95,35 +96,39 @@ defmodule EveDmv.Contexts.BattleSharing do
   """
   def get_battle_report(report_id) do
     # Use the BattleCurator to fetch the report with full details
-    {:ok, full_report} = get_battle_report_from_curator(report_id)
+    case get_battle_report_from_curator(report_id) do
+      {:ok, full_report} ->
+        # Transform to the expected format for the public API
+        public_report = %{
+          report_id: full_report.report_id,
+          battle_id: full_report.battle_id,
+          creator: %{
+            character_id: full_report.creator_character_id,
+            character_name: full_report.creator_name
+          },
+          title: full_report.title,
+          description: full_report.description,
+          video_links: full_report.video_links,
+          tactical_highlights: full_report.tactical_highlights,
+          ratings: %{
+            average: full_report.metrics.average_rating,
+            count: full_report.metrics.total_ratings
+          },
+          visibility: full_report.visibility,
+          tags: full_report.tags,
+          auto_analysis: full_report.auto_analysis,
+          tactical_insights: full_report.tactical_insights,
+          share_urls: full_report.share_urls,
+          metrics: full_report.metrics,
+          created_at: full_report.created_at,
+          updated_at: full_report.updated_at
+        }
 
-    # Transform to the expected format for the public API
-    public_report = %{
-      report_id: full_report.report_id,
-      battle_id: full_report.battle_id,
-      creator: %{
-        character_id: full_report.creator_character_id,
-        character_name: full_report.creator_name
-      },
-      title: full_report.title,
-      description: full_report.description,
-      video_links: full_report.video_links,
-      tactical_highlights: full_report.tactical_highlights,
-      ratings: %{
-        average: full_report.metrics.average_rating,
-        count: full_report.metrics.total_ratings
-      },
-      visibility: full_report.visibility,
-      tags: full_report.tags,
-      auto_analysis: full_report.auto_analysis,
-      tactical_insights: full_report.tactical_insights,
-      share_urls: full_report.share_urls,
-      metrics: full_report.metrics,
-      created_at: full_report.created_at,
-      updated_at: full_report.updated_at
-    }
+        {:ok, public_report}
 
-    {:ok, public_report}
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   @doc """

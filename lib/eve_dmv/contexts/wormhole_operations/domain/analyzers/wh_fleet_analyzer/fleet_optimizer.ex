@@ -1,10 +1,11 @@
-defmodule EveDmv.Intelligence.Analyzers.WhFleetAnalyzer.FleetOptimizer do
+defmodule EveDmv.Contexts.WormholeOperations.Domain.Analyzers.WhFleetAnalyzer.FleetOptimizer do
   @moduledoc """
   Handles fleet optimization and recommendation generation.
 
   This module provides functionality for generating optimization
   recommendations, analyzing counter-doctrines, and creating
   situational variants of fleet compositions.
+  """
   """
 
   alias EveDmv.Intelligence.Fleet.FleetEffectivenessCalculator

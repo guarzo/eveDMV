@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   This module provides the external interface for intelligence analysis,
   threat assessment, and tactical decision support.
   """
+  """
 
   alias EveDmv.Contexts.CombatIntelligence.Domain
   alias EveDmv.Result
@@ -165,6 +166,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
     with :ok <- validate_search_criteria(criteria),
          {:ok, matching_characters} <- Domain.CharacterAnalyzer.search_by_criteria(criteria) do
       {:ok, matching_characters}
+    else
+      {:error, _} = error -> error
+      _ -> {:error, :search_failed}
     end
   end
 

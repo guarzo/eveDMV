@@ -6,7 +6,9 @@ defmodule EveDmv.Contexts.Corporation.Core.CombatDoctrineAnalyzer do
   - Corporation Analysis doctrine analysis
   - Corporation Intelligence fleet composition tracking
   """
+  """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.CharacterRepository
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
   alias EveDmv.Platform.Database.CorporationRepository
@@ -97,7 +99,7 @@ defmodule EveDmv.Contexts.Corporation.Core.CombatDoctrineAnalyzer do
 
   defp gather_combat_data(members) do
     # Gather combat data for the last 90 days
-    start_date = DateTime.utc_now() |> DateTime.add(-90, :day)
+    start_date = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
 
     combat_data =
       members

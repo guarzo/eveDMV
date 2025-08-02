@@ -5,6 +5,7 @@ defmodule EveDmv.Shared.Intelligence.Facade do
   This module maintains backward compatibility while delegating to the new
   modular intelligence components.
   """
+  """
 
   alias EveDmv.Shared.Intelligence.Collector
   alias EveDmv.Shared.Intelligence.FusionEngine

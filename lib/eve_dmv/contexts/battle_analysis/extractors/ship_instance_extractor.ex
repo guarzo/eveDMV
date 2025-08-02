@@ -6,6 +6,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Extractors.ShipInstanceExtractor do
   extracting their combat context, and creating normalized ship instance records
   for both victims and attackers.
   """
+  """
 
   require Logger
 

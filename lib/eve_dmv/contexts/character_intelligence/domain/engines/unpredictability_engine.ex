@@ -5,8 +5,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
   Analyzes engagement patterns, ship selection variance, and tactical diversity
   to determine unpredictability threat level.
   """
+  """
 
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.StaticData.SystemData
 
   require Logger
@@ -295,12 +297,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Unp
       0.5
     else
       # Calculate time gaps between engagements
-      sorted_timestamps = Enum.sort(timestamps, &DateTime.compare/2)
+      sorted_timestamps = Enum.sort(timestamps, &DateTimeUtils.compare/2)
 
       gaps =
         sorted_timestamps
         |> Enum.chunk_every(2, 1, :discard)
-        |> Enum.map(fn [t1, t2] -> DateTime.diff(t2, t1, :hour) end)
+        |> Enum.map(fn [t1, t2] -> DateTimeUtils.diff(t2, t1, :hour) end)
         |> Enum.filter(&(&1 > 0))
 
       if Enum.empty?(gaps) do

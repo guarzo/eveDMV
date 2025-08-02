@@ -1,0 +1,307 @@
+<div class="unified-dashboard">
+  <div class="dashboard-header">
+    <h1 class="text-2xl font-bold"><%= @page_title %></h1>
+    
+    <!-- Time Range Selector -->
+    <div class="time-range-controls">
+      <select name="time_range" value={@time_range} class="form-select" phx-change="change_time_range">
+        <option value="last_hour" selected={@time_range == :last_hour}>Last Hour</option>
+        <option value="last_24h" selected={@time_range == :last_24h}>Last 24 Hours</option>
+        <option value="last_7d" selected={@time_range == :last_7d}>Last 7 Days</option>
+        <option value="last_30d" selected={@time_range == :last_30d}>Last 30 Days</option>
+      </select>
+      
+      <button phx-click="refresh_data" class="btn btn-primary">
+        <span class="icon-refresh" />
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <%= if @loading do %>
+    <div class="loading-spinner">
+      <div class="spinner" />
+      <span>Loading dashboard data...</span>
+    </div>
+  <% end %>
+
+  <%= if @error do %>
+    <div class="alert alert-error">
+      <span class="icon-error" />
+      <%= @error %>
+      <button phx-click="refresh_data" class="btn btn-sm">Retry</button>
+    </div>
+  <% end %>
+
+  <%= unless @loading or @error do %>
+    <!-- Surveillance Dashboard Content -->
+    <%= if @dashboard_type == :surveillance do %>
+      <div class="surveillance-dashboard-content">
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <h3>Total Profiles</h3>
+            <div class="metric-value"><%= @profile_metrics.total_profiles %></div>
+          </div>
+          
+          <div class="metric-card">
+            <h3>Total Alerts</h3>
+            <div class="metric-value"><%= @profile_metrics.active_alerts %></div>
+          </div>
+          
+          <div class="metric-card">
+            <h3>Match Rate</h3>
+            <div class="metric-value"><%= Float.round(@profile_metrics.match_rate * 100, 1) %>%</div>
+          </div>
+          
+          <div class="metric-card">
+            <h3>Avg Response</h3>
+            <div class="metric-value"><%= @profile_metrics.avg_response || "N/A" %></div>
+          </div>
+          
+          <div class="metric-card">
+            <h3>System Health</h3>
+            <div class="metric-value"><%= @profile_metrics.system_health || "Good" %></div>
+          </div>
+        </div>
+
+        <div class="dashboard-content">
+          <div class="dashboard-sections">
+            <section class="performance-metrics-section">
+              <h2>Profile Performance Metrics</h2>
+              <%= if Enum.empty?(@profiles) do %>
+                <div class="empty-state">
+                  <span class="icon-surveillance" />
+                  <h3>No Surveillance Profiles</h3>
+                  <p>Create surveillance profiles to start monitoring threats and activities.</p>
+                  <.link patch="/surveillance-profiles" class="btn btn-primary">
+                    Create Profile
+                  </.link>
+                </div>
+              <% else %>
+                <div class="profiles-list">
+                  <%= for profile <- @profiles do %>
+                    <div class="profile-card">
+                      <h4><%= profile.name %></h4>
+                      <p><%= profile.description %></p>
+                      <div class="profile-stats">
+                        <span>Matches: <%= profile.match_count || 0 %></span>
+                        <span>Alerts: <%= profile.alert_count || 0 %></span>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
+            </section>
+            
+            <section class="recommendations-section">
+              <h2>Performance Recommendations</h2>
+              <%= if Enum.empty?(@performance_recommendations || []) do %>
+                <div class="empty-recommendations">
+                  <p>No recommendations available at this time.</p>
+                </div>
+              <% else %>
+                <div class="recommendations-list">
+                  <%= for recommendation <- @performance_recommendations do %>
+                    <div class="recommendation-card">
+                      <h4><%= recommendation.title %></h4>
+                      <p><%= recommendation.description %></p>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
+            </section>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Intelligence Dashboard Content -->
+    <%= if @dashboard_type == :intelligence do %>
+      <div class="intelligence-dashboard-content">
+        <div class="empty-state">
+          <span class="icon-intelligence" />
+          <h3>Intelligence Dashboard</h3>
+          <p>Intelligence analytics and reports will be displayed here.</p>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Monitoring Dashboard Content -->
+    <%= if @dashboard_type == :monitoring do %>
+      <div class="monitoring-dashboard-content">
+        <div class="empty-state">
+          <span class="icon-monitoring" />
+          <h3>System Monitoring</h3>
+          <p>System health and performance metrics will be displayed here.</p>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- General Dashboard Content -->
+    <%= if @dashboard_type == :general do %>
+      <div class="general-dashboard-content">
+        <div class="empty-state">
+          <span class="icon-dashboard" />
+          <h3>Dashboard</h3>
+          <p>General application overview and quick access to key features.</p>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
+</div>
+
+<style>
+.unified-dashboard {
+  padding: 1rem;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.time-range-controls {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.metric-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.metric-card h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.metric-value {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #111827;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: #6b7280;
+}
+
+.empty-state h3 {
+  margin: 1rem 0 0.5rem 0;
+  color: #111827;
+}
+
+.loading-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  gap: 1rem;
+}
+
+.spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid #e5e7eb;
+  border-top: 2px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.alert {
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.alert-error {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.btn {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-primary {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #2563eb;
+}
+
+.btn-sm {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.form-select {
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  background-color: white;
+}
+
+.profiles-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.profile-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.profile-card h4 {
+  margin: 0 0 0.5rem 0;
+  color: #111827;
+}
+
+.profile-stats {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-top: 0.5rem;
+}
+</style>

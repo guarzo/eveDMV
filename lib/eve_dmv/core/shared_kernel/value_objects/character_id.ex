@@ -5,13 +5,14 @@ defmodule EveDmv.Core.SharedKernel.ValueObjects.CharacterId do
   Character IDs are immutable identifiers for EVE characters, with specific
   validation rules and formatting requirements.
   """
+  """
+
+  defstruct [:value]
 
   # Character IDs must be greater than 90,000,000
   @min_character_id 90_000_000
 
   @type t :: %__MODULE__{value: integer()}
-
-  defstruct [:value]
 
   @doc """
   Create a new CharacterId from an integer.

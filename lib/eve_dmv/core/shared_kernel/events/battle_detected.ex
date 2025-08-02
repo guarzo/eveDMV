@@ -5,9 +5,11 @@ defmodule EveDmv.Core.SharedKernel.Events.BattleDetected do
   This event is published by the battle detection engine and consumed
   by various contexts for further analysis and notification.
   """
+  """
 
   alias EveDmv.Core.SharedKernel.ValueObjects.IskAmount
   alias EveDmv.Core.SharedKernel.ValueObjects.SystemId
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   defstruct [
     :event_id,
@@ -231,7 +233,7 @@ defmodule EveDmv.Core.SharedKernel.Events.BattleDetected do
   """
   @spec age_seconds(t()) :: integer()
   def age_seconds(%__MODULE__{occurred_at: occurred_at}) do
-    DateTime.diff(DateTime.utc_now(), occurred_at, :second)
+    DateTimeUtils.diff(DateTime.utc_now(), occurred_at, :second)
   end
 
   @doc """

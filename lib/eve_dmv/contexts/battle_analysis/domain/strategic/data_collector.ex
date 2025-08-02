@@ -7,8 +7,10 @@ defmodule EveDmv.Shared.Strategic.DataCollector do
   - Basic metric calculations
   - Data preparation for analysis
   """
+  """
 
   alias EveDmv.Api
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
 
   require Logger
@@ -17,7 +19,7 @@ defmodule EveDmv.Shared.Strategic.DataCollector do
   Collects strategic data for the specified scope and timeframe.
   """
   def collect_strategic_data(analysis_scope, analysis_window_days) do
-    since = DateTime.utc_now() |> DateTime.add(-analysis_window_days * 24 * 3600, :second)
+    since = DateTime.utc_now() |> DateTimeUtils.add(-analysis_window_days * 24 * 3600, :second)
 
     case analysis_scope do
       %{systems: system_ids} when is_list(system_ids) ->

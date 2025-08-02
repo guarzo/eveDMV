@@ -2,6 +2,7 @@ defmodule EveDmv.Analytics.BattleDetector.Assessment do
   @moduledoc """
   Assessment module for evaluating battle detection quality and performance.
   """
+  """
 
   @doc """
   Assess the quality of battle detection results.

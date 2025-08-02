@@ -8,8 +8,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.DataFetcher
   - Processing and structuring combat data
   - Validating data quality for analysis
   """
+  """
 
   alias EveDmv.Api
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
 
   require Ash.Query
@@ -31,7 +33,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.DataFetcher
   """
   def fetch_character_combat_data(character_id, options \\ []) do
     analysis_window_days = Keyword.get(options, :analysis_window_days, @analysis_window_days)
-    cutoff_date = DateTime.add(DateTime.utc_now(), -analysis_window_days * 24 * 60 * 60, :second)
+    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -analysis_window_days * 24 * 60 * 60, :second)
 
     Logger.debug(
       "Fetching combat data for character #{character_id}, window: #{analysis_window_days} days"

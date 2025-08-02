@@ -5,6 +5,7 @@ defmodule EveDmv.Database.ArchiveManager.PartitionManager do
   Manages the creation, maintenance, and configuration of archive tables
   including structure creation, indexing, and compression setup.
   """
+  """
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Repo

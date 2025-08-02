@@ -12,12 +12,14 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
   All analysis is based on real killmail data, behavioral patterns,
   and threat scoring from the ThreatAssessmentEngine.
   """
+  """
 
   import Ecto.Query
 
   alias EveDmv.Api
   alias EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer
   alias EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAssessmentEngine
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Shared.Infrastructure.UnifiedCache
@@ -164,7 +166,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
   end
 
   defp get_corporation_combat_stats(corporation_id, days) do
-    since = DateTime.add(DateTime.utc_now(), -days * 24, :hour)
+    since = DateTimeUtils.add(DateTime.utc_now(), -days * 24 * 60 * 60, :second)
 
     # Query killmails for corporation members
     victim_query =
@@ -197,7 +199,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
   end
 
   defp get_engagement_patterns(entity_id, entity_type, timeframe) do
-    since = DateTime.add(DateTime.utc_now(), -timeframe * 24, :hour)
+    since = DateTimeUtils.add(DateTime.utc_now(), -timeframe * 24 * 60 * 60, :second)
 
     # Query recent engagements
     query = build_engagement_query(entity_id, entity_type, since)

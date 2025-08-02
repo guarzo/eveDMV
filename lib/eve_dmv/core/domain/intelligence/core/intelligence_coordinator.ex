@@ -5,7 +5,9 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
   Manages and orchestrates various intelligence analysis components, providing
   a unified interface for comprehensive intelligence gathering and analysis.
   """
+  """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.Analyzers.CharacterAnalyzer
   alias EveDmv.Intelligence.Analyzers.WHVettingAnalyzer
   alias EveDmv.Intelligence.Core.CacheHelper
@@ -290,7 +292,7 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
       total_queued: 5,
       in_progress: 3,
       average_wait_time_minutes: 2.3,
-      estimated_completion: DateTime.add(DateTime.utc_now(), 15 * 60, :second)
+      estimated_completion: DateTimeUtils.add(DateTime.utc_now(), 15 * 60, :second)
     }
   end
 
@@ -348,11 +350,11 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
 
   defp calculate_timeframe_cutoff(timeframe) do
     case timeframe do
-      :last_1h -> DateTime.add(DateTime.utc_now(), -1, :hour)
-      :last_24h -> DateTime.add(DateTime.utc_now(), -24, :hour)
-      :last_7d -> DateTime.add(DateTime.utc_now(), -7, :day)
-      :last_30d -> DateTime.add(DateTime.utc_now(), -30, :day)
-      _ -> DateTime.add(DateTime.utc_now(), -24, :hour)
+      :last_1h -> DateTimeUtils.add(DateTime.utc_now(), -1 * 60 * 60, :second)
+      :last_24h -> DateTimeUtils.add(DateTime.utc_now(), -24 * 60 * 60, :second)
+      :last_7d -> DateTimeUtils.add(DateTime.utc_now(), -7 * 24 * 60 * 60, :second)
+      :last_30d -> DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
+      _ -> DateTimeUtils.add(DateTime.utc_now(), -24 * 60 * 60, :second)
     end
   end
 
@@ -360,7 +362,7 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
     alias EveDmv.Contexts.BattleAnalysis
 
     # Get recent battles and analyze for threat patterns
-    hours_back = DateTime.diff(DateTime.utc_now(), cutoff_time, :hour)
+    hours_back = DateTimeUtils.diff(DateTime.utc_now(), cutoff_time, :hour)
 
     case BattleAnalysis.detect_recent_battles(hours_back) do
       {:ok, battles} ->
@@ -393,7 +395,7 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
   defp get_system_activity_alerts(cutoff_time) do
     # System activity monitoring alerts
     current_time = DateTime.utc_now()
-    time_diff_hours = DateTime.diff(current_time, cutoff_time, :hour)
+    time_diff_hours = DateTimeUtils.diff(current_time, cutoff_time, :hour)
 
     # Check for unusual system activity patterns
     base_alerts = []
@@ -480,7 +482,7 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
     alias EveDmv.Contexts.BattleAnalysis
 
     # Get recent battle analyses
-    hours_back = DateTime.diff(DateTime.utc_now(), cutoff_time, :hour)
+    hours_back = DateTimeUtils.diff(DateTime.utc_now(), cutoff_time, :hour)
 
     case BattleAnalysis.detect_recent_battles(hours_back) do
       {:ok, battles} ->
@@ -497,7 +499,7 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
   end
 
   defp get_recent_vetting_analyses(cutoff_time, limit) do
-    alias EveDmv.Intelligence.Wormhole.Vetting
+    alias EveDmv.Contexts.WormholeOperations.Domain.Wormhole.WhVetting, as: Vetting
 
     # Get recent vetting analyses from the database
     try do

@@ -6,6 +6,7 @@ defmodule EveDmv.Eve.TypeResolver do
   eve_item_types table, this module fetches the type information from ESI and
   creates the necessary records.
   """
+  """
 
   import Ash.Expr
 

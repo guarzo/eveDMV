@@ -5,6 +5,7 @@ defmodule EveDmv.Eve.NameResolver.PerformanceOptimizer do
   Handles cache warming, preloading, and performance tuning to optimize
   name resolution performance for common use cases and high-traffic scenarios.
   """
+  """
 
   alias EveDmv.Eve.NameResolver.EsiEntityResolver
   alias EveDmv.Eve.NameResolver.StaticDataResolver

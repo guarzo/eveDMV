@@ -5,8 +5,10 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.StatisticsService do
   Provides aggregated statistics for systems, characters, corporations,
   and other entities based on killmail activity.
   """
+  """
 
   alias EveDmv.Api
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailEnriched
   alias EveDmv.SharedKernel.ValueObjects.TimeRange
 
@@ -71,8 +73,8 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.StatisticsService do
             Enum.filter(participants, fn participant ->
               km_time = participant.killmail_enriched.killmail_time
 
-              DateTime.compare(km_time, time_range.since) != :lt and
-                DateTime.compare(km_time, time_range.until) != :gt
+              DateTimeUtils.compare(km_time, time_range.since) != :lt and
+                DateTimeUtils.compare(km_time, time_range.until) != :gt
             end)
 
           statistics =

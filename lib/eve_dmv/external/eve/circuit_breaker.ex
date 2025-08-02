@@ -1,5 +1,6 @@
 defmodule EveDmv.Eve.CircuitBreaker do
   @moduledoc """
+
   Circuit breaker implementation for ESI API calls.
 
   Protects against cascading failures by:
@@ -7,6 +8,9 @@ defmodule EveDmv.Eve.CircuitBreaker do
   - Opening circuit when failure threshold exceeded
   - Attempting recovery after cooldown period
   - Providing fast-fail during outages
+  """
+
+  alias EveDmv.Core.Utils.DateTimeUtils
   """
 
   use GenServer
@@ -268,7 +272,7 @@ defmodule EveDmv.Eve.CircuitBreaker do
         false
 
       last_failure ->
-        DateTime.diff(DateTime.utc_now(), last_failure, :millisecond) >= state.recovery_timeout
+        DateTimeUtils.diff(DateTime.utc_now(), last_failure, :millisecond) >= state.recovery_timeout
     end
   end
 

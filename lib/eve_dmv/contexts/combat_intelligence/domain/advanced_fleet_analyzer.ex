@@ -12,6 +12,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
   Provides actionable intelligence for fleet commanders and strategic planners.
   """
+  """
 
   alias EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer
   alias EveDmv.Contexts.CombatIntelligence.Domain.ShipStatsCalculator
@@ -785,17 +786,18 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
   defp calculate_tank_efficiency(ship_analyses) do
     # Analyze how well the tank types work together
-    tank_types =
+    tank_types_list =
       ship_analyses
       |> Enum.map(fn ship -> ship.stats && ship.stats.meta_info.tank_type end)
       |> Enum.reject(&is_nil/1)
-      |> Enum.frequencies()
+
+    tank_types_freq = Enum.frequencies(tank_types_list)
 
     # Homogeneous tank is more efficient
     dominant_tank_percentage =
-      if map_size(tank_types) > 0 do
-        {_tank, count} = Enum.max_by(tank_types, &elem(&1, 1))
-        count / length(tank_types)
+      if map_size(tank_types_freq) > 0 do
+        {_tank, count} = Enum.max_by(tank_types_freq, &elem(&1, 1))
+        count / length(tank_types_list)
       else
         0
       end

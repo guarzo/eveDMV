@@ -5,7 +5,9 @@ defmodule EveDmv.Contexts.FleetOperations.Core.MassCalculator do
   Provides functions to calculate ship mass, fleet composition mass efficiency,
   and wormhole mass limits for strategic planning.
   """
+  """
 
+  alias EveDmv.Api
   alias EveDmv.StaticData.ShipTypes
   require Logger
 
@@ -66,12 +68,16 @@ defmodule EveDmv.Contexts.FleetOperations.Core.MassCalculator do
   """
   @spec calculate_fleet_mass([map()]) :: {:ok, integer()} | {:error, term()}
   def calculate_fleet_mass(fleet_composition) when is_list(fleet_composition) do
-    total_mass =
-      fleet_composition
-      |> Enum.map(&get_ship_mass/1)
-      |> Enum.sum()
+    if Enum.empty?(fleet_composition) do
+      {:error, :empty_fleet}
+    else
+      total_mass =
+        fleet_composition
+        |> Enum.map(&get_ship_mass/1)
+        |> Enum.sum()
 
-    {:ok, total_mass}
+      {:ok, total_mass}
+    end
   end
 
   @doc """
@@ -130,7 +136,7 @@ defmodule EveDmv.Contexts.FleetOperations.Core.MassCalculator do
   # Private functions
 
   defp get_ship_mass_data(ship_type_id) do
-    case Ash.get(ShipTypes, ship_type_id) do
+    case Ash.get(ShipTypes, ship_type_id, domain: Api) do
       {:ok, ship_type} ->
         {:ok,
          %{

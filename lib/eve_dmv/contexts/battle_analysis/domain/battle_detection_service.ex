@@ -5,13 +5,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
   Uses time-based clustering with spatial correlation and participant overlap
   to identify discrete battles from killmail data.
   """
+  """
 
   import Ash.Query
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   alias EveDmv.Api
   alias EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Market.PriceService
+
+  require Logger
 
   # Battle detection parameters
   @max_time_gap_minutes 30
@@ -128,11 +132,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
       {:ok, filtered_killmails} ->
         {:ok, filtered_killmails}
 
-      {:error, _error} ->
+      {:error, %Ash.Error.Query.NotFound{}} ->
+        {:ok, []}
+
+      {:error, error} ->
+        Logger.error("Database query failed in fetch_killmails_in_range: #{inspect(error)}")
         {:error, :database_error}
     end
   rescue
-    _error ->
+    error ->
+      Logger.error("Unexpected error in fetch_killmails_in_range: #{inspect(error)}")
       {:error, :database_error}
   end
 
@@ -150,11 +159,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
       {:ok, filtered_killmails} ->
         {:ok, filtered_killmails}
 
-      {:error, _error} ->
+      {:error, %Ash.Error.Query.NotFound{}} ->
+        {:ok, []}
+
+      {:error, error} ->
+        Logger.error("Database query failed in fetch_killmails_in_system: #{inspect(error)}")
         {:error, :database_error}
     end
   rescue
-    _error ->
+    error ->
+      Logger.error("Unexpected error in fetch_killmails_in_system: #{inspect(error)}")
       {:error, :database_error}
   end
 
@@ -167,15 +181,18 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
 
     case Ash.read(query, domain: Api) do
       {:ok, killmails} ->
-        filtered_killmails = killmails
+        {:ok, killmails}
 
-        {:ok, filtered_killmails}
+      {:error, %Ash.Error.Query.NotFound{}} ->
+        {:ok, []}
 
-      {:error, _error} ->
+      {:error, error} ->
+        Logger.error("Database query failed in fetch_killmails_by_ids: #{inspect(error)}")
         {:error, :database_error}
     end
   rescue
-    _error ->
+    error ->
+      Logger.error("Unexpected error in fetch_killmails_by_ids: #{inspect(error)}")
       {:error, :database_error}
   end
 
@@ -207,7 +224,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
          same_system_only
        ) do
     time_gap_minutes =
-      NaiveDateTime.diff(killmail.killmail_time, current_cluster.end_time, :second) / 60
+      DateTimeUtils.diff(killmail.killmail_time, current_cluster.end_time, :second) / 60
 
     # Check for participant overlap for longer time gaps
     participant_overlap_ratio = calculate_participant_overlap(killmail, current_cluster.killmails)
@@ -308,7 +325,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
       |> Enum.with_index()
       |> Enum.find(fn {cluster, _index} ->
         time_gap_minutes =
-          NaiveDateTime.diff(killmail.killmail_time, cluster.end_time, :second) / 60
+          DateTimeUtils.diff(killmail.killmail_time, cluster.end_time, :second) / 60
 
         overlap_ratio = calculate_participant_overlap(killmail, cluster.killmails)
 
@@ -395,7 +412,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
         times = Enum.map(multiple, & &1.killmail_time)
         start_time = Enum.min(times)
         end_time = Enum.max(times)
-        duration = NaiveDateTime.diff(end_time, start_time, :second) / 60
+        duration = DateTimeUtils.diff(end_time, start_time, :second) / 60
         # Only apply minimum if duration is very small (< 0.5 minutes)
         if duration < 0.5, do: 1, else: Float.round(duration, 1)
     end

@@ -4,6 +4,7 @@ defmodule EveDmvWeb.Components.PageHeaderComponent do
 
   Used across multiple LiveViews for consistent page headers.
   """
+  """
 
   use Phoenix.Component
 

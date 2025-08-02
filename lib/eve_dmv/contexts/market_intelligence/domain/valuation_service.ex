@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.ValuationService do
   Provides market value calculations for killmails and fleet compositions
   using Janice API for accurate market pricing with fallback estimates.
   """
+  """
 
   alias EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient
   require Logger

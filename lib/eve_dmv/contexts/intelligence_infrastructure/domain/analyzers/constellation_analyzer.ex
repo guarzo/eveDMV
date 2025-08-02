@@ -3,6 +3,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   Analyzer for constellation-wide pattern analysis.
   """
 
+    alias EveDmv.Core.Utils.DateTimeUtils
+  """
+
   alias EveDmv.Api
   alias EveDmv.Eve.SolarSystem
   alias EveDmv.Killmails.KillmailRaw
@@ -18,7 +21,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
     # Default 7 days in hours
     time_window = Keyword.get(options, :time_window, 24 * 7)
-    cutoff_time = DateTime.add(DateTime.utc_now(), -time_window * 3600, :second)
+    cutoff_time = DateTimeUtils.add(DateTime.utc_now(), -time_window * 3600, :second)
 
     %{
       constellation_id: constellation_id,

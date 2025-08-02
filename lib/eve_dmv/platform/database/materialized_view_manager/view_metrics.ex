@@ -5,6 +5,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
   Tracks view size, refresh performance, query patterns, and provides
   recommendations for optimization.
   """
+  """
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Database.MaterializedViewManager.ViewDefinitions

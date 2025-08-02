@@ -4,6 +4,7 @@ defmodule EveDmv.Utils.TimezoneAnalyzer do
 
   Provides consistent timezone detection based on EVE Online activity patterns.
   """
+  """
 
   @doc """
   Analyzes timezone based on killmail activity patterns.

@@ -5,8 +5,10 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer do
   Monitors index effectiveness, identifies unused indexes, and tracks
   partition health for optimal database performance.
   """
+  """
 
   alias Ecto.Adapters.SQL
+  alias EveDmv.Core.Utils.DateTimeUtils
   require Logger
 
   @doc """
@@ -361,7 +363,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer do
         last_vacuum_time = last_vacuum || last_autovacuum
 
         if last_vacuum_time do
-          days_since = DateTime.diff(DateTime.utc_now(), last_vacuum_time, :day)
+          days_since = DateTimeUtils.diff(DateTime.utc_now(), last_vacuum_time, :day)
           days_since > 7
         else
           true

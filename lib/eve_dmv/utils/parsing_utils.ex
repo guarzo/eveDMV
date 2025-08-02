@@ -5,6 +5,7 @@ defmodule EveDmv.Utils.ParsingUtils do
   This module consolidates duplicate parsing functions to reduce code duplication
   and provide consistent parsing behavior throughout the codebase.
   """
+  """
 
   @doc """
   Parse a value into a Decimal, returning Decimal.new(0) for invalid inputs.

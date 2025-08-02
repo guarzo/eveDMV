@@ -1,5 +1,6 @@
 defmodule EveDmv.Shared.Monitoring.AlertManager do
   @moduledoc """
+
   Alert management system for monitoring anomalies and generating notifications.
 
   Provides functionality for:
@@ -9,6 +10,7 @@ defmodule EveDmv.Shared.Monitoring.AlertManager do
   - Alert correlation and summarization
   """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   require Logger
 
   @doc """
@@ -57,7 +59,7 @@ defmodule EveDmv.Shared.Monitoring.AlertManager do
     escalated_alerts =
       alert_manager[:alert_queue]
       |> Enum.filter(fn alert ->
-        time_diff = DateTime.diff(current_time, alert[:created_at])
+        time_diff = DateTimeUtils.diff(current_time, alert[:created_at], :second)
         time_diff > escalation_window and alert[:severity] > 0.8
       end)
 
@@ -90,7 +92,7 @@ defmodule EveDmv.Shared.Monitoring.AlertManager do
   Generates a summary of alerts for a time window.
   """
   def generate_alert_summary(alert_manager, time_window_hours) do
-    cutoff_time = DateTime.add(DateTime.utc_now(), -time_window_hours * 3600, :second)
+    cutoff_time = DateTimeUtils.add(DateTime.utc_now(), -time_window_hours * 3600, :second)
 
     recent_alerts =
       alert_manager[:alert_queue]
@@ -302,7 +304,7 @@ defmodule EveDmv.Shared.Monitoring.AlertManager do
       earliest = Enum.min(timestamps, DateTime)
       latest = Enum.max(timestamps, DateTime)
 
-      DateTime.diff(latest, earliest)
+      DateTimeUtils.diff(latest, earliest, :second)
     end
   end
 end

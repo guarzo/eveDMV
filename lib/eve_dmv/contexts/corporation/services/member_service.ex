@@ -4,7 +4,9 @@ defmodule EveDmv.Contexts.Corporation.Services.MemberService do
 
   Handles member addition, updates, removal, and querying operations.
   """
+  """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.CharacterRepository
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
   alias EveDmv.Platform.Database.CorporationRepository
@@ -256,10 +258,10 @@ defmodule EveDmv.Contexts.Corporation.Services.MemberService do
     if Keyword.get(opts, :include_inactive, true) do
       members
     else
-      cutoff = DateTime.utc_now() |> DateTime.add(-30, :day)
+      cutoff = DateTime.utc_now() |> DateTimeUtils.add(-30 * 24 * 60 * 60, :second)
 
       Enum.filter(members, fn member ->
-        member.last_seen && DateTime.compare(member.last_seen, cutoff) == :gt
+        member.last_seen && DateTimeUtils.compare(member.last_seen, cutoff) == :gt
       end)
     end
   end
@@ -303,12 +305,12 @@ defmodule EveDmv.Contexts.Corporation.Services.MemberService do
   defp calculate_tenure_days(nil), do: 0
 
   defp calculate_tenure_days(join_date) do
-    DateTime.diff(DateTime.utc_now(), join_date, :day)
+    DateTimeUtils.diff(DateTime.utc_now(), join_date, :day)
   end
 
   defp determine_activity_status(member) do
     if member.last_seen do
-      days_since = DateTime.diff(DateTime.utc_now(), member.last_seen, :day)
+      days_since = DateTimeUtils.diff(DateTime.utc_now(), member.last_seen, :day)
 
       cond do
         days_since <= 7 -> :very_active
@@ -369,7 +371,7 @@ defmodule EveDmv.Contexts.Corporation.Services.MemberService do
 
   defp get_recent_activity(character_id) do
     # Get recent activity data (last 30 days)
-    start_date = DateTime.utc_now() |> DateTime.add(-30, :day)
+    start_date = DateTime.utc_now() |> DateTimeUtils.add(-30 * 24 * 60 * 60, :second)
 
     case CharacterRepository.get_character_killmails_since(character_id, start_date) do
       {:ok, killmails} ->
@@ -443,7 +445,7 @@ defmodule EveDmv.Contexts.Corporation.Services.MemberService do
     [
       %{
         role: "Member",
-        assigned_date: DateTime.utc_now() |> DateTime.add(-100, :day),
+        assigned_date: DateTime.utc_now() |> DateTimeUtils.add(-100 * 24 * 60 * 60, :second),
         assigned_by: "CEO"
       }
     ]
@@ -507,10 +509,10 @@ defmodule EveDmv.Contexts.Corporation.Services.MemberService do
   end
 
   defp count_active_members(members) do
-    cutoff = DateTime.utc_now() |> DateTime.add(-30, :day)
+    cutoff = DateTime.utc_now() |> DateTimeUtils.add(-30 * 24 * 60 * 60, :second)
 
     Enum.count(members, fn member ->
-      member.last_seen && DateTime.compare(member.last_seen, cutoff) == :gt
+      member.last_seen && DateTimeUtils.compare(member.last_seen, cutoff) == :gt
     end)
   end
 
@@ -519,18 +521,18 @@ defmodule EveDmv.Contexts.Corporation.Services.MemberService do
   end
 
   defp count_new_recruits(members) do
-    cutoff = DateTime.utc_now() |> DateTime.add(-90, :day)
+    cutoff = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
 
     Enum.count(members, fn member ->
-      member.join_date && DateTime.compare(member.join_date, cutoff) == :gt
+      member.join_date && DateTimeUtils.compare(member.join_date, cutoff) == :gt
     end)
   end
 
   defp count_veteran_members(members) do
-    cutoff = DateTime.utc_now() |> DateTime.add(-365, :day)
+    cutoff = DateTime.utc_now() |> DateTimeUtils.add(-365 * 24 * 60 * 60, :second)
 
     Enum.count(members, fn member ->
-      member.join_date && DateTime.compare(member.join_date, cutoff) == :lt
+      member.join_date && DateTimeUtils.compare(member.join_date, cutoff) == :lt
     end)
   end
 

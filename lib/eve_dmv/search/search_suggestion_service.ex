@@ -5,6 +5,7 @@ defmodule EveDmv.Search.SearchSuggestionService do
   Provides intelligent search suggestions for characters, corporations, alliances,
   and systems based on database queries with optimized performance.
   """
+  """
 
   alias EveDmv.Api
   alias EveDmv.Killmails.Participant

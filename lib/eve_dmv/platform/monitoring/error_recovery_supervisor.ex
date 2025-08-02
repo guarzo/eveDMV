@@ -5,6 +5,7 @@ defmodule EveDmv.Monitoring.ErrorRecoverySupervisor do
   Manages the error tracking, pipeline monitoring, and recovery
   mechanisms to ensure system resilience.
   """
+  """
 
   use Supervisor
 

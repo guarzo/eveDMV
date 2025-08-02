@@ -5,6 +5,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   Provides real-time battle analysis, fleet composition breakdowns,
   tactical recommendations, and historical battle comparisons.
   """
+  """
 
   use EveDmvWeb, :live_view
   import EveDmvWeb.BattleAnalysisLive.Helpers
@@ -335,26 +336,22 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       |> Map.put(:fitting_data, existing_fitting)
       |> Map.put(:combat_log_analysis, combat_log_analysis)
 
-    case EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer.analyze_ship_performance(
-           enhanced_ship_data,
-           socket.assigns.current_battle
-         ) do
-      {:ok, performance} ->
-        # Update ETS cache with current fitting
-        if existing_fitting do
-          :ets.insert(:battle_fitting_cache, {ship_key, existing_fitting})
-        end
+    {:ok, performance} = EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer.analyze_ship_performance(
+      enhanced_ship_data,
+      socket.assigns.current_battle
+    )
 
-        socket =
-          socket
-          |> assign(:selected_ship, ship_data)
-          |> assign(:ship_performance, performance)
-
-        {:noreply, socket}
-
-      _ ->
-        {:noreply, socket}
+    # Update ETS cache with current fitting
+    if existing_fitting do
+      :ets.insert(:battle_fitting_cache, {ship_key, existing_fitting})
     end
+
+    socket =
+      socket
+      |> assign(:selected_ship, ship_data)
+      |> assign(:ship_performance, performance)
+
+    {:noreply, socket}
   end
 
   def handle_event("toggle_fitting_import", _, socket) do
@@ -423,48 +420,23 @@ defmodule EveDmvWeb.BattleAnalysisLive do
         visibility: String.to_existing_atom(params["visibility"])
       ]
 
-      case BattleSharing.create_battle_report_from_data(
-             socket.assigns.current_battle,
-             creator_id,
-             options
-           ) do
-        {:ok, _report} ->
-          {:noreply,
-           socket
-           |> put_flash(:info, "Battle report created successfully!")
-           |> assign(:show_share_modal, false)
-           |> assign(:share_form, %{
-             title: "",
-             description: "",
-             video_url: "",
-             visibility: "public"
-           })
-           |> load_battle_reports()}
+      {:ok, _report} = BattleSharing.create_battle_report_from_data(
+        socket.assigns.current_battle,
+        creator_id,
+        options
+      )
 
-        {:error, :battle_not_found} ->
-          {:noreply,
-           socket
-           |> put_flash(
-             :error,
-             "Battle not found. This may be due to battle ID changes. Try refreshing the page."
-           )
-           |> assign(:show_share_modal, false)}
-
-        {:error, :max_iterations_reached} ->
-          {:noreply,
-           socket
-           |> put_flash(
-             :error,
-             "Unable to create battle report due to processing limits."
-           )
-           |> assign(:show_share_modal, false)}
-
-        {:error, reason} ->
-          {:noreply,
-           socket
-           |> put_flash(:error, "Failed to create battle report: #{inspect(reason)}")
-           |> assign(:show_share_modal, false)}
-      end
+      {:noreply,
+       socket
+       |> put_flash(:info, "Battle report created successfully!")
+       |> assign(:show_share_modal, false)
+       |> assign(:share_form, %{
+         title: "",
+         description: "",
+         video_url: "",
+         visibility: "public"
+       })
+       |> load_battle_reports()}
     else
       {:noreply, socket}
     end
@@ -483,8 +455,9 @@ defmodule EveDmvWeb.BattleAnalysisLive do
          |> put_flash(:info, "Rating submitted!")
          |> load_battle_reports()}
 
-      {:error, _} ->
-        {:noreply, put_flash(socket, :error, "Failed to submit rating")}
+      {:error, reason} ->
+        error_message = format_error_reason(reason)
+        {:noreply, put_flash(socket, :error, error_message)}
     end
   end
 
@@ -530,21 +503,17 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       # Update ship data with new fitting
       ship_data = Map.put(socket.assigns.selected_ship, :fitting_data, fitting.parsed_fitting)
 
-      case EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer.analyze_ship_performance(
-             ship_data,
-             socket.assigns.current_battle
-           ) do
-        {:ok, performance} ->
-          socket =
-            socket
-            |> assign(:selected_ship, ship_data)
-            |> assign(:ship_performance, performance)
+      {:ok, performance} = EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer.analyze_ship_performance(
+        ship_data,
+        socket.assigns.current_battle
+      )
 
-          {:noreply, socket}
+      socket =
+        socket
+        |> assign(:selected_ship, ship_data)
+        |> assign(:ship_performance, performance)
 
-        _ ->
-          {:noreply, socket}
-      end
+      {:noreply, socket}
     else
       {:noreply, socket}
     end
@@ -664,6 +633,17 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   defp format_error({:http_error, _}), do: "Failed to connect to zkillboard"
   defp format_error({:api_error, status}), do: "zkillboard API error (#{status})"
   defp format_error(_), do: "Import failed"
+
+  defp format_error_reason(:curator_unavailable), do: "Battle curator service is temporarily unavailable"
+  defp format_error_reason(:report_not_found), do: "Battle report not found"
+  defp format_error_reason(:permission_denied), do: "You don't have permission to perform this action"
+  defp format_error_reason(reason) when is_atom(reason) do
+    reason
+    |> Atom.to_string()
+    |> String.replace("_", " ")
+    |> String.capitalize()
+  end
+  defp format_error_reason(_), do: "Failed to submit rating"
 
   # View helpers (these should be in the template but included here for completeness)
 

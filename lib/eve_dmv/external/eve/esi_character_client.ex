@@ -5,6 +5,7 @@ defmodule EveDmv.Eve.EsiCharacterClient do
   This module handles all character-specific API calls including
   basic character information, skills, assets, and employment history.
   """
+  """
 
   alias EveDmv.Eve.EsiCache
   alias EveDmv.Eve.EsiParsers

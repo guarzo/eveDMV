@@ -3,9 +3,11 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
   Tracks performance metrics for database queries and API calls.
   Provides real-time visibility into performance bottlenecks.
   """
+  """
 
   use GenServer
   alias __MODULE__, as: PerformanceTracker
+  alias EveDmv.Core.Utils.DateTimeUtils
   require Logger
 
   defstruct [
@@ -231,9 +233,9 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
     end
   end
 
-  defp calculate_since_time(:minute), do: DateTime.add(DateTime.utc_now(), -60, :second)
-  defp calculate_since_time(:hour), do: DateTime.add(DateTime.utc_now(), -3_600, :second)
-  defp calculate_since_time(:day), do: DateTime.add(DateTime.utc_now(), -86_400, :second)
+  defp calculate_since_time(:minute), do: DateTimeUtils.add(DateTime.utc_now(), -60, :second)
+  defp calculate_since_time(:hour), do: DateTimeUtils.add(DateTime.utc_now(), -3_600, :second)
+  defp calculate_since_time(:day), do: DateTimeUtils.add(DateTime.utc_now(), -86_400, :second)
 
   defp calculate_stats(metrics) do
     durations = Enum.map(metrics, fn {_key, metric} -> metric.duration_ms end)
@@ -261,7 +263,7 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
   end
 
   defp get_recent_metrics(time_ms) do
-    since = DateTime.add(DateTime.utc_now(), -div(time_ms, 1000), :second)
+    since = DateTimeUtils.add(DateTime.utc_now(), -div(time_ms, 1000), :second)
 
     @table_name
     |> :ets.tab2list()
@@ -331,7 +333,7 @@ defmodule EveDmv.Monitoring.PerformanceTracker do
   end
 
   defp cleanup_old_metrics do
-    cutoff = DateTime.add(DateTime.utc_now(), -div(@metric_ttl, 1000), :second)
+    cutoff = DateTimeUtils.add(DateTime.utc_now(), -div(@metric_ttl, 1000), :second)
 
     @table_name
     |> :ets.tab2list()

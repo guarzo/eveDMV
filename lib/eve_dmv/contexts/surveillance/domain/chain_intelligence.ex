@@ -14,6 +14,9 @@ defmodule EveDmv.Shared.ChainIntelligence do
   - WormholeOperations.Domain.ChainIntelligenceService
   """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
+  """
+
   use EveDmv.ErrorHandler
   require Logger
 
@@ -171,7 +174,7 @@ defmodule EveDmv.Shared.ChainIntelligence do
 
   defp get_system_jump_activity(system_id, days_back) do
     # Query killmail data to infer jump activity
-    since = DateTime.add(DateTime.utc_now(), -days_back * 24 * 3600, :second)
+    since = DateTimeUtils.add(DateTime.utc_now(), -days_back * 24 * 3600, :second)
 
     try do
       # Query killmails in the system to analyze participant movement
@@ -238,7 +241,7 @@ defmodule EveDmv.Shared.ChainIntelligence do
     # Real wormhole connections would require integration with mapping tools
 
     # Get recent killmails to analyze movement patterns
-    since = DateTime.add(DateTime.utc_now(), -24 * 3600, :second)
+    since = DateTimeUtils.add(DateTime.utc_now(), -24 * 3600, :second)
 
     killmails =
       EveDmv.Api.read!(
@@ -501,7 +504,7 @@ defmodule EveDmv.Shared.ChainIntelligence do
     # Get activity data from killmails
     # Note: chain_id would normally reference a wormhole mapping tool
     # For now, we'll analyze activity in a set of systems
-    since = DateTime.add(DateTime.utc_now(), -hours * 3600, :second)
+    since = DateTimeUtils.add(DateTime.utc_now(), -hours * 3600, :second)
 
     try do
       # Get recent killmails (using a default system for now)
@@ -548,7 +551,7 @@ defmodule EveDmv.Shared.ChainIntelligence do
     updated_map =
       killmails
       |> Enum.reduce(hour_map, fn km, acc ->
-        hours_ago = div(DateTime.diff(now, km.killmail_time, :second), 3600)
+        hours_ago = div(DateTimeUtils.diff(now, km.killmail_time, :second), 3600)
 
         if hours_ago >= 1 and hours_ago <= total_hours do
           pilots = (km.participants || []) |> Enum.map(& &1.character_id) |> MapSet.new()
@@ -616,7 +619,7 @@ defmodule EveDmv.Shared.ChainIntelligence do
 
       recent_kills =
         Enum.filter(kills, fn kill ->
-          DateTime.diff(DateTime.utc_now(), kill.killmail_time, :hour) < 6
+          DateTimeUtils.diff(DateTime.utc_now(), kill.killmail_time, :hour) < 6
         end)
 
       recent_ratio = length(recent_kills) / max(total_kills, 1)
@@ -659,7 +662,7 @@ defmodule EveDmv.Shared.ChainIntelligence do
   defp detect_hostile_presence(_activity, corporation_id) do
     # Check for hostile pilots in activity data
     # Query recent killmails to identify hostiles
-    since = DateTime.add(DateTime.utc_now(), -48 * 3600, :second)
+    since = DateTimeUtils.add(DateTime.utc_now(), -48 * 3600, :second)
 
     # Get killmails where our corporation was involved
     killmails =
@@ -873,7 +876,7 @@ defmodule EveDmv.Shared.ChainIntelligence do
 
   defp calculate_corp_activity_score(corporation_id) do
     # Get recent killmails involving the corporation
-    since = DateTime.add(DateTime.utc_now(), -7 * 24 * 3600, :second)
+    since = DateTimeUtils.add(DateTime.utc_now(), -7 * 24 * 3600, :second)
 
     try do
       killmails =
@@ -932,7 +935,7 @@ defmodule EveDmv.Shared.ChainIntelligence do
 
   defp get_recent_engagement_summary(corporation_id) do
     # Get summary of recent engagements
-    since = DateTime.add(DateTime.utc_now(), -48 * 3600, :second)
+    since = DateTimeUtils.add(DateTime.utc_now(), -48 * 3600, :second)
 
     try do
       killmails =

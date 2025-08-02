@@ -4,8 +4,10 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   """
 
   alias EveDmv.Api
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Eve.SolarSystem
   alias EveDmv.Killmails.KillmailRaw
+
   require Logger
   require Ash.Query
 
@@ -17,7 +19,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
     # Default 7 days in hours
     time_window = Keyword.get(options, :time_window, 24 * 7)
-    cutoff_time = DateTime.add(DateTime.utc_now(), -time_window * 3600, :second)
+    cutoff_time = DateTimeUtils.add(DateTime.utc_now(), -time_window * 3600, :second)
 
     %{
       region_id: region_id,
@@ -277,9 +279,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   defp analyze_regional_trends(region_id, cutoff_time) do
     # Compare recent activity to historical baseline
     # Last 24h
-    _recent_cutoff = DateTime.add(DateTime.utc_now(), -24 * 3_600, :second)
+    _recent_cutoff = DateTimeUtils.add(DateTime.utc_now(), -24 * 3_600, :second)
     # 24h before cutoff
-    _historical_cutoff = DateTime.add(cutoff_time, -24 * 3_600, :second)
+    _historical_cutoff = DateTimeUtils.add(cutoff_time, -24 * 3_600, :second)
 
     systems_query =
       SolarSystem

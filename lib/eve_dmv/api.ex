@@ -15,7 +15,7 @@ defmodule EveDmv.Api do
 
   ## Sub-domains
   - EveDmv.Api.SurveillanceApi - Surveillance resources
-  - EveDmv.Api.AnalyticsApi - Analytics resources  
+  - EveDmv.Api.AnalyticsApi - Analytics resources
   - EveDmv.Api.BattleAnalysisApi - Battle analysis resources
 
   ## Error Handling
@@ -142,10 +142,12 @@ defmodule EveDmv.Api do
 
   @doc """
   Bulk creates records in this domain.
+
+  Note: This follows Ash.bulk_create's parameter order for consistency.
   """
-  @spec bulk_create(Ash.Resource.t(), [map()], keyword()) :: Ash.BulkResult.t()
-  def bulk_create(resource, attrs_list, opts \\ []) do
-    Ash.bulk_create(resource, attrs_list, opts ++ [domain: __MODULE__])
+  @spec bulk_create([map()], Ash.Resource.t(), atom(), keyword()) :: Ash.BulkResult.t()
+  def bulk_create(attrs_list, resource, action \\ :create, opts \\ []) do
+    Ash.bulk_create(attrs_list, resource, action, opts ++ [domain: __MODULE__])
   end
 
   @doc """

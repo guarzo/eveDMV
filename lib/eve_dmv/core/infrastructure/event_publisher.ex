@@ -8,6 +8,7 @@ defmodule EveDmv.Intelligence.EventPublisher do
   Events are published asynchronously to avoid blocking intelligence
   analysis operations.
   """
+  """
 
   use GenServer
 

@@ -4,6 +4,7 @@ defmodule EveDmv.Telemetry.QueryMonitor do
   Enhanced with comprehensive query analysis and pattern detection.
   """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   use GenServer
   require Logger
 
@@ -153,7 +154,7 @@ defmodule EveDmv.Telemetry.QueryMonitor do
     recent_executions =
       [%{timestamp: current_time, duration: duration} | pattern_executions]
       |> Enum.filter(fn exec ->
-        DateTime.diff(current_time, exec.timestamp, :millisecond) <= @query_pattern_window
+        DateTimeUtils.diff(current_time, exec.timestamp, :millisecond) <= @query_pattern_window
       end)
       # Limit per pattern
       |> Enum.take(50)
@@ -306,7 +307,7 @@ defmodule EveDmv.Telemetry.QueryMonitor do
       recent_alert =
         Enum.find(current_alerts, fn alert ->
           alert.pattern == alert_key and
-            DateTime.diff(DateTime.utc_now(), alert.timestamp, :minute) < 5
+            DateTimeUtils.diff(DateTime.utc_now(), alert.timestamp, :minute) < 5
         end)
 
       if is_nil(recent_alert) do

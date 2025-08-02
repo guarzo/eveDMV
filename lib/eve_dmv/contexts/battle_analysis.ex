@@ -4,6 +4,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
 
   This module provides the public API for battle detection, analysis, and reconstruction.
   """
+  """
 
   alias EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService
   alias EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService
@@ -11,6 +12,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   alias EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer
   alias EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector
   alias EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
@@ -24,7 +26,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
       iex> EveDmv.Contexts.BattleAnalysis.detect_battles(start_time, end_time)
       {:ok, [%{battle_id: "battle_30003089_20250109050000", killmails: [...], metadata: %{...}}]}
   """
-  @spec detect_battles(NaiveDateTime.t(), NaiveDateTime.t(), keyword()) ::
+  @spec detect_battles(DateTime.t(), DateTime.t(), keyword()) ::
           {:ok, [map()]} | {:error, atom()}
   def detect_battles(start_time, end_time, options \\ []) do
     BattleDetectionService.detect_battles(start_time, end_time, options)
@@ -33,7 +35,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   @doc """
   Detects battles in a specific solar system within a time range.
   """
-  @spec detect_battles_in_system(integer(), NaiveDateTime.t(), NaiveDateTime.t(), keyword()) ::
+  @spec detect_battles_in_system(integer(), DateTime.t(), DateTime.t(), keyword()) ::
           {:ok, [map()]} | {:error, atom()}
   def detect_battles_in_system(system_id, start_time, end_time, options \\ []) do
     BattleDetectionService.detect_battles_in_system(system_id, start_time, end_time, options)
@@ -53,8 +55,8 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   """
   @spec detect_recent_battles(integer(), keyword()) :: {:ok, [map()]} | {:error, atom()}
   def detect_recent_battles(hours_back \\ 24, options \\ []) do
-    end_time = NaiveDateTime.utc_now()
-    start_time = NaiveDateTime.add(end_time, -hours_back * 3600, :second)
+    end_time = DateTime.utc_now()
+    start_time = DateTimeUtils.add(end_time, -hours_back * 3600, :second)
 
     detect_battles(start_time, end_time, options)
   end
@@ -62,7 +64,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   @doc """
   Gets battle summary statistics for a time period.
   """
-  @spec get_battle_statistics(NaiveDateTime.t(), NaiveDateTime.t()) ::
+  @spec get_battle_statistics(DateTime.t(), DateTime.t()) ::
           {:ok, map()} | {:error, atom()}
   def get_battle_statistics(start_time, end_time) do
     case detect_battles(start_time, end_time) do
@@ -98,7 +100,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
 
   Useful for tracking roaming gangs, escalating conflicts, or multi-system engagements.
   """
-  @spec analyze_battle_sequence([map()]) :: {:ok, map()} | {:error, atom()}
+  @spec analyze_battle_sequence([map()]) :: map()
   def analyze_battle_sequence(battles) when is_list(battles) do
     BattleTimelineService.analyze_battle_sequence(battles)
   end
@@ -113,7 +115,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
       {:ok, {system_id, start_time}} ->
         # Detect battles in a narrow time window around this battle
         # 1 hour window
-        end_time = NaiveDateTime.add(start_time, 3600, :second)
+        end_time = DateTimeUtils.add(start_time, 3600, :second)
 
         case detect_battles_in_system(system_id, start_time, end_time) do
           {:ok, battles} ->
@@ -156,7 +158,8 @@ defmodule EveDmv.Contexts.BattleAnalysis do
         with {system_id, ""} <- Integer.parse(system_id_str),
              {:ok, timestamp} <- parse_battle_timestamp(timestamp_str) do
           # Go back 30 minutes to ensure we catch the battle start
-          start_time = NaiveDateTime.add(timestamp, -1800, :second)
+          datetime = DateTimeUtils.to_datetime(timestamp)
+          start_time = DateTimeUtils.add(datetime, -1800, :second)
           {:ok, {system_id, start_time}}
         else
           _ -> :error
@@ -180,7 +183,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
           # Parse each battle's timestamp
           case parse_battle_id(battle.battle_id) do
             {:ok, {^system_id, battle_time}} ->
-              time_diff = abs(NaiveDateTime.diff(requested_time, battle_time, :second))
+              time_diff = abs(DateTimeUtils.diff(requested_time, battle_time, :second))
               time_diff <= time_window_seconds
 
             _ ->
@@ -192,7 +195,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
             # Find the battle with the closest timestamp
             case parse_battle_id(battle.battle_id) do
               {:ok, {^system_id, battle_time}} ->
-                abs(NaiveDateTime.diff(requested_time, battle_time, :second))
+                abs(DateTimeUtils.diff(requested_time, battle_time, :second))
 
               _ ->
                 :infinity
@@ -286,7 +289,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   @doc """
   Imports related kills from zkillboard for a specific system and time.
   """
-  @spec import_related_kills_from_zkillboard(integer(), DateTime.t() | NaiveDateTime.t()) ::
+  @spec import_related_kills_from_zkillboard(integer(), DateTime.t()) ::
           {:ok, map()} | {:error, atom()}
   def import_related_kills_from_zkillboard(system_id, timestamp) do
     case ZkillboardImportService.import_related_kills(system_id, timestamp) do

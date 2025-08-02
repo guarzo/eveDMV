@@ -21,6 +21,7 @@ defmodule Mix.Tasks.Eve.LoadWormholeEffects do
       mix eve.load_wormhole_effects --dry-run
       mix eve.load_wormhole_effects --force
   """
+  """
 
   @shortdoc "Load wormhole effect types from reference data"
 

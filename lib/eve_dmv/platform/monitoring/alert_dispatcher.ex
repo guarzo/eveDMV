@@ -6,6 +6,7 @@ defmodule EveDmv.Monitoring.AlertDispatcher do
   via email, Slack, Discord, or other channels.
   """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   use GenServer
   require Logger
 
@@ -115,7 +116,7 @@ defmodule EveDmv.Monitoring.AlertDispatcher do
         true
 
       last_time ->
-        minutes_elapsed = DateTime.diff(DateTime.utc_now(), last_time, :minute)
+        minutes_elapsed = DateTimeUtils.diff(DateTime.utc_now(), last_time, :minute)
         minutes_elapsed >= @alert_cooldown_minutes
     end
   end

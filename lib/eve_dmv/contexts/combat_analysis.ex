@@ -15,6 +15,7 @@ defmodule EveDmv.Contexts.CombatAnalysis do
   This unified context provides comprehensive combat analysis capabilities
   while maintaining clean boundaries and avoiding duplication.
   """
+  """
 
   use EveDmv.Contexts.BoundedContext, name: :combat_analysis
   use Supervisor

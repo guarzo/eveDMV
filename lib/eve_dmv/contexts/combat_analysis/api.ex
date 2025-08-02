@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Api do
   Provides a clean interface for all combat analysis functionality
   including battle analysis, combat intelligence, and battle sharing.
   """
+  """
 
   alias EveDmv.Contexts.CombatAnalysis
 

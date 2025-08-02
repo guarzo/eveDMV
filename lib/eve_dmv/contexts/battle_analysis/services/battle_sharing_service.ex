@@ -8,12 +8,14 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
   - Exporting battle data in various formats
   - Managing battle visibility and access
   """
+  """
 
   import Ash.Expr
 
   alias EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer
   alias EveDmv.Contexts.BattleAnalysis.Resources.Battle
   alias EveDmv.Contexts.BattleAnalysis.Services.BattleService
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Utils.NumberFormatter
 
   require Ash.Query
@@ -166,7 +168,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
   end
 
   defp calculate_expiry(%{expires_in: hours}) when is_number(hours) do
-    DateTime.add(DateTime.utc_now(), hours * 3600, :second)
+    DateTimeUtils.add(DateTime.utc_now(), hours * 3600, :second)
   end
 
   # No expiry by default
@@ -451,9 +453,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
   defp find_battle_by_token(share_token) do
     case Battle
          |> Ash.Query.filter(expr(share_token == ^share_token))
-         |> Ash.read_one() do
-      {:ok, battle} when not is_nil(battle) -> {:ok, battle}
-      _ -> {:error, :battle_not_found}
+         |> Ash.read_one(domain: EveDmv.Contexts.BattleAnalysis.Api) do
+      {:ok, battle} -> {:ok, battle}
+      {:error, %Ash.Error.Query.NotFound{}} -> {:error, :battle_not_found}
+      {:error, error} -> {:error, error}
     end
   end
 
@@ -463,7 +466,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
         {:error, :sharing_disabled}
 
       battle.share_expires_at &&
-          DateTime.compare(DateTime.utc_now(), battle.share_expires_at) == :gt ->
+          DateTimeUtils.compare(DateTime.utc_now(), battle.share_expires_at) == :gt ->
         {:error, :share_expired}
 
       true ->

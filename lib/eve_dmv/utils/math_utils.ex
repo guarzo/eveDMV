@@ -6,6 +6,7 @@ defmodule EveDmv.Utils.MathUtils do
   used across intelligence modules including ratios, statistics, scoring,
   and normalization functions.
   """
+  """
 
   @doc """
   Safely divide two numbers, returning default value if division by zero.

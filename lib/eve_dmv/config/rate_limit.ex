@@ -5,6 +5,7 @@ defmodule EveDmv.Config.RateLimit do
   Centralizes rate limiting parameters for API protection and external service
   compliance across the application.
   """
+  """
 
   alias EveDmv.Config
 

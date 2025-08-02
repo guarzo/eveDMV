@@ -10,8 +10,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
   Uses k-means clustering on damage rate, engagement distance, and ship movement vectors
   to detect phase transitions and classify combat periods.
   """
+  """
 
   alias EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor
+  alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
   # Phase detection parameters optimized for EVE PvP
@@ -111,7 +114,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
         # Small battle (2-5 kills) - create single phase spanning entire battle
         first_kill = List.first(killmails)
         last_kill = List.last(killmails)
-        duration = NaiveDateTime.diff(last_kill.killmail_time, first_kill.killmail_time, :second)
+        duration = DateTimeUtils.diff(last_kill.killmail_time, first_kill.killmail_time, :second)
 
         window = %{
           start_time: first_kill.killmail_time,
@@ -133,7 +136,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
     battle_start = List.first(killmails).killmail_time
     battle_end = List.last(killmails).killmail_time
 
-    total_duration = NaiveDateTime.diff(battle_end, battle_start, :second)
+    total_duration = DateTimeUtils.diff(battle_end, battle_start, :second)
 
     # Create windows with 50% overlap for better phase boundary detection
     window_size = max(min_duration, total_duration / 4)
@@ -143,13 +146,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
     |> Stream.iterate(&(&1 + step_size))
     |> Stream.take_while(&(&1 < total_duration))
     |> Enum.map(fn offset ->
-      window_start = NaiveDateTime.add(battle_start, round(offset), :second)
-      window_end = NaiveDateTime.add(window_start, round(window_size), :second)
+      window_start = DateTimeUtils.add(battle_start, round(offset), :second)
+      window_end = DateTimeUtils.add(window_start, round(window_size), :second)
 
       window_killmails =
         Enum.filter(killmails, fn km ->
-          NaiveDateTime.compare(km.killmail_time, window_start) != :lt and
-            NaiveDateTime.compare(km.killmail_time, window_end) != :gt
+          DateTimeUtils.compare(km.killmail_time, window_start) != :lt and
+            DateTimeUtils.compare(km.killmail_time, window_end) != :gt
         end)
 
       %{
@@ -514,7 +517,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
           cluster.members
           |> Enum.map(fn member ->
             member.window.start_time
-            |> DateTime.from_naive!("Etc/UTC")
+            |> DateTimeUtils.to_datetime()
             |> DateTime.to_unix()
           end)
           |> Enum.sum()
@@ -600,7 +603,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
       phase_type: phase_type,
       start_time: start_time,
       end_time: end_time,
-      duration_seconds: NaiveDateTime.diff(end_time, start_time, :second),
+      duration_seconds: DateTimeUtils.diff(end_time, start_time, :second),
       killmails: all_killmails,
       characteristics: describe_phase_characteristics(phase_type, characteristics_data),
       key_metrics: characteristics_data,

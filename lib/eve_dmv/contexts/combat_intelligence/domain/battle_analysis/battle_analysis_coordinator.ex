@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
   Orchestrates the various analysis phases and combines their results into
   a comprehensive battle analysis.
   """
+  """
 
   use GenServer
   use EveDmv.ErrorHandler
@@ -12,6 +13,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
   # Analyzer aliases removed as they're not currently used
   # Will be re-added when the analyzers are fully implemented
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.DomainEvents.BattleAnalysisComplete
   alias EveDmv.DomainEvents.TacticalInsightGenerated
   alias EveDmv.Infrastructure.EventBus
@@ -230,12 +232,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
     Logger.debug("Cleaning up battle analysis cache")
 
     # Clean up old cache entries
-    cutoff_time = DateTime.utc_now() |> DateTime.add(-3600, :second)
+    cutoff_time = DateTime.utc_now() |> DateTimeUtils.add(-3600, :second)
 
     cleaned_cache =
       state.cache
       |> Enum.filter(fn {_key, %{timestamp: timestamp}} ->
-        DateTime.compare(timestamp, cutoff_time) == :gt
+        DateTimeUtils.compare(timestamp, cutoff_time) == :gt
       end)
       |> Enum.into(%{})
 
@@ -354,7 +356,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
 
   defp fetch_recent_system_killmails(system_id, minutes_back) do
     # Fetch recent killmails for live engagement analysis
-    start_time = DateTime.add(DateTime.utc_now(), -minutes_back * 60, :second)
+    start_time = DateTimeUtils.add(DateTime.utc_now(), -minutes_back * 60, :second)
 
     query = """
     SELECT k.killmail_id, k.killmail_time, k.solar_system_id, k.victim_character_id,
@@ -635,7 +637,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
   end
 
   defp calculate_battle_duration(start_time, end_time) do
-    DateTime.diff(end_time, start_time, :minute)
+    DateTimeUtils.diff(end_time, start_time, :minute)
   end
 
   # Additional placeholder functions

@@ -10,7 +10,9 @@ defmodule EveDmv.Contexts.Intelligence.Core.LouvainCommunityDetection do
 
   These phases are repeated until no further improvement is possible.
   """
+  """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.CharacterRepository
 
   @doc """
@@ -83,14 +85,14 @@ defmodule EveDmv.Contexts.Intelligence.Core.LouvainCommunityDetection do
   end
 
   defp calculate_recency_weight(last_seen) do
-    days_ago = DateTime.diff(DateTime.utc_now(), last_seen, :day)
+    days_ago = DateTimeUtils.diff(DateTime.utc_now(), last_seen, :day)
     # Exponential decay over 30 days
     :math.exp(-days_ago / 30.0)
   end
 
   defp calculate_consistency_weight(edge) do
     # Regular interactions score higher
-    time_span = max(1, DateTime.diff(edge.last_seen, edge.first_seen, :day))
+    time_span = max(1, DateTimeUtils.diff(edge.last_seen, edge.first_seen, :day))
     interaction_rate = length(edge.interactions) / time_span
 
     min(2.0, 1.0 + interaction_rate / 10.0)
@@ -406,7 +408,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.LouvainCommunityDetection do
         end)
         |> Enum.flat_map(& &1.interactions)
         |> Enum.count(fn interaction ->
-          DateTime.diff(DateTime.utc_now(), interaction.timestamp, :day) <= 30
+          DateTimeUtils.diff(DateTime.utc_now(), interaction.timestamp, :day) <= 30
         end)
 
       cond do

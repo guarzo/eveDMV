@@ -1,9 +1,13 @@
 defmodule EveDmv.Shared.Intelligence.ReportBuilder do
   @moduledoc """
+
   Builds comprehensive intelligence reports from fused intelligence data.
 
   This module is responsible for formatting and structuring intelligence
   into readable, actionable reports with appropriate metadata and assessments.
+  """
+
+  alias EveDmv.Core.Utils.DateTimeUtils
   """
 
   require Logger
@@ -541,7 +545,7 @@ defmodule EveDmv.Shared.Intelligence.ReportBuilder do
 
   defp assess_timeliness_value(report) do
     # Value decreases over time
-    age_minutes = DateTime.diff(DateTime.utc_now(), report.generated_at, :minute)
+    age_minutes = DateTimeUtils.diff(DateTime.utc_now(), report.generated_at, :minute)
 
     cond do
       age_minutes < 5 -> 1.0

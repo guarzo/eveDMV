@@ -8,6 +8,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
   - Cross-battle comparison metrics
   - Strategic impact assessment
   """
+  """
 
   require Logger
 

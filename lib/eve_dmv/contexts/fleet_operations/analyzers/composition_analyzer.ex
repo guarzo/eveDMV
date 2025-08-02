@@ -6,9 +6,11 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
   tactical capabilities, and effectiveness ratings. Provides insights
   into fleet strengths, weaknesses, and optimization opportunities.
   """
+  """
 
   use EveDmv.ErrorHandler
   alias Ecto.Adapters.SQL
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Eve.ItemType
   alias EveDmv.Result
 
@@ -653,7 +655,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
       {start_time, end_time} when start_time != nil and end_time != nil ->
         with {:ok, start_dt, _} <- DateTime.from_iso8601(start_time),
              {:ok, end_dt, _} <- DateTime.from_iso8601(end_time) do
-          DateTime.diff(end_dt, start_dt, :minute)
+          DateTimeUtils.diff(end_dt, start_dt, :minute)
         else
           _ -> 0
         end

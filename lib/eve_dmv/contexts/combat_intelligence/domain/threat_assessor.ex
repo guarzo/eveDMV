@@ -9,6 +9,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ThreatAssessor do
   Simplified threat assessment module that provides direct assessment operations
   without GenServer overhead.
   """
+  """
 
   alias EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache
 

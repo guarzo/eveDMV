@@ -4,6 +4,7 @@ defmodule EveDmv.Utils.ErrorHandling do
 
   Part of Sprint 22 Quality Standards - Code Duplication Elimination.
   """
+  """
 
   require Logger
 

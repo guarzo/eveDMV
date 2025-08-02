@@ -5,6 +5,7 @@ defmodule EveDmv.Shared.Strategic.Facade do
   Provides backward compatibility and a clean API for the modular
   strategic analysis components.
   """
+  """
 
   alias EveDmv.Shared.Strategic.AssessmentCompiler
   alias EveDmv.Shared.Strategic.CorrelationEngine

@@ -1,9 +1,13 @@
-defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.AnomalyDetector do
+defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivityPatternAnalyzer.AnomalyDetector do
   @moduledoc """
+
   Specialized detector for behavioral anomalies in member activity patterns.
 
   This module identifies unusual activity patterns that may indicate account sharing,
   burnout, or other behavioral changes requiring attention.
+  """
+
+    alias EveDmv.Core.Utils.DateTimeUtils
   """
 
   require Logger
@@ -66,8 +70,8 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.AnomalyDet
   """
   def establish_baseline_patterns(activity_data, lookback_days) do
     # Establish baseline patterns from historical data
-    cutoff_date = DateTime.add(DateTime.utc_now(), -lookback_days * 2, :day)
-    baseline_date = DateTime.add(DateTime.utc_now(), -lookback_days, :day)
+    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -lookback_days * 2, :day)
+    baseline_date = DateTimeUtils.add(DateTime.utc_now(), -lookback_days, :day)
 
     baseline_patterns = %{
       established_date: baseline_date,
@@ -92,7 +96,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityPatternAnalyzer.AnomalyDet
   """
   def analyze_recent_patterns(activity_data, lookback_days) do
     # Analyze recent patterns
-    cutoff_date = DateTime.add(DateTime.utc_now(), -lookback_days, :day)
+    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -lookback_days, :day)
 
     recent_patterns = %{
       average_daily_activity: calculate_recent_daily_activity(activity_data, cutoff_date),

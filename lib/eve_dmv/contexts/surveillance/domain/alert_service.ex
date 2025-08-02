@@ -5,10 +5,12 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
   Handles the creation, prioritization, and lifecycle management of alerts
   generated from surveillance profile matches.
   """
+  """
 
   use GenServer
   use EveDmv.ErrorHandler
   alias EveDmv.Contexts.Surveillance.Domain.NotificationService
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.DomainEvents.SurveillanceAlert
   alias EveDmv.DomainEvents.SurveillanceMatch
   alias EveDmv.Infrastructure.EventBus
@@ -305,11 +307,11 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
   def handle_info(:cleanup_old_alerts, state) do
     # Remove alerts older than 30 days to prevent memory growth
     current_time = DateTime.utc_now()
-    cutoff_time = DateTime.add(current_time, -30 * 24 * 3600, :second)
+    cutoff_time = DateTimeUtils.add(current_time, -30 * 24 * 3600, :second)
 
     {remaining_alerts, removed_count} =
       Enum.reduce(state.alerts, {%{}, 0}, fn {alert_id, alert}, {acc_alerts, acc_count} ->
-        if DateTime.compare(alert.created_at, cutoff_time) == :gt do
+        if DateTimeUtils.compare(alert.created_at, cutoff_time) == :gt do
           {Map.put(acc_alerts, alert_id, alert), acc_count}
         else
           {acc_alerts, acc_count + 1}
@@ -530,16 +532,16 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
 
     cutoff_time =
       case time_range do
-        :last_hour -> DateTime.add(current_time, -3600, :second)
-        :last_24h -> DateTime.add(current_time, -24 * 3600, :second)
-        :last_7d -> DateTime.add(current_time, -7 * 24 * 3600, :second)
-        :last_30d -> DateTime.add(current_time, -30 * 24 * 3600, :second)
+        :last_hour -> DateTimeUtils.add(current_time, -3600, :second)
+        :last_24h -> DateTimeUtils.add(current_time, -24 * 3600, :second)
+        :last_7d -> DateTimeUtils.add(current_time, -7 * 24 * 3600, :second)
+        :last_30d -> DateTimeUtils.add(current_time, -30 * 24 * 3600, :second)
       end
 
     recent_alerts =
       state.alerts
       |> Map.values()
-      |> Enum.filter(&(DateTime.compare(&1.created_at, cutoff_time) == :gt))
+      |> Enum.filter(&(DateTimeUtils.compare(&1.created_at, cutoff_time) == :gt))
 
     priority_distribution =
       recent_alerts
@@ -624,7 +626,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
         @priority_low -> 6
       end
 
-    DateTime.add(DateTime.utc_now(), hours_to_expire * 3600, :second)
+    DateTimeUtils.add(DateTime.utc_now(), hours_to_expire * 3600, :second)
   end
 
   defp format_isk_value(value) when value >= 1_000_000_000 do

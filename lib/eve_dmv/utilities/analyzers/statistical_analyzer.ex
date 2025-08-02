@@ -5,6 +5,7 @@ defmodule EveDmv.Intelligence.Analyzers.StatisticalAnalyzer do
   Provides statistical correlation analysis, anomaly detection,
   and mathematical operations for intelligence processing.
   """
+  """
 
   @doc """
   Calculate correlation confidence score based on data quality and patterns.

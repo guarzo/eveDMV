@@ -8,10 +8,12 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
 
   Implements the Intelligence.Analyzer behavior for consistent interface and telemetry.
   """
+  """
 
   use EveDmv.Intelligence.Analyzer
 
   alias EveDmv.Api
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Eve.EsiClient
   alias EveDmv.Intelligence.Core.CacheHelper
   alias EveDmv.Intelligence.Core.Config
@@ -486,7 +488,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
     age_days =
       case Map.get(character_data, :birthday) do
         nil -> 365
-        birthday -> DateTime.diff(DateTime.utc_now(), birthday, :day)
+        birthday -> DateTimeUtils.diff(DateTime.utc_now(), birthday, :day)
       end
 
     sp_per_day = Map.get(character_data, :total_sp, 0) / max(1, age_days)
@@ -591,7 +593,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
   defp assess_character_age_risk(character_data) do
     # Placeholder character age risk assessment
     creation_date = Map.get(character_data, :birthday, DateTime.utc_now())
-    age_days = DateTime.diff(DateTime.utc_now(), creation_date, :day)
+    age_days = DateTimeUtils.diff(DateTime.utc_now(), creation_date, :day)
 
     cond do
       # Very new character
@@ -660,7 +662,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
                 false
 
               start_date ->
-                days_ago = DateTime.diff(DateTime.utc_now(), start_date, :day)
+                days_ago = DateTimeUtils.diff(DateTime.utc_now(), start_date, :day)
                 days_ago < 90
             end
           end)
@@ -777,13 +779,13 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
       sorted_times =
         killmails
         |> Enum.map(&Map.get(&1, :killmail_time, DateTime.utc_now()))
-        |> Enum.sort(&(DateTime.compare(&1, &2) in [:lt, :eq]))
+        |> Enum.sort(&(DateTimeUtils.compare(&1, &2) in [:lt, :eq]))
 
       # Calculate average time between kills
       time_diffs =
         sorted_times
         |> Enum.chunk_every(2, 1, :discard)
-        |> Enum.map(fn [t1, t2] -> DateTime.diff(t2, t1, :second) end)
+        |> Enum.map(fn [t1, t2] -> DateTimeUtils.diff(t2, t1, :second) end)
 
       if Enum.empty?(time_diffs) do
         0.0

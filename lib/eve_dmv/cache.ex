@@ -22,6 +22,7 @@ defmodule EveDmv.Cache do
       # Cache analysis result
       EveDmv.Cache.put(:analysis, {:character_intel, 123}, intel_data)
   """
+  """
 
   alias EveDmv.CacheSupervisor
   alias EveDmv.Utils.Cache

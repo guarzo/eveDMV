@@ -4,6 +4,7 @@ defmodule EveDmvWeb.Components.StatsGridComponent do
 
   Provides consistent styling and layout for statistics cards.
   """
+  """
 
   use Phoenix.Component
   alias EveDmvWeb.FormatHelpers

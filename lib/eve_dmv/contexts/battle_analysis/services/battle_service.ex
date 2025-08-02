@@ -16,14 +16,18 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   alias EveDmv.Contexts.BattleAnalysis.Core.BattleDetector
   alias EveDmv.Contexts.BattleAnalysis.Resources.Battle
   alias EveDmv.Contexts.BattleAnalysis.Resources.BattleKillmail
+  alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Repo
+
+  require Logger
 
   require Ash.Query
 
   @doc """
   Create a new battle from detected killmails.
   """
-  @spec create_battle(map()) :: {:ok, any()} | {:error, atom()}
+  @spec create_battle(map()) :: {:ok, any()} | {:error, any()}
   def create_battle(params) do
     params = prepare_battle_params(params)
 
@@ -51,7 +55,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   def get_battle(battle_id) do
     case Ash.get(Battle, battle_id, domain: Api) do
       {:ok, battle} -> {:ok, battle}
-      _ -> {:error, :battle_not_found}
+      {:error, %Ash.Error.Query.NotFound{}} -> {:error, :battle_not_found}
+      {:error, error} -> {:error, error}
     end
   end
 
@@ -66,7 +71,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
     - min_value: Minimum ISK destroyed
     - status: Battle status (active, completed, analyzed)
   """
-  @spec list_battles(keyword()) :: {:ok, [any()]} | {:error, atom()}
+  @spec list_battles(keyword()) :: {:ok, [any()]} | {:error, any()}
   def list_battles(filters \\ []) do
     case Battle
          |> apply_filters(filters)
@@ -79,11 +84,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   @doc """
   Delete a battle and its associations.
   """
-  @spec delete_battle(String.t()) :: :ok | {:error, atom()}
+  @spec delete_battle(String.t()) :: :ok | {:error, any()}
   def delete_battle(battle_id) do
     with {:ok, battle} <- get_battle(battle_id) do
       # Delete associated battle killmails first
-      {:ok, _} = delete_battle_killmails(battle_id)
+      case delete_battle_killmails(battle_id) do
+        %Ash.BulkResult{status: :success} -> :ok
+        %Ash.BulkResult{errors: errors} when errors != [] ->
+          Logger.warning("Failed to delete some battle killmails: #{inspect(errors)}")
+        _ -> :ok
+      end
 
       # Delete the battle
       Ash.destroy(battle)
@@ -97,13 +107,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   def create_battle_from_killmails(killmail_ids, opts \\ []) do
     with {:ok, killmails} <- fetch_killmails(killmail_ids),
          {:ok, battle_data} <- analyze_killmails_for_battle(killmails),
-         {:ok, battle} <- create_battle(battle_data) do
-      # Link killmails to battle
-      {:ok, _} = link_killmails_to_battle(battle.id, killmail_ids)
-
+         {:ok, battle} <- create_battle(battle_data),
+         {:ok, _battle_killmails} <- link_killmails_to_battle(battle.id, killmail_ids) do
       # Optionally analyze immediately
       if Keyword.get(opts, :analyze, false) do
-        {:ok, _} = analyze_battle(battle.id)
+        case analyze_battle(battle.id) do
+          {:ok, _analysis} -> :ok
+          {:error, reason} ->
+            Logger.warning("Failed to analyze battle #{battle.id}: #{inspect(reason)}")
+        end
       end
 
       {:ok, battle}
@@ -117,7 +129,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   def mark_battle_analyzed(battle_id, analysis_results) do
     update_battle(battle_id, %{
       status: :analyzed,
-      analysis_completed_at: DateTime.utc_now(),
+      analysis_completed_at: DateTimeUtils.utc_now(),
       analysis_metadata: analysis_results
     })
   end
@@ -127,19 +139,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   """
   @spec search_battles(map()) :: {:ok, [any()]} | {:error, atom()}
   def search_battles(search_params) do
-    try do
-      base_query = from(b in Battle)
+    base_query = from(b in Battle)
 
-      query =
-        search_params
-        |> Enum.reduce(base_query, &apply_search_filter/2)
-        |> order_by([b], desc: b.start_time)
+    query =
+      search_params
+      |> Enum.reduce(base_query, &apply_search_filter/2)
+      |> order_by([b], desc: b.start_time)
 
-      battles = Repo.all(query)
-      {:ok, battles}
-    rescue
-      error -> {:error, error}
-    end
+    battles = Repo.all(query)
+    {:ok, battles}
+  rescue
+    error -> {:error, error}
   end
 
   @doc """
@@ -148,24 +158,22 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   @spec get_battle_statistics(Date.t() | DateTime.t(), Date.t() | DateTime.t()) ::
           {:ok, map()} | {:error, atom()}
   def get_battle_statistics(start_date, end_date) do
-    try do
-      query =
-        from(b in Battle,
-          where: b.start_time >= ^start_date and b.end_time <= ^end_date,
-          select: %{
-            total_battles: count(b.id),
-            total_kills: sum(b.kill_count),
-            total_isk_destroyed: sum(b.total_value),
-            avg_participants: avg(b.participant_count),
-            avg_duration: avg(b.duration_minutes)
-          }
-        )
+    query =
+      from(b in Battle,
+        where: b.start_time >= ^start_date and b.end_time <= ^end_date,
+        select: %{
+          total_battles: count(b.id),
+          total_kills: sum(b.kill_count),
+          total_isk_destroyed: sum(b.total_value),
+          avg_participants: avg(b.participant_count),
+          avg_duration: avg(b.duration_minutes)
+        }
+      )
 
-      stats = Repo.one(query)
-      {:ok, stats || %{}}
-    rescue
-      error -> {:error, error}
-    end
+    stats = Repo.one(query)
+    {:ok, stats || %{}}
+  rescue
+    error -> {:error, error}
   end
 
   @doc """
@@ -251,7 +259,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
     params
     |> Map.put_new(:id, generate_battle_id())
     |> Map.put_new(:status, :detected)
-    |> Map.put_new(:created_at, DateTime.utc_now())
+    |> Map.put_new(:created_at, DateTimeUtils.utc_now())
     |> ensure_required_fields()
   end
 
@@ -269,8 +277,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
 
   defp default_value_for(:participant_count), do: 0
   defp default_value_for(:kill_count), do: 0
-  defp default_value_for(:start_time), do: DateTime.utc_now()
-  defp default_value_for(:end_time), do: DateTime.utc_now()
+  defp default_value_for(:start_time), do: DateTimeUtils.utc_now()
+  defp default_value_for(:end_time), do: DateTimeUtils.utc_now()
   defp default_value_for(_), do: nil
 
   defp apply_filters(query, filters) do
@@ -298,10 +306,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
     end)
   end
 
-  defp fetch_killmails(_killmail_ids) do
-    # Fetch killmails from database
-    # In real implementation, would query KillmailRaw
-    {:ok, []}
+  defp fetch_killmails(killmail_ids) do
+    # Fetch killmails from database using KillmailRaw
+    case KillmailRaw
+         |> Ash.Query.filter(expr(killmail_id in ^killmail_ids))
+         |> Ash.read(domain: Api) do
+      {:ok, killmails} -> {:ok, killmails}
+      {:error, error} ->
+        Logger.error("Failed to fetch killmails: #{inspect(error)}")
+        {:error, :database_error}
+    end
   end
 
   defp analyze_killmails_for_battle(killmails) do
@@ -319,7 +333,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
         %{
           battle_id: battle_id,
           killmail_id: km_id,
-          created_at: DateTime.utc_now()
+          created_at: DateTimeUtils.utc_now()
         }
       end)
 
@@ -327,10 +341,14 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
     {:ok, battle_killmails}
   end
 
-  defp analyze_battle(_battle_id) do
-    # Trigger full battle analysis
-    # Would call BattleAnalyzer.analyze_battle(battle_id)
-    {:ok, %{}}
+  defp analyze_battle(battle_id) do
+    # Trigger full battle analysis using the actual BattleAnalyzer
+    case EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer.analyze_battle(battle_id) do
+      {:ok, analysis} -> {:ok, analysis}
+      {:error, reason} ->
+        Logger.warning("Battle analysis failed for #{battle_id}: #{inspect(reason)}")
+        {:error, reason}
+    end
   end
 
   defp delete_battle_killmails(battle_id) do
@@ -366,12 +384,18 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   defp apply_search_filter(_, query), do: query
 
   defp fetch_battles(battle_ids) do
-    battles =
-      Battle
-      |> Ash.Query.filter(expr(id in ^battle_ids))
-      |> Ash.read!()
+    case Battle
+         |> Ash.Query.filter(expr(id in ^battle_ids))
+         |> Ash.read(domain: Api) do
+      {:ok, battles} when battles != [] ->
+        {:ok, battles}
 
-    {:ok, battles}
+      {:ok, []} ->
+        {:error, :battles_not_found}
+
+      {:error, _} ->
+        {:error, :battles_not_found}
+    end
   end
 
   defp prepare_merged_battle_data(battles) do
@@ -405,15 +429,24 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
     |> Ash.bulk_update(:update, %{battle_id: to_battle_id}, domain: Api)
   end
 
-  defp get_battle_killmails(_battle_id) do
-    # Fetch killmails associated with battle
-    {:ok, []}
+  defp get_battle_killmails(battle_id) do
+    # Fetch killmails associated with battle through BattleKillmail junction table
+    case BattleKillmail
+         |> Ash.Query.filter(expr(battle_id == ^battle_id))
+         |> Ash.read(domain: Api) do
+      {:ok, battle_killmails} ->
+        killmail_ids = Enum.map(battle_killmails, & &1.killmail_id)
+        fetch_killmails(killmail_ids)
+      {:error, error} ->
+        Logger.error("Failed to get battle killmails: #{inspect(error)}")
+        {:error, :database_error}
+    end
   end
 
   defp split_killmails_by_time(killmails, split_time) do
     {before, after_split} =
       Enum.split_with(killmails, fn km ->
-        DateTime.compare(km.killmail_time, split_time) == :lt
+        DateTimeUtils.compare(km.killmail_time, split_time) == :lt
       end)
 
     {before, after_split}

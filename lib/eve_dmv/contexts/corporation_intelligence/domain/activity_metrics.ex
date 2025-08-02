@@ -1,9 +1,13 @@
 defmodule EveDmv.Shared.ActivityMetrics do
   @moduledoc """
+
   Shared activity metric calculations for characters and corporations.
 
   Provides consistent activity scoring, engagement calculations, and
   timezone analysis used across the application.
+  """
+
+    alias EveDmv.Core.Utils.DateTimeUtils
   """
 
   @doc """
@@ -193,12 +197,12 @@ defmodule EveDmv.Shared.ActivityMetrics do
   end
 
   defp days_since(%DateTime{} = datetime) do
-    DateTime.diff(DateTime.utc_now(), datetime, :day)
+    DateTimeUtils.diff(DateTime.utc_now(), datetime, :day)
   end
 
   defp days_since(%NaiveDateTime{} = datetime) do
     datetime
-    |> DateTime.from_naive!("Etc/UTC")
+    |> DateTimeUtils.to_datetime()
     |> days_since()
   end
 

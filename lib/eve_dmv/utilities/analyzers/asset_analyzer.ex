@@ -8,6 +8,7 @@ defmodule EveDmv.Intelligence.Analyzers.AssetAnalyzer do
   - Fleet readiness scoring
   - Hangar management recommendations
   """
+  """
 
   alias EveDmv.Eve.EsiCache
   alias EveDmv.Eve.EsiClient

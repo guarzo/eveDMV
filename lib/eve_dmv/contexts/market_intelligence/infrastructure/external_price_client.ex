@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.ExternalPriceClient 
   Routes price requests to appropriate external APIs based on source preference.
   Supports Janice API as primary source with fallback to cached killmail values.
   """
+  """
 
   alias EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient
   require Logger

@@ -8,12 +8,14 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   - Real-time preview against last 1000 killmails
   - Chain filter validation with live Wanderer data
   """
+  """
 
   use EveDmvWeb, :live_view
 
   alias EveDmv.Contexts.Surveillance.Api, as: SurveillanceApi
-  alias KillmailRaw
-  alias SearchSuggestionService
+  alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.Search.SearchSuggestionService
 
   require Logger
 
@@ -1043,9 +1045,9 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   def format_timestamp(%DateTime{} = dt), do: format_datetime(dt)
 
   def format_timestamp(%NaiveDateTime{} = ndt) do
-    case DateTime.from_naive(ndt, "Etc/UTC") do
-      {:ok, dt} -> format_datetime(dt)
-      _ -> "Unknown"
+    case DateTimeUtils.to_datetime(ndt) do
+      nil -> "Unknown"
+      dt -> format_datetime(dt)
     end
   end
 

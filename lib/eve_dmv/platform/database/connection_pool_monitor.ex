@@ -5,6 +5,7 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
   Tracks connection pool size, queue length, available connections,
   and provides alerts when thresholds are exceeded.
   """
+  """
 
   use GenServer
 

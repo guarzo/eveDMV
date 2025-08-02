@@ -6,6 +6,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainMonitor do
   This GenServer manages the periodic synchronization of chain data,
   processes real-time updates, and maintains chain intelligence state.
   """
+  """
 
   use GenServer
 

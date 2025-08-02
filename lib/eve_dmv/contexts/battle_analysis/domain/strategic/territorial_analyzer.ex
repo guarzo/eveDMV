@@ -8,7 +8,9 @@ defmodule EveDmv.Shared.Strategic.TerritorialAnalyzer do
   - Expansion opportunity detection
   - Territory stability assessment
   """
+  """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Shared.Strategic.Patterns.TerritorialPattern
 
   require Logger
@@ -198,7 +200,7 @@ defmodule EveDmv.Shared.Strategic.TerritorialAnalyzer do
     else
       first = Enum.min_by(killmails, & &1.timestamp).timestamp
       last = Enum.max_by(killmails, & &1.timestamp).timestamp
-      max(1, DateTime.diff(last, first, :hour))
+      max(1, DateTimeUtils.diff(last, first, :hour))
     end
   end
 
@@ -491,8 +493,8 @@ defmodule EveDmv.Shared.Strategic.TerritorialAnalyzer do
       :single_system ->
         strategic_data.killmails
         |> Enum.filter(fn km ->
-          DateTime.compare(km.timestamp, start_time) != :lt &&
-            DateTime.compare(km.timestamp, end_time) == :lt
+          DateTimeUtils.compare(km.timestamp, start_time) != :lt &&
+            DateTimeUtils.compare(km.timestamp, end_time) == :lt
         end)
 
       :multi_system ->
@@ -501,8 +503,8 @@ defmodule EveDmv.Shared.Strategic.TerritorialAnalyzer do
           filtered_kills =
             data.killmails
             |> Enum.filter(fn km ->
-              DateTime.compare(km.timestamp, start_time) != :lt &&
-                DateTime.compare(km.timestamp, end_time) == :lt
+              DateTimeUtils.compare(km.timestamp, start_time) != :lt &&
+                DateTimeUtils.compare(km.timestamp, end_time) == :lt
             end)
 
           %{system_id: data.system_id, killmails: filtered_kills}

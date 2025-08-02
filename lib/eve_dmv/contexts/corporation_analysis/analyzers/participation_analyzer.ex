@@ -14,9 +14,11 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
   - **Chain Operations**: Wormhole chain activities across multiple systems
   - **Solo Activities**: Individual activities without fleet participation
   """
+  """
 
   use EveDmv.ErrorHandler
   alias EveDmv.Contexts.CorporationAnalysis.Infrastructure.ParticipationDataProvider
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Result
 
   require Logger
@@ -651,7 +653,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
   defp get_period_start(opts, base_data) do
     Keyword.get(opts, :period_start) ||
       Map.get(base_data, :period_start) ||
-      DateTime.add(DateTime.utc_now(), -30, :day)
+      DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
   end
 
   defp get_period_end(opts, base_data) do
@@ -719,18 +721,18 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
   end
 
   defp count_recent_activities(participation_data, days) do
-    cutoff = DateTime.add(DateTime.utc_now(), -days, :day)
+    cutoff = DateTimeUtils.add(DateTime.utc_now(), -days, :day)
 
     Enum.count(
       participation_data.activities,
-      &(DateTime.compare(&1.timestamp, cutoff) == :gt)
+      &(DateTimeUtils.compare(&1.timestamp, cutoff) == :gt)
     )
   end
 
   defp calculate_historical_average(participation_data) do
     # Simplified historical average calculation
     total_days =
-      DateTime.diff(participation_data.period_end, participation_data.period_start, :day)
+      DateTimeUtils.diff(participation_data.period_end, participation_data.period_start, :day)
 
     if total_days > 0 do
       length(participation_data.activities) / total_days

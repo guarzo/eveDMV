@@ -5,8 +5,10 @@ defmodule EveDmv.Intelligence.Core.QueryHelper do
   Provides standardized query patterns, result aggregation, and data
   transformation utilities used across multiple intelligence analyzers.
   """
+  """
 
   alias EveDmv.Api
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Ash.Query
   require Logger
@@ -75,7 +77,7 @@ defmodule EveDmv.Intelligence.Core.QueryHelper do
   def get_character_killmails(character_id, opts \\ %{}) do
     limit = Map.get(opts, :limit, 1000)
     days_back = Map.get(opts, :days_back, 90)
-    cutoff_date = DateTime.add(DateTime.utc_now(), -days_back, :day)
+    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -days_back, :day)
 
     query =
       KillmailEnriched
@@ -99,7 +101,7 @@ defmodule EveDmv.Intelligence.Core.QueryHelper do
   def get_corporation_killmails(corporation_id, opts \\ %{}) do
     limit = Map.get(opts, :limit, 1000)
     days_back = Map.get(opts, :days_back, 30)
-    cutoff_date = DateTime.add(DateTime.utc_now(), -days_back, :day)
+    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -days_back, :day)
 
     query =
       KillmailEnriched

@@ -5,6 +5,7 @@ defmodule EveDmvWeb.PlayerProfileLive do
   Shows comprehensive player statistics including K/D ratios, ISK efficiency,
   ship preferences, activity patterns, and historical performance.
   """
+  """
 
   use EveDmvWeb, :live_view
 

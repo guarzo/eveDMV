@@ -7,7 +7,9 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
   - Corporation Analysis participation analyzer
   - Corporation Intelligence participation tracking
   """
+  """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.CharacterRepository
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
   alias EveDmv.Platform.Database.CorporationRepository
@@ -158,7 +160,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
   end
 
   defp calculate_start_date(days: days) do
-    DateTime.utc_now() |> DateTime.add(-days * 24 * 60 * 60, :second)
+    DateTime.utc_now() |> DateTimeUtils.add(-days * 24 * 60 * 60, :second)
   end
 
   defp collect_member_participation(member, start_date) do
@@ -244,7 +246,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
       0.0
     else
       # Calculate activity distribution across time period
-      _total_days = DateTime.diff(DateTime.utc_now(), start_date, :day)
+      _total_days = DateTimeUtils.diff(DateTime.utc_now(), start_date, :day)
 
       daily_activity =
         killmails
@@ -308,7 +310,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
 
       time_span =
         if length(sorted_kms) > 1 do
-          DateTime.diff(
+          DateTimeUtils.diff(
             List.last(sorted_kms).killmail_time,
             List.first(sorted_kms).killmail_time,
             :day

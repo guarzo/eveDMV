@@ -4,9 +4,11 @@ defmodule EveDmv.Cache.QueryCache do
 
   Provides automatic caching with TTL, invalidation, and performance tracking.
   """
+  """
 
   use GenServer
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Monitoring.PerformanceTracker
   require Logger
 
@@ -95,7 +97,7 @@ defmodule EveDmv.Cache.QueryCache do
   Put a value in the cache with TTL.
   """
   def put(key, value, ttl \\ @default_ttl) do
-    expiry = DateTime.add(DateTime.utc_now(), ttl, :millisecond)
+    expiry = DateTimeUtils.add(DateTime.utc_now(), ttl, :millisecond)
     :ets.insert(@table_name, {key, value, expiry})
     :ok
   end
@@ -254,7 +256,7 @@ defmodule EveDmv.Cache.QueryCache do
       hit_rate: Float.round(hit_rate, 2),
       cache_size: cache_size,
       memory_mb: Float.round(memory_bytes / 1_048_576, 2),
-      uptime_hours: DateTime.diff(DateTime.utc_now(), state.start_time, :hour)
+      uptime_hours: DateTimeUtils.diff(DateTime.utc_now(), state.start_time, :hour)
     }
 
     {:reply, stats, state}

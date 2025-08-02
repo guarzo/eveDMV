@@ -5,6 +5,7 @@ defmodule EveDmv.Core.SharedKernel.Entities.Killmail do
   This entity provides a consistent interface for killmail data while
   allowing different contexts to extend it with their specific needs.
   """
+  """
 
   alias EveDmv.Core.SharedKernel.ValueObjects.CharacterId
   alias EveDmv.Core.SharedKernel.ValueObjects.IskAmount

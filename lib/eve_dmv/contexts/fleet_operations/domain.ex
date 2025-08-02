@@ -4,6 +4,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain do
 
   Manages fleet doctrines and related fleet management functionality.
   """
+  """
 
   use Ash.Domain, otp_app: :eve_dmv
 

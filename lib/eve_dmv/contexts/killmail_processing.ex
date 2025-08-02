@@ -11,6 +11,7 @@ defmodule EveDmv.Contexts.KillmailProcessing do
   This context is the foundation of the EVE DMV system, providing the
   core data that all other contexts depend on for analysis.
   """
+  """
 
   use EveDmv.Contexts.BoundedContext, name: :killmail_processing
   use Supervisor

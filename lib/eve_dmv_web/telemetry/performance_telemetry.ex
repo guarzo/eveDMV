@@ -3,6 +3,7 @@ defmodule EveDmvWeb.Telemetry.PerformanceTelemetry do
   Telemetry handlers for automatic performance tracking.
   Integrates with Phoenix, Ecto, and custom events to track performance metrics.
   """
+  """
 
   alias EveDmv.Monitoring.PerformanceTracker
   require Logger

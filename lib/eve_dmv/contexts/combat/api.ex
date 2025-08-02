@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.Combat.Api do
   This module provides the unified interface for all combat-related functionality,
   including battle detection, analysis, timeline reconstruction, and tactical insights.
   """
+  """
 
   alias EveDmv.Contexts.BattleAnalysis.Core.BattleDetector
   alias EveDmv.Contexts.Combat.Core.BattleAnalyzer

@@ -16,9 +16,11 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
   analyzing pilot capabilities, preferences, and availability to
   optimize fleet effectiveness and readiness.
   """
+  """
 
   use EveDmv.ErrorHandler
   alias EveDmv.Contexts.FleetOperations.Infrastructure.PilotDataProvider
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Result
 
   require Logger
@@ -285,7 +287,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
         true
 
       last_date ->
-        days_since = DateTime.diff(DateTime.utc_now(), last_date, :day)
+        days_since = DateTimeUtils.diff(DateTime.utc_now(), last_date, :day)
         days_since <= 30
     end
   end

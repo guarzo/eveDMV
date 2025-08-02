@@ -6,11 +6,13 @@ defmodule EveDmv.Core.SharedKernel.Events.KillmailProcessed do
   This event is published by the killmail ingestion pipeline and consumed
   by various analysis engines across the system.
   """
+  """
 
   alias EveDmv.Core.SharedKernel.Entities.Killmail
   alias EveDmv.Core.SharedKernel.ValueObjects.CharacterId
   alias EveDmv.Core.SharedKernel.ValueObjects.IskAmount
   alias EveDmv.Core.SharedKernel.ValueObjects.SystemId
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   defstruct [
     :event_id,
@@ -57,7 +59,7 @@ defmodule EveDmv.Core.SharedKernel.Events.KillmailProcessed do
   def new(data) when is_map(data) do
     %__MODULE__{
       event_id: generate_event_id(),
-      occurred_at: DateTime.utc_now(),
+      occurred_at: DateTimeUtils.utc_now(),
       killmail_id: Map.fetch!(data, :killmail_id),
       killmail_time: Map.fetch!(data, :killmail_time),
       system_id: Map.fetch!(data, :system_id),
@@ -84,7 +86,7 @@ defmodule EveDmv.Core.SharedKernel.Events.KillmailProcessed do
 
     %__MODULE__{
       event_id: generate_event_id(),
-      occurred_at: DateTime.utc_now(),
+      occurred_at: DateTimeUtils.utc_now(),
       killmail_id: killmail.killmail_id,
       killmail_time: killmail.killmail_time,
       system_id: killmail.system_id,
@@ -173,7 +175,7 @@ defmodule EveDmv.Core.SharedKernel.Events.KillmailProcessed do
   """
   @spec age_seconds(t()) :: integer()
   def age_seconds(%__MODULE__{occurred_at: occurred_at}) do
-    DateTime.diff(DateTime.utc_now(), occurred_at, :second)
+    DateTimeUtils.diff(DateTimeUtils.utc_now(), occurred_at, :second)
   end
 
   @doc """

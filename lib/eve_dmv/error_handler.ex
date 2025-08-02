@@ -6,6 +6,7 @@ defmodule EveDmv.ErrorHandler do
   Provides retry logic, fallback values, error transformation,
   and telemetry integration for standardized error handling.
   """
+  """
 
   import EveDmv.Result
   alias EveDmv.Error

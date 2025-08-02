@@ -1,12 +1,14 @@
-defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityTrendAnalyzer do
+defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivityAnalyzer.ActivityTrendAnalyzer do
   @moduledoc """
   Activity trend analysis module for member activity analyzer.
 
   Analyzes activity patterns over time including trend detection,
   seasonal patterns, peak identification, and predictive insights.
   """
+  """
 
-  alias EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityHelpers
+  alias EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivityAnalyzer.ActivityHelpers
+  alias EveDmv.Core.Utils.DateTimeUtils
   require Logger
 
   @doc """
@@ -64,7 +66,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityTrendAnal
   """
   def analyze_seasonal_patterns(member_activities, _days) do
     # Basic seasonal pattern analysis
-    current_month = DateTime.utc_now().month
+    current_month = DateTimeUtils.utc_now().month
 
     %{
       current_season: determine_season(current_month),
@@ -94,12 +96,12 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityTrendAnal
   end
 
   defp perform_advanced_trend_analysis(activity_series, member_activities, days) do
-    {_trend_direction, _growth_rate} = calculate_trend_from_series(activity_series)
+    %{direction: _trend_direction, change_percent: _growth_rate} = calculate_trend_from_series(activity_series)
     peaks = ActivityHelpers.identify_activity_peaks(activity_series)
     seasonal = analyze_seasonal_patterns(member_activities, days)
 
     # Recent activity analysis
-    recent_cutoff = DateTime.add(DateTime.utc_now(), -7, :day)
+    recent_cutoff = DateTimeUtils.add(DateTimeUtils.utc_now(), -7 * 24 * 60 * 60, :second)
     recent_activities = filter_recent_activities(member_activities, recent_cutoff)
     metrics = calculate_activity_metrics(member_activities, recent_activities)
 
@@ -119,7 +121,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityTrendAnal
 
   defp perform_simple_trend_analysis(member_activities, days) do
     # Simple analysis for limited data
-    recent_cutoff = DateTime.add(DateTime.utc_now(), -7, :day)
+    recent_cutoff = DateTimeUtils.add(DateTimeUtils.utc_now(), -7 * 24 * 60 * 60, :second)
     recent_activities = filter_recent_activities(member_activities, recent_cutoff)
 
     activity_change =
@@ -239,7 +241,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.ActivityTrendAnal
     Enum.filter(member_activities, fn member ->
       case Map.get(member, :last_seen) do
         nil -> false
-        last_seen -> DateTime.compare(last_seen, cutoff_date) != :lt
+        last_seen -> DateTimeUtils.compare(last_seen, cutoff_date) != :lt
       end
     end)
   end

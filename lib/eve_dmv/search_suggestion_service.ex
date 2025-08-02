@@ -5,6 +5,7 @@ defmodule SearchSuggestionService do
   This service queries actual database tables to provide intelligent search suggestions
   based on user input. It uses PostgreSQL's trigram indexing for fuzzy search capabilities.
   """
+  """
 
   import Ash.Query
   alias EveDmv.Api

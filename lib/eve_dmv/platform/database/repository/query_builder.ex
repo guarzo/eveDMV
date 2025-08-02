@@ -5,6 +5,7 @@ defmodule EveDmv.Database.Repository.QueryBuilder do
   Provides composable query construction with optimization for common patterns
   like filtering, preloading, pagination, and sorting.
   """
+  """
 
   require Ash.Query
 

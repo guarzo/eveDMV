@@ -6,11 +6,15 @@ defmodule EveDmv.Intelligence.MemberActivityIntelligence do
   activity patterns, and early warning for member burnout or disengagement.
   """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
+  """
+
   use Ash.Resource,
     domain: EveDmv.Domains.Intelligence,
     data_layer: AshPostgres.DataLayer
 
   postgres do
+  alias EveDmv.Core.Utils.DateTimeUtils
     table("member_activity_intelligence")
     repo(EveDmv.Repo)
 
@@ -230,7 +234,7 @@ defmodule EveDmv.Intelligence.MemberActivityIntelligence do
         start_date = Ash.Changeset.get_attribute(changeset, :activity_period_start)
         end_date = Ash.Changeset.get_attribute(changeset, :activity_period_end)
 
-        if start_date && end_date && DateTime.compare(start_date, end_date) == :gt do
+        if start_date && end_date && DateTimeUtils.compare(start_date, end_date) == :gt do
           {:error, field: :activity_period_end, message: "must be after activity_period_start"}
         else
           :ok
@@ -493,7 +497,7 @@ defmodule EveDmv.Intelligence.MemberActivityIntelligence do
         now = DateTime.utc_now()
 
         Enum.map(records, fn record ->
-          DateTime.diff(now, record.analysis_generated_at, :day)
+          DateTimeUtils.diff(now, record.analysis_generated_at, :day)
         end)
       end)
     end

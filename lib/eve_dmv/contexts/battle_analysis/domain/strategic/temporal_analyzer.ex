@@ -8,6 +8,9 @@ defmodule EveDmv.Shared.Strategic.TemporalAnalyzer do
   - Time window pattern detection
   - Peak activity identification
   """
+  """
+
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
@@ -240,7 +243,7 @@ defmodule EveDmv.Shared.Strategic.TemporalAnalyzer do
   defp build_cluster(cluster, [next | rest], time_window_hours) do
     last_time = List.last(cluster).timestamp
 
-    if DateTime.diff(next.timestamp, last_time, :hour) <= time_window_hours do
+    if DateTimeUtils.diff(next.timestamp, last_time, :hour) <= time_window_hours do
       build_cluster(cluster ++ [next], rest, time_window_hours)
     else
       {cluster, [next | rest]}
@@ -255,8 +258,8 @@ defmodule EveDmv.Shared.Strategic.TemporalAnalyzer do
       size: length(cluster),
       start_time: start_time,
       end_time: end_time,
-      duration_hours: DateTime.diff(end_time, start_time, :hour),
-      intensity: length(cluster) / max(1, DateTime.diff(end_time, start_time, :hour)),
+      duration_hours: DateTimeUtils.diff(end_time, start_time, :hour),
+      intensity: length(cluster) / max(1, DateTimeUtils.diff(end_time, start_time, :hour)),
       participants: count_unique_participants(cluster)
     }
   end
@@ -313,13 +316,13 @@ defmodule EveDmv.Shared.Strategic.TemporalAnalyzer do
     window_seconds = window_hours * 3600
 
     Stream.unfold(start_time, fn current ->
-      if DateTime.compare(current, end_time) == :lt do
-        window_end = DateTime.add(current, window_seconds, :second)
+      if DateTimeUtils.compare(current, end_time) == :lt do
+        window_end = DateTimeUtils.add(current, window_seconds, :second)
 
         window_kills =
           Enum.filter(killmails, fn km ->
-            DateTime.compare(km.timestamp, current) in [:gt, :eq] &&
-              DateTime.compare(km.timestamp, window_end) == :lt
+            DateTimeUtils.compare(km.timestamp, current) in [:gt, :eq] &&
+              DateTimeUtils.compare(km.timestamp, window_end) == :lt
           end)
 
         window = %{
@@ -419,7 +422,7 @@ defmodule EveDmv.Shared.Strategic.TemporalAnalyzer do
       intervals =
         high_activity_times
         |> Enum.chunk_every(2, 1, :discard)
-        |> Enum.map(fn [t1, t2] -> DateTime.diff(t2, t1, :hour) end)
+        |> Enum.map(fn [t1, t2] -> DateTimeUtils.diff(t2, t1, :hour) end)
 
       if Enum.empty?(intervals) do
         %{detected: false}

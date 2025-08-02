@@ -5,6 +5,7 @@ defmodule EveDmv.Intelligence.Cache.AnalysisCache do
   This module has been migrated from Cachex to use the unified EveDmv.Cache system
   for better consistency and reduced complexity.
   """
+  """
 
   alias EveDmv.Cache
   alias EveDmv.Config.Cache, as: CacheConfig

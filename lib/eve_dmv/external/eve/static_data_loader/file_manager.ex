@@ -5,6 +5,7 @@ defmodule EveDmv.Eve.StaticDataLoader.FileManager do
   Handles downloading CSV files from fuzzwork.co.uk, decompressing bz2 archives,
   and maintaining a local cache of SDE data files.
   """
+  """
 
   require Logger
 

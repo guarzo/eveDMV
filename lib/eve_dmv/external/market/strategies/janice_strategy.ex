@@ -5,6 +5,7 @@ defmodule EveDmv.Market.Strategies.JaniceStrategy do
   Janice provides accurate real-time market data for most EVE items
   and is the primary fallback for non-abyssal items.
   """
+  """
 
   @behaviour EveDmv.Market.PricingStrategy
 

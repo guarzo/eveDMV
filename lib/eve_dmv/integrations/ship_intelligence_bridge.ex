@@ -10,10 +10,12 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
 
   Acts as the central integration point for ship intelligence across the application.
   """
+  """
 
   import Ecto.Query
   alias EveDmv.Analytics.FleetAnalyzer
   alias EveDmv.Analytics.ModuleClassifier
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Repo
   require Logger
 
@@ -479,7 +481,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
 
   # Character intelligence helper functions
   defp get_character_killmail_data(character_id, days_back) do
-    cutoff_date = DateTime.add(DateTime.utc_now(), -days_back, :day)
+    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -days_back, :day)
 
     query =
       from(k in "killmails_raw",
@@ -588,7 +590,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
     sorted_times = Enum.sort(times, DateTime)
     first = List.first(sorted_times)
     last = List.last(sorted_times)
-    DateTime.diff(last, first, :day) + 1
+    DateTimeUtils.diff(last, first, :day) + 1
   end
 
   # Fleet operations helper functions

@@ -9,10 +9,12 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer do
   - Affiliation tracking
   - Activity patterns
   """
+  """
 
   alias EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.ActivityTracker
   alias EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.AffiliationAnalyzer
   alias EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.RoleClassifier
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.External.Eve.MarketDataService
 
   require Logger
@@ -366,7 +368,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer do
       if length(times) > 0 do
         first = List.first(times)
         last = List.last(times)
-        DateTime.diff(last, first, :minute)
+        DateTimeUtils.diff(last, first, :minute)
       else
         0
       end
@@ -382,7 +384,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer do
     sorted = Enum.sort(times, DateTime)
     first = List.first(sorted)
     last = List.last(sorted)
-    DateTime.diff(last, first, :minute)
+    DateTimeUtils.diff(last, first, :minute)
   end
 
   defp estimate_ship_value(ship_type_ids) do

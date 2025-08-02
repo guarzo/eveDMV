@@ -1,12 +1,14 @@
 # credo:disable-for-this-file Credo.Check.Readability.StrictModuleLayout
 defmodule EveDmvWeb.KillFeedLive do
+
+  @moduledoc """
+
   import EveDmvWeb.Components.StatsGridComponent
   import EveDmvWeb.Components.EmptyStateComponent
   import EveDmvWeb.Components.PageHeaderComponent
   import EveDmvWeb.EveImageComponents
   alias EveDmv.Killmails.DisplayService
   alias EveDmv.Presentation.Formatters
-
   @moduledoc """
   Public live kill feed displaying real-time killmail data.
   """

@@ -5,10 +5,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.CombatLogService do
   This module handles the business logic for combat log processing,
   reducing dependencies in the resource module.
   """
+  """
 
   alias EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser
   alias EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser
   alias EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
@@ -25,7 +27,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.CombatLogService do
          content_hash: content_hash,
          file_name: file_upload.filename,
          file_size: byte_size(content),
-         uploaded_at: DateTime.utc_now(),
+         uploaded_at: DateTimeUtils.utc_now(),
          pilot_name: pilot_name,
          battle_id: battle_id
        }}
@@ -43,17 +45,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.CombatLogService do
               {:ok, data} -> {:ok, data}
               :error -> {:error, :invalid_base64}
             end),
-         content <- :zlib.uncompress(compressed) do
+         content <- :zlib.uncompress(compressed),
+         {:ok, %{
+           events: events,
+           summary: summary,
+           metadata: metadata,
+           tactical_analysis: tactical_analysis,
+           recommendations: recommendations
+         }} <- EnhancedCombatLogParser.parse_combat_log(content, pilot_name: pilot_name) do
       Logger.info("🔍 USING ENHANCED PARSER for combat log")
-
-      {:ok,
-       %{
-         events: events,
-         summary: summary,
-         metadata: metadata,
-         tactical_analysis: tactical_analysis,
-         recommendations: recommendations
-       }} = EnhancedCombatLogParser.parse_combat_log(content, pilot_name: pilot_name)
 
       {:ok,
        %{

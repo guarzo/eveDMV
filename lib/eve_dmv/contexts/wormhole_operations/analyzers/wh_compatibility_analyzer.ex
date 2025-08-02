@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Analyzers.WhFleetAnalyzer.WormholeC
   This module provides functionality for calculating fleet mass,
   wormhole viability, jump sequences, and mass efficiency.
   """
+  """
 
   alias EveDmv.Contexts.FleetOperations.Core.MassCalculator
 

@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.FleetRequirementsBuilder do
   Handles the creation of comprehensive ship requirements based on doctrine
   templates, including mass calculations, cost estimates, and wormhole compatibility.
   """
+  """
 
   alias EveDmv.Contexts.FleetOperations.Core.MassCalculator
   alias EveDmv.Intelligence.Analyzers.FleetAssetManager.ShipCostCalculator

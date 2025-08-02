@@ -8,6 +8,7 @@ defmodule EveDmv.Config.Cache do
   This module now uses the unified configuration system for consistent
   cache configuration access and environment variable handling.
   """
+  """
 
   alias EveDmv.Config.UnifiedConfig
 

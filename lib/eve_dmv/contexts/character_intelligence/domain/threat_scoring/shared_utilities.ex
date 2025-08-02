@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtili
   This module contains common functions used across multiple threat scoring engines
   to avoid code duplication and ensure consistency.
   """
+  """
 
   require Logger
 

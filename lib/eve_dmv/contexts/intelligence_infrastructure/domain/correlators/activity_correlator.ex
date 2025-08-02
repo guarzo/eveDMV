@@ -2,8 +2,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   @moduledoc """
   Correlator for activity patterns across multiple systems.
   """
+  """
 
   import Ecto.Query
+
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Repo
   require Logger
 
@@ -159,7 +162,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
   defp fetch_systems_activity_data(system_ids) do
     # Fetch activity data for all systems
-    start_time = DateTime.add(DateTime.utc_now(), -48 * 3600, :second)
+    start_time = DateTimeUtils.add(DateTime.utc_now(), -48 * 3600, :second)
 
     query =
       from(k in "killmails_enriched",
@@ -191,7 +194,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   defp fetch_hourly_activity_data(system_ids) do
     # Fetch hourly activity data for correlation analysis
     # 1 week
-    start_time = DateTime.add(DateTime.utc_now(), -168 * 3600, :second)
+    start_time = DateTimeUtils.add(DateTime.utc_now(), -168 * 3600, :second)
 
     query =
       from(k in "killmails_enriched",
@@ -664,7 +667,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       []
     else
       # Get weekly data
-      start_time = DateTime.add(DateTime.utc_now(), -14 * 24 * 3600, :second)
+      start_time = DateTimeUtils.add(DateTime.utc_now(), -14 * 24 * 3600, :second)
 
       query =
         from(k in "killmails_enriched",
@@ -824,7 +827,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
       first = Enum.min(times)
       last = Enum.max(times)
 
-      hours = DateTime.diff(last, first, :second) / 3600
+      hours = DateTimeUtils.diff(last, first, :second) / 3600
 
       %{
         hours: Float.round(hours, 2),
@@ -870,25 +873,25 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
   end
 
   defp apply_lag_to_times(times, lag) do
-    Enum.map(times, fn time -> DateTime.add(time, lag * 3600, :second) end)
+    Enum.map(times, fn time -> DateTimeUtils.add(time, lag * 3600, :second) end)
   end
 
   defp find_overlapping_times(times1, lagged_times2) do
     Enum.filter(times1, fn t1 ->
-      Enum.any?(lagged_times2, fn t2 -> abs(DateTime.diff(t1, t2, :minute)) < 30 end)
+      Enum.any?(lagged_times2, fn t2 -> abs(DateTimeUtils.diff(t1, t2, :minute)) < 30 end)
     end)
   end
 
   defp build_lagged_values(overlapping_times, lagged_times2, data2, lag) do
     Enum.map(overlapping_times, fn t ->
       closest_lagged = find_closest_lagged_time(t, lagged_times2)
-      original_time = DateTime.add(closest_lagged, -lag * 3600, :second)
+      original_time = DateTimeUtils.add(closest_lagged, -lag * 3600, :second)
       Map.get(data2, original_time, 0)
     end)
   end
 
   defp find_closest_lagged_time(time, lagged_times2) do
-    Enum.min_by(lagged_times2, fn t2 -> abs(DateTime.diff(time, t2, :minute)) end)
+    Enum.min_by(lagged_times2, fn t2 -> abs(DateTimeUtils.diff(time, t2, :minute)) end)
   end
 
   defp calculate_simple_correlation(values1, values2) do

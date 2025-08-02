@@ -10,7 +10,9 @@ defmodule EveDmv.Intelligence.Analyzers.MemberRiskAssessment do
 
   See individual function documentation for detailed usage examples.
   """
+  """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.Metrics.MemberActivityMetrics
   alias EveDmv.Utils.TimeUtils
 
@@ -396,7 +398,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberRiskAssessment do
               if recent_score > 70, do: 1, else: 999
 
             last_seen ->
-              DateTime.diff(current_time, last_seen, :day)
+              DateTimeUtils.diff(current_time, last_seen, :day)
           end
 
         killmail_count = Map.get(member, :killmail_count, 0)

@@ -8,6 +8,9 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
   - Strategic value assessment
   - Resource flow tracking
   """
+  """
+
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
@@ -122,11 +125,39 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
   end
 
   defp classify_ship_type(ship_type_id) do
-    # Use actual ship classification from static data
-    case EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id) do
-      :mining -> :venture
-      :industrial -> :hauler
-      _ -> :combat
+    # Map specific ship type IDs to their roles
+    # This is based on EVE Online ship type IDs
+    case ship_type_id do
+      # Mining ships
+      32880 -> :venture      # Venture
+      17478 -> :retriever    # Retriever
+      17480 -> :retriever    # Procurer
+      17482 -> :retriever    # Covetor
+      22544 -> :retriever    # Hulk
+      22546 -> :retriever    # Skiff
+      22548 -> :retriever    # Mackinaw
+      28606 -> :orca        # Orca
+      28352 -> :rorqual     # Rorqual
+
+      # Industrial/Hauling ships
+      648 -> :hauler        # Badger
+      649 -> :hauler        # Tayra
+      650 -> :hauler        # Nereus
+      651 -> :hauler        # Hoarder
+      652 -> :hauler        # Mammoth
+      653 -> :hauler        # Wreathe
+      654 -> :hauler        # Kryos
+      655 -> :hauler        # Epithal
+      656 -> :hauler        # Miasmos
+      657 -> :hauler        # Iteron Mark V
+
+      # Default classification based on group
+      _ ->
+        case EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id) do
+          :mining -> :venture  # Default mining ship
+          :industrial -> :hauler  # Default hauler
+          _ -> :combat
+        end
     end
   end
 
@@ -473,7 +504,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
       start_time: strategic_data.time_range.since,
       end_time: strategic_data.time_range.until,
       duration_days:
-        DateTime.diff(
+        DateTimeUtils.diff(
           strategic_data.time_range.until,
           strategic_data.time_range.since,
           :day
@@ -578,8 +609,8 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
         window_kills =
           killmails
           |> Enum.filter(fn km ->
-            DateTime.compare(km.timestamp, start_time) != :lt &&
-              DateTime.compare(km.timestamp, end_time) == :lt
+            DateTimeUtils.compare(km.timestamp, start_time) != :lt &&
+              DateTimeUtils.compare(km.timestamp, end_time) == :lt
           end)
 
         competitors = identify_window_competitors(window_kills)
@@ -599,15 +630,15 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
   end
 
   defp create_time_windows(time_range) do
-    duration_hours = DateTime.diff(time_range.until, time_range.since, :hour)
+    duration_hours = DateTimeUtils.diff(time_range.until, time_range.since, :hour)
     window_size = max(24, div(duration_hours, 7))
 
     Stream.unfold(time_range.since, fn current ->
-      if DateTime.compare(current, time_range.until) == :lt do
-        window_end = DateTime.add(current, window_size * 3600, :second)
+      if DateTimeUtils.compare(current, time_range.until) == :lt do
+        window_end = DateTimeUtils.add(current, window_size * 3600, :second)
 
         window_end =
-          if DateTime.compare(window_end, time_range.until) == :gt do
+          if DateTimeUtils.compare(window_end, time_range.until) == :gt do
             time_range.until
           else
             window_end
@@ -742,4 +773,5 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
       true -> :minimal
     end
   end
+
 end

@@ -1,9 +1,13 @@
 defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.ParticipantExtractor.ActivityTracker do
   @moduledoc """
+
   Tracks participant activity patterns and engagement timelines.
 
   Analyzes when and how participants engage in combat, their activity
   patterns, and contribution patterns over time.
+  """
+
+    alias EveDmv.Core.Utils.DateTimeUtils
   """
 
   require Logger
@@ -315,7 +319,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
       last_time = List.last(timeline) |> Map.get(:time)
 
       # Calculate difference in seconds
-      DateTime.diff(last_time, first_time, :second)
+      DateTimeUtils.diff(last_time, first_time, :second)
     end
   end
 
@@ -553,7 +557,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
           if first_event == last_event do
             0
           else
-            DateTime.diff(
+            DateTimeUtils.diff(
               Map.get(last_event, :time),
               Map.get(first_event, :time),
               :second
@@ -577,7 +581,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
     |> Enum.chunk_every(2, 1, :discard)
     |> Enum.map(fn [prev, current] ->
       gap =
-        DateTime.diff(
+        DateTimeUtils.diff(
           Map.get(current, :time),
           Map.get(prev, :time),
           :second
@@ -676,7 +680,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
       first_event = List.first(fleet_timeline)
       last_event = List.last(fleet_timeline)
 
-      DateTime.diff(
+      DateTimeUtils.diff(
         Map.get(last_event, :time),
         Map.get(first_event, :time),
         :second

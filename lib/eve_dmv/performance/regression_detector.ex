@@ -1,9 +1,13 @@
 defmodule EveDmv.Performance.RegressionDetector do
   @moduledoc """
+
   Automated performance regression detection system.
 
   Monitors key performance metrics and alerts when performance
   degrades beyond acceptable thresholds.
+  """
+
+  alias EveDmv.Core.Utils.DateTimeUtils
   """
 
   use GenServer
@@ -417,7 +421,7 @@ defmodule EveDmv.Performance.RegressionDetector do
 
   defp get_recent_metrics do
     # Get metrics from the last hour
-    one_hour_ago = DateTime.add(DateTime.utc_now(), -3600, :second)
+    one_hour_ago = DateTimeUtils.add(DateTime.utc_now(), -3600, :second)
 
     @metrics_table
     |> :ets.tab2list()

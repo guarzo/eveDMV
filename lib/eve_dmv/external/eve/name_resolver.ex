@@ -12,6 +12,7 @@ defmodule EveDmv.Eve.NameResolver do
   - BatchProcessor: Efficient batch processing and parallel operations
   - PerformanceOptimizer: Cache warming and performance optimization
   """
+  """
 
   # Extracted modules
   alias EveDmv.Eve.NameResolver.BatchProcessor

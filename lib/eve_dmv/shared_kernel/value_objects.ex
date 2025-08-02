@@ -7,6 +7,8 @@ defmodule EveDmv.SharedKernel.ValueObjects do
   consistency in domain modeling.
   """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
+
   defmodule CharacterId do
     @moduledoc """
     Represents an EVE Online character ID.
@@ -157,6 +159,7 @@ defmodule EveDmv.SharedKernel.ValueObjects do
     @moduledoc """
     Represents a time range for analysis periods.
     """
+
     defstruct [:start_time, :end_time]
 
     @type t :: %__MODULE__{start_time: DateTime.t(), end_time: DateTime.t()}
@@ -170,7 +173,7 @@ defmodule EveDmv.SharedKernel.ValueObjects do
     end
 
     def duration(%__MODULE__{start_time: start_time, end_time: end_time}, unit \\ :second) do
-      DateTime.diff(end_time, start_time, unit)
+      DateTimeUtils.diff(end_time, start_time, unit)
     end
 
     def contains?(%__MODULE__{start_time: start_time, end_time: end_time}, datetime) do
@@ -180,13 +183,13 @@ defmodule EveDmv.SharedKernel.ValueObjects do
 
     def last_days(days) when is_integer(days) and days > 0 do
       end_time = DateTime.utc_now()
-      start_time = DateTime.add(end_time, -days * 24 * 3600, :second)
+      start_time = DateTimeUtils.add(end_time, -days * 24 * 3600, :second)
       new(start_time, end_time)
     end
 
     def last_hours(hours) when is_integer(hours) and hours > 0 do
       end_time = DateTime.utc_now()
-      start_time = DateTime.add(end_time, -hours * 3600, :second)
+      start_time = DateTimeUtils.add(end_time, -hours * 3600, :second)
       new(start_time, end_time)
     end
   end
@@ -195,6 +198,7 @@ defmodule EveDmv.SharedKernel.ValueObjects do
     @moduledoc """
     Represents 3D coordinates in EVE Online space.
     """
+
     defstruct [:x, :y, :z]
 
     @type t :: %__MODULE__{x: float(), y: float(), z: float()}

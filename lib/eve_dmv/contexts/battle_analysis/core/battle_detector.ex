@@ -7,11 +7,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
 
   This module provides comprehensive battle detection from killmail streams.
   """
+  """
 
   use GenServer
 
   import Ecto.Query
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Repo
 
@@ -69,7 +71,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
     state = %{
       active_battles: %{},
       killmail_buffer: [],
-      last_cleanup: DateTime.utc_now()
+      last_cleanup: DateTimeUtils.utc_now()
     }
 
     # Schedule periodic cleanup
@@ -130,12 +132,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
 
   @impl GenServer
   def handle_info(:cleanup_stale_battles, state) do
-    now = DateTime.utc_now()
+    now = DateTimeUtils.utc_now()
 
     active_battles =
       state.active_battles
       |> Enum.reject(fn {_battle_id, battle} ->
-        DateTime.diff(now, battle.last_activity, :minute) > @time_window_minutes * 2
+        DateTimeUtils.diff(now, battle.last_activity, :minute) > @time_window_minutes * 2
       end)
       |> Map.new()
 
@@ -191,7 +193,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   defp find_matching_cluster(killmail, clusters, time_window) do
     Enum.find_index(clusters, fn cluster ->
       Enum.any?(cluster, fn km ->
-        DateTime.diff(killmail.killmail_time, km.killmail_time, :minute) <= time_window
+        DateTimeUtils.diff(killmail.killmail_time, km.killmail_time, :minute) <= time_window
       end)
     end)
   end
@@ -220,13 +222,21 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
 
   defp count_unique_participants(killmails) do
     killmails
-    |> Enum.flat_map(fn km ->
-      attackers = (km.attackers || []) |> Enum.map(& &1["character_id"])
-      [km.victim["character_id"] | attackers]
+    |> Enum.reduce(MapSet.new(), fn km, acc ->
+      victim_id = km.victim["character_id"]
+
+      attacker_ids =
+        (km.attackers || [])
+        |> Enum.reduce(acc, fn attacker, inner_acc ->
+          case attacker["character_id"] do
+            nil -> inner_acc
+            id -> MapSet.put(inner_acc, id)
+          end
+        end)
+
+      if victim_id, do: MapSet.put(attacker_ids, victim_id), else: attacker_ids
     end)
-    |> Enum.reject(&is_nil/1)
-    |> Enum.uniq()
-    |> length()
+    |> MapSet.size()
   end
 
   defp analyze_ship_classes(killmails) do
@@ -258,7 +268,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
         kms ->
           first = List.first(kms).killmail_time
           last = List.last(kms).killmail_time
-          max(DateTime.diff(last, first, :minute), 1)
+          max(DateTimeUtils.diff(last, first, :minute), 1)
       end
 
     kills_per_minute = length(killmails) / duration
@@ -306,7 +316,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   end
 
   defp killmail_belongs_to_battle?(killmail, battle) do
-    time_diff = DateTime.diff(killmail.killmail_time, battle.last_activity, :minute)
+    time_diff = DateTimeUtils.diff(killmail.killmail_time, battle.last_activity, :minute)
     time_diff <= @time_window_minutes && killmail.solar_system_id == battle.system_id
   end
 
@@ -330,14 +340,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   end
 
   defp extract_participants(killmail) do
-    attackers =
-      (killmail.attackers || [])
-      |> Enum.map(& &1["character_id"])
-      |> Enum.reject(&is_nil/1)
+    victim_id = killmail.victim["character_id"]
 
-    victim = killmail.victim["character_id"]
+    base_set = if victim_id, do: MapSet.new([victim_id]), else: MapSet.new()
 
-    MapSet.new([victim | attackers] |> Enum.reject(&is_nil/1))
+    (killmail.attackers || [])
+    |> Enum.reduce(base_set, fn attacker, acc ->
+      case attacker["character_id"] do
+        nil -> acc
+        id -> MapSet.put(acc, id)
+      end
+    end)
   end
 
   defp merge_participants(existing, new) do
@@ -351,8 +364,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
 
   defp time_overlap?(battle1, battle2) do
     # Check if battles have overlapping time windows
-    DateTime.diff(battle1.end_time, battle2.start_time, :minute) >= 0 &&
-      DateTime.diff(battle2.end_time, battle1.start_time, :minute) >= 0
+    DateTimeUtils.diff(battle1.end_time, battle2.start_time, :minute) >= 0 &&
+      DateTimeUtils.diff(battle2.end_time, battle1.start_time, :minute) >= 0
   end
 
   defp similar_participants?(battle1, battle2) do
@@ -360,7 +373,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
     participants1 = get_battle_participants(battle1)
     participants2 = get_battle_participants(battle2)
 
-    if MapSet.size(participants1) == 0 or MapSet.size(participants2) == 0 do
+    if MapSet.size(participants1) == 0 || MapSet.size(participants2) == 0 do
       false
     else
       # Calculate Jaccard similarity for participant overlap
@@ -424,7 +437,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   Detect battles involving a specific character.
   """
   def detect_character_battles(character_id, limit \\ 10) do
-    since = DateTime.add(DateTime.utc_now(), -30 * 24 * 3600, :second)
+    since = DateTimeUtils.add(DateTimeUtils.utc_now(), -30 * 24 * 3600, :second)
 
     # Get killmails involving this character
     killmails =
@@ -441,7 +454,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
       {:error, _} -> []
     end
   rescue
-    _ -> []
+    error in [Ecto.QueryError, Postgrex.Error] ->
+      Logger.error("Database error in detect_character_battles: #{inspect(error)}")
+      []
   end
 
   @doc """
@@ -465,7 +480,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   Detect battles in a specific system.
   """
   def detect_system_battles(system_id, limit \\ 10) do
-    since = DateTime.add(DateTime.utc_now(), -7 * 24 * 3600, :second)
+    since = DateTimeUtils.add(DateTimeUtils.utc_now(), -7 * 24 * 3600, :second)
 
     killmails =
       KillmailRaw
@@ -480,7 +495,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
       {:error, _} -> []
     end
   rescue
-    _ -> []
+    error in [Ecto.QueryError, Postgrex.Error] ->
+      Logger.error("Database error in detect_system_battles: #{inspect(error)}")
+      []
   end
 
   @doc """
@@ -503,7 +520,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   Detect battles involving a specific corporation.
   """
   def detect_corporation_battles(corporation_id, limit \\ 10) do
-    since = DateTime.add(DateTime.utc_now(), -30 * 24 * 3600, :second)
+    since = DateTimeUtils.add(DateTimeUtils.utc_now(), -30 * 24 * 3600, :second)
 
     killmails =
       KillmailRaw
@@ -518,7 +535,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
       {:error, _} -> []
     end
   rescue
-    _ -> []
+    error in [Ecto.QueryError, Postgrex.Error] ->
+      Logger.error("Database error in detect_corporation_battles: #{inspect(error)}")
+      []
   end
 
   @doc """
@@ -544,8 +563,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   def detect_battle_from_killmail(killmail) do
     # Find other killmails in the same timeframe and system
     time_window = @time_window_minutes
-    start_time = DateTime.add(killmail.killmail_time, -time_window * 60, :second)
-    end_time = DateTime.add(killmail.killmail_time, time_window * 60, :second)
+    start_time = DateTimeUtils.add(killmail.killmail_time, -time_window * 60, :second)
+    end_time = DateTimeUtils.add(killmail.killmail_time, time_window * 60, :second)
 
     related_killmails =
       KillmailRaw
@@ -590,7 +609,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
     )
     |> Repo.aggregate(:count)
   rescue
-    _ -> 0
+    error in [Ecto.QueryError, Postgrex.Error] ->
+      Logger.error("Database error in count query: #{inspect(error)}")
+      0
   end
 
   defp count_character_losses_in_battle(character_id, killmail_ids) do
@@ -602,7 +623,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
     )
     |> Repo.aggregate(:count)
   rescue
-    _ -> 0
+    error in [Ecto.QueryError, Postgrex.Error] ->
+      Logger.error("Database error in count query: #{inspect(error)}")
+      0
   end
 
   defp calculate_character_isk_destroyed(character_id, battles) do
@@ -633,7 +656,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
     |> Repo.all()
     |> Enum.sum()
   rescue
-    _ -> 0.0
+    error in [Ecto.QueryError, Postgrex.Error] ->
+      Logger.error("Database error in sum query: #{inspect(error)}")
+      0.0
   end
 
   defp calculate_character_isk_lost_in_battle(character_id, killmail_ids) do
@@ -647,7 +672,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
     |> Repo.all()
     |> Enum.sum()
   rescue
-    _ -> 0.0
+    error in [Ecto.QueryError, Postgrex.Error] ->
+      Logger.error("Database error in sum query: #{inspect(error)}")
+      0.0
   end
 
   defp find_most_active_system(battles) do
@@ -691,7 +718,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
       first_battle = List.last(battles)
       last_battle = List.first(battles)
 
-      time_diff_hours = DateTime.diff(last_battle.start_time, first_battle.start_time, :hour)
+      time_diff_hours = DateTimeUtils.diff(last_battle.start_time, first_battle.start_time, :hour)
 
       if time_diff_hours > 0 do
         Float.round(length(battles) / time_diff_hours, 2)
@@ -727,7 +754,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
     )
     |> Repo.aggregate(:count)
   rescue
-    _ -> 0
+    error in [Ecto.QueryError, Postgrex.Error] ->
+      Logger.error("Database error in count query: #{inspect(error)}")
+      0
   end
 
   defp count_corporation_losses_in_battle(corporation_id, killmail_ids) do
@@ -739,7 +768,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
     )
     |> Repo.aggregate(:count)
   rescue
-    _ -> 0
+    error in [Ecto.QueryError, Postgrex.Error] ->
+      Logger.error("Database error in count query: #{inspect(error)}")
+      0
   end
 
   defp calculate_corporation_isk_destroyed(corporation_id, battles) do
@@ -770,7 +801,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
     |> Repo.all()
     |> Enum.sum()
   rescue
-    _ -> 0.0
+    error in [Ecto.QueryError, Postgrex.Error] ->
+      Logger.error("Database error in sum query: #{inspect(error)}")
+      0.0
   end
 
   defp calculate_corporation_isk_lost_in_battle(corporation_id, killmail_ids) do
@@ -784,7 +817,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
     |> Repo.all()
     |> Enum.sum()
   rescue
-    _ -> 0.0
+    error in [Ecto.QueryError, Postgrex.Error] ->
+      Logger.error("Database error in sum query: #{inspect(error)}")
+      0.0
   end
 
   defp calculate_corporation_efficiency(corporation_id, battles) do

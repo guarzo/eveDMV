@@ -7,6 +7,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
   surveillance profiles, providing fast and efficient profile matching
   with comprehensive criteria support.
   """
+  """
 
   use GenServer
   use EveDmv.ErrorHandler

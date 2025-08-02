@@ -185,9 +185,31 @@ defmodule EveDmv.Contexts.WormholeOperations.Analyzers.WhFleetAnalyzer.FleetOpti
     :armor
   end
 
-  defp determine_primary_engagement_range(_ships) do
-    # Simplified range detection - would analyze weapon systems
-    :medium
+  defp determine_primary_engagement_range(ships) do
+    # Analyze engagement range based on ship types
+    # Count ships by typical engagement range
+    range_counts = Enum.frequencies_by(ships, fn ship_id ->
+      case ship_id do
+        # Brawling ships (short range)
+        11393 -> :short  # Vexor
+        16229 -> :short  # Brutix
+        24692 -> :short  # Hyperion
+        17740 -> :short  # Maelstrom
+        
+        # Kiting ships (long range)
+        11993 -> :long   # Cerberus
+        12003 -> :long   # Caracal
+        24694 -> :long   # Rokh
+        642 -> :long     # Apocalypse
+        
+        # Default to medium range
+        _ -> :medium
+      end
+    end)
+    
+    # Return the most common range
+    {range, _count} = Enum.max_by(range_counts, fn {_range, count} -> count end, fn -> {:medium, 0} end)
+    range
   end
 
   defp calculate_alpha_potential(ships) do
@@ -304,8 +326,10 @@ defmodule EveDmv.Contexts.WormholeOperations.Analyzers.WhFleetAnalyzer.FleetOpti
        when effectiveness < 0.6 do
     ["Increase engagement range" | counters]
   end
-
-  defp maybe_add_range_counter_advanced(counters, _effectiveness, _range), do: counters
+  
+  defp maybe_add_range_counter_advanced(counters, _effectiveness, _range) do
+    counters
+  end
 
   defp maybe_add_mobility_counter_advanced(counters, effectiveness, mobility)
        when effectiveness < 0.7 and mobility < 0.4 do

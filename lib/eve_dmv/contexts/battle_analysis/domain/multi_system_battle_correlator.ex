@@ -14,8 +14,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
   4. **Combat Flow Analysis**: Tracks pursuit and engagement patterns
   5. **Multi-System Battle Merge**: Combines correlated battles into coherent narratives
   """
+  """
 
   alias EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
   # Correlation parameters optimized for wormhole PvP
@@ -139,7 +141,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
     cluster_end_time = get_cluster_end_time(current_cluster)
     battle_start_time = get_battle_start_time(battle)
 
-    time_gap_minutes = NaiveDateTime.diff(battle_start_time, cluster_end_time, :second) / 60
+    time_gap_minutes = DateTimeUtils.diff(battle_start_time, cluster_end_time, :second) / 60
 
     if time_gap_minutes <= max_time_gap do
       # Add to current cluster
@@ -610,7 +612,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.MultiSystemBattleCorrelator do
       multiple ->
         start_time = Enum.min(multiple)
         end_time = Enum.max(multiple)
-        NaiveDateTime.diff(end_time, start_time, :second) / 60
+        DateTimeUtils.diff(end_time, start_time, :second) / 60
     end
   end
 

@@ -12,7 +12,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
 
   The consolidation improves maintainability while preserving all real analysis functionality.
   """
+  """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Core.Utils.DateTimeUtils
   require Logger
 
   @doc """
@@ -372,7 +375,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
         from_target: prev.victim_character_id,
         to_target: curr.victim_character_id,
         switch_time: curr.timestamp,
-        time_gap: NaiveDateTime.diff(curr.timestamp, prev.timestamp, :second)
+        time_gap: DateTimeUtils.diff(curr.timestamp, prev.timestamp, :second)
       }
     end)
   end
@@ -547,7 +550,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
           to_phase: curr_phase.phase,
           transition_time: curr_phase.start_time,
           intensity_change: curr_phase.intensity - prev_phase.intensity,
-          duration_gap: NaiveDateTime.diff(curr_phase.start_time, prev_phase.end_time, :second)
+          duration_gap: DateTimeUtils.diff(curr_phase.start_time, prev_phase.end_time, :second)
         }
       end)
     end
@@ -734,7 +737,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
     else
       first_event = hd(events)
       last_event = List.last(events)
-      NaiveDateTime.diff(last_event.timestamp, first_event.timestamp, :second)
+      DateTimeUtils.diff(last_event.timestamp, first_event.timestamp, :second)
     end
   end
 
@@ -781,7 +784,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
         events
         |> Enum.chunk_every(2, 1, :discard)
         |> Enum.map(fn [prev, curr] ->
-          NaiveDateTime.diff(curr.timestamp, prev.timestamp, :second)
+          DateTimeUtils.diff(curr.timestamp, prev.timestamp, :second)
         end)
 
       avg_gap = average(time_gaps)
@@ -798,7 +801,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
     else
       first_event = hd(early_events)
       last_early = List.last(early_events)
-      time_diff = NaiveDateTime.diff(last_early.timestamp, first_event.timestamp, :second)
+      time_diff = DateTimeUtils.diff(last_early.timestamp, first_event.timestamp, :second)
       # Speed = events per minute
       (length(early_events) / max(time_diff / 60.0, 1.0)) |> round()
     end
@@ -826,7 +829,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
     events
     |> Enum.chunk_every(2, 1, :discard)
     |> Enum.map(fn [prev, curr] ->
-      NaiveDateTime.diff(curr.timestamp, prev.timestamp, :second)
+      DateTimeUtils.diff(curr.timestamp, prev.timestamp, :second)
     end)
   end
 
@@ -836,11 +839,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
     |> Enum.chunk_by(fn event ->
       # Group by minute
       # Group by minute
-      timestamp_seconds = event.timestamp |> DateTime.from_naive!("Etc/UTC") |> DateTime.to_unix()
+      timestamp_seconds = event.timestamp |> DateTimeUtils.to_datetime() |> DateTime.to_unix()
 
       event.timestamp
       |> NaiveDateTime.truncate(:second)
-      |> NaiveDateTime.add(-rem(timestamp_seconds, 60), :second)
+      |> DateTimeUtils.add(-rem(timestamp_seconds, 60), :second)
     end)
     |> Enum.filter(fn window -> length(window) > 1 end)
     |> Enum.map(fn window ->
@@ -875,11 +878,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
     |> Enum.chunk_by(fn event ->
       # Group by 10-second windows
       # Group by 10-second windows
-      timestamp_seconds = event.timestamp |> DateTime.from_naive!("Etc/UTC") |> DateTime.to_unix()
+      timestamp_seconds = event.timestamp |> DateTimeUtils.to_datetime() |> DateTime.to_unix()
 
       event.timestamp
       |> NaiveDateTime.truncate(:second)
-      |> NaiveDateTime.add(-rem(timestamp_seconds, 10), :second)
+      |> DateTimeUtils.add(-rem(timestamp_seconds, 10), :second)
     end)
     # At least 3 kills in 10 seconds
     |> Enum.filter(fn window -> length(window) >= 3 end)
@@ -911,7 +914,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
       durations =
         alpha_strikes
         |> Enum.map(fn strike ->
-          NaiveDateTime.diff(strike.end_time, strike.start_time, :second)
+          DateTimeUtils.diff(strike.end_time, strike.start_time, :second)
         end)
 
       avg_duration = average(durations)
@@ -924,7 +927,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
     events
     |> Enum.chunk_every(2, 1, :discard)
     |> Enum.map(fn [prev, curr] ->
-      NaiveDateTime.diff(curr.timestamp, prev.timestamp, :second)
+      DateTimeUtils.diff(curr.timestamp, prev.timestamp, :second)
     end)
   end
 
@@ -1008,10 +1011,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
       # Get participants from first 25% of timeline
       early_cutoff =
         hd(timeline.events).timestamp
-        |> NaiveDateTime.add(div(calculate_timeline_duration(timeline.events), 4), :second)
+        |> DateTimeUtils.add(div(calculate_timeline_duration(timeline.events), 4), :second)
 
       early_events =
-        Enum.filter(timeline.events, &(NaiveDateTime.compare(&1.timestamp, early_cutoff) != :gt))
+        Enum.filter(timeline.events, &(DateTimeUtils.compare(&1.timestamp, early_cutoff) != :gt))
 
       early_character_ids =
         early_events
@@ -1071,7 +1074,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
     else
       first_event = hd(events)
       last_event = List.last(events)
-      NaiveDateTime.diff(last_event.timestamp, first_event.timestamp, :second)
+      DateTimeUtils.diff(last_event.timestamp, first_event.timestamp, :second)
     end
   end
 
@@ -1456,7 +1459,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
   end
 
   defp calculate_window_duration(window) do
-    NaiveDateTime.diff(window.end_time, window.start_time, :second)
+    DateTimeUtils.diff(window.end_time, window.start_time, :second)
   end
 
   defp calculate_overall_coordination(events) do
@@ -1711,4 +1714,5 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
   defp tank_ship?(participant), do: participant.ship_type_id in get_tank_ships()
   defp support_ship?(participant), do: participant.ship_type_id in get_support_ships()
   defp tackle_ship?(participant), do: participant.ship_type_id in get_fast_ships()
+
 end

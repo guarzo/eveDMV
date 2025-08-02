@@ -2,6 +2,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.ActivityFeedComponent do
   @moduledoc """
   Activity feed component displaying recent activity, ship preferences, and weapons.
   """
+  """
 
   use EveDmvWeb, :live_component
   import EveDmvWeb.EveImageComponents

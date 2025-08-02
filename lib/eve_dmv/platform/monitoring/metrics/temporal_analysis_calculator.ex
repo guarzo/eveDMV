@@ -5,6 +5,7 @@ defmodule EveDmv.Intelligence.Metrics.TemporalAnalysisCalculator do
   This module provides time-based analysis including hourly, daily,
   and weekly activity patterns, peak identification, and timezone estimation.
   """
+  """
 
   @doc """
   Calculate temporal activity patterns from killmail data.

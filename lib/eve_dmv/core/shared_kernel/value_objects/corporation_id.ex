@@ -5,13 +5,14 @@ defmodule EveDmv.Core.SharedKernel.ValueObjects.CorporationId do
   Corporation IDs are immutable identifiers for EVE corporations, with specific
   validation rules and formatting requirements.
   """
+  """
+
+  defstruct [:value]
 
   # Corporation IDs must be greater than 98,000,000
   @min_corporation_id 98_000_000
 
   @type t :: %__MODULE__{value: integer()}
-
-  defstruct [:value]
 
   @doc """
   Create a new CorporationId from an integer.

@@ -5,6 +5,7 @@ defmodule EveDmv.Intelligence.Core.TimeoutHelper do
   Provides consistent timeout handling patterns, async task management,
   and graceful degradation strategies for intelligence operations.
   """
+  """
 
   require Logger
 

@@ -7,6 +7,9 @@ defmodule EveDmv.Shared.Intelligence.FusionEngine do
   events, and generate comprehensive intelligence assessments.
   """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
+  """
+
   require Logger
 
   @fusion_confidence_threshold 0.8
@@ -329,7 +332,7 @@ defmodule EveDmv.Shared.Intelligence.FusionEngine do
     events
     |> combinations(2)
     |> Enum.filter(fn [event1, event2] ->
-      time_diff = abs(DateTime.diff(event1.timestamp, event2.timestamp))
+      time_diff = abs(DateTimeUtils.diff(event1.timestamp, event2.timestamp, :second))
       time_diff <= @correlation_time_window && event1.source != event2.source
     end)
     |> Enum.map(fn [event1, event2] ->
@@ -337,7 +340,7 @@ defmodule EveDmv.Shared.Intelligence.FusionEngine do
         type: :temporal,
         events: [event1, event2],
         correlation_strength: calculate_temporal_correlation_strength(event1, event2),
-        time_difference: DateTime.diff(event2.timestamp, event1.timestamp)
+        time_difference: DateTimeUtils.diff(event2.timestamp, event1.timestamp, :second)
       }
     end)
   end
@@ -367,7 +370,7 @@ defmodule EveDmv.Shared.Intelligence.FusionEngine do
   defp extract_events_from_source(_, _), do: []
 
   defp calculate_temporal_correlation_strength(event1, event2) do
-    time_diff = abs(DateTime.diff(event1.timestamp, event2.timestamp))
+    time_diff = abs(DateTimeUtils.diff(event1.timestamp, event2.timestamp, :second))
 
     # Stronger correlation for closer events
     base_strength = 1.0 - time_diff / @correlation_time_window

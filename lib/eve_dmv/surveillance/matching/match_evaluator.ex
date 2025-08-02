@@ -5,6 +5,7 @@ defmodule EveDmv.Surveillance.Matching.MatchEvaluator do
   This module handles the evaluation of candidate profiles against killmail data,
   including parallel evaluation for performance and match recording.
   """
+  """
 
   alias EveDmv.Api.SurveillanceApi
   alias EveDmv.Surveillance.Matching.IndexManager

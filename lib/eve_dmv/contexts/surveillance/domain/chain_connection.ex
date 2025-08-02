@@ -1,9 +1,13 @@
 defmodule EveDmv.Intelligence.ChainAnalysis.ChainConnection do
   @moduledoc """
+
   Represents wormhole connections within a chain topology.
 
   Tracks connection status, mass, time remaining, and signatures
   for wormhole intelligence and navigation planning.
+  """
+
+    alias EveDmv.Core.Utils.DateTimeUtils
   """
 
   use Ash.Resource,
@@ -291,7 +295,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainConnection do
         now = DateTime.utc_now()
 
         Enum.map(records, fn record ->
-          DateTime.diff(now, record.first_discovered_at, :hour)
+          DateTimeUtils.diff(now, record.first_discovered_at, :hour)
         end)
       end)
     end
@@ -306,7 +310,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainConnection do
           case record.last_transit_at do
             # Never used
             nil -> 9999
-            transit_time -> DateTime.diff(now, transit_time, :minute)
+            transit_time -> DateTimeUtils.diff(now, transit_time, :minute)
           end
         end)
       end)

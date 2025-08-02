@@ -5,11 +5,13 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
   Contains business logic and utility functions that don't require
   direct access to the GenServer state.
   """
+  """
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Contexts.Surveillance.Domain.AlertService
   alias EveDmv.Contexts.Surveillance.Domain.ChainActivityTracker
   alias EveDmv.Contexts.Surveillance.Domain.ChainThreatAnalyzer
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.DomainEvents.ChainThreatDetected
   alias EveDmv.Intelligence.WandererClient
   alias EveDmv.Repo
@@ -269,7 +271,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
 
   defp get_recent_chain_activity(map_id, opts) do
     hours = Keyword.get(opts, :hours, 24)
-    since = DateTime.add(DateTime.utc_now(), -hours * 3600, :second)
+    since = DateTimeUtils.add(DateTime.utc_now(), -hours * 3600, :second)
 
     # Query killmails in all systems of this chain
     query = """
@@ -789,7 +791,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
 
   defp get_recent_system_activity(system_id, opts) do
     hours = Keyword.get(opts, :hours, 2)
-    since = DateTime.add(DateTime.utc_now(), -hours * 3600, :second)
+    since = DateTimeUtils.add(DateTime.utc_now(), -hours * 3600, :second)
 
     query = """
     SELECT k.killmail_id, k.killmail_time, k.victim_ship_type_id, k.attacker_count

@@ -5,6 +5,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainThreatAnalyzer do
   Handles threat detection, escalation analysis, and prediction
   for chain surveillance operations.
   """
+  """
 
   alias EveDmv.DomainEvents.ChainThreatDetected
   alias EveDmv.Infrastructure.EventBus

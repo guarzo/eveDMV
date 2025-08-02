@@ -5,6 +5,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.BehavioralScoring do
   Handles assessment of behavioral patterns, psychological stability,
   reliability metrics, and consistency analysis.
   """
+  """
 
   @doc """
   Calculate behavioral stability score based on behavioral analysis.

@@ -5,6 +5,7 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
   This module serves as a facade that delegates to specialized engines for better
   code organization and maintainability.
   """
+  """
 
   alias EveDmv.Analytics.PlayerStatsEngine
   alias EveDmv.Analytics.ShipStatsEngine

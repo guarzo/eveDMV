@@ -3,6 +3,7 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
   Real-time performance monitoring dashboard for EVE DMV.
   Provides visibility into query performance, bottlenecks, and system health.
   """
+  """
 
   use EveDmvWeb, :live_view
 

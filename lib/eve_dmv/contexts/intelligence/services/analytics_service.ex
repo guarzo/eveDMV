@@ -12,8 +12,10 @@ defmodule EveDmv.Contexts.Intelligence.Services.AnalyticsService do
   This module consolidates advanced analytics functionality that was previously
   scattered across multiple contexts during the namespace consolidation.
   """
+  """
 
   alias EveDmv.Core.Domain.Analytics.PatternAnalysis
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.CharacterRepository
   alias EveDmv.Intelligence.Cache.IntelligenceCache
 
@@ -574,7 +576,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.AnalyticsService do
     Enum.reduce(times1, 0, fn time1, acc ->
       overlaps_for_time1 =
         Enum.count(times2, fn time2 ->
-          abs(DateTime.diff(time1, time2)) <= window_seconds
+          abs(DateTimeUtils.diff(time1, time2, :second)) <= window_seconds
         end)
 
       # Count at most 1 overlap per time1
@@ -1095,7 +1097,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.AnalyticsService do
         :minimal -> 30
       end
 
-    DateTime.utc_now() |> DateTime.add(days_until_review * 24 * 3600, :second)
+    DateTime.utc_now() |> DateTimeUtils.add(days_until_review * 24 * 3600, :second)
   end
 
   # Risk assessment helper functions

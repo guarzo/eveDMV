@@ -6,6 +6,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Generators.
   analysis and operational planning. Based on existing implementation from
   threat_scoring_engine.ex with real data analysis.
   """
+  """
 
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator
 

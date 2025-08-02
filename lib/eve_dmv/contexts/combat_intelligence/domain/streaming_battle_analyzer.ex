@@ -12,9 +12,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
   - Chunked batch operations for database efficiency
   - Async processing for CPU-intensive analysis
   """
+  """
 
   use GenServer
   alias EveDmv.Contexts.CombatIntelligence.Domain.Shared.KillmailMapper
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Repo
   require Logger
 
@@ -520,7 +522,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
     times = Enum.map(killmails, & &1.killmail_time)
     min_time = Enum.min(times, DateTime)
     max_time = Enum.max(times, DateTime)
-    DateTime.diff(max_time, min_time, :second)
+    DateTimeUtils.diff(max_time, min_time, :second)
   end
 
   defp calculate_time_span(_), do: 0
@@ -529,7 +531,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
     timestamps = Enum.map(events, & &1.timestamp)
     min_time = Enum.min(timestamps, DateTime)
     max_time = Enum.max(timestamps, DateTime)
-    DateTime.diff(max_time, min_time, :second)
+    DateTimeUtils.diff(max_time, min_time, :second)
   end
 
   defp calculate_event_time_span(_), do: 0

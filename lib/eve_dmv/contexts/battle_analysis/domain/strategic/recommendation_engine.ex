@@ -8,6 +8,7 @@ defmodule EveDmv.Shared.Strategic.RecommendationEngine do
   - Long-term strategic guidance
   - Risk assessment and contingency planning
   """
+  """
 
   require Logger
 
