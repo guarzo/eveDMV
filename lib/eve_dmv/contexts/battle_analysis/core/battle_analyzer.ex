@@ -155,8 +155,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
       },
       participation: %{
         unique_pilots: length(participants.all_participants),
-        unique_corporations: map_size(participants.by_corporation || %{}),
-        unique_alliances: map_size(participants.by_alliance || %{})
+        unique_corporations: map_size(Map.get(participants, :by_corporation, %{})),
+        unique_alliances: map_size(Map.get(participants, :by_alliance, %{}))
       },
       efficiency: %{
         isk_efficiency: calculate_isk_efficiency(killmails, participants),
@@ -477,8 +477,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
   defp calculate_kd_ratio(participants) do
     # Calculate overall kill/death ratio for the battle
     case participants do
-      %{all_participants: all_chars} when is_map(all_chars) ->
-        total_participants = MapSet.size(all_chars)
+      %{all_participants: all_chars} when is_list(all_chars) ->
+        total_participants = length(all_chars)
 
         if total_participants > 0 do
           # K/D ratio approximation: total kills / unique participants

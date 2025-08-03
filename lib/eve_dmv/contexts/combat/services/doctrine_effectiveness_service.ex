@@ -362,9 +362,9 @@ defmodule EveDmv.Contexts.Combat.Services.DoctrineEffectivenessService do
 
   defp analyze_common_doctrines(time_window_days) do
     # Analyze recent battles to identify common fleet compositions
-    start_date = DateTimeUtils.add(DateTime.utc_now(), -time_window_days * 24 * 3600, :second)
+    min_engagements = 5  # Minimum engagements to be considered a common doctrine
 
-    case KillmailRepository.get_popular_fleet_compositions(start_date, limit: 10) do
+    case KillmailRepository.get_popular_fleet_compositions(min_engagements, days_back: time_window_days, limit: 10) do
       {:ok, compositions} ->
         compositions
         |> Enum.map(fn {composition, frequency} ->

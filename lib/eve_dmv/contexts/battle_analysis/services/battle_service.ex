@@ -379,8 +379,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
 
   defp delete_battle_killmails(battle_id) do
     # Delete all BattleKillmail records for this battle
-    query = BattleKillmail |> Ash.Query.filter(expr(battle_id == ^battle_id))
-    Ash.bulk_destroy(query, :destroy, domain: Api)
+    BattleKillmail
+    |> Ash.Query.filter(battle_id: battle_id)
+    |> Ash.bulk_destroy(:destroy, domain: Api)
   end
 
   defp apply_search_filter({:participant_name, _name}, query) do
@@ -481,7 +482,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   defp create_battle_from_killmail_set(killmails) do
     case analyze_killmails_for_battle(killmails) do
       {:ok, battle_data} ->
-        create_battle(battle_data)
+        case create_battle(battle_data) do
+          {:ok, battle} -> {:ok, battle}
+          {:error, _} = error -> error
+          battle -> {:ok, battle}  # Handle Ash resource return
+        end
 
       error ->
         error
