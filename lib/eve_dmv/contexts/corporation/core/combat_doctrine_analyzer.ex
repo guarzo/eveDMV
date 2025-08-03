@@ -796,12 +796,14 @@ defmodule EveDmv.Contexts.Corporation.Core.CombatDoctrineAnalyzer do
     primary_doctrine = determine_primary_doctrine(ship_usage, fleet_compositions)
     secondary_doctrines = identify_secondary_doctrines(ship_usage)
 
-    %{
+    result = %{
       primary_doctrine: primary_doctrine,
       secondary_doctrines: secondary_doctrines,
       doctrine_strength: assess_doctrine_strength(ship_usage),
       doctrine_evolution: analyze_doctrine_evolution(ship_usage)
     }
+
+    {:ok, result}
   end
 
   defp determine_primary_doctrine(ship_usage, _fleet_compositions) do
