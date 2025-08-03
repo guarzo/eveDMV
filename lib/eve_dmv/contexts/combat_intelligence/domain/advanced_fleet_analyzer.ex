@@ -1018,36 +1018,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
   # Summary and engagement profile
 
 
-  defp suggest_counter_strategies(capabilities) do
-    base_strategies = []
-
-    mobility_strategies =
-      if capabilities.mobility.mobility_rating in [:low, :very_low] do
-        ["Use superior mobility to control engagement range" | base_strategies]
-      else
-        base_strategies
-      end
-
-    ewar_strategies =
-      if capabilities.ewar.ewar_strength in [:none, :minimal] do
-        ["Exploit lack of EWAR with sensor dampeners or ECM" | mobility_strategies]
-      else
-        mobility_strategies
-      end
-
-    final_strategies =
-      if capabilities.defense.logistics_power.sustainability_rating == :critical do
-        ["Focus fire to overwhelm limited logistics" | ewar_strategies]
-      else
-        ewar_strategies
-      end
-
-    if Enum.empty?(final_strategies) do
-      ["Requires careful tactical approach - well-balanced fleet"]
-    else
-      final_strategies
-    end
-  end
 
   # Counter-fleet generation
 
