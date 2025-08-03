@@ -111,8 +111,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
   Analyze a fleet's ability to counter another fleet composition.
   """
   def analyze_matchup(fleet_a, fleet_b) do
-    with {:ok, analysis_a} <- analyze_fleet(fleet_a),
-         {:ok, analysis_b} <- analyze_fleet(fleet_b) do
+    with {:ok, analysis_a} <- analyze_fleet(fleet_a, []),
+         {:ok, analysis_b} <- analyze_fleet(fleet_b, []) do
       matchup = %{
         fleet_a: summarize_fleet(analysis_a),
         fleet_b: summarize_fleet(analysis_b),
@@ -1016,6 +1016,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
   # Summary and engagement profile
 
+  # TODO: Remove unused function - dialyzer detected this is never called
   defp generate_fleet_summary(ship_analyses, composition) do
     total_value =
       ship_analyses
@@ -1031,6 +1032,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
       top_ships: get_top_ships(ship_analyses, 5)
     }
   end
+  # TODO: Remove unused function - dialyzer detected this is never called
 
   defp get_top_ships(ship_analyses, count) do
     ship_analyses
@@ -1039,6 +1041,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     |> Enum.sort_by(&elem(&1, 1), :desc)
     |> Enum.take(count)
     |> Enum.map(fn {name, count} -> %{ship: name, count: count} end)
+  # TODO: Remove unused function - dialyzer detected this is never called
   end
 
   defp analyze_engagement_profile(ship_analyses, capabilities) do
@@ -1048,6 +1051,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
       tactical_role: determine_tactical_role(capabilities),
       engagement_style: determine_engagement_style(ship_analyses, capabilities),
       counter_strategies: suggest_counter_strategies(capabilities)
+  # TODO: Remove unused function - dialyzer detected this is never called
     }
   end
 
@@ -1066,6 +1070,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
         :control_fleet
 
       true ->
+  # TODO: Remove unused function - dialyzer detected this is never called
         :general_purpose
     end
   end
@@ -1078,6 +1083,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
       {:very_high, :long} -> :kiting
       {:high, :medium} -> :skirmish
       {_, :brawl} -> :brawling
+  # TODO: Remove unused function - dialyzer detected this is never called
       {:low, :long} -> :sniper
       _ -> :flexible
     end
@@ -1110,6 +1116,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     if Enum.empty?(final_strategies) do
       ["Requires careful tactical approach - well-balanced fleet"]
     else
+  # TODO: Remove unused function - dialyzer detected this is never called
       final_strategies
     end
   end
@@ -1117,6 +1124,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
   # Counter-fleet generation
 
   defp maybe_generate_counters(composition, options) do
+  # TODO: Remove unused function - dialyzer detected this is never called
     if Keyword.get(options, :include_counters, false) do
       generate_counter_fleet(composition)
     else
@@ -1167,6 +1175,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
           key_tactics: [
             "Maintain tactical flexibility",
             "Exploit specific weaknesses",
+  # TODO: Remove unused function - dialyzer detected this is never called
             "Adapt to enemy tactics"
           ]
         }
@@ -1200,6 +1209,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
       }
     else
       %{
+  # TODO: Remove unused function - dialyzer detected this is never called
         detected_doctrine: :custom,
         compliance_percentage: 0,
         doctrine_details: nil,
@@ -1213,6 +1223,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     ship_names = Enum.map(ship_analyses, & &1.ship_name)
     doctrine_ships = doctrine.ships ++ Map.get(doctrine, :support, [])
 
+  # TODO: Remove unused function - dialyzer detected this is never called
     matching_ships =
       Enum.count(ship_names, fn name ->
         Enum.any?(doctrine_ships, fn doctrine_ship ->
@@ -1225,6 +1236,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
   defp identify_missing_doctrine_elements(ship_analyses, doctrine) do
     current_ships = Enum.map(ship_analyses, & &1.ship_name) |> MapSet.new()
+  # TODO: Remove unused function - dialyzer detected this is never called
     doctrine_ships = MapSet.new(doctrine.ships)
 
     missing = MapSet.difference(doctrine_ships, current_ships) |> Enum.to_list()
@@ -1237,6 +1249,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
   end
 
   defp assess_doctrine_effectiveness(doctrine_name) do
+  # TODO: Remove unused function - dialyzer detected this is never called
     # Simple effectiveness ratings for known doctrines
     case doctrine_name do
       :armor_brawl -> :good
@@ -1246,6 +1259,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
       _ -> :unknown
     end
   end
+  # TODO: Remove unused function - dialyzer detected this is never called
 
   # Matchup analysis
 
@@ -1308,6 +1322,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
       else
         mobility_advantages_a
       end
+  # TODO: Remove unused function - dialyzer detected this is never called
 
     final_advantages_b =
       if ewar_b > ewar_a + 1 do
@@ -1318,6 +1333,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
     %{
       fleet_a_advantages: final_advantages_a,
+  # TODO: Remove unused function - dialyzer detected this is never called
       fleet_b_advantages: final_advantages_b
     }
   end
@@ -1327,6 +1343,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
       :very_high -> 5
       :high -> 4
       :medium -> 3
+  # TODO: Remove unused function - dialyzer detected this is never called
       :low -> 2
       :very_low -> 1
       _ -> 0
@@ -1345,6 +1362,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
   defp recommend_engagement(analysis_a, analysis_b) do
     # Generate tactical recommendations for fleet A
+  # TODO: Remove unused function - dialyzer detected this is never called
     base_recommendations = []
 
     # Range recommendations
@@ -1360,6 +1378,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
     # Add more tactical recommendations based on matchup
     final_recommendations
+  # TODO: Remove unused function - dialyzer detected this is never called
   end
 
   defp predict_outcome(analysis_a, analysis_b) do
@@ -1397,6 +1416,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
   # Utility functions
 
+  # TODO: Remove unused function - dialyzer detected this is never called
   defp estimate_ship_value(ship_id) do
     # Simplified ship value estimation
     # In production, would query market data

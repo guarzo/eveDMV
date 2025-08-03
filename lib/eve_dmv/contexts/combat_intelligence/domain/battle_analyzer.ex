@@ -1524,7 +1524,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
       role_balance = calculate_role_balance(participants)
       doctrine_coherence = calculate_doctrine_coherence(participants)
 
-      overall = (ship_synergy + role_balance + doctrine_coherence) / 3.0
+      overall = (ship_synergy + role_balance.score + doctrine_coherence) / 3.0
 
       %{
         overall: overall,
@@ -1563,7 +1563,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
         |> Enum.filter(fn {_role, deviation} -> deviation > 0.1 end)
 
       balance_score =
-        1.0 - Enum.sum(Enum.map(imbalances, fn {_role, dev} -> dev end)) / length(ideal_ratios)
+        1.0 - Enum.sum(Enum.map(imbalances, fn {_role, dev} -> dev end)) / map_size(ideal_ratios)
 
       %{
         balance_score: max(balance_score, 0.0),

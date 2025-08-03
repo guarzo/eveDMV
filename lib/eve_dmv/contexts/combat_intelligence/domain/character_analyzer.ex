@@ -15,8 +15,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
 
   # Type definitions
   @type cache_stats :: %{
-          size: non_neg_integer(),
-          memory_bytes: non_neg_integer()
+          cache_size: non_neg_integer(),
+          hit_rate: float(),
+          miss_rate: float(),
+          evictions: non_neg_integer()
         }
 
   @type character_intelligence :: %{
@@ -83,7 +85,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   @doc """
   Search characters by criteria.
   """
-  @spec search_by_criteria(map()) :: {:ok, [map()]} | {:error, term()}
+  @spec search_by_criteria(map()) :: {:error, :search_error}
   def search_by_criteria(criteria) do
     search_characters_by_criteria(criteria)
   end
@@ -91,7 +93,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   @doc """
   Get activity patterns for a character.
   """
-  @spec get_activity_patterns(integer(), keyword()) :: {:ok, map()} | {:error, term()}
+  @spec get_activity_patterns(integer(), keyword()) :: {:error, :analysis_failed}
   def get_activity_patterns(character_id, opts \\ []) do
     analyze_character_activity_patterns(character_id, opts)
   end

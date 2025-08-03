@@ -13,11 +13,13 @@
     end,
 
   # Reduced warning types for speed while maintaining quality
+  # Excluding :unused_fun to focus on real issues
   warnings: [
     :error_handling,
     :underspecs,
     :unknown,
     :unmatched_returns
+    # :unused_fun - disabled to avoid false positives with dynamic calls
   ],
 
   # Use incremental PLT updates

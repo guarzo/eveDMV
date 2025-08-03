@@ -250,10 +250,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.TacticalAnaly
       end
 
     # Fall back to corporation if no alliance match
-    if side == :unknown do
-      determine_side_by_corporation(corporation_id)
-    else
-      side
+    case side do
+      nil -> determine_side_by_corporation(corporation_id)
+      :neutral -> determine_side_by_corporation(corporation_id)
+      other -> other
     end
   end
 

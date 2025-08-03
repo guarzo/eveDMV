@@ -26,7 +26,6 @@ defmodule EveDmvWeb.WHVettingLive do
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     socket =
-    {:ok, socket}
       socket
       |> assign(:tab, :dashboard)
       |> assign(:loading, false)
