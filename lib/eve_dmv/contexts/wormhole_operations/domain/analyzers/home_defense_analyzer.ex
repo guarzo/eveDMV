@@ -24,7 +24,7 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
 
     period_days = Keyword.get(options, :period_days, 90)
     end_date = DateTime.utc_now()
-    start_date = DateTimeUtils.add(end_date, -period_days, :day)
+    start_date = DateTimeUtils.add(end_date, -period_days * 24 * 60 * 60, :second)
 
     with {:ok, corp_info} <- get_corporation_info(corporation_id),
          {:ok, members} <- get_corporation_members(corporation_id),

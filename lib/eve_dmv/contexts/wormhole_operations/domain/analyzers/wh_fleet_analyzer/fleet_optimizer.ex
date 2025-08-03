@@ -62,10 +62,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.Analyzers.WhFleetAnalyzer.Fl
          ) do
       {:ok, analyses} ->
         analyses
-
-      {:error, _reason} ->
-        # Fallback to basic composition analysis if service fails
-        generate_basic_counter_analysis(composition)
     end
   end
 

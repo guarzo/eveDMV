@@ -41,44 +41,9 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
     end
   end
 
-  @doc """
-  Generate a battle report in various formats.
-  """
-  def generate_battle_report(battle_id, format \\ :markdown) do
-    with {:ok, battle} <- BattleService.get_battle(battle_id),
-         {:ok, analysis} <- BattleAnalyzer.analyze_battle(battle_id) do
-      report =
-        case format do
-          :markdown -> generate_markdown_report(battle, analysis)
-          :json -> generate_json_report(battle, analysis)
-          :html -> generate_html_report(battle, analysis)
-          :text -> generate_text_report(battle, analysis)
-          _ -> {:error, :unsupported_format}
-        end
+  # Removed unused function generate_battle_report/2
 
-      {:ok, report}
-    end
-  end
-
-  @doc """
-  Export battle data for external tools.
-  """
-  def export_battle_data(battle_id, export_options \\ %{}) do
-    with {:ok, battle} <- BattleService.get_battle(battle_id),
-         {:ok, export_data} <- prepare_export_data(battle, export_options) do
-      format = Map.get(export_options, :format, :json)
-
-      formatted_data =
-        case format do
-          :json -> Jason.encode!(export_data, pretty: true)
-          :csv -> export_to_csv(export_data)
-          :zkillboard -> format_for_zkillboard(export_data)
-          _ -> {:error, :unsupported_export_format}
-        end
-
-      {:ok, formatted_data}
-    end
-  end
+  # Removed unused function export_battle_data/2
 
   @doc """
   Create a battle summary card for embedding.
