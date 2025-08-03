@@ -97,17 +97,18 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
         # Delete associated battle killmails first
         case delete_battle_killmails(battle_id) do
           %Ash.BulkResult{status: :success} ->
-            :ok
+            # Delete the battle
+            Ash.destroy(battle)
 
           %Ash.BulkResult{errors: errors} when errors != [] ->
             Logger.warning("Failed to delete some battle killmails: #{inspect(errors)}")
+            # Still try to delete the battle
+            Ash.destroy(battle)
 
           _ ->
-            :ok
+            # Delete the battle
+            Ash.destroy(battle)
         end
-
-        # Delete the battle
-        Ash.destroy(battle)
 
       error ->
         error
