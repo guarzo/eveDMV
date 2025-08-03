@@ -67,7 +67,7 @@ defmodule EveDmv.Eve.EsiClient do
   @doc """
   Get character assets (requires authentication).
   """
-  @spec get_character_assets(integer(), binary()) ::
+  @spec get_character_assets(integer(), String.t()) ::
           {:ok, [map()]} | {:error, :service_unavailable}
   defdelegate get_character_assets(character_id, auth_token), to: EsiCharacterClient
 
@@ -82,14 +82,14 @@ defmodule EveDmv.Eve.EsiClient do
   @doc """
   Get corporation members (requires authentication).
   """
-  @spec get_corporation_members(integer(), String.t()) :: 
+  @spec get_corporation_members(integer(), String.t()) ::
           {:ok, list(map())} | {:error, :service_unavailable}
   defdelegate get_corporation_members(corporation_id, auth_token), to: EsiCorporationClient
 
   @doc """
   Get corporation assets (requires authentication).
   """
-  @spec get_corporation_assets(integer(), binary()) ::
+  @spec get_corporation_assets(integer(), String.t()) ::
           {:ok, [map()]} | {:error, :service_unavailable}
   defdelegate get_corporation_assets(corporation_id, auth_token), to: EsiCorporationClient
 
@@ -148,7 +148,7 @@ defmodule EveDmv.Eve.EsiClient do
   @doc """
   Get market orders for a specific type in a region.
   """
-  @spec get_market_orders(integer(), integer(), atom()) :: 
+  @spec get_market_orders(integer(), integer(), atom()) ::
           {:ok, list(map())} | {:error, :service_unavailable}
   defdelegate get_market_orders(type_id, region_id \\ 10_000_002, order_type \\ :all),
     to: EsiMarketClient
@@ -156,7 +156,7 @@ defmodule EveDmv.Eve.EsiClient do
   @doc """
   Get market history for a specific type in a region.
   """
-  @spec get_market_history(integer(), integer()) :: 
+  @spec get_market_history(integer(), integer()) ::
           {:ok, list(map())} | {:error, :service_unavailable}
   defdelegate get_market_history(type_id, region_id \\ 10_000_002), to: EsiMarketClient
 

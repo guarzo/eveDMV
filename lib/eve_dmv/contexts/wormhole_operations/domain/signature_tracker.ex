@@ -62,18 +62,18 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
     # In production, would fetch from database
     # For now, create updated signature
 
-    with {:ok, _system} <- validate_system(system_id) do
-      updated_sig =
-        %{
-          system_id: system_id,
-          sig_id: sig_id,
-          updated_at: DateTime.utc_now()
-        }
-        |> Map.merge(updates)
-        |> handle_status_transition()
+    case validate_system(system_id) do
+      {:ok, _system} ->
+        updated_sig =
+          %{
+            system_id: system_id,
+            sig_id: sig_id,
+            updated_at: DateTime.utc_now()
+          }
+          |> Map.merge(updates)
+          |> handle_status_transition()
 
-      {:ok, updated_sig}
-    else
+        {:ok, updated_sig}
       {:error, reason} -> {:error, reason}
       _ -> {:error, :validation_failed}
     end
@@ -89,45 +89,45 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
   - Recommended actions
   """
   def analyze_system_signatures(system_id, current_sigs, previous_sigs \\ []) do
-    with {:ok, system} <- validate_system(system_id) do
-      current_ids = MapSet.new(current_sigs, & &1.sig_id)
-      previous_ids = MapSet.new(previous_sigs, & &1.sig_id)
+    case validate_system(system_id) do
+      {:ok, system} ->
+        current_ids = MapSet.new(current_sigs, & &1.sig_id)
+        previous_ids = MapSet.new(previous_sigs, & &1.sig_id)
 
-      # Detect changes
-      new_sigs = MapSet.difference(current_ids, previous_ids) |> MapSet.to_list()
-      missing_sigs = MapSet.difference(previous_ids, current_ids) |> MapSet.to_list()
+        # Detect changes
+        new_sigs = MapSet.difference(current_ids, previous_ids) |> MapSet.to_list()
+        missing_sigs = MapSet.difference(previous_ids, current_ids) |> MapSet.to_list()
 
-      # Find new K162s (incoming wormholes)
-      new_k162s =
-        current_sigs
-        |> Enum.filter(fn sig ->
-          sig.sig_id in new_sigs and
-            get_in(sig, [:metadata, :wormhole_type]) == "K162"
-        end)
+        # Find new K162s (incoming wormholes)
+        new_k162s =
+          current_sigs
+          |> Enum.filter(fn sig ->
+            sig.sig_id in new_sigs and
+              get_in(sig, [:metadata, :wormhole_type]) == "K162"
+          end)
 
-      # Analyze site composition
-      site_breakdown = analyze_site_composition(current_sigs)
+        # Analyze site composition
+        site_breakdown = analyze_site_composition(current_sigs)
 
-      # Generate threat assessment
-      threat_assessment =
-        assess_signature_threats(new_k162s, site_breakdown, system.security_class)
+        # Generate threat assessment
+        threat_assessment =
+          assess_signature_threats(new_k162s, site_breakdown, system.security_class)
 
-      analysis = %{
-        system_id: system_id,
-        system_name: system.system_name,
-        total_signatures: length(current_sigs),
-        changes: %{
-          new: length(new_sigs),
-          missing: length(missing_sigs),
-          new_k162s: length(new_k162s)
-        },
-        composition: site_breakdown,
-        threat_assessment: threat_assessment,
-        recommendations: generate_recommendations(new_k162s, site_breakdown, threat_assessment)
-      }
+        analysis = %{
+          system_id: system_id,
+          system_name: system.system_name,
+          total_signatures: length(current_sigs),
+          changes: %{
+            new: length(new_sigs),
+            missing: length(missing_sigs),
+            new_k162s: length(new_k162s)
+          },
+          composition: site_breakdown,
+          threat_assessment: threat_assessment,
+          recommendations: generate_recommendations(new_k162s, site_breakdown, threat_assessment)
+        }
 
-      {:ok, analysis}
-    else
+        {:ok, analysis}
       {:error, reason} -> {:error, reason}
       _ -> {:error, :validation_failed}
     end

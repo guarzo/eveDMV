@@ -3,8 +3,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   Analyzer for constellation-wide pattern analysis.
   """
 
-  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Api
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Eve.SolarSystem
   alias EveDmv.Killmails.KillmailRaw
 

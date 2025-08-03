@@ -19,7 +19,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
   @doc """
   Calculate intelligence score for a character using specific scoring algorithm.
   """
-  @spec calculate_score(integer(), atom()) :: {:ok, map()} | {:error, term()}
+  @type intelligence_score_result :: %{
+          required(:score) => float(),
+          required(:rating) => atom(),
+          required(:confidence) => :low | :medium | :high,
+          optional(atom()) => term()
+        }
+
+  @spec calculate_score(integer(), atom()) :: {:ok, intelligence_score_result()} | {:error, term()}
   def calculate_score(character_id, scoring_type) do
     perform_score_calculation(character_id, scoring_type)
   end

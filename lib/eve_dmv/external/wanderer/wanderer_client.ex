@@ -24,6 +24,15 @@ defmodule EveDmv.Intelligence.WandererClient do
   @max_retries 3
   @retry_delay 5_000
 
+  @type t :: %__MODULE__{
+    auth_token: String.t() | nil,
+    sse_pid: pid() | nil,
+    sse_connections: map(),
+    monitored_maps: MapSet.t(),
+    rate_limiter: pid() | nil,
+    connection_state: atom()
+  }
+
   # Get base URL at runtime for better configuration flexibility
   defp base_url do
     # Try to get working URL from DNS resolver, fallback to config
@@ -47,6 +56,7 @@ defmodule EveDmv.Intelligence.WandererClient do
   @doc """
   Start the Wanderer client GenServer.
   """
+  @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
@@ -61,6 +71,7 @@ defmodule EveDmv.Intelligence.WandererClient do
   - {:ok, topology_data} on success
   - {:error, reason} on failure
   """
+  @spec get_chain_topology(String.t() | integer()) :: {:ok, map()} | {:error, term()}
   def get_chain_topology(map_id) do
     GenServer.call(__MODULE__, {:get_chain_topology, map_id}, @api_timeout)
   end
@@ -68,12 +79,14 @@ defmodule EveDmv.Intelligence.WandererClient do
   @doc """
   Fetch system inhabitants for a map.
   """
+  @spec get_system_inhabitants(String.t() | integer()) :: {:ok, list(map())} | {:error, term()}
   def get_system_inhabitants(map_id) do
     GenServer.call(__MODULE__, {:get_system_inhabitants, map_id}, @api_timeout)
   end
 
   @doc """
   Fetch chain inhabitants for a map (alias for get_system_inhabitants).
+  """
   def get_chain_inhabitants(map_id) do
     get_system_inhabitants(map_id)
   end
@@ -81,6 +94,7 @@ defmodule EveDmv.Intelligence.WandererClient do
   @doc """
   Fetch connections for a map.
   """
+  @spec get_connections(String.t() | integer()) :: {:ok, list(map())} | {:error, term()}
   def get_connections(map_id) do
     GenServer.call(__MODULE__, {:get_connections, map_id}, @api_timeout)
   end
@@ -88,6 +102,7 @@ defmodule EveDmv.Intelligence.WandererClient do
   @doc """
   Subscribe to real-time updates for a map.
   """
+  @spec monitor_map(String.t() | integer()) :: :ok
   def monitor_map(map_id) do
     GenServer.cast(__MODULE__, {:monitor_map, map_id})
   end
@@ -95,6 +110,7 @@ defmodule EveDmv.Intelligence.WandererClient do
   @doc """
   Unsubscribe from real-time updates for a map.
   """
+  @spec unmonitor_map(String.t() | integer()) :: :ok
   def unmonitor_map(map_id) do
     GenServer.cast(__MODULE__, {:unmonitor_map, map_id})
   end
@@ -102,6 +118,7 @@ defmodule EveDmv.Intelligence.WandererClient do
   @doc """
   Get current connection status.
   """
+  @spec connection_status() :: {:ok, atom()} | {:error, term()}
   def connection_status do
     GenServer.call(__MODULE__, :connection_status)
   end
@@ -127,6 +144,7 @@ defmodule EveDmv.Intelligence.WandererClient do
       iex> WandererClient.check_system_in_chain(30002187)
       {:ok, %{in_chain: false}}
   """
+  @spec check_system_in_chain(integer()) :: {:ok, map()} | {:error, term()}
   def check_system_in_chain(system_id) do
     GenServer.call(__MODULE__, {:check_system_in_chain, system_id}, @api_timeout)
   end
@@ -310,6 +328,7 @@ defmodule EveDmv.Intelligence.WandererClient do
 
   # Private Functions
 
+  @spec get_auth_token_from_env() :: String.t() | nil
   defp get_auth_token_from_env do
     System.get_env("WANDERER_AUTH_TOKEN")
   end

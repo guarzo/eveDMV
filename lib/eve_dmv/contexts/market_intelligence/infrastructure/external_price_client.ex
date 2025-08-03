@@ -9,6 +9,18 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.ExternalPriceClient 
   alias EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient
   require Logger
 
+  # Type definitions
+  @type external_price_info :: %{
+          sell_price: float() | nil,
+          buy_price: float() | nil,
+          volume: non_neg_integer() | nil,
+          source: atom(),
+          confidence: float(),
+          updated_at: DateTime.t()
+        }
+
+  @type bulk_price_response :: %{integer() => external_price_info()}
+
   @doc """
   Get price for a single type ID from external source.
 
@@ -17,7 +29,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.ExternalPriceClient 
   - :janice - Use Janice API only
   - :killmail - Use killmail-derived prices only
   """
-  @spec get_price(integer(), atom()) :: {:ok, map()} | {:error, term()}
+  @spec get_price(integer(), atom()) :: {:ok, external_price_info()} | {:error, Ash.Error.t()}
   def get_price(type_id, source \\ :best) when is_integer(type_id) do
     case source do
       :best ->
@@ -53,7 +65,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.ExternalPriceClient 
   @doc """
   Get prices for multiple type IDs from external source.
   """
-  @spec get_prices([integer()], atom()) :: {:ok, %{integer() => map()}} | {:error, term()}
+  @spec get_prices([integer()], atom()) :: {:ok, bulk_price_response()} | {:error, Ash.Error.t()}
   def get_prices(type_ids, source \\ :best) when is_list(type_ids) do
     case source do
       :best ->

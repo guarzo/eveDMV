@@ -24,6 +24,18 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
   require Ash.Query
   require Logger
 
+  # Type definitions
+  @type security_risk_analysis :: %{
+          risk_score: float(),
+          total_risk_score: float(),
+          age_risk: float(),
+          employment_risk: float(),
+          pattern_risk: float(),
+          risk_level: :low | :medium | :high | :critical,
+          risk_factors: [String.t()],
+          corp_hopping_detected: boolean()
+        }
+
   # Behavior implementations
 
   @impl EveDmv.Intelligence.Analyzer
@@ -122,7 +134,8 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
   @doc """
   Analyze security risks based on character and employment data.
   """
-  @spec analyze_security_risks(map(), list()) :: map()
+
+  @spec analyze_security_risks(map(), list()) :: security_risk_analysis()
   def analyze_security_risks(character_data, employment_history) do
     age_risk = assess_character_age_risk(character_data)
     employment_risk = assess_employment_risk(employment_history)

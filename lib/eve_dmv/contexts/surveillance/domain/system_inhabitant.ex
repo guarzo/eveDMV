@@ -6,11 +6,11 @@ defmodule EveDmv.Intelligence.SystemInhabitant do
   and historical presence data for chain-wide intelligence.
   """
 
-  alias EveDmv.Core.Utils.DateTimeUtils
-
   use Ash.Resource,
     domain: EveDmv.Domains.Intelligence,
     data_layer: AshPostgres.DataLayer
+
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   postgres do
     table("system_inhabitants")

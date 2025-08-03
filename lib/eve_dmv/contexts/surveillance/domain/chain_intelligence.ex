@@ -14,9 +14,10 @@ defmodule EveDmv.Shared.ChainIntelligence do
   - WormholeOperations.Domain.ChainIntelligenceService
   """
 
+  use EveDmv.ErrorHandler
+
   alias EveDmv.Core.Utils.DateTimeUtils
 
-  use EveDmv.ErrorHandler
   require Logger
 
   # Re-export key functions from existing modules to maintain API compatibility

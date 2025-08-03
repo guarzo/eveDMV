@@ -16,6 +16,51 @@ defmodule EveDmv.Intelligence.Analyzers.CharacterAnalyzer do
 
   require Logger
 
+  @type character_analysis :: %{
+          character_id: integer(),
+          character_name: String.t(),
+          corporation_id: integer(),
+          corporation_name: String.t(),
+          alliance_id: integer() | nil,
+          alliance_name: String.t() | nil,
+          total_kills: non_neg_integer(),
+          total_losses: non_neg_integer(),
+          solo_kills: non_neg_integer(),
+          kill_death_ratio: float(),
+          isk_efficiency: float(),
+          dangerous_rating: non_neg_integer()
+        }
+
+  @type comprehensive_character_analysis :: %{
+          # Base character analysis fields
+          character_id: integer(),
+          character_name: String.t(),
+          corporation_id: integer(),
+          corporation_name: String.t(),
+          alliance_id: integer() | nil,
+          alliance_name: String.t() | nil,
+          total_kills: non_neg_integer(),
+          total_losses: non_neg_integer(),
+          solo_kills: non_neg_integer(),
+          kill_death_ratio: float(),
+          isk_efficiency: float(),
+          dangerous_rating: non_neg_integer(),
+          # Comprehensive analysis additional fields
+          activity_patterns: map(),
+          engagement_behavior: map(),
+          risk_profile: map(),
+          behavioral_archetype: atom(),
+          ship_usage_patterns: map(),
+          role_specialization: map(),
+          fitting_preferences: map(),
+          signature_ship: map(),
+          threat_vulnerabilities: map(),
+          exploitation_risks: map(),
+          analysis_scope: :comprehensive,
+          plugins_used: [atom()],
+          analysis_confidence: :high | :medium | :low
+        }
+
   @doc """
   Legacy cache invalidation - now delegates to Intelligence Engine.
   """
@@ -29,7 +74,7 @@ defmodule EveDmv.Intelligence.Analyzers.CharacterAnalyzer do
   This function maintains the exact same interface as before but now uses
   the new Intelligence Engine plugin system under the hood.
   """
-  @spec analyze_character(integer()) :: {:ok, map()} | {:error, term()}
+  @spec analyze_character(integer()) :: {:ok, character_analysis()} | {:error, term()}
   def analyze_character(character_id) do
     Logger.info("Analyzing character #{character_id} via Intelligence Engine")
     LegacyAdapter.analyze_character(character_id)
@@ -49,7 +94,7 @@ defmodule EveDmv.Intelligence.Analyzers.CharacterAnalyzer do
   This provides more detailed analysis using multiple plugins including
   behavioral patterns, ship preferences, and threat assessment.
   """
-  @spec get_comprehensive_analysis(integer()) :: {:ok, map()} | {:error, term()}
+  @spec get_comprehensive_analysis(integer()) :: {:ok, comprehensive_character_analysis()} | {:error, term()}
   def get_comprehensive_analysis(character_id) do
     Logger.info(
       "Performing comprehensive character analysis for #{character_id} via Intelligence Engine"

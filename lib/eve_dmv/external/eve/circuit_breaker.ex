@@ -10,9 +10,10 @@ defmodule EveDmv.Eve.CircuitBreaker do
   - Providing fast-fail during outages
   """
 
+  use GenServer
+
   alias EveDmv.Core.Utils.DateTimeUtils
 
-  use GenServer
   require Logger
 
   defstruct [
@@ -58,7 +59,7 @@ defmodule EveDmv.Eve.CircuitBreaker do
   @doc """
   Execute a function with circuit breaker protection.
   """
-  @spec call(atom(), (-> term()), keyword()) :: {:ok, term()} | {:error, atom() | binary()}
+  @spec call(atom(), (-> term()), keyword()) :: {:ok, term()} | {:error, atom() | {atom(), term()}}
   def call(service_name, fun, opts \\ []) do
     timeout = Keyword.get(opts, :timeout, @default_timeout)
 

@@ -74,6 +74,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository do
 
   @doc """
   List all active profiles for matching (alias for get_active_profiles).
+  """
   def list_active_profiles do
     get_active_profiles()
   end

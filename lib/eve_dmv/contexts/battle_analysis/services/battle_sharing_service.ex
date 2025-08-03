@@ -103,7 +103,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService do
   @doc """
   Revoke battle sharing.
   """
-  @spec revoke_sharing(String.t()) :: {:ok, any()} | {:error, atom()}
+  @spec revoke_sharing(String.t()) :: {:ok, EveDmv.Contexts.BattleAnalysis.Resources.Battle.t()} | {:error, atom()}
   def revoke_sharing(battle_id) do
     with {:ok, _battle} <- BattleService.get_battle(battle_id) do
       BattleService.update_battle(battle_id, %{

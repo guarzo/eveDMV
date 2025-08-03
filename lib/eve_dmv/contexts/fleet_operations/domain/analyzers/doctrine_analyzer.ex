@@ -8,13 +8,30 @@ defmodule EveDmv.Intelligence.Analyzers.DoctrineAnalyzer do
 
   require Logger
 
+  # Type definitions
+  @type doctrine_adherence_analysis :: %{
+          ship_diversity: non_neg_integer(),
+          primary_doctrine: atom(),
+          adherence_score: non_neg_integer(),
+          doctrine_patterns: map(),
+          tactical_flexibility: atom(),
+          specialization_level: atom()
+        }
+
+  @type ship_progression_analysis :: %{
+          progression_score: non_neg_integer(),
+          progression_patterns: map(),
+          anomalies: [map()],
+          natural_progression: boolean()
+        }
+
   @doc """
   Analyze doctrine adherence based on character analysis and fleet data.
 
   Returns analysis of how well a character follows established fleet doctrines
   and their ship usage patterns.
   """
-  @spec analyze_doctrine_adherence(map(), map()) :: map()
+  @spec analyze_doctrine_adherence(map(), map()) :: doctrine_adherence_analysis()
   def analyze_doctrine_adherence(character_analysis, fleet_data)
       when is_map(character_analysis) and is_map(fleet_data) do
     ship_usage = extract_ship_usage(character_analysis, fleet_data)
@@ -48,7 +65,7 @@ defmodule EveDmv.Intelligence.Analyzers.DoctrineAnalyzer do
   Examines whether ship usage follows logical progression patterns
   and identifies potential anomalies.
   """
-  @spec analyze_ship_progression_consistency(map(), map()) :: map()
+  @spec analyze_ship_progression_consistency(map(), map()) :: ship_progression_analysis()
   def analyze_ship_progression_consistency(character_analysis, fleet_data)
       when is_map(character_analysis) and is_map(fleet_data) do
     ship_timeline = extract_ship_timeline(character_analysis, fleet_data)
@@ -75,7 +92,8 @@ defmodule EveDmv.Intelligence.Analyzers.DoctrineAnalyzer do
   @doc """
   Categorize ship types into doctrine categories.
   """
-  @spec categorize_ship_doctrine(integer()) :: atom()
+  @spec categorize_ship_doctrine(integer()) ::
+          :interceptor | :assault_frigate | :cruiser | :battlecruiser | :battleship | :capital | :other
   def categorize_ship_doctrine(ship_type_id) when is_integer(ship_type_id) do
     # Simplified ship categorization based on common EVE ship types
     cond do

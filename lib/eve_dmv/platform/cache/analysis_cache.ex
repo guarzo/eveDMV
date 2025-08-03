@@ -6,8 +6,9 @@ defmodule EveDmv.Cache.AnalysisCache do
   timezone analysis, and location data to improve page load performance.
   """
 
-  alias EveDmv.Core.Utils.DateTimeUtils
   use GenServer
+
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 

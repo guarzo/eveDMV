@@ -49,7 +49,8 @@ defmodule EveDmv.Database.KillmailRepository do
       get_by_character(98_765, start_date: ~D[2024-01-01], end_date: ~D[2024-01-31])
       get_by_character(98_765, limit: 500, include_losses: false)
   """
-  @spec get_by_character(integer(), keyword()) :: {:ok, [struct()]} | {:error, term()}
+  @spec get_by_character(integer(), keyword()) ::
+          {:ok, [EveDmv.Killmails.KillmailEnriched.t()]} | {:error, Ash.Error.t()}
   def get_by_character(character_id, opts \\ []) do
     cache_key = CacheHelper.build_key("killmail", "character", character_id, opts)
 
@@ -84,7 +85,8 @@ defmodule EveDmv.Database.KillmailRepository do
       get_by_corporation(12_345, start_date: ~D[2024-01-01], end_date: ~D[2024-01-31])
       get_by_corporation(12_345, wormhole_only: true, limit: 200)
   """
-  @spec get_by_corporation(integer(), keyword()) :: {:ok, [struct()]} | {:error, term()}
+  @spec get_by_corporation(integer(), keyword()) ::
+          {:ok, [EveDmv.Killmails.KillmailEnriched.t()]} | {:error, Ash.Error.t()}
   def get_by_corporation(corporation_id, opts \\ []) do
     cache_key = CacheHelper.build_key("killmail", "corporation", corporation_id, opts)
 
@@ -118,7 +120,7 @@ defmodule EveDmv.Database.KillmailRepository do
       get_recent_high_value(limit: 50, min_value: 50_000_000)
       get_recent_high_value(wormhole_only: true, hours_back: 6)
   """
-  @spec get_recent_high_value(keyword()) :: {:ok, [struct()]} | {:error, term()}
+  @spec get_recent_high_value(keyword()) :: {:ok, [EveDmv.Killmails.KillmailEnriched.t()]} | {:error, Ash.Error.t()}
   def get_recent_high_value(opts \\ []) do
     cache_key = CacheHelper.build_key("killmail", "recent_high_value", opts, [])
 
@@ -149,7 +151,7 @@ defmodule EveDmv.Database.KillmailRepository do
       get_kill_stats(character_id: 98_765)
       get_kill_stats(corporation_id: 12_345, days_back: 30)
   """
-  @spec get_kill_stats(keyword()) :: {:ok, map()} | {:error, term()}
+  @spec get_kill_stats(keyword()) :: {:ok, map()} | {:error, Ash.Error.t()}
   def get_kill_stats(opts) do
     entity_type =
       cond do
@@ -184,7 +186,8 @@ defmodule EveDmv.Database.KillmailRepository do
 
   Prevents N+1 queries when loading multiple killmails with their participants.
   """
-  @spec batch_get_with_participants([integer()]) :: {:ok, [struct()]} | {:error, term()}
+  @spec batch_get_with_participants([integer()]) ::
+          {:ok, [EveDmv.Killmails.KillmailEnriched.t()]} | {:error, Ash.Error.t()}
   def batch_get_with_participants(killmail_ids) when is_list(killmail_ids) do
     TelemetryHelper.measure_query("killmail", :batch_get_with_participants, fn ->
       query =
@@ -200,7 +203,7 @@ defmodule EveDmv.Database.KillmailRepository do
   @doc """
   Get battles since a specific date.
   """
-  @spec get_battles_since(DateTime.t()) :: {:ok, [struct()]} | {:error, term()}
+  @spec get_battles_since(DateTime.t()) :: {:ok, [EveDmv.Killmails.KillmailEnriched.t()]} | {:error, Ash.Error.t()}
   def get_battles_since(since_date) do
     cache_key = CacheHelper.build_key("killmail", "battles_since", since_date, [])
 
@@ -231,7 +234,7 @@ defmodule EveDmv.Database.KillmailRepository do
   @doc """
   Get popular fleet compositions with minimum engagement count.
   """
-  @spec get_popular_fleet_compositions(integer(), keyword()) :: {:ok, [map()]} | {:error, term()}
+  @spec get_popular_fleet_compositions(integer(), keyword()) :: {:ok, [map()]} | {:error, Ash.Error.t()}
   def get_popular_fleet_compositions(min_engagements, opts \\ []) do
     cache_key = CacheHelper.build_key("killmail", "popular_compositions", min_engagements, opts)
 

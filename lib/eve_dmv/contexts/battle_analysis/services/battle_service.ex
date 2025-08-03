@@ -39,7 +39,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   @doc """
   Update an existing battle.
   """
-  @spec update_battle(String.t(), map()) :: {:ok, any()} | {:error, atom()}
+  @spec update_battle(String.t(), map()) ::
+          {:ok, EveDmv.Contexts.BattleAnalysis.Resources.Battle.t()} | {:error, atom()}
   def update_battle(battle_id, params) do
     with {:ok, battle} <- get_battle(battle_id) do
       battle
@@ -51,7 +52,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   @doc """
   Get a battle by ID.
   """
-  @spec get_battle(String.t()) :: {:ok, any()} | {:error, atom()}
+  @spec get_battle(String.t()) :: {:ok, EveDmv.Contexts.BattleAnalysis.Resources.Battle.t()} | {:error, atom()}
   def get_battle(battle_id) do
     case Ash.get(Battle, battle_id, domain: Api) do
       {:ok, battle} -> {:ok, battle}

@@ -25,21 +25,42 @@ defmodule EveDmv.Contexts.FleetOperations.Core.MassCalculator do
     "O477" => 1_800_000_000,
     # 2.5B kg
     "L477" => 2_500_000_000,
-    # 1B kg
-    "M555" => 1_000_000_000,
+    # 3B kg
+    "Z647" => 3_000_000_000,
 
-    # C6 connections
-    # 1.35B kg
-    "A239" => 1_350_000_000,
-    # 2.25B kg
-    "U574" => 2_250_000_000,
+    # Null-sec connections
+    # 3B kg
+    "V283" => 3_000_000_000,
+    # Varies, using average
+    "K346" => 3_000_000_000,
 
-    # K-space connections
-    # 3B kg (varies by source)
-    "K162" => 3_000_000_000,
+    # High-sec connections
     # 2B kg
-    "B449" => 2_000_000_000
+    "B449" => 2_000_000_000,
+    # 5B kg - largest
+    "N110" => 5_000_000_000
   }
+
+  # Type definitions
+  @type mass_calculation_error ::
+          :empty_fleet
+          | :invalid_ship_type
+          | :ship_data_unavailable
+          | :unknown_wormhole_type
+          | :invalid_doctrine
+          | :calculation_failed
+
+  @type fleet_optimization_result :: %{
+          optimal_composition: [%{ship_type_id: integer(), count: integer(), role: atom()}],
+          total_mass: integer(),
+          mass_efficiency: float(),
+          max_ships: integer(),
+          wormhole_type: String.t(),
+          doctrine: atom(),
+          calculated_at: DateTime.t()
+        }
+
+  # Standard wormhole mass limits (in kg)
 
   @doc """
   Calculate ship mass efficiency based on role and fitting.
@@ -65,7 +86,7 @@ defmodule EveDmv.Contexts.FleetOperations.Core.MassCalculator do
   @doc """
   Calculate total mass for a fleet composition.
   """
-  @spec calculate_fleet_mass([map()]) :: {:ok, integer()} | {:error, term()}
+  @spec calculate_fleet_mass([map()]) :: {:ok, integer()} | {:error, mass_calculation_error()}
   def calculate_fleet_mass(fleet_composition) when is_list(fleet_composition) do
     if Enum.empty?(fleet_composition) do
       {:error, :empty_fleet}
@@ -97,7 +118,8 @@ defmodule EveDmv.Contexts.FleetOperations.Core.MassCalculator do
   @doc """
   Get optimal fleet composition for a wormhole type.
   """
-  @spec optimize_fleet_for_wormhole(String.t(), keyword()) :: {:ok, map()} | {:error, term()}
+  @spec optimize_fleet_for_wormhole(String.t(), keyword()) ::
+          {:ok, fleet_optimization_result()} | {:error, mass_calculation_error()}
   def optimize_fleet_for_wormhole(wormhole_type, opts \\ []) do
     mass_limit = Map.get(@wormhole_mass_limits, wormhole_type, 3_000_000_000)
     doctrine = Keyword.get(opts, :doctrine, :balanced)

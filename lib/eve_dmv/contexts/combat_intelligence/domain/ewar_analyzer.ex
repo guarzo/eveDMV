@@ -138,9 +138,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
   Returns detailed EWAR capabilities and threat assessment.
   """
   def analyze_ewar_ship(ship_type_id) when is_integer(ship_type_id) do
-    with {:ok, ship_info} <- get_ship_info(ship_type_id) do
-      analyze_ewar_capabilities(ship_info)
-    else
+    case get_ship_info(ship_type_id) do
+      {:ok, ship_info} ->
+        analyze_ewar_capabilities(ship_info)
       {:error, reason} -> {:error, reason}
       _ -> {:error, :ship_info_unavailable}
     end

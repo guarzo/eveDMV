@@ -252,7 +252,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.KillmailEventProcessor do
   end
 
   defp get_active_surveillance_profiles do
-    case ProfileRepository.list_active_profiles() do
+    case ProfileRepository.get_active_profiles() do
       {:ok, [_ | _] = profiles} ->
         {:ok, profiles}
 

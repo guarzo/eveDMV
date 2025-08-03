@@ -128,15 +128,15 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
     # This is based on EVE Online ship type IDs
     case ship_type_id do
       # Mining ships
-      32880 -> :venture      # Venture
-      17478 -> :retriever    # Retriever
-      17480 -> :retriever    # Procurer
-      17482 -> :retriever    # Covetor
-      22544 -> :retriever    # Hulk
-      22546 -> :retriever    # Skiff
-      22548 -> :retriever    # Mackinaw
-      28606 -> :orca        # Orca
-      28352 -> :rorqual     # Rorqual
+      32_880 -> :venture      # Venture
+      17_478 -> :retriever    # Retriever
+      17_480 -> :retriever    # Procurer
+      17_482 -> :retriever    # Covetor
+      22_544 -> :retriever    # Hulk
+      22_546 -> :retriever    # Skiff
+      22_548 -> :retriever    # Mackinaw
+      28_606 -> :orca        # Orca
+      28_352 -> :rorqual     # Rorqual
 
       # Industrial/Hauling ships
       648 -> :hauler        # Badger

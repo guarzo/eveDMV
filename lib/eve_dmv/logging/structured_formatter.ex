@@ -6,9 +6,9 @@ defmodule EveDmv.Logging.StructuredFormatter do
   monitoring, and log aggregation systems.
   """
 
-  alias EveDmv.Core.Utils.DateTimeUtils
-
   @behaviour :logger_formatter
+
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   @impl :logger_formatter
   def format(log_event, _opts) do

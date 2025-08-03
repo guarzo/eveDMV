@@ -11,6 +11,25 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
 
   @cache_type :analysis
 
+  # Type definitions for cached analysis data
+  @type character_analysis :: %{
+          character_id: integer(),
+          threat_score: float(),
+          combat_patterns: map(),
+          behavioral_analysis: map(),
+          affiliations: map(),
+          analysis_timestamp: DateTime.t()
+        }
+
+  @type corporation_analysis :: %{
+          corporation_id: integer(),
+          member_count: non_neg_integer(),
+          threat_distribution: map(),
+          activity_patterns: map(),
+          coordination_metrics: map(),
+          analysis_timestamp: DateTime.t()
+        }
+
   @doc """
   Invalidate cached analysis for a character.
   """
@@ -25,7 +44,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
   @doc """
   Store character analysis in cache.
   """
-  @spec put_character_analysis(integer(), map()) :: :ok
+  @spec put_character_analysis(integer(), character_analysis()) :: :ok
   def put_character_analysis(character_id, analysis) do
     cache_key = {:character_analysis, character_id}
     Cache.put(@cache_type, cache_key, analysis, ttl: :timer.minutes(30))
@@ -34,7 +53,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
   @doc """
   Get character analysis from cache.
   """
-  @spec get_character_analysis(integer()) :: {:ok, map()} | {:error, :not_found}
+  @spec get_character_analysis(integer()) :: {:ok, character_analysis()} | {:error, :not_found}
   def get_character_analysis(character_id) do
     cache_key = {:character_analysis, character_id}
 
@@ -47,7 +66,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
   @doc """
   Store corporation analysis in cache.
   """
-  @spec put_corporation_analysis(integer(), map()) :: :ok
+  @spec put_corporation_analysis(integer(), corporation_analysis()) :: :ok
   def put_corporation_analysis(corporation_id, analysis) do
     cache_key = {:corporation_analysis, corporation_id}
     Cache.put(@cache_type, cache_key, analysis, ttl: :timer.minutes(30))
@@ -56,7 +75,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
   @doc """
   Get corporation analysis from cache.
   """
-  @spec get_corporation_analysis(integer()) :: {:ok, map()} | {:error, :not_found}
+  @spec get_corporation_analysis(integer()) :: {:ok, corporation_analysis()} | {:error, :not_found}
   def get_corporation_analysis(corporation_id) do
     cache_key = {:corporation_analysis, corporation_id}
 
@@ -188,7 +207,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
   @doc """
   Get cache statistics.
   """
-  @spec get_stats() :: {:ok, map()}
+  @spec get_stats() :: {:ok, %{size: non_neg_integer(), memory_bytes: non_neg_integer()}}
   def get_stats do
     # Get cache stats from the Cache module if available
     case Cache.stats(@cache_type) do

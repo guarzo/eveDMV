@@ -7,9 +7,10 @@ defmodule EveDmv.Performance.RegressionDetector do
   degrades beyond acceptable thresholds.
   """
 
+  use GenServer
+
   alias EveDmv.Core.Utils.DateTimeUtils
 
-  use GenServer
   require Logger
 
   # Performance thresholds

@@ -188,31 +188,31 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainTracker do
   - Threat assessment based on system types
   """
   def analyze_chain(root_system_id, connections) when is_list(connections) do
-    with {:ok, root_system} <- validate_system(root_system_id) do
-      # Build chain graph
-      chain_map = build_chain_map(connections)
+    case validate_system(root_system_id) do
+      {:ok, root_system} ->
+        # Build chain graph
+        chain_map = build_chain_map(connections)
 
-      # Find all systems in chain
-      chain_systems = find_chain_systems(root_system_id, chain_map)
+        # Find all systems in chain
+        chain_systems = find_chain_systems(root_system_id, chain_map)
 
-      # Calculate chain properties
-      chain_analysis = %{
-        root_system: %{
-          id: root_system_id,
-          name: root_system.system_name,
-          class: StaticData.classify_system(root_system_id)
-        },
-        total_systems: length(chain_systems),
-        chain_depth: calculate_chain_depth(root_system_id, chain_map),
-        connections: analyze_connections(connections),
-        system_composition: analyze_system_composition(chain_systems),
-        threat_assessment: assess_chain_threats(chain_systems, connections),
-        critical_connections: find_critical_connections(connections),
-        escape_routes: find_escape_routes(root_system_id, chain_map)
-      }
+        # Calculate chain properties
+        chain_analysis = %{
+          root_system: %{
+            id: root_system_id,
+            name: root_system.system_name,
+            class: StaticData.classify_system(root_system_id)
+          },
+          total_systems: length(chain_systems),
+          chain_depth: calculate_chain_depth(root_system_id, chain_map),
+          connections: analyze_connections(connections),
+          system_composition: analyze_system_composition(chain_systems),
+          threat_assessment: assess_chain_threats(chain_systems, connections),
+          critical_connections: find_critical_connections(connections),
+          escape_routes: find_escape_routes(root_system_id, chain_map)
+        }
 
-      {:ok, chain_analysis}
-    else
+        {:ok, chain_analysis}
       {:error, reason} -> {:error, reason}
       _ -> {:error, :validation_failed}
     end

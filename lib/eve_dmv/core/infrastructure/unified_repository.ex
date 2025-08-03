@@ -33,6 +33,17 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   @type filter :: keyword()
   @type options :: keyword()
 
+  # Domain-specific result types
+  @type threat_assessment :: map()
+  @type fleet_engagement :: map()
+  @type surveillance_profile :: map()
+  @type repository_stats :: %{
+          domains: %{atom() => map()},
+          cache_performance: map(),
+          query_performance: map(),
+          total_entities: non_neg_integer()
+        }
+
   ## Generic Repository Operations
 
   @doc """
@@ -193,7 +204,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   @doc """
   Get recent high-threat assessments.
   """
-  @spec get_recent_high_threats(options()) :: {:ok, list()} | {:error, term()}
+  @spec get_recent_high_threats(options()) :: {:ok, [threat_assessment()]} | {:error, term()}
   def get_recent_high_threats(opts \\ []) do
     since = Keyword.get(opts, :since, DateTimeUtils.add(DateTimeUtils.utc_now(), -24 * 3600, :second))
     limit = Keyword.get(opts, :limit, 50)
@@ -224,7 +235,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   @doc """
   List recent fleet engagements.
   """
-  @spec get_recent_fleet_engagements(options()) :: {:ok, list()} | {:error, term()}
+  @spec get_recent_fleet_engagements(options()) :: {:ok, [fleet_engagement()]} | {:error, term()}
   def get_recent_fleet_engagements(opts \\ []) do
     since = Keyword.get(opts, :since, DateTimeUtils.add(DateTimeUtils.utc_now(), -48 * 3600, :second))
     limit = Keyword.get(opts, :limit, 100)
@@ -274,7 +285,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   @doc """
   List active surveillance profiles.
   """
-  @spec get_active_surveillance_profiles(options()) :: {:ok, list()} | {:error, term()}
+  @spec get_active_surveillance_profiles(options()) :: {:ok, [surveillance_profile()]} | {:error, term()}
   def get_active_surveillance_profiles(opts \\ []) do
     filter = [status: :active]
 
@@ -369,7 +380,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   @doc """
   Get repository statistics.
   """
-  @spec get_repository_stats() :: map()
+  @spec get_repository_stats() :: repository_stats()
   def get_repository_stats do
     cache_stats = UnifiedCache.get_stats()
 

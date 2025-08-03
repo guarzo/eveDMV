@@ -12,12 +12,19 @@ defmodule EveDmv.Users.AccountManager do
   require Logger
   require Ash.Query
 
+  @type account :: Account.t()
+  @type user :: User.t()
+  @type account_id :: integer() | String.t()
+  @type user_id :: integer() | String.t()
+  @type error :: {:error, term()}
+
   @doc """
   Creates or finds an account for a user during authentication.
 
   If the user doesn't have an account, creates one and sets them as primary character.
   If they already have an account, just returns it.
   """
+  @spec ensure_user_account(user()) :: {:ok, account()} | error()
   def ensure_user_account(user) do
     case user.account_id do
       nil ->
@@ -31,6 +38,7 @@ defmodule EveDmv.Users.AccountManager do
   @doc """
   Creates a new account for a user and sets them as the primary character.
   """
+  @spec create_account_for_user(user()) :: {:ok, account()} | error()
   def create_account_for_user(user) do
     with {:ok, account} <- create_account(user),
          {:ok, _updated_user} <- link_user_to_account(user, account) do
@@ -44,6 +52,7 @@ defmodule EveDmv.Users.AccountManager do
   This is used when a user authenticates with a different EVE character
   but wants to link it to their existing account.
   """
+  @spec link_character_to_account(user(), account_id()) :: {:ok, account(), user()} | error()
   def link_character_to_account(new_user, account_id) do
     account = get_account!(account_id)
 
@@ -58,6 +67,7 @@ defmodule EveDmv.Users.AccountManager do
   Updates the last character switch timestamp and optionally updates
   the primary character if requested.
   """
+  @spec switch_character(account_id(), user_id(), boolean()) :: {:ok, account(), user()} | error()
   def switch_character(account_id, character_id, make_primary \\ false) do
     account = get_account!(account_id)
     character = get_user_by_id!(character_id)
@@ -88,6 +98,7 @@ defmodule EveDmv.Users.AccountManager do
   @doc """
   Gets all characters associated with an account.
   """
+  @spec get_account_characters(account_id()) :: [user()]
   def get_account_characters(account_id) do
     User
     |> Ash.Query.new()
@@ -98,6 +109,7 @@ defmodule EveDmv.Users.AccountManager do
   @doc """
   Gets the primary character for an account.
   """
+  @spec get_primary_character(account()) :: user() | nil
   def get_primary_character(account) do
     case account.primary_character_id do
       nil -> nil
@@ -135,6 +147,7 @@ defmodule EveDmv.Users.AccountManager do
   Moves all characters from the source account to the target account,
   then deletes the source account.
   """
+  @spec merge_accounts(account_id(), account_id()) :: {:ok, account()} | error()
   def merge_accounts(source_account_id, target_account_id) do
     source_account = get_account!(source_account_id)
     target_account = get_account!(target_account_id)
@@ -163,6 +176,7 @@ defmodule EveDmv.Users.AccountManager do
   @doc """
   Updates account activity timestamps.
   """
+  @spec update_account_activity(account_id()) :: account()
   def update_account_activity(account_id) do
     account = get_account!(account_id)
 
@@ -173,6 +187,7 @@ defmodule EveDmv.Users.AccountManager do
 
   # Private functions
 
+  @spec create_account(user()) :: {:ok, account()} | error()
   defp create_account(user) do
     Account
     |> Ash.Changeset.for_create(:create, %{
@@ -183,22 +198,26 @@ defmodule EveDmv.Users.AccountManager do
     |> Ash.create(domain: Api)
   end
 
+  @spec link_user_to_account(user(), account()) :: {:ok, user()} | error()
   defp link_user_to_account(user, account) do
     user
     |> Ash.Changeset.for_update(:update, %{account_id: account.id})
     |> Ash.update(domain: Api)
   end
 
+  @spec get_account!(account_id()) :: account() | no_return()
   defp get_account!(account_id) do
     Account
     |> Ash.get!(account_id, domain: Api)
   end
 
+  @spec get_user_by_id!(user_id()) :: user() | no_return()
   defp get_user_by_id!(user_id) do
     User
     |> Ash.get!(user_id, domain: Api)
   end
 
+  @spec max_characters_per_account() :: integer()
   defp max_characters_per_account do
     # Could be made configurable
     Application.get_env(:eve_dmv, :max_characters_per_account, 10)

@@ -15,6 +15,15 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
 
   require Ash.Query
 
+  @type corporation_intelligence_report :: %{
+          corporation: map(),
+          doctrine_analysis: map(),
+          doctrine_evolution: map(),
+          member_threats: map(),
+          activity_metrics: map(),
+          summary: map()
+        }
+
   @doc """
   Analyzes a corporation's combat doctrines based on their killmail history.
 
@@ -90,7 +99,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
 
   Combines doctrine analysis, member threat assessments, and activity metrics.
   """
-  @spec get_corporation_intelligence_report(integer()) :: {:ok, map()}
+  @spec get_corporation_intelligence_report(integer()) :: {:ok, corporation_intelligence_report()}
   def get_corporation_intelligence_report(corporation_id) do
     # Get basic info first
     corp_info =

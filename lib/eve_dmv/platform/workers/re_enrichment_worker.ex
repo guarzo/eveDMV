@@ -14,9 +14,10 @@ defmodule EveDmv.Workers.ReEnrichmentWorker do
   - **Progress tracking**: Comprehensive metrics and status reporting
   """
 
-    alias EveDmv.Core.Utils.DateTimeUtils
-
   use GenServer
+
+  alias EveDmv.Core.Utils.DateTimeUtils
+
   require Logger
 
   # Configuration

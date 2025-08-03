@@ -15,6 +15,46 @@ defmodule EveDmv.Contexts.BattleAnalysis do
 
   require Logger
 
+  @type battle_statistics :: %{
+          total_battles: non_neg_integer(),
+          total_kills: non_neg_integer(),
+          battle_types: %{atom() => non_neg_integer()},
+          most_active_systems: [{integer(), non_neg_integer()}],
+          average_battle_duration: float()
+        }
+
+  @type battle :: %{
+          battle_id: String.t(),
+          killmails: [map()],
+          metadata: map()
+        }
+
+  @type battle_with_timeline :: %{
+          battle_id: String.t(),
+          killmails: [map()],
+          metadata: map(),
+          timeline: map()
+        }
+
+  @type battle_timeline :: %{
+          battle_id: String.t(),
+          phases: [map()],
+          key_events: [map()],
+          fleet_compositions: map(),
+          duration_seconds: integer(),
+          timeline_events: [map()]
+        }
+
+  @type battle_sequence_analysis :: %{
+          sequence_id: String.t(),
+          battles: [battle()],
+          pattern_type: atom(),
+          connections: [map()],
+          total_duration: integer(),
+          participants_overlap: map(),
+          geographic_spread: map()
+        }
+
   @doc """
   Detects battles from killmail data within a time range.
 
@@ -26,7 +66,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
       {:ok, [%{battle_id: "battle_30003089_20250109050000", killmails: [...], metadata: %{...}}]}
   """
   @spec detect_battles(DateTime.t(), DateTime.t(), keyword()) ::
-          {:ok, [map()]} | {:error, atom()}
+          {:ok, [battle()]} | {:error, atom()}
   def detect_battles(start_time, end_time, options \\ []) do
     BattleDetectionService.detect_battles(start_time, end_time, options)
   end
@@ -35,7 +75,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   Detects battles in a specific solar system within a time range.
   """
   @spec detect_battles_in_system(integer(), DateTime.t(), DateTime.t(), keyword()) ::
-          {:ok, [map()]} | {:error, atom()}
+          {:ok, [battle()]} | {:error, atom()}
   def detect_battles_in_system(system_id, start_time, end_time, options \\ []) do
     BattleDetectionService.detect_battles_in_system(system_id, start_time, end_time, options)
   end
@@ -44,7 +84,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   Analyzes a potential battle from a list of killmail IDs.
   Useful for analyzing battles from external sources like zkillboard.
   """
-  @spec analyze_battle_from_killmail_ids([integer()]) :: {:ok, map()} | {:error, atom()}
+  @spec analyze_battle_from_killmail_ids([integer()]) :: {:ok, battle()} | {:error, atom()}
   def analyze_battle_from_killmail_ids(killmail_ids) when is_list(killmail_ids) do
     BattleDetectionService.analyze_battle_from_killmail_ids(killmail_ids)
   end
@@ -52,7 +92,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   @doc """
   Detects recent battles from the last N hours.
   """
-  @spec detect_recent_battles(integer(), keyword()) :: {:ok, [map()]} | {:error, atom()}
+  @spec detect_recent_battles(integer(), keyword()) :: {:ok, [battle()]} | {:error, atom()}
   def detect_recent_battles(hours_back \\ 24, options \\ []) do
     end_time = DateTime.utc_now()
     start_time = DateTimeUtils.add(end_time, -hours_back * 3600, :second)
@@ -64,7 +104,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   Gets battle summary statistics for a time period.
   """
   @spec get_battle_statistics(DateTime.t(), DateTime.t()) ::
-          {:ok, map()} | {:error, atom()}
+          {:ok, battle_statistics()} | {:error, atom()}
   def get_battle_statistics(start_time, end_time) do
     case detect_battles(start_time, end_time) do
       {:ok, battles} ->
@@ -89,7 +129,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   Provides chronological event analysis, battle phases, fleet composition changes,
   and identifies key moments in the battle.
   """
-  @spec reconstruct_battle_timeline(map()) :: map()
+  @spec reconstruct_battle_timeline(battle()) :: battle_timeline()
   def reconstruct_battle_timeline(battle) do
     BattleTimelineService.reconstruct_timeline(battle)
   end
@@ -99,7 +139,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
 
   Useful for tracking roaming gangs, escalating conflicts, or multi-system engagements.
   """
-  @spec analyze_battle_sequence([map()]) :: map()
+  @spec analyze_battle_sequence([battle()]) :: battle_sequence_analysis()
   def analyze_battle_sequence(battles) when is_list(battles) do
     BattleTimelineService.analyze_battle_sequence(battles)
   end
@@ -107,7 +147,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   @doc """
   Gets a detailed battle analysis including timeline for a specific battle ID.
   """
-  @spec get_battle_with_timeline(String.t()) :: {:ok, map()} | {:error, atom()}
+  @spec get_battle_with_timeline(String.t()) :: {:ok, battle_with_timeline()} | {:error, atom()}
   def get_battle_with_timeline(battle_id) do
     # Parse battle_id to extract system and time
     case parse_battle_id(battle_id) do

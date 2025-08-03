@@ -6,14 +6,13 @@ defmodule EveDmv.Intelligence.MemberActivityIntelligence do
   activity patterns, and early warning for member burnout or disengagement.
   """
 
-  alias EveDmv.Core.Utils.DateTimeUtils
-
   use Ash.Resource,
     domain: EveDmv.Domains.Intelligence,
     data_layer: AshPostgres.DataLayer
 
-  postgres do
   alias EveDmv.Core.Utils.DateTimeUtils
+
+  postgres do
     table("member_activity_intelligence")
     repo(EveDmv.Repo)
 

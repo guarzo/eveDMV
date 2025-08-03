@@ -26,6 +26,25 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
           last_updated: DateTime.t()
         }
 
+  @type corporation_intelligence_result :: %{
+          corporation_id: integer(),
+          corporation_name: String.t(),
+          member_count: non_neg_integer(),
+          activity_patterns: map(),
+          threat_distribution: map(),
+          coordination_metrics: map(),
+          last_updated: DateTime.t()
+        }
+
+  @type intelligence_api_error ::
+          :character_not_found
+          | :corporation_not_found
+          | :invalid_options
+          | :analysis_failed
+          | :timeout
+          | :cache_error
+          | :not_found
+
   @doc """
   Perform comprehensive character intelligence analysis.
 
@@ -45,7 +64,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
       iex> analyze_character(123456789, analysis_type: :threat_only)
       {:ok, %{threat_level: %ThreatLevel{level: :medium, score: 0.6}, ...}}
   """
-  @spec analyze_character(integer(), analysis_options()) :: {:ok, intelligence_result()} | {:error, atom()}
+  @spec analyze_character(integer(), analysis_options()) ::
+          {:ok, intelligence_result()} | {:error, intelligence_api_error()}
   def analyze_character(character_id, opts \\ []) do
     with :ok <- validate_analysis_options(opts),
          {:ok, analysis_result} <- Domain.CharacterAnalyzer.analyze(character_id, opts) do
@@ -60,7 +80,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   or triggers a new analysis if cache is stale.
   """
   @spec get_character_intelligence(integer()) ::
-          {:ok, intelligence_result()} | {:error, atom()} | {:error, :not_found}
+          {:ok, intelligence_result()} | {:error, intelligence_api_error()}
   def get_character_intelligence(character_id) do
     Domain.CharacterAnalyzer.get_intelligence(character_id)
   end
@@ -71,7 +91,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   Provides insights into corporation member activity, timezone coverage,
   and overall combat effectiveness.
   """
-  @spec analyze_corporation(integer(), analysis_options()) :: {:ok, map()} | {:error, atom()}
+  @spec analyze_corporation(integer(), analysis_options()) ::
+          {:ok, corporation_intelligence_result()} | {:error, intelligence_api_error()}
   def analyze_corporation(corporation_id, opts \\ []) do
     with :ok <- validate_analysis_options(opts),
          {:ok, analysis_result} <- Domain.CorporationAnalyzer.analyze(corporation_id, opts) do
@@ -82,7 +103,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   @doc """
   Get cached corporation intelligence data.
   """
-  @spec get_corporation_intelligence(integer()) :: {:ok, map()} | {:error, atom()} | {:error, :not_found}
+  @spec get_corporation_intelligence(integer()) ::
+          {:ok, corporation_intelligence_result()} | {:error, intelligence_api_error()}
   def get_corporation_intelligence(corporation_id) do
     Domain.CorporationAnalyzer.get_intelligence(corporation_id)
   end

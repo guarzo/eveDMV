@@ -379,7 +379,7 @@ defmodule EveDmv.Config do
   @doc """
   Get configuration summary for debugging.
   """
-  @spec summary() :: map()
+  @spec summary() :: EveDmv.Config.UnifiedConfig.config_summary_map()
   def summary do
     UnifiedConfig.config_summary()
   end

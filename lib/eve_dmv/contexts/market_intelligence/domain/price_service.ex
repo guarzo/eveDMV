@@ -16,6 +16,38 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
 
   require Logger
 
+  # Type definitions
+  @type price_result :: %{
+          sell_price: float() | nil,
+          buy_price: float() | nil,
+          volume: non_neg_integer() | nil,
+          spread: float() | nil,
+          updated_at: DateTime.t()
+        }
+
+  @type price_results :: %{
+          prices: %{integer() => price_result()},
+          failed_items: [integer()],
+          cache_hits: non_neg_integer(),
+          cache_misses: non_neg_integer(),
+          source: atom(),
+          fetched_at: DateTime.t()
+        }
+
+  @type cache_statistics :: %{
+          cache_size: non_neg_integer(),
+          hit_rate: float(),
+          miss_rate: float()
+        }
+
+  @type price_error ::
+          :invalid_type_id
+          | :api_unavailable
+          | :rate_limited
+          | :timeout
+          | :no_price_data
+          | :service_unavailable
+
   # Client API
 
   def start_link(opts) do
@@ -25,7 +57,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
   @doc """
   Get price for a single item type.
   """
-  @spec get_price(integer(), keyword()) :: {:ok, map()} | {:error, atom()}
+  @spec get_price(integer(), keyword()) :: {:ok, price_result()} | {:error, price_error()}
   def get_price(type_id, options \\ []) do
     GenServer.call(__MODULE__, {:get_price, type_id, options})
   end
@@ -33,7 +65,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
   @doc """
   Get prices for multiple item types.
   """
-  @spec get_prices([integer()], keyword()) :: {:ok, map()} | {:error, atom()}
+  @spec get_prices([integer()], keyword()) :: {:ok, price_results()} | {:error, price_error()}
   def get_prices(type_ids, options \\ []) do
     GenServer.call(__MODULE__, {:get_prices, type_ids, options})
   end
@@ -41,7 +73,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
   @doc """
   Refresh prices bypassing cache.
   """
-  @spec refresh_prices([integer()], keyword()) :: {:ok, map()} | {:error, atom()}
+  @spec refresh_prices([integer()], keyword()) :: {:ok, price_results()} | {:error, price_error()}
   def refresh_prices(type_ids, options \\ []) do
     GenServer.call(__MODULE__, {:refresh_prices, type_ids, options})
   end
@@ -49,7 +81,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
   @doc """
   Get cache statistics.
   """
-  @spec get_cache_stats() :: map()
+  @spec get_cache_stats() :: cache_statistics()
   def get_cache_stats do
     case UnifiedCache.get_domain_stats(:market) do
       {:ok, stats} -> stats

@@ -18,6 +18,18 @@ defmodule EveDmv.Intelligence.Analyzers.CorporationAnalyzer do
   alias EveDmv.Intelligence.Core.ValidationHelper
   require Logger
 
+  @type member_correlations :: %{
+          shared_operations: map(),
+          loss_distribution: map(),
+          activity_correlation: map()
+        }
+
+  @type coordination_analysis :: %{
+          coordination_score: float(),
+          fleet_participation: map(),
+          operational_synergy: map()
+        }
+
   # Behavior implementations
 
   @impl EveDmv.Intelligence.Analyzer
@@ -62,7 +74,7 @@ defmodule EveDmv.Intelligence.Analyzers.CorporationAnalyzer do
   Identifies patterns in member behavior, shared operations,
   and coordination metrics.
   """
-  @spec analyze_member_correlations(list()) :: map()
+  @spec analyze_member_correlations(list()) :: member_correlations()
   def analyze_member_correlations(members) when is_list(members) do
     %{
       shared_operations: analyze_shared_operations(members),
@@ -107,7 +119,7 @@ defmodule EveDmv.Intelligence.Analyzers.CorporationAnalyzer do
 
   Identifies coordination levels and operational patterns.
   """
-  @spec analyze_coordination(list()) :: map()
+  @spec analyze_coordination(list()) :: coordination_analysis()
   def analyze_coordination(members) when is_list(members) do
     %{
       coordination_score: calculate_coordination_score(members),

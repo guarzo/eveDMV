@@ -191,22 +191,22 @@ defmodule EveDmv.Contexts.WormholeOperations.Analyzers.WhFleetAnalyzer.FleetOpti
     range_counts = Enum.frequencies_by(ships, fn ship_id ->
       case ship_id do
         # Brawling ships (short range)
-        11393 -> :short  # Vexor
-        16229 -> :short  # Brutix
-        24692 -> :short  # Hyperion
-        17740 -> :short  # Maelstrom
-        
+        11_393 -> :short  # Vexor
+        16_229 -> :short  # Brutix
+        24_692 -> :short  # Hyperion
+        17_740 -> :short  # Maelstrom
+
         # Kiting ships (long range)
-        11993 -> :long   # Cerberus
-        12003 -> :long   # Caracal
-        24694 -> :long   # Rokh
+        11_993 -> :long   # Cerberus
+        12_003 -> :long   # Caracal
+        24_694 -> :long   # Rokh
         642 -> :long     # Apocalypse
-        
+
         # Default to medium range
         _ -> :medium
       end
     end)
-    
+
     # Return the most common range
     {range, _count} = Enum.max_by(range_counts, fn {_range, count} -> count end, fn -> {:medium, 0} end)
     range
@@ -326,7 +326,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Analyzers.WhFleetAnalyzer.FleetOpti
        when effectiveness < 0.6 do
     ["Increase engagement range" | counters]
   end
-  
+
   defp maybe_add_range_counter_advanced(counters, _effectiveness, _range) do
     counters
   end

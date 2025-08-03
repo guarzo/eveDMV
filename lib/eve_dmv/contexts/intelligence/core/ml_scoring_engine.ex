@@ -19,7 +19,6 @@ defmodule EveDmv.Contexts.Intelligence.Core.MLScoringEngine do
 
   @cache_ttl :timer.hours(4)
 
-
   @doc """
   Calculate ML-enhanced intelligence score with feature engineering.
   """
@@ -180,10 +179,6 @@ defmodule EveDmv.Contexts.Intelligence.Core.MLScoringEngine do
     }
   end
 
-
-
-
-
   # ML Model Scoring Functions
 
   @spec calculate_behavioral_score(map()) :: {:ok, float()} | {:error, atom()}
@@ -226,80 +221,6 @@ defmodule EveDmv.Contexts.Intelligence.Core.MLScoringEngine do
 
   defp calculate_model_confidence(_features), do: 0.85
 
-
-
-  # Helper Functions
-
-
-  defp calculate_kd_ratio(_), do: 0.0
-
-
-  defp count_kills(_), do: 0
-
-
-  defp count_losses(_), do: 0
-
-
-  defp sum_isk_destroyed(_), do: 0.0
-
-
-  defp sum_isk_lost(_), do: 0.0
-
-
-
-
-  # Simplified implementations for basic functionality
-
-  defp filter_by_window(_, _), do: []
-
-
-  defp calculate_activity_variance(_killmails), do: 0.0
-  defp calculate_peak_hour_concentration(_killmails), do: 0.0
-  defp calculate_weekend_ratio(_killmails), do: 0.0
-  defp calculate_solo_ratio(_killmails), do: 0.0
-  defp calculate_average_gang_size(_killmails), do: 0.0
-  defp calculate_ship_diversity(_killmails), do: 0.0
-  defp calculate_capital_usage(_killmails), do: 0.0
-  defp calculate_average_value(_killmails), do: 0.0
-  defp calculate_killing_blow_ratio(_killmails), do: 0.0
-  defp calculate_weapon_diversity(_killmails), do: 0.0
-  defp calculate_engagement_variance(_killmails), do: 0.0
-  defp count_unique_allies(_killmails), do: 0
-  defp calculate_repeat_engagement_ratio(_killmails), do: 0.0
-  defp calculate_corp_diversity(_killmails), do: 0.0
-  defp calculate_alliance_participation(_killmails), do: 0.0
-  defp calculate_social_clustering(_killmails), do: 0.0
-  defp calculate_fleet_consistency(_killmails), do: 0.0
-  defp measure_activity_consistency(_killmails), do: 0.5
-  defp calculate_timezone_stability(_killmails), do: 0.5
-  defp identify_hunting_patterns(_killmails), do: 0.0
-  defp calculate_risk_index(_killmails), do: 0.0
-  defp analyze_target_selection(_killmails), do: 0.0
-  defp measure_opsec(_killmails), do: 1.0
-
-
-  defp calculate_time_interval_stats(_timestamps), do: %{mean: 0, variance: 0, min: 0, max: 0}
-  defp calculate_skewness(_values), do: 0.0
-  defp calculate_kurtosis(_values), do: 0.0
-  defp calculate_activity_entropy(_killmails), do: 0.0
-  defp detect_activity_bursts(_timestamps), do: 0.0
-  defp calculate_kd_isk_interaction(_killmails), do: 0.0
-  defp calculate_trend_slope(_killmails, _metric), do: 0.0
-  defp calculate_high_value_ratio(_killmails), do: 0.0
-  defp calculate_defensive_losses(_killmails), do: 0.0
-  defp detect_periodic_patterns(_killmails), do: 0.0
-  defp calculate_engagement_complexity(_killmails), do: 0.0
-
-
-
-
   # Normalization functions
 
-
-
-
-  # Anomaly detection functions - simplified implementations
-  defp detect_value_anomalies(_percentiles), do: 0
-  defp detect_temporal_anomalies(_features), do: 0
-  defp detect_behavioral_anomalies_score(_features), do: 0
 end

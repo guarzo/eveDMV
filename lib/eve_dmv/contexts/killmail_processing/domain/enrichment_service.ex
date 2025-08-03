@@ -6,10 +6,20 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.EnrichmentService do
   This module should be fully implemented as part of the killmail processing feature.
   """
 
+  @type enriched_killmail :: %{
+          killmail_id: integer() | nil,
+          enriched_at: DateTime.t(),
+          character_names: map(),
+          corporation_names: map(),
+          ship_types: map(),
+          location_info: map(),
+          valuations: map()
+        }
+
   @doc """
   Enrich killmail data with additional context and information.
   """
-  @spec enrich_killmail(map()) :: {:ok, map()}
+  @spec enrich_killmail(map()) :: {:ok, enriched_killmail()}
   def enrich_killmail(killmail) do
     # Basic enrichment stub - in real implementation would add:
     # - Character/corporation names

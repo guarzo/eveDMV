@@ -21,7 +21,7 @@
   # to establish a baseline - should be addressed in Sprint 12
 
   # Generic supertype warnings - need proper type specs
-  ~r"Type specification.*is a supertype of the success typing.*",
+  # REMOVED FOR WORKSTREAM A: ~r"Type specification.*is a supertype of the success typing.*",
 
   # ===========================================
   # FALSE POSITIVE PATTERN MATCHING WARNINGS
@@ -53,13 +53,14 @@
   ~r"combat_intelligence_engine.ex:.*:pattern_match.*false",
   ~r"combat_intelligence_engine.ex:.*:pattern_match.*:minimal",
   
-  # Cache hit/miss patterns
-  ~r/doctrine_effectiveness_service\.ex:.*:pattern_match.*:miss.*\{:ok, _\}/,
+  # Cache hit/miss patterns - FIXED in workstream D
+  # ~r/doctrine_effectiveness_service\.ex:.*:pattern_match.*:miss.*\{:ok, _\}/,
   
   # Character intelligence - incomplete type information
   ~r"character_intelligence.ex:.*:pattern_match",
   ~r"player_stats_engine.ex:1:pattern_match",
-  ~r"threat_scoring_engine.ex:.*:pattern_match",
+  # REMOVED - unused filter per dialyzer output
+  # ~r"threat_scoring_engine.ex:.*:pattern_match",
 
   # ===========================================
   # DOCUMENTATION

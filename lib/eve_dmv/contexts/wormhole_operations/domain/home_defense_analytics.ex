@@ -6,11 +6,11 @@ defmodule EveDmv.Intelligence.HomeDefenseAnalytics do
   and response times to threats for comprehensive home defense assessment.
   """
 
-  alias EveDmv.Core.Utils.DateTimeUtils
-
   use Ash.Resource,
     domain: EveDmv.Domains.Intelligence,
     data_layer: AshPostgres.DataLayer
+
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   postgres do
     table("home_defense_analytics")

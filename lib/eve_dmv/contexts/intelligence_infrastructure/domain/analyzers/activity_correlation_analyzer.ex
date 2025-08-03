@@ -1,9 +1,6 @@
 defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzers.ActivityCorrelationAnalyzer do
 
   @moduledoc """
-
-  alias EveDmv.Core.Utils.DateTimeUtils
-  @moduledoc """
   Activity correlation and pattern analysis module for cross-system intelligence.
 
   This module handles comprehensive activity pattern analysis, correlations, movement patterns,
@@ -55,7 +52,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   - Character movement tracking for tactical intelligence
   - Anomaly detection using baseline activity comparisons
   """
-
   require Logger
 
   @doc """
@@ -302,7 +298,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
         buckets =
           system_kills
           |> Enum.group_by(fn kill ->
-            hours_ago = DateTimeUtils.diff(DateTime.utc_now(), kill.killmail_time, :hour)
+            hours_ago = DateTime.diff(DateTime.utc_now(), kill.killmail_time, :hour)
             div(hours_ago, bucket_size)
           end)
 

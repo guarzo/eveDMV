@@ -39,7 +39,7 @@ defmodule EveDmv.Contexts.Combat.Services.DoctrineEffectivenessService do
     cache_key = {:counter_doctrine_analysis, composition_hash(composition), time_window_days}
 
     case Cache.get(:analysis, cache_key) do
-      nil ->
+      :miss ->
         result = perform_counter_doctrine_analysis(composition, time_window_days, min_battles)
 
         if match?({:ok, _}, result) do
@@ -49,7 +49,7 @@ defmodule EveDmv.Contexts.Combat.Services.DoctrineEffectivenessService do
 
         result
 
-      cached_analysis ->
+      {:ok, cached_analysis} ->
         {:ok, cached_analysis}
     end
   end
@@ -135,12 +135,12 @@ defmodule EveDmv.Contexts.Combat.Services.DoctrineEffectivenessService do
     cache_key = {:common_threats, time_window_days}
 
     case Cache.get(:analysis, cache_key) do
-      nil ->
+      :miss ->
         threats = analyze_common_doctrines(time_window_days)
         Cache.put(:analysis, cache_key, threats, ttl: @cache_ttl)
         {:ok, threats}
 
-      cached_threats ->
+      {:ok, cached_threats} ->
         {:ok, cached_threats}
     end
   end

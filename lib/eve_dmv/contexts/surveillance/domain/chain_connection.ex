@@ -6,11 +6,11 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainConnection do
   for wormhole intelligence and navigation planning.
   """
 
-  alias EveDmv.Core.Utils.DateTimeUtils
-
   use Ash.Resource,
     domain: EveDmv.Domains.Intelligence,
     data_layer: AshPostgres.DataLayer
+
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   postgres do
     table("chain_connections")

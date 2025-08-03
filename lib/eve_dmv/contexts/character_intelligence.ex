@@ -17,6 +17,44 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   require Logger
   require Ash.Query
 
+  # Type definitions
+  @type character_threat_analysis :: %{
+          character_id: integer(),
+          threat_score: non_neg_integer(),
+          threat_level: :minimal | :low | :medium | :high | :extreme,
+          dimensions: map(),
+          ship_specialization: map(),
+          behavioral_pattern: atom(),
+          recent_activity: map(),
+          analysis_metadata: map(),
+          analysis_timestamp: DateTime.t()
+        }
+
+  @type behavioral_pattern_analysis :: %{
+          character_id: integer(),
+          primary_pattern: atom(),
+          patterns: [atom()],
+          characteristics: [String.t()],
+          confidence: float(),
+          analysis_timestamp: DateTime.t()
+        }
+
+  @type threat_trend_analysis :: %{
+          character_id: integer(),
+          trend_direction: :rising | :falling | :stable | :insufficient_data,
+          trend_strength: float(),
+          historical_scores: [%{date: Date.t(), score: non_neg_integer()}],
+          analysis_period_days: integer(),
+          analysis_timestamp: DateTime.t()
+        }
+
+  @type intelligence_error ::
+          :character_not_found
+          | :insufficient_data
+          | :api_error
+          | :timeout
+          | :invalid_character_id
+
   @doc """
   Analyzes a character's threat level based on their combat history.
   Returns comprehensive threat scoring including:
@@ -33,7 +71,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
         recent_activity: %{...}
       }}
   """
-  @spec analyze_character_threat(integer()) :: {:ok, map()} | {:error, atom()}
+  @spec analyze_character_threat(integer()) :: {:ok, character_threat_analysis()} | {:error, intelligence_error()}
   def analyze_character_threat(character_id) do
     case ThreatScoringEngine.calculate_threat_score(character_id) do
       {:ok, threat_data} ->
@@ -77,7 +115,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   - Specialist
   - Opportunist
   """
-  @spec detect_behavioral_patterns(integer()) :: {:ok, map()} | {:error, atom()}
+  @spec detect_behavioral_patterns(integer()) :: {:ok, behavioral_pattern_analysis()} | {:error, intelligence_error()}
   def detect_behavioral_patterns(character_id) do
     # Since ThreatScoringEngine includes behavioral analysis in the threat score,
     # we'll extract it from there
@@ -96,7 +134,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Calculates threat trends for a character over time.
   Shows how their threat level has evolved based on recent performance.
   """
-  @spec calculate_threat_trends(integer(), integer()) :: {:ok, map()} | {:error, atom()}
+  @spec calculate_threat_trends(integer(), integer()) :: {:ok, threat_trend_analysis()} | {:error, intelligence_error()}
   def calculate_threat_trends(character_id, days_back \\ 90) do
     ThreatScoringEngine.analyze_threat_trends(character_id, analysis_window_days: days_back)
   end

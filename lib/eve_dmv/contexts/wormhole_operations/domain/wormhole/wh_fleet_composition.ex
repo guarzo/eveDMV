@@ -6,11 +6,12 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.Wormhole.WhFleetComposition 
   and ship availability tracking specifically designed for wormhole operations.
   """
 
-  alias EveDmv.Core.Utils.DateTimeUtils
-
   use Ash.Resource,
     domain: EveDmv.Domains.Intelligence,
     data_layer: AshPostgres.DataLayer
+
+  alias EveDmv.Core.Utils.DateTimeUtils
+
   postgres do
     table("wh_fleet_composition")
     repo(EveDmv.Repo)

@@ -31,7 +31,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
   @doc """
   Cache a match result for a profile and killmail.
   """
-  @spec put(binary(), integer(), map()) :: :ok
+  @spec put(String.t(), integer(), map()) :: :ok
   def put(profile_id, killmail_id, match_data) do
     GenServer.call(__MODULE__, {:put, profile_id, killmail_id, match_data})
   end
@@ -39,7 +39,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
   @doc """
   Get cached match result for a profile and killmail.
   """
-  @spec get(binary(), integer()) :: {:ok, map()} | {:error, :not_found}
+  @spec get(String.t(), integer()) :: {:ok, map()} | {:error, :not_found}
   def get(profile_id, killmail_id) do
     GenServer.call(__MODULE__, {:get, profile_id, killmail_id})
   end
@@ -47,7 +47,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
   @doc """
   Get all cached matches for a profile.
   """
-  @spec get_cached_matches(binary(), keyword()) :: {:ok, [map()]} | {:error, term()}
+  @spec get_cached_matches(String.t(), keyword()) :: {:ok, [map()]} | {:error, term()}
   def get_cached_matches(profile_id, opts \\ []) do
     GenServer.call(__MODULE__, {:get_cached_matches, profile_id, opts})
   end
@@ -55,7 +55,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
   @doc """
   Invalidate cache for a specific profile.
   """
-  @spec invalidate_profile_cache(binary()) :: :ok
+  @spec invalidate_profile_cache(String.t()) :: :ok
   def invalidate_profile_cache(profile_id) do
     GenServer.call(__MODULE__, {:invalidate_profile, profile_id})
   end
@@ -63,7 +63,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
   @doc """
   Check if a killmail has been processed for a profile.
   """
-  @spec has_match?(binary(), integer()) :: boolean()
+  @spec has_match?(String.t(), integer()) :: boolean()
   def has_match?(profile_id, killmail_id) do
     case get(profile_id, killmail_id) do
       {:ok, _} -> true

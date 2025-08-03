@@ -8,11 +8,11 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.Wormhole.WhVetting do
   security risks, and competency assessment.
   """
 
-    alias EveDmv.Core.Utils.DateTimeUtils
-
   use Ash.Resource,
     domain: EveDmv.Domains.Intelligence,
     data_layer: AshPostgres.DataLayer
+
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   postgres do
     table("wh_vetting")

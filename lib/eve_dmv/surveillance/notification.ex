@@ -7,13 +7,13 @@ defmodule EveDmv.Surveillance.Notification do
   for persistent notification history and user notification preferences.
   """
 
-    alias EveDmv.Core.Utils.DateTimeUtils
-
   use Ash.Resource,
     otp_app: :eve_dmv,
     domain: EveDmv.Api.SurveillanceApi,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
+
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   postgres do
     table("surveillance_notifications")

@@ -64,18 +64,18 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
   Calculate corporation threat level based on member analysis.
   """
   def calculate_corporation_threat_level(corporation_id) do
-    with {:ok, member_data} <- get_member_threat_data(corporation_id) do
-      threat_level = %{
-        overall_threat: calculate_overall_threat(member_data),
-        member_count: length(member_data),
-        high_threat_members: count_high_threat_members(member_data),
-        average_member_threat: calculate_average_threat(member_data),
-        threat_distribution: analyze_threat_distribution(member_data),
-        combat_readiness: assess_combat_readiness(member_data)
-      }
+    case get_member_threat_data(corporation_id) do
+      {:ok, member_data} ->
+        threat_level = %{
+          overall_threat: calculate_overall_threat(member_data),
+          member_count: length(member_data),
+          high_threat_members: count_high_threat_members(member_data),
+          average_member_threat: calculate_average_threat(member_data),
+          threat_distribution: analyze_threat_distribution(member_data),
+          combat_readiness: assess_combat_readiness(member_data)
+        }
 
-      {:ok, threat_level}
-    else
+        {:ok, threat_level}
       {:error, reason} -> {:error, reason}
       _ -> {:error, :member_data_unavailable}
     end
@@ -85,18 +85,18 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
   Get intelligence summary for corporation members.
   """
   def get_member_intelligence_summary(corporation_id) do
-    with {:ok, members} <- CorporationRepository.get_corporation_members(corporation_id) do
-      summary = %{
-        total_members: length(members),
-        active_members: count_active_members(members),
-        veteran_members: count_veteran_members(members),
-        recent_recruits: count_recent_recruits(members),
-        intelligence_gaps: identify_intelligence_gaps(members),
-        key_personnel: identify_key_personnel(members)
-      }
+    case CorporationRepository.get_corporation_members(corporation_id) do
+      {:ok, members} ->
+        summary = %{
+          total_members: length(members),
+          active_members: count_active_members(members),
+          veteran_members: count_veteran_members(members),
+          recent_recruits: count_recent_recruits(members),
+          intelligence_gaps: identify_intelligence_gaps(members),
+          key_personnel: identify_key_personnel(members)
+        }
 
-      {:ok, summary}
-    else
+        {:ok, summary}
       {:error, reason} -> {:error, reason}
       _ -> {:error, :members_unavailable}
     end
@@ -106,17 +106,17 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
   Assess threats posed by corporation.
   """
   def assess_corporation_threats(corporation_id) do
-    with {:ok, analysis} <- analyze_corporation(corporation_id, include_threats: true) do
-      threats = %{
-        military_threat: analysis.combat_capability,
-        economic_threat: analysis.economic_power,
-        intelligence_threat: analysis.intelligence_capability,
-        diplomatic_threat: analysis.alliance_strength,
-        overall_assessment: determine_overall_threat_assessment(analysis)
-      }
+    case analyze_corporation(corporation_id, include_threats: true) do
+      {:ok, analysis} ->
+        threats = %{
+          military_threat: analysis.combat_capability,
+          economic_threat: analysis.economic_power,
+          intelligence_threat: analysis.intelligence_capability,
+          diplomatic_threat: analysis.alliance_strength,
+          overall_assessment: determine_overall_threat_assessment(analysis)
+        }
 
-      {:ok, threats}
-    else
+        {:ok, threats}
       {:error, reason} -> {:error, reason}
       _ -> {:error, :analysis_failed}
     end

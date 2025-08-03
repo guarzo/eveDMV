@@ -29,7 +29,8 @@ defmodule EveDmv.Database.CharacterRepository do
       get_character_stats(98_765)
       get_character_stats(98_765, bypass_cache: true)
   """
-  @spec get_character_stats(integer(), keyword()) :: {:ok, struct() | nil} | {:error, term()}
+  @spec get_character_stats(integer(), keyword()) ::
+          {:ok, EveDmv.Intelligence.CharacterStats.t() | nil} | {:error, Ash.Error.t()}
   def get_character_stats(character_id, opts \\ []) do
     cache_key = CacheHelper.build_key("character_stats", "character", character_id, opts)
 
@@ -69,7 +70,7 @@ defmodule EveDmv.Database.CharacterRepository do
       get_dangerous_characters()
       get_dangerous_characters(min_rating: 5, limit: 50)
   """
-  @spec get_dangerous_characters(keyword()) :: {:ok, [struct()]} | {:error, term()}
+  @spec get_dangerous_characters(keyword()) :: {:ok, [EveDmv.Intelligence.CharacterStats.t()]} | {:error, Ash.Error.t()}
   def get_dangerous_characters(opts \\ []) do
     cache_key = CacheHelper.build_key("character_stats", "dangerous", opts, [])
 
@@ -113,7 +114,8 @@ defmodule EveDmv.Database.CharacterRepository do
 
       batch_get_character_stats([98_765, 98_766, 98_767])
   """
-  @spec batch_get_character_stats([integer()]) :: {:ok, [struct()]} | {:error, term()}
+  @spec batch_get_character_stats([integer()]) ::
+          {:ok, [EveDmv.Intelligence.CharacterStats.t()]} | {:error, Ash.Error.t()}
   def batch_get_character_stats(character_ids) when is_list(character_ids) do
     TelemetryHelper.measure_query("character_stats", :batch_get, fn ->
       query =

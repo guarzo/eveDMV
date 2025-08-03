@@ -22,10 +22,60 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   @external_groups_ttl :timer.hours(8)
   @intelligence_summary_ttl :timer.minutes(30)
 
+  # Type definitions
+  @type player_data :: %{
+          character_id: integer(),
+          name: String.t(),
+          corporation_id: integer() | nil,
+          corporation_name: String.t() | nil,
+          alliance_id: integer() | nil,
+          alliance_name: String.t() | nil,
+          created_at: DateTime.t(),
+          last_seen: DateTime.t()
+        }
+
+  @type killmail_stats :: %{
+          total_kills: non_neg_integer(),
+          total_deaths: non_neg_integer(),
+          kd_ratio: float(),
+          isk_destroyed: non_neg_integer(),
+          isk_lost: non_neg_integer(),
+          isk_efficiency: float(),
+          favorite_ships: [map()],
+          security_preference: atom()
+        }
+
+  @type activity_data :: %{
+          total_activity_days: non_neg_integer(),
+          last_activity: DateTime.t() | nil,
+          activity_patterns: %{
+            most_active_hour: non_neg_integer(),
+            most_active_weekday: String.t(),
+            avg_daily_activity: float()
+          },
+          timezone_preference: String.t(),
+          engagement_frequency: float(),
+          activity_rating: atom(),
+          activity_trend: atom()
+        }
+
+  @type gang_size_patterns :: [%{
+          gang_size: non_neg_integer(),
+          frequency: non_neg_integer(),
+          percentage: float()
+        }]
+
+  @type intelligence_summary :: %{
+          threat_level: atom(),
+          activity_level: atom(),
+          engagement_preference: atom(),
+          tactical_tendency: atom()
+        }
+
   @doc """
   Get comprehensive player data for analysis.
   """
-  @spec get_player_data(integer()) :: {:ok, map()}
+  @spec get_player_data(integer()) :: {:ok, player_data()}
   def get_player_data(character_id) do
     # Get character name from killmail data
     character_name = CharacterQueries.get_character_name_from_killmails(character_id)
@@ -49,7 +99,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   @doc """
   Get killmail statistics for a character.
   """
-  @spec get_killmail_stats(integer()) :: {:ok, map()} | {:error, term()}
+  @spec get_killmail_stats(integer()) :: {:ok, killmail_stats()} | {:error, Ash.Error.t()}
   def get_killmail_stats(character_id) do
     get_killmail_stats(character_id, DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second))
   end
@@ -57,7 +107,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   @doc """
   Get killmail statistics for a character since a specific date.
   """
-  @spec get_killmail_stats(integer(), DateTime.t()) :: {:ok, map()} | {:error, term()}
+  @spec get_killmail_stats(integer(), DateTime.t()) :: {:ok, killmail_stats()} | {:error, Ash.Error.t()}
   def get_killmail_stats(character_id, since_date) do
     # Get character stats using optimized query
     stats =
@@ -89,7 +139,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   @doc """
   Get activity data for a character.
   """
-  @spec get_activity_data(integer()) :: {:ok, map()} | {:error, term()}
+  @spec get_activity_data(integer()) :: {:ok, activity_data()} | {:error, atom()}
   def get_activity_data(character_id) do
     get_activity_data(character_id, DateTime.utc_now() |> DateTimeUtils.add(-30 * 24 * 60 * 60, :second))
   end
@@ -97,7 +147,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   @doc """
   Get activity data for a character since a specific date.
   """
-  @spec get_activity_data(integer(), DateTime.t()) :: {:ok, map()} | {:error, term()}
+  @spec get_activity_data(integer(), DateTime.t()) :: {:ok, activity_data()} | {:error, atom()}
   def get_activity_data(character_id, since_date) do
     # Delegate to the proper implementation in CharacterIntelligence
     case EveDmv.Contexts.CharacterIntelligence.calculate_activity_stats(character_id, since_date) do
@@ -194,7 +244,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   @doc """
   Get gang size patterns for a character.
   """
-  @spec get_gang_size_patterns(integer(), DateTime.t()) :: map()
+  @spec get_gang_size_patterns(integer(), DateTime.t()) :: gang_size_patterns()
   def get_gang_size_patterns(character_id, since_date) do
     cache_key = "gang_patterns:#{character_id}:#{Date.to_iso8601(DateTime.to_date(since_date))}"
 
@@ -219,7 +269,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   @doc """
   Get intelligence summary for a character.
   """
-  @spec get_intelligence_summary(integer(), DateTime.t()) :: map()
+  @spec get_intelligence_summary(integer(), DateTime.t()) :: intelligence_summary()
   def get_intelligence_summary(character_id, since_date) do
     cache_key =
       "intelligence_summary:#{character_id}:#{Date.to_iso8601(DateTime.to_date(since_date))}"

@@ -6,9 +6,9 @@ defmodule EveDmv.Intelligence.AlertSystem do
   generating real-time alerts for security personnel and administrators.
   """
 
-  alias EveDmv.Core.Utils.DateTimeUtils
-
   use GenServer
+
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 

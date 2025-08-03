@@ -159,7 +159,7 @@ defmodule EveDmvWeb.ProfileLive do
   def handle_event("refresh_token", _params, socket) do
     current_user = socket.assigns.current_user
 
-    case EveDmv.Auth.refresh_user_token(current_user) do
+    case EveDmv.Users.TokenRefreshService.refresh_user_token(current_user.id) do
       {:ok, updated_user} ->
         {:noreply,
          socket

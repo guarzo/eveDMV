@@ -29,6 +29,7 @@ defmodule EveDmv.Cache do
   @type cache_type :: :hot_data | :api_responses | :analysis
   @type cache_key :: term()
   @type cache_value :: term()
+  @type cache_stats :: %{size: non_neg_integer(), memory_bytes: non_neg_integer()}
 
   @doc """
   Get a value from the specified cache type.
@@ -116,7 +117,7 @@ defmodule EveDmv.Cache do
   @doc """
   Get statistics for the specified cache type.
   """
-  @spec stats(cache_type()) :: map()
+  @spec stats(cache_type()) :: cache_stats()
   def stats(cache_type) do
     cache_name = CacheSupervisor.cache_name(cache_type)
     Cache.stats(cache_name)
@@ -125,7 +126,11 @@ defmodule EveDmv.Cache do
   @doc """
   Get statistics for all cache types.
   """
-  @spec all_stats() :: map()
+  @spec all_stats() :: %{
+          hot_data: cache_stats(),
+          api_responses: cache_stats(),
+          analysis: cache_stats()
+        }
   def all_stats do
     CacheSupervisor.all_cache_stats()
   end

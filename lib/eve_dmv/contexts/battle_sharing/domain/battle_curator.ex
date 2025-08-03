@@ -41,9 +41,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
       "Creating battle report for battle #{battle_id} by character #{creator_character_id}"
     )
 
-    with {:ok, battle_data} <- fetch_battle_data(battle_id) do
-      create_battle_report_from_data(battle_data, creator_character_id, options)
-    else
+    case fetch_battle_data(battle_id) do
+      {:ok, battle_data} ->
+        create_battle_report_from_data(battle_data, creator_character_id, options)
       {:error, reason} -> {:error, reason}
       _ -> {:error, :battle_data_unavailable}
     end
@@ -93,9 +93,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
   Rate a battle report with community scoring.
   """
   def rate_battle_report(report_id, rater_character_id, rating, options \\ []) do
-    with {:ok, battle_report} <- fetch_battle_report(report_id) do
-      CommunityManager.rate_battle_report(battle_report, rater_character_id, rating, options)
-    else
+    case fetch_battle_report(report_id) do
+      {:ok, battle_report} ->
+        CommunityManager.rate_battle_report(battle_report, rater_character_id, rating, options)
       {:error, reason} -> {:error, reason}
       _ -> {:error, :report_not_found}
     end

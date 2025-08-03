@@ -6,8 +6,10 @@ defmodule EveDmv.Monitoring.AlertDispatcher do
   via email, Slack, Discord, or other channels.
   """
 
-  alias EveDmv.Core.Utils.DateTimeUtils
   use GenServer
+
+  alias EveDmv.Core.Utils.DateTimeUtils
+
   require Logger
 
   @critical_error_threshold 100

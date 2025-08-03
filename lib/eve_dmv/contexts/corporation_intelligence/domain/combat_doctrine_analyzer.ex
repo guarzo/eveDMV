@@ -192,18 +192,18 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
   based on tactical weaknesses and historical effectiveness.
   """
   def generate_counter_doctrine(target_corporation_id, options \\ []) do
-    with {:ok, target_analysis} <- analyze_combat_doctrines(target_corporation_id, options) do
-      counter_recommendations = %{
-        target_corporation: target_corporation_id,
-        target_primary_doctrine: target_analysis.primary_doctrine,
-        target_weaknesses: identify_doctrine_weaknesses(target_analysis),
-        recommended_counters: generate_counter_recommendations(target_analysis),
-        tactical_advice: generate_tactical_advice(target_analysis),
-        fleet_composition_suggestions: suggest_counter_compositions(target_analysis)
-      }
+    case analyze_combat_doctrines(target_corporation_id, options) do
+      {:ok, target_analysis} ->
+        counter_recommendations = %{
+          target_corporation: target_corporation_id,
+          target_primary_doctrine: target_analysis.primary_doctrine,
+          target_weaknesses: identify_doctrine_weaknesses(target_analysis),
+          recommended_counters: generate_counter_recommendations(target_analysis),
+          tactical_advice: generate_tactical_advice(target_analysis),
+          fleet_composition_suggestions: suggest_counter_compositions(target_analysis)
+        }
 
-      {:ok, counter_recommendations}
-    else
+        {:ok, counter_recommendations}
       {:error, reason} -> {:error, reason}
       _ -> {:error, :analysis_failed}
     end

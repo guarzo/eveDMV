@@ -16,11 +16,34 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
 
   require Logger
 
+  # Configuration
   @base_url "https://janice.e-351.com/api/rest/v2"
   # 15 minutes
   @cache_ttl_seconds 900
   @rate_limit_per_minute 100
   @rate_limit_window_ms 60_000
+
+  # Type definitions
+  @type price_info :: %{
+          sell_price: float() | nil,
+          buy_price: float() | nil,
+          volume: integer() | nil,
+          updated_at: DateTime.t() | nil
+        }
+
+  @type rate_limit_status :: %{
+          requests_in_window: non_neg_integer(),
+          limit: non_neg_integer(),
+          remaining: non_neg_integer(),
+          window_ms: non_neg_integer()
+        }
+
+  @type bulk_price_results :: %{
+          prices: %{integer() => price_info()},
+          failed_items: [integer()],
+          total_items: non_neg_integer(),
+          successful_items: non_neg_integer()
+        }
 
   defmodule State do
     @moduledoc false
@@ -49,7 +72,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
   - volume: Daily volume
   - updated_at: When the price was last updated
   """
-  @spec get_item_price(integer()) :: {:ok, map()} | {:error, term()}
+  @spec get_item_price(integer()) :: {:ok, price_info()} | {:error, Ash.Error.t()}
   def get_item_price(type_id) when is_integer(type_id) do
     # Check if GenServer is running
     case Process.whereis(__MODULE__) do
@@ -69,7 +92,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
   Ships often have standard fits that affect their practical value.
   Janice provides better estimates for common ship hulls.
   """
-  @spec get_ship_price(integer()) :: {:ok, map()} | {:error, term()}
+  @spec get_ship_price(integer()) :: {:ok, price_info()} | {:error, Ash.Error.t()}
   def get_ship_price(type_id) when is_integer(type_id) do
     # Check if GenServer is running
     case Process.whereis(__MODULE__) do
@@ -88,7 +111,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
 
   More efficient than individual requests. Limited to 100 items per call.
   """
-  @spec bulk_price_lookup([integer()]) :: {:ok, map()} | {:error, term()}
+  @spec bulk_price_lookup([integer()]) :: {:ok, bulk_price_results()} | {:error, Ash.Error.t()}
   def bulk_price_lookup(type_ids) when is_list(type_ids) do
     # Limit to 100 items per request
     if length(type_ids) > 100 do
@@ -108,7 +131,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
   @doc """
   Get current rate limit status.
   """
-  @spec get_rate_limit_status() :: map()
+  @spec get_rate_limit_status() :: rate_limit_status()
   def get_rate_limit_status do
     case Process.whereis(__MODULE__) do
       nil ->

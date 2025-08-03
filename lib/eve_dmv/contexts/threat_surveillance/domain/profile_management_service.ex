@@ -437,17 +437,17 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ProfileManagementService do
   Get profile performance metrics.
   """
   def get_profile_metrics(profile_id) do
-    with {:ok, profile} <- get_profile(profile_id) do
-      {:ok,
-       %{
-         match_count: profile.match_count || 0,
-         last_match: profile.last_match_at,
-         false_positive_rate: calculate_false_positive_rate(profile),
-         avg_response_time: profile.metadata["avg_response_time"] || 0,
-         created_at: profile.created_at,
-         updated_at: profile.updated_at
-       }}
-    else
+    case get_profile(profile_id) do
+      {:ok, profile} ->
+        {:ok,
+         %{
+           match_count: profile.match_count || 0,
+           last_match: profile.last_match_at,
+           false_positive_rate: calculate_false_positive_rate(profile),
+           avg_response_time: profile.metadata["avg_response_time"] || 0,
+           created_at: profile.created_at,
+           updated_at: profile.updated_at
+         }}
       {:error, reason} -> {:error, reason}
       _ -> {:error, :profile_not_found}
     end

@@ -23,6 +23,36 @@ defmodule EveDmv.Contexts.MarketIntelligence.Api do
           updated_at: DateTime.t()
         }
 
+  @type killmail_valuation :: %{
+          total_value: float(),
+          hull_value: float(),
+          modules_value: float(),
+          cargo_value: float(),
+          implants_value: float(),
+          breakdown:
+            %{atom() => [%{type_id: integer(), quantity: integer(), unit_price: float(), total_price: float()}]},
+          calculated_at: DateTime.t()
+        }
+
+  @type fleet_valuation :: %{
+          total_fleet_value: float(),
+          ship_count: non_neg_integer(),
+          average_ship_value: float(),
+          ship_values: [%{ship_type_id: integer(), value: float(), fit_value: float()}],
+          value_distribution: %{atom() => float()},
+          calculated_at: DateTime.t()
+        }
+
+  @type market_trend_analysis :: %{
+          type_ids: [type_id()],
+          period: atom(),
+          trend_direction: :rising | :falling | :stable | :volatile,
+          price_change_percent: float(),
+          volume_change_percent: float(),
+          anomalies: [%{type: atom(), detected_at: DateTime.t(), details: String.t()}],
+          analysis_timestamp: DateTime.t()
+        }
+
   @doc """
   Get the current price for a single item type.
 
@@ -68,7 +98,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Api do
   Includes ship hull, modules, cargo, and implants if available.
   Returns detailed breakdown by category.
   """
-  @spec calculate_killmail_value(map()) :: {:ok, map()} | {:error, term()}
+  @spec calculate_killmail_value(map()) :: {:ok, killmail_valuation()} | {:error, Ash.Error.t()}
   def calculate_killmail_value(killmail) do
     with :ok <- validate_killmail(killmail),
          {:ok, valuation} <- Domain.ValuationService.calculate_killmail_value(killmail) do
@@ -81,7 +111,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Api do
 
   Input should be a list of ships with their fits.
   """
-  @spec calculate_fleet_value([map()]) :: {:ok, map()} | {:error, term()}
+  @spec calculate_fleet_value([map()]) :: {:ok, fleet_valuation()} | {:error, Ash.Error.t()}
   def calculate_fleet_value(ships) do
     with :ok <- validate_fleet_composition(ships),
          {:ok, valuation} <- Domain.ValuationService.calculate_fleet_value(ships) do
@@ -95,7 +125,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Api do
   Returns trend data including price changes, volume patterns, and anomalies.
   """
   @spec analyze_market_trends([type_id()], period :: :day | :week | :month) ::
-          {:ok, map()} | {:error, term()}
+          {:ok, market_trend_analysis()} | {:error, Ash.Error.t()}
   def analyze_market_trends(type_ids, period \\ :week) do
     with :ok <- validate_type_ids(type_ids),
          :ok <- validate_period(period),

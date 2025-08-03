@@ -19,6 +19,77 @@ defmodule EveDmv.Contexts.Intelligence.Services.PlayerStatsEngine do
 
   require Logger
 
+  @type player_stats :: %{
+          character_id: integer(),
+          analysis_period_days: integer(),
+          period_start: DateTime.t(),
+          period_end: DateTime.t(),
+          combat_stats: map(),
+          activity_stats: map(),
+          performance_trends: map(),
+          comparative_metrics: map(),
+          overall_rating: atom(),
+          statistical_confidence: atom()
+        }
+
+  @type performance_metrics :: %{
+          character_id: integer(),
+          metric_types: [atom()],
+          metrics: map(),
+          performance_scores: map(),
+          benchmarking: map(),
+          strengths: [String.t()],
+          weaknesses: [String.t()],
+          improvement_potential: map(),
+          risk_factors: [String.t()],
+          recommendations: [String.t()],
+          metrics_generated_at: DateTime.t()
+        }
+
+  @type correlation_analysis :: %{
+          character_ids: [integer()],
+          correlation_metrics: [atom()],
+          correlation_matrix: map(),
+          significance_tests: map(),
+          strong_correlations: [map()],
+          correlation_insights: map(),
+          statistical_summary: map(),
+          analysis_confidence: float(),
+          methodology_notes: map(),
+          analysis_timestamp: DateTime.t()
+        }
+
+  @type predictive_model_results :: %{
+          character_id: integer(),
+          prediction_horizon_days: integer(),
+          required_confidence: float(),
+          historical_data_quality: map(),
+          trend_analysis: map(),
+          predictive_model: map(),
+          performance_predictions: map(),
+          confidence_intervals: map(),
+          prediction_accuracy_estimate: map(),
+          risk_assessments: map(),
+          scenario_analysis: map(),
+          model_limitations: map(),
+          model_created_at: DateTime.t()
+        }
+
+  @type skill_assessment_results :: %{
+          character_id: integer(),
+          assessment_areas: [atom()],
+          skill_metrics: map(),
+          competency_analysis: map(),
+          skill_ratings: map(),
+          competency_levels: map(),
+          skill_progression: map(),
+          learning_potential: map(),
+          skill_gaps: map(),
+          development_recommendations: [String.t()],
+          assessment_confidence: map(),
+          assessment_timestamp: DateTime.t()
+        }
+
   @doc """
   Calculate comprehensive player statistics.
 
@@ -44,7 +115,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.PlayerStatsEngine do
         comparative_metrics: %{...}
       }}
   """
-  @spec calculate_player_statistics(integer(), integer()) :: {:ok, map()} | {:error, term()}
+  @spec calculate_player_statistics(integer(), integer()) :: {:ok, player_stats()} | {:error, Ash.Error.t()}
   def calculate_player_statistics(character_id, time_period \\ 90) do
     Logger.info("Calculating comprehensive player statistics",
       character_id: character_id
@@ -105,7 +176,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.PlayerStatsEngine do
 
   `{:ok, performance_metrics}` containing detailed performance analysis
   """
-  @spec generate_performance_metrics(integer(), list(atom())) :: {:ok, map()} | {:error, term()}
+  @spec generate_performance_metrics(integer(), list(atom())) :: {:ok, performance_metrics()} | {:error, Ash.Error.t()}
   def generate_performance_metrics(
         character_id,
         metric_types \\ [:combat, :tactical, :economic, :social]
@@ -152,7 +223,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.PlayerStatsEngine do
   `{:ok, correlations}` containing correlation analysis results
   """
   @spec analyze_statistical_correlations(list(integer()), list(atom())) ::
-          {:ok, map()} | {:error, term()}
+          {:ok, correlation_analysis()} | {:error, Ash.Error.t()}
   def analyze_statistical_correlations(
         character_ids,
         correlation_metrics \\ [:combat_effectiveness, :activity_level, :isk_efficiency]
@@ -204,7 +275,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.PlayerStatsEngine do
   `{:ok, predictive_model}` containing predictive analysis
   """
   @spec generate_predictive_models(integer(), integer(), float()) ::
-          {:ok, map()} | {:error, term()}
+          {:ok, predictive_model_results()} | {:error, Ash.Error.t()}
   def generate_predictive_models(character_id, prediction_horizon \\ 30, model_confidence \\ 0.8) do
     Logger.info("Generating predictive performance models",
       character_id: character_id
@@ -253,7 +324,8 @@ defmodule EveDmv.Contexts.Intelligence.Services.PlayerStatsEngine do
 
   `{:ok, skill_assessment}` containing detailed skill analysis
   """
-  @spec calculate_skill_assessment(integer(), list(atom())) :: {:ok, map()} | {:error, term()}
+  @spec calculate_skill_assessment(integer(), list(atom())) ::
+          {:ok, skill_assessment_results()} | {:error, Ash.Error.t()}
   def calculate_skill_assessment(
         character_id,
         assessment_areas \\ [:combat, :tactical, :strategic, :technical]
@@ -301,7 +373,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.PlayerStatsEngine do
 
   `{:ok, player_stats}` containing statistical analysis
   """
-  @spec calculate_player_stats(integer()) :: {:ok, map()} | {:error, term()}
+  @spec calculate_player_stats(integer()) :: {:ok, player_stats()} | {:error, Ash.Error.t()}
   def calculate_player_stats(character_id) do
     calculate_player_statistics(character_id, 90)
   end

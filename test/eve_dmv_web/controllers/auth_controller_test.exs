@@ -262,26 +262,28 @@ defmodule EveDmvWeb.AuthControllerTest do
     end
   end
 
-  # Property-based testing for robust input validation
-  @tag timeout: 60_000
-  property "auth controller handles various character ID formats" do
-    check all(character_id <- character_id_generator(), max_runs: 10) do
-      # Create user with various character IDs and account
-      {:ok, user, _account} = create_user_with_account(character_id, "TestPilot")
+  describe "property-based testing" do
+    # Property-based testing for robust input validation
+    @tag timeout: 60_000
+    property "auth controller handles various character ID formats" do
+      check all(character_id <- character_id_generator(), max_runs: 10) do
+        # Create user with various character IDs and account
+        {:ok, user, _account} = create_user_with_account(character_id, "TestPilot")
 
-      conn = build_conn()
+        conn = build_conn()
 
-      result =
-        conn
-        |> init_test_session(%{})
-        |> Phoenix.Controller.fetch_flash()
-        |> AuthController.success(:sign_in, user, nil)
+        result =
+          conn
+          |> init_test_session(%{})
+          |> Phoenix.Controller.fetch_flash()
+          |> AuthController.success(:sign_in, user, nil)
 
-      # Should always redirect successfully
-      assert result.status == 302
-      assert result.state == :sent
-      # Test with realistic character ID ranges
-      assert character_id >= 90_000_000
+        # Should always redirect successfully
+        assert result.status == 302
+        assert result.state == :sent
+        # Test with realistic character ID ranges
+        assert character_id >= 90_000_000
+      end
     end
   end
 

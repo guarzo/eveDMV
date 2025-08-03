@@ -4,8 +4,10 @@ defmodule EveDmv.Telemetry.QueryMonitor do
   Enhanced with comprehensive query analysis and pattern detection.
   """
 
-  alias EveDmv.Core.Utils.DateTimeUtils
   use GenServer
+
+  alias EveDmv.Core.Utils.DateTimeUtils
+
   require Logger
 
   # milliseconds

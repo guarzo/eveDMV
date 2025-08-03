@@ -57,10 +57,10 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
         {:ok, cached_analysis}
 
       :miss ->
-        with {:ok, analysis} <- perform_comprehensive_analysis(entity_id, entity_type, options) do
-          UnifiedCache.put(:threat_surveillance, cache_key, analysis, @cache_ttl)
-          {:ok, analysis}
-        else
+        case perform_comprehensive_analysis(entity_id, entity_type, options) do
+          {:ok, analysis} ->
+            UnifiedCache.put(:threat_surveillance, cache_key, analysis, @cache_ttl)
+            {:ok, analysis}
           {:error, reason} -> {:error, reason}
           _ -> {:error, :analysis_failed}
         end

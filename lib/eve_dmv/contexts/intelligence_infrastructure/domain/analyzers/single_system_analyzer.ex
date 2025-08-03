@@ -59,11 +59,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
       KillmailRaw
       |> Ash.Query.filter(solar_system_id == ^system_id)
       |> Ash.Query.filter(killmail_time >= ^cutoff_time)
-      |> Ash.Query.aggregate(:count, :count)
 
-    case Ash.read_one(activity_query, domain: Api) do
-      {:ok, result} when result != nil ->
-        count = Map.get(result, :count, 0)
+    case Ash.count(activity_query, domain: Api) do
+      {:ok, count} ->
         classify_activity_level(count)
 
       _ ->
@@ -83,11 +81,9 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
       |> Ash.Query.filter(solar_system_id == ^system_id)
       |> Ash.Query.filter(killmail_time >= ^cutoff_time)
       |> Ash.Query.filter(victim_ship_class in ["capital", "supercapital"])
-      |> Ash.Query.aggregate(:count, :count)
 
-    case Ash.read_one(threat_query, domain: Api) do
-      {:ok, result} when result != nil ->
-        capital_count = Map.get(result, :count, 0)
+    case Ash.count(threat_query, domain: Api) do
+      {:ok, capital_count} ->
         classify_threat_level(capital_count)
 
       _ ->
@@ -123,7 +119,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     }
   end
 
-  defp calculate_influence_radius(system_id, cutoff_time) do
+  defp calculate_influence_radius(_system_id, _cutoff_time) do
     # Calculate how many adjacent systems show related activity
     # Simplified for now - return a static value
     # In future, could check killmails with participants from this system

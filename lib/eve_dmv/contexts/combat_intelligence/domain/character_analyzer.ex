@@ -13,10 +13,35 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   alias EveDmv.Repo
   require Logger
 
+  # Type definitions
+  @type cache_stats :: %{
+          size: non_neg_integer(),
+          memory_bytes: non_neg_integer()
+        }
+
+  @type character_intelligence :: %{
+          character_id: integer(),
+          threat_score: float(),
+          combat_patterns: map(),
+          behavioral_analysis: map(),
+          affiliations: map(),
+          analysis_timestamp: DateTime.t()
+        }
+
+  @type bulk_analysis_results :: %{
+          successful_analyses: [character_intelligence()],
+          failed_analyses: [%{character_id: integer(), error: String.t()}],
+          total_requested: non_neg_integer(),
+          successful_count: non_neg_integer(),
+          failed_count: non_neg_integer(),
+          analysis_batch_id: String.t(),
+          completed_at: DateTime.t()
+        }
+
   @doc """
   Analyze a character's combat intelligence.
   """
-  @spec analyze(integer(), map()) :: {:ok, map()} | {:error, term()}
+  @spec analyze(integer(), map()) :: {:ok, character_intelligence()} | {:error, Ash.Error.t()}
   def analyze(character_id, context) do
     perform_analysis(character_id, context)
   end
@@ -24,7 +49,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   @doc """
   Get cached intelligence for a character.
   """
-  @spec get_intelligence(integer()) :: {:ok, map()} | {:error, term()}
+  @spec get_intelligence(integer()) :: {:ok, character_intelligence()} | {:error, Ash.Error.t()}
   def get_intelligence(character_id) do
     case AnalysisCache.get_character_analysis(character_id) do
       {:ok, analysis} -> {:ok, analysis}
@@ -35,7 +60,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   @doc """
   Refresh analysis for a character.
   """
-  @spec refresh_analysis(integer()) :: {:ok, map()} | {:error, term()}
+  @spec refresh_analysis(integer()) :: {:ok, character_intelligence()} | {:error, Ash.Error.t()}
   def refresh_analysis(character_id) do
     AnalysisCache.invalidate_character(character_id)
     analyze(character_id, %{force_refresh: true})
@@ -44,7 +69,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   @doc """
   Bulk analyze multiple characters.
   """
-  @spec bulk_analyze([integer()], map()) :: {:ok, map()} | {:error, term()}
+  @spec bulk_analyze([integer()], map()) :: {:ok, bulk_analysis_results()} | {:error, Ash.Error.t()}
   def bulk_analyze(character_ids, context) do
     results =
       Enum.map(character_ids, fn id ->
@@ -81,7 +106,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   @doc """
   Get cache statistics for character analysis.
   """
-  @spec get_cache_stats() :: map()
+  @spec get_cache_stats() :: cache_stats()
   def get_cache_stats do
     case AnalysisCache.get_stats() do
       {:ok, stats} ->

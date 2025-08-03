@@ -17,6 +17,13 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
 
   @cache_ttl :timer.minutes(30)
 
+  @type threat_monitoring_data :: %{
+          active_threats: [map()],
+          threat_level: atom(),
+          trending_threats: [map()],
+          monitoring_recommendations: [String.t()]
+        }
+
   @doc """
   Detect active threats to the corporation.
   """
@@ -43,7 +50,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
   @doc """
   Monitor real-time threat indicators.
   """
-  @spec monitor_threat_indicators(integer()) :: {:ok, map()} | {:error, term()}
+  @spec monitor_threat_indicators(integer()) :: {:ok, threat_monitoring_data()} | {:error, atom()}
   def monitor_threat_indicators(corporation_id) do
     with {:ok, current_threats} <- detect_active_threats(corporation_id),
          {:ok, threat_trends} <- analyze_threat_trends(corporation_id) do
