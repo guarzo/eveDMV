@@ -614,12 +614,14 @@ defmodule EveDmv.Contexts.Corporation.Core.CombatDoctrineAnalyzer do
       |> Enum.sort_by(& &1.usage_count, :desc)
 
     # Analyze patterns
-    %{
+    result = %{
       top_ships: Enum.take(ship_usage, 20),
       ship_class_distribution: analyze_ship_class_distribution(ship_usage),
       doctrine_ships: identify_doctrine_ships(ship_usage),
       specialization_index: calculate_ship_specialization(ship_usage)
     }
+
+    {:ok, result}
   end
 
   defp analyze_ship_class_distribution(ship_usage) do
@@ -677,7 +679,7 @@ defmodule EveDmv.Contexts.Corporation.Core.CombatDoctrineAnalyzer do
       |> Map.values()
       |> Enum.map(& &1.fleet_engagements)
 
-    if Enum.empty?(fleet_data) do
+    result = if Enum.empty?(fleet_data) do
       %{
         compositions: [],
         patterns: %{},
@@ -696,6 +698,8 @@ defmodule EveDmv.Contexts.Corporation.Core.CombatDoctrineAnalyzer do
         tactical_preferences: identify_tactical_preferences(fleet_data)
       }
     end
+
+    {:ok, result}
   end
 
   defp calculate_corp_avg_fleet_size(fleet_data) do
