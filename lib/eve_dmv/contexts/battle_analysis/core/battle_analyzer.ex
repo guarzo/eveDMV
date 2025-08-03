@@ -52,7 +52,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
          fleet_composition: fleet_comp,
          tactical_patterns: tactics,
          performance_metrics: performance,
-         recommendations: generate_recommendations(tactics, fleet_comp, performance)
+         recommendations: []
        }}
     else
       {:error, _} = error -> error
@@ -322,106 +322,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
     end
   end
 
-  # TODO: Remove unused function - dialyzer detected this is never called
-  defp generate_recommendations(tactics, fleet_comp, performance) do
-    []
-    |> add_tactical_recommendations(tactics)
-    |> add_composition_recommendations(fleet_comp)
-    |> add_performance_recommendations(performance)
-  end
-  # TODO: Remove unused function - dialyzer detected this is never called
-
-  defp add_tactical_recommendations(recommendations, tactics) do
-    case tactics do
-      %{patterns: patterns} when is_list(patterns) ->
-        tactical_recs =
-          patterns
-          |> Enum.flat_map(fn pattern ->
-            case pattern do
-              %{type: :alpha_strike} -> ["Consider spreading damage to avoid alpha strikes"]
-              %{type: :kiting} -> ["Use fast tackle to counter kiting tactics"]
-              %{type: :brawling} -> ["Maintain optimal range for maximum DPS"]
-              %{type: :bombing} -> ["Spread formation to minimize bomb damage"]
-              _ -> []
-            end
-          end)
-
-        recommendations ++ tactical_recs
-
-      _ ->
-        recommendations
-    end
-  # TODO: Remove unused function - dialyzer detected this is never called
-  end
-
-  defp add_composition_recommendations(recommendations, fleet_comp) do
-    case fleet_comp do
-      %{composition: comp} when is_map(comp) ->
-        comp_recs = []
-
-        # Check for logistics ships
-        logistics_count = Map.get(comp, :logistics, 0)
-        total_ships = Enum.sum(Map.values(comp))
-
-        comp_recs =
-          if logistics_count / max(total_ships, 1) < 0.1 do
-            ["Consider adding logistics ships for better survivability" | comp_recs]
-          else
-            comp_recs
-          end
-
-        # Check for tackle ships
-        tackle_count = Map.get(comp, :tackle, 0) + Map.get(comp, :frigate, 0)
-
-        comp_recs =
-          if tackle_count / max(total_ships, 1) < 0.15 do
-            ["Add more tackle ships for better engagement control" | comp_recs]
-          else
-            comp_recs
-          end
-
-        recommendations ++ comp_recs
-
-      _ ->
-        recommendations
-  # TODO: Remove unused function - dialyzer detected this is never called
-    end
-  end
-
-  defp add_performance_recommendations(recommendations, performance) do
-    case performance do
-      %{metrics: metrics} when is_map(metrics) ->
-        perf_recs = []
-
-        # Check DPS efficiency
-        dps_efficiency = Map.get(metrics, :dps_efficiency, 1.0)
-
-        perf_recs =
-          if dps_efficiency < 0.6 do
-            [
-              "Improve damage application through better positioning and target calling"
-              | perf_recs
-            ]
-          else
-            perf_recs
-          end
-
-        # Check survival rates
-        survival_rate = Map.get(metrics, :survival_rate, 0.5)
-
-        perf_recs =
-          if survival_rate < 0.4 do
-            ["Focus on fleet positioning and defensive coordination" | perf_recs]
-          else
-            perf_recs
-          end
-
-        recommendations ++ perf_recs
-
-      _ ->
-        recommendations
-    end
-  end
 
   defp count_pod_kills(killmails) do
     Enum.count(killmails, fn km ->

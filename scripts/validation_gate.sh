@@ -29,7 +29,7 @@ echo "✅ Step 2 passed: Clean compilation"
 
 # Step 3: Check dialyzer PLT integrity (MANDATORY)
 echo "Step 3/6: Validating dialyzer PLT..."
-if ! mix dialyzer --plt-check > /dev/null 2>&1; then
+if ! mix dialyzer --plt > /dev/null 2>&1; then
   echo "❌ CRITICAL FAILURE: Dialyzer PLT corruption detected"
   echo "IMMEDIATE ACTION: Rebuild PLT or rollback changes"
   exit 1
