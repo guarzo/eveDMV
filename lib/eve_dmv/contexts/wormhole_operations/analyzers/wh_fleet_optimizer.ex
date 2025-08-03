@@ -57,14 +57,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Analyzers.WhFleetAnalyzer.FleetOpti
   """
   def generate_counter_doctrine_analysis(composition) do
     # Generate real analysis based on composition strengths/weaknesses
-    case analyze_composition_profile(composition) do
-      {:ok, profile} ->
-        generate_threat_analysis(profile, composition)
-
-      {:error, _} ->
-        # Return empty analysis if composition analysis fails
-        []
-    end
+    {:ok, profile} = analyze_composition_profile(composition)
+    generate_threat_analysis(profile, composition)
   end
 
   # Analyze the fleet composition to determine its strengths and weaknesses
