@@ -1,4 +1,5 @@
 defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.ParticipantExtractor.RoleClassifier do
+  @compile {:nowarn_unused_function}
   @moduledoc """
   Classifies participant roles based on ship types and combat patterns.
 

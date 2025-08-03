@@ -1,4 +1,5 @@
 defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
+  @compile {:nowarn_unused_function}
   @moduledoc """
   Service for sharing battle reports and analysis.
 

@@ -1,4 +1,5 @@
 defmodule EveDmv.Contexts.CharacterIntelligence do
+  @compile {:nowarn_unused_function}
   @moduledoc """
   Context module for character intelligence and threat analysis.
 

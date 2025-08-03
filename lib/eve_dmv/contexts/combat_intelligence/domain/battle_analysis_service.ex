@@ -1,4 +1,5 @@
 defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
+  @compile {:nowarn_unused_function}
   @moduledoc """
   Advanced battle analysis service for EVE DMV Combat Intelligence.
 

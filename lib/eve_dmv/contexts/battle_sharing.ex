@@ -1,4 +1,5 @@
 defmodule EveDmv.Contexts.BattleSharing do
+  @compile {:nowarn_unused_function}
   @moduledoc """
   Context module for battle sharing and community curation features.
 

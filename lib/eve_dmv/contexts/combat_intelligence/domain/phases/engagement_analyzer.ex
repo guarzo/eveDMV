@@ -1,4 +1,5 @@
 defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.EngagementAnalyzer do
+  @compile {:nowarn_unused_function}
   @moduledoc """
   Engagement analyzer for analyzing individual engagement patterns and effectiveness.
 

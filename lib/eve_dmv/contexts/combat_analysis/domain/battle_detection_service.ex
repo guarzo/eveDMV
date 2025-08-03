@@ -1,4 +1,5 @@
 defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService do
+  @compile {:nowarn_unused_function}
   @moduledoc """
   Service for detecting and clustering killmails into battles.
 

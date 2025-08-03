@@ -1,4 +1,5 @@
 defmodule EveDmv.Analytics.CharacterComparisonService do
+  @compile {:nowarn_unused_function}
   @moduledoc """
   Service for comparing EVE Online characters based on their combat statistics,
   behavioral patterns, and tactical preferences.

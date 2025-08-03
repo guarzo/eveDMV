@@ -1,4 +1,5 @@
 defmodule EveDmv.Contexts.Combat.Core.BattleAnalyzer do
+  @compile {:nowarn_unused_function}
   @moduledoc """
   Unified battle analysis module that provides comprehensive battle analytics.
 

@@ -1,0 +1,63 @@
+      warning: function calculate_fleet_score/1 is unused
+      │
+ 1327 │   defp calculate_fleet_score(analysis) do
+      │        ~
+      │
+      └─ lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1327:8: EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer (module)
+
+      warning: function determine_engagement_style/2 is unused
+      │
+ 1040 │   defp determine_engagement_style(_ship_analyses, capabilities) do
+      │        ~
+      │
+      └─ lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1040:8: EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer (module)
+
+      warning: function determine_tactical_role/1 is unused
+      │
+ 1021 │   defp determine_tactical_role(capabilities) do
+      │        ~
+      │
+      └─ lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1021:8: EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer (module)
+
+      warning: function format_isk/1 is unused
+      │
+ 1346 │   defp format_isk(value) do
+      │        ~
+      │
+      └─ lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1346:8: EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer (module)
+
+      warning: function suggest_counter_strategies/1 is unused
+      │
+ 1052 │   defp suggest_counter_strategies(capabilities) do
+      │        ~
+      │
+      └─ lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1052:8: EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer (module)
+
+    warning: unused alias StaticData
+    │
+ 19 │   alias EveDmv.StaticData
+    │   ~
+    │
+    └─ lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:19:3
+
+Finding suitable PLTs
+Checking PLT...
+[:ash, :ash_authentication, :ash_authentication_phoenix, :ash_json_api, :ash_phoenix, :ash_postgres, :ash_sql, :asn1, :assent, :bandit, :bcrypt_elixir, :broadway, :bzip2, :cachex, :castore, :certifi, :comeonin, :compiler, :conv_case, :cowboy, :cowlib, :crypto, :db_connection, :decimal, :dns_cluster, :dotenvy, :ecto, :ecto_sql, :eex, :elixir, :esbuild, :eternal, :ets, :eve_dmv, :ex_hash_ring, :ex_unit, :expo, :exsync, :file_system, :finch, :gen_stage, :gettext, :gun, :hackney, :hpax, :httpoison, :idna, :inets, :iterex, :jason, ...]
+PLT is up to date!
+ignore_warnings: .dialyzer_ignore.exs
+
+Starting Dialyzer
+[
+  check_plt: false,
+  init_plt: ~c"/workspace/priv/plts/dialyzer.plt",
+  files: [~c"_build/dev/lib/eve_dmv/ebin/Elixir.EveDmv.Market.RateLimiter.beam",
+   ~c"_build/dev/lib/eve_dmv/ebin/Elixir.EveDmv.Contexts.MarketIntelligence.Api.beam",
+   ~c"_build/dev/lib/eve_dmv/ebin/Elixir.EveDmv.Intelligence.ThreatAssessment.beam",
+   ~c"_build/dev/lib/eve_dmv/ebin/Elixir.EveDmv.Intelligence.Analyzers.FleetAssetManager.ReadinessAnalyzer.beam",
+   ~c"_build/dev/lib/eve_dmv/ebin/Elixir.EveDmv.Contexts.BattleAnalysis.Services.BattleService.beam",
+   ...],
+  warnings: [:error_handling, :underspecs, :unknown]
+]
+
+04:36:07.544 [notice] SIGTERM received - shutting down
+

@@ -1,4 +1,5 @@
 defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
+  @compile {:nowarn_unused_function}
   @moduledoc """
   Advanced tactical highlight management system for battle reports.
 

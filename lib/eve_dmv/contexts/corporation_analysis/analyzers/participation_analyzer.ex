@@ -1,4 +1,5 @@
 defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
+  @compile {:nowarn_unused_function}
   @moduledoc """
   Member participation pattern analysis for Corporation Analysis context.
 

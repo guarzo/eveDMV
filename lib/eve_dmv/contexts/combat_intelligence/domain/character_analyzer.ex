@@ -1,4 +1,5 @@
 defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
+  @compile {:nowarn_unused_function}
   @moduledoc """
   Analyzes character combat patterns and intelligence.
 

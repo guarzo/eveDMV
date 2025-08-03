@@ -1,4 +1,5 @@
 defmodule EveDmv.Contexts.Corporation.Core.CombatDoctrineAnalyzer do
+  @compile {:nowarn_unused_function}
   @moduledoc """
   Analyzes corporation combat doctrines, fleet compositions, and ship usage patterns.
 

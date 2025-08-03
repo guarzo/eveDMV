@@ -1,4 +1,5 @@
 defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
+  @compile {:nowarn_unused_function}
   @moduledoc """
   Threat assessment engine specifically for combat analysis context.
 

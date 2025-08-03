@@ -1,4 +1,5 @@
 defmodule EveDmv.Contexts.BattleAnalysis.Resources.BattleReport do
+  @compile {:nowarn_unused_function}
   @moduledoc """
   Community-shareable battle report resource.
 

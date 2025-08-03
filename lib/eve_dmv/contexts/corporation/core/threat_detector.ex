@@ -1,4 +1,5 @@
 defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
+  @compile {:nowarn_unused_function}
   @moduledoc """
   Real-time threat detection for corporation security.
 

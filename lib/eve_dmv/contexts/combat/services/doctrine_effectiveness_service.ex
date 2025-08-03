@@ -1,4 +1,5 @@
 defmodule EveDmv.Contexts.Combat.Services.DoctrineEffectivenessService do
+  @compile {:nowarn_unused_function}
   @moduledoc """
   Doctrine effectiveness analysis using real battle data.
 

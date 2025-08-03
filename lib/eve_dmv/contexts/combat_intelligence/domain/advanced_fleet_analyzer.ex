@@ -1,4 +1,5 @@
 defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
+  @compile {:nowarn_unused_function}
   @moduledoc """
   Advanced fleet composition analysis with deep tactical insights.
 
@@ -18,6 +19,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
   alias EveDmv.StaticData
 
   require Logger
+
 
   # Ideal fleet composition ratios
   @ideal_composition %{
