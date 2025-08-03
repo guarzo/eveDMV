@@ -1323,22 +1323,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     final_recommendations
   end
 
-  defp calculate_fleet_score(analysis) do
-    # Weighted scoring
-    dps_score = analysis.capabilities.firepower.total_dps / 100
-    ehp_score = analysis.capabilities.defense.total_ehp / 10_000
-
-    logi_score =
-      case analysis.capabilities.defense.logistics_power.sustainability_rating do
-        :excellent -> 100
-        :good -> 75
-        :adequate -> 50
-        :poor -> 25
-        _ -> 0
-      end
-
-    dps_score * 0.4 + ehp_score * 0.3 + logi_score * 0.3
-  end
 
   # Utility functions
 

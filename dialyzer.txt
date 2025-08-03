@@ -1,55 +1,42 @@
       warning: function calculate_fleet_score/1 is unused
       │
- 1327 │   defp calculate_fleet_score(analysis) do
+ 1326 │   defp calculate_fleet_score(analysis) do
       │        ~
       │
-      └─ lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1327:8: EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer (module)
+      └─ lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1326:8: EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer (module)
 
       warning: function determine_engagement_style/2 is unused
       │
- 1040 │   defp determine_engagement_style(_ship_analyses, capabilities) do
+ 1039 │   defp determine_engagement_style(_ship_analyses, capabilities) do
       │        ~
       │
-      └─ lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1040:8: EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer (module)
+      └─ lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1039:8: EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer (module)
 
       warning: function determine_tactical_role/1 is unused
       │
- 1021 │   defp determine_tactical_role(capabilities) do
+ 1020 │   defp determine_tactical_role(capabilities) do
       │        ~
       │
-      └─ lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1021:8: EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer (module)
+      └─ lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1020:8: EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer (module)
 
       warning: function format_isk/1 is unused
       │
- 1346 │   defp format_isk(value) do
+ 1345 │   defp format_isk(value) do
       │        ~
       │
-      └─ lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1346:8: EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer (module)
+      └─ lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1345:8: EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer (module)
 
       warning: function suggest_counter_strategies/1 is unused
       │
- 1052 │   defp suggest_counter_strategies(capabilities) do
+ 1051 │   defp suggest_counter_strategies(capabilities) do
       │        ~
       │
-      └─ lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1052:8: EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer (module)
-
-    warning: unused alias StaticData
-    │
- 19 │   alias EveDmv.StaticData
-    │   ~
-    │
-    └─ lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:19:3
+      └─ lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1051:8: EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer (module)
 
 Finding suitable PLTs
 Checking PLT...
 [:ash, :ash_authentication, :ash_authentication_phoenix, :ash_json_api, :ash_phoenix, :ash_postgres, :ash_sql, :asn1, :assent, :bandit, :bcrypt_elixir, :broadway, :bzip2, :cachex, :castore, :certifi, :comeonin, :compiler, :conv_case, :cowboy, :cowlib, :crypto, :db_connection, :decimal, :dns_cluster, :dotenvy, :ecto, :ecto_sql, :eex, :elixir, :esbuild, :eternal, :ets, :eve_dmv, :ex_hash_ring, :ex_unit, :expo, :exsync, :file_system, :finch, :gen_stage, :gettext, :gun, :hackney, :hpax, :httpoison, :idna, :inets, :iterex, :jason, ...]
-Looking up modules in dialyzer.plt
-Finding applications for dialyzer.plt
-Finding modules for dialyzer.plt
-Removing 4530 modules from dialyzer.plt
-Checking 907 modules in dialyzer.plt
-Adding 4742 modules to dialyzer.plt
-done in 5m43.27s
+PLT is up to date!
 ignore_warnings: .dialyzer_ignore.exs
 
 Starting Dialyzer
@@ -65,7 +52,7 @@ Starting Dialyzer
   warnings: [:error_handling, :underspecs, :unknown]
 ]
 Total errors: 1840, Skipped: 420, Unnecessary Skips: 0
-done in 0m50.33s
+done in 0m56.64s
 lib/eve_dmv/contexts/battle_analysis.ex:132:invalid_contract
 The @spec for the function does not match the success typing of the function.
 
@@ -1325,7 +1312,7 @@ Success typing:
 @spec get_external_groups(integer(), DateTime.t()) :: {:ok, [any()]} | {:error, atom()}
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:88:pattern_match
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:87:pattern_match
 The pattern can never match the type.
 
 Pattern:
@@ -1335,7 +1322,7 @@ Type:
 [any()]
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:116:pattern_match
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:115:pattern_match
 The pattern can never match the type.
 
 Pattern:
@@ -1345,37 +1332,37 @@ Type:
 [any()] | {:error, :no_valid_ships}
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1085:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1084:unused_fun
 Function maybe_generate_counters/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1093:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1092:unused_fun
 Function generate_counter_fleet/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1143:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1142:unused_fun
 Function check_doctrine_compliance/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1176:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1175:unused_fun
 Function calculate_doctrine_compliance/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1189:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1188:unused_fun
 Function identify_missing_doctrine_elements/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1201:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1200:unused_fun
 Function assess_doctrine_effectiveness/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1212:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1211:unused_fun
 Function summarize_fleet/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1222:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1221:unused_fun
 Function analyze_advantages/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1284:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1283:unused_fun
 Function mobility_to_number/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1294:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1293:unused_fun
 Function ewar_to_number/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1304:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1303:unused_fun
 Function recommend_engagement/2 will never be called.
 ________________________________________________________________________________
 lib/eve_dmv/contexts/combat_intelligence/domain/battle_analysis/battle_comparison_engine.ex:332:guard_fail
