@@ -1017,25 +1017,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
   # Summary and engagement profile
 
-  defp determine_tactical_role(capabilities) do
-    cond do
-      capabilities.firepower.dps_per_ship > 800 ->
-        :heavy_brawler
-
-      capabilities.mobility.mobility_rating in [:high, :very_high] ->
-        :skirmisher
-
-      capabilities.defense.logistics_power.sustainability_rating in [:excellent, :good] ->
-        :attrition_fighter
-
-      capabilities.ewar.ewar_strength in [:strong, :moderate] ->
-        :control_fleet
-
-      true ->
-        :standard_fleet
-    end
-  end
-
 
   defp suggest_counter_strategies(capabilities) do
     base_strategies = []
