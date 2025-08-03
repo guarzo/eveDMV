@@ -501,10 +501,6 @@ defmodule EveDmv.Contexts.Intelligence.Services.ProfileService do
     {:ok, html}
   end
 
-  defp export_as_pdf(_profile) do
-    # PDF generation would require additional dependencies
-    {:error, :not_implemented}
-  end
 
   defp prepare_profile_for_sharing(profile, options) do
     # Redact sensitive information if requested
