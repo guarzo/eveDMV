@@ -559,8 +559,6 @@ defmodule EveDmv.Shared.Strategic.TerritorialAnalyzer do
     |> Enum.reject(&is_nil/1)
   end
 
-  defp detect_control_changes(_, _), do: []
-
   defp classify_control_change(nil, _), do: :control_established
   defp classify_control_change(_, nil), do: :control_lost
   defp classify_control_change(_, _), do: :control_shifted

@@ -74,8 +74,7 @@
 
 3. **Basic safety**
    - Run `mix compile` after changes to ensure it compiles
-   - Run `mix dialyzer` periodically to check progress
-   - If you break something, use git to revert
+   - If you break something, use git to revert that file only
 
 4. **Coordination**
    - Work on your own files (no conflicts)
