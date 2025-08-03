@@ -16,7 +16,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
   alias EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer
   alias EveDmv.Contexts.CombatIntelligence.Domain.ShipStatsCalculator
-  alias EveDmv.StaticData
 
   require Logger
 

@@ -1,7 +1,55 @@
+      warning: function calculate_fleet_score/1 is unused
+      │
+ 1327 │   defp calculate_fleet_score(analysis) do
+      │        ~
+      │
+      └─ lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1327:8: EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer (module)
+
+      warning: function determine_engagement_style/2 is unused
+      │
+ 1040 │   defp determine_engagement_style(_ship_analyses, capabilities) do
+      │        ~
+      │
+      └─ lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1040:8: EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer (module)
+
+      warning: function determine_tactical_role/1 is unused
+      │
+ 1021 │   defp determine_tactical_role(capabilities) do
+      │        ~
+      │
+      └─ lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1021:8: EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer (module)
+
+      warning: function format_isk/1 is unused
+      │
+ 1346 │   defp format_isk(value) do
+      │        ~
+      │
+      └─ lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1346:8: EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer (module)
+
+      warning: function suggest_counter_strategies/1 is unused
+      │
+ 1052 │   defp suggest_counter_strategies(capabilities) do
+      │        ~
+      │
+      └─ lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1052:8: EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer (module)
+
+    warning: unused alias StaticData
+    │
+ 19 │   alias EveDmv.StaticData
+    │   ~
+    │
+    └─ lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:19:3
+
 Finding suitable PLTs
 Checking PLT...
 [:ash, :ash_authentication, :ash_authentication_phoenix, :ash_json_api, :ash_phoenix, :ash_postgres, :ash_sql, :asn1, :assent, :bandit, :bcrypt_elixir, :broadway, :bzip2, :cachex, :castore, :certifi, :comeonin, :compiler, :conv_case, :cowboy, :cowlib, :crypto, :db_connection, :decimal, :dns_cluster, :dotenvy, :ecto, :ecto_sql, :eex, :elixir, :esbuild, :eternal, :ets, :eve_dmv, :ex_hash_ring, :ex_unit, :expo, :exsync, :file_system, :finch, :gen_stage, :gettext, :gun, :hackney, :hpax, :httpoison, :idna, :inets, :iterex, :jason, ...]
-PLT is up to date!
+Looking up modules in dialyzer.plt
+Finding applications for dialyzer.plt
+Finding modules for dialyzer.plt
+Removing 4530 modules from dialyzer.plt
+Checking 907 modules in dialyzer.plt
+Adding 4742 modules to dialyzer.plt
+done in 5m43.27s
 ignore_warnings: .dialyzer_ignore.exs
 
 Starting Dialyzer
@@ -16,8 +64,8 @@ Starting Dialyzer
    ...],
   warnings: [:error_handling, :underspecs, :unknown]
 ]
-Total errors: 1876, Skipped: 419, Unnecessary Skips: 0
-done in 1m35.3s
+Total errors: 1840, Skipped: 420, Unnecessary Skips: 0
+done in 0m50.33s
 lib/eve_dmv/contexts/battle_analysis.ex:132:invalid_contract
 The @spec for the function does not match the success typing of the function.
 
@@ -38,76 +86,94 @@ Success typing:
 @spec analyze_battle_sequence([battle()]) :: battle_sequence_analysis()
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:91:pattern_match
+lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:158:guard_fail
+The guard clause:
+
+when _ :: map() === nil
+
+can never succeed.
+
+________________________________________________________________________________
+lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:159:guard_fail
+The guard clause:
+
+when _ :: map() === nil
+
+can never succeed.
+
+________________________________________________________________________________
+lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:359:pattern_match
 The pattern can never match the type.
 
 Pattern:
-{:ok, _analysis}
+%{:composition => _comp}
+
+Type:
+%{:comparison => map(), :doctrines => map(), :effectiveness => map(), :sides => map()}
+
+________________________________________________________________________________
+lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:393:pattern_match
+The pattern can never match the type.
+
+Pattern:
+%{:metrics => _metrics}
+
+Type:
+%{
+  :battle_metrics => %{
+    :average_time_to_kill => number(),
+    :isk_velocity => _,
+    :kill_velocity => number(),
+    :peak_performance_window => _,
+    :performance_consistency => number(),
+    :total_damage_dealt => _
+  },
+  :damage_metrics => %{
+    :damage_patterns => map(),
+    :damage_types => map(),
+    :total_damage => _,
+    :weapon_effectiveness => map()
+  },
+  :efficiency_metrics => %{
+    :damage_efficiency => map(),
+    :force_application_efficiency => map(),
+    :isk_efficiency => map(),
+    :overall_efficiency => number(),
+    :target_selection_efficiency => map()
+  },
+  :participant_metrics => map(),
+  :ship_performance => map()
+}
+
+________________________________________________________________________________
+lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:580:guard_fail
+The guard test:
+
+is_map(_all_chars :: [any()])
+
+can never succeed.
+
+________________________________________________________________________________
+lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:697:pattern_match
+The pattern can never match the type.
+
+Pattern:
+:logistics
 
 Type:
 
-  {:error,
-   :battle_not_found
-   | %{
-       :__exception__ => true,
-       :__struct__ => atom(),
-       :bread_crumbs => [any()],
-       :class => :forbidden | :framework | :invalid | :unknown,
-       :context => map(),
-       :stacktrace => nil | map(),
-       :vars => [any()],
-       atom() => _
-     }}
+  :battlecruiser
+  | :battleship
+  | :cruiser
+  | :destroyer
+  | :frigate
+  | :industrial
+  | :mining
+  | :structure
+  | :supercapital
+  | :unknown
 
 
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:148:no_return
-Function calculate_battle_metrics/2 has no local return.
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:324:unused_fun
-Function generate_recommendations/3 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:331:unused_fun
-Function add_tactical_recommendations/2 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:353:unused_fun
-Function add_composition_recommendations/2 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:386:unused_fun
-Function add_performance_recommendations/2 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:429:unused_fun
-Function count_solo_kills/1 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:541:unused_fun
-Function calculate_isk_efficiency/2 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:569:unused_fun
-Function calculate_kd_ratio/1 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:588:unused_fun
-Function calculate_average_on_kill/1 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:597:unused_fun
-Function generate_headline/1 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:605:unused_fun
-Function extract_key_stats/1 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:614:unused_fun
-Function determine_winner/1 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:634:unused_fun
-Function find_mvp/1 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:667:unused_fun
-Function identify_turning_point/1 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:713:unused_fun
-Function find_notable_kills/1 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:743:unused_fun
-Function format_isk/1 will never be called.
 ________________________________________________________________________________
 lib/eve_dmv/contexts/battle_analysis/domain/strategic/resource_analyzer.ex:450:exact_eq
 The test 4 == 0 can never evaluate to 'true'.
@@ -120,7 +186,7 @@ can never match, because previous clauses completely cover the type
 map(), %{}.
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/resources/battle_report.ex:317:unused_fun
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report.ex:318:unused_fun
 Function recalculate_featured_score/1 will never be called.
 ________________________________________________________________________________
 lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:93:contract_supertype
@@ -134,29 +200,6 @@ Type specification:
 
 Success typing:
 @spec delete_battle(binary()) :: {:error, :battle_not_found}
-
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:129:pattern_match
-The pattern can never match the type.
-
-Pattern:
-{:ok, __analysis}
-
-Type:
-
-  {:error,
-   :battle_not_found
-   | %{
-       :__exception__ => true,
-       :__struct__ => atom(),
-       :bread_crumbs => [any()],
-       :class => :forbidden | :framework | :invalid | :unknown,
-       :context => map(),
-       :stacktrace => nil | map(),
-       :vars => [any()],
-       atom() => _
-     }}
-
 
 ________________________________________________________________________________
 lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:176:extra_range
@@ -193,29 +236,6 @@ Pattern:
 
 Type:
 {:error, :battle_not_found}
-
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:370:pattern_match
-The pattern can never match the type.
-
-Pattern:
-{:ok, _analysis}
-
-Type:
-
-  {:error,
-   :battle_not_found
-   | %{
-       :__exception__ => true,
-       :__struct__ => atom(),
-       :bread_crumbs => [any()],
-       :class => :forbidden | :framework | :invalid | :unknown,
-       :context => map(),
-       :stacktrace => nil | map(),
-       :vars => [any()],
-       atom() => _
-     }}
-
 
 ________________________________________________________________________________
 lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:379:no_return
@@ -301,134 +321,26 @@ from the success typing arguments:
 )
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/services/battle_sharing_service.ex:70:extra_range
-The type specification has too many types for the function.
-
-Function:
-EveDmv.Contexts.BattleAnalysis.Services.BattleSharingService.create_battle_card/2
-
-Extra type:
-{:ok, map()}
-
-Success typing:
-
-  {:error,
-   :battle_not_found
-   | %{
-       :__exception__ => true,
-       :__struct__ => atom(),
-       :bread_crumbs => [any()],
-       :class => :forbidden | :framework | :invalid | :unknown,
-       :context => map(),
-       :stacktrace => nil | map(),
-       :vars => [any()],
-       atom() => _
-     }}
-
-
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/services/battle_sharing_service.ex:73:pattern_match
-The pattern can never match the type.
-
-Pattern:
-{:ok, _summary}
-
-Type:
-
-  {:error,
-   :battle_not_found
-   | %{
-       :__exception__ => true,
-       :__struct__ => atom(),
-       :bread_crumbs => [any()],
-       :class => :forbidden | :framework | :invalid | :unknown,
-       :context => map(),
-       :stacktrace => nil | map(),
-       :vars => [any()],
-       atom() => _
-     }}
-
-
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/services/battle_sharing_service.ex:209:pattern_match
-The pattern can never match the type.
-
-Pattern:
-{:ok, _analysis}
-
-Type:
-
-  {:error,
-   :battle_not_found
-   | %{
-       :__exception__ => true,
-       :__struct__ => atom(),
-       :bread_crumbs => [any()],
-       :class => :forbidden | :framework | :invalid | :unknown,
-       :context => map(),
-       :stacktrace => nil | map(),
-       :vars => [any()],
-       atom() => _
-     }}
-
-
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/services/battle_sharing_service.ex:278:unused_fun
-Function build_battle_title/2 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/services/battle_sharing_service.ex:282:unused_fun
-Function format_key_stats/1 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/services/battle_sharing_service.ex:291:unused_fun
-Function format_stat_value/1 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/services/battle_sharing_service.ex:297:unused_fun
-Function get_participant_breakdown/1 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/services/battle_sharing_service.ex:308:unused_fun
-Function analyze_battle_participants/1 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/services/battle_sharing_service.ex:326:unused_fun
-Function extract_battle_participants/1 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/services/battle_sharing_service.ex:364:unused_fun
-Function group_participants_by_affiliation/1 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/services/battle_sharing_service.ex:412:unused_fun
-Function format_isk_value/1 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/services/battle_sharing_service.ex:424:unused_fun
-Function format_duration/1 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/services/battle_sharing_service.ex:434:unused_fun
-Function generate_embed_code/2 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/services/battle_sharing_service.ex:449:unused_fun
-Function generate_preview_image_url/1 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_analysis/services/battle_sharing_service.ex:553:unused_fun
-Function format_battle_date/1 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing.ex:155:unused_fun
+lib/eve_dmv/contexts/battle_sharing.ex:156:unused_fun
 Function verify_update_permission/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing.ex:163:unused_fun
+lib/eve_dmv/contexts/battle_sharing.ex:164:unused_fun
 Function apply_battle_report_updates/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing.ex:190:no_return
+lib/eve_dmv/contexts/battle_sharing.ex:191:no_return
 Function delete_battle_report/2 has no local return.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing.ex:191:apply
+lib/eve_dmv/contexts/battle_sharing.ex:192:apply
 Function application with arguments (_ :: {:error, :curator_unavailable | :report_not_found}) will never return since the 1st arguments differ
 from the success typing arguments:
 
 ({:error, :permission_denied})
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing.ex:205:unused_fun
+lib/eve_dmv/contexts/battle_sharing.ex:206:unused_fun
 Function verify_delete_permission/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing.ex:213:unused_fun
+lib/eve_dmv/contexts/battle_sharing.ex:214:unused_fun
 Function perform_battle_report_deletion/1 will never be called.
 ________________________________________________________________________________
 lib/eve_dmv/contexts/battle_sharing/domain/battle_curator.ex:104:pattern_match
@@ -468,115 +380,115 @@ Type:
 
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:420:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:421:unused_fun
 Function maybe_validate_timing/3 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:428:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:429:unused_fun
 Function validate_timestamp_against_battle/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:443:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:444:unused_fun
 Function maybe_analyze_tactical_context/4 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:453:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:454:unused_fun
 Function analyze_tactical_context_at_timestamp/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:471:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:472:unused_fun
 Function extract_killmails_near_timestamp/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:486:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:487:unused_fun
 Function calculate_killmail_timestamp_offset/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:492:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:493:unused_fun
 Function analyze_tactical_situation/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:510:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:511:unused_fun
 Function calculate_combat_intensity/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:522:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:523:unused_fun
 Function classify_tactical_situation/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:539:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:540:unused_fun
 Function calculate_ship_diversity/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:550:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:551:unused_fun
 Function count_participants/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:563:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:564:unused_fun
 Function identify_contextual_factors/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:595:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:596:unused_fun
 Function intensity_change_moment?/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:601:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:602:unused_fun
 Function phase_transition_moment?/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:607:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:608:unused_fun
 Function calculate_tactical_significance/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:625:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:626:unused_fun
 Function integrate_learning_content/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:642:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:643:unused_fun
 Function find_related_learning_categories/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:650:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:651:unused_fun
 Function generate_educational_tags/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:706:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:707:unused_fun
 Function create_highlight_record/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:726:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:727:unused_fun
 Function generate_highlight_id/0 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:732:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:733:unused_fun
 Function enrich_highlight_data/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:743:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:744:unused_fun
 Function add_tactical_insights/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:755:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:756:unused_fun
 Function generate_tactical_lessons/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:777:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:778:unused_fun
 Function identify_related_concepts/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:799:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:800:unused_fun
 Function assess_difficulty_level/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:809:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:810:unused_fun
 Function assess_applicability/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:820:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:821:unused_fun
 Function add_community_features/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:834:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:835:unused_fun
 Function add_navigation_data/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:847:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:848:unused_fun
 Function generate_deep_link/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:851:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:852:unused_fun
 Function analyze_battle_phases/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:857:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:858:unused_fun
 Function detect_tactical_patterns/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:866:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:867:unused_fun
 Function generate_candidate_highlights/4 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:875:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:876:unused_fun
 Function filter_highlights_by_confidence/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:879:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:880:unused_fun
 Function prioritize_highlights/3 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:883:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:884:unused_fun
 Function finalize_auto_detected_highlights/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:887:unused_fun
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:888:unused_fun
 Function calculate_average_confidence/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/character_intelligence.ex:74:invalid_contract
+lib/eve_dmv/contexts/character_intelligence.ex:75:invalid_contract
 The @spec for the function does not match the success typing of the function.
 
 Function:
@@ -586,7 +498,7 @@ Success typing:
 @spec analyze_character_threat(integer()) :: {:ok, character_threat_analysis()} | {:error, intelligence_error()}
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/character_intelligence.ex:119:invalid_contract
+lib/eve_dmv/contexts/character_intelligence.ex:120:invalid_contract
 The @spec for the function does not match the success typing of the function.
 
 Function:
@@ -596,7 +508,7 @@ Success typing:
 @spec detect_behavioral_patterns(integer()) :: {:ok, behavioral_pattern_analysis()} | {:error, intelligence_error()}
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/character_intelligence.ex:139:invalid_contract
+lib/eve_dmv/contexts/character_intelligence.ex:140:invalid_contract
 The @spec for the function does not match the success typing of the function.
 
 Function:
@@ -606,7 +518,7 @@ Success typing:
 @spec calculate_threat_trends(integer(), integer()) :: {:ok, threat_trend_analysis()} | {:error, intelligence_error()}
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/character_intelligence.ex:149:extra_range
+lib/eve_dmv/contexts/character_intelligence.ex:150:extra_range
 The type specification has too many types for the function.
 
 Function:
@@ -619,7 +531,7 @@ Success typing:
 {:ok, [any()]}
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/character_intelligence.ex:169:extra_range
+lib/eve_dmv/contexts/character_intelligence.ex:170:extra_range
 The type specification has too many types for the function.
 
 Function:
@@ -642,7 +554,7 @@ Success typing:
 
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/character_intelligence.ex:197:extra_range
+lib/eve_dmv/contexts/character_intelligence.ex:198:extra_range
 The type specification has too many types for the function.
 
 Function:
@@ -655,10 +567,10 @@ Success typing:
 none()
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/character_intelligence.ex:198:no_return
+lib/eve_dmv/contexts/character_intelligence.ex:199:no_return
 Function get_character_ship_intelligence/1 has no local return.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/character_intelligence.ex:205:extra_range
+lib/eve_dmv/contexts/character_intelligence.ex:206:extra_range
 The type specification has too many types for the function.
 
 Function:
@@ -671,19 +583,19 @@ Success typing:
 none()
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/character_intelligence.ex:206:no_return
+lib/eve_dmv/contexts/character_intelligence.ex:207:no_return
 Function get_ship_preferences/1 has no local return.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/character_intelligence.ex:289:unused_fun
+lib/eve_dmv/contexts/character_intelligence.ex:290:unused_fun
 Function enhance_with_ship_intelligence/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/character_intelligence.ex:316:unused_fun
+lib/eve_dmv/contexts/character_intelligence.ex:317:unused_fun
 Function calculate_specialization_bonus/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/character_intelligence.ex:332:unused_fun
+lib/eve_dmv/contexts/character_intelligence.ex:333:unused_fun
 Function format_ship_specialization/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/character_intelligence.ex:543:guard_fail
+lib/eve_dmv/contexts/character_intelligence.ex:544:guard_fail
 The guard clause:
 
 when _score :: 0 >= 90
@@ -691,7 +603,7 @@ when _score :: 0 >= 90
 can never succeed.
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/character_intelligence.ex:544:guard_fail
+lib/eve_dmv/contexts/character_intelligence.ex:545:guard_fail
 The guard clause:
 
 when _score :: 0 >= 75
@@ -699,7 +611,7 @@ when _score :: 0 >= 75
 can never succeed.
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/character_intelligence.ex:545:guard_fail
+lib/eve_dmv/contexts/character_intelligence.ex:546:guard_fail
 The guard clause:
 
 when _score :: 0 >= 50
@@ -707,7 +619,7 @@ when _score :: 0 >= 50
 can never succeed.
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/character_intelligence.ex:546:guard_fail
+lib/eve_dmv/contexts/character_intelligence.ex:547:guard_fail
 The guard clause:
 
 when _score :: 0 >= 25
@@ -715,16 +627,16 @@ when _score :: 0 >= 25
 can never succeed.
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/character_intelligence/domain/services/character_comparison_service.ex:151:no_return
+lib/eve_dmv/contexts/character_intelligence/domain/services/character_comparison_service.ex:152:no_return
 The created anonymous function has no local return.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/character_intelligence/domain/services/character_comparison_service.ex:940:unused_fun
+lib/eve_dmv/contexts/character_intelligence/domain/services/character_comparison_service.ex:941:unused_fun
 Function extract_combat_metrics/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/character_intelligence/domain/services/character_comparison_service.ex:951:unused_fun
+lib/eve_dmv/contexts/character_intelligence/domain/services/character_comparison_service.ex:952:unused_fun
 Function extract_ship_preferences/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/character_intelligence/domain/services/character_comparison_service.ex:961:unused_fun
+lib/eve_dmv/contexts/character_intelligence/domain/services/character_comparison_service.ex:962:unused_fun
 Function extract_activity_profile/1 will never be called.
 ________________________________________________________________________________
 lib/eve_dmv/contexts/character_intelligence/domain/threat_scoring_engine.ex:151:pattern_match
@@ -795,7 +707,7 @@ from the success typing arguments:
 (map(), any())
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:86:pattern_match
+lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:87:pattern_match
 The pattern can never match the type.
 
 Pattern:
@@ -805,73 +717,73 @@ Type:
 {:error, :battle_not_found}
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:138:no_return
+lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:139:no_return
 Function calculate_battle_metrics/2 has no local return.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:296:unused_fun
+lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:297:unused_fun
 Function generate_recommendations/3 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:309:unused_fun
+lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:310:unused_fun
 Function count_solo_kills/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:397:unused_fun
+lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:398:unused_fun
 Function calculate_isk_efficiency/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:423:unused_fun
+lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:424:unused_fun
 Function calculate_side_losses/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:443:unused_fun
+lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:444:unused_fun
 Function calculate_kd_ratio/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:468:unused_fun
+lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:469:unused_fun
 Function count_side_kills/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:474:unused_fun
+lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:475:unused_fun
 Function count_side_deaths/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:480:unused_fun
+lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:481:unused_fun
 Function calculate_average_on_kill/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:489:unused_fun
+lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:490:unused_fun
 Function generate_headline/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:497:unused_fun
+lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:498:unused_fun
 Function extract_key_stats/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:506:unused_fun
+lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:507:unused_fun
 Function determine_winner/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:527:unused_fun
+lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:528:unused_fun
 Function calculate_side_winning_score/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:547:unused_fun
+lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:548:unused_fun
 Function get_side_isk_lost/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:553:unused_fun
+lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:554:unused_fun
 Function calculate_isk_efficiency_score/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:563:unused_fun
+lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:564:unused_fun
 Function find_mvp/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:611:unused_fun
+lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:612:unused_fun
 Function determine_mvp_reason/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:626:unused_fun
+lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:627:unused_fun
 Function identify_turning_point/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:653:unused_fun
+lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:654:unused_fun
 Function create_time_windows/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:674:unused_fun
+lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:675:unused_fun
 Function analyze_momentum_shifts/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:690:unused_fun
+lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:691:unused_fun
 Function find_significant_momentum_shift/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:702:unused_fun
+lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:703:unused_fun
 Function describe_momentum_shift/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:710:unused_fun
+lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:711:unused_fun
 Function find_notable_kills/1 will never be called.
 ________________________________________________________________________________
 lib/eve_dmv/contexts/combat/core/fleet_composition_analyzer.ex:184:guard_fail
@@ -917,7 +829,7 @@ can never match, because previous clauses completely cover the type
 [].
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:48:pattern_match
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:49:pattern_match
 The pattern can never match the type.
 
 Pattern:
@@ -927,7 +839,7 @@ Type:
 {:error, :battle_not_found}
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:87:pattern_match
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:88:pattern_match
 The pattern can never match the type.
 
 Pattern:
@@ -937,7 +849,7 @@ Type:
 {:error, :battle_not_found}
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:110:pattern_match
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:111:pattern_match
 The pattern can never match the type.
 
 Pattern:
@@ -947,19 +859,19 @@ Type:
 {:error, :battle_not_found}
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:189:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:190:unused_fun
 Function generate_markdown_report/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:221:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:222:unused_fun
 Function generate_json_report/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:239:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:240:unused_fun
 Function generate_html_report/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:278:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:279:unused_fun
 Function generate_text_report/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:328:pattern_match
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:329:pattern_match
 The pattern can never match the type.
 
 Pattern:
@@ -969,85 +881,85 @@ Type:
 {:error, :battle_not_found}
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:390:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:391:unused_fun
 Function build_battle_title/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:394:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:395:unused_fun
 Function format_key_stats/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:403:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:404:unused_fun
 Function format_stat_value/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:409:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:410:unused_fun
 Function get_participant_breakdown/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:422:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:423:unused_fun
 Function format_isk_value/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:437:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:438:unused_fun
 Function format_duration/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:448:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:449:unused_fun
 Function generate_embed_code/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:463:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:464:unused_fun
 Function generate_preview_image_url/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:473:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:474:unused_fun
 Function verify_share_access/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:568:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:569:unused_fun
 Function format_battle_date/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:572:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:573:unused_fun
 Function format_statistics_markdown/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:580:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:581:unused_fun
 Function format_timeline_markdown/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:588:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:589:unused_fun
 Function format_participants_markdown/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:597:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:598:unused_fun
 Function format_fleet_comp_markdown/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:609:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:610:unused_fun
 Function format_tactical_markdown/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:616:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:617:unused_fun
 Function format_time/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:620:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:621:unused_fun
 Function describe_event/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:624:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:625:unused_fun
 Function format_ship_classes/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:631:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:632:unused_fun
 Function describe_pattern/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:640:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:641:unused_fun
 Function format_stats_html/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:661:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:662:unused_fun
 Function format_timeline_html/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:674:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:675:unused_fun
 Function format_participants_html/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:683:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:684:unused_fun
 Function format_participant_rows/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:692:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:693:unused_fun
 Function format_top_killers_text/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:701:unused_fun
+lib/eve_dmv/contexts/combat/services/battle_sharing_service.ex:702:unused_fun
 Function format_timeline_text/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/doctrine_effectiveness_service.ex:362:no_return
+lib/eve_dmv/contexts/combat/services/doctrine_effectiveness_service.ex:363:no_return
 Function analyze_common_doctrines/1 has no local return.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/doctrine_effectiveness_service.ex:366:call
+lib/eve_dmv/contexts/combat/services/doctrine_effectiveness_service.ex:367:call
 The function call will not succeed.
 
 EveDmv.Database.KillmailRepository.get_popular_fleet_compositions(
@@ -1075,7 +987,7 @@ breaks the contract
 (integer(), :elixir.keyword()) :: {:ok, [map()]} | {:error, Ash.Error.t()}
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/services/doctrine_effectiveness_service.ex:386:unused_fun
+lib/eve_dmv/contexts/combat/services/doctrine_effectiveness_service.ex:387:unused_fun
 Function get_default_threat_doctrines/0 will never be called.
 ________________________________________________________________________________
 lib/eve_dmv/contexts/combat/services/zkillboard_importer.ex:117:pattern_match
@@ -1170,7 +1082,7 @@ Type:
 {:ok, map()}
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/battle_detection_service.ex:56:call
+lib/eve_dmv/contexts/combat_analysis/domain/battle_detection_service.ex:57:call
 The function call will not succeed.
 
 EveDmv.Shared.Infrastructure.UnifiedRepository.get_by_id(:combat, EveDmv.BattleAnalysis.Battle, _battle_id :: any())
@@ -1185,10 +1097,10 @@ def a() do
 end
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/battle_detection_service.ex:407:no_return
+lib/eve_dmv/contexts/combat_analysis/domain/battle_detection_service.ex:408:no_return
 Function fetch_battle_from_db/1 has no local return.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/battle_detection_service.ex:409:call
+lib/eve_dmv/contexts/combat_analysis/domain/battle_detection_service.ex:410:call
 The function call will not succeed.
 
 EveDmv.Shared.Infrastructure.UnifiedRepository.get_by_id(:combat, EveDmv.BattleAnalysis.Battle, _battle_id :: any())
@@ -1203,13 +1115,13 @@ def a() do
 end
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/battle_detection_service.ex:425:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/battle_detection_service.ex:426:unused_fun
 Function fetch_battle_killmails/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/battle_detection_service.ex:431:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/battle_detection_service.ex:432:unused_fun
 Function fetch_battle_participants/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:108:call
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:109:call
 The function call will not succeed.
 
 EveDmv.Shared.Infrastructure.UnifiedCache.get(:combat_analysis, _cache_key :: {:combat_threat, _, _, _})
@@ -1233,10 +1145,10 @@ and the contract is
 (domain(), cache_key()) :: {:ok, cache_value()} | {:error, :not_found}
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:152:no_return
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:153:no_return
 The created anonymous function has no local return.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:154:call
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:155:call
 The function call will not succeed.
 
 EveDmv.Shared.Infrastructure.UnifiedCache.delete(:combat_analysis, _cache_pattern :: {:combat_threat, _, _, :_})
@@ -1245,88 +1157,88 @@ breaks the contract
 (domain(), cache_key()) :: :ok
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:172:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:173:unused_fun
 Function perform_threat_assessment/3 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:240:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:241:unused_fun
 Function fetch_combat_stats/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:298:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:299:unused_fun
 Function fetch_recent_activity/3 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:344:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:345:unused_fun
 Function count_kills/3 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:358:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:359:unused_fun
 Function count_losses/3 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:370:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:371:unused_fun
 Function analyze_combat_patterns/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:426:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:427:unused_fun
 Function calculate_combat_tempo/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:439:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:440:unused_fun
 Function assess_combat_capability/3 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:465:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:466:unused_fun
 Function analyze_ship_usage/3 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:513:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:514:unused_fun
 Function calculate_average_ship_value/3 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:533:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:534:unused_fun
 Function calculate_ship_diversity/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:555:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:556:unused_fun
 Function count_specialized_ships/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:560:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:561:unused_fun
 Function calculate_capability_rating/3 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:585:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:586:unused_fun
 Function assess_coordination_ability/3 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:620:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:621:unused_fun
 Function calculate_combat_threat_score/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:639:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:640:unused_fun
 Function calculate_activity_score/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:656:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:657:unused_fun
 Function calculate_efficiency_score/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:663:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:664:unused_fun
 Function calculate_tactical_score/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:686:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:687:unused_fun
 Function classify_threat_level/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:697:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:698:unused_fun
 Function calculate_combat_efficiency/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:705:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:706:unused_fun
 Function classify_efficiency/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:717:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:718:unused_fun
 Function categorize_activity_level/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:726:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:727:unused_fun
 Function identify_risk_factors/3 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:765:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:766:unused_fun
 Function identify_tactical_strengths/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:792:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:793:unused_fun
 Function identify_tactical_weaknesses/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:812:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:813:unused_fun
 Function generate_engagement_recommendations/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:843:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:844:unused_fun
 Function assess_fleet_threat/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:909:unused_fun
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:910:unused_fun
 Function calculate_kdr/1 will never be called.
 ________________________________________________________________________________
 lib/eve_dmv/contexts/combat_intelligence/api.ex:67:invalid_contract
@@ -1413,7 +1325,7 @@ Success typing:
 @spec get_external_groups(integer(), DateTime.t()) :: {:ok, [any()]} | {:error, atom()}
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:86:pattern_match
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:88:pattern_match
 The pattern can never match the type.
 
 Pattern:
@@ -1423,7 +1335,7 @@ Type:
 [any()]
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:114:pattern_match
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:116:pattern_match
 The pattern can never match the type.
 
 Pattern:
@@ -1433,65 +1345,38 @@ Type:
 [any()] | {:error, :no_valid_ships}
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1020:unused_fun
-Function generate_fleet_summary/2 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1037:unused_fun
-Function get_top_ships/2 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1047:unused_fun
-Function analyze_engagement_profile/2 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1058:unused_fun
-Function determine_tactical_role/1 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1078:unused_fun
-Function determine_engagement_style/2 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1092:unused_fun
-Function suggest_counter_strategies/1 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1126:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1085:unused_fun
 Function maybe_generate_counters/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1135:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1093:unused_fun
 Function generate_counter_fleet/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1187:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1143:unused_fun
 Function check_doctrine_compliance/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1222:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1176:unused_fun
 Function calculate_doctrine_compliance/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1237:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1189:unused_fun
 Function identify_missing_doctrine_elements/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1251:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1201:unused_fun
 Function assess_doctrine_effectiveness/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1266:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1212:unused_fun
 Function summarize_fleet/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1276:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1222:unused_fun
 Function analyze_advantages/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1341:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1284:unused_fun
 Function mobility_to_number/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1353:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1294:unused_fun
 Function ewar_to_number/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1363:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1304:unused_fun
 Function recommend_engagement/2 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1384:unused_fun
-Function predict_outcome/2 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1400:unused_fun
-Function calculate_fleet_score/1 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1439:unused_fun
-Function format_isk/1 will never be called.
 ________________________________________________________________________________
 lib/eve_dmv/contexts/combat_intelligence/domain/battle_analysis/battle_comparison_engine.ex:332:guard_fail
 The guard clause:
@@ -1509,19 +1394,19 @@ when _ ::
 can never succeed.
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/battle_analysis_service.ex:411:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/battle_analysis_service.ex:412:unused_fun
 Function enhance_participant_analysis/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/battle_analysis_service.ex:450:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/battle_analysis_service.ex:451:unused_fun
 Function classify_battle_type/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/battle_analysis_service.ex:460:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/battle_analysis_service.ex:461:unused_fun
 Function classify_engagement_scale/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/battle_analysis_service.ex:495:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/battle_analysis_service.ex:496:unused_fun
 Function evaluate_doctrine_effectiveness/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:112:contract_supertype
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:113:contract_supertype
 Type specification is a supertype of the success typing.
 
 Function:
@@ -1534,7 +1419,7 @@ Success typing:
 @spec get_cache_stats() :: %{:cache_size => 0, :evictions => 0, :hit_rate => float(), :miss_rate => float()}
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:146:call
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:147:call
 The function call will not succeed.
 
 EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache.put_character_analysis(
@@ -1564,7 +1449,7 @@ breaks the contract
 (integer(), character_analysis()) :: :ok
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:160:call
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:161:call
 The function call will not succeed.
 
 EveDmv.Core.Utils.DateTimeUtils.add(
@@ -1591,10 +1476,10 @@ breaks the contract
   DateTime.t() | NaiveDateTime.t() | nil
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:200:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:201:unused_fun
 Function get_last_activity_date/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:223:call
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:224:call
 The function call will not succeed.
 
 EveDmv.Core.Utils.DateTimeUtils.add(
@@ -1621,37 +1506,37 @@ breaks the contract
   DateTime.t() | NaiveDateTime.t() | nil
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:255:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:256:unused_fun
 Function get_character_activity_data/4 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:317:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:318:unused_fun
 Function calculate_activity_summary/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:351:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:352:unused_fun
 Function analyze_temporal_patterns/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:394:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:395:unused_fun
 Function analyze_engagement_patterns/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:433:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:434:unused_fun
 Function analyze_ship_usage_patterns/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:460:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:461:unused_fun
 Function analyze_system_preferences/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:487:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:488:unused_fun
 Function analyze_threat_level_trends/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:508:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:509:unused_fun
 Function detect_likely_timezone/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:531:no_return
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:532:no_return
 The created anonymous function has no local return.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:557:no_return
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:558:no_return
 Function get_character_comparison_data/1 has no local return.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:575:pattern_match
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:576:pattern_match
 The pattern can never match the type.
 
 Pattern:
@@ -1661,10 +1546,10 @@ Type:
 {:error, :analysis_failed}
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:769:no_return
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:770:no_return
 Function get_recent_activity_count/2 has no local return.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:770:call
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:771:call
 The function call will not succeed.
 
 EveDmv.Core.Utils.DateTimeUtils.add(
@@ -1691,16 +1576,16 @@ breaks the contract
   DateTime.t() | NaiveDateTime.t() | nil
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:784:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:785:unused_fun
 Function calculate_data_quality_score/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:910:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:911:unused_fun
 Function process_character_for_search/4 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:931:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:932:unused_fun
 Function process_character_with_threat_data/5 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:954:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:955:unused_fun
 Function process_character_without_threat_data/4 will never be called.
 ________________________________________________________________________________
 lib/eve_dmv/contexts/combat_intelligence/domain/corporation_analyzer.ex:20:extra_range
@@ -1930,13 +1815,13 @@ and the contract is
 (Calendar.datetime(), :native | System.time_unit()) :: integer()
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/extractors/participant_extractor/role_classifier.ex:14:no_return
+lib/eve_dmv/contexts/combat_intelligence/domain/extractors/participant_extractor/role_classifier.ex:15:no_return
 Function analyze_participant_roles/1 has no local return.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/extractors/participant_extractor/role_classifier.ex:910:no_return
+lib/eve_dmv/contexts/combat_intelligence/domain/extractors/participant_extractor/role_classifier.ex:911:no_return
 Function evaluate_tactical_completeness/2 has no local return.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/extractors/participant_extractor/role_classifier.ex:919:call
+lib/eve_dmv/contexts/combat_intelligence/domain/extractors/participant_extractor/role_classifier.ex:920:call
 The function call will not succeed.
 
 :erlang.+(_existing_count :: non_neg_integer(), boolean())
@@ -1947,7 +1832,7 @@ from the success typing arguments:
 (number(), number())
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/extractors/participant_extractor/role_classifier.ex:932:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/extractors/participant_extractor/role_classifier.ex:933:unused_fun
 Function categorize_completeness/1 will never be called.
 ________________________________________________________________________________
 lib/eve_dmv/contexts/combat_intelligence/domain/extractors/tactical_extractor.ex:193:guard_fail
@@ -1977,13 +1862,13 @@ Success typing:
 {:ok, [any()]}
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:16:no_return
+lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:17:no_return
 Function analyze_engagement_mechanics/2 has no local return.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:50:no_return
+lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:51:no_return
 Function analyze_fleet_coordination/2 has no local return.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:69:call
+lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:70:call
 The function call will not succeed.
 
 Float.round(_command_structure :: %{}, 2)
@@ -1995,10 +1880,10 @@ and the contract is
 (float(), precision_range()) :: float()
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:82:no_return
+lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:83:no_return
 Function analyze_tactical_positioning/2 has no local return.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:97:call
+lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:98:call
 The function call will not succeed.
 
 Float.round(_escape_routes :: %{}, 2)
@@ -2010,10 +1895,10 @@ and the contract is
 (float(), precision_range()) :: float()
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:176:no_return
+lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:177:no_return
 Function analyze_tactical_execution/1 has no local return.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:187:call
+lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:188:call
 The function call will not succeed.
 
 Float.round(_target_priority :: %{}, 2)
@@ -2025,40 +1910,40 @@ and the contract is
 (float(), precision_range()) :: float()
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:220:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:221:unused_fun
 Function calculate_intensity_level/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:239:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:240:unused_fun
 Function identify_success_factors/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:325:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:326:unused_fun
 Function count_logistics_ships/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:334:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:335:unused_fun
 Function count_primary_targets_killed/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:393:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:394:unused_fun
 Function analyze_small_group_tactics/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:394:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:395:unused_fun
 Function analyze_medium_fleet_coordination/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:395:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:396:unused_fun
 Function analyze_fleet_battle_mechanics/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:396:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:397:unused_fun
 Function analyze_large_scale_logistics/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:397:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:398:unused_fun
 Function calculate_engagement_complexity/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:403:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:404:unused_fun
 Function generate_positioning_recommendations/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:416:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:417:unused_fun
 Function identify_coordination_breakdowns/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:426:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/phases/engagement_analyzer.ex:427:unused_fun
 Function calculate_overall_tactical_score/1 will never be called.
 ________________________________________________________________________________
 lib/eve_dmv/contexts/combat_intelligence/domain/threat_assessor.ex:20:extra_range
@@ -2156,7 +2041,7 @@ Type:
 %{:memory_bytes => non_neg_integer(), :size => non_neg_integer()}
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:30:pattern_match
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:31:pattern_match
 The pattern can never match the type.
 
 Pattern:
@@ -2174,7 +2059,7 @@ Type:
 
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:77:pattern_match
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:78:pattern_match
 The pattern can never match the type.
 
 Pattern:
@@ -2189,88 +2074,88 @@ Type:
 }
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:672:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:673:unused_fun
 Function analyze_fleet_compositions/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:700:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:701:unused_fun
 Function calculate_corp_avg_fleet_size/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:713:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:714:unused_fun
 Function aggregate_size_distributions/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:738:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:739:unused_fun
 Function aggregate_composition_patterns/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:773:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:774:unused_fun
 Function identify_tactical_preferences/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:789:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:790:unused_fun
 Function identify_combat_doctrines/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:802:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:803:unused_fun
 Function determine_primary_doctrine/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:829:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:830:unused_fun
 Function get_doctrine_characteristics/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:848:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:849:unused_fun
 Function calculate_doctrine_adherence/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:870:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:871:unused_fun
 Function identify_secondary_doctrines/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:886:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:887:unused_fun
 Function map_class_to_doctrine/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:897:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:898:unused_fun
 Function assess_doctrine_strength/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:909:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:910:unused_fun
 Function analyze_doctrine_evolution/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:919:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:920:unused_fun
 Function assess_compliance/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:938:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:939:unused_fun
 Function categorize_compliance/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:947:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:948:unused_fun
 Function identify_non_compliant_usage/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:968:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:969:unused_fun
 Function determine_compliance_issue/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:977:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:978:unused_fun
 Function analyze_compliance_trends/0 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:986:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:987:unused_fun
 Function analyze_tactical_preferences/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:1018:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:1019:unused_fun
 Function determine_preferred_fleet_size/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:1032:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:1033:unused_fun
 Function assess_tactical_risk_profile/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:1044:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:1045:unused_fun
 Function determine_combat_style/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:1058:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:1059:unused_fun
 Function assess_combat_capabilities/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:1069:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:1070:unused_fun
 Function assess_doctrine_maturity/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:1086:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:1087:unused_fun
 Function assess_fleet_versatility/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:1099:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:1100:unused_fun
 Function assess_combat_readiness_level/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:1121:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:1122:unused_fun
 Function assess_strategic_capability/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:1136:unused_fun
+lib/eve_dmv/contexts/corporation/core/combat_doctrine_analyzer.ex:1137:unused_fun
 Function generate_doctrine_recommendations/2 will never be called.
 ________________________________________________________________________________
 lib/eve_dmv/contexts/corporation/core/corporation_analyzer.ex:308:guard_fail
@@ -2365,7 +2250,7 @@ ________________________________________________________________________________
 lib/eve_dmv/contexts/corporation/core/security_analyzer.ex:596:exact_eq
 The test :high | :low | :minimal | :moderate =:= :critical can never evaluate to 'true'.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:38:pattern_match
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:39:pattern_match
 The pattern can never match the type.
 
 Pattern:
@@ -2375,7 +2260,7 @@ Type:
 {:error, _}
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:102:pattern_match
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:103:pattern_match
 The pattern can never match the type.
 
 Pattern:
@@ -2385,13 +2270,13 @@ Type:
 {:error, _}
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:224:no_return
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:225:no_return
 Function analyze_recent_combat_activity/1 has no local return.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:273:no_return
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:274:no_return
 Function identify_unusual_targets/1 has no local return.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:282:call
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:283:call
 The function call will not succeed.
 
 :erlang.map_size(_targets :: [any()])
@@ -2402,118 +2287,118 @@ from the success typing arguments:
 (map())
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:289:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:290:unused_fun
 Function identify_unusual_events/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:323:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:324:unused_fun
 Function detect_activity_anomalies/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:333:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:334:unused_fun
 Function detect_login_anomalies/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:355:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:356:unused_fun
 Function detect_combat_anomalies/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:367:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:368:unused_fun
 Function all_losses?/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:385:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:386:unused_fun
 Function detect_pattern_deviations/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:404:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:405:unused_fun
 Function compile_threat_indicators/3 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:415:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:416:unused_fun
 Function extract_security_threat_indicators/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:425:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:426:unused_fun
 Function extract_activity_threat_indicators/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:434:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:435:unused_fun
 Function extract_member_threat_indicators/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:446:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:447:unused_fun
 Function count_recent_joins/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:454:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:455:unused_fun
 Function count_inactive_members/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:462:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:463:unused_fun
 Function detect_coordination_indicators/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:483:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:484:unused_fun
 Function calculate_composite_indicators/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:504:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:505:unused_fun
 Function calculate_activity_threat_score/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:521:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:522:unused_fun
 Function count_threat_vectors/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:541:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:542:unused_fun
 Function assess_threat_convergence/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:546:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:547:unused_fun
 Function identify_active_threats/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:625:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:626:unused_fun
 Function analyze_threat_patterns/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:635:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:636:unused_fun
 Function analyze_temporal_threat_patterns/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:650:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:651:unused_fun
 Function analyze_behavioral_threat_patterns/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:667:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:668:unused_fun
 Function analyze_coordination_patterns/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:676:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:677:unused_fun
 Function calculate_overall_threat_level/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:699:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:700:unused_fun
 Function generate_threat_alerts/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:737:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:738:unused_fun
 Function generate_alert_id/0 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:741:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:742:unused_fun
 Function prioritize_threat_mitigation/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:755:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:756:unused_fun
 Function determine_mitigation_priority/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:764:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:765:unused_fun
 Function generate_mitigation_actions/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:799:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:800:unused_fun
 Function determine_mitigation_timeline/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:808:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:809:unused_fun
 Function calculate_detection_confidence/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:821:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:822:unused_fun
 Function count_total_indicators/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:833:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:834:unused_fun
 Function categorize_confidence/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:842:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:843:unused_fun
 Function assess_data_quality/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:1010:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:1011:unused_fun
 Function extract_corp_ids/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:1019:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:1020:unused_fun
 Function check_activity_spikes/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:1047:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:1048:unused_fun
 Function check_new_operational_areas/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:1079:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:1080:unused_fun
 Function check_unusual_ship_usage/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation/core/threat_detector.ex:1107:unused_fun
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:1108:unused_fun
 Function check_timing_deviations/1 will never be called.
 ________________________________________________________________________________
 lib/eve_dmv/contexts/corporation/services/member_service.ex:366:pattern_match
@@ -2538,7 +2423,7 @@ Type:
 
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation_analysis/analyzers/participation_analyzer.ex:230:pattern_match
+lib/eve_dmv/contexts/corporation_analysis/analyzers/participation_analyzer.ex:231:pattern_match
 The pattern can never match the type.
 
 Pattern:
@@ -2557,22 +2442,22 @@ Type:
 
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation_analysis/analyzers/participation_analyzer.ex:457:no_return
+lib/eve_dmv/contexts/corporation_analysis/analyzers/participation_analyzer.ex:458:no_return
 Function calculate_participation_trend/1 has no local return.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation_analysis/analyzers/participation_analyzer.ex:475:unused_fun
+lib/eve_dmv/contexts/corporation_analysis/analyzers/participation_analyzer.ex:476:unused_fun
 Function calculate_consistency_score/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation_analysis/analyzers/participation_analyzer.ex:493:unused_fun
+lib/eve_dmv/contexts/corporation_analysis/analyzers/participation_analyzer.ex:494:unused_fun
 Function identify_peak_activity_periods/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation_analysis/analyzers/participation_analyzer.ex:502:unused_fun
+lib/eve_dmv/contexts/corporation_analysis/analyzers/participation_analyzer.ex:503:unused_fun
 Function calculate_corp_percentile/3 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation_analysis/analyzers/participation_analyzer.ex:722:no_return
+lib/eve_dmv/contexts/corporation_analysis/analyzers/participation_analyzer.ex:723:no_return
 Function count_recent_activities/2 has no local return.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation_analysis/analyzers/participation_analyzer.ex:723:call
+lib/eve_dmv/contexts/corporation_analysis/analyzers/participation_analyzer.ex:724:call
 The function call will not succeed.
 
 EveDmv.Core.Utils.DateTimeUtils.add(
@@ -2599,22 +2484,22 @@ breaks the contract
   DateTime.t() | NaiveDateTime.t() | nil
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation_analysis/analyzers/participation_analyzer.ex:731:unused_fun
+lib/eve_dmv/contexts/corporation_analysis/analyzers/participation_analyzer.ex:732:unused_fun
 Function calculate_historical_average/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation_analysis/analyzers/participation_analyzer.ex:743:unused_fun
+lib/eve_dmv/contexts/corporation_analysis/analyzers/participation_analyzer.ex:744:unused_fun
 Function group_activities_by_week/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation_analysis/analyzers/participation_analyzer.ex:752:unused_fun
+lib/eve_dmv/contexts/corporation_analysis/analyzers/participation_analyzer.ex:753:unused_fun
 Function group_activities_by_hour/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation_analysis/analyzers/participation_analyzer.ex:759:unused_fun
+lib/eve_dmv/contexts/corporation_analysis/analyzers/participation_analyzer.ex:760:unused_fun
 Function calculate_variance/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation_analysis/analyzers/participation_analyzer.ex:768:unused_fun
+lib/eve_dmv/contexts/corporation_analysis/analyzers/participation_analyzer.ex:769:unused_fun
 Function format_hour/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/corporation_analysis/analyzers/participation_analyzer.ex:772:unused_fun
+lib/eve_dmv/contexts/corporation_analysis/analyzers/participation_analyzer.ex:773:unused_fun
 Function calculate_percentile/2 will never be called.
 ________________________________________________________________________________
 lib/eve_dmv/contexts/corporation_intelligence.ex:102:contract_supertype
@@ -4477,7 +4362,7 @@ is_list(_new_insights :: <<_::360>>)
 can never succeed.
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/intelligence/services/profile_service.ex:96:pattern_match
+lib/eve_dmv/contexts/intelligence/services/profile_service.ex:95:pattern_match
 The pattern can never match the type.
 
 Pattern:
