@@ -1326,14 +1326,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
   # Utility functions
 
-  defp format_isk(value) do
-    cond do
-      value >= 1_000_000_000 -> "#{Float.round(value / 1_000_000_000, 1)}B ISK"
-      value >= 1_000_000 -> "#{Float.round(value / 1_000_000, 1)}M ISK"
-      true -> "#{round(value)} ISK"
-    end
-  end
-
   defp add_recommendation_if(recommendations, condition, recommendation) do
     if condition, do: [recommendation | recommendations], else: recommendations
   end
