@@ -1036,17 +1036,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     end
   end
 
-  defp determine_engagement_style(_ship_analyses, capabilities) do
-    mobility = capabilities.mobility.mobility_rating
-    range = capabilities.engagement_range.dominant_range
-
-    case {mobility, range} do
-      {:very_high, :long} -> :kiting
-      {:high, :medium} -> :skirmish
-      {_, :brawl} -> :brawling
-      _ -> :flexible
-    end
-  end
 
   defp suggest_counter_strategies(capabilities) do
     base_strategies = []
