@@ -922,10 +922,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
       hours =
         killmails
         |> Enum.map(fn km ->
-          km.killmail_time
-          |> NaiveDateTime.to_time()
-          |> Time.to_seconds_after_midnight()
-          |> div(3600)
+          time = NaiveDateTime.to_time(km.killmail_time)
+          {seconds, _microseconds} = Time.to_seconds_after_midnight(time)
+          div(seconds, 3600)
         end)
         |> Enum.frequencies()
 
@@ -1352,8 +1351,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
 
   defp count_total_killmails(dimensional_scores) do
     # Extract killmail count from one of the dimensional scores
-    dimensional_scores.combat_skill.components
-    Map.get(:total_killmails, 0)
+    Map.get(dimensional_scores.combat_skill.components, :total_killmails, 0)
   end
 
   # Insight generation functions
