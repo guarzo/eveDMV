@@ -18,7 +18,7 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
 
   Returns comprehensive analysis of defensive readiness and coverage patterns.
   """
-  @spec analyze_corporation(integer(), keyword()) :: {:ok, map()} | {:error, String.t()}
+  @spec analyze_corporation(integer(), keyword()) :: {:ok, map()} | {:error, String.t() | atom()}
   def analyze_corporation(corporation_id, options \\ []) do
     Logger.info("Starting home defense analysis for corporation #{corporation_id}")
 
@@ -73,7 +73,7 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
   @doc """
   Backward compatibility alias.
   """
-  @spec analyze_home_defense(integer(), integer()) :: {:ok, map()} | {:error, String.t()}
+  @spec analyze_home_defense(integer(), integer()) :: {:ok, map()} | {:error, String.t() | atom()}
   def analyze_home_defense(corporation_id, home_system_id) do
     analyze_corporation(corporation_id, home_system_id: home_system_id)
   end
