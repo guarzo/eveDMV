@@ -93,7 +93,13 @@ defmodule EveDmv.Intelligence.Analyzers.DoctrineAnalyzer do
   Categorize ship types into doctrine categories.
   """
   @spec categorize_ship_doctrine(integer()) ::
-          :interceptor | :assault_frigate | :cruiser | :battlecruiser | :battleship | :capital | :other
+          :interceptor
+          | :assault_frigate
+          | :cruiser
+          | :battlecruiser
+          | :battleship
+          | :capital
+          | :other
   def categorize_ship_doctrine(ship_type_id) when is_integer(ship_type_id) do
     # Simplified ship categorization based on common EVE ship types
     cond do

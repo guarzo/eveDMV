@@ -16,6 +16,7 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeStartupService do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
+  @impl GenServer
   def init(_opts) do
     # Check if SDE updates are enabled
     enabled = Application.get_env(:eve_dmv, :sde_auto_update, true)
@@ -30,6 +31,7 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeStartupService do
     {:ok, %{enabled: enabled, last_check: nil}}
   end
 
+  @impl GenServer
   def handle_info(:check_sde_updates, state) do
     Logger.info("Starting SDE update check on startup...")
 
@@ -47,6 +49,7 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeStartupService do
     {:noreply, %{state | last_check: DateTime.utc_now()}}
   end
 
+  @impl GenServer
   def handle_call(:force_update, _from, state) do
     Logger.info("Forcing SDE update check...")
 
@@ -55,6 +58,7 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeStartupService do
     {:reply, result, %{state | last_check: DateTime.utc_now()}}
   end
 
+  @impl GenServer
   def handle_call(:get_status, _from, state) do
     status = %{
       enabled: state.enabled,

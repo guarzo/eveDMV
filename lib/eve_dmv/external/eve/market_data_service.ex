@@ -43,6 +43,7 @@ defmodule EveDmv.External.Eve.MarketDataService do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
 
+  @impl GenServer
   def init(state) do
     # Schedule periodic cache warming
     schedule_cache_warming()
@@ -136,31 +137,37 @@ defmodule EveDmv.External.Eve.MarketDataService do
 
   # GenServer Callbacks
 
+  @impl GenServer
   def handle_call({:get_ship_price, type_id, region, price_type}, _from, state) do
     result = fetch_ship_price(type_id, region, price_type)
     {:reply, result, state}
   end
 
+  @impl GenServer
   def handle_call({:get_ship_prices_batch, type_ids, region, price_type}, _from, state) do
     result = fetch_ship_prices_batch(type_ids, region, price_type)
     {:reply, result, state}
   end
 
+  @impl GenServer
   def handle_call(:get_cache_stats, _from, state) do
     stats = get_cache_statistics()
     {:reply, {:ok, stats}, state}
   end
 
+  @impl GenServer
   def handle_cast(:warm_cache, state) do
     Task.start(fn -> perform_cache_warming() end)
     {:noreply, state}
   end
 
+  @impl GenServer
   def handle_cast(:clear_cache, state) do
     clear_price_cache()
     {:noreply, state}
   end
 
+  @impl GenServer
   def handle_info(:warm_cache_scheduled, state) do
     perform_cache_warming()
     schedule_cache_warming()

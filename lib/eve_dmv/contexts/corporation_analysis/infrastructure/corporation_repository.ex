@@ -179,7 +179,10 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
   def get_activity_timeline(corporation_id, days_back \\ 30) do
     case KillmailQueries.execute(
            KillmailQueries.daily_activity_query(:corporation, corporation_id, days_back),
-           [corporation_id, DateTimeUtils.add(DateTime.utc_now(), -days_back * 24 * 60 * 60, :second)]
+           [
+             corporation_id,
+             DateTimeUtils.add(DateTime.utc_now(), -days_back * 24 * 60 * 60, :second)
+           ]
          ) do
       {:ok, timeline_data} ->
         timeline =

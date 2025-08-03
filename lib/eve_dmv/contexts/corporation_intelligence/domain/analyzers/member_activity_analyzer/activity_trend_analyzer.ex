@@ -95,7 +95,9 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivit
   end
 
   defp perform_advanced_trend_analysis(activity_series, member_activities, days) do
-    %{direction: _trend_direction, change_percent: _growth_rate} = calculate_trend_from_series(activity_series)
+    %{direction: _trend_direction, change_percent: _growth_rate} =
+      calculate_trend_from_series(activity_series)
+
     peaks = ActivityHelpers.identify_activity_peaks(activity_series)
     seasonal = analyze_seasonal_patterns(member_activities, days)
 

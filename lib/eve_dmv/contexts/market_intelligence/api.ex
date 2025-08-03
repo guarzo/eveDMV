@@ -29,8 +29,16 @@ defmodule EveDmv.Contexts.MarketIntelligence.Api do
           modules_value: float(),
           cargo_value: float(),
           implants_value: float(),
-          breakdown:
-            %{atom() => [%{type_id: integer(), quantity: integer(), unit_price: float(), total_price: float()}]},
+          breakdown: %{
+            atom() => [
+              %{
+                type_id: integer(),
+                quantity: integer(),
+                unit_price: float(),
+                total_price: float()
+              }
+            ]
+          },
           calculated_at: DateTime.t()
         }
 

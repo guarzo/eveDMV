@@ -54,6 +54,7 @@ defmodule EveDmv.Historical.ImportProgressMonitor do
 
   # Server callbacks
 
+  @impl GenServer
   def init(_opts) do
     # Attach telemetry handlers
     attach_telemetry_handlers()
@@ -68,6 +69,7 @@ defmodule EveDmv.Historical.ImportProgressMonitor do
     {:ok, state}
   end
 
+  @impl GenServer
   def handle_cast({:monitor_import, import_id}, state) do
     # Subscribe to import events
     PubSub.subscribe(EveDmv.PubSub, "import:#{import_id}")
@@ -95,6 +97,7 @@ defmodule EveDmv.Historical.ImportProgressMonitor do
     {:noreply, new_state}
   end
 
+  @impl GenServer
   def handle_call({:get_metrics, nil}, _from, state) do
     # Return current import metrics
     if state.current_import do
@@ -104,15 +107,18 @@ defmodule EveDmv.Historical.ImportProgressMonitor do
     end
   end
 
+  @impl GenServer
   def handle_call({:get_metrics, import_id}, _from, state) do
     {:reply, Map.get(state.metrics, import_id), state}
   end
 
+  @impl GenServer
   def handle_call({:get_history, limit}, _from, state) do
     history = Enum.take(state.history, limit)
     {:reply, history, state}
   end
 
+  @impl GenServer
   def handle_call(:get_active_summary, _from, state) do
     summary =
       state.metrics
@@ -134,6 +140,7 @@ defmodule EveDmv.Historical.ImportProgressMonitor do
   end
 
   # Handle import progress updates
+  @impl GenServer
   def handle_info({:import_progress, import_state}, state) do
     import_id = import_state.import_id
 
@@ -156,6 +163,7 @@ defmodule EveDmv.Historical.ImportProgressMonitor do
   end
 
   # Handle telemetry events
+  @impl GenServer
   def handle_info({:telemetry, [:eve_dmv, :import, :batch], measurements, metadata}, state) do
     import_id = metadata.import_id
 
@@ -183,6 +191,7 @@ defmodule EveDmv.Historical.ImportProgressMonitor do
     end
   end
 
+  @impl GenServer
   def handle_info({:telemetry, [:eve_dmv, :import, :complete], measurements, metadata}, state) do
     import_id = metadata.import_id
 
@@ -223,6 +232,7 @@ defmodule EveDmv.Historical.ImportProgressMonitor do
     end
   end
 
+  @impl GenServer
   def handle_info(_, state), do: {:noreply, state}
 
   # Private functions

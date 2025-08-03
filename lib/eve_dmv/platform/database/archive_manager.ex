@@ -57,6 +57,7 @@ defmodule EveDmv.Database.ArchiveManager do
 
   # Server callbacks
 
+  @impl GenServer
   def init(opts) do
     archive_policies = get_archive_policies()
 
@@ -81,44 +82,52 @@ defmodule EveDmv.Database.ArchiveManager do
     {:ok, state}
   end
 
+  @impl GenServer
   def handle_call({:archive_table, table_name}, _from, state) do
     result = perform_table_archive(table_name)
     new_state = update_archive_stats(state, result)
     {:reply, result, new_state}
   end
 
+  @impl GenServer
   def handle_call(:get_archive_status, _from, state) do
     status = get_current_archive_status(state.archive_policies, state)
     {:reply, status, state}
   end
 
+  @impl GenServer
   def handle_call({:restore_from_archive, table_name, start_date, end_date}, _from, state) do
     result = perform_archive_restore(table_name, start_date, end_date)
     {:reply, result, state}
   end
 
+  @impl GenServer
   def handle_call(:get_archive_statistics, _from, state) do
     stats = get_archive_table_statistics(state.archive_policies)
     {:reply, stats, state}
   end
 
+  @impl GenServer
   def handle_cast(:force_archive_check, state) do
     check_result = perform_archive_check(state.archive_policies)
     new_state = update_state_from_archive_results(state, check_result)
     {:noreply, new_state}
   end
 
+  @impl GenServer
   def handle_cast(:cleanup_old_archives, state) do
     cleanup_result = cleanup_expired_archives(state.archive_policies)
     new_state = update_state_from_cleanup_results(state, cleanup_result)
     {:noreply, new_state}
   end
 
+  @impl GenServer
   def handle_info(:initialize_archive_tables, state) do
     initialize_all_archive_tables(state.archive_policies)
     {:noreply, state}
   end
 
+  @impl GenServer
   def handle_info(:scheduled_archive_check, state) do
     check_result = perform_archive_check(state.archive_policies)
     new_state = update_state_from_archive_results(state, check_result)
@@ -126,6 +135,7 @@ defmodule EveDmv.Database.ArchiveManager do
     {:noreply, new_state}
   end
 
+  @impl GenServer
   def handle_info(_, state), do: {:noreply, state}
 
   # Private functions

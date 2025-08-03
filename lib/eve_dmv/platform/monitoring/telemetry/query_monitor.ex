@@ -20,6 +20,7 @@ defmodule EveDmv.Telemetry.QueryMonitor do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
+  @impl GenServer
   def init(_opts) do
     # Subscribe to Ecto telemetry events
     :telemetry.attach(
@@ -127,6 +128,7 @@ defmodule EveDmv.Telemetry.QueryMonitor do
 
   # GenServer callbacks
 
+  @impl GenServer
   def handle_cast({:record_slow_query, query_type, table_name, query_time}, state) do
     slow_query = %{
       type: query_type,
@@ -139,11 +141,13 @@ defmodule EveDmv.Telemetry.QueryMonitor do
     {:noreply, %{state | slow_queries: updated_queries}}
   end
 
+  @impl GenServer
   def handle_cast({:record_slow_query_details, query_info}, state) do
     updated_queries = Enum.take([query_info | state.slow_queries], @max_stored_queries)
     {:noreply, %{state | slow_queries: updated_queries}}
   end
 
+  @impl GenServer
   def handle_cast({:track_query_execution, normalized_query, duration, source}, state) do
     # Update execution stats
     current_time = DateTime.utc_now()
@@ -199,14 +203,17 @@ defmodule EveDmv.Telemetry.QueryMonitor do
      }}
   end
 
+  @impl GenServer
   def handle_call(:get_slow_queries, _from, state) do
     {:reply, state.slow_queries, state}
   end
 
+  @impl GenServer
   def handle_call(:clear_slow_queries, _from, state) do
     {:reply, :ok, %{state | slow_queries: []}}
   end
 
+  @impl GenServer
   def handle_call(:get_query_stats, _from, state) do
     stats = %{
       total_slow_queries: length(state.slow_queries),
@@ -217,6 +224,7 @@ defmodule EveDmv.Telemetry.QueryMonitor do
     {:reply, stats, state}
   end
 
+  @impl GenServer
   def handle_call(:get_performance_analysis, _from, state) do
     analysis = %{
       query_count: map_size(state.execution_stats),
@@ -231,10 +239,12 @@ defmodule EveDmv.Telemetry.QueryMonitor do
     {:reply, analysis, state}
   end
 
+  @impl GenServer
   def handle_call(:get_n_plus_one_alerts, _from, state) do
     {:reply, state.n_plus_one_alerts, state}
   end
 
+  @impl GenServer
   def handle_call(:get_query_patterns, _from, state) do
     patterns =
       Enum.map(state.query_patterns, fn {{query, source}, executions} ->
@@ -250,6 +260,7 @@ defmodule EveDmv.Telemetry.QueryMonitor do
     {:reply, patterns, state}
   end
 
+  @impl GenServer
   def handle_call({:get_frequent_queries, limit}, _from, state) do
     frequent_queries =
       state.execution_stats
@@ -262,6 +273,7 @@ defmodule EveDmv.Telemetry.QueryMonitor do
     {:reply, frequent_queries, state}
   end
 
+  @impl GenServer
   def handle_call(:reset_tracking, _from, _state) do
     {:reply, :ok,
      %{

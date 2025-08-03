@@ -206,7 +206,9 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   """
   @spec get_recent_high_threats(options()) :: {:ok, [threat_assessment()]} | {:error, term()}
   def get_recent_high_threats(opts \\ []) do
-    since = Keyword.get(opts, :since, DateTimeUtils.add(DateTimeUtils.utc_now(), -24 * 3600, :second))
+    since =
+      Keyword.get(opts, :since, DateTimeUtils.add(DateTimeUtils.utc_now(), -24 * 3600, :second))
+
     limit = Keyword.get(opts, :limit, 50)
 
     filter = [
@@ -237,7 +239,9 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   """
   @spec get_recent_fleet_engagements(options()) :: {:ok, [fleet_engagement()]} | {:error, term()}
   def get_recent_fleet_engagements(opts \\ []) do
-    since = Keyword.get(opts, :since, DateTimeUtils.add(DateTimeUtils.utc_now(), -48 * 3600, :second))
+    since =
+      Keyword.get(opts, :since, DateTimeUtils.add(DateTimeUtils.utc_now(), -48 * 3600, :second))
+
     limit = Keyword.get(opts, :limit, 100)
 
     filter = [
@@ -285,7 +289,8 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   @doc """
   List active surveillance profiles.
   """
-  @spec get_active_surveillance_profiles(options()) :: {:ok, [surveillance_profile()]} | {:error, term()}
+  @spec get_active_surveillance_profiles(options()) ::
+          {:ok, [surveillance_profile()]} | {:error, term()}
   def get_active_surveillance_profiles(opts \\ []) do
     filter = [status: :active]
 
@@ -360,7 +365,8 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   """
   @spec get_recent_wormhole_signatures(integer(), options()) :: {:ok, list()} | {:error, term()}
   def get_recent_wormhole_signatures(system_id, opts \\ []) do
-    since = Keyword.get(opts, :since, DateTimeUtils.add(DateTimeUtils.utc_now(), -24 * 3600, :second))
+    since =
+      Keyword.get(opts, :since, DateTimeUtils.add(DateTimeUtils.utc_now(), -24 * 3600, :second))
 
     filter = [
       solar_system_id: system_id,

@@ -814,5 +814,4 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
       end)
     end)
   end
-
 end

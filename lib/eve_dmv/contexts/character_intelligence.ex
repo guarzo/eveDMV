@@ -71,7 +71,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
         recent_activity: %{...}
       }}
   """
-  @spec analyze_character_threat(integer()) :: {:ok, character_threat_analysis()} | {:error, intelligence_error()}
+  @spec analyze_character_threat(integer()) ::
+          {:ok, character_threat_analysis()} | {:error, intelligence_error()}
   def analyze_character_threat(character_id) do
     case ThreatScoringEngine.calculate_threat_score(character_id) do
       {:ok, threat_data} ->
@@ -115,7 +116,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   - Specialist
   - Opportunist
   """
-  @spec detect_behavioral_patterns(integer()) :: {:ok, behavioral_pattern_analysis()} | {:error, intelligence_error()}
+  @spec detect_behavioral_patterns(integer()) ::
+          {:ok, behavioral_pattern_analysis()} | {:error, intelligence_error()}
   def detect_behavioral_patterns(character_id) do
     # Since ThreatScoringEngine includes behavioral analysis in the threat score,
     # we'll extract it from there
@@ -134,7 +136,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Calculates threat trends for a character over time.
   Shows how their threat level has evolved based on recent performance.
   """
-  @spec calculate_threat_trends(integer(), integer()) :: {:ok, threat_trend_analysis()} | {:error, intelligence_error()}
+  @spec calculate_threat_trends(integer(), integer()) ::
+          {:ok, threat_trend_analysis()} | {:error, intelligence_error()}
   def calculate_threat_trends(character_id, days_back \\ 90) do
     ThreatScoringEngine.analyze_threat_trends(character_id, analysis_window_days: days_back)
   end

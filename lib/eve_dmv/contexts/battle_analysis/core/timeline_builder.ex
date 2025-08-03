@@ -40,7 +40,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.TimelineBuilder do
   """
   def build_battle_timeline(battle_id) do
     # Fetch killmails for the battle
-    with {:ok, battle} <- EveDmv.Contexts.BattleAnalysis.Services.BattleService.get_battle(battle_id),
+    with {:ok, battle} <-
+           EveDmv.Contexts.BattleAnalysis.Services.BattleService.get_battle(battle_id),
          {:ok, killmails} <- get_battle_killmails(battle) do
       build_timeline(killmails)
     end
@@ -293,7 +294,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.TimelineBuilder do
   defp rapid_succession?(events) do
     avg_time_between =
       if length(events) > 1 do
-        total_duration = DateTimeUtils.diff(List.last(events).time, List.first(events, :second).time)
+        total_duration =
+          DateTimeUtils.diff(List.last(events).time, List.first(events, :second).time)
+
         total_duration / (length(events) - 1)
       else
         999

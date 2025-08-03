@@ -45,6 +45,7 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
       else
         socket.assigns.dashboard_type
       end
+
     time_range =
       case params["time_range"] do
         "last_hour" -> :last_hour
@@ -68,7 +69,8 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
 
   @impl Phoenix.LiveView
   def handle_event("change_time_range", %{"time_range" => time_range}, socket) do
-    {:noreply, push_patch(socket, to: build_path_with_params(socket, %{"time_range" => time_range}))}
+    {:noreply,
+     push_patch(socket, to: build_path_with_params(socket, %{"time_range" => time_range}))}
   end
 
   @impl Phoenix.LiveView
@@ -77,6 +79,7 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
       socket
       |> assign(:loading, true)
       |> load_dashboard_data()
+
     {:noreply, socket}
   end
 
@@ -201,7 +204,8 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
       |> assign(:performance_recommendations, [])
   end
 
-  defp load_dashboard_data(%{assigns: %{dashboard_type: type}} = socket) when type in [:intelligence, :monitoring] do
+  defp load_dashboard_data(%{assigns: %{dashboard_type: type}} = socket)
+       when type in [:intelligence, :monitoring] do
     # For now, return empty data for other dashboard types
     socket
     |> assign(:loading, false)
@@ -245,17 +249,27 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
   defp should_reload_for_alert?(alert) do
     # Only reload for high priority alerts or specific alert types that affect dashboard metrics
     case alert do
-      %{priority: priority} when priority in [1, 2] -> true  # Critical or High priority
-      %{alert_type: type} when type in ["new_profile", "profile_updated", "metrics_updated"] -> true
-      _ -> false
+      # Critical or High priority
+      %{priority: priority} when priority in [1, 2] ->
+        true
+
+      %{alert_type: type} when type in ["new_profile", "profile_updated", "metrics_updated"] ->
+        true
+
+      _ ->
+        false
     end
   end
 
   defp should_reload_for_update?(update) do
     # Only reload for intelligence updates that affect dashboard data
     case update do
-      %{type: type} when type in ["analysis_completed", "threat_assessment_updated", "batch_processed"] -> true
-      _ -> false
+      %{type: type}
+      when type in ["analysis_completed", "threat_assessment_updated", "batch_processed"] ->
+        true
+
+      _ ->
+        false
     end
   end
 end

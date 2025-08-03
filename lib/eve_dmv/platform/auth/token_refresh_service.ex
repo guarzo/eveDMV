@@ -40,7 +40,9 @@ defmodule EveDmv.Users.TokenRefreshService do
         false
 
       expires_at ->
-        threshold = DateTimeUtils.add(DateTime.utc_now(), @refresh_threshold_minutes * 60, :second)
+        threshold =
+          DateTimeUtils.add(DateTime.utc_now(), @refresh_threshold_minutes * 60, :second)
+
         DateTime.compare(expires_at, threshold) == :lt
     end
   end

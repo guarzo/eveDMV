@@ -59,11 +59,13 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
           activity_trend: atom()
         }
 
-  @type gang_size_patterns :: [%{
-          gang_size: non_neg_integer(),
-          frequency: non_neg_integer(),
-          percentage: float()
-        }]
+  @type gang_size_patterns :: [
+          %{
+            gang_size: non_neg_integer(),
+            frequency: non_neg_integer(),
+            percentage: float()
+          }
+        ]
 
   @type intelligence_summary :: %{
           threat_level: atom(),
@@ -101,13 +103,17 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   """
   @spec get_killmail_stats(integer()) :: {:ok, killmail_stats()} | {:error, Ash.Error.t()}
   def get_killmail_stats(character_id) do
-    get_killmail_stats(character_id, DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second))
+    get_killmail_stats(
+      character_id,
+      DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
+    )
   end
 
   @doc """
   Get killmail statistics for a character since a specific date.
   """
-  @spec get_killmail_stats(integer(), DateTime.t()) :: {:ok, killmail_stats()} | {:error, Ash.Error.t()}
+  @spec get_killmail_stats(integer(), DateTime.t()) ::
+          {:ok, killmail_stats()} | {:error, Ash.Error.t()}
   def get_killmail_stats(character_id, since_date) do
     # Get character stats using optimized query
     stats =
@@ -141,7 +147,10 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   """
   @spec get_activity_data(integer()) :: {:ok, activity_data()} | {:error, atom()}
   def get_activity_data(character_id) do
-    get_activity_data(character_id, DateTime.utc_now() |> DateTimeUtils.add(-30 * 24 * 60 * 60, :second))
+    get_activity_data(
+      character_id,
+      DateTime.utc_now() |> DateTimeUtils.add(-30 * 24 * 60 * 60, :second)
+    )
   end
 
   @doc """

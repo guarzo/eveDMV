@@ -25,13 +25,13 @@ defmodule EveDmv.Intelligence.WandererClient do
   @retry_delay 5_000
 
   @type t :: %__MODULE__{
-    auth_token: String.t() | nil,
-    sse_pid: pid() | nil,
-    sse_connections: map(),
-    monitored_maps: MapSet.t(),
-    rate_limiter: pid() | nil,
-    connection_state: atom()
-  }
+          auth_token: String.t() | nil,
+          sse_pid: pid() | nil,
+          sse_connections: map(),
+          monitored_maps: MapSet.t(),
+          rate_limiter: pid() | nil,
+          connection_state: atom()
+        }
 
   # Get base URL at runtime for better configuration flexibility
   defp base_url do

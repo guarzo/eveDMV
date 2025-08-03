@@ -139,7 +139,9 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngine d
   @impl GenServer
   def handle_call({:get_recent_matches, options}, _from, state) do
     limit = Keyword.get(options, :limit, 50)
-    since = Keyword.get(options, :since, DateTimeUtils.add(DateTime.utc_now(), -24 * 3600, :second))
+
+    since =
+      Keyword.get(options, :since, DateTimeUtils.add(DateTime.utc_now(), -24 * 3600, :second))
 
     case get_recent_matches_from_cache_or_db(since, limit) do
       {:ok, matches} -> {:reply, {:ok, matches}, state}

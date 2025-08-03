@@ -3,7 +3,8 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.ActivityTracker do
   Tracks participant activity patterns and builds activity timelines.
   """
 
-    alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Core.Utils.DateTimeUtils
+
   @doc """
   Build an activity timeline showing participant engagement over time.
   """

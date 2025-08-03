@@ -566,5 +566,4 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Processors.Pe
       true -> :unknown
     end
   end
-
 end

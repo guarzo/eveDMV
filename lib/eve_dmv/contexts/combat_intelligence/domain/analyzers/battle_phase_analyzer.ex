@@ -88,9 +88,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
         end_time: last_kill.timestamp,
         duration_seconds: max(duration, 1),
         kill_count: kill_count,
-        kills_in_phase: kill_count,  # Add this for compatibility
+        # Add this for compatibility
+        kills_in_phase: kill_count,
         intensity: Float.round(intensity, 2),
-        intensity_value: Float.round(intensity, 2),  # Add this for test compatibility
+        # Add this for test compatibility
+        intensity_value: Float.round(intensity, 2),
         intensity_rating: classify_intensity(intensity),
         phase_type: phase_type,
         dominant_side: dominant_side,
@@ -222,13 +224,16 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
     # Special cases based on phase position
     cond do
       # Single phase battle
-      total_phases == 1 -> :single_engagement
+      total_phases == 1 ->
+        :single_engagement
 
       # Hot drop - high intensity first phase (check this before general initial_engagement)
-      index == 0 and intensity >= 5.0 -> :hot_drop
+      index == 0 and intensity >= 5.0 ->
+        :hot_drop
 
       # Initial phase (first phase in multi-phase battle)
-      index == 0 and total_phases > 1 -> :initial_engagement
+      index == 0 and total_phases > 1 ->
+        :initial_engagement
 
       # Final phase
       index == total_phases - 1 and total_phases > 1 ->
@@ -236,17 +241,33 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Bat
         if intensity < 1.0, do: :cleanup, else: :final_push
 
       # Middle phase with very high intensity
-      index > 0 and index < total_phases - 1 and intensity >= 4.0 -> :climax
+      index > 0 and index < total_phases - 1 and intensity >= 4.0 ->
+        :climax
 
       # Standard classification
-      kill_count >= 100 -> :massive_battle
-      kill_count >= 50 -> :major_engagement
-      kill_count >= 20 -> :significant_battle
-      kill_count >= 10 -> :skirmish
-      kill_count >= 5 and intensity < 1.5 -> :skirmish
-      kill_count >= 5 -> :small_engagement
-      intensity > 2.0 -> :intense_skirmish
-      true -> :minor_engagement
+      kill_count >= 100 ->
+        :massive_battle
+
+      kill_count >= 50 ->
+        :major_engagement
+
+      kill_count >= 20 ->
+        :significant_battle
+
+      kill_count >= 10 ->
+        :skirmish
+
+      kill_count >= 5 and intensity < 1.5 ->
+        :skirmish
+
+      kill_count >= 5 ->
+        :small_engagement
+
+      intensity > 2.0 ->
+        :intense_skirmish
+
+      true ->
+        :minor_engagement
     end
   end
 

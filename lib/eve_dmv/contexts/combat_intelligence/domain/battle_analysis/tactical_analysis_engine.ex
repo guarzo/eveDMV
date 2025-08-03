@@ -508,13 +508,19 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.TacticalAnaly
             start_time: List.first(timeline).timestamp,
             end_time: List.last(timeline).timestamp,
             duration_seconds:
-              DateTimeUtils.diff(List.last(timeline).timestamp, List.first(timeline, :second).timestamp),
+              DateTimeUtils.diff(
+                List.last(timeline).timestamp,
+                List.first(timeline, :second).timestamp
+              ),
             kills: length(timeline),
             intensity:
               length(timeline) /
                 max(
                   1,
-                  DateTimeUtils.diff(List.last(timeline).timestamp, List.first(timeline, :second).timestamp)
+                  DateTimeUtils.diff(
+                    List.last(timeline).timestamp,
+                    List.first(timeline, :second).timestamp
+                  )
                 )
           }
         ]

@@ -1329,5 +1329,4 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
   defp ascending_values?(values) do
     values == Enum.sort(values)
   end
-
 end

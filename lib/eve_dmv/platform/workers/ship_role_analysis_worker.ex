@@ -184,7 +184,9 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorker do
   end
 
   defp fetch_recent_killmail_data do
-    cutoff_date = DateTime.utc_now() |> DateTimeUtils.add(-@recent_data_days * 24 * 60 * 60, :second)
+    cutoff_date =
+      DateTime.utc_now() |> DateTimeUtils.add(-@recent_data_days * 24 * 60 * 60, :second)
+
     # Query recent killmails with victim ship data
     query =
       from(k in "killmails_raw",

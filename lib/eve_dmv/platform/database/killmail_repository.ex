@@ -120,7 +120,8 @@ defmodule EveDmv.Database.KillmailRepository do
       get_recent_high_value(limit: 50, min_value: 50_000_000)
       get_recent_high_value(wormhole_only: true, hours_back: 6)
   """
-  @spec get_recent_high_value(keyword()) :: {:ok, [EveDmv.Killmails.KillmailEnriched.t()]} | {:error, Ash.Error.t()}
+  @spec get_recent_high_value(keyword()) ::
+          {:ok, [EveDmv.Killmails.KillmailEnriched.t()]} | {:error, Ash.Error.t()}
   def get_recent_high_value(opts \\ []) do
     cache_key = CacheHelper.build_key("killmail", "recent_high_value", opts, [])
 
@@ -203,7 +204,8 @@ defmodule EveDmv.Database.KillmailRepository do
   @doc """
   Get battles since a specific date.
   """
-  @spec get_battles_since(DateTime.t()) :: {:ok, [EveDmv.Killmails.KillmailEnriched.t()]} | {:error, Ash.Error.t()}
+  @spec get_battles_since(DateTime.t()) ::
+          {:ok, [EveDmv.Killmails.KillmailEnriched.t()]} | {:error, Ash.Error.t()}
   def get_battles_since(since_date) do
     cache_key = CacheHelper.build_key("killmail", "battles_since", since_date, [])
 
@@ -234,7 +236,8 @@ defmodule EveDmv.Database.KillmailRepository do
   @doc """
   Get popular fleet compositions with minimum engagement count.
   """
-  @spec get_popular_fleet_compositions(integer(), keyword()) :: {:ok, [map()]} | {:error, Ash.Error.t()}
+  @spec get_popular_fleet_compositions(integer(), keyword()) ::
+          {:ok, [map()]} | {:error, Ash.Error.t()}
   def get_popular_fleet_compositions(min_engagements, opts \\ []) do
     cache_key = CacheHelper.build_key("killmail", "popular_compositions", min_engagements, opts)
 

@@ -1,5 +1,4 @@
 defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzers.ActivityCorrelationAnalyzer do
-
   @moduledoc """
   Activity correlation and pattern analysis module for cross-system intelligence.
 

@@ -24,9 +24,19 @@ defmodule EveDmv.StaticData.ShipTypes do
 
   Returns the ship class as an atom, or :unknown if not found.
   """
-  @type ship_class :: :frigate | :destroyer | :cruiser | :battlecruiser | :battleship |
-                      :capital | :supercapital | :industrial | :mining | :logistics |
-                      :structure | :unknown
+  @type ship_class ::
+          :frigate
+          | :destroyer
+          | :cruiser
+          | :battlecruiser
+          | :battleship
+          | :capital
+          | :supercapital
+          | :industrial
+          | :mining
+          | :logistics
+          | :structure
+          | :unknown
   @spec classify_ship_type(integer() | any()) :: ship_class()
   def classify_ship_type(type_id) when is_integer(type_id) do
     # Query the database for the ship's group name

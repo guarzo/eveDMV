@@ -124,20 +124,38 @@ defmodule EveDmvWeb.LiveHelpers.LiveViewPatternTemplate do
   """
   def format_error(reason) do
     case reason do
-      :not_found -> "Resource not found"
-      :unauthorized -> "You don't have permission to perform this action"
-      :timeout -> "Request timed out. Please try again"
-      :battle_not_found -> "Battle not found"
-      :not_implemented -> "This feature is not yet implemented"
-      :curator_unavailable -> "Battle curator service is unavailable"
-      :battle_data_unavailable -> "Battle data is currently unavailable"
-      {:error, msg} when is_binary(msg) -> msg
+      :not_found ->
+        "Resource not found"
+
+      :unauthorized ->
+        "You don't have permission to perform this action"
+
+      :timeout ->
+        "Request timed out. Please try again"
+
+      :battle_not_found ->
+        "Battle not found"
+
+      :not_implemented ->
+        "This feature is not yet implemented"
+
+      :curator_unavailable ->
+        "Battle curator service is unavailable"
+
+      :battle_data_unavailable ->
+        "Battle data is currently unavailable"
+
+      {:error, msg} when is_binary(msg) ->
+        msg
+
       error when is_atom(error) ->
         error
         |> Atom.to_string()
         |> String.replace("_", " ")
         |> String.capitalize()
-      _ -> "An unexpected error occurred"
+
+      _ ->
+        "An unexpected error occurred"
     end
   end
 

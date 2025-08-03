@@ -47,6 +47,7 @@ defmodule EveDmv.Database.MaterializedViewManager do
 
   # Server callbacks
 
+  @impl GenServer
   def init(opts) do
     state = %{
       enabled: Keyword.get(opts, :enabled, true),
@@ -73,32 +74,38 @@ defmodule EveDmv.Database.MaterializedViewManager do
     {:ok, state}
   end
 
+  @impl GenServer
   def handle_call({:create_view, view_name}, _from, state) do
     result = ViewLifecycle.create_materialized_view(view_name)
     {:reply, result, state}
   end
 
+  @impl GenServer
   def handle_call({:drop_view, view_name}, _from, state) do
     result = ViewLifecycle.drop_materialized_view(view_name)
     {:reply, result, state}
   end
 
+  @impl GenServer
   def handle_call(:get_view_status, _from, state) do
     status = ViewMetrics.get_view_status(state.views, state.last_refresh, state.refresh_stats)
     {:reply, status, state}
   end
 
+  @impl GenServer
   def handle_call({:get_view_data, view_name, limit}, _from, state) do
     result = ViewQueryService.query_view(view_name, limit)
     {:reply, result, state}
   end
 
+  @impl GenServer
   def handle_cast({:refresh_view, view_name}, state) do
     updated_views = ViewRefreshScheduler.refresh_view_by_name(view_name, state.views)
     new_state = %{state | views: updated_views}
     {:noreply, new_state}
   end
 
+  @impl GenServer
   def handle_cast(:refresh_all_views, state) do
     {refreshed_views, new_stats} =
       ViewRefreshScheduler.refresh_all_views(state.views, state.refresh_stats)
@@ -113,11 +120,13 @@ defmodule EveDmv.Database.MaterializedViewManager do
     {:noreply, new_state}
   end
 
+  @impl GenServer
   def handle_info(:initialize_views, state) do
     new_state = initialize_all_views(state)
     {:noreply, new_state}
   end
 
+  @impl GenServer
   def handle_info(:scheduled_refresh, state) do
     {refreshed_views, new_stats} =
       ViewRefreshScheduler.refresh_all_views(state.views, state.refresh_stats)
@@ -135,6 +144,7 @@ defmodule EveDmv.Database.MaterializedViewManager do
     {:noreply, new_state}
   end
 
+  @impl GenServer
   def handle_info(:incremental_refresh, state) do
     refreshed_views =
       ViewRefreshScheduler.perform_incremental_refreshes(state.views)
@@ -146,12 +156,14 @@ defmodule EveDmv.Database.MaterializedViewManager do
     {:noreply, new_state}
   end
 
+  @impl GenServer
   def handle_info({:cache_invalidated, pattern, _count}, state) do
     updated_views = ViewRefreshScheduler.refresh_affected_views(pattern, state.views)
     new_state = %{state | views: updated_views}
     {:noreply, new_state}
   end
 
+  @impl GenServer
   def handle_info(_, state), do: {:noreply, state}
 
   # Private functions

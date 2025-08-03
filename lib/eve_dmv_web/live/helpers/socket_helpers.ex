@@ -36,6 +36,7 @@ defmodule EveDmvWeb.LiveHelpers.SocketHelpers do
       |> assign_if_not_nil(:data, maybe_data)
   """
   def assign_if_not_nil(socket, _key, nil), do: socket
+
   def assign_if_not_nil(socket, key, value) do
     assign(socket, key, value)
   end
@@ -52,6 +53,7 @@ defmodule EveDmvWeb.LiveHelpers.SocketHelpers do
   def assign_with_default(socket, key, nil, default) do
     assign(socket, key, default)
   end
+
   def assign_with_default(socket, key, value, _default) do
     assign(socket, key, value)
   end
@@ -199,9 +201,12 @@ defmodule EveDmvWeb.LiveHelpers.SocketHelpers do
   """
   def update_in_list_assign(socket, key, predicate, update_fn) do
     current = Map.get(socket.assigns, key, [])
-    updated = Enum.map(current, fn item ->
-      if predicate.(item), do: update_fn.(item), else: item
-    end)
+
+    updated =
+      Enum.map(current, fn item ->
+        if predicate.(item), do: update_fn.(item), else: item
+      end)
+
     assign(socket, key, updated)
   end
 

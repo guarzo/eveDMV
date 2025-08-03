@@ -115,7 +115,8 @@ defmodule EveDmv.Contexts.Intelligence.Services.PlayerStatsEngine do
         comparative_metrics: %{...}
       }}
   """
-  @spec calculate_player_statistics(integer(), integer()) :: {:ok, player_stats()} | {:error, Ash.Error.t()}
+  @spec calculate_player_statistics(integer(), integer()) ::
+          {:ok, player_stats()} | {:error, Ash.Error.t()}
   def calculate_player_statistics(character_id, time_period \\ 90) do
     Logger.info("Calculating comprehensive player statistics",
       character_id: character_id
@@ -176,7 +177,8 @@ defmodule EveDmv.Contexts.Intelligence.Services.PlayerStatsEngine do
 
   `{:ok, performance_metrics}` containing detailed performance analysis
   """
-  @spec generate_performance_metrics(integer(), list(atom())) :: {:ok, performance_metrics()} | {:error, Ash.Error.t()}
+  @spec generate_performance_metrics(integer(), list(atom())) ::
+          {:ok, performance_metrics()} | {:error, Ash.Error.t()}
   def generate_performance_metrics(
         character_id,
         metric_types \\ [:combat, :tactical, :economic, :social]

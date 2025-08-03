@@ -13,6 +13,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
   alias EveDmv.Contexts.Surveillance.Api, as: SurveillanceApi
   alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Intelligence.WandererClient
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Search.SearchSuggestionService
 

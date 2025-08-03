@@ -69,7 +69,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   @doc """
   Bulk analyze multiple characters.
   """
-  @spec bulk_analyze([integer()], map()) :: {:ok, bulk_analysis_results()} | {:error, Ash.Error.t()}
+  @spec bulk_analyze([integer()], map()) ::
+          {:ok, bulk_analysis_results()} | {:error, Ash.Error.t()}
   def bulk_analyze(character_ids, context) do
     results =
       Enum.map(character_ids, fn id ->

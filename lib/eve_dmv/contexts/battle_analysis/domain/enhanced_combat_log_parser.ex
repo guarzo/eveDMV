@@ -11,7 +11,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
   - Module usage effectiveness
   """
 
-    alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 

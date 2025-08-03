@@ -453,7 +453,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
       11_987 -> :logistics
       # Oneiros
       11_989 -> :logistics
-
       # EWAR ships
       # Blackbird
       632 -> :ewar
@@ -477,7 +476,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
       11_965 -> :ewar
       # Pilgrim
       11_963 -> :ewar
-
       # DPS ships
       # Rifter
       587 -> :dps

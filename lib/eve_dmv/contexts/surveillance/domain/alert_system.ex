@@ -65,6 +65,7 @@ defmodule EveDmv.Intelligence.AlertSystem do
 
   ## GenServer Implementation
 
+  @impl GenServer
   def init(_opts) do
     # Schedule periodic monitoring
     :timer.send_interval(:timer.minutes(5), :periodic_monitoring)
@@ -80,6 +81,7 @@ defmodule EveDmv.Intelligence.AlertSystem do
     {:ok, state}
   end
 
+  @impl GenServer
   def handle_call(:get_active_alerts, _from, state) do
     alerts =
       state.active_alerts
@@ -89,24 +91,28 @@ defmodule EveDmv.Intelligence.AlertSystem do
     {:reply, alerts, state}
   end
 
+  @impl GenServer
   def handle_cast({:character_analysis, analysis}, state) do
     alerts = check_character_analysis_alerts(analysis)
     new_state = process_new_alerts(alerts, state)
     {:noreply, new_state}
   end
 
+  @impl GenServer
   def handle_cast({:vetting_analysis, vetting}, state) do
     alerts = check_vetting_analysis_alerts(vetting)
     new_state = process_new_alerts(alerts, state)
     {:noreply, new_state}
   end
 
+  @impl GenServer
   def handle_cast({:new_killmail, killmail}, state) do
     alerts = check_killmail_alerts(killmail)
     new_state = process_new_alerts(alerts, state)
     {:noreply, new_state}
   end
 
+  @impl GenServer
   def handle_cast({:acknowledge_alert, alert_id, acknowledged_by}, state) do
     case Map.get(state.active_alerts, alert_id) do
       nil ->
@@ -130,6 +136,7 @@ defmodule EveDmv.Intelligence.AlertSystem do
     end
   end
 
+  @impl GenServer
   def handle_info(:periodic_monitoring, state) do
     # Perform periodic threat monitoring
     spawn(fn -> perform_periodic_monitoring() end)

@@ -10,6 +10,7 @@ defmodule EveDmv.Database.PerformanceOptimizer do
   """
 
   alias EveDmv.Repo
+  alias Postgrex
 
   require Logger
 
@@ -61,15 +62,27 @@ defmodule EveDmv.Database.PerformanceOptimizer do
       %Postgrex.Error{postgres: %{code: code}} ->
         case code do
           :undefined_table ->
-            Logger.error("Database table not found during #{error_details.operation}", error_details)
+            Logger.error(
+              "Database table not found during #{error_details.operation}",
+              error_details
+            )
+
             {:error, :database_error, "Required database table not found"}
 
           :undefined_column ->
-            Logger.error("Database column not found during #{error_details.operation}", error_details)
+            Logger.error(
+              "Database column not found during #{error_details.operation}",
+              error_details
+            )
+
             {:error, :database_error, "Required database column not found"}
 
           :insufficient_privilege ->
-            Logger.error("Insufficient database privileges for #{error_details.operation}", error_details)
+            Logger.error(
+              "Insufficient database privileges for #{error_details.operation}",
+              error_details
+            )
+
             {:error, :database_error, "Insufficient database privileges"}
 
           _ ->

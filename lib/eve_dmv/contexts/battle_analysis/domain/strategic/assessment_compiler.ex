@@ -10,7 +10,7 @@ defmodule EveDmv.Shared.Strategic.AssessmentCompiler do
   - Executive summary generation
   """
 
-    alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 

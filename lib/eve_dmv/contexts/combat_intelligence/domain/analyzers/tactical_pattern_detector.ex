@@ -11,7 +11,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Tac
   - Evaluating target selection strategies
   """
 
-    alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 

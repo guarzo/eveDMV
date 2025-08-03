@@ -1713,5 +1713,4 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
   defp tank_ship?(participant), do: participant.ship_type_id in get_tank_ships()
   defp support_ship?(participant), do: participant.ship_type_id in get_support_ships()
   defp tackle_ship?(participant), do: participant.ship_type_id in get_fast_ships()
-
 end

@@ -10,7 +10,7 @@ defmodule EveDmv.Shared.Strategic.CorrelationEngine do
   - Relationship detection
   """
 
-    alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 

@@ -154,6 +154,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.Analyzers.ModuleClassifier do
   """
   def get_dps_class(ship_data) do
     ship_type_id = ship_data[:ship_type_id] || ship_data["ship_type_id"]
+
     if ship_type_id do
       ship_class = EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
       classify_dps_capability(ship_class)
@@ -167,6 +168,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.Analyzers.ModuleClassifier do
   """
   def get_tank_type(ship_data) do
     ship_type_id = ship_data[:ship_type_id] || ship_data["ship_type_id"]
+
     if ship_type_id do
       ship_class = EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
       classify_tank_capability(ship_class)
@@ -180,6 +182,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.Analyzers.ModuleClassifier do
   """
   def get_mobility_class(ship_data) do
     ship_type_id = ship_data[:ship_type_id] || ship_data["ship_type_id"]
+
     if ship_type_id do
       ship_class = EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
       classify_mobility_capability(ship_class)

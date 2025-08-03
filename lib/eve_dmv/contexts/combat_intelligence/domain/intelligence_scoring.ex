@@ -26,7 +26,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
           optional(atom()) => term()
         }
 
-  @spec calculate_score(integer(), atom()) :: {:ok, intelligence_score_result()} | {:error, term()}
+  @spec calculate_score(integer(), atom()) ::
+          {:ok, intelligence_score_result()} | {:error, term()}
   def calculate_score(character_id, scoring_type) do
     perform_score_calculation(character_id, scoring_type)
   end

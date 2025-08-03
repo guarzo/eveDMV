@@ -448,8 +448,12 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ProfileManagementService do
            created_at: profile.created_at,
            updated_at: profile.updated_at
          }}
-      {:error, reason} -> {:error, reason}
-      _ -> {:error, :profile_not_found}
+
+      {:error, reason} ->
+        {:error, reason}
+
+      _ ->
+        {:error, :profile_not_found}
     end
   end
 

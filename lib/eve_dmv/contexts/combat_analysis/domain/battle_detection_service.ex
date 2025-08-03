@@ -125,7 +125,9 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService do
   @impl GenServer
   def handle_call({:get_battles, options}, _from, state) do
     limit = Keyword.get(options, :limit, 50)
-    since = Keyword.get(options, :since, DateTimeUtils.add(DateTime.utc_now(), -24 * 3600, :second))
+
+    since =
+      Keyword.get(options, :since, DateTimeUtils.add(DateTime.utc_now(), -24 * 3600, :second))
 
     battles = get_recent_battles(since, limit)
     {:reply, {:ok, battles}, state}

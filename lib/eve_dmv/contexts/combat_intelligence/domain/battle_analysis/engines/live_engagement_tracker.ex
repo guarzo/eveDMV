@@ -51,7 +51,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.LiveE
       system_id: engagement.system_id,
       start_time: engagement.start_time,
       last_activity: engagement.last_activity,
-      duration_seconds: DateTimeUtils.diff(engagement.last_activity, engagement.start_time, :second),
+      duration_seconds:
+        DateTimeUtils.diff(engagement.last_activity, engagement.start_time, :second),
       participant_count: participant_count,
       kill_count: length(engagement.killmails),
       kill_rate_per_minute: kill_rate,

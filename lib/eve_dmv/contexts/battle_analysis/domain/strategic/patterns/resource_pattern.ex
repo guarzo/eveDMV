@@ -128,33 +128,90 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
     # This is based on EVE Online ship type IDs
     case ship_type_id do
       # Mining ships
-      32_880 -> :venture      # Venture
-      17_478 -> :retriever    # Retriever
-      17_480 -> :retriever    # Procurer
-      17_482 -> :retriever    # Covetor
-      22_544 -> :retriever    # Hulk
-      22_546 -> :retriever    # Skiff
-      22_548 -> :retriever    # Mackinaw
-      28_606 -> :orca        # Orca
-      28_352 -> :rorqual     # Rorqual
+      # Venture
+      32_880 ->
+        :venture
+
+      # Retriever
+      17_478 ->
+        :retriever
+
+      # Procurer
+      17_480 ->
+        :retriever
+
+      # Covetor
+      17_482 ->
+        :retriever
+
+      # Hulk
+      22_544 ->
+        :retriever
+
+      # Skiff
+      22_546 ->
+        :retriever
+
+      # Mackinaw
+      22_548 ->
+        :retriever
+
+      # Orca
+      28_606 ->
+        :orca
+
+      # Rorqual
+      28_352 ->
+        :rorqual
 
       # Industrial/Hauling ships
-      648 -> :hauler        # Badger
-      649 -> :hauler        # Tayra
-      650 -> :hauler        # Nereus
-      651 -> :hauler        # Hoarder
-      652 -> :hauler        # Mammoth
-      653 -> :hauler        # Wreathe
-      654 -> :hauler        # Kryos
-      655 -> :hauler        # Epithal
-      656 -> :hauler        # Miasmos
-      657 -> :hauler        # Iteron Mark V
+      # Badger
+      648 ->
+        :hauler
+
+      # Tayra
+      649 ->
+        :hauler
+
+      # Nereus
+      650 ->
+        :hauler
+
+      # Hoarder
+      651 ->
+        :hauler
+
+      # Mammoth
+      652 ->
+        :hauler
+
+      # Wreathe
+      653 ->
+        :hauler
+
+      # Kryos
+      654 ->
+        :hauler
+
+      # Epithal
+      655 ->
+        :hauler
+
+      # Miasmos
+      656 ->
+        :hauler
+
+      # Iteron Mark V
+      657 ->
+        :hauler
 
       # Default classification based on group
       _ ->
         case EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id) do
-          :mining -> :venture  # Default mining ship
-          :industrial -> :hauler  # Default hauler
+          # Default mining ship
+          :mining -> :venture
+          # Default hauler
+          :industrial -> :hauler
           _ -> :combat
         end
     end
@@ -772,5 +829,4 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
       true -> :minimal
     end
   end
-
 end

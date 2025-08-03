@@ -314,5 +314,4 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
       Logger.debug("Cleaned up #{length(expired_keys)} expired cache entries")
     end
   end
-
 end

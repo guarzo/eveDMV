@@ -8,6 +8,8 @@ defmodule EveDmvWeb.AuthController do
   use EveDmvWeb, :controller
   use AshAuthentication.Phoenix.Controller
 
+  import Plug.Conn
+
   alias EveDmv.Security.AuditLogger
   alias EveDmv.Users.AccountManager
 

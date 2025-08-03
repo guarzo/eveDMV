@@ -26,7 +26,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
       gaps = IntelligenceQualityAnalyzer.identify_intelligence_gaps(system_ids, killmails)
   """
 
-    alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 

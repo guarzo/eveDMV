@@ -122,6 +122,7 @@ defmodule EveDmv.Cache.StaticDataCache do
 
   # Server callbacks
 
+  @impl GenServer
   def init(_opts) do
     # Create ETS table
     :ets.new(@table_name, [:set, :public, :named_table, read_concurrency: true])
@@ -143,11 +144,13 @@ defmodule EveDmv.Cache.StaticDataCache do
      }}
   end
 
+  @impl GenServer
   def handle_call(:clear_cache, _from, state) do
     :ets.delete_all_objects(@table_name)
     {:reply, :ok, %{state | hits: 0, misses: 0}}
   end
 
+  @impl GenServer
   def handle_call(:get_stats, _from, state) do
     cache_size = :ets.info(@table_name, :size)
     memory = :ets.info(@table_name, :memory)
@@ -164,25 +167,30 @@ defmodule EveDmv.Cache.StaticDataCache do
     {:reply, stats, state}
   end
 
+  @impl GenServer
   def handle_cast(:warm_cache, state) do
     Task.start(fn -> perform_cache_warming() end)
     {:noreply, %{state | last_warm: DateTime.utc_now()}}
   end
 
+  @impl GenServer
   def handle_cast({:record_hits, count}, state) do
     {:noreply, %{state | hits: state.hits + count}}
   end
 
+  @impl GenServer
   def handle_cast({:record_misses, count}, state) do
     {:noreply, %{state | misses: state.misses + count}}
   end
 
+  @impl GenServer
   def handle_info(:initial_warm_cache, state) do
     Logger.info("Performing initial static data cache warming")
     perform_cache_warming()
     {:noreply, %{state | last_warm: DateTime.utc_now()}}
   end
 
+  @impl GenServer
   def handle_info(:scheduled_warm_cache, state) do
     Logger.info("Performing scheduled static data cache warming")
     perform_cache_warming()

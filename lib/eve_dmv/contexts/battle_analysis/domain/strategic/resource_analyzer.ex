@@ -623,40 +623,113 @@ defmodule EveDmv.Shared.Strategic.ResourceAnalyzer do
     # This is based on EVE Online ship type IDs
     case ship_type_id do
       # Freighters
-      20_183 -> :freighter   # Providence
-      20_185 -> :freighter   # Charon
-      20_187 -> :freighter   # Obelisk
-      20_189 -> :freighter   # Fenrir
+      # Providence
+      20_183 ->
+        :freighter
+
+      # Charon
+      20_185 ->
+        :freighter
+
+      # Obelisk
+      20_187 ->
+        :freighter
+
+      # Fenrir
+      20_189 ->
+        :freighter
 
       # Jump Freighters
-      28_844 -> :freighter   # Rhea
-      28_846 -> :freighter   # Nomad
-      28_848 -> :freighter   # Anshar
-      28_850 -> :freighter   # Ark
+      # Rhea
+      28_844 ->
+        :freighter
+
+      # Nomad
+      28_846 ->
+        :freighter
+
+      # Anshar
+      28_848 ->
+        :freighter
+
+      # Ark
+      28_850 ->
+        :freighter
 
       # Deep Space Transports
-      12_729 -> :transport   # Crane
-      12_731 -> :transport   # Bustard
-      12_733 -> :transport   # Mastodon
-      12_735 -> :transport   # Impel
+      # Crane
+      12_729 ->
+        :transport
+
+      # Bustard
+      12_731 ->
+        :transport
+
+      # Mastodon
+      12_733 ->
+        :transport
+
+      # Impel
+      12_735 ->
+        :transport
 
       # Blockade Runners
-      12_743 -> :transport   # Prowler
-      12_745 -> :transport   # Viator
-      12_747 -> :transport   # Prorator
-      12_749 -> :transport   # Wideload
+      # Prowler
+      12_743 ->
+        :transport
+
+      # Viator
+      12_745 ->
+        :transport
+
+      # Prorator
+      12_747 ->
+        :transport
+
+      # Wideload
+      12_749 ->
+        :transport
 
       # T1 Haulers
-      648 -> :hauler        # Badger
-      649 -> :hauler        # Tayra
-      650 -> :hauler        # Nereus
-      651 -> :hauler        # Hoarder
-      652 -> :hauler        # Mammoth
-      653 -> :hauler        # Wreathe
-      654 -> :hauler        # Kryos
-      655 -> :hauler        # Epithal
-      656 -> :hauler        # Miasmos
-      657 -> :hauler        # Iteron Mark V
+      # Badger
+      648 ->
+        :hauler
+
+      # Tayra
+      649 ->
+        :hauler
+
+      # Nereus
+      650 ->
+        :hauler
+
+      # Hoarder
+      651 ->
+        :hauler
+
+      # Mammoth
+      652 ->
+        :hauler
+
+      # Wreathe
+      653 ->
+        :hauler
+
+      # Kryos
+      654 ->
+        :hauler
+
+      # Epithal
+      655 ->
+        :hauler
+
+      # Miasmos
+      656 ->
+        :hauler
+
+      # Iteron Mark V
+      657 ->
+        :hauler
 
       # Default classification based on group
       _ ->

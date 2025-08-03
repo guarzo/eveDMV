@@ -62,5 +62,4 @@ defmodule EveDmv.DialyzerRegressionTest do
       end
     end
   end
-
 end

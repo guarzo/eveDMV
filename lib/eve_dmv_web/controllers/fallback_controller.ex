@@ -8,6 +8,8 @@ defmodule EveDmvWeb.FallbackController do
   """
 
   use EveDmvWeb, :controller
+
+  import Plug.Conn
   require Logger
 
   @doc """

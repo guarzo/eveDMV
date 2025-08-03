@@ -164,7 +164,8 @@ defmodule EveDmvWeb.WHVettingLive do
             {:noreply, socket}
 
           {:error, reason} ->
-            {:noreply, put_flash(socket, :error, "Failed to transform analysis: #{inspect(reason)}")}
+            {:noreply,
+             put_flash(socket, :error, "Failed to transform analysis: #{inspect(reason)}")}
         end
 
       {:error, reason} ->

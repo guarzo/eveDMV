@@ -1011,7 +1011,8 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
       start_time = List.first(sorted).killmail_time
       end_time = List.last(sorted).killmail_time
 
-      slot_count = div(DateTimeUtils.diff(end_time, start_time, :minute), slot_duration_minutes) + 1
+      slot_count =
+        div(DateTimeUtils.diff(end_time, start_time, :minute), slot_duration_minutes) + 1
 
       0..(slot_count - 1)
       |> Enum.map(fn i ->

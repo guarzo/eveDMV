@@ -59,7 +59,8 @@ defmodule EveDmv.Eve.CircuitBreaker do
   @doc """
   Execute a function with circuit breaker protection.
   """
-  @spec call(atom(), (-> term()), keyword()) :: {:ok, term()} | {:error, atom() | {atom(), term()}}
+  @spec call(atom(), (-> term()), keyword()) ::
+          {:ok, term()} | {:error, atom() | {atom(), term()}}
   def call(service_name, fun, opts \\ []) do
     timeout = Keyword.get(opts, :timeout, @default_timeout)
 
@@ -272,7 +273,8 @@ defmodule EveDmv.Eve.CircuitBreaker do
         false
 
       last_failure ->
-        DateTimeUtils.diff(DateTime.utc_now(), last_failure, :millisecond) >= state.recovery_timeout
+        DateTimeUtils.diff(DateTime.utc_now(), last_failure, :millisecond) >=
+          state.recovery_timeout
     end
   end
 

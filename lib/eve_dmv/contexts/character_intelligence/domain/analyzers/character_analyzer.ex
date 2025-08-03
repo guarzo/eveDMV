@@ -94,7 +94,8 @@ defmodule EveDmv.Intelligence.Analyzers.CharacterAnalyzer do
   This provides more detailed analysis using multiple plugins including
   behavioral patterns, ship preferences, and threat assessment.
   """
-  @spec get_comprehensive_analysis(integer()) :: {:ok, comprehensive_character_analysis()} | {:error, term()}
+  @spec get_comprehensive_analysis(integer()) ::
+          {:ok, comprehensive_character_analysis()} | {:error, term()}
   def get_comprehensive_analysis(character_id) do
     Logger.info(
       "Performing comprehensive character analysis for #{character_id} via Intelligence Engine"

@@ -179,6 +179,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
   defp normalize_character_id(id) when is_binary(id) do
     # Remove underscores from string numbers before parsing
     cleaned_id = String.replace(id, "_", "")
+
     case Integer.parse(cleaned_id) do
       {int_id, ""} -> int_id
       _ -> nil

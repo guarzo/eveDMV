@@ -48,6 +48,7 @@ defmodule EveDmv.Database.PartitionManager do
 
   # Server callbacks
 
+  @impl GenServer
   def init(opts) do
     state = %{
       enabled: Keyword.get(opts, :enabled, true),
@@ -66,32 +67,38 @@ defmodule EveDmv.Database.PartitionManager do
     {:ok, state}
   end
 
+  @impl GenServer
   def handle_call({:create_partitions, table, date}, _from, state) do
     result = create_partition_for_table_and_date(table, date)
     {:reply, result, state}
   end
 
+  @impl GenServer
   def handle_call({:cleanup_partitions, table}, _from, state) do
     result = cleanup_old_partitions_for_table(table)
     {:reply, result, state}
   end
 
+  @impl GenServer
   def handle_call(:get_partition_status, _from, state) do
     status = get_current_partition_status()
     {:reply, status, state}
   end
 
+  @impl GenServer
   def handle_cast(:force_maintenance, state) do
     new_state = perform_partition_maintenance(state)
     {:noreply, new_state}
   end
 
+  @impl GenServer
   def handle_info(:perform_maintenance, state) do
     new_state = perform_partition_maintenance(state)
     schedule_maintenance()
     {:noreply, new_state}
   end
 
+  @impl GenServer
   def handle_info(_, state), do: {:noreply, state}
 
   # Private functions

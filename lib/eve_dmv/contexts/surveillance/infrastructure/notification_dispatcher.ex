@@ -240,7 +240,8 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.NotificationDispatcher do
               updated_item = %{
                 item
                 | attempts: item.attempts + 1,
-                  next_retry: DateTimeUtils.add(current_time, round(next_retry_delay), :millisecond),
+                  next_retry:
+                    DateTimeUtils.add(current_time, round(next_retry_delay), :millisecond),
                   last_error: reason
               }
 
@@ -455,5 +456,4 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.NotificationDispatcher do
     # Process retry queue every 30 seconds
     Process.send_after(self(), :process_retry_queue, 30_000)
   end
-
 end

@@ -7,7 +7,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivit
   burnout, or other behavioral changes requiring attention.
   """
 
-    alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 

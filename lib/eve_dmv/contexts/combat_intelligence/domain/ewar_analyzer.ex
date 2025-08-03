@@ -141,8 +141,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
     case get_ship_info(ship_type_id) do
       {:ok, ship_info} ->
         analyze_ewar_capabilities(ship_info)
-      {:error, reason} -> {:error, reason}
-      _ -> {:error, :ship_info_unavailable}
+
+      {:error, reason} ->
+        {:error, reason}
+
+      _ ->
+        {:error, :ship_info_unavailable}
     end
   end
 

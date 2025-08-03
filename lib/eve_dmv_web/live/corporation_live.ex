@@ -238,7 +238,8 @@ defmodule EveDmvWeb.CorporationLive do
 
     # Load intelligence data
     # get_corporation_intelligence_report always returns {:ok, map()} per its spec
-    {:ok, intelligence_data} = CorporationIntelligence.get_corporation_intelligence_report(corporation_id)
+    {:ok, intelligence_data} =
+      CorporationIntelligence.get_corporation_intelligence_report(corporation_id)
 
     # Load battle data
     battles = BattleDetector.detect_corporation_battles(corporation_id, 10)

@@ -133,6 +133,8 @@ defmodule EveDmv.Contexts.Intelligence.Services.ComparisonService do
          {:ok, data} <- maybe_add_ship_data(data, character_id, aspects),
          {:ok, data} <- maybe_add_behavior_data(data, character_id, aspects) do
       {:ok, data}
+    else
+      error -> error
     end
   end
 

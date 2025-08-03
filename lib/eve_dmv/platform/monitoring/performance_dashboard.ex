@@ -94,6 +94,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
 
   # Server callbacks
 
+  @impl GenServer
   def init(_opts) do
     # Attach telemetry handlers
     attach_telemetry_handlers()
@@ -116,6 +117,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
     {:ok, state}
   end
 
+  @impl GenServer
   def handle_call(:get_metrics, _from, state) do
     # Add calculated metrics
     metrics =
@@ -126,18 +128,24 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
     {:reply, metrics, state}
   end
 
+  @impl GenServer
   def handle_call(:get_alerts, _from, state) do
     # Return recent alerts
     recent_alerts =
       state.alerts
       |> Enum.take(50)
       |> Enum.map(fn alert ->
-        Map.put(alert, :age_seconds, DateTimeUtils.diff(DateTime.utc_now(), alert.timestamp, :second))
+        Map.put(
+          alert,
+          :age_seconds,
+          DateTimeUtils.diff(DateTime.utc_now(), alert.timestamp, :second)
+        )
       end)
 
     {:reply, recent_alerts, state}
   end
 
+  @impl GenServer
   def handle_call({:get_history, duration_minutes}, _from, state) do
     cutoff = DateTimeUtils.add(DateTime.utc_now(), -duration_minutes * 60, :second)
 
@@ -151,6 +159,8 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
   end
 
   # Telemetry event handlers
+
+  @impl GenServer
   def handle_info(
         {:telemetry_event, [:eve_dmv, :query, :duration], measurements, metadata},
         state
@@ -207,6 +217,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
     {:noreply, new_state}
   end
 
+  @impl GenServer
   def handle_info({:telemetry_event, [:eve_dmv, :cache, event], measurements, _metadata}, state) do
     metrics = state.metrics
     cache = metrics.cache
@@ -243,6 +254,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
     end
   end
 
+  @impl GenServer
   def handle_info(
         {:telemetry_event, [:broadway, :processor, :message, event], _measurements, _metadata},
         state
@@ -266,6 +278,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
     {:noreply, %{state | metrics: new_metrics}}
   end
 
+  @impl GenServer
   def handle_info({:telemetry_event, [:eve_dmv, :import, :batch], measurements, _metadata}, state) do
     metrics = state.metrics
     imports = metrics.imports
@@ -278,6 +291,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
     {:noreply, %{state | metrics: new_metrics}}
   end
 
+  @impl GenServer
   def handle_info({:telemetry_event, [:ecto, :repo, :query], measurements, metadata}, state) do
     # Track database query performance
     duration = System.convert_time_unit(measurements.total_time || 0, :native, :millisecond)
@@ -313,6 +327,8 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
   end
 
   # Memory monitoring
+
+  @impl GenServer
   def handle_info(:monitor_memory, state) do
     # Get system memory info
     memory_data = :erlang.memory()
@@ -375,6 +391,8 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
   end
 
   # Periodic snapshots for history
+
+  @impl GenServer
   def handle_info(:take_snapshot, state) do
     snapshot = %{
       timestamp: DateTime.utc_now(),
@@ -398,6 +416,7 @@ defmodule EveDmv.Monitoring.PerformanceDashboard do
     {:noreply, %{state | history: history}}
   end
 
+  @impl GenServer
   def handle_info(_, state), do: {:noreply, state}
 
   # Private functions

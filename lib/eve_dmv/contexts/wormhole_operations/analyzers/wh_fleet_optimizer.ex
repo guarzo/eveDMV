@@ -188,27 +188,36 @@ defmodule EveDmv.Contexts.WormholeOperations.Analyzers.WhFleetAnalyzer.FleetOpti
   defp determine_primary_engagement_range(ships) do
     # Analyze engagement range based on ship types
     # Count ships by typical engagement range
-    range_counts = Enum.frequencies_by(ships, fn ship_id ->
-      case ship_id do
-        # Brawling ships (short range)
-        11_393 -> :short  # Vexor
-        16_229 -> :short  # Brutix
-        24_692 -> :short  # Hyperion
-        17_740 -> :short  # Maelstrom
-
-        # Kiting ships (long range)
-        11_993 -> :long   # Cerberus
-        12_003 -> :long   # Caracal
-        24_694 -> :long   # Rokh
-        642 -> :long     # Apocalypse
-
-        # Default to medium range
-        _ -> :medium
-      end
-    end)
+    range_counts =
+      Enum.frequencies_by(ships, fn ship_id ->
+        case ship_id do
+          # Brawling ships (short range)
+          # Vexor
+          11_393 -> :short
+          # Brutix
+          16_229 -> :short
+          # Hyperion
+          24_692 -> :short
+          # Maelstrom
+          17_740 -> :short
+          # Kiting ships (long range)
+          # Cerberus
+          11_993 -> :long
+          # Caracal
+          12_003 -> :long
+          # Rokh
+          24_694 -> :long
+          # Apocalypse
+          642 -> :long
+          # Default to medium range
+          _ -> :medium
+        end
+      end)
 
     # Return the most common range
-    {range, _count} = Enum.max_by(range_counts, fn {_range, count} -> count end, fn -> {:medium, 0} end)
+    {range, _count} =
+      Enum.max_by(range_counts, fn {_range, count} -> count end, fn -> {:medium, 0} end)
+
     range
   end
 

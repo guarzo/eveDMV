@@ -44,8 +44,12 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
     case fetch_battle_data(battle_id) do
       {:ok, battle_data} ->
         create_battle_report_from_data(battle_data, creator_character_id, options)
-      {:error, reason} -> {:error, reason}
-      _ -> {:error, :battle_data_unavailable}
+
+      {:error, reason} ->
+        {:error, reason}
+
+      _ ->
+        {:error, :battle_data_unavailable}
     end
   end
 
@@ -96,8 +100,12 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
     case fetch_battle_report(report_id) do
       {:ok, battle_report} ->
         CommunityManager.rate_battle_report(battle_report, rater_character_id, rating, options)
-      {:error, reason} -> {:error, reason}
-      _ -> {:error, :report_not_found}
+
+      {:error, reason} ->
+        {:error, reason}
+
+      _ ->
+        {:error, :report_not_found}
     end
   end
 

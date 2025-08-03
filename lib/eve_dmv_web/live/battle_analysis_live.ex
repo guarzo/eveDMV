@@ -335,10 +335,11 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       |> Map.put(:fitting_data, existing_fitting)
       |> Map.put(:combat_log_analysis, combat_log_analysis)
 
-    {:ok, performance} = EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer.analyze_ship_performance(
-      enhanced_ship_data,
-      socket.assigns.current_battle
-    )
+    {:ok, performance} =
+      EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer.analyze_ship_performance(
+        enhanced_ship_data,
+        socket.assigns.current_battle
+      )
 
     # Update ETS cache with current fitting
     if existing_fitting do
@@ -419,11 +420,12 @@ defmodule EveDmvWeb.BattleAnalysisLive do
         visibility: String.to_existing_atom(params["visibility"])
       ]
 
-      {:ok, _report} = BattleSharing.create_battle_report_from_data(
-        socket.assigns.current_battle,
-        creator_id,
-        options
-      )
+      {:ok, _report} =
+        BattleSharing.create_battle_report_from_data(
+          socket.assigns.current_battle,
+          creator_id,
+          options
+        )
 
       {:noreply,
        socket
@@ -502,10 +504,11 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       # Update ship data with new fitting
       ship_data = Map.put(socket.assigns.selected_ship, :fitting_data, fitting.parsed_fitting)
 
-      {:ok, performance} = EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer.analyze_ship_performance(
-        ship_data,
-        socket.assigns.current_battle
-      )
+      {:ok, performance} =
+        EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer.analyze_ship_performance(
+          ship_data,
+          socket.assigns.current_battle
+        )
 
       socket =
         socket
@@ -633,15 +636,21 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   defp format_error({:api_error, status}), do: "zkillboard API error (#{status})"
   defp format_error(_), do: "Import failed"
 
-  defp format_error_reason(:curator_unavailable), do: "Battle curator service is temporarily unavailable"
+  defp format_error_reason(:curator_unavailable),
+    do: "Battle curator service is temporarily unavailable"
+
   defp format_error_reason(:report_not_found), do: "Battle report not found"
-  defp format_error_reason(:permission_denied), do: "You don't have permission to perform this action"
+
+  defp format_error_reason(:permission_denied),
+    do: "You don't have permission to perform this action"
+
   defp format_error_reason(reason) when is_atom(reason) do
     reason
     |> Atom.to_string()
     |> String.replace("_", " ")
     |> String.capitalize()
   end
+
   defp format_error_reason(_), do: "Failed to submit rating"
 
   # View helpers (these should be in the template but included here for completeness)

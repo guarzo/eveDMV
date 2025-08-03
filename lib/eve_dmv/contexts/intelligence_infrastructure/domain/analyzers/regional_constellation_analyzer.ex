@@ -679,10 +679,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
       midpoint = DateTimeUtils.add(DateTime.utc_now(), -7 * 24 * 3_600, :second)
 
       recent_kills =
-        Enum.filter(killmails, fn km -> DateTimeUtils.compare(km.killmail_time, midpoint) == :gt end)
+        Enum.filter(killmails, fn km ->
+          DateTimeUtils.compare(km.killmail_time, midpoint) == :gt
+        end)
 
       older_kills =
-        Enum.filter(killmails, fn km -> DateTimeUtils.compare(km.killmail_time, midpoint) == :lt end)
+        Enum.filter(killmails, fn km ->
+          DateTimeUtils.compare(km.killmail_time, midpoint) == :lt
+        end)
 
       # Get top alliance in each period
       recent_top = get_top_alliance(recent_kills)

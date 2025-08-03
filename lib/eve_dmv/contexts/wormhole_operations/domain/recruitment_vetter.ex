@@ -221,6 +221,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
       }
 
       {:ok, vetting_report}
+    else
+      error -> error
     end
   end
 
@@ -401,7 +403,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
 
   defp assess_character_metrics(character_data) do
     # Character age assessment
-    character_age_days = DateTimeUtils.diff(DateTime.utc_now(), character_data.creation_date, :day)
+    character_age_days =
+      DateTimeUtils.diff(DateTime.utc_now(), character_data.creation_date, :day)
+
     age_score = calculate_age_score(character_age_days)
 
     # Skill point assessment
@@ -1122,7 +1126,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
 
   defp assess_spy_risk_indicators(character_data) do
     # Very new character with high SP
-    character_age_days = DateTimeUtils.diff(DateTime.utc_now(), character_data.creation_date, :day)
+    character_age_days =
+      DateTimeUtils.diff(DateTime.utc_now(), character_data.creation_date, :day)
+
     sp_per_day = character_data.total_sp / max(character_age_days, 1)
 
     # Unrealistically high SP gain

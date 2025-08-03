@@ -280,7 +280,9 @@ defmodule EveDmv.Contexts.Combat.Core.TimelineBuilder do
   defp rapid_succession?(events) do
     avg_time_between =
       if length(events) > 1 do
-        total_duration = DateTimeUtils.diff(List.last(events).time, List.first(events, :second).time)
+        total_duration =
+          DateTimeUtils.diff(List.last(events).time, List.first(events, :second).time)
+
         total_duration / (length(events) - 1)
       else
         999

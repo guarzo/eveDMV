@@ -61,6 +61,7 @@ defmodule EveDmv.Database.IncrementalViewRefresher do
 
   # Server callbacks
 
+  @impl GenServer
   def init(opts) do
     state = %{
       enabled: Keyword.get(opts, :enabled, true),
@@ -80,22 +81,26 @@ defmodule EveDmv.Database.IncrementalViewRefresher do
     {:ok, state}
   end
 
+  @impl GenServer
   def handle_info(:refresh_views, state) do
     new_state = perform_incremental_refreshes(state)
     schedule_refresh(state.refresh_interval)
     {:noreply, new_state}
   end
 
+  @impl GenServer
   def handle_call({:refresh_view, view_name, opts}, _from, state) do
     result = refresh_single_view(view_name, opts)
     {:reply, result, state}
   end
 
+  @impl GenServer
   def handle_call(:get_status, _from, state) do
     status = compile_refresh_status(state)
     {:reply, status, state}
   end
 
+  @impl GenServer
   def handle_call({:full_refresh, view_name}, _from, state) do
     result = perform_full_refresh(view_name)
     {:reply, result, state}

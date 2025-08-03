@@ -38,18 +38,22 @@ defmodule EveDmv.Contexts.Intelligence.Services.CharacterService do
   def update_character_stats(character_id, stats) do
     case get_character(character_id) do
       {:ok, character} ->
-        with {:ok, updated} <- Ash.update(character, stats, domain: Api) do
-          # Clear related caches
-          clear_character_cache(character_id)
+        case Ash.update(character, stats, domain: Api) do
+          {:ok, updated} ->
+            # Clear related caches
+            clear_character_cache(character_id)
 
-          # Broadcast update event
-          Phoenix.PubSub.broadcast(
-            EveDmv.PubSub,
-            @pubsub_topic,
-            {:character_stats_updated, updated}
-          )
+            # Broadcast update event
+            Phoenix.PubSub.broadcast(
+              EveDmv.PubSub,
+              @pubsub_topic,
+              {:character_stats_updated, updated}
+            )
 
-          {:ok, updated}
+            {:ok, updated}
+
+          error ->
+            error
         end
 
       error ->

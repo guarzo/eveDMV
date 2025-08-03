@@ -43,6 +43,7 @@ defmodule EveDmv.Database.CacheWarmer do
 
   # Server callbacks
 
+  @impl GenServer
   def init(opts) do
     state = %{
       enabled: Keyword.get(opts, :enabled, true),
@@ -63,6 +64,7 @@ defmodule EveDmv.Database.CacheWarmer do
     {:ok, state}
   end
 
+  @impl GenServer
   def handle_cast(:warm_cache, state) do
     if state.enabled do
       Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn -> perform_warming(self()) end)
@@ -71,6 +73,7 @@ defmodule EveDmv.Database.CacheWarmer do
     {:noreply, state}
   end
 
+  @impl GenServer
   def handle_cast({:warm_specific, cache_type, ids}, state) do
     if state.enabled do
       Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
@@ -81,10 +84,12 @@ defmodule EveDmv.Database.CacheWarmer do
     {:noreply, state}
   end
 
+  @impl GenServer
   def handle_call(:get_stats, _from, state) do
     {:reply, state.stats, state}
   end
 
+  @impl GenServer
   def handle_info(:scheduled_warm, state) do
     if state.enabled do
       Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn -> perform_warming(self()) end)
@@ -94,6 +99,7 @@ defmodule EveDmv.Database.CacheWarmer do
     {:noreply, state}
   end
 
+  @impl GenServer
   def handle_info({:warming_complete, stats}, state) do
     new_stats = %{
       total_warmed: state.stats.total_warmed + stats.total_items,
@@ -105,6 +111,7 @@ defmodule EveDmv.Database.CacheWarmer do
     {:noreply, %{state | stats: new_stats}}
   end
 
+  @impl GenServer
   def handle_info(_, state), do: {:noreply, state}
 
   # Private functions

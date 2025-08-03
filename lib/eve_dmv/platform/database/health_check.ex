@@ -9,6 +9,7 @@ defmodule EveDmv.Database.HealthCheck do
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Telemetry.PerformanceMonitor
+  alias Postgrex
 
   require Logger
 

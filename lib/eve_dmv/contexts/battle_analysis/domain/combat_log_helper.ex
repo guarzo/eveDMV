@@ -26,10 +26,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogHelper do
        metadata: metadata,
        tactical_analysis: tactical_analysis,
        recommendations: recommendations
-     }} = EnhancedCombatLogParser.parse_combat_log(
-           content,
-           pilot_name: pilot_name
-         )
+     }} =
+      EnhancedCombatLogParser.parse_combat_log(
+        content,
+        pilot_name: pilot_name
+      )
 
     {:ok,
      %{

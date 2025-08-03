@@ -61,8 +61,12 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
           {:ok, analysis} ->
             UnifiedCache.put(:threat_surveillance, cache_key, analysis, @cache_ttl)
             {:ok, analysis}
-          {:error, reason} -> {:error, reason}
-          _ -> {:error, :analysis_failed}
+
+          {:error, reason} ->
+            {:error, reason}
+
+          _ ->
+            {:error, :analysis_failed}
         end
     end
   end

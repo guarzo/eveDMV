@@ -45,13 +45,14 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.CombatLogService do
               :error -> {:error, :invalid_base64}
             end),
          content <- :zlib.uncompress(compressed),
-         {:ok, %{
-           events: events,
-           summary: summary,
-           metadata: metadata,
-           tactical_analysis: tactical_analysis,
-           recommendations: recommendations
-         }} <- EnhancedCombatLogParser.parse_combat_log(content, pilot_name: pilot_name) do
+         {:ok,
+          %{
+            events: events,
+            summary: summary,
+            metadata: metadata,
+            tactical_analysis: tactical_analysis,
+            recommendations: recommendations
+          }} <- EnhancedCombatLogParser.parse_combat_log(content, pilot_name: pilot_name) do
       Logger.info("🔍 USING ENHANCED PARSER for combat log")
 
       {:ok,

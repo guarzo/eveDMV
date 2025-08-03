@@ -119,6 +119,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainTracker do
           # Return the connection data even if persistence fails
           {:ok, connection}
       end
+    else
+      error -> error
     end
   end
 
@@ -213,8 +215,12 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.ChainTracker do
         }
 
         {:ok, chain_analysis}
-      {:error, reason} -> {:error, reason}
-      _ -> {:error, :validation_failed}
+
+      {:error, reason} ->
+        {:error, reason}
+
+      _ ->
+        {:error, :validation_failed}
     end
   end
 

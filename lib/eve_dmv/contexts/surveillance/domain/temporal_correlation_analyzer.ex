@@ -769,5 +769,4 @@ defmodule EveDmv.Shared.Correlation.TemporalCorrelationAnalyzer do
       end
     end
   end
-
 end

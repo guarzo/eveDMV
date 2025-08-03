@@ -200,18 +200,22 @@ defmodule EveDmvWeb.LiveHelpers.MountHelpers do
 
   defp validate_param(nil, _type), do: :error
   defp validate_param(value, :string) when is_binary(value), do: {:ok, value}
+
   defp validate_param(value, :integer) when is_binary(value) do
     case Integer.parse(value) do
       {int, ""} -> {:ok, int}
       _ -> :error
     end
   end
+
   defp validate_param(value, :integer) when is_integer(value), do: {:ok, value}
+
   defp validate_param(value, :atom) when is_binary(value) do
     {:ok, String.to_existing_atom(value)}
   rescue
     _ -> :error
   end
+
   defp validate_param(value, :atom) when is_atom(value), do: {:ok, value}
   defp validate_param(_, _), do: :error
 

@@ -98,7 +98,8 @@ defmodule EveDmv.Killmails.KillmailRaw do
     attribute :participants_data, :map do
       allow_nil?(true)
       description("Denormalized participant data for efficient battle detection queries")
-      source(:participants)  # Map to the actual database column name
+      # Map to the actual database column name
+      source(:participants)
     end
 
     # Automatic timestamp

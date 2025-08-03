@@ -313,10 +313,26 @@ defmodule EveDmv.Contexts.Intelligence.Core.UnpredictabilityEngine do
     end
   end
 
-  defp calculate_ship_unpredictability(_character_id) do
-    # This would analyze ship switching patterns
-    # For now, return a placeholder
-    0.5
+  defp calculate_ship_unpredictability(character_id) do
+    # Calculate ship variance from actual killmail data
+    start_date = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
+
+    case KillmailRepository.get_by_character(character_id, start_date) do
+      {:ok, killmails} ->
+        ships = killmails |> Enum.map(& &1.ship_type_id) |> Enum.uniq()
+        total_kills = length(killmails)
+        unique_ships = length(ships)
+
+        if total_kills == 0 do
+          0.0
+        else
+          # Higher ratio = more unpredictable
+          (unique_ships / total_kills) |> Float.round(3)
+        end
+
+      _error ->
+        0.0
+    end
   end
 
   defp calculate_unpredictability_score(behavioral, location_patterns, timing_patterns) do
@@ -350,13 +366,56 @@ defmodule EveDmv.Contexts.Intelligence.Core.UnpredictabilityEngine do
     end
   end
 
-  defp detect_pattern_breaking(_character_id) do
-    # Analyze if pilot changes patterns over time
-    # This would need historical analysis - placeholder for now
-    %{
-      pattern_breaks_detected: 0,
-      last_pattern_break: nil,
-      adaptation_score: 0.5
-    }
+  defp detect_pattern_breaking(character_id) do
+    # Analyze pattern changes using time-windowed analysis
+    start_date = DateTime.utc_now() |> DateTimeUtils.add(-180 * 24 * 60 * 60, :second)
+
+    case KillmailRepository.get_by_character(character_id, start_date) do
+      {:ok, killmails} ->
+        analyze_pattern_changes(killmails)
+
+      _error ->
+        %{
+          pattern_breaks_detected: 0,
+          last_pattern_break: nil,
+          adaptation_score: 0.0
+        }
+    end
+  end
+
+  defp analyze_pattern_changes(killmails) do
+    # Split into time windows and compare patterns
+    sorted_kills = Enum.sort_by(killmails, & &1.killmail_time)
+    total_kills = length(sorted_kills)
+
+    if total_kills < 4 do
+      %{
+        pattern_breaks_detected: 0,
+        last_pattern_break: nil,
+        adaptation_score: 0.0
+      }
+    else
+      # Split into early and recent periods
+      split_point = div(total_kills, 2)
+      {early_kills, recent_kills} = Enum.split(sorted_kills, split_point)
+
+      # Compare system usage patterns
+      early_systems = early_kills |> Enum.map(& &1.solar_system_id) |> Enum.uniq()
+      recent_systems = recent_kills |> Enum.map(& &1.solar_system_id) |> Enum.uniq()
+
+      # Calculate pattern overlap
+      common_systems = MapSet.intersection(MapSet.new(early_systems), MapSet.new(recent_systems))
+      pattern_similarity = MapSet.size(common_systems) / max(length(early_systems), 1)
+
+      # Pattern break if low similarity
+      pattern_breaks = if pattern_similarity < 0.3, do: 1, else: 0
+
+      %{
+        pattern_breaks_detected: pattern_breaks,
+        last_pattern_break:
+          if(pattern_breaks > 0, do: List.last(recent_kills).killmail_time, else: nil),
+        adaptation_score: Float.round(1.0 - pattern_similarity, 3)
+      }
+    end
   end
 end

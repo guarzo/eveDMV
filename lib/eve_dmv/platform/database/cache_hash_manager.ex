@@ -61,6 +61,7 @@ defmodule EveDmv.Database.CacheHashManager do
 
   # Server callbacks
 
+  @impl GenServer
   def init(_opts) do
     # Create ETS table for hash storage
     :ets.new(@hash_table, [:set, :public, :named_table, read_concurrency: true])
@@ -86,6 +87,7 @@ defmodule EveDmv.Database.CacheHashManager do
     {:ok, state}
   end
 
+  @impl GenServer
   def handle_call({:compute_hash, cache_key, query_params, result}, _from, state) do
     # Create deterministic content for hashing
     content = create_hash_content(query_params, result)
@@ -104,6 +106,7 @@ defmodule EveDmv.Database.CacheHashManager do
       {:reply, {:error, reason}, state}
   end
 
+  @impl GenServer
   def handle_call({:validate_cache, cache_key, query_params, current_result}, _from, state) do
     case :ets.lookup(@hash_table, cache_key) do
       [{^cache_key, stored_hash, expiry}] ->
@@ -133,6 +136,7 @@ defmodule EveDmv.Database.CacheHashManager do
     end
   end
 
+  @impl GenServer
   def handle_call({:smart_invalidate, pattern, check_function}, _from, state) do
     Logger.info("🧠 Starting smart invalidation for pattern: #{pattern}")
 
@@ -165,6 +169,7 @@ defmodule EveDmv.Database.CacheHashManager do
     {:reply, {:ok, %{invalidated: invalidated, preserved: saved}}, %{state | stats: new_stats}}
   end
 
+  @impl GenServer
   def handle_call(:get_stats, _from, state) do
     # Add current table size to stats
     table_size = :ets.info(@hash_table, :size)
@@ -173,6 +178,7 @@ defmodule EveDmv.Database.CacheHashManager do
     {:reply, stats, state}
   end
 
+  @impl GenServer
   def handle_info(:cleanup_expired, state) do
     # Remove expired hashes
     now = System.system_time(:second)
@@ -196,6 +202,7 @@ defmodule EveDmv.Database.CacheHashManager do
     {:noreply, state}
   end
 
+  @impl GenServer
   def handle_info({:cache_invalidated, pattern, _count}, state) do
     # When cache is invalidated, also clean up associated hashes
     Task.start(fn ->
@@ -211,6 +218,7 @@ defmodule EveDmv.Database.CacheHashManager do
     {:noreply, state}
   end
 
+  @impl GenServer
   def handle_info(_, state), do: {:noreply, state}
 
   # Private functions

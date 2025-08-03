@@ -75,7 +75,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
   @doc """
   Get corporation analysis from cache.
   """
-  @spec get_corporation_analysis(integer()) :: {:ok, corporation_analysis()} | {:error, :not_found}
+  @spec get_corporation_analysis(integer()) ::
+          {:ok, corporation_analysis()} | {:error, :not_found}
   def get_corporation_analysis(corporation_id) do
     cache_key = {:corporation_analysis, corporation_id}
 

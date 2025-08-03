@@ -56,6 +56,7 @@ defmodule EveDmv.Database.QueryPlanAnalyzer do
 
   # Server callbacks
 
+  @impl GenServer
   def init(opts) do
     state = %{
       enabled: Keyword.get(opts, :enabled, true),
@@ -77,42 +78,50 @@ defmodule EveDmv.Database.QueryPlanAnalyzer do
     {:ok, state}
   end
 
+  @impl GenServer
   def handle_call({:analyze_query, query, params}, _from, state) do
     result = perform_query_analysis(query, params)
     {:reply, result, state}
   end
 
+  @impl GenServer
   def handle_call({:get_slow_queries, limit}, _from, state) do
     slow_queries = Enum.take(state.slow_queries, limit)
     {:reply, slow_queries, state}
   end
 
+  @impl GenServer
   def handle_call(:get_analysis_report, _from, state) do
     report = generate_analysis_report(state)
     {:reply, report, state}
   end
 
+  @impl GenServer
   def handle_call({:analyze_table_stats, table_name}, _from, state) do
     result = analyze_table_statistics(table_name)
     {:reply, result, state}
   end
 
+  @impl GenServer
   def handle_call(:suggest_indexes, _from, state) do
     suggestions = generate_index_suggestions()
     {:reply, suggestions, state}
   end
 
+  @impl GenServer
   def handle_cast(:force_analysis, state) do
     new_state = perform_periodic_analysis(state)
     {:noreply, new_state}
   end
 
+  @impl GenServer
   def handle_info(:perform_analysis, state) do
     new_state = perform_periodic_analysis(state)
     schedule_analysis()
     {:noreply, new_state}
   end
 
+  @impl GenServer
   def handle_info(_, state), do: {:noreply, state}
 
   # Private functions

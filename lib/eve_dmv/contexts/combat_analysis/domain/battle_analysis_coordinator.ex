@@ -260,7 +260,8 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleAnalysisCoordinator do
         significance: :high
       },
       %{
-        timestamp: DateTimeUtils.add(battle_data[:started_at] || battle_data.started_at, 300, :second),
+        timestamp:
+          DateTimeUtils.add(battle_data[:started_at] || battle_data.started_at, 300, :second),
         moment_type: :turning_point,
         description: "Significant shift in battle momentum",
         significance: :critical

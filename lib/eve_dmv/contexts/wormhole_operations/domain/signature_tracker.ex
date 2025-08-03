@@ -74,8 +74,12 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
           |> handle_status_transition()
 
         {:ok, updated_sig}
-      {:error, reason} -> {:error, reason}
-      _ -> {:error, :validation_failed}
+
+      {:error, reason} ->
+        {:error, reason}
+
+      _ ->
+        {:error, :validation_failed}
     end
   end
 
@@ -128,8 +132,12 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
         }
 
         {:ok, analysis}
-      {:error, reason} -> {:error, reason}
-      _ -> {:error, :validation_failed}
+
+      {:error, reason} ->
+        {:error, reason}
+
+      _ ->
+        {:error, :validation_failed}
     end
   end
 

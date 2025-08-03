@@ -42,17 +42,22 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   @spec update_battle(String.t(), map()) ::
           {:ok, EveDmv.Contexts.BattleAnalysis.Resources.Battle.t()} | {:error, atom()}
   def update_battle(battle_id, params) do
-    with {:ok, battle} <- get_battle(battle_id) do
-      battle
-      |> Ash.Changeset.for_update(:update, params)
-      |> Ash.update(domain: Api)
+    case get_battle(battle_id) do
+      {:ok, battle} ->
+        battle
+        |> Ash.Changeset.for_update(:update, params)
+        |> Ash.update(domain: Api)
+
+      error ->
+        error
     end
   end
 
   @doc """
   Get a battle by ID.
   """
-  @spec get_battle(String.t()) :: {:ok, EveDmv.Contexts.BattleAnalysis.Resources.Battle.t()} | {:error, atom()}
+  @spec get_battle(String.t()) ::
+          {:ok, EveDmv.Contexts.BattleAnalysis.Resources.Battle.t()} | {:error, atom()}
   def get_battle(battle_id) do
     case Ash.get(Battle, battle_id, domain: Api) do
       {:ok, battle} -> {:ok, battle}
@@ -87,17 +92,25 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   """
   @spec delete_battle(String.t()) :: :ok | {:error, any()}
   def delete_battle(battle_id) do
-    with {:ok, battle} <- get_battle(battle_id) do
-      # Delete associated battle killmails first
-      case delete_battle_killmails(battle_id) do
-        %Ash.BulkResult{status: :success} -> :ok
-        %Ash.BulkResult{errors: errors} when errors != [] ->
-          Logger.warning("Failed to delete some battle killmails: #{inspect(errors)}")
-        _ -> :ok
-      end
+    case get_battle(battle_id) do
+      {:ok, battle} ->
+        # Delete associated battle killmails first
+        case delete_battle_killmails(battle_id) do
+          %Ash.BulkResult{status: :success} ->
+            :ok
 
-      # Delete the battle
-      Ash.destroy(battle)
+          %Ash.BulkResult{errors: errors} when errors != [] ->
+            Logger.warning("Failed to delete some battle killmails: #{inspect(errors)}")
+
+          _ ->
+            :ok
+        end
+
+        # Delete the battle
+        Ash.destroy(battle)
+
+      error ->
+        error
     end
   end
 
@@ -113,13 +126,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
       # Optionally analyze immediately
       if Keyword.get(opts, :analyze, false) do
         case analyze_battle(battle.id) do
-          {:ok, _analysis} -> :ok
+          {:ok, _analysis} ->
+            :ok
+
           {:error, reason} ->
             Logger.warning("Failed to analyze battle #{battle.id}: #{inspect(reason)}")
         end
       end
 
       {:ok, battle}
+    else
+      error -> error
     end
   end
 
@@ -182,25 +199,20 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   """
   @spec find_similar_battles(String.t(), keyword()) :: {:ok, [any()]} | {:error, atom()}
   def find_similar_battles(battle_id, opts \\ []) do
-    with {:ok, battle} <- get_battle(battle_id) do
-      limit = Keyword.get(opts, :limit, 10)
+    case get_battle(battle_id) do
+      {:ok, battle} ->
+        limit = Keyword.get(opts, :limit, 10)
 
-      similar =
-        Battle
-        |> where([b], b.id != ^battle_id)
-        |> where([b], b.system_id == ^battle.system_id)
-        |> where(
-          [b],
-          fragment("abs(? - ?) < ?", b.participant_count, ^battle.participant_count, 10)
-        )
-        |> order_by(
-          [b],
-          fragment("abs(extract(epoch from ? - ?::timestamp))", b.start_time, ^battle.start_time)
-        )
-        |> limit(^limit)
-        |> Repo.all()
+        case Battle
+             |> Ash.Query.filter(id != ^battle_id and system_id == ^battle.system_id)
+             |> Ash.Query.limit(limit)
+             |> Ash.read(domain: Api) do
+          {:ok, similar} -> {:ok, similar}
+          {:error, error} -> {:error, error}
+        end
 
-      {:ok, similar}
+      error ->
+        error
     end
   end
 
@@ -236,6 +248,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
       end)
 
       {:ok, merged_battle}
+    else
+      error -> error
     end
   end
 
@@ -251,6 +265,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
          {:ok, battle2} <- create_battle_from_killmail_set(after_kms),
          {:ok, _} <- delete_battle(battle_id) do
       {:ok, [battle1, battle2]}
+    else
+      error -> error
     end
   end
 
@@ -312,7 +328,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
     case KillmailRaw
          |> Ash.Query.filter(expr(killmail_id in ^killmail_ids))
          |> Ash.read(domain: Api) do
-      {:ok, killmails} -> {:ok, killmails}
+      {:ok, killmails} ->
+        {:ok, killmails}
+
       {:error, error} ->
         Logger.error("Failed to fetch killmails: #{inspect(error)}")
         {:error, :database_error}
@@ -321,9 +339,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
 
   defp analyze_killmails_for_battle(killmails) do
     # Use BattleDetector to analyze killmails
-    with {:ok, battles} <- BattleDetector.detect_battles(killmails) do
-      # Return first detected battle
-      {:ok, List.first(battles) || %{}}
+    case BattleDetector.detect_battles(killmails) do
+      {:ok, battles} ->
+        # Return first detected battle
+        {:ok, List.first(battles) || %{}}
+
+      error ->
+        error
     end
   end
 
@@ -345,7 +367,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   defp analyze_battle(battle_id) do
     # Trigger full battle analysis using the actual BattleAnalyzer
     case EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer.analyze_battle(battle_id) do
-      {:ok, analysis} -> {:ok, analysis}
+      {:ok, analysis} ->
+        {:ok, analysis}
+
       {:error, reason} ->
         Logger.warning("Battle analysis failed for #{battle_id}: #{inspect(reason)}")
         {:error, reason}
@@ -437,6 +461,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
       {:ok, battle_killmails} ->
         killmail_ids = Enum.map(battle_killmails, & &1.killmail_id)
         fetch_killmails(killmail_ids)
+
       {:error, error} ->
         Logger.error("Failed to get battle killmails: #{inspect(error)}")
         {:error, :database_error}
@@ -453,8 +478,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   end
 
   defp create_battle_from_killmail_set(killmails) do
-    with {:ok, battle_data} <- analyze_killmails_for_battle(killmails) do
-      create_battle(battle_data)
+    case analyze_killmails_for_battle(killmails) do
+      {:ok, battle_data} ->
+        create_battle(battle_data)
+
+      error ->
+        error
     end
   end
 end

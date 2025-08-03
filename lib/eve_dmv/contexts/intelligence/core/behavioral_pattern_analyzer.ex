@@ -209,7 +209,11 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
         sessions
         |> Enum.chunk_every(2, 1, :discard)
         |> Enum.map(fn [s1, s2] ->
-          DateTimeUtils.diff(List.first(s2).killmail_time, List.first(s1, :second).killmail_time, :hour)
+          DateTimeUtils.diff(
+            List.first(s2).killmail_time,
+            List.first(s1, :second).killmail_time,
+            :hour
+          )
         end)
 
       avg_interval = calculate_average(intervals)

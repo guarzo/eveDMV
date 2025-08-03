@@ -7,7 +7,7 @@ defmodule EveDmv.Shared.ActivityMetrics do
   timezone analysis used across the application.
   """
 
-    alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   @doc """
   Calculate activity score based on kills, losses, and recency.

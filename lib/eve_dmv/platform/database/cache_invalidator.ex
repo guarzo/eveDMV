@@ -91,6 +91,7 @@ defmodule EveDmv.Database.CacheInvalidator do
 
   # Server callbacks
 
+  @impl GenServer
   def init(opts) do
     state = %{
       enabled: Keyword.get(opts, :enabled, true),
@@ -111,6 +112,7 @@ defmodule EveDmv.Database.CacheInvalidator do
     {:ok, state}
   end
 
+  @impl GenServer
   def handle_cast({:invalidate_pattern, pattern}, state) do
     if state.enabled do
       Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
@@ -124,6 +126,7 @@ defmodule EveDmv.Database.CacheInvalidator do
     end
   end
 
+  @impl GenServer
   def handle_cast({:invalidate_type, cache_type, entity_id}, state) do
     if state.enabled do
       Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
@@ -137,6 +140,7 @@ defmodule EveDmv.Database.CacheInvalidator do
     end
   end
 
+  @impl GenServer
   def handle_cast({:invalidate_related, entity_type, entity_id, related_types}, state) do
     if state.enabled do
       Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
@@ -150,6 +154,7 @@ defmodule EveDmv.Database.CacheInvalidator do
     end
   end
 
+  @impl GenServer
   def handle_cast({:bulk_invalidate, patterns}, state) do
     if state.enabled do
       Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
@@ -163,15 +168,18 @@ defmodule EveDmv.Database.CacheInvalidator do
     end
   end
 
+  @impl GenServer
   def handle_cast({:register_hook, module, function}, state) do
     new_hooks = [{module, function} | state.hooks]
     {:noreply, %{state | hooks: new_hooks}}
   end
 
+  @impl GenServer
   def handle_call(:get_stats, _from, state) do
     {:reply, state.stats, state}
   end
 
+  @impl GenServer
   def handle_info({:data_updated, entity_type, entity_id}, state) do
     # Auto-invalidation based on data changes
     if state.enabled do
@@ -183,6 +191,7 @@ defmodule EveDmv.Database.CacheInvalidator do
     {:noreply, state}
   end
 
+  @impl GenServer
   def handle_info({:killmail_processed, killmail}, state) do
     # Invalidate caches when new killmails are processed
     if state.enabled do
@@ -194,6 +203,7 @@ defmodule EveDmv.Database.CacheInvalidator do
     {:noreply, state}
   end
 
+  @impl GenServer
   def handle_info(_, state), do: {:noreply, state}
 
   # Private functions

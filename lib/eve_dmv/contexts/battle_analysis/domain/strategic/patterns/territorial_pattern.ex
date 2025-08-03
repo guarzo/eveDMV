@@ -793,5 +793,4 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
     |> Enum.sum()
     |> Kernel./(length(values))
   end
-
 end

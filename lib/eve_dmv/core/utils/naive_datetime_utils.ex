@@ -14,6 +14,7 @@ defmodule EveDmv.Core.Utils.NaiveDateTimeUtils do
   def compare(nil, nil), do: :eq
   def compare(nil, _), do: nil
   def compare(_, nil), do: nil
+
   def compare(%NaiveDateTime{} = ndt1, %NaiveDateTime{} = ndt2) do
     NaiveDateTime.compare(ndt1, ndt2)
   end
@@ -70,6 +71,7 @@ defmodule EveDmv.Core.Utils.NaiveDateTimeUtils do
   @spec min(NaiveDateTime.t() | nil, NaiveDateTime.t() | nil) :: NaiveDateTime.t() | nil
   def min(nil, ndt), do: ndt
   def min(ndt, nil), do: ndt
+
   def min(%NaiveDateTime{} = ndt1, %NaiveDateTime{} = ndt2) do
     case compare(ndt1, ndt2) do
       :lt -> ndt1
@@ -83,6 +85,7 @@ defmodule EveDmv.Core.Utils.NaiveDateTimeUtils do
   @spec max(NaiveDateTime.t() | nil, NaiveDateTime.t() | nil) :: NaiveDateTime.t() | nil
   def max(nil, ndt), do: ndt
   def max(ndt, nil), do: ndt
+
   def max(%NaiveDateTime{} = ndt1, %NaiveDateTime{} = ndt2) do
     case compare(ndt1, ndt2) do
       :gt -> ndt1
@@ -95,6 +98,7 @@ defmodule EveDmv.Core.Utils.NaiveDateTimeUtils do
   """
   @spec past?(NaiveDateTime.t() | nil) :: boolean()
   def past?(nil), do: false
+
   def past?(%NaiveDateTime{} = ndt) do
     case compare(ndt, utc_now()) do
       :lt -> true
@@ -107,6 +111,7 @@ defmodule EveDmv.Core.Utils.NaiveDateTimeUtils do
   """
   @spec future?(NaiveDateTime.t() | nil) :: boolean()
   def future?(nil), do: false
+
   def future?(%NaiveDateTime{} = ndt) do
     case compare(ndt, utc_now()) do
       :gt -> true

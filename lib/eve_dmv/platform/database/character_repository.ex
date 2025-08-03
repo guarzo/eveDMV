@@ -70,7 +70,8 @@ defmodule EveDmv.Database.CharacterRepository do
       get_dangerous_characters()
       get_dangerous_characters(min_rating: 5, limit: 50)
   """
-  @spec get_dangerous_characters(keyword()) :: {:ok, [EveDmv.Intelligence.CharacterStats.t()]} | {:error, Ash.Error.t()}
+  @spec get_dangerous_characters(keyword()) ::
+          {:ok, [EveDmv.Intelligence.CharacterStats.t()]} | {:error, Ash.Error.t()}
   def get_dangerous_characters(opts \\ []) do
     cache_key = CacheHelper.build_key("character_stats", "dangerous", opts, [])
 

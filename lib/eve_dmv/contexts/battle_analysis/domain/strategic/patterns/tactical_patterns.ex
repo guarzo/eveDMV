@@ -1562,38 +1562,105 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
     # This is based on EVE Online ship type IDs
     case ship_type_id do
       # Freighters
-      20_183 -> :freighter   # Providence
-      20_185 -> :freighter   # Charon
-      20_187 -> :freighter   # Obelisk
-      20_189 -> :freighter   # Fenrir
+      # Providence
+      20_183 ->
+        :freighter
+
+      # Charon
+      20_185 ->
+        :freighter
+
+      # Obelisk
+      20_187 ->
+        :freighter
+
+      # Fenrir
+      20_189 ->
+        :freighter
 
       # Jump Freighters
-      28_844 -> :freighter   # Rhea
-      28_846 -> :freighter   # Nomad
-      28_848 -> :freighter   # Anshar
-      28_850 -> :freighter   # Ark
+      # Rhea
+      28_844 ->
+        :freighter
+
+      # Nomad
+      28_846 ->
+        :freighter
+
+      # Anshar
+      28_848 ->
+        :freighter
+
+      # Ark
+      28_850 ->
+        :freighter
 
       # Deep Space Transports
-      12_729 -> :transport   # Crane
-      12_731 -> :transport   # Bustard
-      12_733 -> :transport   # Mastodon
-      12_735 -> :transport   # Impel
+      # Crane
+      12_729 ->
+        :transport
+
+      # Bustard
+      12_731 ->
+        :transport
+
+      # Mastodon
+      12_733 ->
+        :transport
+
+      # Impel
+      12_735 ->
+        :transport
 
       # Blockade Runners
-      12_743 -> :transport   # Prowler
-      12_745 -> :transport   # Viator
-      12_747 -> :transport   # Prorator
-      12_749 -> :transport   # Wideload
+      # Prowler
+      12_743 ->
+        :transport
+
+      # Viator
+      12_745 ->
+        :transport
+
+      # Prorator
+      12_747 ->
+        :transport
+
+      # Wideload
+      12_749 ->
+        :transport
 
       # Assault Frigates
-      11_184 -> :assault_frigate   # Enyo
-      11_186 -> :assault_frigate   # Ishkur
-      11_200 -> :assault_frigate   # Vengeance
-      11_202 -> :assault_frigate   # Retribution
-      12_042 -> :assault_frigate   # Harpy
-      12_044 -> :assault_frigate   # Wolf
-      12_034 -> :assault_frigate   # Hawk
-      12_038 -> :assault_frigate   # Jaguar
+      # Enyo
+      11_184 ->
+        :assault_frigate
+
+      # Ishkur
+      11_186 ->
+        :assault_frigate
+
+      # Vengeance
+      11_200 ->
+        :assault_frigate
+
+      # Retribution
+      11_202 ->
+        :assault_frigate
+
+      # Harpy
+      12_042 ->
+        :assault_frigate
+
+      # Wolf
+      12_044 ->
+        :assault_frigate
+
+      # Hawk
+      12_034 ->
+        :assault_frigate
+
+      # Jaguar
+      12_038 ->
+        :assault_frigate
 
       # Default classification based on group
       _ ->

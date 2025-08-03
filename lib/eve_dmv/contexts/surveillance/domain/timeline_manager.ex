@@ -465,5 +465,4 @@ defmodule EveDmv.Shared.Correlation.TimelineManager do
     end)
     |> Enum.sort_by(& &1.gap_seconds, :desc)
   end
-
 end

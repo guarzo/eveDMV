@@ -76,8 +76,12 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
         }
 
         {:ok, threat_level}
-      {:error, reason} -> {:error, reason}
-      _ -> {:error, :member_data_unavailable}
+
+      {:error, reason} ->
+        {:error, reason}
+
+      _ ->
+        {:error, :member_data_unavailable}
     end
   end
 
@@ -97,8 +101,12 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
         }
 
         {:ok, summary}
-      {:error, reason} -> {:error, reason}
-      _ -> {:error, :members_unavailable}
+
+      {:error, reason} ->
+        {:error, reason}
+
+      _ ->
+        {:error, :members_unavailable}
     end
   end
 
@@ -117,8 +125,12 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
         }
 
         {:ok, threats}
-      {:error, reason} -> {:error, reason}
-      _ -> {:error, :analysis_failed}
+
+      {:error, reason} ->
+        {:error, reason}
+
+      _ ->
+        {:error, :analysis_failed}
     end
   end
 

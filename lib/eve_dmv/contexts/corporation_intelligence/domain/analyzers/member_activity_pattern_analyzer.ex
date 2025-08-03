@@ -15,8 +15,11 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivit
   """
 
   alias EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivityPatternAnalyzer.AnomalyDetector
+
   alias EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivityPatternAnalyzer.ConsistencyCalculator
+
   alias EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivityPatternAnalyzer.TimezoneAnalyzer
+
   alias EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivityPatternAnalyzer.TrendAnalyzer
 
   require Logger

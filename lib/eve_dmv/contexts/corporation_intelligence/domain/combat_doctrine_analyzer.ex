@@ -204,8 +204,12 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
         }
 
         {:ok, counter_recommendations}
-      {:error, reason} -> {:error, reason}
-      _ -> {:error, :analysis_failed}
+
+      {:error, reason} ->
+        {:error, reason}
+
+      _ ->
+        {:error, :analysis_failed}
     end
   end
 

@@ -7,6 +7,8 @@ defmodule EveDmvWeb.CharacterSwitchController do
 
   use EveDmvWeb, :controller
 
+  import Plug.Conn
+
   alias EveDmv.Security.AuditLogger
   alias EveDmv.Users.AccountManager
 
