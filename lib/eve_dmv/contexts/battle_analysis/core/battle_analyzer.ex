@@ -593,8 +593,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
             tactical_weight =
               case EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id || 0) do
                 :capital -> 3.0
-                # Logistics ships are tactically critical
-                :logistics -> 2.5
                 :supercapital -> 4.0
                 _ -> 1.0
               end
