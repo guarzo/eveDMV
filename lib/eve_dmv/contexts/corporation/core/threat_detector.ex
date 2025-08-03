@@ -280,7 +280,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
       # Same target hit 3+ times
       |> Enum.filter(fn {_target, count} -> count >= 3 end)
 
-    if map_size(targets) > 0 do
+    if length(targets) > 0 do
       ["Repeated targeting of specific individuals detected"]
     else
       []
