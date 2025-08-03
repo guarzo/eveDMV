@@ -1,39 +1,3 @@
-Compiling 830 files (.ex)
-Compiling lib/eve_dmv/contexts/battle_analysis/resources/battle_report_comment.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/contexts/battle_analysis/resources/battle_report.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/contexts/battle_analysis/resources/battle_killmail.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/contexts/battle_analysis/resources/battle.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/contexts/combat/resources/battle_killmail.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/contexts/battle_analysis/resources/battle_report_rating.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/contexts/combat/resources/combat_log.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/contexts/combat/resources/battle.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/contexts/character_intelligence/domain/player_stats.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/contexts/character_intelligence/domain/character_stats.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/contexts/battle_analysis/resources/ship_fitting.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/contexts/battle_analysis/resources/combat_log.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/contexts/combat/resources/ship_fitting.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/contexts/corporation/resources/recruitment_application.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/contexts/wormhole_operations/domain/wormhole/wh_vetting.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/contexts/wormhole_operations/domain/wormhole/wh_fleet_composition.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/contexts/wormhole_operations/domain/home_defense_analytics.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/contexts/surveillance/domain/system_inhabitant.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/contexts/surveillance/domain/chain_topology.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/contexts/surveillance/domain/chain_connection.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/contexts/intelligence/resources/character_profile.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/contexts/corporation_intelligence/domain/member_activity_intelligence.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/domain_events.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/external/eve/item_type.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/external/killmails/killmail_raw.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/external/killmails/participant.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/external/eve/solar_system.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/platform/auth/token.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/platform/auth/user.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/static_data/ship_attributes.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/surveillance/profile_match.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/utilities/analyzers/ship_stats.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/surveillance/profile.ex (it's taking more than 10s)
-Compiling lib/eve_dmv/surveillance/notification.ex (it's taking more than 10s)
-Generated eve_dmv app
 Finding suitable PLTs
 Checking PLT...
 [:ash, :ash_authentication, :ash_authentication_phoenix, :ash_json_api, :ash_phoenix, :ash_postgres, :ash_sql, :asn1, :assent, :bandit, :bcrypt_elixir, :broadway, :bzip2, :cachex, :castore, :certifi, :comeonin, :compiler, :conv_case, :cowboy, :cowlib, :crypto, :db_connection, :decimal, :dns_cluster, :dotenvy, :ecto, :ecto_sql, :eex, :elixir, :esbuild, :eternal, :ets, :eve_dmv, :ex_hash_ring, :ex_unit, :expo, :exsync, :file_system, :finch, :gen_stage, :gettext, :gun, :hackney, :hpax, :httpoison, :idna, :inets, :iterex, :jason, ...]
@@ -52,8 +16,8 @@ Starting Dialyzer
    ...],
   warnings: [:error_handling, :underspecs, :unknown]
 ]
-Total errors: 1886, Skipped: 419, Unnecessary Skips: 0
-done in 1m10.05s
+Total errors: 1876, Skipped: 419, Unnecessary Skips: 0
+done in 1m35.3s
 lib/eve_dmv/contexts/battle_analysis.ex:132:invalid_contract
 The @spec for the function does not match the success typing of the function.
 
@@ -918,24 +882,6 @@ when _ :: number() === nil
 can never succeed.
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat/core/participant_analyzer/activity_tracker.ex:346:no_return
-The created anonymous function has no local return.
-________________________________________________________________________________
-lib/eve_dmv/contexts/combat/core/participant_analyzer/activity_tracker.ex:348:call
-The function call will not succeed.
-
-DateTime.truncate(any(), :minute)
-
-will never return since the success typing is:
-(map(), :microsecond | :millisecond | :second) :: %DateTime{
-  :microsecond => {non_neg_integer(), non_neg_integer()},
-  _ => _
-}
-
-and the contract is
-(Calendar.datetime(), :microsecond | :millisecond | :second) :: t()
-
-________________________________________________________________________________
 lib/eve_dmv/contexts/combat/core/performance_calculator.ex:693:guard_fail
 The guard clause:
 
@@ -1487,64 +1433,64 @@ Type:
 [any()] | {:error, :no_valid_ships}
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1019:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1020:unused_fun
 Function generate_fleet_summary/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1035:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1037:unused_fun
 Function get_top_ships/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1044:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1047:unused_fun
 Function analyze_engagement_profile/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1054:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1058:unused_fun
 Function determine_tactical_role/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1073:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1078:unused_fun
 Function determine_engagement_style/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1086:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1092:unused_fun
 Function suggest_counter_strategies/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1119:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1126:unused_fun
 Function maybe_generate_counters/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1127:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1135:unused_fun
 Function generate_counter_fleet/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1178:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1187:unused_fun
 Function check_doctrine_compliance/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1212:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1222:unused_fun
 Function calculate_doctrine_compliance/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1226:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1237:unused_fun
 Function identify_missing_doctrine_elements/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1239:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1251:unused_fun
 Function assess_doctrine_effectiveness/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1252:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1266:unused_fun
 Function summarize_fleet/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1262:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1276:unused_fun
 Function analyze_advantages/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1325:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1341:unused_fun
 Function mobility_to_number/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1336:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1353:unused_fun
 Function ewar_to_number/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1346:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1363:unused_fun
 Function recommend_engagement/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1365:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1384:unused_fun
 Function predict_outcome/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1381:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1400:unused_fun
 Function calculate_fleet_score/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1419:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/advanced_fleet_analyzer.ex:1439:unused_fun
 Function format_isk/1 will never be called.
 ________________________________________________________________________________
 lib/eve_dmv/contexts/combat_intelligence/domain/battle_analysis/battle_comparison_engine.ex:332:guard_fail
@@ -1563,9 +1509,6 @@ when _ ::
 can never succeed.
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/battle_analysis/tactical_analysis_engine.ex:253:exact_eq
-The test :neutral | nil | :side_a | :side_b == :unknown can never evaluate to 'true'.
-________________________________________________________________________________
 lib/eve_dmv/contexts/combat_intelligence/domain/battle_analysis_service.ex:411:unused_fun
 Function enhance_participant_analysis/1 will never be called.
 ________________________________________________________________________________
@@ -1578,79 +1521,20 @@ ________________________________________________________________________________
 lib/eve_dmv/contexts/combat_intelligence/domain/battle_analysis_service.ex:495:unused_fun
 Function evaluate_doctrine_effectiveness/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/battle_analyzer.ex:1527:call
-The function call will not succeed.
-
-:erlang.+(_ship_synergy :: float(), _role_balance :: %{:balance => float(), :score => float()}) ::
-  :ok
-def a() do
-  :ok
-end
-
-will never return since the 2nd arguments differ
-from the success typing arguments:
-
-(number(), number())
-
-________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/battle_analyzer.ex:1566:call
-The function call will not succeed.
-
-:erlang.length(
-  _ideal_ratios :: %{
-    :dps => float(),
-    :support => float(),
-    :tackle => float(),
-    :tank => float()
-  }
-)
-
-will never return since the 1st arguments differ
-from the success typing arguments:
-
-([any()])
-
-________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/battle_analyzer.ex:1680:unused_fun
-Function generate_balance_recommendations/1 will never be called.
-________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:86:extra_range
-The type specification has too many types for the function.
-
-Function:
-EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer.search_by_criteria/1
-
-Extra type:
-{:ok, [map()]}
-
-Success typing:
-{:error, :search_error}
-
-________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:94:extra_range
-The type specification has too many types for the function.
-
-Function:
-EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer.get_activity_patterns/2
-
-Extra type:
-{:ok, map()}
-
-Success typing:
-{:error, :analysis_failed}
-
-________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:110:invalid_contract
-The @spec for the function does not match the success typing of the function.
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:112:contract_supertype
+Type specification is a supertype of the success typing.
 
 Function:
 EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer.get_cache_stats/0
 
-Success typing:
+Type specification:
 @spec get_cache_stats() :: cache_stats()
 
+Success typing:
+@spec get_cache_stats() :: %{:cache_size => 0, :evictions => 0, :hit_rate => float(), :miss_rate => float()}
+
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:144:call
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:146:call
 The function call will not succeed.
 
 EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache.put_character_analysis(
@@ -1680,7 +1564,7 @@ breaks the contract
 (integer(), character_analysis()) :: :ok
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:158:call
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:160:call
 The function call will not succeed.
 
 EveDmv.Core.Utils.DateTimeUtils.add(
@@ -1707,10 +1591,10 @@ breaks the contract
   DateTime.t() | NaiveDateTime.t() | nil
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:198:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:200:unused_fun
 Function get_last_activity_date/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:221:call
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:223:call
 The function call will not succeed.
 
 EveDmv.Core.Utils.DateTimeUtils.add(
@@ -1737,37 +1621,37 @@ breaks the contract
   DateTime.t() | NaiveDateTime.t() | nil
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:253:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:255:unused_fun
 Function get_character_activity_data/4 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:315:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:317:unused_fun
 Function calculate_activity_summary/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:349:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:351:unused_fun
 Function analyze_temporal_patterns/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:392:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:394:unused_fun
 Function analyze_engagement_patterns/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:431:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:433:unused_fun
 Function analyze_ship_usage_patterns/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:458:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:460:unused_fun
 Function analyze_system_preferences/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:485:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:487:unused_fun
 Function analyze_threat_level_trends/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:506:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:508:unused_fun
 Function detect_likely_timezone/1 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:529:no_return
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:531:no_return
 The created anonymous function has no local return.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:555:no_return
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:557:no_return
 Function get_character_comparison_data/1 has no local return.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:573:pattern_match
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:575:pattern_match
 The pattern can never match the type.
 
 Pattern:
@@ -1777,10 +1661,10 @@ Type:
 {:error, :analysis_failed}
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:767:no_return
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:769:no_return
 Function get_recent_activity_count/2 has no local return.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:768:call
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:770:call
 The function call will not succeed.
 
 EveDmv.Core.Utils.DateTimeUtils.add(
@@ -1807,16 +1691,16 @@ breaks the contract
   DateTime.t() | NaiveDateTime.t() | nil
 
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:782:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:784:unused_fun
 Function calculate_data_quality_score/2 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:908:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:910:unused_fun
 Function process_character_for_search/4 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:929:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:931:unused_fun
 Function process_character_with_threat_data/5 will never be called.
 ________________________________________________________________________________
-lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:952:unused_fun
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:954:unused_fun
 Function process_character_without_threat_data/4 will never be called.
 ________________________________________________________________________________
 lib/eve_dmv/contexts/combat_intelligence/domain/corporation_analyzer.ex:20:extra_range
@@ -11843,10 +11727,10 @@ from the success typing arguments:
 (any(), maybe_improper_list() | map())
 
 ________________________________________________________________________________
-lib/eve_dmv_web/live/profile_live.ex:49:no_return
+lib/eve_dmv_web/live/profile_live.ex:48:no_return
 The created anonymous function has no local return.
 ________________________________________________________________________________
-lib/eve_dmv_web/live/profile_live.ex:75:pattern_match
+lib/eve_dmv_web/live/profile_live.ex:74:pattern_match
 The pattern can never match the type.
 
 Pattern:
@@ -11866,10 +11750,10 @@ Type:
 
 
 ________________________________________________________________________________
-lib/eve_dmv_web/live/profile_live.ex:79:no_return
+lib/eve_dmv_web/live/profile_live.ex:78:no_return
 Function get_character_ship_intelligence/1 has no local return.
 ________________________________________________________________________________
-lib/eve_dmv_web/live/profile_live.ex:104:pattern_match
+lib/eve_dmv_web/live/profile_live.ex:103:pattern_match
 The pattern can never match the type.
 
 Pattern:
@@ -11889,7 +11773,7 @@ Type:
 
 
 ________________________________________________________________________________
-lib/eve_dmv_web/live/profile_live.ex:117:pattern_match
+lib/eve_dmv_web/live/profile_live.ex:116:pattern_match
 The pattern can never match the type.
 
 Pattern:
@@ -11899,7 +11783,7 @@ Type:
 {:error, :analysis_failed}
 
 ________________________________________________________________________________
-lib/eve_dmv_web/live/profile_live.ex:189:pattern_match
+lib/eve_dmv_web/live/profile_live.ex:188:pattern_match
 The pattern can never match the type.
 
 Pattern:
@@ -11949,21 +11833,7 @@ Type:
 
 
 ________________________________________________________________________________
-lib/eve_dmv_web/live/wh_vetting_live.ex:27:no_return
-Function mount/3 has no local return.
-________________________________________________________________________________
-lib/eve_dmv_web/live/wh_vetting_live.ex:30:call
-The function call will not succeed.
-
-Phoenix.Component.assign(_socket :: {:ok, _}, :tab, :dashboard)
-
-will never return since the 1st arguments differ
-from the success typing arguments:
-
-(map(), any(), any())
-
-________________________________________________________________________________
-lib/eve_dmv_web/live/wh_vetting_live.ex:68:pattern_match
+lib/eve_dmv_web/live/wh_vetting_live.ex:67:pattern_match
 The pattern can never match the type.
 
 Pattern:
@@ -11973,7 +11843,7 @@ Type:
 {:ok, [any()]}
 
 ________________________________________________________________________________
-lib/eve_dmv_web/live/wh_vetting_live.ex:167:pattern_match
+lib/eve_dmv_web/live/wh_vetting_live.ex:166:pattern_match
 The pattern can never match the type.
 
 Pattern:

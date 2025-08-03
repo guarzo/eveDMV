@@ -44,7 +44,6 @@ defmodule EveDmv.Contexts.Intelligence.Services.ProfileService do
         :json -> export_as_json(profile)
         :yaml -> export_as_yaml(profile)
         :html -> export_as_html(profile)
-        :pdf -> export_as_pdf(profile)
         _ -> {:error, :unsupported_format}
       end
     end

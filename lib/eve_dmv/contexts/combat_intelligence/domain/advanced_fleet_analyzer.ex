@@ -1016,45 +1016,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
   # Summary and engagement profile
 
-  # TODO: Remove unused function - dialyzer detected this is never called
-  defp generate_fleet_summary(ship_analyses, composition) do
-    total_value =
-      ship_analyses
-      |> Enum.map(&(&1.value || 0))
-      |> Enum.sum()
-
-    %{
-      total_pilots: composition.total_ships,
-      fleet_value: format_isk(total_value),
-      average_ship_value: format_isk(total_value / max(composition.total_ships, 1)),
-      composition_type: composition.composition_type,
-      balance_score: round(composition.balance_score),
-      top_ships: get_top_ships(ship_analyses, 5)
-    }
-  end
-  # TODO: Remove unused function - dialyzer detected this is never called
-
-  defp get_top_ships(ship_analyses, count) do
-    ship_analyses
-    |> Enum.group_by(& &1.ship_name)
-    |> Enum.map(fn {name, ships} -> {name, length(ships)} end)
-    |> Enum.sort_by(&elem(&1, 1), :desc)
-    |> Enum.take(count)
-    |> Enum.map(fn {name, count} -> %{ship: name, count: count} end)
-  # TODO: Remove unused function - dialyzer detected this is never called
-  end
-
-  defp analyze_engagement_profile(ship_analyses, capabilities) do
-    %{
-      preferred_range: capabilities.engagement_range.recommended_engagement_range,
-      mobility_class: capabilities.mobility.mobility_rating,
-      tactical_role: determine_tactical_role(capabilities),
-      engagement_style: determine_engagement_style(ship_analyses, capabilities),
-      counter_strategies: suggest_counter_strategies(capabilities)
-  # TODO: Remove unused function - dialyzer detected this is never called
-    }
-  end
-
   defp determine_tactical_role(capabilities) do
     cond do
       capabilities.firepower.dps_per_ship > 800 ->
@@ -1070,8 +1031,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
         :control_fleet
 
       true ->
-  # TODO: Remove unused function - dialyzer detected this is never called
-        :general_purpose
+        :standard_fleet
     end
   end
 
@@ -1083,8 +1043,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
       {:very_high, :long} -> :kiting
       {:high, :medium} -> :skirmish
       {_, :brawl} -> :brawling
-  # TODO: Remove unused function - dialyzer detected this is never called
-      {:low, :long} -> :sniper
       _ -> :flexible
     end
   end
@@ -1116,7 +1074,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     if Enum.empty?(final_strategies) do
       ["Requires careful tactical approach - well-balanced fleet"]
     else
-  # TODO: Remove unused function - dialyzer detected this is never called
       final_strategies
     end
   end
@@ -1124,8 +1081,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
   # Counter-fleet generation
 
   defp maybe_generate_counters(composition, options) do
-  # TODO: Remove unused function - dialyzer detected this is never called
-    if Keyword.get(options, :include_counters, false) do
+    if options[:generate_counters] do
       generate_counter_fleet(composition)
     else
       nil
@@ -1175,8 +1131,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
           key_tactics: [
             "Maintain tactical flexibility",
             "Exploit specific weaknesses",
-  # TODO: Remove unused function - dialyzer detected this is never called
-            "Adapt to enemy tactics"
           ]
         }
     end
@@ -1209,8 +1163,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
       }
     else
       %{
-  # TODO: Remove unused function - dialyzer detected this is never called
-        detected_doctrine: :custom,
         compliance_percentage: 0,
         doctrine_details: nil,
         missing_elements: [],
@@ -1223,8 +1175,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     ship_names = Enum.map(ship_analyses, & &1.ship_name)
     doctrine_ships = doctrine.ships ++ Map.get(doctrine, :support, [])
 
-  # TODO: Remove unused function - dialyzer detected this is never called
-    matching_ships =
       Enum.count(ship_names, fn name ->
         Enum.any?(doctrine_ships, fn doctrine_ship ->
           String.contains?(name || "", doctrine_ship)
@@ -1236,9 +1186,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
   defp identify_missing_doctrine_elements(ship_analyses, doctrine) do
     current_ships = Enum.map(ship_analyses, & &1.ship_name) |> MapSet.new()
-  # TODO: Remove unused function - dialyzer detected this is never called
-    doctrine_ships = MapSet.new(doctrine.ships)
-
     missing = MapSet.difference(doctrine_ships, current_ships) |> Enum.to_list()
 
     if Enum.empty?(missing) do
@@ -1249,8 +1196,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
   end
 
   defp assess_doctrine_effectiveness(doctrine_name) do
-  # TODO: Remove unused function - dialyzer detected this is never called
-    # Simple effectiveness ratings for known doctrines
     case doctrine_name do
       :armor_brawl -> :good
       :shield_kite -> :excellent
@@ -1259,8 +1204,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
       _ -> :unknown
     end
   end
-  # TODO: Remove unused function - dialyzer detected this is never called
-
   # Matchup analysis
 
   defp summarize_fleet(analysis) do
@@ -1322,8 +1265,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
       else
         mobility_advantages_a
       end
-  # TODO: Remove unused function - dialyzer detected this is never called
-
     final_advantages_b =
       if ewar_b > ewar_a + 1 do
         ["EWAR superiority" | mobility_advantages_b]
@@ -1333,8 +1274,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
     %{
       fleet_a_advantages: final_advantages_a,
-  # TODO: Remove unused function - dialyzer detected this is never called
-      fleet_b_advantages: final_advantages_b
     }
   end
 
@@ -1343,8 +1282,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
       :very_high -> 5
       :high -> 4
       :medium -> 3
-  # TODO: Remove unused function - dialyzer detected this is never called
-      :low -> 2
       :very_low -> 1
       _ -> 0
     end
@@ -1362,9 +1299,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
   defp recommend_engagement(analysis_a, analysis_b) do
     # Generate tactical recommendations for fleet A
-  # TODO: Remove unused function - dialyzer detected this is never called
-    base_recommendations = []
-
+    base_recommendations = [
+      "Focus fire on primary targets",
+      "Maintain fleet cohesion",
+      "Follow FC commands"
+    ]
+    
     # Range recommendations
     range_a = analysis_a.capabilities.engagement_range.dominant_range
     range_b = analysis_b.capabilities.engagement_range.dominant_range
@@ -1378,23 +1318,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
     # Add more tactical recommendations based on matchup
     final_recommendations
-  # TODO: Remove unused function - dialyzer detected this is never called
-  end
-
-  defp predict_outcome(analysis_a, analysis_b) do
-    # Simple prediction based on key metrics
-    score_a = calculate_fleet_score(analysis_a)
-    score_b = calculate_fleet_score(analysis_b)
-
-    ratio = score_a / max(score_b, 1)
-
-    cond do
-      ratio > 1.5 -> :fleet_a_likely_victory
-      ratio > 1.2 -> :fleet_a_slight_advantage
-      ratio > 0.8 -> :even_match
-      ratio > 0.67 -> :fleet_b_slight_advantage
-      true -> :fleet_b_likely_victory
-    end
   end
 
   defp calculate_fleet_score(analysis) do
@@ -1415,26 +1338,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
   end
 
   # Utility functions
-
-  # TODO: Remove unused function - dialyzer detected this is never called
-  defp estimate_ship_value(ship_id) do
-    # Simplified ship value estimation
-    # In production, would query market data
-    case StaticData.get_type(ship_id) do
-      %{group_name: group} when is_binary(group) ->
-        cond do
-          String.contains?(group, "Frigate") -> 20_000_000
-          String.contains?(group, "Destroyer") -> 50_000_000
-          String.contains?(group, "Cruiser") -> 100_000_000
-          String.contains?(group, "Battlecruiser") -> 200_000_000
-          String.contains?(group, "Battleship") -> 400_000_000
-          true -> 50_000_000
-        end
-
-      _ ->
-        50_000_000
-    end
-  end
 
   defp format_isk(value) do
     cond do
