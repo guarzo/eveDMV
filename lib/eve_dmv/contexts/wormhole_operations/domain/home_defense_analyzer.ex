@@ -858,28 +858,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
       end
 
     # Get actual connection data if available
-    case get_system_escape_connections(route_type, system_id) do
-      {:ok, connections} when length(connections) >= route_count ->
-        # Use real connection data
-        connections
-        |> Enum.take(route_count)
-        |> Enum.with_index(1)
-        |> Enum.map(fn {connection, index} ->
-          %{
-            route_id: index,
-            route_type: route_type,
-            connection_type: connection.wormhole_type || :unknown,
-            connection_id: connection.connection_id,
-            security_rating: assess_route_security_rating(connection),
-            destination_system: connection.destination_system_id,
-            mass_remaining: connection.mass_remaining || 0
-          }
-        end)
-
-      _ ->
-        # Fallback: Create realistic routes based on system characteristics
-        create_realistic_escape_routes(route_count, route_type)
-    end
+    # Since get_system_escape_connections always returns {:error, _}, we always use the fallback
+    create_realistic_escape_routes(route_count, route_type)
   end
 
   defp assess_route_security(connection_count) do
