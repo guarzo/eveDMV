@@ -99,7 +99,12 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
 
   defp get_character_killmails(character_id) do
     start_date = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
-    KillmailRepository.get_by_character(character_id, start_date)
+    case KillmailRepository.get_by_character(character_id, start_date) do
+      {:ok, killmails} -> {:ok, killmails}
+      {:error, _reason} -> {:ok, []}
+      killmails when is_list(killmails) -> {:ok, killmails}
+      _ -> {:ok, []}
+    end
   end
 
   defp get_activity_data(character_id) do

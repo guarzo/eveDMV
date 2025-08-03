@@ -81,7 +81,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
 
   Analyzes wormhole activity patterns and competency indicators.
   """
-  @spec calculate_j_space_experience(list()) :: map()
+  @spec calculate_j_space_experience(list()) :: %{atom() => any()}
   def calculate_j_space_experience(killmails) when is_list(killmails) do
     j_space_kills = Enum.filter(killmails, &j_space_system?(&1.solar_system_id))
 
@@ -163,7 +163,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
   @doc """
   Detect eviction group associations from killmail patterns.
   """
-  @spec detect_eviction_groups(list()) :: map()
+  @spec detect_eviction_groups(list()) :: %{atom() => any()}
   def detect_eviction_groups(killmails) when is_list(killmails) do
     # Known eviction group corporations/alliances (simplified)
     eviction_corps =
@@ -208,7 +208,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
   @doc """
   Calculate small gang competency from killmail analysis.
   """
-  @spec calculate_small_gang_competency(list()) :: map()
+  @spec calculate_small_gang_competency(list()) :: %{atom() => any()}
   def calculate_small_gang_competency(killmails) when is_list(killmails) do
     if Enum.empty?(killmails) do
       %{
@@ -242,7 +242,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
   @doc """
   Generate recruitment recommendation based on analysis.
   """
-  @spec generate_recommendation(map()) :: map()
+  @spec generate_recommendation(map()) :: %{atom() => any()}
   def generate_recommendation(analysis_data) do
     # Extract analysis components
     j_space_exp = Map.get(analysis_data, :j_space_experience, %{})
@@ -290,7 +290,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
   @doc """
   Format analysis summary for display.
   """
-  @spec format_analysis_summary(map()) :: map()
+  @spec format_analysis_summary(map()) :: %{atom() => any()}
   def format_analysis_summary(analysis) do
     # Handle both old format (atom) and new format (map)
     recommendation_data = Map.get(analysis, :recommendation, :unknown)

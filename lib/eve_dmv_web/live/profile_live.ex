@@ -17,6 +17,7 @@ defmodule EveDmvWeb.ProfileLive do
   @impl Phoenix.LiveView
   def mount(_params, session, socket) do
     current_user = socket.assigns[:current_user]
+    {:ok, socket}
 
     if current_user do
       socket =

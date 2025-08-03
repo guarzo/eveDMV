@@ -530,23 +530,10 @@ defmodule EveDmv.Contexts.BattleAnalysis do
 
   defp analyze_imported_killmails(killmail_ids) do
     case analyze_battle_from_killmail_ids(killmail_ids) do
-      {:ok, result} ->
-        # If it's a single battle, return it with timeline
-        case result do
-          %{battle_id: _} = battle ->
-            timeline = reconstruct_battle_timeline(battle)
-            {:ok, Map.put(battle, :timeline, timeline)}
-
-          %{battles: battles} ->
-            # Multiple battles found
-            battles_with_timelines =
-              Enum.map(battles, fn battle ->
-                timeline = reconstruct_battle_timeline(battle)
-                Map.put(battle, :timeline, timeline)
-              end)
-
-            {:ok, %{battles: battles_with_timelines, type: :multiple_battles}}
-        end
+      {:ok, battle} ->
+        # Single battle found, add timeline
+        timeline = reconstruct_battle_timeline(battle)
+        {:ok, Map.put(battle, :timeline, timeline)}
 
       error ->
         error

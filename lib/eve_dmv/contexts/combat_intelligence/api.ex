@@ -136,7 +136,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   @doc """
   Get cached threat assessment data.
   """
-  @spec get_threat_assessment(integer()) :: {:ok, map()} | {:error, atom()} | {:error, :not_found}
+  @spec get_threat_assessment(integer()) :: {:ok, map()}
   def get_threat_assessment(character_id) do
     Domain.ThreatAssessor.get_assessment(character_id)
   end
@@ -166,7 +166,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   Returns actionable intelligence based on the character's patterns,
   strengths, and weaknesses.
   """
-  @spec get_character_recommendations(integer()) :: {:ok, [map()]} | {:error, atom()}
+  @spec get_character_recommendations(integer()) :: {:ok, [map()]}
   def get_character_recommendations(character_id) do
     Domain.IntelligenceScoring.get_recommendations(character_id)
   end
@@ -199,7 +199,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
 
   Returns temporal activity patterns, timezone preferences, and behavioral trends.
   """
-  @spec get_activity_patterns(integer(), keyword()) :: {:ok, map()} | {:error, atom()}
+  @spec get_activity_patterns(integer(), keyword()) :: {:error, :analysis_failed}
   def get_activity_patterns(character_id, opts \\ []) do
     Domain.CharacterAnalyzer.get_activity_patterns(character_id, opts)
   end
@@ -223,7 +223,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   @doc """
   Get cache statistics for monitoring and debugging.
   """
-  @spec get_intelligence_cache_stats() :: {:ok, map()} | {:error, atom()}
+  @spec get_intelligence_cache_stats() :: {:ok, %{cache_size: integer(), evictions: integer(), hit_rate: float(), miss_rate: float()}}
   def get_intelligence_cache_stats do
     stats = Domain.CharacterAnalyzer.get_cache_stats()
     {:ok, stats}
@@ -235,7 +235,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   Returns corporations and alliances the character has flown with but are not part of their own.
   Useful for understanding social connections and potential allies.
   """
-  @spec get_external_groups(integer(), DateTime.t()) :: {:ok, list()} | {:error, atom()}
+  @spec get_external_groups(integer(), DateTime.t()) :: {:ok, [any()]} | {:error, atom()}
   def get_external_groups(character_id, since_date) do
     Domain.ExternalGroupAnalyzer.analyze(character_id, since_date)
   end

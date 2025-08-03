@@ -871,7 +871,7 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
     killmails
     |> Enum.group_by(fn km ->
       km.killmail_time
-      |> DateTime.truncate(:minute)
+      |> DateTimeUtils.truncate_to_minute()
     end)
     |> Enum.map(fn {time, kills} ->
       total_damage =
@@ -1110,4 +1110,5 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
       end
     end
   end
+
 end

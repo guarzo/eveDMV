@@ -462,7 +462,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
     killmails
     |> Enum.group_by(fn km ->
       km.killmail_time
-      |> DateTime.truncate(:minute)
+      |> DateTimeUtils.truncate_to_minute()
     end)
     |> Enum.filter(fn {_time, kills} -> length(kills) >= 3 end)
     |> Enum.map(fn {time, kills} -> %{time: time, kills: kills} end)
@@ -927,4 +927,5 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
       average(overlaps)
     end
   end
+
 end

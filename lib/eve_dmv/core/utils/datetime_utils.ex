@@ -123,10 +123,12 @@ defmodule EveDmv.Core.Utils.DateTimeUtils do
   @doc """
   Adds time to a datetime value.
   """
-  @spec add(DateTime.t() | NaiveDateTime.t() | nil, integer(), System.time_unit()) ::
+  @spec add(DateTime.t() | NaiveDateTime.t() | nil, integer(), System.time_unit() | :minute) ::
           DateTime.t() | NaiveDateTime.t() | nil
   def add(nil, _amount, _unit), do: nil
+  def add(%DateTime{} = dt, amount, :minute), do: DateTime.add(dt, amount * 60, :second)
   def add(%DateTime{} = dt, amount, unit), do: DateTime.add(dt, amount, unit)
+  def add(%NaiveDateTime{} = ndt, amount, :minute), do: NaiveDateTime.add(ndt, amount * 60, :second)
   def add(%NaiveDateTime{} = ndt, amount, unit), do: NaiveDateTime.add(ndt, amount, unit)
 
   @doc """
@@ -203,5 +205,26 @@ defmodule EveDmv.Core.Utils.DateTimeUtils do
       :gt -> dt1
       _ -> dt2
     end
+  end
+
+  @doc """
+  Truncates a datetime to the minute precision.
+  """
+  @spec truncate_to_minute(DateTime.t() | NaiveDateTime.t() | nil) ::
+          DateTime.t() | NaiveDateTime.t() | nil
+  def truncate_to_minute(nil), do: nil
+
+  def truncate_to_minute(%DateTime{} = datetime) do
+    datetime
+    |> DateTime.truncate(:second)
+    |> Map.put(:second, 0)
+    |> Map.put(:microsecond, {0, 0})
+  end
+
+  def truncate_to_minute(%NaiveDateTime{} = datetime) do
+    datetime
+    |> NaiveDateTime.truncate(:second)
+    |> Map.put(:second, 0)
+    |> Map.put(:microsecond, {0, 0})
   end
 end

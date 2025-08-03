@@ -279,7 +279,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Shi
     participants
     |> Enum.count(fn participant ->
       role = classify_ship_role(participant)
-      role in [:battleship, :cruiser, :battlecruiser]
+      Enum.member?([:battleship, :cruiser, :battlecruiser], role)
     end)
   end
 
@@ -287,7 +287,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.Shi
     participants
     |> Enum.count(fn participant ->
       role = classify_ship_role(participant)
-      role in [:frigate, :destroyer, :assault_frigate]
+      Enum.member?([:frigate, :destroyer, :assault_frigate], role)
     end)
   end
 

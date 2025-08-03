@@ -418,24 +418,29 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
     end
   end
 
+  # TODO: Remove unused function (dialyzer cleanup)
   defp format_isk_value(value) when value >= 1_000_000_000 do
     "#{Float.round(value / 1_000_000_000, 1)}B ISK"
   end
 
+  # TODO: Remove unused function (dialyzer cleanup)
   defp format_isk_value(value) when value >= 1_000_000 do
     "#{Float.round(value / 1_000_000, 1)}M ISK"
   end
 
+  # TODO: Remove unused function (dialyzer cleanup)
   defp format_isk_value(value) do
     "#{round(value)} ISK"
   end
 
+  # TODO: Remove unused function (dialyzer cleanup)
   defp format_duration(minutes) when minutes >= 60 do
     hours = div(minutes, 60)
     mins = rem(minutes, 60)
     "#{hours}h #{mins}m"
   end
 
+  # TODO: Remove unused function (dialyzer cleanup)
   defp format_duration(minutes) do
     "#{minutes}m"
   end

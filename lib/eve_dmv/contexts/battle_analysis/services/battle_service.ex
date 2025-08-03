@@ -90,7 +90,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   @doc """
   Delete a battle and its associations.
   """
-  @spec delete_battle(String.t()) :: :ok | {:error, any()}
+  @spec delete_battle(String.t()) :: {:error, any()}
   def delete_battle(battle_id) do
     case get_battle(battle_id) do
       {:ok, battle} ->
@@ -155,7 +155,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   @doc """
   Search battles by various criteria.
   """
-  @spec search_battles(map()) :: {:ok, [any()]} | {:error, atom()}
+  @spec search_battles(map()) :: {:ok, [any()]} | {:error, any()}
   def search_battles(search_params) do
     base_query = from(b in Battle)
 

@@ -38,6 +38,14 @@ defmodule EveDmv.Config.UnifiedConfig do
 
   require Logger
 
+  # Type definitions
+  @type config_summary_map :: %{
+          categories: [atom()],
+          env_variables_set: non_neg_integer(),
+          runtime_environment: atom(),
+          validation_status: {:ok, :valid} | {:error, [String.t()]}
+        }
+
   # Configuration schema with defaults and validation
   @config_schema %{
     database: %{
@@ -205,7 +213,7 @@ defmodule EveDmv.Config.UnifiedConfig do
   @doc """
   Get all configuration for a category.
   """
-  @spec get_category(atom()) :: map()
+  @spec get_category(atom()) :: %{atom() => any()}
   def get_category(category) do
     case Map.get(@config_schema, category) do
       nil ->
@@ -236,7 +244,7 @@ defmodule EveDmv.Config.UnifiedConfig do
   @doc """
   Get configuration summary for debugging.
   """
-  @spec config_summary() :: map()
+  @spec config_summary() :: config_summary_map()
   def config_summary do
     %{
       categories: Map.keys(@config_schema),

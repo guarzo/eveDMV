@@ -440,7 +440,7 @@ defmodule EveDmv.Shared.Correlation.TimelineManager do
 
   defp find_peak_activity_time(events) do
     events
-    |> Enum.group_by(&DateTime.truncate(&1.timestamp, :minute))
+    |> Enum.group_by(&EveDmv.Core.Utils.DateTimeUtils.truncate_to_minute(&1.timestamp))
     |> Enum.max_by(fn {_time, events} -> length(events) end, fn -> {nil, []} end)
     |> elem(0)
   end

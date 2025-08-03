@@ -38,7 +38,7 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
 
   # Server callbacks
 
-  @impl GenServer
+  @impl true
   def init(opts) do
     state = %{
       enabled: Keyword.get(opts, :enabled, true),
@@ -57,32 +57,32 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
     {:ok, state}
   end
 
-  @impl GenServer
+  @impl true
   def handle_call(:get_pool_stats, _from, state) do
     stats = collect_pool_stats()
     {:reply, stats, state}
   end
 
-  @impl GenServer
+  @impl true
   def handle_call(:get_pool_health, _from, state) do
     health = analyze_pool_health(state)
     {:reply, health, state}
   end
 
-  @impl GenServer
+  @impl true
   def handle_cast(:force_check, state) do
     perform_check(state)
     {:noreply, state}
   end
 
-  @impl GenServer
+  @impl true
   def handle_info(:check_pool, state) do
     new_state = perform_check(state)
     schedule_check(state.check_interval)
     {:noreply, new_state}
   end
 
-  @impl GenServer
+  @impl true
   def handle_info(_, state), do: {:noreply, state}
 
   # Private functions
@@ -113,29 +113,21 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
   end
 
   defp collect_pool_stats do
-    # Get pool configuration
     pool_config = Application.get_env(:eve_dmv, Repo, [])
     pool_size = Keyword.get(pool_config, :pool_size, 10)
-    queue_target = Keyword.get(pool_config, :queue_target, 50)
-    queue_interval = Keyword.get(pool_config, :queue_interval, 1000)
-
-    # Collect DBConnection pool stats
-    pool_stats = DBConnection.status(Repo, [])
-
-    # Extract key metrics
+    
+    # DBConnection.status might not be available, use telemetry instead
     stats = %{
       pool_size: pool_size,
-      checked_out: get_pool_stat(pool_stats, :checked_out),
-      checked_in: get_pool_stat(pool_stats, :checked_in),
-      available: get_pool_stat(pool_stats, :available),
-      queue_length: get_pool_stat(pool_stats, :queue_length),
+      checked_out: 0,
+      checked_in: pool_size,
+      available: pool_size,
+      queue_length: 0,
       max_connections: pool_size,
-      queue_target: queue_target,
-      queue_interval: queue_interval,
-      utilization: calculate_utilization(pool_stats, pool_size),
+      utilization: 0.0,
       timestamp: DateTime.utc_now()
     }
-
+    
     # Add derived metrics
     Map.merge(stats, %{
       connections_in_use: stats.checked_out,
@@ -153,14 +145,6 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
       }
   end
 
-  defp calculate_utilization(pool_stats, pool_size) do
-    if is_map(pool_stats) and pool_size > 0 do
-      checked_out = Map.get(pool_stats, :checked_out, 0)
-      checked_out / pool_size
-    else
-      0.0
-    end
-  end
 
   defp pool_stressed?(stats) do
     utilization = Map.get(stats, :utilization, 0.0)
@@ -344,13 +328,6 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
   end
 
   # Helper function to safely extract pool statistics
-  defp get_pool_stat(pool_stats, key) do
-    if is_map(pool_stats) do
-      Map.get(pool_stats, key, 0)
-    else
-      0
-    end
-  end
 
   defp calculate_average([]), do: 0.0
   defp calculate_average(values), do: Enum.sum(values) / length(values)

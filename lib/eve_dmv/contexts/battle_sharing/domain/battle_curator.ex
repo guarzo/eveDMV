@@ -70,7 +70,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
          {:ok, processed_highlights} <- process_highlights(tactical_highlights, battle_data),
          {:ok, auto_analysis} <- generate_auto_analysis(battle_data),
          {:ok, battle_report} <-
-           create_battle_report_record(%BattleReportOptions{
+           create_battle_report_record(%__MODULE__.BattleReportOptions{
              battle_id: battle_data.id,
              creator_id: creator_character_id,
              title: title || generate_auto_title(auto_analysis),
@@ -207,7 +207,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
     {:ok, auto_analysis}
   end
 
-  defp create_battle_report_record(%BattleReportOptions{} = opts) do
+  defp create_battle_report_record(%__MODULE__.BattleReportOptions{} = opts) do
     battle_report = %{
       id: generate_report_id(),
       battle_id: opts.battle_id,
