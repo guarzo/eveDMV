@@ -101,9 +101,6 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
       {:ok, battle_report} ->
         CommunityManager.rate_battle_report(battle_report, rater_character_id, rating, options)
 
-      {:error, reason} ->
-        {:error, reason}
-
       _ ->
         {:error, :report_not_found}
     end
