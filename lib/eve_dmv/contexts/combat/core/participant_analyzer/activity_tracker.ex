@@ -345,7 +345,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer.ActivityTracker do
     killmails
     |> Enum.group_by(fn km ->
       km.killmail_time
-      |> DateTime.truncate(:minute)
+      |> DateTimeUtils.truncate_to_minute()
     end)
     |> Enum.max_by(fn {_time, kms} -> length(kms) end, fn -> {nil, []} end)
     |> elem(0)
