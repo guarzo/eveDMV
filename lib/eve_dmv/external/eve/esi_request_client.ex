@@ -1,5 +1,6 @@
 # credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmv.Eve.EsiRequestClient do
+  alias HTTPoison
   @moduledoc """
   Enhanced HTTP request utilities for EVE ESI API with reliability features.
 
@@ -14,6 +15,7 @@ defmodule EveDmv.Eve.EsiRequestClient do
   alias EveDmv.Eve.ReliabilityConfig
   alias EveDmv.Telemetry.PerformanceMonitor
   alias EveDmv.Telemetry.RequestMonitor
+  alias Jason
   require Logger
 
   @default_base_url "https://esi.evetech.net"
@@ -238,7 +240,7 @@ defmodule EveDmv.Eve.EsiRequestClient do
     retry_config = ReliabilityConfig.get_retry_config()
     delay = ReliabilityConfig.calculate_retry_delay(attempt + 1, retry_config)
 
-    Logger.info("Retrying ESI request after #{delay}ms", %{
+    Logger.info("Retrying ESI request after #{inspect(delay)}ms", %{
       path: path,
       attempt: attempt + 1,
       error: sanitize_error_for_logging(error)

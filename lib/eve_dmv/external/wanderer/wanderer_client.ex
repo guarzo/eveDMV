@@ -1,4 +1,5 @@
 defmodule EveDmv.Intelligence.WandererClient do
+  alias HTTPoison
   @moduledoc """
   Client for Wanderer Map API integration.
 
@@ -8,6 +9,7 @@ defmodule EveDmv.Intelligence.WandererClient do
 
   use GenServer
   alias EveDmv.Utils.DnsResolver
+  alias Jason
 
   require Logger
 

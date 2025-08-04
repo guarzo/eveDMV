@@ -134,7 +134,12 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   """
   @spec reconstruct_battle_timeline(battle()) :: {:ok, battle_timeline()} | {:error, atom()}
   def reconstruct_battle_timeline(battle) do
-    BattleTimelineService.reconstruct_timeline(battle)
+    try do
+      timeline = BattleTimelineService.reconstruct_timeline(battle)
+      {:ok, timeline}
+    rescue
+      _ -> {:error, :timeline_reconstruction_failed}
+    end
   end
 
   @doc """
@@ -144,7 +149,12 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   """
   @spec analyze_battle_sequence([battle()]) :: {:ok, battle_sequence_analysis()} | {:error, atom()}
   def analyze_battle_sequence(battles) when is_list(battles) do
-    BattleTimelineService.analyze_battle_sequence(battles)
+    try do
+      analysis = BattleTimelineService.analyze_battle_sequence(battles)
+      {:ok, analysis}
+    rescue
+      _ -> {:error, :battle_sequence_analysis_failed}
+    end
   end
 
   @doc """

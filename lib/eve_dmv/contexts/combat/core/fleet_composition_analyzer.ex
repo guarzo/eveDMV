@@ -181,7 +181,8 @@ defmodule EveDmv.Contexts.Combat.Core.FleetCompositionAnalyzer do
       count =
         class_list
         |> Enum.reduce(0, fn class, acc ->
-          acc + get_in(ship_classes, [class, :count]) || 0
+          class_count = get_in(ship_classes, [class, :count])
+          acc + (class_count || 0)
         end)
 
       count / total * 100

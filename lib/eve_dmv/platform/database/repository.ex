@@ -133,7 +133,7 @@ defmodule EveDmv.Database.Repository do
             TelemetryHelper.measure_query(@resource_name, :count, fn ->
               query = build_count_query(opts)
 
-              case Ash.count(query, domain: Api) do
+              case Api.count(query) do
                 {:ok, count} -> {:ok, count}
                 {:error, reason} -> {:error, reason}
               end

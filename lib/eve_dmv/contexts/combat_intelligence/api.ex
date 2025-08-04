@@ -73,7 +73,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
     else
       {:error, :invalid_options} -> {:error, :invalid_options}
       {:error, reason} -> {:error, reason}
-      _error -> {:error, :analysis_failed}
+      _ -> {:error, :analysis_failed}
     end
   end
 
@@ -104,7 +104,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
     else
       {:error, :invalid_options} -> {:error, :invalid_options}
       {:error, reason} -> {:error, reason}
-      _error -> {:error, :analysis_failed}
+      _ -> {:error, :analysis_failed}
     end
   end
 
@@ -141,7 +141,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
     else
       {:error, :invalid_context} -> {:error, :invalid_options}
       {:error, reason} -> {:error, reason}
-      _error -> {:error, :analysis_failed}
+      _ -> {:error, :analysis_failed}
     end
   end
 

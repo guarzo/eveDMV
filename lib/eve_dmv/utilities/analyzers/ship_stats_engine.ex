@@ -309,12 +309,12 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
 
     # Bulk update usage ranks
     Enum.each(usage_ranked, fn {ship, rank} ->
-      Ash.update!(ship, %{usage_rank: rank}, domain: Api)
+      Api.update(ship, %{usage_rank: rank})
     end)
 
     # Bulk update effectiveness ranks
     Enum.each(eff_ranked, fn {ship, rank} ->
-      Ash.update!(ship, %{effectiveness_rank: rank}, domain: Api)
+      Api.update(ship, %{effectiveness_rank: rank})
     end)
 
     handle_meta_tiers(eff_ranked)
@@ -346,7 +346,7 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
           true -> "D"
         end
 
-      Ash.update!(ship, %{meta_tier: tier}, domain: Api)
+      Api.update(ship, %{meta_tier: tier})
     end)
 
     {:ok, :meta_tiers_calculated}

@@ -7,12 +7,9 @@ defmodule EveDmv.Intelligence.Core.CacheHelper do
   cache invalidation strategies.
   """
 
-  alias EveDmv.Utils.Cache
+  alias EveDmv.Cache
 
   require Logger
-
-  # Cache name for intelligence operations
-  @cache_name :intelligence_cache
 
   @type cache_key :: String.t()
   @type cache_value :: term()
@@ -34,7 +31,7 @@ defmodule EveDmv.Intelligence.Core.CacheHelper do
 
     result =
       Cache.get_or_compute(
-        @cache_name,
+        :analysis,
         cache_key,
         fn ->
           Logger.debug("Cache miss for #{analysis_type} analysis of entity #{entity_id}")
@@ -83,7 +80,7 @@ defmodule EveDmv.Intelligence.Core.CacheHelper do
 
     Enum.each(analysis_types, fn analysis_type ->
       cache_key = generate_cache_key(analysis_type, entity_id)
-      Cache.delete(@cache_name, cache_key)
+      Cache.delete(:analysis, cache_key)
 
       :telemetry.execute(
         [:eve_dmv, :intelligence, :cache_invalidation],
@@ -104,7 +101,7 @@ defmodule EveDmv.Intelligence.Core.CacheHelper do
 
     Logger.debug("Invalidating #{analysis_type} cache for entity #{entity_id}")
 
-    Cache.delete(@cache_name, cache_key)
+    Cache.delete(:analysis, cache_key)
 
     :telemetry.execute(
       [:eve_dmv, :intelligence, :cache_invalidation],
@@ -165,13 +162,6 @@ defmodule EveDmv.Intelligence.Core.CacheHelper do
   """
   @spec get_cache_stats() :: map()
   def get_cache_stats do
-    # This would integrate with the actual cache implementation
-    # For now, return a placeholder structure
-    %{
-      total_keys: 0,
-      hit_rate: 0.0,
-      memory_usage_bytes: 0,
-      oldest_entry_age_seconds: 0
-    }
+    Cache.stats(:analysis)
   end
 end

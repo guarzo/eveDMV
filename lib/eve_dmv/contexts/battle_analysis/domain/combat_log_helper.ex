@@ -10,6 +10,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogHelper do
   alias EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser
   alias EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting
   require Logger
+  require Ash.Query
 
   @doc """
   Parse combat log content and extract structured data.
@@ -93,11 +94,14 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogHelper do
   end
 
   defp get_fitting_data(pilot_name) do
-    case Ash.read(ShipFitting,
-           filter: [pilot_name: pilot_name],
-           sort: [updated_at: :desc],
-           limit: 1
-         ) do
+    query = 
+      ShipFitting
+      |> Ash.Query.new()
+      |> Ash.Query.filter(pilot_name: pilot_name)
+      |> Ash.Query.sort(updated_at: :desc)
+      |> Ash.Query.limit(1)
+      
+    case EveDmv.Api.read(query) do
       {:ok, [fitting | _]} -> fitting.parsed_fitting
       _ -> nil
     end

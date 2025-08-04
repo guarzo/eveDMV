@@ -165,4 +165,20 @@ defmodule EveDmv.Api do
   def count(query) do
     Ash.count(query, domain: __MODULE__)
   end
+
+  @doc """
+  Reads one record from a query.
+  """
+  @spec read_one(Ash.Query.t()) :: {:ok, Ash.Resource.record()} | {:ok, nil} | {:error, any()}
+  def read_one(query) do
+    Ash.read_one(query, domain: __MODULE__)
+  end
+
+  @doc """
+  Reads one record from a query and raises on error.
+  """
+  @spec read_one!(Ash.Query.t()) :: Ash.Resource.record() | nil
+  def read_one!(query) do
+    Ash.read_one!(query, domain: __MODULE__)
+  end
 end

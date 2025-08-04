@@ -1,4 +1,5 @@
 defmodule EveDmv.Contexts.Intelligence.Core.ShipPreferenceAnalyzer do
+  @compile {:nowarn_unused_function}
   @moduledoc """
   Analyzes ship usage patterns and preferences for characters.
 

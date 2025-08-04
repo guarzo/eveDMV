@@ -28,7 +28,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.SystemInhabitantsManager do
            chain_topology_id == ^chain_topology_id and character_id == ^character_id and
              system_id == ^system_id
          )
-         |> Ash.read(domain: Api) do
+         |> Api.read() do
       {:ok, [inhabitant]} ->
         # Update existing inhabitant
         Ash.update(
@@ -196,7 +196,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.SystemInhabitantsManager do
   def find_character_inhabitant(_map_id, character_name) do
     case SystemInhabitant
          |> Ash.Query.filter(character_name == ^character_name and present == true)
-         |> Ash.read!(domain: Api) do
+         |> Api.read!() do
       [inhabitant | _] -> {:ok, inhabitant}
       [] -> {:error, :not_found}
     end
@@ -214,13 +214,13 @@ defmodule EveDmv.Intelligence.ChainAnalysis.SystemInhabitantsManager do
     {:ok, inhabitants} =
       SystemInhabitant
       |> Ash.Query.filter(chain_topology_id == ^chain_topology_id and present == true)
-      |> Ash.read(domain: Api)
+      |> Api.read()
 
     # Bulk update all inhabitants to mark as departed
     departure_time = DateTime.utc_now()
 
     Enum.each(inhabitants, fn inhabitant ->
-      Ash.update!(inhabitant, %{present: false, departure_time: departure_time}, domain: Api)
+      Api.update(inhabitant, %{present: false, departure_time: departure_time})
     end)
   end
 
@@ -232,7 +232,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.SystemInhabitantsManager do
   def get_current_inhabitants(chain_topology_id) do
     SystemInhabitant
     |> Ash.Query.filter(chain_topology_id == ^chain_topology_id and present == true)
-    |> Ash.read(domain: Api)
+    |> Api.read()
   end
 
   @doc """

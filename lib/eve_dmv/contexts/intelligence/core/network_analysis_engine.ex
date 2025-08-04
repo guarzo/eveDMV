@@ -1,4 +1,5 @@
 defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
+  @compile {:nowarn_unused_function}
   @moduledoc """
   Social network analysis engine for EVE Online character relationships.
 

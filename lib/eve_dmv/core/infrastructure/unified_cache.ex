@@ -226,7 +226,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedCache do
 
   ## GenServer Callbacks
 
-  @impl GenServer
+  @impl true
   def init(_opts) do
     # Create ETS tables
     :ets.new(@cache_table, [:set, :public, :named_table, {:read_concurrency, true}])
@@ -244,7 +244,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedCache do
     {:ok, %{last_cleanup: System.system_time(:second)}}
   end
 
-  @impl GenServer
+  @impl true
   def handle_info(:cleanup, state) do
     cleanup_expired_entries()
 
@@ -254,7 +254,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedCache do
     {:noreply, %{state | last_cleanup: System.system_time(:second)}}
   end
 
-  @impl GenServer
+  @impl true
   def handle_cast(:cleanup, state) do
     cleanup_expired_entries()
     {:noreply, %{state | last_cleanup: System.system_time(:second)}}
@@ -330,7 +330,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedCache do
     _ -> nil
   end
 
-  @impl GenServer
+  @impl true
   def handle_call(:get_last_cleanup, _from, state) do
     {:reply, {:ok, state.last_cleanup}, state}
   end

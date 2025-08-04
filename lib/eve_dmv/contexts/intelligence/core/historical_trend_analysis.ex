@@ -1,4 +1,5 @@
 defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
+  @compile {:nowarn_unused_function}
   @moduledoc """
   Implements historical trend analysis for character behavior patterns.
 

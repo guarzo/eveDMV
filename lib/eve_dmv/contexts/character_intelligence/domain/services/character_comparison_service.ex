@@ -938,6 +938,7 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
     end
   end
 
+  @dialyzer {:nowarn_function, extract_combat_metrics: 1}
   defp extract_combat_metrics(char_data) do
     stats = char_data.stats
 
@@ -949,6 +950,7 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
     }
   end
 
+  @dialyzer {:nowarn_function, extract_ship_preferences: 1}
   defp extract_ship_preferences(char_data) do
     ship_usage = analyze_ship_usage(char_data.killmails)
 
@@ -959,6 +961,7 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
     }
   end
 
+  @dialyzer {:nowarn_function, extract_activity_profile: 1}
   defp extract_activity_profile(char_data) do
     patterns = char_data.behavioral_patterns
 

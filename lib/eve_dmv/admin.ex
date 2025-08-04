@@ -119,7 +119,7 @@ defmodule EveDmv.Admin do
 
   # Private helper function to update user admin status
   defp update_user_admin_status(user, admin_status) do
-    case Ash.update(user, %{is_admin: admin_status}, domain: Api) do
+    case Api.update(user, %{is_admin: admin_status}) do
       {:ok, updated_user} -> {:ok, updated_user}
       {:error, reason} -> {:error, reason}
     end

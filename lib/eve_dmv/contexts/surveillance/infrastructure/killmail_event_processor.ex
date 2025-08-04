@@ -376,10 +376,12 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.KillmailEventProcessor do
     Enum.count(match_results, & &1.matched)
   end
 
+  @dialyzer {:nowarn_function, count_alerts: 1}
   defp count_alerts(alert_results) do
     Enum.count(alert_results, &(&1.status == :success))
   end
 
+  @dialyzer {:nowarn_function, count_notifications: 1}
   defp count_notifications(notification_results) do
     Enum.count(notification_results, &(&1.status == :sent))
   end

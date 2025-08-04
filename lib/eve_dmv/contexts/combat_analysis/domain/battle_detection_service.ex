@@ -15,7 +15,6 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService do
   alias EveDmv.DomainEvents.KillmailEnriched
   alias EveDmv.Infrastructure.EventBus
   alias EveDmv.Shared.Infrastructure.UnifiedCache
-  alias EveDmv.Shared.Infrastructure.UnifiedRepository
 
   require Logger
 
@@ -400,10 +399,9 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService do
     length(participants)
   end
 
-  defp fetch_battle_from_db(battle_id) do
+  defp fetch_battle_from_db(_battle_id) do
     # Try to fetch battle from database
     # TODO: Replace with proper battle repository access
-    # UnifiedRepository doesn't support :combat domain
     # For now, return not found
     {:error, :not_found}
   end

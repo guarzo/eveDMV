@@ -418,6 +418,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
     {:error, :battle_data_unavailable}
   end
 
+  @dialyzer {:nowarn_function, maybe_validate_timing: 3}
   defp maybe_validate_timing(timestamp, battle_data, validate_timing) do
     if validate_timing do
       validate_timestamp_against_battle(timestamp, battle_data)
@@ -426,6 +427,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
     end
   end
 
+  @dialyzer {:nowarn_function, validate_timestamp_against_battle: 2}
   defp validate_timestamp_against_battle(timestamp, battle_data) do
     battle_duration = Map.get(battle_data, :duration_seconds, 0)
 

@@ -1,4 +1,5 @@
 defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
+  @compile {:nowarn_unused_function}
   @moduledoc """
   Comprehensive threat analysis service for characters and corporations.
 

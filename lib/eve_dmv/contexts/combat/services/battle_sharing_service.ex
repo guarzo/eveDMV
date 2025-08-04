@@ -66,6 +66,8 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
       }
 
       {:ok, card}
+    else
+      error -> error
     end
   end
 
@@ -76,6 +78,8 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
     with {:ok, battle} <- find_battle_by_token(share_token),
          :ok <- verify_share_access(battle) do
       {:ok, battle}
+    else
+      error -> error
     end
   end
 
@@ -183,32 +187,6 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
     end
   end
 
-  # TODO: Remove unused function (dialyzer cleanup)
-  defp format_isk_value(value) when value >= 1_000_000_000 do
-    "#{Float.round(value / 1_000_000_000, 1)}B ISK"
-  end
-
-  # TODO: Remove unused function (dialyzer cleanup)
-  defp format_isk_value(value) when value >= 1_000_000 do
-    "#{Float.round(value / 1_000_000, 1)}M ISK"
-  end
-
-  # TODO: Remove unused function (dialyzer cleanup)
-  defp format_isk_value(value) do
-    "#{round(value)} ISK"
-  end
-
-  # TODO: Remove unused function (dialyzer cleanup)
-  defp format_duration(minutes) when minutes >= 60 do
-    hours = div(minutes, 60)
-    mins = rem(minutes, 60)
-    "#{hours}h #{mins}m"
-  end
-
-  # TODO: Remove unused function (dialyzer cleanup)
-  defp format_duration(minutes) do
-    "#{minutes}m"
-  end
 
   defp generate_embed_code(battle_id, options) do
     width = Map.get(options, :width, 600)
@@ -225,9 +203,6 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
     """
   end
 
-  defp generate_preview_image_url(battle_id) do
-    "#{@share_url_base}preview/#{battle_id}.png"
-  end
 
   defp find_battle_by_token(_share_token) do
     # Battle sharing functionality not yet implemented
@@ -235,19 +210,6 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
     {:error, :battle_not_found}
   end
 
-  defp verify_share_access(battle) do
-    cond do
-      not battle.sharing_enabled ->
-        {:error, :sharing_disabled}
-
-      battle.share_expires_at &&
-          DateTimeUtils.compare(DateTime.utc_now(), battle.share_expires_at) == :gt ->
-        {:error, :share_expired}
-
-      true ->
-        :ok
-    end
-  end
 
   defp fetch_battles_for_comparison(battle_ids) do
     battles =
@@ -328,9 +290,52 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
     final_insights
   end
 
-  # Formatting helpers
+  # Helper functions
+
+  defp format_isk_value(value) when value >= 1_000_000_000 do
+    "#{Float.round(value / 1_000_000_000, 1)}B ISK"
+  end
+
+  defp format_isk_value(value) when value >= 1_000_000 do
+    "#{Float.round(value / 1_000_000, 1)}M ISK"
+  end
+
+  defp format_isk_value(value) do
+    "#{round(value)} ISK"
+  end
+
+  defp format_duration(minutes) when minutes >= 60 do
+    hours = div(minutes, 60)
+    mins = rem(minutes, 60)
+    "#{hours}h #{mins}m"
+  end
+
+  defp format_duration(minutes) do
+    "#{minutes}m"
+  end
+
+  defp generate_preview_image_url(battle_id) do
+    "#{@share_url_base}preview/#{battle_id}.png"
+  end
+
+  defp verify_share_access(battle) do
+    cond do
+      not battle.sharing_enabled ->
+        {:error, :sharing_disabled}
+
+      battle.share_expires_at &&
+          DateTimeUtils.compare(DateTime.utc_now(), battle.share_expires_at) == :gt ->
+        {:error, :share_expired}
+
+      true ->
+        :ok
+    end
+  end
 
   defp format_battle_date(datetime) do
     Calendar.strftime(datetime, "%Y-%m-%d %H:%M")
   end
+
+  # Formatting helpers
+
 end

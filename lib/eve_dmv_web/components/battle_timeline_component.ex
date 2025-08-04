@@ -340,10 +340,9 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
 
     assigns =
       assigns
-
-    assign(:event, event)
-    assign(:index, index)
-    assign(:position, position)
+      |> assign(:event, event)
+      |> assign(:index, index)
+      |> assign(:position, position)
 
     ~H"""
     <div
@@ -370,10 +369,9 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
 
     assigns =
       assigns
-
-    assign(:phase, phase)
-    assign(:start_pos, start_pos)
-    assign(:width, width)
+      |> assign(:phase, phase)
+      |> assign(:start_pos, start_pos)
+      |> assign(:width, width)
 
     ~H"""
     <div
@@ -392,9 +390,8 @@ defmodule EveDmvWeb.Components.BattleTimelineComponent do
 
     assigns =
       assigns
-
-    assign(:moment, moment)
-    assign(:position, position)
+      |> assign(:moment, moment)
+      |> assign(:position, position)
 
     ~H"""
     <div

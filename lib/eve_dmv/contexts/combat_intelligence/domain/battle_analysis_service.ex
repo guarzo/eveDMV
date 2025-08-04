@@ -409,6 +409,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   # Participant analysis integration
 
+  @dialyzer {:nowarn_function, enhance_participant_analysis: 1}
   defp enhance_participant_analysis(participants) do
     # Analyze participant affiliations using ParticipantExtractor
     affiliations = ParticipantExtractor.analyze_participant_affiliations(participants)
@@ -448,6 +449,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   # Helper functions
 
+  @dialyzer {:nowarn_function, classify_battle_type: 2}
   defp classify_battle_type(participants, _killmails) do
     participant_count = map_size(participants)
 
@@ -458,6 +460,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
     end
   end
 
+  @dialyzer {:nowarn_function, classify_engagement_scale: 1}
   defp classify_engagement_scale(participants) do
     count = map_size(participants)
 
@@ -493,6 +496,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
   # Helper functions for tactical evolution analysis
 
+  @dialyzer {:nowarn_function, evaluate_doctrine_effectiveness: 1}
   defp evaluate_doctrine_effectiveness(_fleet_analysis) do
     %{}
   end

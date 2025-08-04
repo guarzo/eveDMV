@@ -6,7 +6,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
   to identify discrete battles from killmail data.
   """
 
-  import Ash.Query
+  import Ash.Query, only: [filter: 2, sort: 2, limit: 2, new: 1]
   alias EveDmv.Core.Utils.DateTimeUtils
 
   alias EveDmv.Api
@@ -127,7 +127,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
       # Reasonable limit for battle analysis
       |> limit(1000)
 
-    case Ash.read(query, domain: Api) do
+    case Api.read(query) do
       {:ok, filtered_killmails} ->
         {:ok, filtered_killmails}
 
@@ -154,7 +154,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
       # Reasonable limit for single system
       |> limit(500)
 
-    case Ash.read(query, domain: Api) do
+    case Api.read(query) do
       {:ok, filtered_killmails} ->
         {:ok, filtered_killmails}
 
@@ -174,11 +174,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
   defp fetch_killmails_by_ids(killmail_ids) do
     query =
       KillmailRaw
-      |> new()
+      |> Ash.Query.new()
       |> filter(killmail_id: [in: killmail_ids])
       |> sort(killmail_time: :asc)
 
-    case Ash.read(query, domain: Api) do
+    case Api.read(query) do
       {:ok, killmails} ->
         {:ok, killmails}
 

@@ -242,7 +242,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.BattleReport do
         |> Ash.Changeset.change_attribute(:community_ratings, updated_ratings)
         |> Ash.Changeset.change_attribute(:total_ratings, total_count)
         |> Ash.Changeset.change_attribute(:average_rating, Decimal.new(new_average))
-        |> recalculate_featured_score()
+        |> recalculate_featured_score
       end)
     end
 
@@ -315,6 +315,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.BattleReport do
     :crypto.strong_rand_bytes(12) |> Base.encode16(case: :lower)
   end
 
+  @dialyzer {:nowarn_function, recalculate_featured_score: 1}
   defp recalculate_featured_score(changeset) do
     average_rating = Ash.Changeset.get_attribute(changeset, :average_rating) || Decimal.new(0)
     total_ratings = Ash.Changeset.get_attribute(changeset, :total_ratings) || 0

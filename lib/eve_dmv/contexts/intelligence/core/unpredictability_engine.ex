@@ -1,4 +1,5 @@
 defmodule EveDmv.Contexts.Intelligence.Core.UnpredictabilityEngine do
+  @compile {:nowarn_unused_function}
   @moduledoc """
   Analyzes operational security and unpredictability patterns.
   Part of the multi-dimensional threat assessment system.

@@ -11,7 +11,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
   alias EveDmv.Repo
 
   require Logger
-  require Ash.Query
+  import Ash.Query
 
   @zkillboard_api_base "https://zkillboard.com/api"
   @esi_base "https://esi.evetech.net/latest"
@@ -196,7 +196,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
       {"Accept", "application/json"}
     ]
 
-    case HTTPoison.get(url, headers, recv_timeout: 30_000) do
+    case HTTPoison.get(url, headers, [recv_timeout: 30_000]) do
       {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
         case Jason.decode(body) do
           {:ok, data} -> {:ok, data}
@@ -342,7 +342,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
       source: "zkillboard_import"
     }
 
-    case Ash.create(KillmailRaw, killmail_attrs, domain: Api) do
+    case Api.create(KillmailRaw, killmail_attrs) do
       {:ok, _killmail} ->
         Logger.info("Stored killmail #{killmail_id}")
         killmail_id
@@ -385,7 +385,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
   defp get_killmail_details(killmail_id) do
     # Fetch the killmail from our database to get system and time info
     case KillmailRaw
-         |> Ash.Query.filter(killmail_id: killmail_id)
+         |> filter(killmail_id: killmail_id)
          |> Ash.read_one(domain: Api) do
       {:ok, killmail} when killmail != nil ->
         {:ok, killmail}

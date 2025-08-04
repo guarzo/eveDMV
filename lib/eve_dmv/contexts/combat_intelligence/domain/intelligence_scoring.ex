@@ -11,10 +11,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
   """
 
   import Ash.Expr
+  import Ash.Query
+  alias EveDmv.Api
   alias EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache
   alias EveDmv.Core.Utils.DateTimeUtils
   require Logger
-  require Ash.Query
 
   @doc """
   Calculate intelligence score for a character using specific scoring algorithm.
@@ -151,11 +152,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
 
     query =
       EveDmv.Killmails.KillmailRaw
-      |> Ash.Query.new()
-      |> Ash.Query.filter(expr(killmail_time >= ^thirty_days_ago))
-      |> Ash.Query.load([:participants])
+      |> new()
+      |> filter(expr(killmail_time >= ^thirty_days_ago))
+      |> load([:participants])
 
-    case Ash.read(query, domain: EveDmv.Api) do
+    case Api.read(query) do
       {:ok, killmails} ->
         # Filter killmails where character is an attacker
         character_kills =
@@ -257,11 +258,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
 
     query =
       EveDmv.Killmails.KillmailRaw
-      |> Ash.Query.new()
-      |> Ash.Query.filter(expr(killmail_time >= ^ninety_days_ago))
-      |> Ash.Query.load([:participants])
+      |> new()
+      |> filter(expr(killmail_time >= ^ninety_days_ago))
+      |> load([:participants])
 
-    case Ash.read(query, domain: EveDmv.Api) do
+    case Api.read(query) do
       {:ok, killmails} ->
         # Get kills where character participated
         character_participations =
@@ -355,11 +356,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
 
     query =
       EveDmv.Killmails.KillmailRaw
-      |> Ash.Query.new()
-      |> Ash.Query.filter(expr(killmail_time >= ^ninety_days_ago))
-      |> Ash.Query.load([:participants])
+      |> new()
+      |> filter(expr(killmail_time >= ^ninety_days_ago))
+      |> load([:participants])
 
-    case Ash.read(query, domain: EveDmv.Api) do
+    case Api.read(query) do
       {:ok, killmails} ->
         # Get fleet kills where character participated
         fleet_participations =
@@ -472,11 +473,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
 
     query =
       EveDmv.Killmails.KillmailRaw
-      |> Ash.Query.new()
-      |> Ash.Query.filter(expr(killmail_time >= ^ninety_days_ago))
-      |> Ash.Query.load([:participants])
+      |> new()
+      |> filter(expr(killmail_time >= ^ninety_days_ago))
+      |> load([:participants])
 
-    case Ash.read(query, domain: EveDmv.Api) do
+    case Api.read(query) do
       {:ok, killmails} ->
         # Get solo kills (attacker_count = 1)
         solo_kills =
@@ -593,10 +594,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
     # Get all killmails involving this character
     query =
       EveDmv.Killmails.KillmailRaw
-      |> Ash.Query.new()
-      |> Ash.Query.load([:participants])
+      |> new()
+      |> load([:participants])
 
-    case Ash.read(query, domain: EveDmv.Api) do
+    case Api.read(query) do
       {:ok, killmails} ->
         # Find potential friendly fire incidents
         # Where character killed someone from same corp/alliance

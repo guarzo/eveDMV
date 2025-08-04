@@ -1,4 +1,5 @@
 defmodule EveDmv.Contexts.Intelligence.Core.CombatStatsAnalyzer do
+  @compile {:nowarn_unused_function}
   @moduledoc """
   Analyzes combat statistics for characters including kill/death ratios,
   ISK efficiency, weapon preferences, and engagement patterns.

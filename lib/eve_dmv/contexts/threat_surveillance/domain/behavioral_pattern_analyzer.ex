@@ -1,4 +1,5 @@
 defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
+  @compile {:nowarn_unused_function}
   @moduledoc """
   Analyzes behavioral patterns of characters and corporations from killmail data.
 

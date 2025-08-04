@@ -90,7 +90,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   @doc """
   Delete a battle and its associations.
   """
-  @spec delete_battle(String.t()) :: {:ok, any()} | {:error, any()}
+  @spec delete_battle(String.t()) :: {:ok, EveDmv.Contexts.BattleAnalysis.Resources.Battle.t()} | {:error, atom()}
   def delete_battle(battle_id) do
     case get_battle(battle_id) do
       {:ok, battle} ->
@@ -98,16 +98,25 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
         case delete_battle_killmails(battle_id) do
           %Ash.BulkResult{status: :success} ->
             # Delete the battle
-            Ash.destroy(battle)
+            case Ash.destroy(battle, domain: Api) do
+              :ok -> {:ok, battle}
+              {:error, error} -> {:error, error}
+            end
 
           %Ash.BulkResult{errors: errors} when errors != [] ->
             Logger.warning("Failed to delete some battle killmails: #{inspect(errors)}")
             # Still try to delete the battle
-            Ash.destroy(battle)
+            case Ash.destroy(battle, domain: Api) do
+              :ok -> {:ok, battle}
+              {:error, error} -> {:error, error}
+            end
 
           _ ->
             # Delete the battle
-            Ash.destroy(battle)
+            case Ash.destroy(battle, domain: Api) do
+              :ok -> {:ok, battle}
+              {:error, error} -> {:error, error}
+            end
         end
 
       error ->
@@ -175,7 +184,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   Get battle statistics for a time period.
   """
   @spec get_battle_statistics(Date.t() | DateTime.t(), Date.t() | DateTime.t()) ::
-          {:ok, map()} | {:error, atom()}
+          {:ok, map()} | {:error, atom() | term()}
   def get_battle_statistics(start_date, end_date) do
     query =
       from(b in Battle,
@@ -220,7 +229,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   @doc """
   Get battles for a specific character.
   """
-  @spec get_character_battles(integer(), keyword()) :: {:ok, [any()]} | {:error, atom()}
+  @spec get_character_battles(integer(), keyword()) :: {:ok, []}
   def get_character_battles(_character_id, opts \\ []) do
     _limit = Keyword.get(opts, :limit, 50)
     _offset = Keyword.get(opts, :offset, 0)
@@ -380,8 +389,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   defp delete_battle_killmails(battle_id) do
     # Delete all BattleKillmail records for this battle
     BattleKillmail
-    |> Ash.Query.filter(battle_id: battle_id)
-    |> Ash.bulk_destroy(:destroy, domain: Api)
+    |> Ash.Query.filter(battle_id == ^battle_id)
+    |> Ash.bulk_destroy(:destroy, %{}, domain: Api)
   end
 
   defp apply_search_filter({:participant_name, _name}, query) do
@@ -485,7 +494,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
         case create_battle(battle_data) do
           {:ok, battle} -> {:ok, battle}
           {:error, _} = error -> error
-          battle -> {:ok, battle}  # Handle Ash resource return
         end
 
       error ->

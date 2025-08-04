@@ -64,7 +64,7 @@ defmodule EveDmv.Search.SearchSuggestionService do
           |> Ash.Query.distinct([:corporation_id])
           |> Ash.Query.limit(100)
 
-        case Ash.read(corporation_query, domain: Api) do
+        case Api.read(corporation_query) do
           {:ok, corporations} ->
             # Filter in Elixir
             filtered_corps =
@@ -117,7 +117,7 @@ defmodule EveDmv.Search.SearchSuggestionService do
           |> Ash.Query.distinct([:alliance_id])
           |> Ash.Query.limit(100)
 
-        case Ash.read(alliance_query, domain: Api) do
+        case Api.read(alliance_query) do
           {:ok, alliances} ->
             # Filter in Elixir
             filtered_alliances =
@@ -172,7 +172,7 @@ defmodule EveDmv.Search.SearchSuggestionService do
           |> Ash.Query.select([:system_id, :system_name, :region_name, :security_status])
           |> Ash.Query.limit(500)
 
-        case Ash.read(system_query, domain: Api) do
+        case Api.read(system_query) do
           {:ok, systems} ->
             # Filter in Elixir
             filtered_systems =
@@ -227,7 +227,7 @@ defmodule EveDmv.Search.SearchSuggestionService do
           |> Ash.Query.select([:type_id, :type_name, :group_name, :category_name])
           |> Ash.Query.limit(500)
 
-        case Ash.read(ship_query, domain: Api) do
+        case Api.read(ship_query) do
           {:ok, ships} ->
             # Filter in Elixir
             filtered_ships =

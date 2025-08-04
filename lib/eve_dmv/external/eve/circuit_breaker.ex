@@ -153,7 +153,7 @@ defmodule EveDmv.Eve.CircuitBreaker do
       timeout: timeout
     }
 
-    Logger.info("Circuit breaker started for service: #{service_name}")
+    Logger.info("Circuit breaker started for service: #{inspect(service_name)}")
     {:ok, state}
   end
 
@@ -183,7 +183,7 @@ defmodule EveDmv.Eve.CircuitBreaker do
 
   @impl GenServer
   def handle_call(:reset, _from, state) do
-    Logger.info("Circuit breaker reset for service: #{state.service_name}")
+    Logger.info("Circuit breaker reset for service: #{inspect(state.service_name)}")
 
     new_state = %{
       state
@@ -198,7 +198,7 @@ defmodule EveDmv.Eve.CircuitBreaker do
 
   @impl GenServer
   def handle_call({:set_state, new_state}, _from, state) do
-    Logger.info("Circuit breaker state set to #{new_state} for service: #{state.service_name}")
+    Logger.info("Circuit breaker state set to #{new_state} for service: #{inspect(state.service_name)}")
 
     updated_state = %{state | state: new_state}
     {:reply, :ok, updated_state}

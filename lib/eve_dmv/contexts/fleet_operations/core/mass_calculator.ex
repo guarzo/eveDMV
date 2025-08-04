@@ -407,23 +407,6 @@ defmodule EveDmv.Contexts.FleetOperations.Core.MassCalculator do
   defp calculate_optimal_inty_count(mass_budget), do: max(3, trunc(mass_budget / 1_200_000))
   defp calculate_optimal_support_count(mass_budget), do: max(1, trunc(mass_budget / 15_000_000))
 
-  defp estimate_fleet_dps(composition) do
-    # Rough DPS estimates per ship class
-    Enum.reduce(composition, 0, fn {ship_class, count}, acc ->
-      dps_per_ship =
-        case ship_class do
-          :battleships -> 800
-          :battlecruisers -> 600
-          :cruisers -> 400
-          :destroyers -> 250
-          :assault_frigates -> 300
-          :interceptors -> 150
-          :support -> 100
-        end
-
-      acc + count * dps_per_ship
-    end)
-  end
 
   defp format_composition_for_result(composition) do
     # Convert composition map to required format

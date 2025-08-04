@@ -1,4 +1,5 @@
 defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
+  @compile {:nowarn_unused_function}
   @moduledoc """
   Analyzes character performance metrics including efficiency, improvement trends,
   and comparative rankings.

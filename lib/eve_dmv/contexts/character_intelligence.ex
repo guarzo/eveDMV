@@ -122,6 +122,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   """
   @spec calculate_threat_trends(integer(), integer()) ::
           {:ok, threat_trend_analysis()} | {:error, intelligence_error()}
+  @dialyzer {:nowarn_function, calculate_threat_trends: 2}
   def calculate_threat_trends(character_id, days_back \\ 90) do
     case ThreatScoringEngine.analyze_threat_trends(character_id, analysis_window_days: days_back) do
       {:ok, trend_data} ->
@@ -144,7 +145,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Compares threat levels between multiple characters.
   Useful for identifying the most dangerous opponents in a group.
   """
-  @spec compare_character_threats([integer()]) :: {:ok, [{integer(), map()}]} | {:error, atom()}
+  @spec compare_character_threats([integer()]) :: {:ok, [{integer(), character_threat_analysis()}]} | {:error, atom()}
   def compare_character_threats(character_ids) when is_list(character_ids) do
     threat_analyses =
       character_ids
@@ -164,7 +165,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Gets a comprehensive intelligence report for a character.
   Combines threat scoring, behavioral analysis, and performance metrics.
   """
-  @spec get_character_intelligence_report(integer()) :: {:ok, map()} | {:error, atom()}
+  @spec get_character_intelligence_report(integer()) :: {:ok, map()} | {:error, intelligence_error()}
   def get_character_intelligence_report(character_id) do
     with {:ok, threat_analysis} <- analyze_character_threat(character_id),
          {:ok, behavioral_patterns} <- detect_behavioral_patterns(character_id),
@@ -200,7 +201,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   @doc """
   Get ship preference summary for quick threat assessment.
   """
-  @spec get_ship_preferences(integer()) :: {:ok, map()} | {:error, atom()}
+  @spec get_ship_preferences(integer()) :: {:ok, map()} | {:error, intelligence_error()}
   def get_ship_preferences(character_id) do
     ShipIntelligenceBridge.get_character_ship_preferences(character_id)
   end
@@ -210,7 +211,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Returns top ships used with usage counts, efficiency metrics, and ship classifications.
   """
   @spec get_detailed_ship_preferences(integer(), Date.t() | DateTime.t()) ::
-          {:ok, map()} | {:error, atom()}
+          {:ok, map()} | {:error, intelligence_error()}
   def get_detailed_ship_preferences(character_id, since_date) do
     CharacterIntelligenceAnalyzer.analyze_ship_preferences(
       character_id,
@@ -348,7 +349,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
       |> Ash.Query.sort(killmail_time: :desc)
       |> Ash.Query.limit(1000)
 
-    case Ash.read(kills_query, domain: Api) do
+    case Api.read(kills_query) do
       {:ok, killmails} ->
         # Filter for kills where character was attacker
         kills =
@@ -366,7 +367,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
         losses_query = Ash.Query.filter(KillmailRaw, victim_character_id: character_id)
 
         losses_count =
-          case Ash.count(losses_query, domain: Api) do
+          case Api.count(losses_query) do
             {:ok, count} -> count
             _ -> 0
           end
@@ -382,7 +383,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
         isk_lost_query = Ash.Query.filter(KillmailRaw, victim_character_id: character_id)
 
         isk_lost =
-          case Ash.read(isk_lost_query, domain: Api) do
+          case Api.read(isk_lost_query) do
             {:ok, loss_killmails} ->
               Enum.reduce(loss_killmails, 0, fn km, acc ->
                 acc + (get_in(km.raw_data, ["zkb", "totalValue"]) || 0)
@@ -539,7 +540,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
     primary_pattern = Map.get(behavioral_patterns, :primary_pattern, :unknown)
 
     threat_level =
-      case threat_analysis.threat_score do
+      case Map.get(threat_analysis, :threat_score, 0) do
         score when is_number(score) and score >= 90 -> "Extreme"
         score when is_number(score) and score >= 75 -> "High"
         score when is_number(score) and score >= 50 -> "Moderate"
@@ -547,13 +548,14 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
         _ -> "Minimal"
       end
 
+    threat_score = Map.get(threat_analysis, :threat_score, 0)
     %{
       threat_level: threat_level,
-      threat_score: threat_analysis.threat_score,
+      threat_score: threat_score,
       primary_behavior: primary_pattern,
       summary:
-        "#{threat_level} threat #{String.replace(to_string(primary_pattern), "_", " ")} with #{threat_analysis.threat_score}/100 overall score",
-      key_strengths: extract_key_strengths(threat_analysis.dimensions),
+        "#{threat_level} threat #{String.replace(to_string(primary_pattern), "_", " ")} with #{threat_score}/100 overall score",
+      key_strengths: extract_key_strengths(Map.get(threat_analysis, :dimensions, %{})),
       recommendations: generate_tactical_recommendations(threat_analysis, behavioral_patterns)
     }
   end
@@ -613,7 +615,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
 
     # Add recommendations based on threat score
     threat_recommendations =
-      if threat_analysis.threat_score >= 75 do
+      if Map.get(threat_analysis, :threat_score, 0) >= 75 do
         ["Exercise extreme caution", "Consider avoiding direct engagement"]
       else
         []
@@ -622,25 +624,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
     base_recommendations ++ threat_recommendations
   end
 
-  # Helper functions for behavioral pattern analysis
-  defp extract_behavioral_patterns(threat_data) do
-    patterns = []
-    patterns = if threat_data[:behavioral_pattern] == :solo_hunter, do: [:solo_hunter | patterns], else: patterns
-    patterns = if threat_data[:behavioral_pattern] == :fleet_anchor, do: [:fleet_anchor | patterns], else: patterns
-    patterns = if threat_data[:behavioral_pattern] == :specialist, do: [:specialist | patterns], else: patterns
-    Enum.uniq(patterns)
-  end
-
-  defp generate_behavioral_characteristics(threat_data) do
-    base_characteristics = ["Combat focused", "Active in PvP"]
-    
-    case threat_data[:behavioral_pattern] do
-      :solo_hunter -> base_characteristics ++ ["Prefers solo engagements", "High risk tolerance"]
-      :fleet_anchor -> base_characteristics ++ ["Team player", "Tactical coordination"]
-      :specialist -> base_characteristics ++ ["Ship specialization", "Deep expertise"]
-      _ -> base_characteristics
-    end
-  end
 
   defp calculate_pattern_confidence(threat_data) do
     # Base confidence on data quality

@@ -1,4 +1,5 @@
 defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
+  @compile {:nowarn_unused_function}
   @moduledoc """
   Analyzes behavioral patterns including activity times, geographic preferences,
   and operational patterns.

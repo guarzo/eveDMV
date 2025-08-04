@@ -26,18 +26,11 @@ defmodule EveDmv.Eve.EsiCorporationClient do
 
         case EsiRequestClient.get_request(path) do
           {:ok, response} ->
-            # Handle double-wrapped response from EsiRequestClient
-            actual_response =
-              case response do
-                # Unwrap if double-wrapped
-                {:ok, resp} -> resp
-                # Use as-is if not double-wrapped
-                resp -> resp
-              end
+            # Response is already unwrapped from EsiRequestClient
 
             # Now extract the body
             body =
-              case actual_response do
+              case response do
                 %{body: body} -> body
                 other -> other
               end
