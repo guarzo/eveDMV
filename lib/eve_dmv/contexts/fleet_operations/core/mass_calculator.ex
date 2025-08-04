@@ -342,12 +342,13 @@ defmodule EveDmv.Contexts.FleetOperations.Core.MassCalculator do
 
     {:ok,
      %{
+       optimal_composition: format_composition_for_result(composition),
+       total_mass: target_mass,
+       mass_efficiency: 0.85,
+       max_ships: calculate_total_ship_count(composition),
+       wormhole_type: "unknown",
        doctrine: :heavy_assault,
-       mass_limit: mass_limit,
-       target_mass: target_mass,
-       composition: composition,
-       estimated_dps: estimate_fleet_dps(composition),
-       utility_rating: 0.7
+       calculated_at: DateTime.utc_now()
      }}
   end
 
@@ -364,12 +365,13 @@ defmodule EveDmv.Contexts.FleetOperations.Core.MassCalculator do
 
     {:ok,
      %{
+       optimal_composition: format_composition_for_result(composition),
+       total_mass: target_mass,
+       mass_efficiency: 0.6,
+       max_ships: calculate_total_ship_count(composition),
+       wormhole_type: "unknown",
        doctrine: :fast_attack,
-       mass_limit: mass_limit,
-       target_mass: target_mass,
-       composition: composition,
-       estimated_dps: estimate_fleet_dps(composition),
-       utility_rating: 0.9
+       calculated_at: DateTime.utc_now()
      }}
   end
 
@@ -386,12 +388,13 @@ defmodule EveDmv.Contexts.FleetOperations.Core.MassCalculator do
 
     {:ok,
      %{
+       optimal_composition: format_composition_for_result(composition),
+       total_mass: target_mass,
+       mass_efficiency: 0.8,
+       max_ships: calculate_total_ship_count(composition),
+       wormhole_type: "unknown",
        doctrine: :balanced,
-       mass_limit: mass_limit,
-       target_mass: target_mass,
-       composition: composition,
-       estimated_dps: estimate_fleet_dps(composition),
-       utility_rating: 0.8
+       calculated_at: DateTime.utc_now()
      }}
   end
 
@@ -420,6 +423,35 @@ defmodule EveDmv.Contexts.FleetOperations.Core.MassCalculator do
 
       acc + count * dps_per_ship
     end)
+  end
+
+  defp format_composition_for_result(composition) do
+    # Convert composition map to required format
+    Enum.map(composition, fn {ship_class, count} ->
+      %{
+        ship_type_id: get_representative_ship_type(ship_class),
+        count: count,
+        role: ship_class
+      }
+    end)
+  end
+
+  defp calculate_total_ship_count(composition) do
+    Enum.reduce(composition, 0, fn {_class, count}, acc -> acc + count end)
+  end
+
+  defp get_representative_ship_type(ship_class) do
+    # Representative ship type IDs for each class
+    case ship_class do
+      :battleships -> 24692  # Abaddon
+      :battlecruisers -> 24483  # Oracle
+      :cruisers -> 11176  # Zealot
+      :destroyers -> 16242  # Coercer
+      :assault_frigates -> 11365  # Retribution
+      :interceptors -> 11184  # Crusader
+      :support -> 11987  # Guardian
+      _ -> 24692  # Default to Abaddon
+    end
   end
 
   @doc """

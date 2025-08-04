@@ -58,7 +58,18 @@
 
   # Character intelligence - incomplete type information
   ~r"character_intelligence.ex:.*:pattern_match",
-  ~r"player_stats_engine.ex:1:pattern_match"
+  ~r"player_stats_engine.ex:1:pattern_match",
+
+  # ===========================================
+  # WORKSTREAM E FALSE POSITIVES
+  # ===========================================
+
+  # Phoenix LiveView component templates cause no_return false positives
+  ~r"lib/eve_dmv_web/components/battle_timeline_component.ex:.*:no_return",
+  ~r"lib/eve_dmv_web/components/battle_timeline_component.ex:.*:call",
+
+  # Ship preferences analyzer - private functions are used but dialyzer doesn't detect it
+  ~r"lib/eve_dmv/contexts/player_profile/analyzers/ship_preferences_analyzer.ex:.*:unused_fun"
   # REMOVED - unused filter per dialyzer output
   # ~r"threat_scoring_engine.ex:.*:pattern_match",
 
