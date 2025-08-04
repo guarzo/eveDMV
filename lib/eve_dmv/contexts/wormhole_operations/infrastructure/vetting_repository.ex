@@ -9,7 +9,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Infrastructure.VettingRepository do
   @doc """
   Store a vetting report for a character.
   """
-  @spec store_vetting_report(map()) :: {:ok, map()} | {:error, term()}
+  @spec store_vetting_report(map()) :: {:ok, map()}
   def store_vetting_report(vetting_report) do
     # In real implementation would:
     # - Validate report structure
@@ -24,7 +24,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Infrastructure.VettingRepository do
   @doc """
   Get the latest vetting report for a character.
   """
-  @spec get_latest_vetting(integer()) :: {:ok, map()} | {:error, :not_found}
+  @spec get_latest_vetting(integer()) :: {:error, :not_found}
   def get_latest_vetting(_character_id) do
     {:error, :not_found}
   end
@@ -32,7 +32,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Infrastructure.VettingRepository do
   @doc """
   Get a specific vetting report by ID.
   """
-  @spec get_vetting_report(integer()) :: {:ok, map()} | {:error, :not_found}
+  @spec get_vetting_report(integer()) :: {:error, :not_found}
   def get_vetting_report(_vetting_id) do
     {:error, :not_found}
   end
@@ -40,7 +40,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Infrastructure.VettingRepository do
   @doc """
   Update corporation vetting criteria.
   """
-  @spec update_corporation_criteria(integer(), map()) :: {:ok, map()} | {:error, term()}
+  @spec update_corporation_criteria(integer(), map()) :: {:ok, map()}
   def update_corporation_criteria(_corporation_id, criteria) do
     # In real implementation would update criteria in database
     updated_criteria = Map.put(criteria, :updated_at, DateTime.utc_now())

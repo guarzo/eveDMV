@@ -105,7 +105,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.ShipPreferenceAnalyzer do
 
   defp get_recent_killmails(character_id) do
     start_date = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
-    KillmailRepository.get_by_character(character_id, start_date)
+    KillmailRepository.get_by_character(character_id, start_date: start_date, limit: 1000)
   end
 
   defp analyze_favorite_ships(ship_usage) do

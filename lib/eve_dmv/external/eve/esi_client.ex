@@ -53,7 +53,7 @@ defmodule EveDmv.Eve.EsiClient do
   Get character employment history.
   """
   @spec get_character_employment_history(integer()) ::
-          {:ok, list(map())} | {:error, :invalid_response | :service_unavailable}
+          {:ok, list(map())} | {:error, term()}
   defdelegate get_character_employment_history(character_id), to: EsiCharacterClient
 
   @doc """

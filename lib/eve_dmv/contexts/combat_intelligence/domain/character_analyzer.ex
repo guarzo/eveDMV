@@ -144,7 +144,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
         }
 
         # Cache the result
-        AnalysisCache.put_character_analysis(character_id, analysis)
+        _ = AnalysisCache.put_character_analysis(character_id, analysis)
 
         {:ok, analysis}
     end

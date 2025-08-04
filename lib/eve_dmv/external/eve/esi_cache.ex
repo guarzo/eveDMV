@@ -208,10 +208,10 @@ defmodule EveDmv.Eve.EsiCache do
   Get cache statistics.
   """
   @spec stats() :: %{
-          characters: %{size: non_neg_integer(), memory_bytes: number()},
-          corporations: %{size: non_neg_integer(), memory_bytes: number()},
-          alliances: %{size: non_neg_integer(), memory_bytes: number()},
-          universe: %{size: non_neg_integer(), memory_bytes: number()}
+          characters: %{size: non_neg_integer(), memory_bytes: non_neg_integer()},
+          corporations: %{size: non_neg_integer(), memory_bytes: non_neg_integer()},
+          alliances: %{size: non_neg_integer(), memory_bytes: non_neg_integer()},
+          universe: %{size: non_neg_integer(), memory_bytes: non_neg_integer()}
         }
   def stats do
     # Get overall stats

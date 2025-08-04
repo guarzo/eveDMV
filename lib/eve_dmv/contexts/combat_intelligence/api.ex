@@ -71,7 +71,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
          {:ok, analysis_result} <- Domain.CharacterAnalyzer.analyze(character_id, opts) do
       {:ok, analysis_result}
     else
-      {:error, :invalid_options} -> {:error, :invalid_options}
       {:error, reason} -> {:error, reason}
       _ -> {:error, :analysis_failed}
     end
@@ -102,7 +101,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
          {:ok, analysis_result} <- Domain.CorporationAnalyzer.analyze(corporation_id, opts) do
       {:ok, analysis_result}
     else
-      {:error, :invalid_options} -> {:error, :invalid_options}
       {:error, reason} -> {:error, reason}
       _ -> {:error, :analysis_failed}
     end
@@ -139,7 +137,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
          {:ok, assessment} <- Domain.ThreatAssessor.assess_threat(character_id, context) do
       {:ok, assessment}
     else
-      {:error, :invalid_context} -> {:error, :invalid_options}
       {:error, reason} -> {:error, reason}
       _ -> {:error, :analysis_failed}
     end
@@ -199,7 +196,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
          {:ok, matching_characters} <- Domain.CharacterAnalyzer.search_by_criteria(criteria) do
       {:ok, matching_characters}
     else
-      {:error, _} = error -> error
+      {:error, reason} -> {:error, reason}
       _ -> {:error, :search_failed}
     end
   end
@@ -239,7 +236,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   def get_intelligence_cache_stats do
     case Domain.CharacterAnalyzer.get_cache_stats() do
       {:ok, stats} -> {:ok, stats}
-      stats when is_map(stats) -> {:ok, stats}
       _ -> {:ok, %{cache_size: 0, evictions: 0, hit_rate: 0.0, miss_rate: 0.0}}
     end
   end

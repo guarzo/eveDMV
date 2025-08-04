@@ -41,9 +41,14 @@ defmodule EveDmvWeb.Api.BattleShareController do
         })
 
       {:error, reason} ->
+        {status, message} = case reason do
+          reason when is_binary(reason) -> {:unprocessable_entity, reason}
+          _other -> {:internal_server_error, "Failed to create battle report"}
+        end
+
         conn
-        |> put_status(:unprocessable_entity)
-        |> json(%{error: %{message: "Failed to create battle report", details: inspect(reason)}})
+        |> put_status(status)
+        |> json(%{error: %{message: message}})
     end
   end
 end

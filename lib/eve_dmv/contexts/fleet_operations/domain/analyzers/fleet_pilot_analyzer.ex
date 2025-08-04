@@ -107,7 +107,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.Analyzers.FleetPilotAnalyzer do
       |> Ash.Query.filter(corporation_id: corporation_id)
       # Reasonable limit for corporation size
       |> Ash.Query.limit(500)
-      |> Ash.read!(domain: Api)
+      |> Api.read!()
 
     {:ok, members}
   rescue

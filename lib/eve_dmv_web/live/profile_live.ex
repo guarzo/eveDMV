@@ -50,6 +50,7 @@ defmodule EveDmvWeb.ProfileLive do
       ship_intelligence = get_character_ship_intelligence(current_user.eve_character_id)
 
       send(self(), {:stats_loaded, stats, ship_intelligence})
+      :ok
     end)
 
     socket
@@ -71,13 +72,15 @@ defmodule EveDmvWeb.ProfileLive do
   defp get_character_combat_stats(character_id) do
     case CharacterIntelligence.get_character_intelligence_report(character_id) do
       {:ok, report} -> report.combat_stats
-      {:error, _} -> %{}
+      {:error, _error} -> %{}
     end
   end
 
   defp get_character_ship_intelligence(character_id) do
-    {:ok, intelligence} = ShipIntelligenceBridge.calculate_ship_specialization(character_id)
-    intelligence
+    case ShipIntelligenceBridge.calculate_ship_specialization(character_id) do
+      {:ok, intelligence} -> intelligence
+      {:error, _error} -> %{}
+    end
   end
 
   defp export_user_data(user) do
@@ -98,21 +101,21 @@ defmodule EveDmvWeb.ProfileLive do
     intelligence_data =
       case CharacterIntelligence.get_character_intelligence_report(user.eve_character_id) do
         {:ok, data} -> data
-        {:error, _} -> %{error: "Intelligence data not available"}
+        {:error, _error} -> %{error: "Intelligence data not available"}
       end
 
     # Get threat scoring data
     threat_data =
       case ThreatScoringCoordinator.calculate_threat_score(user.eve_character_id) do
         {:ok, threat_score} -> threat_score
-        {:error, _} -> %{error: "Threat scoring data not available"}
+        {:error, _error} -> %{error: "Threat scoring data not available"}
       end
 
     # Get activity patterns
     activity_data =
       case CharacterAnalyzer.get_activity_patterns(user.eve_character_id) do
         {:ok, patterns} -> patterns
-        {:error, _} -> %{error: "Activity patterns not available"}
+        {:error, _error} -> %{error: "Activity patterns not available"}
       end
 
     export_data = %{

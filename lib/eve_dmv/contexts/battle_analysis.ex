@@ -186,8 +186,12 @@ defmodule EveDmv.Contexts.BattleAnalysis do
 
             case find_battle_by_id(battles, battle_id, system_id) do
               {:ok, battle} ->
-                timeline = reconstruct_battle_timeline(battle)
-                {:ok, Map.put(battle, :timeline, timeline)}
+                case reconstruct_battle_timeline(battle) do
+                  {:ok, timeline} ->
+                    {:ok, Map.put(battle, :timeline, timeline)}
+                  error ->
+                    error
+                end
 
               {:error, :battle_not_found} = error ->
                 error
@@ -286,8 +290,12 @@ defmodule EveDmv.Contexts.BattleAnalysis do
             {:error, :battle_not_found}
 
           battle ->
-            timeline = reconstruct_battle_timeline(battle)
-            {:ok, Map.put(battle, :timeline, timeline)}
+            case reconstruct_battle_timeline(battle) do
+              {:ok, timeline} ->
+                {:ok, Map.put(battle, :timeline, timeline)}
+              error ->
+                error
+            end
         end
 
       error ->
@@ -528,25 +536,78 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   def get_battle_intelligence_summary(battle_id) do
     with {:ok, battle} <- get_battle_by_id(battle_id),
          {:ok, intelligence} <- analyze_battle_with_intelligence(battle),
-         timeline <- reconstruct_battle_timeline(battle) do
+         {:ok, timeline} <- reconstruct_battle_timeline(battle) do
+      summary = generate_intelligence_summary(battle, intelligence, timeline)
       {:ok,
        %{
          battle: battle,
          intelligence: intelligence,
          timeline: timeline,
-         summary: generate_intelligence_summary(battle, intelligence, timeline)
+         summary: summary
        }}
+    else
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :unknown_error}
     end
   end
 
   # Private helper functions
 
+  defp generate_intelligence_summary(battle, intelligence, timeline) do
+    %{
+      battle_id: battle.battle_id,
+      engagement_type: Map.get(intelligence, :battle_flow, :unknown),
+      tactical_assessment: summarize_tactical_phases(Map.get(intelligence, :tactical_phases, [])),
+      performance_summary: summarize_ship_performance(Map.get(intelligence, :ship_performance, %{})),
+      multi_system_context: summarize_multi_system_context(Map.get(intelligence, :multi_system_context, %{})),
+      key_timeline_events: extract_key_timeline_events(timeline),
+      overall_significance: calculate_battle_significance(battle, intelligence)
+    }
+  end
+
+  defp extract_key_timeline_events(timeline) do
+    cond do
+      is_map(timeline) and Map.has_key?(timeline, :key_moments) ->
+        Map.get(timeline, :key_moments, [])
+      
+      is_map(timeline) ->
+        # Extract any event-like data from timeline
+        timeline
+        |> Map.values()
+        |> Enum.filter(&is_map/1)
+        |> Enum.take(5)
+      
+      true ->
+        []
+    end
+  end
+
+  defp calculate_battle_significance(battle, intelligence) do
+    base_score = length(battle.killmails) * 0.1
+    
+    # Add significance based on various factors
+    multi_system_bonus = if Map.get(intelligence, :multi_system_context, %{}) |> Map.get(:is_multi_system, false), do: 2.0, else: 0.0
+    
+    total_score = base_score + multi_system_bonus
+    
+    cond do
+      total_score >= 10.0 -> :very_high
+      total_score >= 5.0 -> :high
+      total_score >= 2.0 -> :medium
+      true -> :low
+    end
+  end
+
   defp analyze_imported_killmails(killmail_ids) do
     case analyze_battle_from_killmail_ids(killmail_ids) do
       {:ok, battle} ->
         # Single battle found, add timeline
-        timeline = reconstruct_battle_timeline(battle)
-        {:ok, Map.put(battle, :timeline, timeline)}
+        case reconstruct_battle_timeline(battle) do
+          {:ok, timeline} ->
+            {:ok, Map.put(battle, :timeline, timeline)}
+          error ->
+            error
+        end
 
       error ->
         error
@@ -600,18 +661,6 @@ defmodule EveDmv.Contexts.BattleAnalysis do
     end
   end
 
-  defp generate_intelligence_summary(battle, intelligence, timeline) do
-    %{
-      overview: "Battle #{battle.battle_id} in system #{battle.metadata.primary_system}",
-      duration: "#{battle.metadata.duration_minutes} minutes",
-      participants: "#{battle.metadata.total_participants} pilots",
-      tactical_summary: summarize_tactical_phases(intelligence.tactical_phases),
-      performance_highlights: summarize_ship_performance(intelligence.ship_performance),
-      multi_system_impact: summarize_multi_system_context(intelligence.multi_system_context),
-      battle_flow_type: intelligence.battle_flow,
-      key_timeline_events: extract_key_timeline_events(timeline)
-    }
-  end
 
   defp summarize_tactical_phases(phases) do
     phase_names = Enum.map(phases, & &1.phase_type)
@@ -639,13 +688,6 @@ defmodule EveDmv.Contexts.BattleAnalysis do
     end
   end
 
-  defp extract_key_timeline_events(timeline) do
-    timeline
-    |> Map.get(:events, [])
-    |> Enum.filter(&(&1.significance == :high))
-    |> Enum.take(5)
-    |> Enum.map(& &1.description)
-  end
 
   defp extract_key_moments_from_phases(phases) do
     phases

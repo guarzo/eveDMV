@@ -7,7 +7,7 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
 
   use EveDmvWeb, :live_view
 
-  alias EveDmv.Monitoring.PerformanceDashboard
+  alias EveDmv.Platform.Monitoring.PerformanceDashboard
   alias Phoenix.PubSub
 
   # 5 seconds
@@ -24,8 +24,8 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
     end
 
     # Load initial metrics
-    metrics = PerformanceDashboard.get_metrics()
-    report = PerformanceDashboard.generate_report(60)
+    metrics = get_metrics_safely()
+    report = get_report_safely(60)
 
     socket =
       socket
@@ -71,8 +71,8 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
   def handle_info(:refresh, socket) do
     if socket.assigns.auto_refresh do
       # Refresh metrics
-      metrics = PerformanceDashboard.get_metrics()
-      report = PerformanceDashboard.generate_report(60)
+      metrics = get_metrics_safely()
+      report = get_report_safely(60)
 
       socket =
         socket

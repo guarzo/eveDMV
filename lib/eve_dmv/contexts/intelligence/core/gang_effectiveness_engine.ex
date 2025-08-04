@@ -33,7 +33,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.GangEffectivenessEngine do
 
   defp get_recent_killmails(character_id) do
     start_date = DateTime.utc_now() |> DateTimeUtils.add(-60 * 24 * 60 * 60, :second)
-    KillmailRepository.get_by_character(character_id, start_date)
+    KillmailRepository.get_by_character(character_id, start_date: start_date, limit: 1000)
   end
 
   defp calculate_effectiveness_score(killmails, character_id) do

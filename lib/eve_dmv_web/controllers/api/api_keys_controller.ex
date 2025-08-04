@@ -19,13 +19,13 @@ defmodule EveDmvWeb.Api.ApiKeysController do
   List API keys for the current user.
   """
   def index(conn, _params) do
-    with character_id when character_id != nil <- get_current_character_id(conn),
+    with {:ok, character_id} <- get_current_character_id(conn),
          {:ok, api_keys} <- ApiAuthentication.list_character_api_keys(character_id) do
       conn
       |> put_status(:ok)
       |> json(%{api_keys: Enum.map(api_keys, &format_api_key/1)})
     else
-      nil ->
+      {:error, :not_authenticated} ->
         conn
         |> put_status(:unauthorized)
         |> json(%{error: "Authentication required"})
@@ -41,7 +41,7 @@ defmodule EveDmvWeb.Api.ApiKeysController do
   Create a new API key.
   """
   def create(conn, params) do
-    with character_id when character_id != nil <- get_current_character_id(conn),
+    with {:ok, character_id} <- get_current_character_id(conn),
          {:ok, api_key} <-
            ApiAuthentication.create_api_key(
              character_id,
@@ -56,7 +56,7 @@ defmodule EveDmvWeb.Api.ApiKeysController do
       |> put_status(:created)
       |> json(%{api_key: format_api_key(api_key)})
     else
-      nil ->
+      {:error, :not_authenticated} ->
         conn
         |> put_status(:unauthorized)
         |> json(%{error: "Authentication required"})
@@ -72,7 +72,7 @@ defmodule EveDmvWeb.Api.ApiKeysController do
   Delete/revoke an API key.
   """
   def delete(conn, %{"id" => api_key_id}) do
-    with character_id when character_id != nil <- get_current_character_id(conn),
+    with {:ok, character_id} <- get_current_character_id(conn),
          {:ok, _api_key} <- ApiAuthentication.revoke_api_key(api_key_id, character_id) do
       # Log the revocation
       AuditLogger.log_api_key_event(:key_revoked, api_key_id, character_id)
@@ -81,7 +81,7 @@ defmodule EveDmvWeb.Api.ApiKeysController do
       |> put_status(:no_content)
       |> json(%{})
     else
-      nil ->
+      {:error, :not_authenticated} ->
         conn
         |> put_status(:unauthorized)
         |> json(%{error: "Authentication required"})
@@ -141,8 +141,9 @@ defmodule EveDmvWeb.Api.ApiKeysController do
   defp get_current_character_id(conn) do
     # Extract character ID from session or token
     case get_session(conn, :current_user_id) do
-      nil -> nil
-      user_id -> user_id
+      nil -> {:error, :not_authenticated}
+      user_id when is_integer(user_id) -> {:ok, user_id}
+      _other -> {:error, :invalid_user_id}
     end
   end
 

@@ -37,14 +37,10 @@ defmodule EveDmv.Eve.EsiMarketClient do
 
     case EsiRequestClient.public_request("GET", path, final_params) do
       {:ok, response} ->
-        # Handle both correct format and double-wrapped format from fallback mechanisms
+        # Handle response format
         body =
           case response do
             %{body: data} when is_list(data) ->
-              data
-
-            {:ok, %{body: data}} when is_list(data) ->
-              Logger.debug("EsiMarketClient: unwrapping double-wrapped response")
               data
 
             other ->

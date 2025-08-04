@@ -21,12 +21,10 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
 
     socket =
       socket
-
-    assign(:page_title, "Performance Dashboard")
-    assign(:time_range, :hour)
-    assign(:threshold_ms, 1000)
-
-    load_metrics(socket)
+      |> assign(:page_title, "Performance Dashboard")
+      |> assign(:time_range, :hour)
+      |> assign(:threshold_ms, 1000)
+      |> load_metrics()
 
     {:ok, socket}
   end
@@ -42,10 +40,8 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
 
     socket =
       socket
-
-    assign(:time_range, time_range)
-
-    load_metrics(socket)
+      |> assign(:time_range, time_range)
+      |> load_metrics()
 
     {:noreply, socket}
   end
@@ -275,16 +271,48 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
   # Private functions
 
   defp load_metrics(socket) do
-    metrics_summary = PerformanceTracker.get_metrics_summary(socket.assigns.time_range)
-    slow_queries = PerformanceTracker.get_slow_queries(socket.assigns.threshold_ms)
-    bottlenecks = PerformanceTracker.get_bottlenecks()
-    cache_stats = QueryCache.get_stats()
+    metrics_summary = get_metrics_summary_safe(socket.assigns.time_range)
+    slow_queries = get_slow_queries_safe(socket.assigns.threshold_ms)
+    bottlenecks = get_bottlenecks_safe()
+    cache_stats = get_cache_stats_safe()
 
     socket
     |> assign(:metrics_summary, metrics_summary)
     |> assign(:slow_queries, slow_queries)
     |> assign(:bottlenecks, bottlenecks)
     |> assign(:cache_stats, cache_stats)
+  end
+
+  defp get_metrics_summary_safe(time_range) do
+    try do
+      PerformanceTracker.get_metrics_summary(time_range)
+    rescue
+      _ -> %{total_queries: 0, avg_duration: 0, error_rate: 0}
+    end
+  end
+
+  defp get_slow_queries_safe(threshold_ms) do
+    try do
+      PerformanceTracker.get_slow_queries(threshold_ms)
+    rescue
+      _ -> []
+    end
+  end
+
+  defp get_bottlenecks_safe do
+    try do
+      PerformanceTracker.get_bottlenecks()
+    rescue
+      _ -> []
+    end
+  end
+
+  defp get_cache_stats_safe do
+    try do
+      QueryCache.get_stats()
+    rescue
+      _ -> %{hit_rate: 0, entries: 0, memory_usage: 0}
+    end
   end
 
   defp truncate_string(str, max_length) do

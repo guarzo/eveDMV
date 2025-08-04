@@ -31,10 +31,15 @@ defmodule EveDmvWeb.Api.CharacterThreatController do
           }
         })
 
-      {:error, _} ->
+      {:error, reason} ->
+        {status, message, code} = case reason do
+          :insufficient_data -> {:unprocessable_entity, "Insufficient data to analyze character threat", "INSUFFICIENT_DATA"}
+          _other -> {:internal_server_error, "Failed to analyze character threat", "INTERNAL_ERROR"}
+        end
+
         conn
-        |> put_status(:internal_server_error)
-        |> json(%{error: %{message: "Failed to analyze character threat", code: "INTERNAL_ERROR"}})
+        |> put_status(status)
+        |> json(%{error: %{message: message, code: code}})
     end
   end
 end

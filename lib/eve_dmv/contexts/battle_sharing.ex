@@ -31,20 +31,14 @@ defmodule EveDmv.Contexts.BattleSharing do
       {:ok, %{report_id: "...", share_url: "..."}}
   """
   def create_battle_report(battle_id, creator_character_id, options \\ []) do
-    case BattleCurator.create_battle_report(battle_id, creator_character_id, options) do
-      {:ok, report} -> {:ok, report}
-      error -> error
-    end
+    BattleCurator.create_battle_report(battle_id, creator_character_id, options)
   end
 
   @doc """
   Creates a battle report from already-loaded battle data.
   """
   def create_battle_report_from_data(battle_data, creator_character_id, options \\ []) do
-    case BattleCurator.create_battle_report_from_data(battle_data, creator_character_id, options) do
-      {:ok, report} -> {:ok, report}
-      error -> error
-    end
+    BattleCurator.create_battle_report_from_data(battle_data, creator_character_id, options)
   end
 
   @doc """

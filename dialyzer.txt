@@ -1,0 +1,40 @@
+Compiling 20 files (.ex)
+    warning: redefining @impl attribute previously set at line 97
+    │
+ 98 │   @impl true
+    │   ~~~~~~~~~~
+    │
+    └─ lib/eve_dmv/platform/monitoring/performance_dashboard.ex:98: EveDmv.Platform.Monitoring.PerformanceDashboard (module)
+
+    error: undefined function get_report_safely/1 (expected EveDmvWeb.Admin.PerformanceLive to define such a function or for it to be imported, but none are available)
+    │
+ 28 │     report = get_report_safely(60)
+    │              ^^^^^^^^^^^^^^^^^
+    │
+    └─ lib/eve_dmv_web/live/admin/performance_live.ex:28:14: EveDmvWeb.Admin.PerformanceLive.mount/3
+
+    error: undefined function get_metrics_safely/0 (expected EveDmvWeb.Admin.PerformanceLive to define such a function or for it to be imported, but none are available)
+    │
+ 27 │     metrics = get_metrics_safely()
+    │               ^^^^^^^^^^^^^^^^^^
+    │
+    └─ lib/eve_dmv_web/live/admin/performance_live.ex:27:15: EveDmvWeb.Admin.PerformanceLive.mount/3
+
+    error: undefined function get_report_safely/1 (expected EveDmvWeb.Admin.PerformanceLive to define such a function or for it to be imported, but none are available)
+    │
+ 75 │       report = get_report_safely(60)
+    │                ^^^^^^^^^^^^^^^^^
+    │
+    └─ lib/eve_dmv_web/live/admin/performance_live.ex:75:16: EveDmvWeb.Admin.PerformanceLive.handle_info/2
+
+    error: undefined function get_metrics_safely/0 (expected EveDmvWeb.Admin.PerformanceLive to define such a function or for it to be imported, but none are available)
+    │
+ 74 │       metrics = get_metrics_safely()
+    │                 ^^^^^^^^^^^^^^^^^^
+    │
+    └─ lib/eve_dmv_web/live/admin/performance_live.ex:74:17: EveDmvWeb.Admin.PerformanceLive.handle_info/2
+
+
+== Compilation error in file lib/eve_dmv_web/live/admin/performance_live.ex ==
+** (CompileError) lib/eve_dmv_web/live/admin/performance_live.ex: cannot compile module EveDmvWeb.Admin.PerformanceLive (errors have been logged)
+

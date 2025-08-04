@@ -29,13 +29,16 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
   def analyze_network(character_id, opts \\ []) do
     cache_key = {:network_analysis, character_id, opts}
 
-    IntelligenceCache.get_or_compute(
-      cache_key,
-      fn ->
-        perform_network_analysis(character_id, opts)
-      end,
-      ttl: @cache_ttl
-    )
+    case IntelligenceCache.get_or_compute(
+           cache_key,
+           fn ->
+             perform_network_analysis(character_id, opts)
+           end,
+           ttl: @cache_ttl
+         ) do
+      {:ok, result} -> {:ok, result}
+      {:error, reason} -> {:error, reason}
+    end
   end
 
   @doc """
@@ -105,7 +108,11 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
 
   defp get_character_killmails(character_id, days) do
     start_date = DateTime.utc_now() |> DateTimeUtils.add(-days * 24 * 60 * 60, :second)
-    KillmailRepository.get_by_character(character_id, start_date)
+
+    case KillmailRepository.get_by_character(character_id, start_date: start_date, limit: 1000) do
+      {:ok, killmails} -> {:ok, killmails}
+      {:error, _reason} -> {:error, :repository_error}
+    end
   end
 
   defp build_network_graph(character_id, killmails) do
@@ -248,7 +255,12 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
 
     # Consistency factor (regular interactions = stronger)
     time_span = max(1, DateTimeUtils.diff(edge.last_seen, edge.first_seen, :day))
-    consistency_factor = interaction_count / time_span
+    consistency_factor =
+      if time_span > 0 do
+        interaction_count / time_span
+      else
+        interaction_count
+      end
 
     # Value factor (higher value engagements = stronger)
     total_value =
@@ -269,7 +281,13 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
   defp classify_relationship(edge) do
     interactions = edge.interactions
     fleet_sizes = Enum.map(interactions, & &1.participant_count)
-    avg_fleet_size = Enum.sum(fleet_sizes) / length(fleet_sizes)
+
+    avg_fleet_size =
+      if length(fleet_sizes) > 0 do
+        Enum.sum(fleet_sizes) / length(fleet_sizes)
+      else
+        0.0
+      end
 
     # Classify based on patterns
     cond do
@@ -290,7 +308,12 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
         |> Enum.map(& &1.participant_count)
         |> Enum.sum()
 
-      Float.round(total / length(interactions), 1)
+      interaction_count = length(interactions)
+      if interaction_count > 0 do
+        Float.round(total / interaction_count, 1)
+      else
+        0.0
+      end
     end
   end
 
@@ -309,7 +332,12 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
     edge_count = map_size(network_data.edges)
 
     # Calculate network density
-    max_edges = node_count * (node_count - 1) / 2
+    max_edges = 
+      if node_count > 1 do
+        node_count * (node_count - 1) / 2
+      else
+        0
+      end
     density = if max_edges > 0, do: edge_count / max_edges, else: 0
 
     # Calculate degree distribution
@@ -335,11 +363,12 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
   end
 
   defp calculate_average_degree(degree_distribution) do
-    if map_size(degree_distribution) == 0 do
+    node_count = map_size(degree_distribution)
+    if node_count == 0 do
       0.0
     else
       total_degree = degree_distribution |> Map.values() |> Enum.sum()
-      Float.round(total_degree / map_size(degree_distribution), 2)
+      Float.round(total_degree / node_count, 2)
     end
   end
 
@@ -368,8 +397,13 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
       if Enum.empty?(node_coefficients) do
         0.0
       else
-        avg = Enum.sum(node_coefficients) / length(node_coefficients)
-        Float.round(avg, 3)
+        coefficient_count = length(node_coefficients)
+        if coefficient_count > 0 do
+          avg = Enum.sum(node_coefficients) / coefficient_count
+          Float.round(avg, 3)
+        else
+          0.0
+        end
       end
     end
   end
@@ -401,8 +435,19 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
         end)
 
       # Local clustering coefficient = actual triangles / possible triangles
-      max_triangles = length(neighbors) * (length(neighbors) - 1) / 2
-      actual_triangles / max_triangles
+      neighbor_count = length(neighbors)
+      max_triangles = 
+        if neighbor_count > 1 do
+          neighbor_count * (neighbor_count - 1) / 2
+        else
+          0
+        end
+
+      if max_triangles > 0 do
+        actual_triangles / max_triangles
+      else
+        0.0
+      end
     end
   end
 

@@ -11,9 +11,12 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
   - Threat score evolution
   """
 
+  alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Database.KillmailRepository
-  alias EveDmv.Intelligence.Cache.IntelligenceCache
+  alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.Shared.Infrastructure.UnifiedCache
+
+  import Ash.Query, only: [filter: 2, sort: 2, limit: 2, new: 1]
 
   require Logger
 
@@ -23,32 +26,36 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
   @doc """
   Analyze threat trends for a character based on historical data.
   """
+  @spec analyze_threat_trends(integer(), number()) :: {:ok, map()} | {:error, term()}
   def analyze_threat_trends(character_id, current_score) do
     cache_key = {:threat_trends, character_id}
 
-    IntelligenceCache.get_or_compute(
-      cache_key,
-      fn ->
-        perform_trend_analysis(character_id, current_score)
-      end,
-      ttl: @cache_ttl
-    )
+    case UnifiedCache.get(:intelligence, cache_key) do
+      {:ok, cached_result} ->
+        {:ok, cached_result}
+
+      :miss ->
+        result = perform_trend_analysis(character_id, current_score)
+        UnifiedCache.put(:intelligence, cache_key, result, @cache_ttl)
+        {:ok, result}
+    end
   end
 
   @doc """
   Get comprehensive historical analysis for a character.
   """
+  @spec get_historical_analysis(integer(), keyword()) :: {:ok, map()} | {:error, term()}
   def get_historical_analysis(character_id, opts \\ []) do
     days_back = Keyword.get(opts, :days, @trend_window_days)
 
     with {:ok, history} <- get_character_history(character_id, days_back) do
       analysis = %{
-        kill_death_trend: analyze_kd_trend(history),
-        isk_efficiency_trend: analyze_isk_trend(history),
+        kill_death_trend: analyze_kd_trend(history, character_id),
+        isk_efficiency_trend: analyze_isk_trend(history, character_id),
         ship_usage_trend: analyze_ship_usage_trend(history),
         activity_pattern_trend: analyze_activity_trend(history),
         threat_evolution: analyze_threat_evolution(history, character_id),
-        performance_metrics: calculate_performance_trends(history),
+        performance_metrics: calculate_performance_trends(history, character_id),
         analyzed_at: DateTime.utc_now()
       }
 
@@ -62,11 +69,11 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
     case get_character_history(character_id, @trend_window_days) do
       {:ok, history} ->
         trends = %{
-          kill_death_trend: analyze_kd_trend(history),
-          isk_efficiency_trend: analyze_isk_trend(history),
+          kill_death_trend: analyze_kd_trend(history, character_id),
+          isk_efficiency_trend: analyze_isk_trend(history, character_id),
           ship_usage_trend: analyze_ship_usage_trend(history),
           activity_pattern_trend: analyze_activity_trend(history),
-          threat_score_trend: analyze_threat_score_trend(history, current_score)
+          threat_score_trend: analyze_threat_score_trend(history, current_score, character_id)
         }
 
         %{
@@ -94,10 +101,21 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
   defp get_character_history(character_id, days_back) do
     start_date = DateTimeUtils.add(DateTime.utc_now(), -days_back * 24 * 3600, :second)
 
-    KillmailRepository.get_by_character(character_id, start_date)
+    query =
+      KillmailRaw
+      |> new()
+      |> filter(victim_character_id: character_id)
+      |> filter(killmail_time: [gte: start_date])
+      |> sort(killmail_time: :desc)
+      |> limit(1000)
+
+    case Api.read(query) do
+      {:ok, killmails} -> {:ok, killmails}
+      {:error, _reason} -> {:error, :repository_error}
+    end
   end
 
-  defp analyze_kd_trend(history) do
+  defp analyze_kd_trend(history, character_id) do
     # Group killmails by week
     weekly_stats =
       history
@@ -105,12 +123,14 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
       |> Enum.map(fn {week, killmails} ->
         kills =
           Enum.count(killmails, fn km ->
-            km.victim_character_id != km.character_id
+            # Count kills where this character was NOT the victim
+            km.victim_character_id != character_id
           end)
 
         deaths =
           Enum.count(killmails, fn km ->
-            km.victim_character_id == km.character_id
+            # Count deaths where this character WAS the victim  
+            km.victim_character_id == character_id
           end)
 
         ratio = if deaths > 0, do: kills / deaths, else: kills
@@ -129,7 +149,10 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
       }
     else
       ratios = Enum.map(weekly_stats, fn {_, stats} -> stats.ratio end)
-      current = List.last(ratios) || 0.0
+      current = case List.last(ratios) do
+        nil -> 0.0
+        value -> value
+      end
 
       %{
         current: Float.round(current, 2),
@@ -142,21 +165,21 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
     end
   end
 
-  defp analyze_isk_trend(history) do
+  defp analyze_isk_trend(history, character_id) do
     weekly_isk =
       history
       |> Enum.group_by(&week_key(&1.killmail_time))
       |> Enum.map(fn {week, killmails} ->
         destroyed =
           killmails
-          |> Enum.filter(fn km -> km.victim_character_id != km.character_id end)
-          |> Enum.map(&(&1.total_value || 0))
+          |> Enum.filter(fn km -> km.victim_character_id != character_id end)
+          |> Enum.map(&(&1.zkb_total_value || 0))
           |> Enum.sum()
 
         lost =
           killmails
-          |> Enum.filter(fn km -> km.victim_character_id == km.character_id end)
-          |> Enum.map(&(&1.total_value || 0))
+          |> Enum.filter(fn km -> km.victim_character_id == character_id end)
+          |> Enum.map(&(&1.zkb_total_value || 0))
           |> Enum.sum()
 
         efficiency = if lost > 0, do: destroyed / (destroyed + lost), else: 1.0
@@ -175,7 +198,10 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
       }
     else
       efficiencies = Enum.map(weekly_isk, fn {_, stats} -> stats.efficiency end)
-      current = List.last(efficiencies) || 1.0
+      current = case List.last(efficiencies) do
+        nil -> 1.0
+        value -> value
+      end
 
       total_destroyed = weekly_isk |> Enum.map(fn {_, s} -> s.destroyed end) |> Enum.sum()
       total_lost = weekly_isk |> Enum.map(fn {_, s} -> s.lost end) |> Enum.sum()
@@ -262,7 +288,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
     }
   end
 
-  defp analyze_threat_score_trend(history, current_score) do
+  defp analyze_threat_score_trend(history, current_score, character_id) do
     # Simulate historical threat scores based on killmail patterns
     weekly_scores =
       history
@@ -271,18 +297,18 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
         # Calculate weekly threat indicators
         kill_count =
           Enum.count(killmails, fn km ->
-            km.victim_character_id != km.character_id
+            km.victim_character_id != character_id
           end)
 
         solo_kills =
           Enum.count(killmails, fn km ->
-            km.victim_character_id != km.character_id and
-              length(km.attackers || []) == 1
+            km.victim_character_id != character_id and
+              length(extract_attackers(km) || []) == 1
           end)
 
         capital_kills =
           Enum.count(killmails, fn km ->
-            km.victim_character_id != km.character_id and
+            km.victim_character_id != character_id and
               (km.victim_ship_type_id || 0) >= 20_000
           end)
 
@@ -348,7 +374,12 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
       |> Enum.map(fn [a, b] -> b - a end)
 
     if length(diffs) > 0 do
-      Float.round(Enum.sum(diffs) / length(diffs), 3)
+      diffs_length = length(diffs)
+      if diffs_length > 0 do
+        Float.round(Enum.sum(diffs) / diffs_length, 3)
+      else
+        0.0
+      end
     else
       0.0
     end
@@ -370,8 +401,8 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
   defp calculate_improvement_rate(values) when length(values) < 2, do: 0.0
 
   defp calculate_improvement_rate(values) do
-    first = List.first(values)
-    last = List.last(values)
+    first = List.first(values) || 0.0
+    last = List.last(values) || 0.0
 
     if first > 0 do
       Float.round((last - first) / first * 100, 1)
@@ -453,16 +484,23 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
     if Enum.empty?(ship_frequencies) do
       :none
     else
-      {_top_ship, top_count} = List.first(ship_frequencies)
-      total = ship_frequencies |> Enum.map(&elem(&1, 1)) |> Enum.sum()
+      case List.first(ship_frequencies) do
+        nil -> :none
+        {_top_ship, top_count} ->
+          total = ship_frequencies |> Enum.map(&elem(&1, 1)) |> Enum.sum()
 
-      specialization_ratio = top_count / total
+          if total > 0 do
+            specialization_ratio = top_count / total
 
-      cond do
-        specialization_ratio > 0.7 -> :highly_specialized
-        specialization_ratio > 0.5 -> :specialized
-        specialization_ratio > 0.3 -> :moderate_variety
-        true -> :high_variety
+            cond do
+              specialization_ratio > 0.7 -> :highly_specialized
+              specialization_ratio > 0.5 -> :specialized
+              specialization_ratio > 0.3 -> :moderate_variety
+              true -> :high_variety
+            end
+          else
+            :none
+          end
       end
     end
   end
@@ -574,37 +612,37 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
     end
   end
 
-  defp calculate_performance_trends(history) do
+  defp calculate_performance_trends(history, character_id) do
     # Additional performance metrics
     %{
-      solo_ratio: calculate_solo_ratio(history),
-      gang_effectiveness: calculate_gang_effectiveness(history),
-      target_selection: analyze_target_selection(history),
-      engagement_success: calculate_engagement_success(history)
+      solo_ratio: calculate_solo_ratio(history, character_id),
+      gang_effectiveness: calculate_gang_effectiveness(history, character_id),
+      target_selection: analyze_target_selection(history, character_id),
+      engagement_success: calculate_engagement_success(history, character_id)
     }
   end
 
-  defp calculate_solo_ratio(history) do
-    kills = Enum.filter(history, fn km -> km.victim_character_id != km.character_id end)
+  defp calculate_solo_ratio(history, character_id) do
+    kills = Enum.filter(history, fn km -> km.victim_character_id != character_id end)
 
     if Enum.empty?(kills) do
       0.0
     else
       solo_kills =
         Enum.count(kills, fn km ->
-          length(km.attackers || []) == 1
+          length(extract_attackers(km) || []) == 1
         end)
 
       Float.round(solo_kills / length(kills), 3)
     end
   end
 
-  defp calculate_gang_effectiveness(history) do
+  defp calculate_gang_effectiveness(history, character_id) do
     gang_kills =
       history
       |> Enum.filter(fn km ->
-        km.victim_character_id != km.character_id and
-          length(km.attackers || []) > 1
+        km.victim_character_id != character_id and
+          length(extract_attackers(km) || []) > 1
       end)
 
     if Enum.empty?(gang_kills) do
@@ -612,7 +650,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
     else
       avg_size =
         gang_kills
-        |> Enum.map(fn km -> length(km.attackers || []) end)
+        |> Enum.map(fn km -> length(extract_attackers(km) || []) end)
         |> average()
 
       %{
@@ -622,10 +660,10 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
     end
   end
 
-  defp analyze_target_selection(history) do
+  defp analyze_target_selection(history, character_id) do
     victims =
       history
-      |> Enum.filter(fn km -> km.victim_character_id != km.character_id end)
+      |> Enum.filter(fn km -> km.victim_character_id != character_id end)
       |> Enum.map(fn km -> km.victim_ship_type_id end)
       |> Enum.reject(&is_nil/1)
 
@@ -646,7 +684,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
     end
   end
 
-  defp calculate_engagement_success(history) do
+  defp calculate_engagement_success(history, character_id) do
     # Simple success metric based on K/D in engagements
     engagements =
       history
@@ -655,7 +693,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
     success_rate =
       engagements
       |> Enum.map(fn {_hash, kills} ->
-        deaths = Enum.count(kills, fn km -> km.victim_character_id == km.character_id end)
+        deaths = Enum.count(kills, fn km -> km.victim_character_id == character_id end)
         if deaths > 0, do: 0, else: 1
       end)
       |> average()
@@ -818,7 +856,11 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
 
     %{
       threat_progression: threat_scores,
-      current_threat_level: classify_threat_level(List.last(threat_scores)),
+      current_threat_level: 
+        case List.last(threat_scores) do
+          nil -> :unknown
+          last_score -> classify_threat_level(last_score)
+        end,
       trend_direction: determine_threat_trend_direction(threat_scores),
       evolution_pattern: identify_evolution_pattern(threat_scores)
     }
@@ -830,7 +872,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
 
     total_value =
       killmails
-      |> Enum.map(&(&1.total_value || 0))
+      |> Enum.map(&(&1.zkb_total_value || 0))
       |> Enum.sum()
 
     # Base score on activity and value
@@ -911,6 +953,19 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
   defp average([]), do: 0.0
 
   defp average(list) do
-    Enum.sum(list) / length(list)
+    len = length(list)
+    if len > 0 do
+      Enum.sum(list) / len
+    else
+      0.0
+    end
+  end
+
+  # Helper function to extract attackers from killmail data
+  defp extract_attackers(killmail) do
+    case killmail.raw_data do
+      %{"attackers" => attackers} when is_list(attackers) -> attackers
+      _ -> []
+    end
   end
 end

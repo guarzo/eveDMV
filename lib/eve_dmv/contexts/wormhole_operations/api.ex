@@ -22,12 +22,13 @@ defmodule EveDmv.Contexts.WormholeOperations.Api do
     # Delegate to unified chain intelligence module for proper implementation
     case ChainIntelligence.analyze_coverage_optimization(corporation_id, chain_data) do
       {:ok, analysis} ->
+        safe_analysis = analysis || %{}
         {:ok,
          %{
            corporation_id: corporation_id,
            chain_id: chain_data[:map_id],
-           coverage_score: analysis.coverage_score || 0.0,
-           recommendations: analysis.recommendations || [],
+           coverage_score: Map.get(safe_analysis, :coverage_score, 0.0),
+           recommendations: Map.get(safe_analysis, :recommendations, []),
            optimized_at: DateTime.utc_now()
          }}
 
@@ -91,7 +92,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Api do
   @doc """
   Get a previously generated vetting report.
   """
-  @spec get_vetting_report(String.t()) :: {:ok, map()} | {:error, atom()}
+  @spec get_vetting_report(integer()) :: {:ok, map()} | {:error, :not_found}
   def get_vetting_report(vetting_id) do
     VettingRepository.get_vetting_report(vetting_id)
   end

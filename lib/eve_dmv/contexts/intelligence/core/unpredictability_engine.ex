@@ -37,7 +37,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.UnpredictabilityEngine do
   defp analyze_location_unpredictability(character_id) do
     start_date = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
 
-    case KillmailRepository.get_by_character(character_id, start_date) do
+    case KillmailRepository.get_by_character(character_id, start_date: start_date, limit: 1000) do
       {:ok, killmails} ->
         location_analysis = %{
           unique_systems: count_unique_systems(killmails),
@@ -159,7 +159,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.UnpredictabilityEngine do
   defp analyze_timing_unpredictability(character_id) do
     start_date = DateTime.utc_now() |> DateTimeUtils.add(-60 * 24 * 60 * 60, :second)
 
-    case KillmailRepository.get_by_character(character_id, start_date) do
+    case KillmailRepository.get_by_character(character_id, start_date: start_date, limit: 1000) do
       {:ok, killmails} ->
         timing_analysis = %{
           time_distribution: analyze_time_spread(killmails),
@@ -318,7 +318,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.UnpredictabilityEngine do
     # Calculate ship variance from actual killmail data
     start_date = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
 
-    case KillmailRepository.get_by_character(character_id, start_date) do
+    case KillmailRepository.get_by_character(character_id, start_date: start_date, limit: 1000) do
       {:ok, killmails} ->
         ships = killmails |> Enum.map(& &1.ship_type_id) |> Enum.uniq()
         total_kills = length(killmails)
@@ -371,7 +371,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.UnpredictabilityEngine do
     # Analyze pattern changes using time-windowed analysis
     start_date = DateTime.utc_now() |> DateTimeUtils.add(-180 * 24 * 60 * 60, :second)
 
-    case KillmailRepository.get_by_character(character_id, start_date) do
+    case KillmailRepository.get_by_character(character_id, start_date: start_date, limit: 1000) do
       {:ok, killmails} ->
         analyze_pattern_changes(killmails)
 

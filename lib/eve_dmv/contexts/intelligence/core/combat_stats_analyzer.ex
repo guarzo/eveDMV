@@ -113,7 +113,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.CombatStatsAnalyzer do
 
   defp fetch_character_killmails(character_id, time_range) do
     start_date = calculate_start_date(time_range)
-    KillmailRepository.get_by_character(character_id, start_date)
+    KillmailRepository.get_by_character(character_id, start_date: start_date, limit: 1000)
   end
 
   defp calculate_start_date(days: days) do

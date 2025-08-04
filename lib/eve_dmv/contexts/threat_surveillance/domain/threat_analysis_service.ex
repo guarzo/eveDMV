@@ -45,6 +45,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
   - `{:ok, analysis}` - Comprehensive threat analysis
   - `{:error, reason}` - Error if analysis fails
   """
+  @spec get_comprehensive_analysis(integer(), atom(), keyword()) :: {:ok, map()} | {:error, term()}
   def get_comprehensive_analysis(entity_id, entity_type, options \\ []) do
     Logger.info("Performing comprehensive threat analysis",
       entity_id: entity_id,
@@ -146,7 +147,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
           total_kills: stats.total_kills || 0,
           total_losses: stats.total_losses || 0,
           kill_death_ratio:
-            Float.round((stats.total_kills || 0) / max(1, stats.total_losses || 0), 2),
+            calculate_kill_death_ratio(stats.total_kills || 0, stats.total_losses || 0),
           total_isk_destroyed: stats.total_isk_destroyed || 0,
           total_isk_lost: stats.total_isk_lost || 0,
           isk_efficiency:
@@ -191,7 +192,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
         %{
           member_losses: losses || 0,
           total_isk_lost: isk_lost || 0,
-          avg_loss_value: if(losses > 0, do: div(isk_lost || 0, losses), else: 0),
+          avg_loss_value: calculate_avg_loss_value(isk_lost || 0, losses || 0),
           activity_level: categorize_activity_level(losses || 0, days)
         }
 
@@ -248,7 +249,13 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
       }
     else
       gang_sizes = Enum.map(killmails, fn km -> length(km.attackers) end)
-      avg_gang_size = Enum.sum(gang_sizes) / length(gang_sizes)
+      gang_size_count = length(gang_sizes)
+      avg_gang_size = 
+        if gang_size_count > 0 do
+          Enum.sum(gang_sizes) / gang_size_count
+        else
+          0.0
+        end
 
       preferred_size =
         cond do
@@ -379,6 +386,22 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
 
   # Helper functions
 
+  defp calculate_kill_death_ratio(kills, losses) do
+    if losses > 0 do
+      Float.round(kills / losses, 2)
+    else
+      Float.round(kills / 1.0, 2)
+    end
+  end
+
+  defp calculate_avg_loss_value(isk_lost, losses) do
+    if losses > 0 do
+      div(isk_lost, losses)
+    else
+      0
+    end
+  end
+
   defp calculate_isk_efficiency(destroyed, lost) do
     total = (destroyed || 0) + (lost || 0)
 
@@ -390,7 +413,8 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
   end
 
   defp categorize_activity_level(kill_count, days) do
-    kills_per_day = kill_count / max(1, days)
+    days_safe = max(1, days)
+    kills_per_day = kill_count / days_safe
 
     cond do
       kills_per_day >= 5 -> :very_active
@@ -568,7 +592,12 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
       role_weights
       |> Enum.max_by(fn {_role, weight} -> weight end)
 
-    primary_percentage = primary_weight / total_weight
+    primary_percentage = 
+      if total_weight > 0 do
+        primary_weight / total_weight
+      else
+        0.0
+      end
 
     # Classify based on role distribution
     cond do

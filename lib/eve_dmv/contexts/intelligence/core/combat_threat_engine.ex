@@ -36,7 +36,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.CombatThreatEngine do
     # Last 30 days
     start_date = DateTime.utc_now() |> DateTimeUtils.add(-30 * 24 * 60 * 60, :second)
 
-    case KillmailRepository.get_by_character(character_id, start_date) do
+    case KillmailRepository.get_by_character(character_id, start_date: start_date, limit: 1000) do
       {:ok, killmails} ->
         activity = %{
           activity_level: classify_activity_level(length(killmails)),

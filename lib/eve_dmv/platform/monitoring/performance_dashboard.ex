@@ -1,4 +1,4 @@
-defmodule EveDmv.Monitoring.PerformanceDashboard do
+defmodule EveDmv.Platform.Monitoring.PerformanceDashboard do
   @moduledoc """
   Sprint 15A: Comprehensive performance monitoring dashboard.
 

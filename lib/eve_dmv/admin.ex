@@ -11,6 +11,7 @@ defmodule EveDmv.Admin do
   alias EveDmv.Api
   alias EveDmv.Users.User
 
+  require Ash.Query
   require Logger
 
   @doc """
@@ -25,14 +26,14 @@ defmodule EveDmv.Admin do
       {:error, :user_not_found}
   """
   def promote_user_to_admin(character_id) when is_integer(character_id) do
-    case Ash.read_one(User, domain: Api, filter: [eve_character_id: character_id]) do
+    case User |> Ash.Query.filter(eve_character_id: character_id) |> Api.read_one() do
       {:ok, %User{} = user} -> update_user_admin_status(user, true)
       {:error, _} -> {:error, :user_not_found}
     end
   end
 
   def promote_user_to_admin(character_name) when is_binary(character_name) do
-    case Ash.read_one(User, domain: Api, filter: [eve_character_name: character_name]) do
+    case User |> Ash.Query.filter(eve_character_name: character_name) |> Api.read_one() do
       {:ok, %User{} = user} -> update_user_admin_status(user, true)
       {:error, _} -> {:error, :user_not_found}
     end
@@ -42,7 +43,7 @@ defmodule EveDmv.Admin do
   Remove admin status from a user.
   """
   def demote_admin(character_id) when is_integer(character_id) do
-    case Ash.read_one(User, domain: Api, filter: [eve_character_id: character_id]) do
+    case User |> Ash.Query.filter(eve_character_id: character_id) |> Api.read_one() do
       {:ok, %User{} = user} -> update_user_admin_status(user, false)
       {:error, _} -> {:error, :user_not_found}
     end
@@ -52,21 +53,21 @@ defmodule EveDmv.Admin do
   List all admin users.
   """
   def list_admins do
-    Ash.read!(User, domain: Api, filter: [is_admin: true])
+    User |> Ash.Query.filter(is_admin: true) |> Api.read!()
   end
 
   @doc """
   Check if a user is an admin by character ID.
   """
   def admin?(character_id) when is_integer(character_id) do
-    case Ash.read_one(User, domain: Api, filter: [eve_character_id: character_id]) do
+    case User |> Ash.Query.filter(eve_character_id: character_id) |> Api.read_one() do
       {:ok, %User{is_admin: true}} -> true
       _ -> false
     end
   end
 
   def admin?(character_name) when is_binary(character_name) do
-    case Ash.read_one(User, domain: Api, filter: [eve_character_name: character_name]) do
+    case User |> Ash.Query.filter(eve_character_name: character_name) |> Api.read_one() do
       {:ok, %User{is_admin: true}} -> true
       _ -> false
     end
@@ -92,7 +93,7 @@ defmodule EveDmv.Admin do
   Admin users will be automatically promoted during application startup.
   """
   def bootstrap_first_admin(character_name) when is_binary(character_name) do
-    admin_count = Ash.count!(User, domain: Api, filter: [is_admin: true])
+    {:ok, admin_count} = User |> Ash.Query.filter(is_admin: true) |> Api.count()
 
     if admin_count == 0 do
       case promote_user_to_admin(character_name) do

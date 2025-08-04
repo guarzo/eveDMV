@@ -948,8 +948,9 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   end
 
   defp calculate_leadership_health(leadership_data) do
-    depth = Map.get(leadership_data || %{}, :leadership_depth, %{})
-    activity = Map.get(leadership_data || %{}, :leadership_activity, %{})
+    safe_leadership_data = leadership_data || %{}
+    depth = Map.get(safe_leadership_data, :leadership_depth, %{})
+    activity = Map.get(safe_leadership_data, :leadership_activity, %{})
 
     # Leadership depth score (0-100)
     depth_score =
@@ -970,14 +971,16 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   end
 
   defp calculate_retention_health(risk_data) do
-    retention_score = risk_data.retention_score || %{}
+    safe_risk_data = risk_data || %{}
+    retention_score = Map.get(safe_risk_data, :retention_score, %{})
     base_score = Map.get(retention_score, :score, 0)
 
     Float.round(base_score, 1)
   end
 
   defp calculate_participation_health(participation_data) do
-    summary = participation_data.participation_summary || %{}
+    safe_participation_data = participation_data || %{}
+    summary = Map.get(safe_participation_data, :participation_summary, %{})
 
     participation_rate = Map.get(summary, :participation_rate, 0)
     fleet_participation = Map.get(summary, :fleet_participation_rate, 0)
@@ -988,13 +991,18 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   end
 
   defp calculate_overall_health_score(health_metrics) do
-    weights = health_metrics.component_weights
+    weights = Map.get(health_metrics, :component_weights, %{
+      activity: 0.25,
+      leadership: 0.25,
+      retention: 0.25,
+      participation: 0.25
+    })
 
     total_score =
-      health_metrics.activity_health * weights.activity +
-        health_metrics.leadership_health * weights.leadership +
-        health_metrics.retention_health * weights.retention +
-        health_metrics.participation_health * weights.participation
+      Map.get(health_metrics, :activity_health, 0) * Map.get(weights, :activity, 0.25) +
+        Map.get(health_metrics, :leadership_health, 0) * Map.get(weights, :leadership, 0.25) +
+        Map.get(health_metrics, :retention_health, 0) * Map.get(weights, :retention, 0.25) +
+        Map.get(health_metrics, :participation_health, 0) * Map.get(weights, :participation, 0.25)
 
     Float.round(total_score, 1)
   end
@@ -1033,9 +1041,7 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   defp maybe_add_leadership_issue(issues, _leadership_health), do: issues
 
   defp maybe_add_stability_issue(issues, stability) do
-    stability_data = stability || %{}
-
-    if Map.get(stability_data, :stability_assessment) in [:unstable, :moderately_stable] do
+    if Map.get(stability || %{}, :stability_assessment) in [:unstable, :moderately_stable] do
       ["Structural stability concerns" | issues]
     else
       issues
@@ -1043,9 +1049,7 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   end
 
   defp maybe_add_succession_issue(issues, succession) do
-    succession_data = succession || %{}
-
-    if Map.get(succession_data, :succession_health) in [:poor_succession, :limited_succession] do
+    if Map.get(succession || %{}, :succession_health) in [:poor_succession, :limited_succession] do
       ["Leadership succession planning inadequate" | issues]
     else
       issues
@@ -1053,7 +1057,8 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   end
 
   defp generate_health_recommendations(health_metrics, _leadership_data, stability_data) do
-    stability = stability_data.structural_stability || %{}
+    safe_stability_data = stability_data || %{}
+    stability = Map.get(safe_stability_data, :structural_stability, %{})
     core_ratio = Map.get(stability, :core_member_ratio, 0)
 
     []

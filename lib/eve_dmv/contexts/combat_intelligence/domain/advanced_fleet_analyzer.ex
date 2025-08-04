@@ -83,9 +83,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     with {:ok, ship_analyses} <- analyze_individual_ships(fleet_ships),
          {:ok, composition} <- analyze_composition(ship_analyses),
          {:ok, capabilities} <- analyze_capabilities(ship_analyses),
-         {:ok, vulnerabilities} <- analyze_vulnerabilities(ship_analyses, composition),
-         {:ok, recommendations} <-
-           generate_recommendations(composition, capabilities, vulnerabilities) do
+         {:ok, vulnerabilities} <- analyze_vulnerabilities(ship_analyses, composition) do
+      # Generate recommendations directly since it doesn't return a tuple
+      recommendations = generate_recommendations(composition, capabilities, vulnerabilities)
       base_analysis = %{
         fleet_summary: %{ship_count: length(ship_analyses)},
         composition: composition,
@@ -123,6 +123,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
       }
 
       {:ok, matchup}
+    else
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :analysis_failed}
     end
   end
 

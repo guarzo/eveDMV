@@ -145,27 +145,37 @@ defmodule EveDmvWeb.CharacterComparisonLive do
     else
       socket = assign(socket, :loading, true)
 
-      case CharacterComparisonService.compare_characters(
-             socket.assigns.selected_characters,
-             socket.assigns.timeframe
-           ) do
-        {:ok, result} ->
+      try do
+        case CharacterComparisonService.compare_characters(
+               socket.assigns.selected_characters,
+               socket.assigns.timeframe
+             ) do
+          result when is_map(result) ->
+            socket =
+              socket
+              |> assign(:comparison_result, result)
+              |> assign(:similarity_result, nil)
+              |> assign(:loading, false)
+              |> assign(:error, nil)
+
+            {:noreply, socket}
+
+          _other ->
+            socket =
+              socket
+              |> assign(:loading, false)
+              |> assign(:error, "Service unavailable")
+
+            {:noreply, put_flash(socket, :error, "Comparison service is currently unavailable")}
+        end
+      rescue
+        _error ->
           socket =
             socket
-            |> assign(:comparison_result, result)
-            |> assign(:similarity_result, nil)
             |> assign(:loading, false)
-            |> assign(:error, nil)
+            |> assign(:error, "Service error")
 
-          {:noreply, socket}
-
-        {:error, reason} ->
-          socket =
-            socket
-            |> assign(:loading, false)
-            |> assign(:error, reason)
-
-          {:noreply, put_flash(socket, :error, "Comparison failed: #{reason}")}
+          {:noreply, put_flash(socket, :error, "Comparison service is currently unavailable")}
       end
     end
   end

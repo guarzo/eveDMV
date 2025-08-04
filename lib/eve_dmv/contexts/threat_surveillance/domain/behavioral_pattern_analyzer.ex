@@ -42,6 +42,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
   - `{:ok, patterns}` - Analysis results with detected patterns
   - `{:error, reason}` - Error if analysis fails
   """
+  @spec analyze_patterns(integer(), atom(), keyword()) :: {:ok, map()} | {:error, term()}
   def analyze_patterns(entity_id, entity_type, options \\ []) do
     Logger.info("Analyzing behavioral patterns",
       entity_type: entity_type,
@@ -77,6 +78,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
   - `{:ok, anomalies}` - Detected anomalies with confidence scores
   - `{:error, reason}` - Error if detection fails
   """
+  @spec detect_anomalies(integer(), list()) :: {:ok, map()} | {:error, term()}
   def detect_anomalies(entity_id, recent_activity) do
     Logger.info("Detecting anomalous behavior", entity_id: entity_id)
 
@@ -102,6 +104,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
   ## Returns
   - `:ok` - Processing complete
   """
+  @spec process_killmail(map()) :: :ok
   def process_killmail(event) do
     Logger.debug("Processing killmail for behavioral analysis", killmail_id: event.killmail_id)
 
@@ -148,8 +151,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
 
     case EveDmv.Repo.all(victim_query) do
       killmails when is_list(killmails) ->
-        # Also get killmails where character was attacker (more complex query)
-        # For now, focusing on victim killmails for behavior analysis
+        # Focus on victim killmails for character behavior analysis
         {:ok, killmails}
 
       _ ->
@@ -268,7 +270,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
     # Group by ship type
     ship_usage =
       killmails
-      |> Enum.map(& &1.victim["ship_type_id"])
+      |> Enum.map(&extract_ship_type_id/1)
       |> Enum.filter(&(&1 != nil))
       |> Enum.frequencies()
       |> Enum.sort_by(fn {_, count} -> count end, :desc)
@@ -296,7 +298,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
     # Analyze how they engage in combat
     engagement_sizes =
       killmails
-      |> Enum.map(fn km -> length(km.attackers) end)
+      |> Enum.map(&extract_attacker_count/1)
       |> Enum.frequencies()
 
     total_engagements = length(killmails)
@@ -377,7 +379,11 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
         |> Map.values()
         |> Enum.max(fn -> 0 end)
 
-      Float.round(max_hour_kills / total_kills, 3)
+      if total_kills > 0 do
+        Float.round(max_hour_kills / total_kills, 3)
+      else
+        0.0
+      end
     end
   end
 
@@ -388,7 +394,12 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
     else
       item_counts
       |> Enum.reduce(0.0, fn {_item, count}, acc ->
-        proportion = count / total
+        proportion = 
+          if total > 0 do
+            count / total
+          else
+            0.0
+          end
 
         if proportion > 0 do
           acc - proportion * :math.log(proportion)
@@ -434,18 +445,32 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
     if Enum.empty?(values) do
       0
     else
-      Enum.sum(values) / length(values)
+      values_length = length(values)
+      if values_length > 0 do
+        Enum.sum(values) / values_length
+      else
+        0.0
+      end
     end
   end
 
   defp safe_percentage(count, total) when total > 0 do
-    Float.round(count / total * 100, 1)
+    if total > 0 do
+      Float.round(count / total * 100, 1)
+    else
+      0.0
+    end
   end
 
   defp safe_percentage(_, _), do: 0.0
 
   defp calculate_average(list) when length(list) > 0 do
-    Float.round(Enum.sum(list) / length(list), 2)
+    list_length = length(list)
+    if list_length > 0 do
+      Float.round(Enum.sum(list) / list_length, 2)
+    else
+      0.0
+    end
   end
 
   defp calculate_average(_), do: 0.0
@@ -460,8 +485,8 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
     |> Enum.filter(fn chunk -> length(chunk) >= 3 end)
     |> Enum.map(fn chunk ->
       %{
-        start_time: List.first(chunk).killmail_time,
-        end_time: List.last(chunk).killmail_time,
+        start_time: get_safe_first_killmail_time(chunk),
+        end_time: get_safe_last_killmail_time(chunk),
         kill_count: length(chunk)
       }
     end)
@@ -473,7 +498,13 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
       0.0
     else
       # Calculate coefficient of variation (lower = more consistent)
-      mean = Enum.sum(intervals) / length(intervals)
+      intervals_length = length(intervals)
+      mean = 
+        if intervals_length > 0 do
+          Enum.sum(intervals) / intervals_length
+        else
+          0.0
+        end
 
       if mean == 0 do
         0.0
@@ -578,7 +609,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
              confidence: 0.9,
              description: "Activity in unusual systems",
              new_systems: new_systems,
-             percentage_new: Float.round(length(new_systems) / length(recent_systems) * 100, 1)
+             percentage_new: calculate_percentage_new_systems(new_systems, recent_systems)
            }}
           | anomalies
         ]
@@ -680,5 +711,42 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
   defp get_last_analysis_time do
     # This would track the last analysis run
     DateTime.utc_now()
+  end
+
+  # Helper functions for safe operations
+
+  defp get_safe_first_killmail_time(chunk) do
+    case List.first(chunk) do
+      nil -> DateTime.utc_now()
+      km -> km.killmail_time
+    end
+  end
+
+  defp get_safe_last_killmail_time(chunk) do
+    case List.last(chunk) do
+      nil -> DateTime.utc_now()
+      km -> km.killmail_time
+    end
+  end
+
+  defp calculate_percentage_new_systems(new_systems, recent_systems) do
+    recent_count = length(recent_systems)
+    if recent_count > 0 do
+      Float.round(length(new_systems) / recent_count * 100, 1)
+    else
+      0.0
+    end
+  end
+
+  # Helper functions to extract data from killmail structure
+  defp extract_ship_type_id(killmail) do
+    killmail.victim_ship_type_id
+  end
+
+  defp extract_attacker_count(killmail) do
+    case killmail.raw_data do
+      %{"attackers" => attackers} when is_list(attackers) -> length(attackers)
+      _ -> 1  # Default to 1 if no attacker data
+    end
   end
 end

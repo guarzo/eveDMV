@@ -1,4 +1,25 @@
-Compiling 21 files (.ex)
+Compiling 16 files (.ex)
+     warning: EveDmv.Contexts.FleetOperations.Domain.read_one/1 is undefined or private
+     │
+ 129 │     case EveDmv.Contexts.FleetOperations.Domain.read_one(final_query) do
+     │                                                 ~
+     │
+     └─ lib/eve_dmv/contexts/fleet_operations/domain/doctrine_manager.ex:129:49: EveDmv.Contexts.FleetOperations.Domain.DoctrineManager.get_doctrine_by_name/2
+
+     warning: EveDmv.Contexts.FleetOperations.Domain.read/1 is undefined or private
+     │
+ 192 │     case EveDmv.Contexts.FleetOperations.Domain.read(final_query) do
+     │                                                 ~
+     │
+     └─ lib/eve_dmv/contexts/fleet_operations/domain/doctrine_manager.ex:192:49: EveDmv.Contexts.FleetOperations.Domain.DoctrineManager.list_doctrines/1
+
+     warning: EveDmv.Contexts.FleetOperations.Domain.destroy/1 is undefined or private
+     │
+ 251 │         case EveDmv.Contexts.FleetOperations.Domain.destroy(doctrine) do
+     │                                                     ~
+     │
+     └─ lib/eve_dmv/contexts/fleet_operations/domain/doctrine_manager.ex:251:53: EveDmv.Contexts.FleetOperations.Domain.DoctrineManager.delete_doctrine/1
+
 Finding suitable PLTs
 Checking PLT...
 [:ash, :ash_authentication, :ash_authentication_phoenix, :ash_json_api, :ash_phoenix, :ash_postgres, :ash_sql, :asn1, :assent, :bandit, :bcrypt_elixir, :broadway, :bypass, :bzip2, :cachex, :castore, :certifi, :comeonin, :compiler, :conv_case, :cowboy, :cowboy_telemetry, :cowlib, :crypto, :db_connection, :decimal, :dns_cluster, :dotenvy, :ecto, :ecto_sql, :eex, :elixir, :eternal, :ets, :eve_dmv, :ex_hash_ring, :ex_unit, :excoveralls, :expo, :finch, :floki, :gen_stage, :gettext, :gun, :hackney, :hpax, :httpoison, :idna, :inets, :iterex, ...]
@@ -17,272 +38,463 @@ Starting Dialyzer
    ...],
   warnings: [:error_handling, :underspecs, :unknown]
 ]
-:dialyzer.run error: Analysis failed with error:
-Could not scan the following file(s):
-  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.String.Chars.EveDmv.Core.SharedKernel.ValueObjects.SystemId.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.String.Chars.EveDmv.Core.SharedKernel.ValueObjects.IskAmount.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.String.Chars.EveDmv.Core.SharedKernel.ValueObjects.CorporationId.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.String.Chars.EveDmv.Core.SharedKernel.ValueObjects.CharacterId.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.SearchSuggestionService.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.SQL.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Mix.Tasks.Security.Audit.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Mix.Tasks.Eve.UpdateSde.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Mix.Tasks.Eve.Stats.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Mix.Tasks.Eve.PartitionManager.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Mix.Tasks.Eve.LoadStaticData.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Mix.Tasks.Eve.CheckIndexes.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Mix.Tasks.Eve.Benchmark.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Mix.Tasks.Eve.AnalyzePerformance.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Users.Token.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.IntelligenceEngine.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Surveillance.Profile.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Users.User.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Users.Account.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Surveillance.ProfileMatch.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Surveillance.Notification.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.StaticData.ShipAttributes.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Security.ApiAuthentication.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Killmails.Participant.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Killmails.KillmailRaw.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Intelligence.HomeDefenseAnalytics.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Intelligence.MemberActivityIntelligence.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Intelligence.ChainAnalysis.ChainConnection.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Intelligence.ChainAnalysis.ChainTopology.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Intelligence.SystemInhabitant.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Intelligence.CharacterStats.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Eve.SolarSystem.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Eve.ItemType.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Core.SharedKernel.ValueObjects.SystemId.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Core.SharedKernel.ValueObjects.IskAmount.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Core.SharedKernel.ValueObjects.CorporationId.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Core.SharedKernel.ValueObjects.CharacterId.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Contexts.WormholeOperations.Domain.Wormhole.WhVetting.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Contexts.WormholeOperations.Domain.Wormhole.WhFleetComposition.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Contexts.Intelligence.Resources.CharacterProfile.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Contexts.FleetOperations.Resources.FleetDoctrine.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Contexts.Corporation.Resources.RecruitmentCampaign.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Contexts.Corporation.Resources.RecruitmentApplication.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Contexts.Corporation.Resources.MemberPerformanceSnapshot.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Contexts.Corporation.Resources.MemberActivityLog.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Contexts.Corporation.Resources.CorporationMember.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Contexts.Corporation.Resources.Corporation.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Contexts.Corporation.Resources.Alliance.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Contexts.Corporation.Resources.ActivityMetric.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Contexts.Combat.Resources.ShipFitting.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Contexts.Combat.Resources.CombatLog.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Contexts.Combat.Resources.BattleKillmail.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Contexts.Combat.Resources.Battle.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Contexts.BattleAnalysis.Resources.CombatLog.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Contexts.BattleAnalysis.Resources.BattleReportRating.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Contexts.BattleAnalysis.Resources.BattleReportComment.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Contexts.BattleAnalysis.Resources.BattleReport.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Contexts.BattleAnalysis.Resources.BattleKillmail.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Contexts.BattleAnalysis.Resources.Battle.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Analytics.ShipStats.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.Inspect.EveDmv.Analytics.PlayerStats.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.HTTPoisonMock.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.WHVettingLive.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Utils.FormattingUtils.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.UnifiedDashboardLive.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Telemetry.PerformanceTelemetry.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.TokenRefreshPlug.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Telemetry.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.SystemLive.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.SystemActivityLive.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.SurveillanceStatsComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.SurveillanceProfilesLive.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.SurveillanceProfilesLive.Helpers.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.SurveillanceLive.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.SurveillanceLive.ProfileService.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.SurveillanceLive.NotificationService.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.SurveillanceLive.ExportImportService.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.SurveillanceLive.Components.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.SurveillanceLive.BatchOperationService.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.SurveillanceHeaderComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.SurveillanceAlertsLive.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.SessionController.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.SearchComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Router.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.ProfileLive.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.ProfileGridComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.PriceMonitorComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Plugs.SessionActivity.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Plugs.SecurityHeaders.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Plugs.RequireAuth.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Plugs.RequireAdmin.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Plugs.AuthRateLimiter.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Plugs.ApiAuth.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.PlayerStatsComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.PlayerProfileLive.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.PageHTML.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.PageController.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.NoDataComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.LoggerFilter.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.LiveViewTestHelpers.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.LiveHelpers.SocketHelpers.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.LiveHelpers.MountHelpers.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.LiveHelpers.LiveViewPatternTemplate.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.LiveHelpers.ApiErrorHelper.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Live.Helpers.StandardComponents.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Live.FleetOperations.Components.FleetCompositionComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Layouts.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.KillmailLive.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.KillFeedLive.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.IntelligenceComponents.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.HomeLive.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Helpers.TimeFormatter.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Helpers.PriceHelper.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.HealthController.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Gettext.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.FormatHelpers.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.FleetOperationsLive.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.FallbackController.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.EveImageComponents.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.ErrorJSON.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.ErrorHTML.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Endpoint.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.CorporationLive.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.CorporationLive.DataLoader.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.CoreComponents.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.ConnCase.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Components.ThreatLevelComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Components.TabNavigationComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Components.StyleGuide.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Components.StatsGridComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Components.ReusableComponents.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Components.PaginationComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Components.PageHeaderComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Components.LoadingStateComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Components.IskStatsComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Components.Icons.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Components.FormComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Components.ErrorStateComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Components.ErrorRecoveryComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Components.ErrorHandler.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Components.EmptyStateComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Components.DataTableComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Components.CssUtils.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Components.ColorUtils.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Components.CharacterSwitcher.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Components.CharacterInfoComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Components.ButtonComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Components.BattleTimelineComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Components.ApiErrorHandler.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Components.ActivityOverviewComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.CharacterSwitcherLive.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.CharacterSwitchController.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.CharacterIntelligenceLive.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.CharacterIntelComponents.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.CharacterComparisonLive.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.CharacterAnalysisLive.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.CharacterAnalysis.Helpers.DisplayFormatters.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.CharacterAnalysis.Components.StatisticsPanelComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.CharacterAnalysis.Components.PaginatedActivityComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.CharacterAnalysis.Components.IntelligenceSummaryComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.CharacterAnalysis.Components.CharacterHeaderComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.CharacterAnalysis.Components.ActivityFeedComponent.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.ChainIntelligenceLive.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.BattleAnalysisLive.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.BattleAnalysisLive.Helpers.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.AuthLive.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.AuthLive.SignIn.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.AuthController.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Api.MultiSystemBattleController.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Api.CorporationThreatController.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Api.CorporationDoctrineController.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Api.CharacterThreatController.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Api.CharacterBehaviorController.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Api.BattleShareController.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Api.BattleRatingController.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Api.BattleIntelligenceController.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Api.ApiKeysController.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.AllianceLive.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Admin.PerformanceLive.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmvWeb.Admin.PerformanceDashboardLive.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Workers.WorkerSupervisor.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Workers.UITaskSupervisor.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Workers.ShipRoleAnalysisWorker.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Workers.ShipRoleAnalysisWorker.State.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Workers.RealtimeTaskSupervisor.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Workers.ReEnrichmentWorker.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Workers.ReEnrichmentWorker.State.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Workers.ReEnrichmentWorker.BatchJob.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Workers.GenericTaskSupervisor.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Workers.GenericTaskSupervisor.TaskStats.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Workers.GenericTaskSupervisor.TaskRunner.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Workers.GenericTaskSupervisor.TaskMonitor.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Workers.CacheWarmingWorker.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Workers.CacheWarmingWorker.State.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Workers.BackgroundTaskSupervisor.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Workers.AnalysisWorkerPool.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Workers.AnalysisWorkerPool.Worker.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Workers.AnalysisWorkerPool.State.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Workers.AnalysisWorkerPool.Job.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Workers.AnalysisWorkerPool.AnalysisParams.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Utils.ValidationUtils.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Utils.Validation.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Utils.TimezoneAnalyzer.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Utils.TimeUtils.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Utils.SurveillanceUtils.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Utils.QueryHelpers.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Utils.ParsingUtils.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Utils.NumberFormatter.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Utils.MathUtils.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Utils.KillmailUtils.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Utils.FleetUtils.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Utils.DateHelper.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Utils.ErrorHandling.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Utils.DnsResolver.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Utils.DataTransform.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Utils.Cache.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Users.User.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Users.TokenRefreshService.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Users.Token.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Users.AccountManager.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Users.Account.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.UICase.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.TestMocks.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.TestMocks.MockWandererClient.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.TestMocks.MockEsiClient.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.TestDataHelpers.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Telemetry.RequestMonitor.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Telemetry.QueryMonitor.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Telemetry.PerformanceTestHelper.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Telemetry.PerformanceMonitor.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Telemetry.PerformanceMonitor.PerformanceTracker.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Telemetry.PerformanceMonitor.HealthMonitor.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Telemetry.PerformanceMonitor.DatabaseMetrics.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Telemetry.PerformanceMonitor.ConnectionPoolMonitor.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Telemetry.PerformanceExporter.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Telemetry.OtelSpans.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Surveillance.ProfileMatch.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Surveillance.NotificationService.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Surveillance.Notification.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Surveillance.MatchingEngine.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Surveillance.Matching.ProfileCompiler.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Surveillance.Matching.MatchEvaluator.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Surveillance.Matching.KillmailFieldExtractor.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Surveillance.Matching.IndexManager.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.StaticData.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.StaticData.SystemData.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.StaticData.ShipTypes.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.StaticData.ShipReferenceImporter.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.StaticData.ShipAttributesService.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.StaticData.ShipAttributes.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.StaticData.ShipAttributeImporter.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.StaticData.SdeImporter.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.SharedKernel.ValueObjects.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.SharedKernel.ValueObjects.TypeId.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.SharedKernel.ValueObjects.ISKAmount.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.SharedKernel.ValueObjects.Coordinates.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.SharedKernel.ValueObjects.CharacterId.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Shared.Strategic.TemporalAnalyzer.beam
-  Recompile with +debug_info or analyze starting from source code  Could not get Core Erlang code for: /workspace/_build/test/lib/eve_dmv/ebin/Elixir.EveDmv.Shared.Strategic.RecommendationEngine.beam
-  Recompile with +debug_info or analyze starting from source code
-Last messages in the log cache:
-  Reading files and computing callgraph... 
+Total errors: 7184, Skipped: 2083, Unnecessary Skips: 0
+done in 0m48.29s
+deps/gen_stage/lib/gen_stage.ex:2:callback_info_missing Callback info about the GenStage behaviour is not available.
+deps/phoenix/lib/phoenix/endpoint.ex:2:callback_info_missing Callback info about the Phoenix.Endpoint behaviour is not available.
+deps/phoenix/lib/phoenix/endpoint.ex:2:callback_info_missing Callback info about the Plug behaviour is not available.
+deps/phoenix/lib/phoenix/endpoint.ex:520:unknown_function Function Phoenix.Endpoint.Supervisor.start_link/3 does not exist.
+deps/phoenix/lib/phoenix/endpoint.ex:539:unknown_function Function Phoenix.Endpoint.Supervisor.config_change/3 does not exist.
+deps/phoenix/lib/phoenix/endpoint.ex:609:unknown_function Function Phoenix.Config.cache/3 does not exist.
+deps/phoenix/lib/phoenix/endpoint.ex:612:unknown_function Function Phoenix.Endpoint.Supervisor.static_lookup/2 does not exist.
+deps/phoenix/lib/phoenix/router.ex:0:unknown_function Function Phoenix.Router.__call__/5 does not exist.
+deps/phoenix/lib/phoenix/router.ex:0:unknown_function Function Phoenix.Router.MalformedURIError.exception/1 does not exist.
+deps/phoenix/lib/phoenix/router.ex:0:unknown_function Function Phoenix.Router.NoRouteError.exception/1 does not exist.
+deps/phoenix/lib/phoenix/router.ex:2:callback_info_missing Callback info about the Plug behaviour is not available.
+deps/spark/lib/spark/dsl.ex:1:callback_info_missing Callback info about the Ash.Domain behaviour is not available.
+lib/eve_dmv/admin.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/admin.ex:35:unknown_function Function Ash.read_one/2 does not exist.
+lib/eve_dmv/admin.ex:45:unknown_function Function Ash.read_one/2 does not exist.
+lib/eve_dmv/admin.ex:55:unknown_function Function Ash.read!/2 does not exist.
+lib/eve_dmv/admin.ex:69:unknown_function Function Ash.read_one/2 does not exist.
+lib/eve_dmv/admin.ex:95:unknown_function Function Ash.count!/2 does not exist.
+lib/eve_dmv/admin/bootstrap.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/api.ex:0:unknown_function Function Ash.Domain.verify/2 does not exist.
+lib/eve_dmv/api.ex:0:unknown_function Function Spark.Dsl.Extension.run_transformers/4 does not exist.
+lib/eve_dmv/api.ex:0:unknown_function Function Spark.Dsl.Transformer.sort/1 does not exist.
+lib/eve_dmv/api.ex:0:unknown_function Function Spark.Error.DslError.exception/1 does not exist.
+lib/eve_dmv/api.ex:88:unknown_function Function Ash.read!/2 does not exist.
+lib/eve_dmv/api.ex:96:unknown_function Function Ash.read!/2 does not exist.
+lib/eve_dmv/api.ex:105:unknown_function Function Ash.read/2 does not exist.
+lib/eve_dmv/api.ex:114:unknown_function Function Ash.read/2 does not exist.
+lib/eve_dmv/api.ex:123:unknown_function Function Ash.create/3 does not exist.
+lib/eve_dmv/api.ex:132:unknown_function Function Ash.update/3 does not exist.
+lib/eve_dmv/api.ex:140:unknown_function Function Ash.destroy/2 does not exist.
+lib/eve_dmv/api.ex:150:unknown_function Function Ash.bulk_create/4 does not exist.
+lib/eve_dmv/api.ex:158:unknown_function Function Ash.get/3 does not exist.
+lib/eve_dmv/api.ex:166:unknown_function Function Ash.count/2 does not exist.
+lib/eve_dmv/api.ex:174:unknown_function Function Ash.read_one/2 does not exist.
+lib/eve_dmv/api.ex:182:unknown_function Function Ash.read_one!/2 does not exist.
+lib/eve_dmv/api.ex:86:24:unknown_type Unknown type: Ash.Query.t/0.
+lib/eve_dmv/api.ex:86:46:unknown_type Unknown type: Ash.Resource.record/0.
+lib/eve_dmv/api.ex:86:71:unknown_type Unknown type: Ash.Resource.record/0.
+lib/eve_dmv/api.ex:94:27:unknown_type Unknown type: Ash.Resource.t/0.
+lib/eve_dmv/api.ex:94:60:unknown_type Unknown type: Ash.Resource.record/0.
+lib/eve_dmv/api.ex:94:85:unknown_type Unknown type: Ash.Resource.record/0.
+lib/eve_dmv/api.ex:102:23:unknown_type Unknown type: Ash.Query.t/0.
+lib/eve_dmv/api.ex:103:30:unknown_type Unknown type: Ash.Resource.record/0.
+lib/eve_dmv/api.ex:103:62:unknown_type Unknown type: Ash.Resource.record/0.
+lib/eve_dmv/api.ex:111:26:unknown_type Unknown type: Ash.Resource.t/0.
+lib/eve_dmv/api.ex:112:30:unknown_type Unknown type: Ash.Resource.record/0.
+lib/eve_dmv/api.ex:112:62:unknown_type Unknown type: Ash.Resource.record/0.
+lib/eve_dmv/api.ex:120:28:unknown_type Unknown type: Ash.Resource.t/0.
+lib/eve_dmv/api.ex:121:29:unknown_type Unknown type: Ash.Resource.record/0.
+lib/eve_dmv/api.ex:129:28:unknown_type Unknown type: Ash.Resource.record/0.
+lib/eve_dmv/api.ex:130:29:unknown_type Unknown type: Ash.Resource.record/0.
+lib/eve_dmv/api.ex:138:29:unknown_type Unknown type: Ash.Resource.record/0.
+lib/eve_dmv/api.ex:148:42:unknown_type Unknown type: Ash.Resource.t/0.
+lib/eve_dmv/api.ex:148:84:unknown_type Unknown type: Ash.BulkResult.t/0.
+lib/eve_dmv/api.ex:156:25:unknown_type Unknown type: Ash.Resource.t/0.
+lib/eve_dmv/api.ex:156:70:unknown_type Unknown type: Ash.Resource.record/0.
+lib/eve_dmv/api.ex:164:24:unknown_type Unknown type: Ash.Query.t/0.
+lib/eve_dmv/api.ex:172:27:unknown_type Unknown type: Ash.Query.t/0.
+lib/eve_dmv/api.ex:172:54:unknown_type Unknown type: Ash.Resource.record/0.
+lib/eve_dmv/api.ex:180:28:unknown_type Unknown type: Ash.Query.t/0.
+lib/eve_dmv/api.ex:180:49:unknown_type Unknown type: Ash.Resource.record/0.
+lib/eve_dmv/api/analytics_api.ex:0:unknown_function Function Ash.Domain.verify/2 does not exist.
+lib/eve_dmv/api/analytics_api.ex:0:unknown_function Function Spark.Dsl.Extension.run_transformers/4 does not exist.
+lib/eve_dmv/api/analytics_api.ex:0:unknown_function Function Spark.Dsl.Transformer.sort/1 does not exist.
+lib/eve_dmv/api/analytics_api.ex:0:unknown_function Function Spark.Error.DslError.exception/1 does not exist.
+lib/eve_dmv/api/battle_analysis_api.ex:0:unknown_function Function Ash.Domain.verify/2 does not exist.
+lib/eve_dmv/api/battle_analysis_api.ex:0:unknown_function Function Spark.Dsl.Extension.run_transformers/4 does not exist.
+lib/eve_dmv/api/battle_analysis_api.ex:0:unknown_function Function Spark.Dsl.Transformer.sort/1 does not exist.
+lib/eve_dmv/api/battle_analysis_api.ex:0:unknown_function Function Spark.Error.DslError.exception/1 does not exist.
+lib/eve_dmv/api/surveillance_api.ex:0:unknown_function Function Ash.Domain.verify/2 does not exist.
+lib/eve_dmv/api/surveillance_api.ex:0:unknown_function Function Spark.Dsl.Extension.run_transformers/4 does not exist.
+lib/eve_dmv/api/surveillance_api.ex:0:unknown_function Function Spark.Dsl.Transformer.sort/1 does not exist.
+lib/eve_dmv/api/surveillance_api.ex:0:unknown_function Function Spark.Error.DslError.exception/1 does not exist.
+lib/eve_dmv/api/wormhole_operations_api.ex:0:unknown_function Function Ash.Domain.verify/2 does not exist.
+lib/eve_dmv/api/wormhole_operations_api.ex:0:unknown_function Function Spark.Dsl.Extension.run_transformers/4 does not exist.
+lib/eve_dmv/api/wormhole_operations_api.ex:0:unknown_function Function Spark.Dsl.Transformer.sort/1 does not exist.
+lib/eve_dmv/api/wormhole_operations_api.ex:0:unknown_function Function Spark.Error.DslError.exception/1 does not exist.
+lib/eve_dmv/application.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/application.ex:364:unknown_function Function Ecto.Adapters.SQL.query/3 does not exist.
+lib/eve_dmv/application.ex:375:unknown_function Function Ecto.Adapters.SQL.query/3 does not exist.
+lib/eve_dmv/application_startup.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/ash/preparations/query_safety.ex:1:callback_info_missing Callback info about the Ash.Resource.Preparation behaviour is not available.
+lib/eve_dmv/ash/preparations/query_safety.ex:33:unknown_function Function Ash.Query.limit/2 does not exist.
+lib/eve_dmv/config/unified_config.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/constants/isk.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/constants/isk.ex:31:unknown_function Function Decimal.to_float/1 does not exist.
+lib/eve_dmv/constants/isk.ex:47:unknown_function Function Decimal.to_float/1 does not exist.
+lib/eve_dmv/constants/isk.ex:65:unknown_function Function Decimal.compare/2 does not exist.
+lib/eve_dmv/constants/isk.ex:65:unknown_function Function Decimal.new/1 does not exist.
+lib/eve_dmv/constants/isk.ex:81:unknown_function Function Decimal.to_float/1 does not exist.
+lib/eve_dmv/constants/isk.ex:29:39:unknown_type Unknown type: Decimal.t/0.
+lib/eve_dmv/constants/isk.ex:45:39:unknown_type Unknown type: Decimal.t/0.
+lib/eve_dmv/constants/isk.ex:63:39:unknown_type Unknown type: Decimal.t/0.
+lib/eve_dmv/constants/isk.ex:79:38:unknown_type Unknown type: Decimal.t/0.
+lib/eve_dmv/contexts/battle_analysis.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis.ex:527:extra_range @spec for get_battle_intelligence_summary has more types than are returned by the function.
+lib/eve_dmv/contexts/battle_analysis.ex:537:call The function call generate_intelligence_summary will not succeed.
+lib/eve_dmv/contexts/battle_analysis.ex:603:no_return Function generate_intelligence_summary/3 has no local return.
+lib/eve_dmv/contexts/battle_analysis.ex:612:call The function call extract_key_timeline_events will not succeed.
+lib/eve_dmv/contexts/battle_analysis.ex:642:no_return Function extract_key_timeline_events/1 has no local return.
+lib/eve_dmv/contexts/battle_analysis.ex:643:call The function call get will not succeed.
+lib/eve_dmv/contexts/battle_analysis/api.ex:0:unknown_function Function Ash.Domain.verify/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/api.ex:0:unknown_function Function Spark.Dsl.Extension.run_transformers/4 does not exist.
+lib/eve_dmv/contexts/battle_analysis/api.ex:0:unknown_function Function Spark.Dsl.Transformer.sort/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/api.ex:0:unknown_function Function Spark.Error.DslError.exception/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/api.ex:39:unknown_function Function Ash.read/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/api.ex:46:unknown_function Function Ash.create/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/api.ex:53:unknown_function Function Ash.update/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/api.ex:60:unknown_function Function Ash.destroy/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:112:unknown_function Function Ash.read_one/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:263:unknown_function Function Ecto.Query.Builder.not_nil!/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:369:unknown_function Function Ecto.Query.Builder.not_nil!/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/core/battle_analyzer.ex:429:unknown_function Function Ecto.Query.Builder.not_nil!/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/core/battle_detector.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/core/battle_detector.ex:283:unknown_function Function Ecto.Query.Builder.not_nil!/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/core/battle_detector.ex:444:unknown_function Function Ecto.Query.Builder.not_nil!/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/core/battle_detector.ex:487:unknown_function Function Ecto.Query.Builder.not_nil!/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/core/battle_detector.ex:526:unknown_function Function Ecto.Query.Builder.not_nil!/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/core/battle_detector.ex:571:unknown_function Function Ecto.Query.Builder.not_nil!/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/core/timeline_builder.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/core/timeline_builder.ex:665:unknown_function Function Ecto.Query.Builder.not_nil!/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/battle_detection_service.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/battle_detection_service.ex:124:unknown_function Function Ash.Query.do_filter/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/battle_detection_service.ex:124:unknown_function Function Ash.Query.new/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/battle_detection_service.ex:125:unknown_function Function Ash.Query.sort/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/battle_detection_service.ex:126:unknown_function Function Ash.Query.limit/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/battle_detection_service.ex:150:unknown_function Function Ash.Query.new/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/battle_detection_service.ex:151:unknown_function Function Ash.Query.do_filter/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/battle_detection_service.ex:152:unknown_function Function Ash.Query.sort/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/battle_detection_service.ex:153:unknown_function Function Ash.Query.limit/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/battle_detection_service.ex:177:unknown_function Function Ash.Query.do_filter/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/battle_detection_service.ex:177:unknown_function Function Ash.Query.new/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/battle_detection_service.ex:178:unknown_function Function Ash.Query.sort/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/battle_timeline_service.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/combat_log_helper.ex:99:unknown_function Function Ash.Query.do_filter/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/combat_log_helper.ex:99:unknown_function Function Ash.Query.new/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/combat_log_helper.ex:100:unknown_function Function Ash.Query.sort/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/combat_log_helper.ex:101:unknown_function Function Ash.Query.limit/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/combat_log_parser.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/enhanced_combat_log_parser.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/multi_system_battle_correlator.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/participant_role_analyzer.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/services/detection_service.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/ship_performance_analyzer.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/strategic/assessment_compiler.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/strategic/facade.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/strategic/opportunity_identifier.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/strategic/patterns/tactical_patterns.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/strategic/recommendation_engine.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/tactical_pattern_detector.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/tactical_phase_detector.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/zkillboard_import_service.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/zkillboard_import_service.ex:199:unknown_function Function HTTPoison.get/3 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/zkillboard_import_service.ex:201:unknown_function Function Jason.decode/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/zkillboard_import_service.ex:296:unknown_function Function Ecto.Adapters.SQL.query/3 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/zkillboard_import_service.ex:315:unknown_function Function HTTPoison.get/3 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/zkillboard_import_service.ex:317:unknown_function Function Jason.decode/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/zkillboard_import_service.ex:388:unknown_function Function Ash.read_one/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/domain/zkillboard_import_service.ex:388:unknown_function Function Ash.Query.do_filter/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle.ex:0:unknown_function Function Ash.Resource.verify/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle.ex:0:unknown_function Function Ash.UUID.generate/0 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle.ex:0:unknown_function Function Spark.Dsl.Extension.run_transformers/4 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle.ex:0:unknown_function Function Spark.Dsl.Transformer.sort/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle.ex:0:unknown_function Function Spark.Error.DslError.exception/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle.ex:1:callback_info_missing Callback info about the Inspect behaviour is not available.
+lib/eve_dmv/contexts/battle_analysis/resources/battle.ex:1:unknown_function Function Ash.Resource.Info.action/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle.ex:1:unknown_function Function Ash.Actions.Read.Calculations.map_without_calc_deps/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_killmail.ex:0:unknown_function Function Ash.Resource.verify/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_killmail.ex:0:unknown_function Function Ash.UUID.generate/0 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_killmail.ex:0:unknown_function Function Spark.Dsl.Extension.run_transformers/4 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_killmail.ex:0:unknown_function Function Spark.Dsl.Transformer.sort/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_killmail.ex:0:unknown_function Function Spark.Error.DslError.exception/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_killmail.ex:1:callback_info_missing Callback info about the Inspect behaviour is not available.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_killmail.ex:1:unknown_function Function Ash.Resource.Info.action/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_killmail.ex:1:unknown_function Function Ash.Actions.Read.Calculations.map_without_calc_deps/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report.ex:0:unknown_function Function Ash.Resource.verify/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report.ex:0:unknown_function Function Ash.UUID.generate/0 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report.ex:0:unknown_function Function Spark.Dsl.Extension.run_transformers/4 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report.ex:0:unknown_function Function Spark.Dsl.Transformer.sort/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report.ex:0:unknown_function Function Spark.Error.DslError.exception/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report.ex:0:unknown_function Function Ash.Changeset.change_attribute/3 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report.ex:0:unknown_function Function Ash.Changeset.get_attribute/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report.ex:0:unknown_function Function Decimal.new/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report.ex:1:callback_info_missing Callback info about the Inspect behaviour is not available.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report.ex:1:unknown_function Function Ash.Resource.Info.action/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report.ex:1:unknown_function Function Ash.Actions.Read.Calculations.map_without_calc_deps/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report_comment.ex:0:unknown_function Function Ash.Resource.verify/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report_comment.ex:0:unknown_function Function Ash.UUID.generate/0 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report_comment.ex:0:unknown_function Function Spark.Dsl.Extension.run_transformers/4 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report_comment.ex:0:unknown_function Function Spark.Dsl.Transformer.sort/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report_comment.ex:0:unknown_function Function Spark.Error.DslError.exception/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report_comment.ex:0:unknown_function Function Ash.Changeset.change_attribute/3 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report_comment.ex:0:unknown_function Function Ash.Changeset.get_attribute/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report_comment.ex:1:callback_info_missing Callback info about the Inspect behaviour is not available.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report_comment.ex:1:unknown_function Function Ash.Resource.Info.action/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report_comment.ex:1:unknown_function Function Ash.Actions.Read.Calculations.map_without_calc_deps/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report_rating.ex:0:unknown_function Function Ash.Resource.verify/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report_rating.ex:0:unknown_function Function Ash.UUID.generate/0 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report_rating.ex:0:unknown_function Function Spark.Dsl.Extension.run_transformers/4 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report_rating.ex:0:unknown_function Function Spark.Dsl.Transformer.sort/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report_rating.ex:0:unknown_function Function Spark.Error.DslError.exception/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report_rating.ex:0:unknown_function Function Ash.Changeset.change_attribute/3 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report_rating.ex:0:unknown_function Function Ash.Changeset.get_attribute/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report_rating.ex:1:callback_info_missing Callback info about the Inspect behaviour is not available.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report_rating.ex:1:unknown_function Function Ash.Resource.Info.action/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/battle_report_rating.ex:1:unknown_function Function Ash.Actions.Read.Calculations.map_without_calc_deps/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/combat_log.ex:0:unknown_function Function Ash.Resource.verify/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/combat_log.ex:0:unknown_function Function Ash.UUID.generate/0 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/combat_log.ex:0:unknown_function Function Spark.Dsl.Extension.run_transformers/4 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/combat_log.ex:0:unknown_function Function Spark.Dsl.Transformer.sort/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/combat_log.ex:0:unknown_function Function Spark.Error.DslError.exception/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/combat_log.ex:0:unknown_function Function Ash.Changeset.change_attribute/3 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/combat_log.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/combat_log.ex:0:unknown_function Function Ash.Changeset.get_argument/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/combat_log.ex:1:callback_info_missing Callback info about the Inspect behaviour is not available.
+lib/eve_dmv/contexts/battle_analysis/resources/combat_log.ex:1:unknown_function Function Ash.Resource.Info.action/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/combat_log.ex:1:unknown_function Function Ash.Actions.Read.Calculations.map_without_calc_deps/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/ship_fitting.ex:0:unknown_function Function Ash.Resource.verify/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/ship_fitting.ex:0:unknown_function Function Ash.UUID.generate/0 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/ship_fitting.ex:0:unknown_function Function Spark.Dsl.Extension.run_transformers/4 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/ship_fitting.ex:0:unknown_function Function Spark.Dsl.Transformer.sort/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/ship_fitting.ex:0:unknown_function Function Spark.Error.DslError.exception/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/ship_fitting.ex:0:unknown_function Function Ash.Changeset.change_attribute/3 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/ship_fitting.ex:0:unknown_function Function Ash.Changeset.get_argument/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/ship_fitting.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/ship_fitting.ex:0:unknown_function Function Ash.Changeset.add_error/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/ship_fitting.ex:1:callback_info_missing Callback info about the Inspect behaviour is not available.
+lib/eve_dmv/contexts/battle_analysis/resources/ship_fitting.ex:1:unknown_function Function Ash.Resource.Info.action/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/ship_fitting.ex:1:unknown_function Function Ash.Actions.Read.Calculations.map_without_calc_deps/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/ship_fitting.ex:319:unknown_function Function Ash.read_one/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/resources/ship_fitting.ex:325:unknown_function Function Ash.read/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:35:unknown_function Function Ash.create/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:35:unknown_function Function Ash.Changeset.for_create/3 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:47:unknown_function Function Ash.Changeset.for_update/3 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:48:unknown_function Function Ash.update/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:62:unknown_function Function Ash.get/3 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:83:unknown_function Function Ash.read/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:116:unknown_function Function Ash.destroy/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:175:unknown_function Function Ecto.Query.Builder.OrderBy.apply/3 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:190:unknown_function Function Ecto.Query.Builder.not_nil!/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:217:unknown_function Function Ash.Query.do_filter/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:217:unknown_function Function Ash.Query.limit/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:218:unknown_function Function Ash.read/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:329:unknown_function Function Ash.Query.do_filter/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:339:unknown_function Function Ash.read/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:339:unknown_function Function Ash.Query.do_filter/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:392:unknown_function Function Ash.bulk_destroy/4 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:392:unknown_function Function Ash.Query.do_filter/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:416:unknown_function Function Ecto.Query.Builder.not_nil!/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:416:unknown_function Function Ecto.Query.Builder.Filter.apply/3 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:423:unknown_function Function Ash.read/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:423:unknown_function Function Ash.Query.do_filter/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:463:unknown_function Function Ash.bulk_update/4 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:463:unknown_function Function Ash.Query.do_filter/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:470:unknown_function Function Ash.read/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_service.ex:470:unknown_function Function Ash.Query.do_filter/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_sharing_service.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_sharing_service.ex:58:unknown_function Function Jason.encode!/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_sharing_service.ex:154:unknown_function Function Ash.read!/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_sharing_service.ex:154:unknown_function Function Ash.Query.do_filter/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_sharing_service.ex:234:unknown_function Function Ash.Query.do_filter/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_sharing_service.ex:234:unknown_function Function Ash.Query.load/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_sharing_service.ex:235:unknown_function Function Ash.read_one/1 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_sharing_service.ex:456:unknown_function Function Ash.read_one/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/battle_sharing_service.ex:456:unknown_function Function Ash.Query.do_filter/2 does not exist.
+lib/eve_dmv/contexts/battle_analysis/services/combat_log_service.ex:111:unknown_function Function Ash.read/2 does not exist.
+lib/eve_dmv/contexts/battle_sharing.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_sharing.ex:35:pattern_match The pattern can never match the type {:error, <<_::112, _::size(16)>>}.
+lib/eve_dmv/contexts/battle_sharing/domain/battle_curator.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_sharing/domain/battle_curator.ex:45:pattern_match The pattern can never match the type {:error, <<_::112, _::size(16)>>}.
+lib/eve_dmv/contexts/battle_sharing/domain/battle_curator.ex:151:pattern_match The pattern can never match the type {:error, :battle_not_found | :database_error}.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:446:unused_fun Function maybe_analyze_tactical_context/4 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:456:unused_fun Function analyze_tactical_context_at_timestamp/2 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:474:unused_fun Function extract_killmails_near_timestamp/2 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:489:unused_fun Function calculate_killmail_timestamp_offset/2 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:495:unused_fun Function analyze_tactical_situation/1 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:513:unused_fun Function calculate_combat_intensity/1 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:525:unused_fun Function classify_tactical_situation/1 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:542:unused_fun Function calculate_ship_diversity/1 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:553:unused_fun Function count_participants/1 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:566:unused_fun Function identify_contextual_factors/2 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:598:unused_fun Function intensity_change_moment?/2 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:604:unused_fun Function phase_transition_moment?/2 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:610:unused_fun Function calculate_tactical_significance/2 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:628:unused_fun Function integrate_learning_content/2 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:645:unused_fun Function find_related_learning_categories/1 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:653:unused_fun Function generate_educational_tags/2 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:709:unused_fun Function create_highlight_record/1 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:729:unused_fun Function generate_highlight_id/0 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:735:unused_fun Function enrich_highlight_data/2 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:746:unused_fun Function add_tactical_insights/1 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:758:unused_fun Function generate_tactical_lessons/1 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:780:unused_fun Function identify_related_concepts/1 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:802:unused_fun Function assess_difficulty_level/1 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:812:unused_fun Function assess_applicability/1 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:823:unused_fun Function add_community_features/1 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:837:unused_fun Function add_navigation_data/1 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:850:unused_fun Function generate_deep_link/1 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:854:unused_fun Function analyze_battle_phases/1 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:860:unused_fun Function detect_tactical_patterns/1 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:869:unused_fun Function generate_candidate_highlights/4 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:878:unused_fun Function filter_highlights_by_confidence/2 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:882:unused_fun Function prioritize_highlights/3 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:886:unused_fun Function finalize_auto_detected_highlights/2 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:890:unused_fun Function calculate_average_confidence/1 will never be called.
+lib/eve_dmv/contexts/battle_sharing/domain/video_link_validator.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/battle_sharing/domain/video_processor.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence.ex:148:extra_range @spec for compare_character_threats has more types than are returned by the function.
+lib/eve_dmv/contexts/character_intelligence.ex:168:extra_range @spec for get_character_intelligence_report has more types than are returned by the function.
+lib/eve_dmv/contexts/character_intelligence.ex:196:extra_range @spec for get_character_ship_intelligence has more types than are returned by the function.
+lib/eve_dmv/contexts/character_intelligence.ex:204:extra_range @spec for get_ship_preferences has more types than are returned by the function.
+lib/eve_dmv/contexts/character_intelligence.ex:213:extra_range @spec for get_detailed_ship_preferences has more types than are returned by the function.
+lib/eve_dmv/contexts/character_intelligence.ex:288:no_return Function enhance_with_ship_intelligence/2 has no local return.
+lib/eve_dmv/contexts/character_intelligence.ex:344:unused_fun Function get_combat_statistics/1 will never be called.
+lib/eve_dmv/contexts/character_intelligence.ex:348:unknown_function Function Ash.Query.new/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence.ex:348:unknown_function Function Ash.Query.sort/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence.ex:349:unknown_function Function Ash.Query.limit/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence.ex:383:unknown_function Function Ash.Query.do_filter/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence.ex:435:unused_fun Function count_recent_activity/2 will never be called.
+lib/eve_dmv/contexts/character_intelligence.ex:443:unused_fun Function get_character_info/1 will never be called.
+lib/eve_dmv/contexts/character_intelligence.ex:477:unused_fun Function extract_behavioral_patterns/1 will never be called.
+lib/eve_dmv/contexts/character_intelligence.ex:496:unused_fun Function maybe_add_pattern/3 will never be called.
+lib/eve_dmv/contexts/character_intelligence.ex:499:unused_fun Function calculate_pattern_confidence/2 will never be called.
+lib/eve_dmv/contexts/character_intelligence.ex:515:unused_fun Function generate_behavioral_characteristics/1 will never be called.
+lib/eve_dmv/contexts/character_intelligence.ex:534:unused_fun Function maybe_add_characteristic/3 will never be called.
+lib/eve_dmv/contexts/character_intelligence.ex:539:unused_fun Function generate_intelligence_summary/2 will never be called.
+lib/eve_dmv/contexts/character_intelligence.ex:563:unused_fun Function extract_key_strengths/1 will never be called.
+lib/eve_dmv/contexts/character_intelligence.ex:575:unused_fun Function generate_tactical_recommendations/2 will never be called.
+lib/eve_dmv/contexts/character_intelligence.ex:628:unused_fun Function calculate_pattern_confidence/1 will never be called.
+lib/eve_dmv/contexts/character_intelligence/analyzers/character_intelligence_analyzer.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/analyzers/character_intelligence_analyzer.ex:89:unknown_function Function Ecto.Adapters.SQL.query/3 does not exist.
+lib/eve_dmv/contexts/character_intelligence/analyzers/character_intelligence_analyzer.ex:276:unknown_function Function Ecto.Adapters.SQL.query/3 does not exist.
+lib/eve_dmv/contexts/character_intelligence/analyzers/character_intelligence_analyzer.ex:403:unknown_function Function Ecto.Adapters.SQL.query/3 does not exist.
+lib/eve_dmv/contexts/character_intelligence/analyzers/character_intelligence_analyzer.ex:524:unknown_function Function Ecto.Adapters.SQL.query/3 does not exist.
+lib/eve_dmv/contexts/character_intelligence/analyzers/character_intelligence_analyzer.ex:636:unknown_function Function Ecto.Adapters.SQL.query/3 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/analyzers/character_analyzer.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/analyzers/trend_analyzer.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/calculators/danger_rating_calculator.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/calculators/predictive_calculator.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/calculators/threat_score_calculator.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/character_stats.ex:0:unknown_function Function Ash.Resource.verify/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/character_stats.ex:0:unknown_function Function Spark.Dsl.Extension.run_transformers/4 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/character_stats.ex:0:unknown_function Function Spark.Dsl.Transformer.sort/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/character_stats.ex:0:unknown_function Function Spark.Error.DslError.exception/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/character_stats.ex:0:unknown_function Function Ash.Changeset.change_attribute/3 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/character_stats.ex:0:unknown_function Function Ash.Changeset.get_attribute/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/character_stats.ex:1:callback_info_missing Callback info about the Inspect behaviour is not available.
+lib/eve_dmv/contexts/character_intelligence/domain/character_stats.ex:1:unknown_function Function Ash.Resource.Info.action/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/character_stats.ex:1:unknown_function Function Ash.Actions.Read.Calculations.map_without_calc_deps/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/data_fetchers/combat_data_fetcher.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/data_fetchers/combat_data_fetcher.ex:98:unknown_function Function Ash.Query.new/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/data_fetchers/combat_data_fetcher.ex:99:unknown_function Function Ash.Query.do_filter/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/data_fetchers/combat_data_fetcher.ex:100:unknown_function Function Ash.Query.sort/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/data_fetchers/combat_data_fetcher.ex:101:unknown_function Function Ash.Query.limit/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/data_fetchers/combat_data_fetcher.ex:104:unknown_function Function Ash.read/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/data_fetchers/combat_data_fetcher.ex:119:unknown_function Function Ash.Query.do_filter/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/data_fetchers/combat_data_fetcher.ex:119:unknown_function Function Ash.Query.new/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/data_fetchers/combat_data_fetcher.ex:120:unknown_function Function Ash.Query.sort/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/data_fetchers/combat_data_fetcher.ex:121:unknown_function Function Ash.Query.limit/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/data_fetchers/combat_data_fetcher.ex:125:unknown_function Function Ash.read/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/engines/combat_threat_engine.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/engines/gang_effectiveness_engine.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/engines/player_stats_engine.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/engines/player_stats_engine.ex:50:unknown_function Function Ash.read/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/engines/player_stats_engine.ex:112:unknown_function Function Ash.get/3 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/engines/player_stats_engine.ex:113:unknown_function Function Ash.update/3 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/engines/player_stats_engine.ex:114:unknown_function Function Ash.create/3 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/engines/player_stats_engine.ex:120:unknown_function Function Ash.read/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/engines/player_stats_engine.ex:158:unknown_function Function Ash.read/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/engines/player_stats_engine.ex:209:unknown_function Function Decimal.from_float/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/engines/player_stats_engine.ex:246:unknown_function Function Decimal.add/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/engines/player_stats_engine.ex:246:unknown_function Function Decimal.new/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/engines/ship_mastery_engine.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/engines/unpredictability_engine.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/generators/comparison_engine.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/generators/insight_generator.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/generators/insight_generator.ex:53:unknown_function Function Ash.read!/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/generators/insight_generator.ex:53:unknown_function Function Ash.Query.limit/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/player_stats.ex:0:unknown_function Function Ash.Resource.verify/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/player_stats.ex:0:unknown_function Function Ash.UUID.generate/0 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/player_stats.ex:0:unknown_function Function Spark.Dsl.Extension.run_transformers/4 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/player_stats.ex:0:unknown_function Function Spark.Dsl.Transformer.sort/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/player_stats.ex:0:unknown_function Function Spark.Error.DslError.exception/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/player_stats.ex:0:unknown_function Function Ash.Changeset.change_attribute/3 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/player_stats.ex:0:unknown_function Function Ash.Changeset.get_argument_or_attribute/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/player_stats.ex:1:callback_info_missing Callback info about the Inspect behaviour is not available.
+lib/eve_dmv/contexts/character_intelligence/domain/player_stats.ex:1:unknown_function Function Ash.Resource.Info.action/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/player_stats.ex:1:unknown_function Function Ash.Actions.Read.Calculations.map_without_calc_deps/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/services/character_comparison_service.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/services/character_comparison_service.ex:152:no_return The created anonymous function has no local return.
+lib/eve_dmv/contexts/character_intelligence/domain/services/character_comparison_service.ex:174:unknown_function Function Ecto.Query.Builder.not_nil!/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/services/character_comparison_service.ex:983:unknown_function Function Ecto.Query.Builder.not_nil!/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/threat_assessment.ex:217:unknown_function Function Ash.read/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/threat_assessment.ex:217:unknown_function Function Ash.Query.do_filter/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/threat_scoring/shared_utilities.ex:361:unknown_function Function Ash.get/3 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/threat_scoring_coordinator.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/threat_scoring_engine.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/threat_scoring_engine.ex:189:unknown_function Function Ash.Query.sort/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/threat_scoring_engine.ex:197:unknown_function Function Ash.Query.do_filter/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/threat_scoring_engine.ex:197:unknown_function Function Ash.Query.new/1 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/threat_scoring_engine.ex:198:unknown_function Function Ash.Query.limit/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/threat_scoring_engine.ex:203:unknown_function Function Ash.read/2 does not exist.
+lib/eve_dmv/contexts/character_intelligence/domain/threat_scoring_engine.ex:968:no_return The created anonymous function has no local return.
+lib/eve_dmv/contexts/character_intelligence/domain/threat_scoring_engine.ex:980:call The function call div will not succeed.
+lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:114:unknown_function Function Ecto.Query.Builder.Filter.apply/3 does not exist.
+lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:114:unknown_function Function Ecto.Query.Builder.OrderBy.apply/3 does not exist.
+lib/eve_dmv/contexts/combat/core/fleet_composition_analyzer.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/combat/core/participant_analyzer/affiliation_analyzer.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/combat/core/tactical_pattern_detector.ex:492:unknown_function Function Ecto.Query.Builder.not_nil!/2 does not exist.
+lib/eve_dmv/contexts/combat/core/timeline_builder.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/combat/resources/battle.ex:0:unknown_function Function Ash.Resource.verify/2 does not exist.
+lib/eve_dmv/contexts/combat/resources/battle.ex:0:unknown_function Function Ash.UUID.generate/0 does not exist.
+lib/eve_dmv/contexts/combat/resources/battle.ex:0:unknown_function Function Spark.Dsl.Extension.run_transformers/4 does not exist.
+lib/eve_dmv/contexts/combat/resources/battle.ex:0:unknown_function Function Spark.Dsl.Transformer.sort/1 does not exist.
+lib/eve_dmv/contexts/combat/resources/battle.ex:0:unknown_function Function Spark.Error.DslError.exception/1 does not exist.
+lib/eve_dmv/contexts/combat/resources/battle.ex:1:callback_info_missing Callback info about the Inspect behaviour is not available.
+lib/eve_dmv/contexts/combat/resources/battle.ex:1:unknown_function Function Ash.Resource.Info.action/2 does not exist.
+lib/eve_dmv/contexts/combat/resources/battle.ex:1:unknown_function Function Ash.Actions.Read.Calculations.map_without_calc_deps/1 does not exist.
+lib/eve_dmv/contexts/combat/resources/battle_killmail.ex:0:unknown_function Function Ash.Resource.verify/2 does not exist.
+lib/eve_dmv/contexts/combat/resources/battle_killmail.ex:0:unknown_function Function Ash.UUID.generate/0 does not exist.
+lib/eve_dmv/contexts/combat/resources/battle_killmail.ex:0:unknown_function Function Spark.Dsl.Extension.run_transformers/4 does not exist.
+lib/eve_dmv/contexts/combat/resources/battle_killmail.ex:0:unknown_function Function Spark.Dsl.Transformer.sort/1 does not exist.
+lib/eve_dmv/contexts/combat/resources/battle_killmail.ex:0:unknown_function Function Spark.Error.DslError.exception/1 does not exist.
+lib/eve_dmv/contexts/combat/resources/battle_killmail.ex:1:callback_info_missing Callback info about the Inspect behaviour is not available.
+lib/eve_dmv/contexts/combat/resources/battle_killmail.ex:1:unknown_function Function Ash.Resource.Info.action/2 does not exist.
+lib/eve_dmv/contexts/combat/resources/battle_killmail.ex:1:unknown_function Function Ash.Actions.Read.Calculations.map_without_calc_deps/1 does not exist.
+lib/eve_dmv/contexts/combat/resources/combat_log.ex:0:unknown_function Function Ash.Resource.verify/2 does not exist.
+lib/eve_dmv/contexts/combat/resources/combat_log.ex:0:unknown_function Function Ash.UUID.generate/0 does not exist.
+lib/eve_dmv/contexts/combat/resources/combat_log.ex:0:unknown_function Function Spark.Dsl.Extension.run_transformers/4 does not exist.
+lib/eve_dmv/contexts/combat/resources/combat_log.ex:0:unknown_function Function Spark.Dsl.Transformer.sort/1 does not exist.
+lib/eve_dmv/contexts/combat/resources/combat_log.ex:0:unknown_function Function Spark.Error.DslError.exception/1 does not exist.
+lib/eve_dmv/contexts/combat/resources/combat_log.ex:0:unknown_function Function Ash.Changeset.change_attribute/3 does not exist.
+lib/eve_dmv/contexts/combat/resources/combat_log.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/combat/resources/combat_log.ex:0:unknown_function Function Ash.Changeset.get_argument/2 does not exist.
+lib/eve_dmv/contexts/combat/resources/combat_log.ex:1:callback_info_missing Callback info about the Inspect behaviour is not available.
+lib/eve_dmv/contexts/combat/resources/combat_log.ex:1:unknown_function Function Ash.Resource.Info.action/2 does not exist.
+lib/eve_dmv/contexts/combat/resources/combat_log.ex:1:unknown_function Function Ash.Actions.Read.Calculations.map_without_calc_deps/1 does not exist.
+lib/eve_dmv/contexts/combat/resources/ship_fitting.ex:0:unknown_function Function Ash.Resource.verify/2 does not exist.
+lib/eve_dmv/contexts/combat/resources/ship_fitting.ex:0:unknown_function Function Ash.UUID.generate/0 does not exist.
+lib/eve_dmv/contexts/combat/resources/ship_fitting.ex:0:unknown_function Function Spark.Dsl.Extension.run_transformers/4 does not exist.
+lib/eve_dmv/contexts/combat/resources/ship_fitting.ex:0:unknown_function Function Spark.Dsl.Transformer.sort/1 does not exist.
+lib/eve_dmv/contexts/combat/resources/ship_fitting.ex:0:unknown_function Function Spark.Error.DslError.exception/1 does not exist.
+lib/eve_dmv/contexts/combat/resources/ship_fitting.ex:0:unknown_function Function Ash.Changeset.change_attribute/3 does not exist.
+lib/eve_dmv/contexts/combat/resources/ship_fitting.ex:0:unknown_function Function Ash.Changeset.get_argument/2 does not exist.
+lib/eve_dmv/contexts/combat/resources/ship_fitting.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/combat/resources/ship_fitting.ex:0:unknown_function Function Ash.Changeset.add_error/2 does not exist.
+lib/eve_dmv/contexts/combat/resources/ship_fitting.ex:1:callback_info_missing Callback info about the Inspect behaviour is not available.
+lib/eve_dmv/contexts/combat/resources/ship_fitting.ex:1:unknown_function Function Ash.Resource.Info.action/2 does not exist.
+lib/eve_dmv/contexts/combat/resources/ship_fitting.ex:1:unknown_function Function Ash.Actions.Read.Calculations.map_without_calc_deps/1 does not exist.
+lib/eve_dmv/contexts/combat/resources/ship_fitting.ex:319:unknown_function Function Ash.read_one/2 does not exist.
+lib/eve_dmv/contexts/combat/resources/ship_fitting.ex:325:unknown_function Function Ash.read/2 does not exist.
+lib/eve_dmv/contexts/combat/services/battle_service.ex:0:unknown_function Function String.Chars.to_string/1 does not exist.
+lib/eve_dmv/contexts/combat/services/battle_service.ex:30:unknown_function Function Ash.create/1 does not exist.
+lib/eve_dmv/contexts/combat/services/battle_service.ex:30:unknown_function Function Ash.Changeset.for_create/3 does not exist.

@@ -204,7 +204,7 @@ defmodule EveDmv.Contexts.CombatAnalysis do
     Domain.CharacterAnalysisEngine.process_killmail(event)
 
     # Update threat assessments
-    Domain.ThreatAssessmentEngine.process_killmail(event)
+    Domain.ThreatAssessmentEngine.monitor_realtime_threats(event)
   end
 
   defp handle_battle_detected(event) do

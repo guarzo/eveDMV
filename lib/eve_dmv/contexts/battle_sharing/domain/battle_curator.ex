@@ -47,9 +47,6 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
 
       {:error, reason} ->
         {:error, reason}
-
-      _ ->
-        {:error, :battle_data_unavailable}
     end
   end
 
@@ -149,7 +146,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
   defp fetch_battle_data(battle_id) do
     case BattleAnalysis.get_battle_with_timeline(battle_id) do
       {:ok, battle_data} -> {:ok, battle_data.battle}
-      {:error, _reason} -> {:error, "Battle not found"}
+      {:error, reason} when is_atom(reason) -> {:error, Atom.to_string(reason)}
+      {:error, reason} when is_binary(reason) -> {:error, reason}
+      error -> {:error, "Battle not found: #{inspect(error)}"}
     end
   rescue
     error ->

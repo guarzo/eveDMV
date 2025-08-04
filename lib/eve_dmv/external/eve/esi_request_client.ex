@@ -13,8 +13,6 @@ defmodule EveDmv.Eve.EsiRequestClient do
   alias EveDmv.Eve.ErrorClassifier
   alias EveDmv.Eve.FallbackStrategy
   alias EveDmv.Eve.ReliabilityConfig
-  alias EveDmv.Telemetry.PerformanceMonitor
-  alias EveDmv.Telemetry.RequestMonitor
   alias Jason
   require Logger
 
@@ -32,9 +30,8 @@ defmodule EveDmv.Eve.EsiRequestClient do
     cache_key = Keyword.get(opts, :cache_key)
 
     request_fn = fn ->
-      PerformanceMonitor.track_api_call("esi", path, fn ->
-        execute_authenticated_request(path, auth_token, params, operation_type)
-      end)
+      # Simplified without performance monitoring dependency
+      execute_authenticated_request(path, auth_token, params, operation_type)
     end
 
     # Use circuit breaker if enabled
@@ -85,9 +82,6 @@ defmodule EveDmv.Eve.EsiRequestClient do
 
         {:error, _} ->
           Logger.debug("Result is error")
-
-        other ->
-          Logger.debug("Unexpected result type: #{inspect(other)}")
       end
     end
 
@@ -112,9 +106,8 @@ defmodule EveDmv.Eve.EsiRequestClient do
     cache_key = Keyword.get(opts, :cache_key)
 
     request_fn = fn ->
-      PerformanceMonitor.track_api_call("esi", path, fn ->
-        execute_public_request(path, params, operation_type)
-      end)
+      # Simplified without performance monitoring dependency
+      execute_public_request(path, params, operation_type)
     end
 
     # Use circuit breaker if enabled

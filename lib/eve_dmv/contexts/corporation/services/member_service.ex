@@ -362,8 +362,8 @@ defmodule EveDmv.Contexts.Corporation.Services.MemberService do
 
   defp get_character_stats(character_id) do
     case CharacterRepository.get_character_stats(character_id) do
+      {:ok, nil} -> {:ok, %{}}
       {:ok, stats} -> {:ok, stats}
-      {:error, :not_found} -> {:ok, %{}}
       error -> error
     end
   end

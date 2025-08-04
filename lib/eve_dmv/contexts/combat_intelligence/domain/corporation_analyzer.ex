@@ -17,7 +17,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CorporationAnalyzer do
   @doc """
   Analyze a corporation's combat intelligence.
   """
-  @spec analyze(integer(), map()) :: {:ok, map()} | {:error, term()}
+  @spec analyze(integer(), map()) :: {:ok, map()}
   def analyze(corporation_id, context) do
     perform_analysis(corporation_id, context)
   end
@@ -25,7 +25,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CorporationAnalyzer do
   @doc """
   Get cached intelligence for a corporation.
   """
-  @spec get_intelligence(integer()) :: {:ok, map()} | {:error, term()}
+  @spec get_intelligence(integer()) :: {:ok, map()}
   def get_intelligence(corporation_id) do
     case AnalysisCache.get_corporation_analysis(corporation_id) do
       {:ok, analysis} -> {:ok, analysis}
@@ -36,7 +36,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CorporationAnalyzer do
   @doc """
   Refresh analysis for a corporation.
   """
-  @spec refresh_analysis(integer()) :: {:ok, map()} | {:error, term()}
+  @spec refresh_analysis(integer()) :: {:ok, map()}
   def refresh_analysis(corporation_id) do
     AnalysisCache.invalidate_corporation(corporation_id)
     analyze(corporation_id, %{force_refresh: true})
@@ -45,7 +45,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CorporationAnalyzer do
   @doc """
   Get member activity patterns.
   """
-  @spec get_member_activity(integer()) :: {:ok, map()} | {:error, term()}
+  @spec get_member_activity(integer()) :: {:ok, map()}
   def get_member_activity(corporation_id) do
     {:ok, %{corporation_id: corporation_id, active_members: 0, patterns: []}}
   end
@@ -53,7 +53,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CorporationAnalyzer do
   @doc """
   Get timezone coverage analysis.
   """
-  @spec get_timezone_coverage(integer()) :: {:ok, map()} | {:error, term()}
+  @spec get_timezone_coverage(integer()) :: {:ok, map()}
   def get_timezone_coverage(corporation_id) do
     {:ok, %{corporation_id: corporation_id, coverage: %{}, peak_hours: []}}
   end

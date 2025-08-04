@@ -107,7 +107,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
 
   defp get_recent_killmails(character_id, time_period) do
     start_date = calculate_start_date(time_period)
-    KillmailRepository.get_by_character(character_id, start_date)
+    KillmailRepository.get_by_character(character_id, start_date: start_date, limit: 1000)
   end
 
   defp calculate_start_date(days: days) do

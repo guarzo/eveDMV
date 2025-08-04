@@ -22,22 +22,27 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
   @doc """
   Analyze behavioral patterns for a character.
   """
+  @spec analyze_behavior(integer()) :: {:ok, map()} | {:error, term()}
   def analyze_behavior(character_id) do
     cache_key = {:behavioral_patterns, character_id}
 
-    Cache.get_or_compute(
-      :analysis,
-      cache_key,
-      fn ->
-        perform_behavioral_analysis(character_id)
-      end,
-      ttl: @cache_ttl
-    )
+    case Cache.get_or_compute(
+           :analysis,
+           cache_key,
+           fn ->
+             perform_behavioral_analysis(character_id)
+           end,
+           ttl: @cache_ttl
+         ) do
+      {:ok, result} -> {:ok, result}
+      {:error, reason} -> {:error, reason}
+    end
   end
 
   @doc """
   Get activity patterns including peak times and consistency.
   """
+  @spec get_activity_patterns(integer()) :: {:ok, map()} | {:error, term()}
   def get_activity_patterns(character_id) do
     case analyze_behavior(character_id) do
       {:ok, patterns} -> {:ok, patterns.activity_patterns}
@@ -48,6 +53,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
   @doc """
   Get estimated timezone based on activity.
   """
+  @spec get_timezone_estimate(integer()) :: {:ok, String.t()} | {:error, term()}
   def get_timezone_estimate(character_id) do
     case analyze_behavior(character_id) do
       {:ok, patterns} -> {:ok, patterns.timezone}
@@ -58,6 +64,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
   @doc """
   Get gang size preferences.
   """
+  @spec get_gang_preferences(integer()) :: {:ok, map()} | {:error, term()}
   def get_gang_preferences(character_id) do
     case analyze_behavior(character_id) do
       {:ok, patterns} -> {:ok, patterns.gang_preferences}
@@ -68,6 +75,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
   @doc """
   Get geographic operational preferences.
   """
+  @spec get_geographic_preferences(integer()) :: {:ok, map()} | {:error, term()}
   def get_geographic_preferences(character_id) do
     case analyze_behavior(character_id) do
       {:ok, patterns} -> {:ok, patterns.geographic_preferences}
@@ -100,16 +108,19 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
 
   defp get_character_killmails(character_id) do
     start_date = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
-    case KillmailRepository.get_by_character(character_id, start_date) do
-      {:ok, killmails} -> {:ok, killmails}
+    case KillmailRepository.get_by_character(character_id, start_date: start_date, limit: 1000) do
+      {:ok, killmails} when is_list(killmails) -> {:ok, killmails}
       {:error, _reason} -> {:ok, []}
-      killmails when is_list(killmails) -> {:ok, killmails}
       _ -> {:ok, []}
     end
   end
 
   defp get_activity_data(character_id) do
-    CharacterRepository.get_character_stats(character_id)
+    case CharacterRepository.get_character_stats(character_id) do
+      {:ok, stats} -> {:ok, stats}
+      {:error, _reason} -> {:ok, %{}}
+      _ -> {:ok, %{}}
+    end
   end
 
   defp analyze_activity_patterns(killmails) do
@@ -200,8 +211,13 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
     }
   end
 
-  defp calculate_average(list) when length(list) > 0 do
-    Enum.sum(list) / length(list)
+  defp calculate_average(list) when is_list(list) and length(list) > 0 do
+    list_length = length(list)
+    if list_length > 0 do
+      Enum.sum(list) / list_length
+    else
+      0.0
+    end
   end
 
   defp calculate_average(_), do: 0
@@ -215,9 +231,17 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
         sessions
         |> Enum.chunk_every(2, 1, :discard)
         |> Enum.map(fn [s1, s2] ->
+          s1_first = case List.first(s1) do
+            nil -> %{killmail_time: DateTime.utc_now()}
+            km -> km
+          end
+          s2_first = case List.first(s2) do
+            nil -> %{killmail_time: DateTime.utc_now()}
+            km -> km
+          end
           DateTimeUtils.diff(
-            List.first(s2).killmail_time,
-            List.first(s1, :second).killmail_time,
+            s2_first.killmail_time,
+            s1_first.killmail_time,
             :hour
           )
         end)
@@ -238,12 +262,17 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
     if Enum.empty?(values) do
       0
     else
-      sum_squares =
-        values
-        |> Enum.map(fn v -> :math.pow(v - mean, 2) end)
-        |> Enum.sum()
+      values_length = length(values)
+      if values_length > 0 do
+        sum_squares =
+          values
+          |> Enum.map(fn v -> :math.pow(v - mean, 2) end)
+          |> Enum.sum()
 
-      sum_squares / length(values)
+        sum_squares / values_length
+      else
+        0
+      end
     end
   end
 
@@ -317,7 +346,12 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       |> Enum.frequencies()
 
     total = length(gang_sizes)
-    avg_gang_size = if total > 0, do: Enum.sum(gang_sizes) / total, else: 1.0
+    avg_gang_size = 
+      if total > 0 do
+        Enum.sum(gang_sizes) / total
+      else
+        1.0
+      end
 
     %{
       average_gang_size: Float.round(avg_gang_size, 1),
@@ -405,11 +439,15 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       |> Enum.map(fn {_, count} -> count end)
       |> Enum.sum()
 
-    system_activity
-    |> Enum.filter(fn {_, count} ->
-      # More than 10% of activity
-      count / total_activity > 0.1
-    end)
+    if total_activity > 0 do
+      system_activity
+      |> Enum.filter(fn {_, count} ->
+        # More than 10% of activity
+        count / total_activity > 0.1
+      end)
+    else
+      []
+    end
     |> Enum.take(3)
     |> Enum.map(fn {system_id, _} -> system_id end)
   end
@@ -595,14 +633,24 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
     # Higher concentration = higher predictability
     hour_concentration =
       if length(hourly_activity) > 0 do
-        Enum.max(hourly_activity) / Enum.sum(hourly_activity)
+        hour_sum = Enum.sum(hourly_activity)
+        if hour_sum > 0 do
+          Enum.max(hourly_activity) / hour_sum
+        else
+          0
+        end
       else
         0
       end
 
     system_concentration =
       if length(system_activity) > 0 do
-        Enum.max(system_activity) / Enum.sum(system_activity)
+        system_sum = Enum.sum(system_activity)
+        if system_sum > 0 do
+          Enum.max(system_activity) / system_sum
+        else
+          0
+        end
       else
         0
       end
@@ -670,9 +718,10 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       |> Enum.filter(fn km -> km.total_value > 100_000_000 end)
       |> length()
 
+    killmail_count = length(killmails)
     loss_ratio =
-      if length(killmails) > 0 do
-        length(losses) / length(killmails)
+      if killmail_count > 0 do
+        length(losses) / killmail_count
       else
         0
       end

@@ -600,7 +600,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
           intelligence =
             case BattleAnalysis.analyze_battle_with_intelligence(battle) do
               {:ok, intel} -> intel
-              _ -> nil
+              _error -> nil
             end
 
           socket
@@ -614,17 +614,19 @@ defmodule EveDmvWeb.BattleAnalysisLive do
           |> load_battle_metrics()
           |> load_battle_reports()
 
-        {:error, :battle_not_found} ->
+        {:error, reason} when reason in [:battle_not_found, :database_error, :max_iterations_reached] ->
           require Logger
-          Logger.warning("Battle #{battle_id} not found in backend, showing error")
+          Logger.warning("Battle #{battle_id} error: #{reason}")
 
-          assign(
-            socket,
-            :error_message,
-            "Battle not found. It may have been re-detected with a different ID."
-          )
+          error_message = case reason do
+            :battle_not_found -> "Battle not found. It may have been re-detected with a different ID."
+            :database_error -> "Database error occurred while loading battle"
+            :max_iterations_reached -> "Battle analysis timed out - battle too complex"
+          end
 
-        _ ->
+          assign(socket, :error_message, error_message)
+
+        {:error, _reason} ->
           assign(socket, :error_message, "Failed to load battle")
       end
     end
@@ -632,15 +634,26 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   defp format_error(:invalid_zkillboard_url), do: "Invalid zkillboard URL"
   defp format_error(:unsupported_url_format), do: "Unsupported zkillboard URL format"
-  defp format_error({:http_error, _}), do: "Failed to connect to zkillboard"
+  defp format_error({:http_error, _error}), do: "Failed to connect to zkillboard"
   defp format_error({:api_error, status}), do: "zkillboard API error (#{status})"
-  defp format_error(_), do: "Import failed"
+  defp format_error(_error), do: "Import failed"
 
-  defp format_error_reason(:curator_unavailable),
+  defp format_error_reason(reason) when reason in ["curator_unavailable", :curator_unavailable],
     do: "Battle curator service is temporarily unavailable"
 
+  defp format_error_reason("report_not_found"), do: "Battle report not found"
+
+  defp format_error_reason("permission_denied"),
+    do: "You don't have permission to perform this action"
+
+  defp format_error_reason(reason) when reason in ["curator_unavailable", :curator_unavailable],
+    do: "Battle curator service is temporarily unavailable"
+
+  defp format_error_reason("report_not_found"), do: "Battle report not found"
   defp format_error_reason(:report_not_found), do: "Battle report not found"
 
+  defp format_error_reason("permission_denied"),
+    do: "You don't have permission to perform this action"
   defp format_error_reason(:permission_denied),
     do: "You don't have permission to perform this action"
 
@@ -651,7 +664,13 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     |> String.capitalize()
   end
 
-  defp format_error_reason(_), do: "Failed to submit rating"
+  defp format_error_reason(reason) when is_binary(reason) do
+    reason
+    |> String.replace("_", " ")
+    |> String.capitalize()
+  end
+
+  defp format_error_reason(_reason), do: "An error occurred"
 
   # View helpers (these should be in the template but included here for completeness)
 

@@ -230,7 +230,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
   @doc """
   Generate defense recommendations.
   """
-  @spec generate_defense_recommendations(integer()) :: {:ok, [map()]} | {:error, term()}
+  @spec generate_defense_recommendations(integer()) :: [map()]
   def generate_defense_recommendations(corporation_id) do
     Logger.debug("Generating defense recommendations for corporation #{corporation_id}")
 
@@ -967,7 +967,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
 
   defp create_realistic_entry_points(topology, recent_activity) do
     # Create realistic entry points based on system class and activity
-    system_class = topology.system_class || :c2
+    safe_topology = topology || %{}
+    system_class = Map.get(safe_topology, :system_class, :c2)
     activity_count = length(recent_activity)
 
     # Determine realistic number of connections based on system class

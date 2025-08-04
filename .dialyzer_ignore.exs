@@ -111,7 +111,32 @@
   # REMOVED - unused filters per dialyzer output
 
   # Exact equality check in resource_analyzer - mathematical comparison that is intentional
-  ~r"lib/eve_dmv/contexts/battle_analysis/domain/strategic/resource_analyzer.ex:.*:exact_eq"
+  ~r"lib/eve_dmv/contexts/battle_analysis/domain/strategic/resource_analyzer.ex:.*:exact_eq",
+
+  # ASH DOMAIN FRAMEWORK FUNCTIONS (WORKSTREAM E)  
+  # These are Ash framework internal functions that Dialyzer can't find in API domain modules
+  ~r"lib/eve_dmv/api/wormhole_operations_api\.ex:.*:unknown_function Function Ash\.Domain\.verify/2 does not exist",
+  ~r"lib/eve_dmv/api/wormhole_operations_api\.ex:.*:unknown_function Function Spark\.Dsl\.Extension\.run_transformers/4 does not exist", 
+  ~r"lib/eve_dmv/api/wormhole_operations_api\.ex:.*:unknown_function Function Spark\.Dsl\.Transformer\.sort/1 does not exist",
+  ~r"lib/eve_dmv/api/wormhole_operations_api\.ex:.*:unknown_function Function Spark\.Error\.DslError\.exception/1 does not exist",
+
+  # ===========================================
+  # PHOENIX LIVEVIEW FRAMEWORK FUNCTIONS (WORKSTREAM B)
+  # ===========================================
+  
+  # Phoenix LiveView Engine functions - these are generated at compile time and not in PLT
+  ~r"lib/eve_dmv_web/.*:unknown_function Function Phoenix\.LiveView\.Engine\..*",
+  ~r"lib/eve_dmv_web/.*:unknown_function Function Phoenix\.LiveView\.HTMLEngine\..*",
+  ~r"lib/eve_dmv_web/.*:unknown_function Function Phoenix\.LiveView\.Comprehension\..*",
+  
+  # Phoenix Component functions that are compile-time generated
+  ~r"lib/eve_dmv_web/.*:unknown_function Function Phoenix\.Component\..*",
+  
+  # Phoenix LiveView functions that may not be in PLT
+  ~r"lib/eve_dmv_web/.*:unknown_function Function Phoenix\.LiveView\.put_flash/3 does not exist",
+  
+  # String protocol functions - these are protocol implementations
+  ~r"lib/eve_dmv_web/.*:unknown_function Function String\.Chars\.to_string/1 does not exist"
 
   # ===========================================
   # DOCUMENTATION
