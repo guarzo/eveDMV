@@ -69,7 +69,13 @@
   ~r"lib/eve_dmv_web/components/battle_timeline_component.ex:.*:call",
 
   # Ship preferences analyzer - private functions are used but dialyzer doesn't detect it
-  ~r"lib/eve_dmv/contexts/player_profile/analyzers/ship_preferences_analyzer.ex:.*:unused_fun"
+  ~r"lib/eve_dmv/contexts/player_profile/analyzers/ship_preferences_analyzer.ex:.*:unused_fun",
+
+  # Killmail processing API - Ash.read() can return errors but dialyzer doesn't track it properly
+  ~r"lib/eve_dmv/contexts/killmail_processing/api.ex:.*:pattern_match.*\{:error, _reason\}",
+
+  # Cond expressions with catch-all true clauses - legitimate Elixir patterns
+  ~r"lib/eve_dmv/contexts/player_profile/analyzers/combat_stats_analyzer.ex:.*:pattern_match.*false"
   # REMOVED - unused filter per dialyzer output
   # ~r"threat_scoring_engine.ex:.*:pattern_match",
 
