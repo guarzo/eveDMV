@@ -180,10 +180,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.IngestionService do
     ]
 
     # Publish events through the infrastructure layer
-    case Infrastructure.EventPublisher.publish_events(events_to_publish) do
-      :ok -> {:ok, length(events_to_publish)}
-      error -> error
-    end
+    Infrastructure.EventPublisher.publish_events(events_to_publish)
   end
 
   defp publish_failure_event(raw_killmail, reason) do

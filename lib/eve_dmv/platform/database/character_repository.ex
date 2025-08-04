@@ -44,8 +44,9 @@ defmodule EveDmv.Database.CharacterRepository do
             |> Ash.Query.new()
             |> Ash.Query.filter(character_id == ^character_id)
 
-          case Api.read(Ash.Query.limit(query, 1)) |> case do {:ok, [result]} -> {:ok, result}; {:ok, []} -> {:error, :not_found}; error -> error end do
-            {:ok, stats} -> {:ok, stats}
+          case Api.read(Ash.Query.limit(query, 1)) do
+            {:ok, [stats]} -> {:ok, stats}
+            {:ok, []} -> {:error, :not_found}
             {:error, reason} -> {:error, reason}
           end
         end)

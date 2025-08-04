@@ -201,7 +201,7 @@ defmodule EveDmv.Users.AccountManager do
       last_login_at: DateTime.utc_now(),
       is_admin: user.is_admin || false
     })
-    |> Api.create()
+    |> Ash.create(domain: Api)
   end
 
   @spec link_user_to_account(user(), account()) :: {:ok, user()} | error()

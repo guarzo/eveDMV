@@ -53,10 +53,8 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager do
     auth_token = Map.get(opts, :auth_token)
     composition = Map.get(opts, :composition)
 
-    case get_asset_availability(composition, auth_token) do
-      {:ok, asset_data} -> Result.ok(asset_data)
-      {:error, reason} -> Result.error(:asset_analysis_failed, reason)
-    end
+    {:ok, asset_data} = get_asset_availability(composition, auth_token)
+    Result.ok(asset_data)
   end
 
   @impl EveDmv.Intelligence.Analyzer

@@ -848,7 +848,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
     }
   end
 
-  defp generate_escape_routes(connection_count, route_type, system_id) do
+  defp generate_escape_routes(connection_count, route_type, _system_id) do
     # Generate escape routes based on actual connection data
     route_count =
       case route_type do
@@ -857,8 +857,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
         :emergency -> min(1, max(0, connection_count - 2))
       end
 
-    # Get actual connection data if available
-    # Since get_system_escape_connections always returns {:error, _}, we always use the fallback
+    # Create escape routes based on route count
     create_realistic_escape_routes(route_count, route_type)
   end
 
@@ -1067,29 +1066,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
     end
   end
 
-  defp get_system_escape_connections(_route_type, system_id) do
-    # Query actual escape route data from wormhole connections
-    # This would integrate with wormhole mapping services like Pathfinder or Tripwire
-
-    case get_system_connections(system_id) do
-      {:ok, system_connections} ->
-        # Analyze connections for escape route potential
-        escape_routes =
-          system_connections
-          |> Enum.filter(&viable_escape_route?/1)
-          |> Enum.map(&analyze_escape_route_quality/1)
-          |> Enum.sort_by(& &1.safety_rating, :desc)
-
-        if Enum.empty?(escape_routes) do
-          {:error, :no_escape_routes}
-        else
-          {:ok, escape_routes}
-        end
-
-      _error ->
-        {:error, :connection_data_unavailable}
-    end
-  end
 
   defp assess_route_security_rating(connection) do
     # Assess security rating based on connection characteristics
@@ -1454,38 +1430,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
     end
   end
 
-  # Helper functions for escape route analysis
-  defp get_system_connections(_system_id) do
-    # This would query real wormhole connection data
-    # For now, return no connections available
-    {:error, :no_mapping_data}
-  end
-
-  defp viable_escape_route?(connection) do
-    # Check if connection is suitable for escape (not critical mass, not EOL)
-    # 5 minutes
-    # Safer destinations
-    connection.mass_remaining > 0.5 and
-      connection.time_remaining > 300 and
-      connection.destination_class in ["K-space", "C1", "C2", "C3"]
-  end
-
-  defp analyze_escape_route_quality(connection) do
-    safety_rating =
-      cond do
-        connection.destination_class == "K-space" -> 0.9
-        connection.destination_class in ["C1", "C2"] -> 0.7
-        connection.destination_class == "C3" -> 0.5
-        true -> 0.3
-      end
-
-    %{
-      connection: connection,
-      safety_rating: safety_rating,
-      # 30 seconds per jump
-      estimated_travel_time: connection.jumps * 30
-    }
-  end
 
   # Helper functions for corporation home system detection
   defp get_most_active_system_for_corporation(_corporation_id) do

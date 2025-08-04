@@ -49,7 +49,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.TimelineBuilder do
 
   defp get_battle_killmails(battle) do
     killmails =
-      EveDmv.Killmails.KillmailRaw
+      from(k in EveDmv.Killmails.KillmailRaw)
       |> where([k], k.killmail_id in ^(battle.killmail_ids || []))
       |> order_by([k], asc: k.killmail_time)
       |> EveDmv.Repo.all()
@@ -661,11 +661,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.TimelineBuilder do
 
       type_id ->
         # Check if it's a structure (category_id 65 for structures)
-        case from(i in "eve_item_types",
-               where: i.type_id == ^type_id and i.category_id == 65,
-               select: i.type_id
-             )
-             |> EveDmv.Repo.one() do
+        case EveDmv.Repo.one(
+               from(i in "eve_item_types",
+                 where: i.type_id == ^type_id and i.category_id == 65,
+                 select: i.type_id
+               )
+             ) do
           nil -> false
           _ -> true
         end

@@ -257,9 +257,9 @@ defmodule EveDmv.Database.Repository do
         TelemetryHelper.measure_query(@resource_name, :get, fn ->
           query = QueryBuilder.build_get_query(@resource, id, opts)
 
-          case Api.read(Ash.Query.limit(query, 1)) |> case do {:ok, [result]} -> {:ok, result}; {:ok, []} -> {:error, :not_found}; error -> error end do
-            {:ok, nil} -> {:error, :not_found}
-            {:ok, record} -> {:ok, record}
+          case Api.read(Ash.Query.limit(query, 1)) do
+            {:ok, [record]} -> {:ok, record}
+            {:ok, []} -> {:error, :not_found}
             {:error, reason} -> {:error, reason}
           end
         end)

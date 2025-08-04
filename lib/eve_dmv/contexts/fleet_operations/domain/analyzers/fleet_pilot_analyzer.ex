@@ -23,24 +23,15 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.Analyzers.FleetPilotAnalyzer do
 
     try do
       # Get corporation members
-      case get_corporation_members(corporation_id) do
-        {:ok, members} when is_list(members) ->
-          # Filter and enhance with pilot data
-          available_pilots =
-            members
-            |> Enum.filter(&pilot_available?/1)
-            |> Enum.map(&enhance_pilot_data/1)
+      {:ok, members} = get_corporation_members(corporation_id)
+      
+      # Filter and enhance with pilot data
+      available_pilots =
+        members
+        |> Enum.filter(&pilot_available?/1)
+        |> Enum.map(&enhance_pilot_data/1)
 
-          {:ok, available_pilots}
-
-        {:ok, []} ->
-          Logger.warning("No members found for corporation #{corporation_id}")
-          {:ok, []}
-
-        {:error, reason} ->
-          Logger.error("Failed to get corporation members: #{inspect(reason)}")
-          {:error, reason}
-      end
+      {:ok, available_pilots}
     rescue
       error ->
         Logger.error("Error getting available pilots: #{inspect(error)}")

@@ -116,11 +116,10 @@ defmodule EveDmv.Security.ApiAuthentication do
       expires_at: expires_at
     }
 
-    changeset = 
-      __MODULE__
-      |> Ash.Changeset.for_create(:create, attrs)
-    
-    case EveDmv.Api.create(changeset) do
+    __MODULE__
+    |> Ash.Changeset.for_create(:create, attrs)
+    |> Ash.create(domain: EveDmv.Api)
+    |> case do
       {:ok, api_key} -> api_key
       {:error, reason} -> raise "Failed to create API key: #{inspect(reason)}"
     end
@@ -137,7 +136,14 @@ defmodule EveDmv.Security.ApiAuthentication do
       |> Ash.Query.new()
       |> Ash.Query.filter(api_key == ^api_key)
 
-    case EveDmv.Api.read(Ash.Query.limit(query, 1)) |> case do {:ok, [result]} -> {:ok, result}; {:ok, []} -> {:error, :not_found}; error -> error end do
+    result = 
+      case EveDmv.Api.read(Ash.Query.limit(query, 1)) do
+        {:ok, [result]} -> {:ok, result}
+        {:ok, []} -> {:error, :not_found}
+        error -> error
+      end
+    
+    case result do
       {:ok, key_record} when key_record != nil ->
         cond do
           key_expired?(key_record) ->
@@ -171,7 +177,14 @@ defmodule EveDmv.Security.ApiAuthentication do
       |> new()
       |> filter(id == ^api_key_id and character_id == ^character_id)
 
-    case EveDmv.Api.read(Ash.Query.limit(query, 1)) |> case do {:ok, [result]} -> {:ok, result}; {:ok, []} -> {:error, :not_found}; error -> error end do
+    result = 
+      case EveDmv.Api.read(Ash.Query.limit(query, 1)) do
+        {:ok, [result]} -> {:ok, result}
+        {:ok, []} -> {:error, :not_found}
+        error -> error
+      end
+    
+    case result do
       {:ok, api_key} when api_key != nil ->
         api_key
         |> Ash.Changeset.for_update(:deactivate)

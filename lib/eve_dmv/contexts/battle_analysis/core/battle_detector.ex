@@ -279,7 +279,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   end
 
   defp fetch_killmails_in_timeframe(start_time, end_time) do
-    KillmailRaw
+    from(k in KillmailRaw)
     |> where([k], k.killmail_time >= ^start_time and k.killmail_time <= ^end_time)
     |> order_by([k], asc: k.killmail_time)
     |> Repo.all()
@@ -408,7 +408,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   defp extract_participants_from_killmail_ids(killmail_ids) do
     # Query database to get participants for these killmails
     killmails =
-      KillmailRaw
+      from(k in KillmailRaw)
       |> where([k], k.killmail_id in ^killmail_ids)
       |> Repo.all()
 
@@ -440,7 +440,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
 
     # Get killmails involving this character
     killmails =
-      KillmailRaw
+      from(k in KillmailRaw)
       |> where([k], k.killmail_time > ^since)
       |> where([k], fragment("? @> ?", k.participants, ^[%{character_id: character_id}]))
       |> order_by([k], desc: k.killmail_time)
@@ -482,7 +482,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
     since = DateTimeUtils.add(DateTimeUtils.utc_now(), -7 * 24 * 3600, :second)
 
     killmails =
-      KillmailRaw
+      from(k in KillmailRaw)
       |> where([k], k.solar_system_id == ^system_id)
       |> where([k], k.killmail_time > ^since)
       |> order_by([k], desc: k.killmail_time)
@@ -522,7 +522,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
     since = DateTimeUtils.add(DateTimeUtils.utc_now(), -30 * 24 * 3600, :second)
 
     killmails =
-      KillmailRaw
+      from(k in KillmailRaw)
       |> where([k], k.killmail_time > ^since)
       |> where([k], fragment("? @> ?", k.participants, ^[%{corporation_id: corporation_id}]))
       |> order_by([k], desc: k.killmail_time)
@@ -566,7 +566,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
     end_time = DateTimeUtils.add(killmail.killmail_time, time_window * 60, :second)
 
     related_killmails =
-      KillmailRaw
+      from(k in KillmailRaw)
       |> where([k], k.solar_system_id == ^killmail.solar_system_id)
       |> where([k], k.killmail_time >= ^start_time and k.killmail_time <= ^end_time)
       |> Repo.all()
@@ -599,7 +599,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   end
 
   defp count_character_kills_in_battle(character_id, killmail_ids) do
-    KillmailRaw
+    from(k in KillmailRaw)
     |> where([k], k.killmail_id in ^killmail_ids)
     |> where([k], fragment("? @> ?", k.participants, ^[%{character_id: character_id}]))
     |> where(
@@ -614,7 +614,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   end
 
   defp count_character_losses_in_battle(character_id, killmail_ids) do
-    KillmailRaw
+    from(k in KillmailRaw)
     |> where([k], k.killmail_id in ^killmail_ids)
     |> where(
       [k],
@@ -644,7 +644,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   end
 
   defp calculate_character_isk_destroyed_in_battle(character_id, killmail_ids) do
-    KillmailRaw
+    from(k in KillmailRaw)
     |> where([k], k.killmail_id in ^killmail_ids)
     |> where([k], fragment("? @> ?", k.participants, ^[%{character_id: character_id}]))
     |> where(
@@ -661,7 +661,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   end
 
   defp calculate_character_isk_lost_in_battle(character_id, killmail_ids) do
-    KillmailRaw
+    from(k in KillmailRaw)
     |> where([k], k.killmail_id in ^killmail_ids)
     |> where(
       [k],
@@ -744,7 +744,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   end
 
   defp count_corporation_kills_in_battle(corporation_id, killmail_ids) do
-    KillmailRaw
+    from(k in KillmailRaw)
     |> where([k], k.killmail_id in ^killmail_ids)
     |> where([k], fragment("? @> ?", k.participants, ^[%{corporation_id: corporation_id}]))
     |> where(
@@ -759,7 +759,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   end
 
   defp count_corporation_losses_in_battle(corporation_id, killmail_ids) do
-    KillmailRaw
+    from(k in KillmailRaw)
     |> where([k], k.killmail_id in ^killmail_ids)
     |> where(
       [k],
@@ -789,7 +789,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   end
 
   defp calculate_corporation_isk_destroyed_in_battle(corporation_id, killmail_ids) do
-    KillmailRaw
+    from(k in KillmailRaw)
     |> where([k], k.killmail_id in ^killmail_ids)
     |> where([k], fragment("? @> ?", k.participants, ^[%{corporation_id: corporation_id}]))
     |> where(
@@ -806,7 +806,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   end
 
   defp calculate_corporation_isk_lost_in_battle(corporation_id, killmail_ids) do
-    KillmailRaw
+    from(k in KillmailRaw)
     |> where([k], k.killmail_id in ^killmail_ids)
     |> where(
       [k],
