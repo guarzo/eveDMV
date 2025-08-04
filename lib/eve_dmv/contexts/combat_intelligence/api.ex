@@ -70,6 +70,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
     with :ok <- validate_analysis_options(opts),
          {:ok, analysis_result} <- Domain.CharacterAnalyzer.analyze(character_id, opts) do
       {:ok, analysis_result}
+    else
+      {:error, :invalid_options} -> {:error, :invalid_options}
+      {:error, reason} -> {:error, reason}
+      error -> {:error, :analysis_failed}
     end
   end
 
@@ -97,6 +101,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
     with :ok <- validate_analysis_options(opts),
          {:ok, analysis_result} <- Domain.CorporationAnalyzer.analyze(corporation_id, opts) do
       {:ok, analysis_result}
+    else
+      {:error, :invalid_options} -> {:error, :invalid_options}
+      {:error, reason} -> {:error, reason}
+      error -> {:error, :analysis_failed}
     end
   end
 
@@ -130,6 +138,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
     with :ok <- validate_threat_context(context),
          {:ok, assessment} <- Domain.ThreatAssessor.assess_threat(character_id, context) do
       {:ok, assessment}
+    else
+      {:error, :invalid_context} -> {:error, :invalid_options}
+      {:error, reason} -> {:error, reason}
+      error -> {:error, :analysis_failed}
     end
   end
 
@@ -225,8 +237,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   """
   @spec get_intelligence_cache_stats() :: {:ok, %{cache_size: integer(), evictions: integer(), hit_rate: float(), miss_rate: float()}}
   def get_intelligence_cache_stats do
-    stats = Domain.CharacterAnalyzer.get_cache_stats()
-    {:ok, stats}
+    case Domain.CharacterAnalyzer.get_cache_stats() do
+      {:ok, stats} -> {:ok, stats}
+      stats when is_map(stats) -> {:ok, stats}
+      _ -> {:ok, %{cache_size: 0, evictions: 0, hit_rate: 0.0, miss_rate: 0.0}}
+    end
   end
 
   @doc """
