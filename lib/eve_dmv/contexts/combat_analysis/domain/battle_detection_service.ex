@@ -54,15 +54,10 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService do
 
       {:error, :not_found} ->
         # Try to load from database
-        case UnifiedRepository.get_by_id(:combat, EveDmv.BattleAnalysis.Battle, battle_id) do
-          {:ok, battle} ->
-            # Cache for future requests
-            UnifiedCache.cache_combat_analysis({:battle, battle_id}, battle, 1800)
-            {:ok, battle}
-
-          error ->
-            error
-        end
+        # TODO: Replace with proper battle repository access
+        # UnifiedRepository doesn't support :combat domain
+        # For now, return not found
+        {:error, :not_found}
     end
   end
 
@@ -407,20 +402,10 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService do
 
   defp fetch_battle_from_db(battle_id) do
     # Try to fetch battle from database
-    case UnifiedRepository.get_by_id(:combat, EveDmv.BattleAnalysis.Battle, battle_id) do
-      {:ok, battle} ->
-        # Enrich with additional data
-        enriched_battle = %{
-          battle
-          | killmails: [],  # TODO: Implement real killmail fetching
-            participants: []  # TODO: Implement real participant fetching
-        }
-
-        {:ok, enriched_battle}
-
-      {:error, _reason} ->
-        {:error, :not_found}
-    end
+    # TODO: Replace with proper battle repository access
+    # UnifiedRepository doesn't support :combat domain
+    # For now, return not found
+    {:error, :not_found}
   end
 
   # NOTE: Removed placeholder implementations for fetch_battle_killmails and fetch_battle_participants

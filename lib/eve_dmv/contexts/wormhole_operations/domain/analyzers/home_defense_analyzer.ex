@@ -184,21 +184,15 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
   end
 
   defp get_corporation_members(corporation_id) do
-    # Query actual corporation members from killmail data
-    case get_actual_corporation_members(corporation_id) do
+    # Since get_actual_corporation_members always returns {:error, :no_data},
+    # go straight to analyzing killmails for corporation members
+    case get_members_from_killmails(corporation_id) do
       {:ok, members} when members != [] ->
         {:ok, members}
 
       _ ->
-        # If no member data available, analyze recent killmails for corporation
-        case get_members_from_killmails(corporation_id) do
-          {:ok, members} when members != [] ->
-            {:ok, members}
-
-          _ ->
-            Logger.info("No member data available for corporation #{corporation_id}")
-            {:ok, []}
-        end
+        Logger.info("No member data available for corporation #{corporation_id}")
+        {:ok, []}
     end
   rescue
     error ->
@@ -237,12 +231,6 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
     |> Enum.into(%{})
   end
 
-  defp get_actual_corporation_members(_corporation_id) do
-    # Query actual corporation member list from database if available
-    # This would integrate with ESI API data if available
-    # Placeholder - would implement with ESI integration
-    {:error, :no_data}
-  end
 
   defp get_members_from_killmails(corporation_id) do
     # Extract member list from recent killmail activity

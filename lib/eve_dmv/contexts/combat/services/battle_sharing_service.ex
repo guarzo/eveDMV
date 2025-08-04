@@ -333,37 +333,4 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
   defp format_battle_date(datetime) do
     Calendar.strftime(datetime, "%Y-%m-%d %H:%M")
   end
-
-  defp format_time(datetime) do
-    Calendar.strftime(datetime, "%H:%M:%S")
-  end
-
-  defp describe_event(event) do
-    "#{event.victim.character_name} lost #{event.victim.ship_name}"
-  end
-
-  defp format_ship_classes(ship_classes) do
-    ship_classes
-    |> Enum.map_join(", ", fn {class, data} ->
-      "#{class} (#{data.count})"
-    end)
-  end
-
-  defp describe_pattern(pattern) do
-    case pattern.type do
-      :focus_fire -> "Coordinated targeting detected"
-      :capital_warfare -> "Capital ships engaged"
-      :bombing_runs -> "Bombing runs executed"
-      _ -> "Tactical pattern detected"
-    end
-  end
-
-  defp format_participant_rows(participants) do
-    participants
-    |> Enum.take(10)
-    |> Enum.with_index(1)
-    |> Enum.map_join("\n", fn {p, rank} ->
-      "<tr><td>#{rank}</td><td>#{p.character_name}</td><td>#{p.kills}</td><td>#{p.deaths}</td></tr>"
-    end)
-  end
 end
