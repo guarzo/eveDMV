@@ -126,7 +126,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
         query
       end
 
-    case Ash.read_one(final_query, domain: EveDmv.Contexts.FleetOperations.Domain) do
+    case EveDmv.Contexts.FleetOperations.Domain.read_one(final_query) do
       {:ok, doctrine} -> {:ok, doctrine}
       {:error, _} -> {:error, :not_found}
     end
@@ -189,7 +189,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
       |> sort(usage_count: :desc, name: :asc)
       |> load([:total_minimum_pilots, :completeness_score])
 
-    case Ash.read(final_query, domain: EveDmv.Contexts.FleetOperations.Domain) do
+    case EveDmv.Contexts.FleetOperations.Domain.read(final_query) do
       {:ok, doctrines} ->
         {:ok, doctrines}
 
@@ -248,7 +248,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
   def delete_doctrine(doctrine_id) do
     case get_doctrine(doctrine_id) do
       {:ok, doctrine} ->
-        case Ash.destroy(doctrine, domain: EveDmv.Contexts.FleetOperations.Domain) do
+        case EveDmv.Contexts.FleetOperations.Domain.destroy(doctrine) do
           :ok ->
             Logger.info("Deleted doctrine: #{doctrine.name}")
             :ok

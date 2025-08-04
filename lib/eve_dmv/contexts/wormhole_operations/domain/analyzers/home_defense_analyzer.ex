@@ -512,7 +512,7 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
       created_at: DateTime.utc_now()
     }
 
-    case Ash.create(HomeDefenseAnalytics, analytics_params, domain: Api) do
+    case Api.create(HomeDefenseAnalytics, analytics_params) do
       {:ok, _analytics} ->
         :ok
 

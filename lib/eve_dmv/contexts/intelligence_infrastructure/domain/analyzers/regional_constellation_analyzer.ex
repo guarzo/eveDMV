@@ -227,7 +227,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
       |> Ash.Query.select([:victim_alliance_id, :victim_corporation_id, :killmail_time])
       |> Ash.Query.limit(2_000)
 
-    {:ok, killmails} = Ash.read(query, domain: Api)
+    {:ok, killmails} = Api.read(query)
 
     # Count kills by alliance/corp to determine control
     alliance_kills =

@@ -165,7 +165,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
 
   # Query the actual static data system for ship information
   defp get_ship_info_from_static_data(ship_type_id) do
-    case Ash.get(ItemType, ship_type_id, domain: EveDmv.Api) do
+    case EveDmv.Api.get(ItemType, ship_type_id) do
       {:ok, item_type} ->
         {:ok,
          %{

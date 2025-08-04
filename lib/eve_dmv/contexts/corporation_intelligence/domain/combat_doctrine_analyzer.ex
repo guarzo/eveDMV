@@ -280,8 +280,8 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
       # Larger sample for attacker search
       |> Ash.Query.limit(2000)
 
-    with {:ok, victim_killmails} <- Ash.read(victim_query, domain: Api),
-         {:ok, potential_attacker_killmails} <- Ash.read(attacker_query, domain: Api) do
+    with {:ok, victim_killmails} <- Api.read(victim_query),
+         {:ok, potential_attacker_killmails} <- Api.read(attacker_query) do
       # Filter for corporation as attackers
       attacker_killmails =
         Enum.filter(potential_attacker_killmails, fn km ->

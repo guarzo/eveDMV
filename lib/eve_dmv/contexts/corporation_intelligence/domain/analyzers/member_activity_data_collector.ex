@@ -118,7 +118,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityDataCollector do
       |> Ash.Query.new()
       |> Ash.Query.filter(killmail_id == ^killmail_id)
 
-    case Ash.read(query, domain: Api) do
+    case Api.read(query) do
       {:ok, participants} -> {:ok, participants}
       {:error, reason} -> {:error, reason}
     end

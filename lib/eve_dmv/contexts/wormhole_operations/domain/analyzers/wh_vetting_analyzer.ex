@@ -1040,7 +1040,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
       created_at: DateTime.utc_now()
     }
 
-    case Ash.create(WHVetting, vetting_params, domain: Api) do
+    case Api.create(WHVetting, vetting_params) do
       {:ok, _vetting} ->
         :ok
 

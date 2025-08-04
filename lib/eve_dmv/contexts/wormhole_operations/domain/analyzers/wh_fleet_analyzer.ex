@@ -151,7 +151,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.Analyzers.WhFleetAnalyzer do
 
   # Helper functions for composition analysis
   defp get_composition_record(composition_id) do
-    case Ash.get(WhFleetComposition, composition_id, domain: EveDmv.Api) do
+    case EveDmv.Api.get(WhFleetComposition, composition_id) do
       {:ok, composition} -> {:ok, composition}
       {:error, reason} -> {:error, "Composition not found: #{reason}"}
     end
