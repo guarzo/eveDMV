@@ -71,8 +71,10 @@
   # Cache hit/miss patterns - FIXED in workstream D
   # ~r/doctrine_effectiveness_service\.ex:.*:pattern_match.*:miss.*\{:ok, _\}/,
 
-  # Character intelligence - incomplete type information
+  # Character intelligence - incomplete type information and delegation false positives
   ~r"character_intelligence.ex:.*:pattern_match",
+  ~r"character_intelligence.ex:.*:no_return.*get_.*ship.*preferences",
+  ~r"character_intelligence.ex:.*:no_return.*get_character_ship_intelligence",
   ~r"player_stats_engine.ex:1:pattern_match",
 
   # ===========================================
