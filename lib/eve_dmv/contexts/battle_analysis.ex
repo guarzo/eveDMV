@@ -132,7 +132,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   Provides chronological event analysis, battle phases, fleet composition changes,
   and identifies key moments in the battle.
   """
-  @spec reconstruct_battle_timeline(battle()) :: battle_timeline()
+  @spec reconstruct_battle_timeline(battle()) :: {:ok, battle_timeline()} | {:error, atom()}
   def reconstruct_battle_timeline(battle) do
     BattleTimelineService.reconstruct_timeline(battle)
   end
@@ -142,7 +142,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
 
   Useful for tracking roaming gangs, escalating conflicts, or multi-system engagements.
   """
-  @spec analyze_battle_sequence([battle()]) :: battle_sequence_analysis()
+  @spec analyze_battle_sequence([battle()]) :: {:ok, battle_sequence_analysis()} | {:error, atom()}
   def analyze_battle_sequence(battles) when is_list(battles) do
     BattleTimelineService.analyze_battle_sequence(battles)
   end
