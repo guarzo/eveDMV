@@ -51,7 +51,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.HistoricalService do
   @doc """
   Get the status of a running historical fetch task.
   """
-  @spec get_task_status(reference()) :: {:ok, map()} | {:error, :not_found}
+  @spec get_task_status(reference()) :: {:ok, map()}
   def get_task_status(task_ref) do
     # This would integrate with a task registry to track status
     # For now, return a basic response
