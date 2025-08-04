@@ -61,11 +61,6 @@ defmodule EveDmvWeb.Api.ApiKeysController do
         |> put_status(:unauthorized)
         |> json(%{error: "Authentication required"})
 
-      {:error, _reason} ->
-        conn
-        |> put_status(:unauthorized)
-        |> json(%{error: "Authentication required"})
-
       {:error, reason} ->
         conn
         |> put_status(:bad_request)
