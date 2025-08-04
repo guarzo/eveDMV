@@ -372,18 +372,28 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
   defp do_analyze_character(character_id, opts) do
     requested_by_id = Map.get(opts, :requested_by_id)
 
-    with {:ok, character_info} <-
-           TimeoutHelper.with_default_timeout(fn -> get_character_info(character_id) end, :api),
-         {:ok, killmails} <-
-           TimeoutHelper.with_default_timeout(
-             fn -> get_character_killmails(character_id) end,
-             :query
-           ),
-         {:ok, employment_history} <-
-           TimeoutHelper.with_default_timeout(
-             fn -> get_employment_history(character_id) end,
-             :api
-           ) do
+    # Get character info with timeout
+    character_info_result = 
+      TimeoutHelper.with_default_timeout(fn -> get_character_info(character_id) end, :api)
+    
+    # Get killmails with timeout
+    killmails_result = 
+      TimeoutHelper.with_default_timeout(
+        fn -> get_character_killmails(character_id) end,
+        :query
+      )
+    
+    # Get employment history with timeout
+    employment_history_result = 
+      TimeoutHelper.with_default_timeout(
+        fn -> get_employment_history(character_id) end,
+        :api
+      )
+    
+    # Check all results
+    with {:ok, {:ok, character_info}} <- character_info_result,
+         {:ok, {:ok, killmails}} <- killmails_result,
+         {:ok, {:ok, employment_history}} <- employment_history_result do
       perform_vetting_analysis(
         character_id,
         character_info,
@@ -392,8 +402,11 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
         requested_by_id
       )
     else
-      {:error, :character_not_found} ->
+      {:ok, {:error, :character_not_found}} ->
         {:error, "Character not found in ESI"}
+      
+      {:ok, {:error, reason}} ->
+        {:error, "Failed to gather vetting analysis data: #{inspect(reason)}"}
 
       {:error, reason} ->
         {:error, "Failed to gather vetting analysis data: #{inspect(reason)}"}

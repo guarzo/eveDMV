@@ -413,9 +413,6 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
         # Fallback to database lookup if no ESI auth available
         fetch_members_from_database(corporation_id)
 
-      {:error, reason} ->
-        {:error, reason}
-
       result ->
         result
     end

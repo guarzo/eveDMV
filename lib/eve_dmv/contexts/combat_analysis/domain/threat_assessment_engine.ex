@@ -106,7 +106,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
     cache_key = {:combat_threat, entity_type, entity_id, options}
 
     {result, new_state} =
-      case UnifiedCache.get(:combat_analysis, cache_key) do
+      case UnifiedCache.get(:combat, cache_key) do
         {:ok, cached_assessment} ->
           {{:ok, cached_assessment}, %{state | cache_hits: state.cache_hits + 1}}
 
@@ -115,7 +115,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
 
           case assessment_result do
             {:ok, assessment} ->
-              UnifiedCache.put(:combat_analysis, cache_key, assessment, @cache_ttl)
+              UnifiedCache.put(:combat, cache_key, assessment, @cache_ttl)
 
               {assessment_result,
                %{
@@ -152,7 +152,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
     # Invalidate threat caches for affected entities
     Enum.each(entities, fn {entity_id, entity_type} ->
       cache_pattern = {:combat_threat, entity_type, entity_id, :_}
-      UnifiedCache.delete(:combat_analysis, cache_pattern)
+      UnifiedCache.delete(:combat, cache_pattern)
     end)
 
     # Update real-time threat indicators

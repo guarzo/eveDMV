@@ -967,24 +967,24 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
 
   defp create_realistic_entry_points(topology, recent_activity) do
     # Create realistic entry points based on system class and activity
-    system_class = topology.system_class || "C2"
+    system_class = topology.system_class || :c2
     activity_count = length(recent_activity)
 
     # Determine realistic number of connections based on system class
     connection_count =
       case system_class do
         # C1s typically have 1 connection
-        "C1" -> 1
+        :c1 -> 1
         # C2s typically have 2 connections
-        "C2" -> 2
+        :c2 -> 2
         # C3s typically have 2 connections
-        "C3" -> 2
+        :c3 -> 2
         # C4s typically have 3 connections
-        "C4" -> 3
+        :c4 -> 3
         # C5s typically have 4 connections
-        "C5" -> 4
+        :c5 -> 4
         # C6s typically have 3 connections
-        "C6" -> 3
+        :c6 -> 3
         # Default to 2
         _ -> 2
       end
@@ -1008,23 +1008,23 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
     # Determine realistic connection types based on system class
     case {system_class, index} do
       # C1 typically connects to highsec
-      {"C1", 1} -> :high
+      {:c1, 1} -> :high
       # C2 primary to highsec
-      {"C2", 1} -> :high
+      {:c2, 1} -> :high
       # C2 secondary to C1
-      {"C2", 2} -> :c1
+      {:c2, 2} -> :c1
       # C3 primary to lowsec
-      {"C3", 1} -> :low
+      {:c3, 1} -> :low
       # C3 secondary to C1
-      {"C3", 2} -> :c1
+      {:c3, 2} -> :c1
       # C4 connections
-      {"C4", 1} -> :c2
-      {"C4", 2} -> :c3
-      {"C4", 3} -> :c2
+      {:c4, 1} -> :c2
+      {:c4, 2} -> :c3
+      {:c4, 3} -> :c2
       # C5 connections
-      {"C5", _} -> :c5
+      {:c5, _} -> :c5
       # C6 connections
-      {"C6", _} -> :c6
+      {:c6, _} -> :c6
       # Default
       _ -> :c2
     end

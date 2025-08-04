@@ -49,14 +49,14 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
 
     cache_key = {:character_comparison, character_ids, timeframe, metrics}
 
-    case UnifiedCache.get(:analysis, cache_key) do
+    case UnifiedCache.get(:combat, cache_key) do
       {:ok, cached_comparison} ->
         {:ok, cached_comparison}
 
       {:error, :not_found} ->
         with {:ok, character_data} <- fetch_character_data(character_ids, timeframe),
              {:ok, comparison} <- perform_comparison(character_data, metrics) do
-          UnifiedCache.put(:analysis, cache_key, comparison, @cache_ttl)
+          UnifiedCache.put(:combat, cache_key, comparison, @cache_ttl)
           {:ok, comparison}
         end
     end

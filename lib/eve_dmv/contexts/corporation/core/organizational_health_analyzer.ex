@@ -948,8 +948,8 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   end
 
   defp calculate_leadership_health(leadership_data) do
-    depth = leadership_data.leadership_depth || %{}
-    activity = leadership_data.leadership_activity || %{}
+    depth = Map.get(leadership_data || %{}, :leadership_depth, %{})
+    activity = Map.get(leadership_data || %{}, :leadership_activity, %{})
 
     # Leadership depth score (0-100)
     depth_score =

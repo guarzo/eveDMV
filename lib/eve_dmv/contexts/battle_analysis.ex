@@ -38,11 +38,14 @@ defmodule EveDmv.Contexts.BattleAnalysis do
 
   @type battle_timeline :: %{
           battle_id: String.t(),
+          start_time: DateTime.t(),
+          end_time: DateTime.t(),
+          duration_minutes: float(),
+          events: [map()],
           phases: [map()],
-          key_events: [map()],
-          fleet_compositions: map(),
-          duration_seconds: integer(),
-          timeline_events: [map()]
+          fleet_composition: map(),
+          key_moments: [map()],
+          summary: map()
         }
 
   @type battle_sequence_analysis :: %{

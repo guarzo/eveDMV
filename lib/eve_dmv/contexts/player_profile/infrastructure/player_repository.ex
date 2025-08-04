@@ -189,7 +189,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   Get corporation history for a character.
   Returns empty list as corporation history is not currently tracked.
   """
-  @spec get_corporation_history(integer()) :: {:ok, [map()]} | {:error, term()}
+  @spec get_corporation_history(integer()) :: {:ok, [map()]}
   def get_corporation_history(_character_id) do
     # Corporation history not currently implemented - returns empty list
     {:ok, []}
