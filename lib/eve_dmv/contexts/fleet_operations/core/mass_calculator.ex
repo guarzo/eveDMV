@@ -49,6 +49,7 @@ defmodule EveDmv.Contexts.FleetOperations.Core.MassCalculator do
           | :unknown_wormhole_type
           | :invalid_doctrine
           | :calculation_failed
+          | :unknown_doctrine
 
   @type fleet_optimization_result :: %{
           optimal_composition: [%{ship_type_id: integer(), count: integer(), role: atom()}],
