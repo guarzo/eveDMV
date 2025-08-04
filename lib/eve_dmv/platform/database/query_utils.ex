@@ -48,7 +48,7 @@ defmodule EveDmv.Database.QueryUtils do
         base_query
       end
 
-    Ash.read(final_query, domain: Api)
+    Api.read(final_query)
   end
 
   @doc """
@@ -85,7 +85,7 @@ defmodule EveDmv.Database.QueryUtils do
         character_query
       end
 
-    Ash.read(limited_query, domain: Api)
+    Api.read(limited_query)
   end
 
   @doc """
@@ -122,7 +122,7 @@ defmodule EveDmv.Database.QueryUtils do
         participant_query
       end
 
-    Ash.read(final_participant_query, domain: Api)
+    Api.read(final_participant_query)
   end
 
   @doc """
@@ -157,7 +157,7 @@ defmodule EveDmv.Database.QueryUtils do
         base_query
       end
 
-    Ash.read(query, domain: Api)
+    Api.read(query)
   end
 
   @doc """
@@ -191,7 +191,7 @@ defmodule EveDmv.Database.QueryUtils do
         base_query
       end
 
-    Ash.read(query, domain: Api)
+    Api.read(query)
   end
 
   @doc """

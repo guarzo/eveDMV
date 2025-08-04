@@ -186,7 +186,7 @@ defmodule EveDmv.Platform.Database.CorporationRepository do
     case ActivityMetric
          |> Ash.Query.filter(corporation_id == ^corporation_id and metric_date >= ^start_date)
          |> Ash.Query.sort(desc: :metric_date)
-         |> Ash.read(domain: Api) do
+         |> Api.read() do
       {:ok, metrics} when metrics != [] ->
         latest_metric = List.first(metrics)
 
@@ -326,7 +326,7 @@ defmodule EveDmv.Platform.Database.CorporationRepository do
          |> Ash.Query.filter(character_id == ^member_id)
          |> Ash.read_one(domain: Api) do
       {:ok, member} when not is_nil(member) ->
-        case Ash.update(member, attrs, domain: Api) do
+        case Api.update(member, attrs) do
           {:ok, updated_member} ->
             {:ok,
              %{
@@ -380,7 +380,7 @@ defmodule EveDmv.Platform.Database.CorporationRepository do
           status: :active
         }
 
-        case Ash.create(CorporationMember, member_attrs, domain: Api) do
+        case Api.create(CorporationMember, member_attrs) do
           {:ok, member} ->
             {:ok,
              %{
@@ -422,7 +422,7 @@ defmodule EveDmv.Platform.Database.CorporationRepository do
          |> Ash.Query.filter(character_id == ^member_id)
          |> Ash.read_one(domain: Api) do
       {:ok, member} when not is_nil(member) ->
-        case Ash.destroy(member, domain: Api) do
+        case Api.destroy(member) do
           :ok ->
             {:ok, %{character_id: member_id, removed: true}}
 
@@ -450,7 +450,7 @@ defmodule EveDmv.Platform.Database.CorporationRepository do
   Create a new corporation record.
   """
   def create_corporation(attrs) when is_map(attrs) do
-    case Ash.create(Corporation, attrs, domain: Api) do
+    case Api.create(Corporation, attrs) do
       {:ok, corp} ->
         {:ok,
          %{
@@ -486,7 +486,7 @@ defmodule EveDmv.Platform.Database.CorporationRepository do
          |> Ash.Query.filter(corporation_id == ^corporation_id)
          |> Ash.read_one(domain: Api) do
       {:ok, corp} when not is_nil(corp) ->
-        case Ash.update(corp, attrs, domain: Api) do
+        case Api.update(corp, attrs) do
           {:ok, updated_corp} ->
             {:ok,
              %{
@@ -585,7 +585,7 @@ defmodule EveDmv.Platform.Database.CorporationRepository do
     limit = Map.get(params, :limit, 50)
     query = Ash.Query.limit(query, limit)
 
-    case Ash.read(query, domain: Api) do
+    case Api.read(query) do
       {:ok, corporations} ->
         results =
           Enum.map(corporations, fn corp ->

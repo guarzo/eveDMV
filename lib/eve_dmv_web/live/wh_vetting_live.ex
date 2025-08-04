@@ -60,13 +60,8 @@ defmodule EveDmvWeb.WHVettingLive do
   def handle_event("search_character", %{"search" => %{"query" => query}}, socket) do
     if String.length(query) >= 3 do
       # Search for characters by name
-      case search_characters(query) do
-        {:ok, results} ->
-          {:noreply, assign(socket, :search_results, results)}
-
-        {:error, _} ->
-          {:noreply, assign(socket, :search_results, [])}
-      end
+      {:ok, results} = search_characters(query)
+      {:noreply, assign(socket, :search_results, results)}
     else
       {:noreply, assign(socket, :search_results, [])}
     end

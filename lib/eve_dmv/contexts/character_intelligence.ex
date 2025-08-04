@@ -130,6 +130,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
            patterns: extract_behavioral_patterns(threat_data),
            characteristics: generate_behavioral_characteristics(threat_data)
          }}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 

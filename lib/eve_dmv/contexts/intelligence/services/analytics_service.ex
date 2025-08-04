@@ -20,70 +20,6 @@ defmodule EveDmv.Contexts.Intelligence.Services.AnalyticsService do
 
   require Logger
 
-  @doc """
-  Perform advanced character correlation analysis.
-
-  Analyzes relationships and correlations between multiple characters
-  including combat patterns, operational overlaps, and social connections.
-
-  ## Parameters
-
-  - `character_ids` - List of character IDs to analyze for correlations
-
-  ## Returns
-
-  `{:ok, correlations}` containing detailed correlation analysis
-
-  ## Examples
-
-      iex> AnalyticsService.advanced_character_correlation([123, 456, 789])
-      {:ok, %{
-        correlation_matrix: %{...},
-        significant_correlations: [...],
-        correlation_strength: 0.75,
-        analysis_confidence: 0.85
-      }}
-  """
-  @spec advanced_character_correlation(list(integer())) :: {:ok, map()} | {:error, term()}
-  def advanced_character_correlation(character_ids) when is_list(character_ids) do
-    Logger.info("Performing advanced character correlation analysis")
-
-    if length(character_ids) < 2 do
-      {:error, :insufficient_characters}
-    else
-      with {:ok, character_data} <- gather_character_data(character_ids),
-           {:ok, correlation_matrix} <- calculate_correlation_matrix(character_data),
-           {:ok, significant_correlations} <-
-             identify_significant_correlations(correlation_matrix),
-           {:ok, network_analysis} <- analyze_character_network(character_data) do
-        correlations = %{
-          character_ids: character_ids,
-          correlation_matrix: correlation_matrix,
-          significant_correlations: significant_correlations,
-          network_analysis: network_analysis,
-          overall_correlation_strength:
-            calculate_overall_correlation_strength(correlation_matrix),
-          temporal_correlations: analyze_temporal_correlations(character_data),
-          spatial_correlations: analyze_spatial_correlations(character_data),
-          behavioral_correlations: analyze_behavioral_correlations(character_data),
-          analysis_confidence: calculate_correlation_confidence(character_data),
-          recommendations: generate_correlation_recommendations(significant_correlations),
-          generated_at: DateTime.utc_now()
-        }
-
-        # Cache the results
-        cache_key = "character_correlation:#{Enum.join(character_ids, ",")}"
-        IntelligenceCache.put(cache_key, correlations, ttl: :timer.hours(6))
-
-        {:ok, correlations}
-      else
-        {:error, _reason} = error ->
-          Logger.error("Failed to perform character correlation analysis")
-
-          error
-      end
-    end
-  end
 
   @doc """
   Perform cross-domain intelligence correlation.
@@ -411,24 +347,6 @@ defmodule EveDmv.Contexts.Intelligence.Services.AnalyticsService do
     end
   end
 
-  # Private helper functions for correlation analysis
-
-  defp gather_character_data(character_ids) do
-    character_data =
-      character_ids
-      |> Enum.map(fn character_id ->
-        case CharacterRepository.get_character_stats(character_id) do
-          {:ok, stats} ->
-            {character_id, stats}
-
-          {:error, _reason} ->
-            {character_id, %{killmails: [], losses: [], affiliations: []}}
-        end
-      end)
-      |> Map.new()
-
-    {:ok, character_data}
-  end
 
   defp calculate_correlation_matrix(character_data) do
     character_ids = Map.keys(character_data)

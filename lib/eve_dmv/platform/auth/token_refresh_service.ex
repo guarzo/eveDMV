@@ -132,7 +132,7 @@ defmodule EveDmv.Users.TokenRefreshService do
       # Process in batches to avoid overwhelming the system
       |> limit(50)
 
-    case Ash.read(query, domain: Api) do
+    case Api.read(query) do
       {:ok, users} ->
         if Enum.empty?(users) do
           Logger.debug("✅ No tokens need refreshing at this time")
@@ -175,7 +175,7 @@ defmodule EveDmv.Users.TokenRefreshService do
           u
 
         user_id when is_binary(user_id) ->
-          case Ash.get(User, user_id, domain: Api) do
+          case Api.get(User, user_id) do
             {:ok, user} -> user
             {:error, _} -> nil
           end
@@ -281,7 +281,7 @@ defmodule EveDmv.Users.TokenRefreshService do
     # Use the refresh_token action to update the user
     user
     |> Ash.Changeset.for_update(:refresh_token, new_tokens)
-    |> Ash.update(domain: Api)
+    |> then(fn changeset -> Api.update(changeset.data, changeset) end)
   end
 
   @doc """

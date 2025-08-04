@@ -23,7 +23,7 @@ defmodule EveDmvWeb.Api.CharacterThreatController do
         json(conn, %{
           data: %{
             character_id: character_id,
-            threat_score: threat_analysis.threat_score || threat_analysis.overall_score,
+            threat_score: threat_analysis.threat_score,
             threat_level: threat_analysis.threat_level,
             dimensions: threat_analysis.dimensions,
             analysis_period: threat_analysis.analysis_period,

@@ -17,7 +17,7 @@ defmodule EveDmv.Database.Repository.TelemetryHelper do
   ## Examples
 
       measure_query("killmail", :get, fn ->
-        Ash.read_one(query, domain: Api)
+        Api.read(Ash.Query.limit(query, 1)) |> case do {:ok, [result]} -> {:ok, result}; {:ok, []} -> {:error, :not_found}; error -> error end
       end)
   """
   @spec measure_query(String.t(), atom(), function()) :: term()

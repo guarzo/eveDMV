@@ -107,7 +107,7 @@ defmodule EveDmv.Eve.StaticDataLoader.WormholeEffectsLoader do
     SolarSystem
     |> Ash.Query.new()
     |> Ash.Query.filter(system_id in ^system_ids)
-    |> Ash.read!(domain: Api)
+    |> Api.read!()
   end
 
   defp update_systems_batch(systems, wormhole_systems) do

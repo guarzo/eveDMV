@@ -105,7 +105,7 @@ defmodule EveDmv.Database.Repository do
       def list(opts \\ []) do
         TelemetryHelper.measure_query(@resource_name, :list, fn ->
           query = build_list_query(opts)
-          Ash.read(query, domain: Api)
+          Api.read(query)
         end)
       end
 
@@ -153,7 +153,7 @@ defmodule EveDmv.Database.Repository do
       @spec create(map()) :: {:ok, struct()} | {:error, term()}
       def create(attrs) do
         TelemetryHelper.measure_query(@resource_name, :create, fn ->
-          case Ash.create(@resource, attrs, domain: Api) do
+          case Api.create(@resource, attrs) do
             {:ok, record} ->
               # Invalidate relevant caches
               CacheHelper.invalidate_for_resource(@cache_type, @resource_name)
@@ -175,7 +175,7 @@ defmodule EveDmv.Database.Repository do
       @spec update(struct(), map()) :: {:ok, struct()} | {:error, term()}
       def update(record, attrs) do
         TelemetryHelper.measure_query(@resource_name, :update, fn ->
-          case Ash.update(record, attrs, domain: Api) do
+          case Api.update(record, attrs) do
             {:ok, updated_record} ->
               # Invalidate relevant caches
               CacheHelper.invalidate_for_record(@cache_type, @resource_name, record)
@@ -197,7 +197,7 @@ defmodule EveDmv.Database.Repository do
       @spec delete(struct()) :: {:ok, struct()} | {:error, term()}
       def delete(record) do
         TelemetryHelper.measure_query(@resource_name, :delete, fn ->
-          case Ash.destroy(record, domain: Api) do
+          case Api.destroy(record) do
             :ok ->
               # Invalidate relevant caches
               CacheHelper.invalidate_for_record(@cache_type, @resource_name, record)
@@ -225,7 +225,7 @@ defmodule EveDmv.Database.Repository do
       def batch_get_by_ids(ids, opts \\ []) when is_list(ids) do
         TelemetryHelper.measure_query(@resource_name, :batch_get, fn ->
           query = build_batch_query(ids, opts)
-          Ash.read(query, domain: Api)
+          Api.read(query)
         end)
       end
 
@@ -257,7 +257,7 @@ defmodule EveDmv.Database.Repository do
         TelemetryHelper.measure_query(@resource_name, :get, fn ->
           query = QueryBuilder.build_get_query(@resource, id, opts)
 
-          case Ash.read_one(query, domain: Api) do
+          case Api.read(Ash.Query.limit(query, 1)) |> case do {:ok, [result]} -> {:ok, result}; {:ok, []} -> {:error, :not_found}; error -> error end do
             {:ok, nil} -> {:error, :not_found}
             {:ok, record} -> {:ok, record}
             {:error, reason} -> {:error, reason}

@@ -68,7 +68,7 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
       # Prevent runaway queries
       |> Ash.Query.limit(10_000)
 
-    case Ash.read(participant_query, domain: Api) do
+    case Api.read(participant_query) do
       {:ok, participants} ->
         end_time = System.monotonic_time(:millisecond)
         query_time = end_time - start_time
@@ -242,7 +242,7 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
         case Ash.Query.new(CharacterStats)
              |> Ash.Query.filter(character_id: char_id)
              |> Ash.Query.limit(1)
-             |> Ash.read(domain: Api) do
+             |> Api.read() do
           {:ok, [stats]} -> {char_id, stats}
           _ -> {char_id, nil}
         end
@@ -283,7 +283,7 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
         |> Ash.Query.filter(character_id in ^batch)
         |> Ash.Query.limit(5000)
 
-      case Ash.read(participant_query, domain: Api) do
+      case Api.read(participant_query) do
         {:ok, participants} ->
           participants
           |> Enum.group_by(& &1.character_id)

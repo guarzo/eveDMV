@@ -6,11 +6,12 @@ defmodule EveDmv.Database.SurveillanceRepository do
   and related data with proper preloading and caching.
   """
 
-  alias EveDmv.Api.SurveillanceApi
+  alias EveDmv.Api
   alias EveDmv.Cache
   alias EveDmv.Surveillance.Profile
 
   require Logger
+  require Ash.Query
 
   @cache_type :hot_data
 
@@ -119,7 +120,7 @@ defmodule EveDmv.Database.SurveillanceRepository do
           |> Ash.Query.for_read(:active)
           |> Ash.Query.load([:matches, :filters])
 
-        case Ash.read(query, domain: SurveillanceApi) do
+        case Api.read(query) do
           {:ok, profiles} ->
             Cache.put(@cache_type, cache_key, profiles, ttl: :timer.minutes(2))
             profiles

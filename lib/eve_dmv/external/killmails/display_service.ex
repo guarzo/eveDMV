@@ -27,7 +27,7 @@ defmodule EveDmv.Killmails.DisplayService do
     # Apply filters if provided
     query = apply_filters(base_query, filters)
 
-    raw = Ash.read!(query, domain: Api)
+    raw = Api.read!(query)
 
     # Preload names for raw killmails
     preload_raw_killmail_names(raw)

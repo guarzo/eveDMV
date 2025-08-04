@@ -62,6 +62,10 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.Analyzers.WhFleetAnalyzer.Fl
          ) do
       {:ok, analyses} ->
         analyses
+      
+      {:error, _reason} ->
+        # Return empty list on error
+        []
     end
   end
 
@@ -243,147 +247,4 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.Analyzers.WhFleetAnalyzer.Fl
     }
   end
 
-  defp generate_basic_counter_analysis(composition) do
-    # Basic fallback analysis based on composition characteristics
-    ship_types = extract_ship_types_from_composition(composition)
-
-    [
-      analyze_vs_armor_hacs_basic(ship_types),
-      analyze_vs_shield_cruisers_basic(ship_types)
-    ]
-    |> Enum.reject(&is_nil/1)
-  end
-
-  defp extract_ship_types_from_composition(composition) do
-    case composition do
-      %{"ships" => ships} when is_list(ships) ->
-        Enum.map(ships, &(&1["type_id"] || &1[:type_id]))
-
-      ships when is_list(ships) ->
-        Enum.map(ships, &(&1["type_id"] || &1[:type_id] || &1))
-
-      %{} ->
-        Map.keys(composition)
-
-      _ ->
-        []
-    end
-    |> Enum.reject(&is_nil/1)
-  end
-
-  defp analyze_vs_armor_hacs_basic(ship_types) do
-    has_ewar = Enum.any?(ship_types, &EveDmv.StaticData.ShipRoles.ewar_ship?/1)
-    has_high_alpha = has_alpha_ships?(ship_types)
-
-    effectiveness = calculate_basic_effectiveness_vs_armor_hacs(has_ewar, has_high_alpha)
-
-    %{
-      "threat_type" => "Armor HAC gang",
-      "effectiveness" => effectiveness,
-      "recommended_changes" => generate_armor_hac_counters_basic(has_ewar, has_high_alpha)
-    }
-  end
-
-  defp analyze_vs_shield_cruisers_basic(ship_types) do
-    has_range = has_range_ships?(ship_types)
-    has_mobility = has_mobile_ships?(ship_types)
-
-    effectiveness = calculate_basic_effectiveness_vs_shield_cruisers(has_range, has_mobility)
-
-    %{
-      "threat_type" => "Shield cruiser gang",
-      "effectiveness" => effectiveness,
-      "recommended_changes" => generate_shield_cruiser_counters_basic(has_range, has_mobility)
-    }
-  end
-
-  defp has_alpha_ships?(ship_types) do
-    # Check for battleships and battlecruisers which typically have good alpha
-    Enum.any?(ship_types, fn type_id ->
-      case EveDmv.StaticData.ShipTypes.classify_ship_type(type_id) do
-        class when class in [:battleship, :battlecruiser] -> true
-        _ -> false
-      end
-    end)
-  end
-
-  defp has_range_ships?(ship_types) do
-    # Assume cruisers and above have good range capabilities
-    Enum.any?(ship_types, fn type_id ->
-      case EveDmv.StaticData.ShipTypes.classify_ship_type(type_id) do
-        class when class in [:cruiser, :battlecruiser, :battleship] -> true
-        _ -> false
-      end
-    end)
-  end
-
-  defp has_mobile_ships?(ship_types) do
-    # Check for frigates and destroyers
-    Enum.any?(ship_types, fn type_id ->
-      case EveDmv.StaticData.ShipTypes.classify_ship_type(type_id) do
-        class when class in [:frigate, :destroyer] -> true
-        _ -> false
-      end
-    end)
-  end
-
-  defp calculate_basic_effectiveness_vs_armor_hacs(has_ewar, has_high_alpha) do
-    0.5
-    |> add_ewar_bonus(has_ewar)
-    |> add_alpha_bonus(has_high_alpha)
-    |> min(1.0)
-    |> Float.round(2)
-  end
-
-  defp add_ewar_bonus(base, true), do: base + 0.2
-  defp add_ewar_bonus(base, false), do: base
-
-  defp add_alpha_bonus(base, true), do: base + 0.15
-  defp add_alpha_bonus(base, false), do: base
-
-  defp calculate_basic_effectiveness_vs_shield_cruisers(has_range, has_mobility) do
-    0.6
-    |> add_range_bonus(has_range)
-    |> add_mobility_bonus(has_mobility)
-    |> min(1.0)
-    |> Float.round(2)
-  end
-
-  defp add_range_bonus(base, true), do: base + 0.15
-  defp add_range_bonus(base, false), do: base
-
-  defp add_mobility_bonus(base, true), do: base + 0.1
-  defp add_mobility_bonus(base, false), do: base
-
-  defp generate_armor_hac_counters_basic(has_ewar, has_high_alpha) do
-    []
-    |> maybe_add_ewar_counter(has_ewar)
-    |> maybe_add_alpha_counter(has_high_alpha)
-    |> finalize_armor_hac_counters()
-  end
-
-  defp maybe_add_ewar_counter(counters, true), do: counters
-  defp maybe_add_ewar_counter(counters, false), do: ["Add EWAR support" | counters]
-
-  defp maybe_add_alpha_counter(counters, true), do: counters
-  defp maybe_add_alpha_counter(counters, false), do: ["Increase alpha damage" | counters]
-
-  defp finalize_armor_hac_counters([]), do: ["Composition effective as-is"]
-  defp finalize_armor_hac_counters(counters), do: counters
-
-  defp generate_shield_cruiser_counters_basic(has_range, has_mobility) do
-    []
-    |> maybe_add_range_counter(has_range)
-    |> maybe_add_mobility_counter(has_mobility)
-    |> finalize_shield_cruiser_counters()
-  end
-
-  defp maybe_add_range_counter(counters, true), do: counters
-  defp maybe_add_range_counter(counters, false), do: ["Add long-range ships" | counters]
-
-  defp maybe_add_mobility_counter(counters, true), do: counters
-  defp maybe_add_mobility_counter(counters, false), do: ["Add mobile elements" | counters]
-
-  defp finalize_shield_cruiser_counters([]), do: ["Good matchup"]
-  defp finalize_shield_cruiser_counters(counters), do: counters
 end

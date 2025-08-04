@@ -60,7 +60,7 @@ defmodule EveDmv.Database.KillmailRepository do
       fn ->
         TelemetryHelper.measure_query("killmail", :get_by_character, fn ->
           query = build_character_killmails_query(character_id, opts)
-          Ash.read(query, domain: Api)
+          Api.read(query)
         end)
       end,
       opts
@@ -96,7 +96,7 @@ defmodule EveDmv.Database.KillmailRepository do
       fn ->
         TelemetryHelper.measure_query("killmail", :get_by_corporation, fn ->
           query = build_corporation_killmails_query(corporation_id, opts)
-          Ash.read(query, domain: Api)
+          Api.read(query)
         end)
       end,
       opts
@@ -135,7 +135,7 @@ defmodule EveDmv.Database.KillmailRepository do
       fn ->
         TelemetryHelper.measure_query("killmail", :get_recent_high_value, fn ->
           query = build_recent_high_value_query(opts)
-          Ash.read(query, domain: Api)
+          Api.read(query)
         end)
       end,
       cache_opts
@@ -197,7 +197,7 @@ defmodule EveDmv.Database.KillmailRepository do
         |> Ash.Query.load([:participants])
         |> Ash.Query.sort(desc: :killmail_time)
 
-      Ash.read(query, domain: Api)
+      Api.read(query)
     end)
   end
 
@@ -225,7 +225,7 @@ defmodule EveDmv.Database.KillmailRepository do
             |> Ash.Query.limit(100)
             |> Ash.Query.load([:participants])
 
-          Ash.read(query, domain: Api)
+          Api.read(query)
         end)
       end,
       # 5 minutes cache
@@ -259,7 +259,7 @@ defmodule EveDmv.Database.KillmailRepository do
             |> Ash.Query.limit(500)
             |> Ash.Query.load([:participants])
 
-          case Ash.read(query, domain: Api) do
+          case Api.read(query) do
             {:ok, killmails} ->
               compositions = analyze_fleet_compositions(killmails, min_engagements)
               {:ok, compositions}
@@ -413,7 +413,7 @@ defmodule EveDmv.Database.KillmailRepository do
       )
       |> Ash.Query.load([:participants])
 
-    Ash.read(query, domain: Api)
+    Api.read(query)
   end
 
   defp count_kills(killmails, entity_type, entity_id) do
@@ -495,7 +495,7 @@ defmodule EveDmv.Database.KillmailRepository do
         |> Ash.Query.limit(1000)
         |> Ash.Query.load([:participants])
 
-      Ash.read(query, domain: Api)
+      Api.read(query)
     end)
   end
 

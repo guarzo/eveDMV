@@ -109,8 +109,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
   # Private Functions
 
   defp get_battle_data(battle_id) do
-    case Ash.get(Battle, battle_id, domain: BattleApi) do
-      {:ok, battle} -> {:ok, battle}
+    case Ash.read_one(Battle, filter: [id: battle_id], domain: BattleApi) do
+      {:ok, battle} when not is_nil(battle) -> {:ok, battle}
+      {:ok, nil} -> {:error, :battle_not_found}
       {:error, %Ash.Error.Query.NotFound{}} -> {:error, :battle_not_found}
       {:error, error} -> {:error, error}
     end
@@ -258,11 +259,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
 
       system_id ->
         # Query system security from eve_systems table
-        case from(s in "eve_systems",
-               where: s.system_id == ^system_id,
-               select: s.security_status
-             )
-             |> EveDmv.Repo.one() do
+        case Repo.one(
+               from(s in "eve_systems",
+                 where: s.system_id == ^system_id,
+                 select: s.security_status
+               )
+             ) do
           nil -> 0.5
           security when is_float(security) -> security
           _ -> 0.5
@@ -363,7 +365,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
 
         type_id ->
           # Check if it's a structure (category_id 65 for structures)
-          case EveDmv.Repo.one(
+          case Repo.one(
                  from(i in "eve_item_types",
                    where: i.type_id == ^type_id and i.category_id == 65,
                    select: i.type_id
@@ -423,11 +425,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
             end)
             |> Enum.count(fn ship_type_id ->
               # Check if ship is stealth bomber using group name
-              case from(i in "eve_item_types",
-                     where: i.type_id == ^ship_type_id and i.group_name == "Stealth Bomber",
-                     select: i.type_id
-                   )
-                   |> EveDmv.Repo.one() do
+              case Repo.one(
+                     from(i in "eve_item_types",
+                       where: i.type_id == ^ship_type_id and i.group_name == "Stealth Bomber",
+                       select: i.type_id
+                     )
+                   ) do
                 nil -> false
                 _ -> true
               end

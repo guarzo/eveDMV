@@ -354,8 +354,8 @@ defmodule EveDmv.Database.CacheHashManager do
       |> filter(killmail_time: [gte: cutoff_date])
       |> limit(500)
 
-    with {:ok, victim_kills} <- Ash.read(corp_query, domain: Api),
-         {:ok, recent_killmails} <- Ash.read(recent_query, domain: Api) do
+    with {:ok, victim_kills} <- Api.read(corp_query),
+         {:ok, recent_killmails} <- Api.read(recent_query) do
       # Filter recent killmails for attacker involvement
       attacker_kills =
         Enum.filter(recent_killmails, fn km ->
@@ -478,7 +478,7 @@ defmodule EveDmv.Database.CacheHashManager do
       |> filter(killmail_id: killmail_id)
       |> limit(1)
 
-    case Ash.read(query, domain: Api) do
+    case Api.read(query) do
       {:ok, [killmail]} ->
         hash = compute_killmail_content_hash(killmail)
         {:ok, hash}
