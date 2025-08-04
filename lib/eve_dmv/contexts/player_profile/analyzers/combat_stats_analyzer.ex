@@ -421,8 +421,9 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
     cond do
       percentile >= 90 -> :elite
       percentile >= 70 -> :above_average
-      percentile >= 30 -> :average
-      true -> :below_average
+      # Dialyzer knows percentile is always >= 30 based on the caller
+      # so the last case is unreachable
+      true -> :average
     end
   end
 

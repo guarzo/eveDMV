@@ -242,16 +242,6 @@ defmodule EveDmv.Intelligence.WandererClient do
       {:error, reason} ->
         Logger.error("Failed to start SSE for map #{map_id}: #{inspect(reason)}")
         {:noreply, %{state | monitored_maps: new_monitored}}
-
-      sse_pid when is_pid(sse_pid) ->
-        # Handle direct pid return
-        Logger.info("Started SSE monitoring for map #{map_id}")
-        new_sse_connections = Map.put(state.sse_connections || %{}, map_id, sse_pid)
-        {:noreply, %{state | monitored_maps: new_monitored, sse_connections: new_sse_connections}}
-
-      other ->
-        Logger.error("Unexpected return from connect_sse_for_map: #{inspect(other)}")
-        {:noreply, %{state | monitored_maps: new_monitored}}
     end
   end
 
@@ -309,17 +299,6 @@ defmodule EveDmv.Intelligence.WandererClient do
 
         {:error, reason} ->
           Logger.error("Failed to reconnect SSE for map #{map_id}: #{inspect(reason)}")
-          Process.send_after(self(), {:reconnect_sse, map_id}, 10_000)
-          {:noreply, state}
-
-        sse_pid when is_pid(sse_pid) ->
-          # Handle direct pid return
-          Logger.info("Reconnected SSE for map #{map_id}")
-          new_sse_connections = Map.put(state.sse_connections, map_id, sse_pid)
-          {:noreply, %{state | sse_connections: new_sse_connections}}
-
-        other ->
-          Logger.error("Unexpected return from connect_sse_for_map: #{inspect(other)}")
           Process.send_after(self(), {:reconnect_sse, map_id}, 10_000)
           {:noreply, state}
       end

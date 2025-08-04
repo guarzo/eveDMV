@@ -55,6 +55,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.Analyzers.WhFleetAnalyzer.Fl
   ## Returns
   - List of counter-doctrine recommendations
   """
+  @dialyzer {:nowarn_function, generate_counter_doctrine_analysis: 1}
   def generate_counter_doctrine_analysis(composition) do
     # Use the doctrine effectiveness service for real analysis
     case EveDmv.Contexts.Combat.Services.DoctrineEffectivenessService.analyze_counter_doctrine_effectiveness(

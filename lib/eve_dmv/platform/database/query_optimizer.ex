@@ -211,8 +211,8 @@ defmodule EveDmv.Database.QueryOptimizer do
   This is a development tool to help identify problematic patterns.
   """
   def analyze_module_for_n_plus_one(module) do
-    # Get all functions in the module
-    {:ok, _functions} = Code.fetch_docs(module)
+    # Get all functions in the module - fetch_docs may return various formats
+    _docs = Code.fetch_docs(module)
 
     potential_issues = []
 

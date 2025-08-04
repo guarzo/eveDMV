@@ -47,11 +47,11 @@ defmodule EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer do
   """
   def get_character_stats(character_id) do
     case Cache.get(:analysis, {:character_stats, character_id}) do
-      nil ->
+      :miss ->
         # Fetch from database if not cached
         CharacterRepository.get_character_stats(character_id)
 
-      stats ->
+      {:ok, stats} ->
         {:ok, stats}
     end
   end
@@ -104,7 +104,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer do
     cache_key = {:character_analysis, character_id, opts}
 
     case Cache.get(:analysis, cache_key) do
-      nil ->
+      :miss ->
         # Start async analysis
         task =
           Task.async(fn ->
@@ -119,7 +119,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer do
 
         {:noreply, new_state}
 
-      cached_result ->
+      {:ok, cached_result} ->
         new_state = %{state | metrics: Map.update!(state.metrics, :cache_hits, &(&1 + 1))}
 
         {:reply, {:ok, cached_result}, new_state}

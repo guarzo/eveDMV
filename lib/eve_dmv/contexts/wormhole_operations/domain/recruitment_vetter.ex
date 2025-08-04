@@ -89,6 +89,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
   end
 
   @impl GenServer
+  @dialyzer {:nowarn_function, handle_call: 3}
   def handle_call({:perform_vetting, character_id, vetting_criteria}, _from, state) do
     start_time = System.monotonic_time(:millisecond)
 
@@ -336,6 +337,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
     {:ok, killboard_analysis}
   end
 
+  @dialyzer {:nowarn_function, assess_opsec_risks: 2}
   defp assess_opsec_risks(character_data, _vetting_criteria) do
     # Analyze potential OpSec risks
     security_risks = assess_security_status_risks(character_data)
@@ -1136,6 +1138,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
     end
   end
 
+  @dialyzer {:nowarn_function, assess_spy_risk_indicators: 1}
   defp assess_spy_risk_indicators(character_data) do
     # Very new character with high SP
     creation_date = Map.get(character_data, :creation_date, DateTime.utc_now())

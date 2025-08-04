@@ -26,17 +26,14 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
   def analyze_behavior(character_id) do
     cache_key = {:behavioral_patterns, character_id}
 
-    case Cache.get_or_compute(
-           :analysis,
-           cache_key,
-           fn ->
-             perform_behavioral_analysis(character_id)
-           end,
-           ttl: @cache_ttl
-         ) do
-      {:ok, result} -> {:ok, result}
-      {:error, reason} -> {:error, reason}
-    end
+    Cache.get_or_compute(
+      :analysis,
+      cache_key,
+      fn ->
+        perform_behavioral_analysis(character_id)
+      end,
+      ttl: @cache_ttl
+    )
   end
 
   @doc """
@@ -400,11 +397,8 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
     security_distribution =
       system_activity
       |> Enum.map(fn {system_id, count} ->
-        sec_status =
-          sec = SystemData.get_security_status(system_id)
-
-        classify_security(sec)
-
+        sec = SystemData.get_security_status(system_id)
+        sec_status = classify_security(sec)
         {sec_status, count}
       end)
       |> Enum.reduce(%{}, fn {sec, count}, acc ->

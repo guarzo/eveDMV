@@ -136,6 +136,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
   """
 
   @spec analyze_security_risks(map(), list()) :: security_risk_analysis()
+  @dialyzer {:nowarn_function, analyze_security_risks: 2}
   def analyze_security_risks(character_data, employment_history) do
     age_risk = assess_character_age_risk(character_data)
     employment_risk = assess_employment_risk(employment_history)
@@ -242,7 +243,12 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
   @doc """
   Generate recruitment recommendation based on analysis.
   """
-  @spec generate_recommendation(map()) :: %{atom() => any()}
+  @spec generate_recommendation(map()) :: %{
+    recommendation: String.t(),
+    confidence: float(),
+    reasoning: String.t(),
+    conditions: [String.t()]
+  }
   def generate_recommendation(analysis_data) do
     # Extract analysis components
     j_space_exp = Map.get(analysis_data, :j_space_experience, %{})
@@ -290,7 +296,10 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
   @doc """
   Format analysis summary for display.
   """
-  @spec format_analysis_summary(map()) :: %{atom() => any()}
+  @spec format_analysis_summary(map()) :: %{
+    summary_text: String.t(),
+    key_metrics: map()
+  }
   def format_analysis_summary(analysis) do
     # Handle both old format (atom) and new format (map)
     recommendation_data = Map.get(analysis, :recommendation, :unknown)

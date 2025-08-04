@@ -131,24 +131,28 @@ defmodule EveDmv.Database.PartitionAutomation do
   """
   @spec create_partition_for_date_range(Date.t(), Date.t()) :: {:ok, String.t()} | {:error, any()}
   def create_partition_for_date_range(%Date{} = start_date, %Date{} = end_date) do
-    if Date.compare(start_date, end_date) >= 0 do
-      {:error, "Start date must be before end date"}
-    else
-      partition_name =
-        "killmails_raw_custom_#{Date.to_iso8601(start_date, :basic)}_#{Date.to_iso8601(end_date, :basic)}"
+    case Date.compare(start_date, end_date) do
+      :lt ->
+        # start_date is before end_date, which is what we want
+        partition_name =
+          "killmails_raw_custom_#{Date.to_iso8601(start_date, :basic)}_#{Date.to_iso8601(end_date, :basic)}"
 
-      try do
-        create_partition_with_indexes(
-          partition_name,
-          Date.to_iso8601(start_date),
-          Date.to_iso8601(end_date)
-        )
+        try do
+          create_partition_with_indexes(
+            partition_name,
+            Date.to_iso8601(start_date),
+            Date.to_iso8601(end_date)
+          )
 
-        {:ok, "Created custom partition #{partition_name}"}
-      rescue
-        error ->
-          {:error, error}
-      end
+          {:ok, partition_name}
+        rescue
+          e ->
+            Logger.error("Failed to create custom partition #{partition_name}: #{inspect(e)}")
+            {:error, Exception.message(e)}
+        end
+
+      _ ->
+        {:error, "Start date must be before end date"}
     end
   end
 

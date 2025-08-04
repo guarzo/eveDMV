@@ -59,16 +59,13 @@ defmodule EveDmv.Killmails.KillmailPipeline do
       [%Message{data: enriched} = msg] ->
         # Process the message through the pipeline
         case handle_message(:default, msg, %{}) do
-          [%Message{status: :ok} = processed_msg | _] ->
-            # Insert to database (take first message since we create multiple for batchers)
+          %Message{status: :ok} = processed_msg ->
+            # Insert to database
             case handle_batch(:db_insert, [processed_msg], %{}, %{}) do
               [%Message{status: :ok}] -> {:ok, enriched}
               [%Message{status: {:failed, reason}}] -> {:error, reason}
               _ -> {:error, :batch_processing_failed}
             end
-
-          [%Message{status: {:failed, reason}} | _] ->
-            {:error, reason}
 
           %Message{status: {:failed, reason}} ->
             {:error, reason}

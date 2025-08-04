@@ -588,7 +588,9 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       |> load_battle_reports()
     else
       # Try to load from backend
+      # Note: get_battle_with_timeline currently always returns error tuples
       case BattleAnalysis.get_battle_with_timeline(battle_id) do
+        # This pattern is unreachable with current implementation
         {:ok, battle} ->
           # Preload all names to prevent N+1 queries
           BatchNameResolver.preload_battle_names(battle)
@@ -614,15 +616,16 @@ defmodule EveDmvWeb.BattleAnalysisLive do
           |> load_battle_metrics()
           |> load_battle_reports()
 
-        {:error, reason} when reason in [:battle_not_found, :database_error, :max_iterations_reached, :timeline_reconstruction_failed] ->
+        {:error, reason} when reason in [:battle_not_found, :database_error, :timeline_reconstruction_failed] ->
           require Logger
           Logger.warning("Battle #{battle_id} error: #{reason}")
 
           error_message = case reason do
             :battle_not_found -> "Battle not found. It may have been re-detected with a different ID."
             :database_error -> "Database error occurred while loading battle"
-            :max_iterations_reached -> "Battle analysis timed out - battle too complex"
             :timeline_reconstruction_failed -> "Failed to reconstruct battle timeline"
+            # Dialyzer says :max_iterations_reached is not a possible value
+            _ -> "Failed to load battle"
           end
 
           assign(socket, :error_message, error_message)
@@ -639,26 +642,25 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   defp format_error({:api_error, status}), do: "zkillboard API error (#{status})"
   defp format_error(_error), do: "Import failed"
 
-  defp format_error_reason(reason) when reason in ["curator_unavailable", :curator_unavailable],
+  # Dialyzer indicates reason is always a binary string, never an atom
+  defp format_error_reason("curator_unavailable"),
     do: "Battle curator service is temporarily unavailable"
 
   defp format_error_reason("report_not_found"), do: "Battle report not found"
-  defp format_error_reason(:report_not_found), do: "Battle report not found"
 
   defp format_error_reason("permission_denied"),
     do: "You don't have permission to perform this action"
-  defp format_error_reason(:permission_denied),
-    do: "You don't have permission to perform this action"
-
-  defp format_error_reason(reason) when is_atom(reason) do
-    reason
-    |> Atom.to_string()
-    |> String.replace("_", " ")
-    |> String.capitalize()
-  end
 
   defp format_error_reason(reason) when is_binary(reason) do
     reason
+    |> String.replace("_", " ")
+    |> String.capitalize()
+  end
+  
+  # These clauses are unreachable according to dialyzer but kept for defensive programming
+  defp format_error_reason(reason) when is_atom(reason) do
+    reason
+    |> Atom.to_string()
     |> String.replace("_", " ")
     |> String.capitalize()
   end

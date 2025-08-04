@@ -239,8 +239,16 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
       {:ok, defense_analysis} = analyze_defense_capabilities(corporation_id)
 
       # Get system defense analysis for home system
-      home_system_id = get_corporation_home_system(corporation_id)
-      {:ok, system_analysis} = analyze_system_defense(home_system_id)
+      system_analysis = 
+        case get_corporation_home_system(corporation_id) do
+          {:error, :home_system_unknown} ->
+            %{vulnerabilities: []}
+          home_system_id when is_integer(home_system_id) ->
+            case analyze_system_defense(home_system_id) do
+              {:ok, analysis} -> analysis
+              {:error, _} -> %{vulnerabilities: []}
+            end
+        end
 
       # Generate all recommendations
       timezone_recs = generate_timezone_recommendations(defense_analysis.timezone_coverage)
@@ -302,7 +310,12 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
   @doc """
   Get defense metrics for monitoring.
   """
-  @spec get_metrics() :: map()
+  @spec get_metrics() :: %{
+    active_defenses: non_neg_integer(),
+    coverage_percentage: float(),
+    response_time_avg: non_neg_integer(),
+    threat_detection_rate: float()
+  }
   def get_metrics do
     %{
       active_defenses: 0,

@@ -174,10 +174,10 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
       |> Enum.count(fn km -> DateTimeUtils.compare(km.killmail_time, recent_cutoff) == :gt end)
 
     # Weight recent activity more heavily
-    base_score = :math.log10(max(total_activity, 1)) * 20
-    recency_bonus = :math.log10(max(recent_activity, 1)) * 30
+    base_score = :math.log10(Enum.max([total_activity, 1])) * 20
+    recency_bonus = :math.log10(Enum.max([recent_activity, 1])) * 30
 
-    min(100, base_score + recency_bonus)
+    Enum.min([100, base_score + recency_bonus])
   end
 
   defp calculate_versatility_score(killmails, character_data) do
@@ -220,9 +220,9 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
       |> length()
 
     # Calculate composite score
-    ship_score = min(ship_types * 5, 40)
-    system_score = min(systems * 2, 30)
-    gang_score = min(gang_sizes * 10, 30)
+    ship_score = Enum.min([ship_types * 5, 40])
+    system_score = Enum.min([systems * 2, 30])
+    gang_score = Enum.min([gang_sizes * 10, 30])
 
     # Convert to float before rounding
     total_score = ship_score + system_score + gang_score

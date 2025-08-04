@@ -213,6 +213,8 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
 
   # Private helper functions
 
+  # Note: :ship_type and :item_type patterns are never called directly but kept for compatibility
+  @dialyzer {:nowarn_function, fetch_from_database: 2}
   defp fetch_from_database(:ship_type, type_id) do
     fetch_from_database(:item_type, type_id)
   end

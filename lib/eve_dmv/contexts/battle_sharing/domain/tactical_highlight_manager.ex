@@ -276,9 +276,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
   Allows collaborative editing and improvement of tactical highlights
   by community members with proper attribution.
   """
-  def update_tactical_highlight(highlight_id, updater_character_id, updates, options \\ []) do
-    preserve_attribution = Keyword.get(options, :preserve_attribution, true)
-    validate_permissions = Keyword.get(options, :validate_permissions, true)
+  def update_tactical_highlight(highlight_id, _updater_character_id, _updates, options \\ []) do
+    _preserve_attribution = Keyword.get(options, :preserve_attribution, true)
+    _validate_permissions = Keyword.get(options, :validate_permissions, true)
 
     Logger.info("Updating tactical highlight #{highlight_id}")
 
@@ -419,13 +419,6 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
   end
 
   # Private helper functions - core implementations
-  
-  defp fetch_tactical_highlight(_highlight_id), do: {:error, :not_implemented}
-  defp validate_highlight_updates(_updates), do: {:ok, %{}}
-  defp maybe_validate_permissions(_highlight, _user_id, false), do: {:ok, :permission_check_skipped}
-  defp maybe_validate_permissions(_highlight, _user_id, true), do: {:ok, :permission_granted}
-  defp apply_highlight_updates(_highlight, _updates, _user_id, _preserve_attribution), do: {:error, :not_implemented}
-  defp re_enrich_highlight_data(_highlight), do: {:error, :not_implemented}
   
   defp analyze_battle_phases(_battle_data), do: {:ok, %{phases: []}}
   defp detect_tactical_patterns(_battle_data), do: {:ok, %{patterns: []}}

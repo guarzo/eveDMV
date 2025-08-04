@@ -34,7 +34,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
       {:ok, cached_result} ->
         {:ok, cached_result}
 
-      :miss ->
+      {:error, :not_found} ->
         result = perform_trend_analysis(character_id, current_score)
         UnifiedCache.put(:intelligence, cache_key, result, @cache_ttl)
         {:ok, result}
@@ -303,7 +303,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
         solo_kills =
           Enum.count(killmails, fn km ->
             km.victim_character_id != character_id and
-              length(extract_attackers(km) || []) == 1
+              length(extract_attackers(km)) == 1
           end)
 
         capital_kills =
@@ -630,7 +630,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
     else
       solo_kills =
         Enum.count(kills, fn km ->
-          length(extract_attackers(km) || []) == 1
+          length(extract_attackers(km)) == 1
         end)
 
       Float.round(solo_kills / length(kills), 3)
@@ -642,7 +642,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
       history
       |> Enum.filter(fn km ->
         km.victim_character_id != character_id and
-          length(extract_attackers(km) || []) > 1
+          length(extract_attackers(km)) > 1
       end)
 
     if Enum.empty?(gang_kills) do
@@ -650,7 +650,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
     else
       avg_size =
         gang_kills
-        |> Enum.map(fn km -> length(extract_attackers(km) || []) end)
+        |> Enum.map(fn km -> length(extract_attackers(km)) end)
         |> average()
 
       %{

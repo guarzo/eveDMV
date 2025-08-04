@@ -63,7 +63,12 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
              {:ok, patterns} <- analyze_killmail_patterns(killmails, entity_type, pattern_types) do
           UnifiedCache.put(:threat, cache_key, patterns, @cache_ttl)
           {:ok, patterns}
+        else
+          {:error, reason} -> {:error, reason}
         end
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -92,6 +97,8 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
          recent: recent_patterns,
          detection_time: DateTime.utc_now()
        }}
+    else
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -113,8 +120,8 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
 
     # Invalidate caches for affected entities
     Enum.each(entities, fn {entity_id, entity_type} ->
-      UnifiedCache.delete(:threat_surveillance, {:behavior_patterns, entity_type, entity_id, 90})
-      UnifiedCache.delete(:threat_surveillance, {:behavior_patterns, entity_type, entity_id, 30})
+      UnifiedCache.delete(:threat, {:behavior_patterns, entity_type, entity_id, 90})
+      UnifiedCache.delete(:threat, {:behavior_patterns, entity_type, entity_id, 30})
     end)
 
     :ok
