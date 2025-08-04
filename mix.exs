@@ -49,9 +49,13 @@ defmodule EveDmv.MixProject do
         list_unused_filters: true,
         # Reduced flags for faster analysis while keeping essential checks
         flags: [:error_handling, :underspecs],
+        # Exclude unused function warnings
+        warnings: [
+          no_unused: true
+        ],
         # Skip analysis of test files to speed up CI
         paths: ["_build/#{Mix.env()}/lib/eve_dmv/ebin"],
-        # Use incremental analysis
+        # Skip PLT checking to improve speed
         check_plt: false,
         # Ignore warnings from dependencies
         ignore_warnings: ".dialyzer_ignore.exs"

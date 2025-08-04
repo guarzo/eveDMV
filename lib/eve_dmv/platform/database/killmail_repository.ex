@@ -8,7 +8,7 @@ defmodule EveDmv.Database.KillmailRepository do
   """
 
   use EveDmv.Database.Repository,
-    resource: EveDmv.Killmails.KillmailEnriched,
+    resource: EveDmv.Killmails.KillmailRaw,
     cache_type: :hot_data
 
   alias EveDmv.Api
@@ -17,7 +17,7 @@ defmodule EveDmv.Database.KillmailRepository do
   alias EveDmv.Database.Repository.CacheHelper
   alias EveDmv.Database.Repository.QueryBuilder
   alias EveDmv.Database.Repository.TelemetryHelper
-  alias EveDmv.Killmails.KillmailEnriched
+  alias EveDmv.Killmails.KillmailRaw
 
   require Ash.Query
 
@@ -27,6 +27,8 @@ defmodule EveDmv.Database.KillmailRepository do
   defp entity_field(:character), do: :character_id
   defp entity_field(:corporation), do: :corporation_id
 
+  # Marked as unused by dialyzer but kept for future use
+  @dialyzer {:nowarn_function, victim_entity_field: 1}
   defp victim_entity_field(:character), do: :victim_character_id
   defp victim_entity_field(:corporation), do: :victim_corporation_id
 
@@ -50,7 +52,7 @@ defmodule EveDmv.Database.KillmailRepository do
       get_by_character(98_765, limit: 500, include_losses: false)
   """
   @spec get_by_character(integer(), keyword()) ::
-          {:ok, [EveDmv.Killmails.KillmailEnriched.t()]} | {:error, Ash.Error.t()}
+          {:ok, [struct()]} | {:error, term()}
   def get_by_character(character_id, opts \\ []) do
     cache_key = CacheHelper.build_key("killmail", "character", character_id, opts)
 
@@ -86,7 +88,7 @@ defmodule EveDmv.Database.KillmailRepository do
       get_by_corporation(12_345, wormhole_only: true, limit: 200)
   """
   @spec get_by_corporation(integer(), keyword()) ::
-          {:ok, [EveDmv.Killmails.KillmailEnriched.t()]} | {:error, Ash.Error.t()}
+          {:ok, [struct()]} | {:error, term()}
   def get_by_corporation(corporation_id, opts \\ []) do
     cache_key = CacheHelper.build_key("killmail", "corporation", corporation_id, opts)
 
@@ -121,7 +123,7 @@ defmodule EveDmv.Database.KillmailRepository do
       get_recent_high_value(wormhole_only: true, hours_back: 6)
   """
   @spec get_recent_high_value(keyword()) ::
-          {:ok, [EveDmv.Killmails.KillmailEnriched.t()]} | {:error, Ash.Error.t()}
+          {:ok, [struct()]} | {:error, term()}
   def get_recent_high_value(opts \\ []) do
     cache_key = CacheHelper.build_key("killmail", "recent_high_value", opts, [])
 
@@ -188,11 +190,11 @@ defmodule EveDmv.Database.KillmailRepository do
   Prevents N+1 queries when loading multiple killmails with their participants.
   """
   @spec batch_get_with_participants([integer()]) ::
-          {:ok, [EveDmv.Killmails.KillmailEnriched.t()]} | {:error, Ash.Error.t()}
+          {:ok, [struct()]} | {:error, term()}
   def batch_get_with_participants(killmail_ids) when is_list(killmail_ids) do
     TelemetryHelper.measure_query("killmail", :batch_get_with_participants, fn ->
       query =
-        Ash.Query.new(KillmailEnriched)
+        Ash.Query.new(KillmailRaw)
         |> Ash.Query.filter(killmail_id in ^killmail_ids)
         |> Ash.Query.load([:participants])
         |> Ash.Query.sort(desc: :killmail_time)
@@ -205,7 +207,7 @@ defmodule EveDmv.Database.KillmailRepository do
   Get battles since a specific date.
   """
   @spec get_battles_since(DateTime.t()) ::
-          {:ok, [EveDmv.Killmails.KillmailEnriched.t()]} | {:error, Ash.Error.t()}
+          {:ok, [struct()]} | {:error, term()}
   def get_battles_since(since_date) do
     cache_key = CacheHelper.build_key("killmail", "battles_since", since_date, [])
 
@@ -217,7 +219,7 @@ defmodule EveDmv.Database.KillmailRepository do
           # For now, return battles based on high-value killmail grouping
           # This is a simplified implementation - in reality would need battle detection logic
           query =
-            Ash.Query.new(KillmailEnriched)
+            Ash.Query.new(KillmailRaw)
             |> Ash.Query.filter(killmail_time >= ^since_date)
             # 50M+ ISK battles
             |> Ash.Query.filter(total_value >= 50_000_000)
@@ -248,10 +250,10 @@ defmodule EveDmv.Database.KillmailRepository do
         TelemetryHelper.measure_query("killmail", :get_popular_compositions, fn ->
           # Simplified implementation - analyze ship types from recent killmails
           days_back = Keyword.get(opts, :days_back, 30)
-          since_date = DateTimeUtils.add(DateTime.utc_now(), -days_back, :day)
+          since_date = DateTimeUtils.add(DateTime.utc_now(), -days_back * 24 * 60 * 60, :second)
 
           query =
-            Ash.Query.new(KillmailEnriched)
+            Ash.Query.new(KillmailRaw)
             |> Ash.Query.filter(killmail_time >= ^since_date)
             # High value engagements
             |> Ash.Query.filter(total_value >= 100_000_000)
@@ -377,7 +379,7 @@ defmodule EveDmv.Database.KillmailRepository do
 
   defp calculate_kill_stats(entity_type, entity_id, opts) do
     days_back = Keyword.get(opts, :days_back, 90)
-    start_date = DateTimeUtils.add(DateTime.utc_now(), -days_back, :day)
+    start_date = DateTimeUtils.add(DateTime.utc_now(), -days_back * 24 * 60 * 60, :second)
 
     # This would use more sophisticated database aggregation in practice
     # For now, provide a basic implementation structure
@@ -395,8 +397,8 @@ defmodule EveDmv.Database.KillmailRepository do
 
         {:ok, stats}
 
-      {:error, reason} ->
-        {:error, reason}
+      error ->
+        error
     end
   end
 
@@ -460,7 +462,7 @@ defmodule EveDmv.Database.KillmailRepository do
     case Keyword.get(opts, key) do
       nil ->
         case default_opts do
-          [days_ago: days] -> DateTimeUtils.add(DateTime.utc_now(), -days, :day)
+          [days_ago: days] -> DateTimeUtils.add(DateTime.utc_now(), -days * 24 * 60 * 60, :second)
           datetime -> datetime
         end
 
@@ -484,7 +486,7 @@ defmodule EveDmv.Database.KillmailRepository do
   def get_killmails_by_characters(character_ids, start_time) when is_list(character_ids) do
     TelemetryHelper.measure_query("killmail", :get_by_characters, fn ->
       query =
-        KillmailEnriched
+        KillmailRaw
         |> Ash.Query.new()
         |> Ash.Query.filter(killmail_time >= ^start_time)
         |> Ash.Query.filter(

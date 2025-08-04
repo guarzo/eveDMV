@@ -13,6 +13,7 @@ defmodule EveDmv.Eve.EsiRequestClient do
   alias EveDmv.Eve.ErrorClassifier
   alias EveDmv.Eve.FallbackStrategy
   alias EveDmv.Eve.ReliabilityConfig
+  alias EveDmv.Telemetry.RequestMonitor
   alias Jason
   require Logger
 
@@ -371,10 +372,10 @@ defmodule EveDmv.Eve.EsiRequestClient do
   # Remove auth_token from error data before logging
   defp sanitize_error_for_logging(error) do
     case error do
-      %{auth_token: _} = error_map ->
+      %{auth_token: _} = error_map when is_map(error_map) ->
         Map.delete(error_map, :auth_token)
 
-      tuple when is_tuple(tuple) ->
+      tuple when is_tuple(tuple) and tuple_size(tuple) > 0 ->
         # Handle tuples that might contain sensitive data
         tuple |> Tuple.to_list() |> sanitize_list_for_logging() |> List.to_tuple()
 

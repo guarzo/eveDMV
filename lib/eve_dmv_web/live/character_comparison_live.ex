@@ -150,13 +150,21 @@ defmodule EveDmvWeb.CharacterComparisonLive do
                socket.assigns.selected_characters,
                socket.assigns.timeframe
              ) do
-          result when is_map(result) ->
+          {:ok, result} when is_map(result) ->
             socket =
               socket
               |> assign(:comparison_result, result)
               |> assign(:similarity_result, nil)
               |> assign(:loading, false)
               |> assign(:error, nil)
+
+            {:noreply, socket}
+
+          {:error, reason} ->
+            socket =
+              socket
+              |> assign(:loading, false)
+              |> assign(:error, format_error(reason))
 
             {:noreply, socket}
 
@@ -273,6 +281,11 @@ defmodule EveDmvWeb.CharacterComparisonLive do
   defdelegate format_percentage(value), to: Formatters
 
   # Helper functions for UI
+  defp format_error(reason) when is_binary(reason), do: reason
+  defp format_error(:insufficient_data), do: "Insufficient data for comparison"
+  defp format_error(:service_unavailable), do: "Comparison service temporarily unavailable"
+  defp format_error(_), do: "An error occurred during comparison"
+
   def format_timeframe(timeframe) do
     case timeframe do
       :last_7_days -> "Last 7 Days"

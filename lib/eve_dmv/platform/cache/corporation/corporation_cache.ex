@@ -53,10 +53,8 @@ defmodule EveDmv.Platform.Cache.Corporation.CorporationCache do
   Delete a value from the corporation cache.
   """
   def delete(key) do
-    case :ets.delete(@cache_name, key) do
-      true -> :ok
-      false -> :ok
-    end
+    :ets.delete(@cache_name, key)
+    :ok
   rescue
     ArgumentError ->
       # ETS table doesn't exist

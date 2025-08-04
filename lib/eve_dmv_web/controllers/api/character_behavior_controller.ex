@@ -30,10 +30,17 @@ defmodule EveDmvWeb.Api.CharacterBehaviorController do
         })
 
       {:error, reason} ->
-        {status, message, code} = case reason do
-          :insufficient_data -> {:unprocessable_entity, "Insufficient data to analyze behavioral patterns", "INSUFFICIENT_DATA"}
-          _other -> {:internal_server_error, "Failed to analyze behavioral patterns", "INTERNAL_ERROR"}
-        end
+        {status, message, code} = 
+          case reason do
+            :insufficient_data -> 
+              {:unprocessable_entity, "Insufficient data to analyze behavioral patterns", "INSUFFICIENT_DATA"}
+            :character_not_found -> 
+              {:not_found, "Character not found", "CHARACTER_NOT_FOUND"}
+            :analysis_failed -> 
+              {:internal_server_error, "Analysis failed", "ANALYSIS_FAILED"}
+            _ -> 
+              {:internal_server_error, "Failed to analyze behavioral patterns", "INTERNAL_ERROR"}
+          end
 
         conn
         |> put_status(status)

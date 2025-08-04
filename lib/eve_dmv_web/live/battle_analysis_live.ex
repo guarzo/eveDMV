@@ -614,7 +614,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
           |> load_battle_metrics()
           |> load_battle_reports()
 
-        {:error, reason} when reason in [:battle_not_found, :database_error, :max_iterations_reached] ->
+        {:error, reason} when reason in [:battle_not_found, :database_error, :max_iterations_reached, :timeline_reconstruction_failed] ->
           require Logger
           Logger.warning("Battle #{battle_id} error: #{reason}")
 
@@ -622,6 +622,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
             :battle_not_found -> "Battle not found. It may have been re-detected with a different ID."
             :database_error -> "Database error occurred while loading battle"
             :max_iterations_reached -> "Battle analysis timed out - battle too complex"
+            :timeline_reconstruction_failed -> "Failed to reconstruct battle timeline"
           end
 
           assign(socket, :error_message, error_message)
@@ -637,14 +638,6 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   defp format_error({:http_error, _error}), do: "Failed to connect to zkillboard"
   defp format_error({:api_error, status}), do: "zkillboard API error (#{status})"
   defp format_error(_error), do: "Import failed"
-
-  defp format_error_reason(reason) when reason in ["curator_unavailable", :curator_unavailable],
-    do: "Battle curator service is temporarily unavailable"
-
-  defp format_error_reason("report_not_found"), do: "Battle report not found"
-
-  defp format_error_reason("permission_denied"),
-    do: "You don't have permission to perform this action"
 
   defp format_error_reason(reason) when reason in ["curator_unavailable", :curator_unavailable],
     do: "Battle curator service is temporarily unavailable"

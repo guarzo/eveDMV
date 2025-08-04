@@ -61,7 +61,8 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
     # Get ship and weapon preferences from CharacterIntelligence context
     top_ships =
       case CharacterIntelligence.get_detailed_ship_preferences(character_id, ninety_days_ago) do
-        {:ok, ships} -> ships
+        {:ok, %{preferences: ships, stats: _stats}} -> ships
+        {:ok, ships} when is_list(ships) -> ships
         {:error, _} -> []
       end
 

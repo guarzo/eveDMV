@@ -211,8 +211,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
   @spec get_stats() :: {:ok, %{size: non_neg_integer(), memory_bytes: non_neg_integer()}}
   def get_stats do
     # Get cache stats from the Cache module if available
+    # Cache.stats returns a plain map, not a tuple
     case Cache.stats(@cache_type) do
-      {:ok, stats} ->
+      %{} = stats ->
         {:ok, stats}
 
       _ ->

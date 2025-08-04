@@ -174,7 +174,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
   defp fetch_killmails_by_ids(killmail_ids) do
     query =
       KillmailRaw
-      |> Ash.Query.new()
+      |> new()
       |> filter(killmail_id: [in: killmail_ids])
       |> sort(killmail_time: :asc)
 
@@ -265,7 +265,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
           updated_cluster = %{
             target_cluster
             | killmails: [killmail | target_cluster.killmails],
-              end_time: max(killmail.killmail_time, target_cluster.end_time)
+              end_time: 
+                if DateTime.compare(killmail.killmail_time, target_cluster.end_time) == :gt do
+                  killmail.killmail_time
+                else
+                  target_cluster.end_time
+                end
           }
 
           [current_cluster, updated_cluster | other_clusters]
@@ -409,9 +414,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
 
       multiple ->
         times = Enum.map(multiple, & &1.killmail_time)
-        start_time = Enum.min(times)
-        end_time = Enum.max(times)
-        duration = DateTimeUtils.diff(end_time, start_time, :second) / 60
+        start_time = Enum.min(times, DateTime)
+        end_time = Enum.max(times, DateTime)
+        duration_seconds = DateTimeUtils.diff(end_time, start_time, :second)
+        duration = duration_seconds / 60
         # Only apply minimum if duration is very small (< 0.5 minutes)
         if duration < 0.5, do: 1, else: Float.round(duration, 1)
     end
@@ -424,7 +430,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
       |> Enum.group_by(& &1.solar_system_id)
       |> Enum.max_by(fn {_system_id, kills} -> Kernel.length(kills) end, fn -> {nil, []} end)
 
-    elem(result, 0)
+    case result do
+      {system_id, _kills} -> system_id
+      _ -> nil
+    end
   end
 
   defp calculate_total_isk_destroyed(killmails) do
@@ -602,6 +611,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
 
         timestamp =
           first.killmail_time
+          |> DateTime.to_naive()
           |> NaiveDateTime.to_string()
           |> String.replace([" ", ":", "-"], "")
 

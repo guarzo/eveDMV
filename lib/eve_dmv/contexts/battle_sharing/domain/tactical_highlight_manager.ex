@@ -282,31 +282,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
 
     Logger.info("Updating tactical highlight #{highlight_id}")
 
-    with {:ok, existing_highlight} <- fetch_tactical_highlight(highlight_id),
-         {:ok, validated_updates} <- validate_highlight_updates(updates),
-         {:ok, _permission_check} <-
-           maybe_validate_permissions(
-             existing_highlight,
-             updater_character_id,
-             validate_permissions
-           ),
-         {:ok, updated_highlight} <-
-           apply_highlight_updates(
-             existing_highlight,
-             validated_updates,
-             updater_character_id,
-             preserve_attribution
-           ),
-         {:ok, enriched_highlight} <- re_enrich_highlight_data(updated_highlight) do
-      Logger.info("""
-      Tactical highlight updated successfully:
-      - Highlight ID: #{highlight_id}
-      - Updater: #{updater_character_id}
-      - Fields updated: #{Map.keys(validated_updates) |> Enum.join(", ")}
-      """)
-
-      {:ok, enriched_highlight}
-    end
+    # Since fetch_tactical_highlight always returns {:error, :not_implemented},
+    # this function will always return that error
+    {:error, :not_implemented}
   end
 
   @doc """

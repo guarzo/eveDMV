@@ -571,17 +571,19 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
       end
 
     # Get activity patterns
+    # analyze_character_activity_patterns always returns {:error, :analysis_failed}
     activity_data =
       case analyze_character_activity_patterns(character_id, days_back: 30) do
-        {:ok, data} ->
-          data
-
         {:error, _} ->
           %{
             activity_summary: %{total_events: 0, events_per_day: 0.0},
             engagement_patterns: %{preferred_engagement_size: :unknown},
             temporal_patterns: %{peak_hours: []}
           }
+          
+        # This branch is unreachable with current implementation
+        {:ok, data} ->
+          data
       end
 
     # Get recent activity summary

@@ -138,7 +138,9 @@ defmodule EveDmv.Contexts.BattleAnalysis do
       timeline = BattleTimelineService.reconstruct_timeline(battle)
       {:ok, timeline}
     rescue
-      _ -> {:error, :timeline_reconstruction_failed}
+      error ->
+        Logger.error("Failed to reconstruct battle timeline: #{inspect(error)}")
+        {:error, :timeline_reconstruction_failed}
     end
   end
 
@@ -189,7 +191,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
                 case reconstruct_battle_timeline(battle) do
                   {:ok, timeline} ->
                     {:ok, Map.put(battle, :timeline, timeline)}
-                  error ->
+                  {:error, _reason} = error ->
                     error
                 end
 
@@ -293,7 +295,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
             case reconstruct_battle_timeline(battle) do
               {:ok, timeline} ->
                 {:ok, Map.put(battle, :timeline, timeline)}
-              error ->
+              {:error, _reason} = error ->
                 error
             end
         end
@@ -547,7 +549,6 @@ defmodule EveDmv.Contexts.BattleAnalysis do
        }}
     else
       {:error, reason} -> {:error, reason}
-      _ -> {:error, :unknown_error}
     end
   end
 
@@ -605,7 +606,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
         case reconstruct_battle_timeline(battle) do
           {:ok, timeline} ->
             {:ok, Map.put(battle, :timeline, timeline)}
-          error ->
+          {:error, _reason} = error ->
             error
         end
 

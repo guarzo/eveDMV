@@ -86,22 +86,23 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
 
     if character_id not in Enum.map(comparison_characters, & &1.character_id) and
          character_id != socket.assigns.character_id do
-      {:ok, analysis} = CharacterIntelligence.analyze_character_threat(character_id)
+      case CharacterIntelligence.analyze_character_threat(character_id) do
+        {:ok, analysis} ->
+          character_info = %{
+            character_id: character_id,
+            name: "Character #{character_id}",
+            threat_analysis: analysis
+          }
 
-      character_info = %{
-        character_id: character_id,
-        name: "Character #{character_id}",
-        threat_analysis: analysis
-      }
+          {:noreply,
+           assign(socket, :comparison_characters, [character_info | comparison_characters])}
 
-      {:noreply,
-       socket
-       |> assign(
-         :comparison_characters,
-         List.insert_at(comparison_characters, -1, character_info)
-       )
-       |> assign(:search_query, "")
-       |> assign(:search_results, [])}
+        {:error, :insufficient_data} ->
+          {:noreply, put_flash(socket, :error, "Insufficient data for character analysis")}
+
+        {:error, _error} ->
+          {:noreply, put_flash(socket, :error, "Failed to analyze character")}
+      end
     else
       {:noreply, socket}
     end

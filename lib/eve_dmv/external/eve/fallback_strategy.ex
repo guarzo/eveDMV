@@ -79,7 +79,7 @@ defmodule EveDmv.Eve.FallbackStrategy do
 
       {:error, error} ->
         case get_stale_cache_data(cache_key, max_stale_age) do
-          {:ok, stale_data} ->
+          {:ok, stale_data, :stale} ->
             Logger.info("Using stale cache data due to error", %{
               cache_key: cache_key,
               error: error
@@ -262,7 +262,7 @@ defmodule EveDmv.Eve.FallbackStrategy do
       # 1. Try stale cache if available and allowed
       allow_stale and cache_key ->
         case try_stale_cache(cache_key) do
-          {:ok, stale_data} -> {:ok, stale_data}
+          {:ok, stale_data, :stale} -> {:ok, stale_data}
           :miss -> try_next_fallback(error, classification, opts)
         end
 

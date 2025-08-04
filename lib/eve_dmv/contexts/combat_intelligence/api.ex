@@ -192,12 +192,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   """
   @spec search_characters_by_criteria(map()) :: {:ok, [intelligence_result()]} | {:error, atom()}
   def search_characters_by_criteria(criteria) when is_map(criteria) do
-    with :ok <- validate_search_criteria(criteria),
-         {:ok, matching_characters} <- Domain.CharacterAnalyzer.search_by_criteria(criteria) do
-      {:ok, matching_characters}
+    with :ok <- validate_search_criteria(criteria) do
+      # Domain.CharacterAnalyzer.search_by_criteria always returns {:error, :search_error}
+      # Keep the function structure for future implementation
+      case Domain.CharacterAnalyzer.search_by_criteria(criteria) do
+        {:error, :search_error} = error -> error
+        # This branch is unreachable with current implementation
+        {:ok, matching_characters} -> {:ok, matching_characters}
+        _ -> {:error, :search_failed}
+      end
     else
       {:error, reason} -> {:error, reason}
-      _ -> {:error, :search_failed}
     end
   end
 
@@ -234,8 +239,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   """
   @spec get_intelligence_cache_stats() :: {:ok, %{cache_size: integer(), evictions: integer(), hit_rate: float(), miss_rate: float()}}
   def get_intelligence_cache_stats do
-    case Domain.CharacterAnalyzer.get_cache_stats() do
-      {:ok, stats} -> {:ok, stats}
+    # Domain.CharacterAnalyzer.get_cache_stats() returns a plain map, not a tuple
+    stats = Domain.CharacterAnalyzer.get_cache_stats()
+    case stats do
+      %{} = valid_stats -> {:ok, valid_stats}
       _ -> {:ok, %{cache_size: 0, evictions: 0, hit_rate: 0.0, miss_rate: 0.0}}
     end
   end

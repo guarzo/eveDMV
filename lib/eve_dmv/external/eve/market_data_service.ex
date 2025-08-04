@@ -180,7 +180,7 @@ defmodule EveDmv.External.Eve.MarketDataService do
     cache_key = {:ship_price, type_id, region, price_type}
 
     case Cache.get(:analysis, cache_key) do
-      nil ->
+      :miss ->
         case fetch_price_from_esi(type_id, region, price_type) do
           {:ok, price} ->
             Cache.put(:analysis, cache_key, price, ttl: @cache_ttl)
@@ -191,7 +191,7 @@ defmodule EveDmv.External.Eve.MarketDataService do
             estimate_ship_price_fallback(type_id)
         end
 
-      cached_price ->
+      {:ok, cached_price} ->
         {:ok, cached_price}
     end
   end
@@ -441,8 +441,8 @@ defmodule EveDmv.External.Eve.MarketDataService do
       cache_key = {:ship_price, type_id, region, price_type}
 
       case Cache.get(:analysis, cache_key) do
-        nil -> {:uncached, type_id}
-        price -> {:cached, type_id, price}
+        :miss -> {:uncached, type_id}
+        {:ok, price} -> {:cached, type_id, price}
       end
     end)
     |> Enum.split_with(fn {status, _} -> status == :cached end)

@@ -553,4 +553,21 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
         "✅ Cache performance is within acceptable parameters."
     end
   end
+
+  # Private helper functions for safe service calls
+  defp get_metrics_safely do
+    try do
+      PerformanceDashboard.get_metrics()
+    rescue
+      _ -> %{total_queries: 0, avg_response_time: 0, error_rate: 0, slow_queries: 0}
+    end
+  end
+
+  defp get_report_safely(minutes) do
+    try do
+      PerformanceDashboard.generate_report(minutes)
+    rescue
+      _ -> %{alerts: [], trends: [], recommendations: []}
+    end
+  end
 end

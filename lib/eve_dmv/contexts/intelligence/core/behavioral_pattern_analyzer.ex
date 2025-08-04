@@ -394,11 +394,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       |> Enum.sort_by(fn {_, count} -> count end, :desc)
 
     # Region activity from activity data
-    region_activity =
-      case activity_data do
-        {:ok, data} -> data[:regions] || %{}
-        _ -> %{}
-      end
+    region_activity = activity_data[:regions] || %{}
 
     # Security preferences
     security_distribution =

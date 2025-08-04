@@ -140,9 +140,8 @@ defmodule EveDmvWeb.CorporationLive do
 
         socket =
           socket
-
-        stream(:members, pagination.items, at: -1, dom_id: &"member-#{&1.character_id}")
-        assign(:members_pagination, pagination)
+          |> stream(:members, pagination.items, at: -1, dom_id: &"member-#{&1.character_id}")
+          |> assign(:members_pagination, pagination)
 
         {:noreply, socket}
     end
@@ -162,9 +161,8 @@ defmodule EveDmvWeb.CorporationLive do
 
         socket =
           socket
-
-        stream(:members, pagination.items, reset: true, dom_id: &"member-#{&1.character_id}")
-        assign(:members_pagination, pagination)
+          |> stream(:members, pagination.items, reset: true, dom_id: &"member-#{&1.character_id}")
+          |> assign(:members_pagination, pagination)
 
         {:noreply, socket}
     end
@@ -184,10 +182,9 @@ defmodule EveDmvWeb.CorporationLive do
 
         socket =
           socket
-
-        stream(:members, pagination.items, reset: true, dom_id: &"member-#{&1.character_id}")
-        assign(:members_pagination, pagination)
-        assign(:members_page_size, page_size)
+          |> stream(:members, pagination.items, reset: true, dom_id: &"member-#{&1.character_id}")
+          |> assign(:members_pagination, pagination)
+          |> assign(:members_page_size, page_size)
 
         {:noreply, socket}
     end

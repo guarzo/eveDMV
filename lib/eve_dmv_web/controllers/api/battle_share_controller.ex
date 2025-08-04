@@ -41,10 +41,14 @@ defmodule EveDmvWeb.Api.BattleShareController do
         })
 
       {:error, reason} ->
-        {status, message} = case reason do
-          reason when is_binary(reason) -> {:unprocessable_entity, reason}
-          _other -> {:internal_server_error, "Failed to create battle report"}
-        end
+        {status, message} = 
+          case reason do
+            msg when is_binary(msg) -> {:unprocessable_entity, msg}
+            :battle_not_found -> {:not_found, "Battle not found"}
+            :unauthorized -> {:forbidden, "Not authorized to share this battle"}
+            :invalid_params -> {:bad_request, "Invalid parameters"}
+            _ -> {:internal_server_error, "Failed to create battle report"}
+          end
 
         conn
         |> put_status(status)

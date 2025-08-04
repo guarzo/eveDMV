@@ -54,14 +54,14 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
 
     cache_key = {:behavior_patterns, entity_type, entity_id, timeframe}
 
-    case UnifiedCache.get(:threat_surveillance, cache_key) do
+    case UnifiedCache.get(:threat, cache_key) do
       {:ok, cached_patterns} ->
         {:ok, cached_patterns}
 
-      :miss ->
+      {:error, :not_found} ->
         with {:ok, killmails} <- fetch_entity_killmails(entity_id, entity_type, timeframe),
              {:ok, patterns} <- analyze_killmail_patterns(killmails, entity_type, pattern_types) do
-          UnifiedCache.put(:threat_surveillance, cache_key, patterns, @cache_ttl)
+          UnifiedCache.put(:threat, cache_key, patterns, @cache_ttl)
           {:ok, patterns}
         end
     end

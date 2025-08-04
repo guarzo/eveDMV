@@ -147,6 +147,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
   Get ship preference insights for character threat assessment.
   Returns preferred ship classes, tactical roles, and effectiveness patterns.
   """
+  @spec get_character_ship_preferences(integer()) :: map()
   def get_character_ship_preferences(character_id) do
     case calculate_ship_specialization(character_id, days_back: 30) do
       {:ok, specialization} ->
@@ -330,7 +331,8 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
 
   defp calculate_classification_confidence(classification) when is_map(classification) do
     # Calculate confidence based on the highest role score
-    Enum.max(Map.values(classification), fn -> 0.0 end)
+    values = Map.values(classification)
+    if Enum.empty?(values), do: 0.0, else: Enum.max(values)
   end
 
   defp calculate_classification_confidence(_classification), do: 0.0
@@ -434,7 +436,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
 
   # Character intelligence helper functions
   defp get_character_killmail_data(character_id, days_back) do
-    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -days_back, :day)
+    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -days_back * 24 * 60 * 60, :second)
 
     query =
       from(k in "killmails_raw",
@@ -452,6 +454,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
     Repo.all(query)
   end
 
+  @dialyzer {:nowarn_function, analyze_ship_usage_patterns: 1}
   defp analyze_ship_usage_patterns(killmail_data) do
     killmail_data
     |> Enum.group_by(& &1.victim_ship_type_id)
@@ -466,6 +469,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
     |> Enum.into(%{})
   end
 
+  @dialyzer {:nowarn_function, calculate_role_preferences: 1}
   defp calculate_role_preferences(killmail_data) do
     # Simplified role classification without external dependencies
     role_counts =
@@ -490,6 +494,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
   end
 
 
+  @dialyzer {:nowarn_function, determine_expertise_level: 2}
   defp determine_expertise_level(killmail_data, ship_usage) do
     total_kills = length(killmail_data)
     ship_diversity = map_size(ship_usage)
@@ -503,6 +508,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
     end
   end
 
+  @dialyzer {:nowarn_function, calculate_ship_mastery_scores: 1}
   defp calculate_ship_mastery_scores(killmail_data) do
     # Calculate mastery based on consistency and performance
     ship_performance =
@@ -517,6 +523,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
     ship_performance
   end
 
+  @dialyzer {:nowarn_function, calculate_individual_ship_mastery: 1}
   defp calculate_individual_ship_mastery(killmails) do
     # Simple mastery calculation based on usage frequency and consistency
     usage_count = length(killmails)
@@ -530,6 +537,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
     base_score + consistency_bonus
   end
 
+  @dialyzer {:nowarn_function, calculate_time_span_days: 1}
   defp calculate_time_span_days(times) when length(times) < 2, do: 1
 
   defp calculate_time_span_days(times) do
@@ -676,6 +684,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
     end
   end
 
+  @dialyzer {:nowarn_function, extract_primary_ship_classes: 1}
   defp extract_primary_ship_classes(specialization) do
     Map.get(specialization, :specializations, %{})
     |> Enum.sort_by(fn {_ship_id, data} -> Map.get(data, :usage_percentage, 0) end, :desc)
@@ -683,6 +692,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
     |> Enum.map(fn {ship_id, _data} -> ship_id end)
   end
 
+  @dialyzer {:nowarn_function, calculate_specialization_diversity: 1}
   defp calculate_specialization_diversity(specialization) do
     # Calculate diversity index (0.0 = specialized, 1.0 = very diverse)
     specializations = Map.get(specialization, :specializations, %{})

@@ -152,12 +152,12 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
   end
 
   defp calculate_average_kill_value(killmails, character_id) do
-    kills = Enum.filter(killmails, fn km -> km.victim.character_id != character_id end)
+    kills = Enum.filter(killmails, fn km -> km.victim_character_id != character_id end)
 
     if Enum.empty?(kills) do
       0
     else
-      total_value = kills |> Enum.map(& &1.total_value) |> Enum.sum()
+      total_value = kills |> Enum.map(& &1.zkb_total_value) |> Enum.sum()
       total_value / length(kills)
     end
   end
@@ -185,16 +185,20 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
     ship_types =
       killmails
       |> Enum.map(fn km ->
-        if km.victim.character_id == character_data.character_id do
-          km.victim.ship_type_id
+        # Access character_id correctly - it's a field in character_data
+        character_id = Map.get(character_data, :character_id)
+        
+        if km.victim_character_id == character_id do
+          km.victim_ship_type_id
         else
-          # Find character's ship in attackers
+          # Find character's ship in attackers from raw_data
+          attackers = get_in(km.raw_data, ["attackers"]) || []
           attacker =
-            Enum.find(km.attackers, fn att ->
-              att.character_id == character_data.character_id
+            Enum.find(attackers, fn att ->
+              get_in(att, ["character_id"]) == character_id
             end)
 
-          if attacker, do: attacker.ship_type_id, else: nil
+          if attacker, do: get_in(attacker, ["ship_type_id"]), else: nil
         end
       end)
       |> Enum.filter(& &1)
@@ -211,7 +215,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
     # Check gang size diversity
     gang_sizes =
       killmails
-      |> Enum.map(fn km -> length(km.attackers) end)
+      |> Enum.map(fn km -> km.attacker_count end)
       |> Enum.uniq()
       |> length()
 
@@ -220,7 +224,9 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
     system_score = min(systems * 2, 30)
     gang_score = min(gang_sizes * 10, 30)
 
-    Float.round(ship_score + system_score + gang_score, 1)
+    # Convert to float before rounding
+    total_score = ship_score + system_score + gang_score
+    Float.round(total_score / 1.0, 1)
   end
 
   defp calculate_danger_rating(combat_stats, _character_data) do
@@ -238,10 +244,16 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
     weekly_activity =
       killmails
       |> Enum.group_by(fn km ->
-        date = DateTime.to_date(km.killmail_time)
-        week = div(Date.day_of_year(date) - 1, 7) + 1
-        {date.year, week}
+        case Map.get(km, :killmail_time) do
+          %DateTime{} = km_time ->
+            date = DateTime.to_date(km_time)
+            week = div(Date.day_of_year(date) - 1, 7) + 1
+            {date.year, week}
+          _ ->
+            nil
+        end
       end)
+      |> Map.delete(nil)
       |> Map.values()
       |> Enum.map(&length/1)
 

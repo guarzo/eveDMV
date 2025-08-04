@@ -145,10 +145,16 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
 
   defp fetch_battle_data(battle_id) do
     case BattleAnalysis.get_battle_with_timeline(battle_id) do
-      {:ok, battle_data} -> {:ok, battle_data.battle}
-      {:error, reason} when is_atom(reason) -> {:error, Atom.to_string(reason)}
-      {:error, reason} when is_binary(reason) -> {:error, reason}
-      error -> {:error, "Battle not found: #{inspect(error)}"}
+      {:ok, battle_data} -> 
+        # Dialyzer believes this can never match, but we handle it defensively
+        {:ok, Map.get(battle_data, :battle, battle_data)}
+      {:error, reason} when is_atom(reason) -> 
+        {:error, Atom.to_string(reason)}
+      {:error, reason} when is_binary(reason) -> 
+        {:error, reason}
+      _ ->
+        # Catch-all for any unexpected return values
+        {:error, "Unexpected response format"}
     end
   rescue
     error ->

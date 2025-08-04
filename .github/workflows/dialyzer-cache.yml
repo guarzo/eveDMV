@@ -1,0 +1,73 @@
+name: Dialyzer with Caching
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  dialyzer:
+    runs-on: ubuntu-latest
+    
+    env:
+      MIX_ENV: test
+      ELIXIR_VERSION: '1.17.3'
+      OTP_VERSION: '27.2'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Elixir
+      uses: erlef/setup-beam@v1
+      with:
+        elixir-version: ${{ env.ELIXIR_VERSION }}
+        otp-version: ${{ env.OTP_VERSION }}
+    
+    - name: Restore dependencies cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          deps
+          _build
+        key: ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-${{ env.OTP_VERSION }}-${{ hashFiles('**/mix.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-${{ env.OTP_VERSION }}-
+    
+    - name: Restore PLT cache
+      uses: actions/cache@v4
+      id: plt-cache
+      with:
+        path: priv/plts
+        key: ${{ runner.os }}-plt-${{ env.ELIXIR_VERSION }}-${{ env.OTP_VERSION }}-${{ hashFiles('**/mix.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-plt-${{ env.ELIXIR_VERSION }}-${{ env.OTP_VERSION }}-
+    
+    - name: Install dependencies
+      run: |
+        mix deps.get
+        mix deps.compile
+    
+    - name: Build PLT if needed
+      if: steps.plt-cache.outputs.cache-hit != 'true'
+      run: |
+        echo "PLT cache miss - building new PLT"
+        mix dialyzer --plt
+    
+    - name: Compile project
+      run: mix compile --warnings-as-errors
+    
+    - name: Run Fast Dialyzer
+      run: |
+        # Use fast dialyzer without PLT checking
+        # This takes ~57 seconds instead of 8+ minutes
+        ./scripts/fast_dialyzer.sh --timing
+    
+    - name: Upload Dialyzer results
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: dialyzer-results
+        path: |
+          dialyzer.txt
+          dialyzer_current.txt

@@ -61,6 +61,11 @@ defmodule EveDmvWeb.Api.ApiKeysController do
         |> put_status(:unauthorized)
         |> json(%{error: "Authentication required"})
 
+      {:error, :invalid_user_id} ->
+        conn
+        |> put_status(:unauthorized)
+        |> json(%{error: "Invalid user ID in session"})
+
       {:error, reason} ->
         conn
         |> put_status(:bad_request)

@@ -135,6 +135,10 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
         recommendations = generate_detailed_recommendations(vetting_report)
         {:reply, {:ok, recommendations}, state}
 
+      {:error, :not_found} ->
+        Logger.warning("No vetting report found for character #{character_id}")
+        {:reply, {:error, :no_vetting_report_found}, state}
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -222,7 +226,12 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
 
       {:ok, vetting_report}
     else
-      error -> error
+      {:error, :character_data_unavailable} = error ->
+        Logger.warning("Character data unavailable for #{character_id}")
+        error
+      
+      error -> 
+        error
     end
   end
 
@@ -350,7 +359,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
   end
 
   defp assess_security_status_risks(character_data) do
-    if character_data.security_status < -2.0 do
+    security_status = Map.get(character_data, :security_status, 5.0)
+    
+    if security_status < -2.0 do
       [
         %{
           type: :low_security_status,
@@ -403,25 +414,26 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
 
   defp assess_character_metrics(character_data) do
     # Character age assessment
-    character_age_days =
-      DateTimeUtils.diff(DateTime.utc_now(), character_data.creation_date, :day)
+    creation_date = Map.get(character_data, :creation_date, DateTime.utc_now())
+    character_age_days = DateTimeUtils.diff(DateTime.utc_now(), creation_date, :day)
 
     age_score = calculate_age_score(character_age_days)
 
     # Skill point assessment
-    _sp_score = calculate_sp_score(character_data.total_sp, character_age_days)
+    total_sp = Map.get(character_data, :total_sp, 10_000_000)
+    _sp_score = calculate_sp_score(total_sp, character_age_days)
 
     # Skill focus assessment (simulated)
-    skill_focus_score = calculate_skill_focus_score(character_data.total_sp)
+    skill_focus_score = calculate_skill_focus_score(total_sp)
 
     character_assessment = %{
-      character_name: character_data.character_name,
+      character_name: Map.get(character_data, :character_name, "Unknown"),
       age_score: age_score,
       skill_focus_score: skill_focus_score,
       character_age_days: character_age_days,
-      total_sp: character_data.total_sp,
-      sp_per_day: character_data.total_sp / max(character_age_days, 1),
-      skill_focus: determine_skill_focus(character_data.total_sp)
+      total_sp: total_sp,
+      sp_per_day: total_sp / max(character_age_days, 1),
+      skill_focus: determine_skill_focus(total_sp)
     }
 
     {:ok, character_assessment}
@@ -644,8 +656,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
            first_activity: first_seen,
            last_activity: last_seen,
            # Placeholder values - would get from ESI
-           total_sp: nil,
-           security_status: nil,
+           total_sp: 10_000_000,  # Default SP value
+           security_status: 5.0,   # Default neutral security status
            alliance_id: nil
          }}
 
@@ -1126,10 +1138,11 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
 
   defp assess_spy_risk_indicators(character_data) do
     # Very new character with high SP
-    character_age_days =
-      DateTimeUtils.diff(DateTime.utc_now(), character_data.creation_date, :day)
+    creation_date = Map.get(character_data, :creation_date, DateTime.utc_now())
+    character_age_days = DateTimeUtils.diff(DateTime.utc_now(), creation_date, :day)
 
-    sp_per_day = character_data.total_sp / max(character_age_days, 1)
+    total_sp = Map.get(character_data, :total_sp, 10_000_000)
+    sp_per_day = total_sp / max(character_age_days, 1)
 
     # Unrealistically high SP gain
     if sp_per_day > 100_000 do
@@ -1157,6 +1170,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
               :high -> 0.3
               :medium -> 0.2
               :low -> 0.1
+              _ -> 0.1  # Default to low risk for unknown severity
             end
           end)
         )

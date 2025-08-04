@@ -483,7 +483,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
         |> Enum.map(fn start_node ->
           bfs_max_distance(start_node, adjacency)
         end)
-        |> Enum.max()
+        |> Enum.max(fn -> 0 end)
 
       max_distance
     end

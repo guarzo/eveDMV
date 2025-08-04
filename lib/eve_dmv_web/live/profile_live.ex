@@ -72,6 +72,7 @@ defmodule EveDmvWeb.ProfileLive do
   defp get_character_combat_stats(character_id) do
     case CharacterIntelligence.get_character_intelligence_report(character_id) do
       {:ok, report} -> report.combat_stats
+      {:error, :insufficient_data} -> %{}
       {:error, _error} -> %{}
     end
   end
@@ -79,6 +80,7 @@ defmodule EveDmvWeb.ProfileLive do
   defp get_character_ship_intelligence(character_id) do
     case ShipIntelligenceBridge.calculate_ship_specialization(character_id) do
       {:ok, intelligence} -> intelligence
+      {:error, :insufficient_data} -> %{}
       {:error, _error} -> %{}
     end
   end
@@ -101,6 +103,7 @@ defmodule EveDmvWeb.ProfileLive do
     intelligence_data =
       case CharacterIntelligence.get_character_intelligence_report(user.eve_character_id) do
         {:ok, data} -> data
+        {:error, :insufficient_data} -> %{error: "Insufficient data for intelligence report"}
         {:error, _error} -> %{error: "Intelligence data not available"}
       end
 
@@ -115,6 +118,7 @@ defmodule EveDmvWeb.ProfileLive do
     activity_data =
       case CharacterAnalyzer.get_activity_patterns(user.eve_character_id) do
         {:ok, patterns} -> patterns
+        {:error, :analysis_failed} -> %{error: "Activity analysis failed"}
         {:error, _error} -> %{error: "Activity patterns not available"}
       end
 

@@ -382,18 +382,11 @@ defmodule EveDmv.Users.User do
       {:ok, character_response} ->
         Logger.info("Got character response: #{inspect(character_response)}")
 
-        # Handle potential double-wrapping from the request client
-        actual_response =
-          case character_response do
-            {:ok, inner_response} -> inner_response
-            {:error, _} = error -> error
-            response -> response
-          end
-
+        # Character response is already unwrapped from {:ok, _}
         character_data =
-          case actual_response do
-            {:error, _} -> %{}
-            response when is_map(response) -> Map.get(response, :body, %{})
+          case character_response do
+            %{body: body} when is_map(body) -> body
+            response when is_map(response) -> response
             _ -> %{}
           end
 
@@ -431,15 +424,8 @@ defmodule EveDmv.Users.User do
   end
 
   defp process_corporation_response(corp_response, corporation_id) do
-    # Handle potential double-wrapping from the request client
-    actual_corp_response =
-      case corp_response do
-        {:ok, inner_response} -> inner_response
-        {:error, _} = error -> error
-        response -> response
-      end
-
-    corp_data = extract_corporation_data(actual_corp_response)
+    # corp_response is already unwrapped from {:ok, _}
+    corp_data = extract_corporation_data(corp_response)
 
     Logger.info("Got corporation data: #{inspect(Map.take(corp_data, ["name", "alliance_id"]))}")
 
@@ -463,15 +449,9 @@ defmodule EveDmv.Users.User do
 
     case EsiRequestClient.get_request(path) do
       {:ok, response} ->
-        # Handle potential double-wrapping from the request client
-        actual_response =
-          case response do
-            {:ok, inner_response} -> inner_response
-            response -> response
-          end
-
+        # response is already unwrapped from {:ok, _}
         body =
-          case actual_response do
+          case response do
             %{body: body} -> body
             other -> other
           end
