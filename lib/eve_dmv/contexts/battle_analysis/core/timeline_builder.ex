@@ -661,12 +661,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.TimelineBuilder do
 
       type_id ->
         # Check if it's a structure (category_id 65 for structures)
-        case EveDmv.Repo.one(
-               from(i in "eve_item_types",
-                 where: i.type_id == ^type_id and i.category_id == 65,
-                 select: i.type_id
-               )
-             ) do
+        query =
+          from(i in "eve_item_types",
+            where: i.type_id == ^type_id and i.category_id == 65,
+            select: i.type_id
+          )
+
+        case query |> EveDmv.Repo.one() do
           nil -> false
           _ -> true
         end

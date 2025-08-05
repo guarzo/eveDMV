@@ -141,57 +141,46 @@ defmodule EveDmv.ErrorHandler do
 
             {:error, final_error}
 
-          {:fallback, value} ->
-            {:ok, value}
-
           {:propagate, new_error} ->
             {:error, new_error}
 
+          {:fallback, value} ->
+            {:ok, value}
+
           :ignore ->
-            Logger.warning("Ignored error in #{__MODULE__}: #{error_with_context.message}")
             {:ok, nil}
         end
       end
 
       # Default error handling - can be overridden
       def handle_error(error, context) do
-        case {error.code, ErrorCodes.category(error.code)} do
-          # Retryable errors
-          {code, _} when code in [:timeout, :rate_limit_exceeded, :circuit_breaker_open] ->
-            delay = ErrorCodes.retry_delay(code)
-            {:retry, delay}
+        category = ErrorCodes.category(error.code)
 
-          # Database connection issues
-          {:database_connection_error, _} ->
-            {:retry, 1000}
-
-          # External service issues
-          {_, :external_service} when error.code in [:esi_timeout, :janice_timeout] ->
-            {:retry, 2000}
-
-          # Not found errors - usually not retryable
-          {_, :not_found} ->
-            {:propagate, error}
-
-          # Validation errors - not retryable
-          {_, :validation} ->
-            {:propagate, error}
-
-          # Security errors - not retryable
-          {_, :security} ->
-            {:propagate, error}
-
-          # System errors - may be retryable
-          {_, :system} ->
+        case category do
+          :external_service ->
             if ErrorCodes.retryable?(error.code) do
-              {:retry, 1000}
+              delay = ErrorCodes.retry_delay(error.code)
+              {:retry, delay}
             else
               {:propagate, error}
             end
 
-          # Unknown errors - propagate
-          _ ->
+          :database ->
+            if ErrorCodes.retryable?(error.code) do
+              delay = ErrorCodes.retry_delay(error.code)
+              {:retry, delay}
+            else
+              {:propagate, error}
+            end
+
+          :application ->
+            # Application errors are typically not retryable
             {:propagate, error}
+
+          :unknown ->
+            # Unknown errors are always retryable (as per ErrorCodes.retryable?/1)
+            delay = ErrorCodes.retry_delay(error.code)
+            {:retry, delay}
         end
       end
 
@@ -219,10 +208,10 @@ defmodule EveDmv.ErrorHandler do
         ]
 
         case severity do
-          :low -> Logger.info(log_message, log_metadata)
-          :medium -> Logger.warning(log_message, log_metadata)
-          :high -> Logger.error(log_message, log_metadata)
+          :info -> Logger.info(log_message, log_metadata)
+          :warning -> Logger.warning(log_message, log_metadata)
           :critical -> Logger.critical(log_message, log_metadata)
+          _ -> Logger.warning(log_message, log_metadata)
         end
       end
 

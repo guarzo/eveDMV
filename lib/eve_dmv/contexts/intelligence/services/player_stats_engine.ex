@@ -19,21 +19,6 @@ defmodule EveDmv.Contexts.Intelligence.Services.PlayerStatsEngine do
 
   require Logger
 
-  @doc """
-  Calculate player statistics for all active characters (bulk operation).
-  """
-  def calculate_player_stats(opts \\ [])
-
-  def calculate_player_stats(opts) when is_list(opts) do
-    Logger.info("Bulk player statistics calculation not yet implemented")
-    Logger.debug("Options: #{inspect(opts)}")
-    :ok
-  end
-
-  def calculate_player_stats(character_id) when is_integer(character_id) do
-    calculate_player_statistics(character_id, 90)
-  end
-
   @type player_stats :: %{
           character_id: integer(),
           analysis_period_days: integer(),
@@ -104,6 +89,21 @@ defmodule EveDmv.Contexts.Intelligence.Services.PlayerStatsEngine do
           assessment_confidence: map(),
           assessment_timestamp: DateTime.t()
         }
+
+  @doc """
+  Calculate player statistics for all active characters (bulk operation).
+  """
+  def calculate_player_stats(opts \\ [])
+
+  def calculate_player_stats(opts) when is_list(opts) do
+    Logger.info("Bulk player statistics calculation not yet implemented")
+    Logger.debug("Options: #{inspect(opts)}")
+    :ok
+  end
+
+  def calculate_player_stats(character_id) when is_integer(character_id) do
+    calculate_player_statistics(character_id, 90)
+  end
 
   @doc """
   Calculate comprehensive player statistics.

@@ -189,14 +189,15 @@ defmodule EveDmv.Shared.Intelligence.Collector do
     killmails =
       system_ids
       |> Enum.flat_map(fn system_id ->
-        case Api.read!(KillmailRaw,
-               filter: [
-                 solar_system_id: system_id,
-                 occurred_at: [greater_than: since]
-               ],
-               limit: 100
-             ) do
-          {:ok, kills} -> kills
+        try do
+          Api.read!(KillmailRaw,
+            filter: [
+              solar_system_id: system_id,
+              occurred_at: [greater_than: since]
+            ],
+            limit: 100
+          )
+        rescue
           _ -> []
         end
       end)

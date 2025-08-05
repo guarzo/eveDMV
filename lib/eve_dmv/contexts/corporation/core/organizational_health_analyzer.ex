@@ -950,7 +950,12 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   end
 
   defp calculate_leadership_health(leadership_data) do
-    safe_leadership_data = leadership_data || %{}
+    safe_leadership_data =
+      case leadership_data do
+        data when is_map(data) -> data
+        _ -> %{}
+      end
+
     depth = Map.get(safe_leadership_data, :leadership_depth, %{})
     activity = Map.get(safe_leadership_data, :leadership_activity, %{})
 
@@ -973,7 +978,12 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   end
 
   defp calculate_retention_health(risk_data) do
-    safe_risk_data = risk_data || %{}
+    safe_risk_data =
+      case risk_data do
+        data when is_map(data) -> data
+        _ -> %{}
+      end
+
     retention_score = Map.get(safe_risk_data, :retention_score, %{})
     base_score = Map.get(retention_score, :score, 0)
 
@@ -981,7 +991,12 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   end
 
   defp calculate_participation_health(participation_data) do
-    safe_participation_data = participation_data || %{}
+    safe_participation_data =
+      case participation_data do
+        data when is_map(data) -> data
+        _ -> %{}
+      end
+
     summary = Map.get(safe_participation_data, :participation_summary, %{})
 
     participation_rate = Map.get(summary, :participation_rate, 0)
@@ -1044,7 +1059,11 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   defp maybe_add_leadership_issue(issues, _leadership_health), do: issues
 
   defp maybe_add_stability_issue(issues, stability) do
-    safe_stability = stability || %{}
+    safe_stability =
+      case stability do
+        data when is_map(data) -> data
+        _ -> %{}
+      end
 
     if Map.get(safe_stability, :stability_assessment) in [:unstable, :moderately_stable] do
       ["Structural stability concerns" | issues]
@@ -1054,7 +1073,11 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   end
 
   defp maybe_add_succession_issue(issues, succession) do
-    safe_succession = succession || %{}
+    safe_succession =
+      case succession do
+        data when is_map(data) -> data
+        _ -> %{}
+      end
 
     if Map.get(safe_succession, :succession_health) in [:poor_succession, :limited_succession] do
       ["Leadership succession planning inadequate" | issues]
@@ -1064,7 +1087,12 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   end
 
   defp generate_health_recommendations(health_metrics, _leadership_data, stability_data) do
-    safe_stability_data = stability_data || %{}
+    safe_stability_data =
+      case stability_data do
+        data when is_map(data) -> data
+        _ -> %{}
+      end
+
     stability = Map.get(safe_stability_data, :structural_stability, %{})
     core_ratio = Map.get(stability, :core_member_ratio, 0)
 

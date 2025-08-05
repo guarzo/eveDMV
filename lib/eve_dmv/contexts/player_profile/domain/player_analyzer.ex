@@ -199,6 +199,9 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
         archetype = classify_archetype(analysis)
         {:reply, {:ok, archetype}, state}
 
+      {:error, %EveDmv.Error{} = error} ->
+        {:reply, {:error, error}, state}
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -230,6 +233,9 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
 
         {:reply, {:ok, analysis}, new_state}
 
+      {:error, %EveDmv.Error{} = error} ->
+        {:reply, {:error, error}, state}
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -251,6 +257,9 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
 
       {:ok, analysis}
     else
+      {:error, %EveDmv.Error{} = error} ->
+        {:error, error}
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -268,6 +277,9 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
         }
 
         {:ok, base_data}
+
+      {:error, %EveDmv.Error{} = error} ->
+        {:error, error}
 
       {:error, reason} ->
         {:error, reason}
@@ -366,6 +378,8 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
 
   defp component_key(:combat), do: :combat_statistics
   defp component_key(:ships), do: :ship_preferences
+  defp component_key(:batch_analysis), do: :batch_analysis
+  defp component_key(_), do: :unknown
 
   defp update_metrics(state, event_type, duration) do
     new_metrics =

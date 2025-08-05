@@ -422,40 +422,36 @@ defmodule EveDmv.Workers.CacheWarmingWorker do
   defp warm_characters_batch(character_ids) do
     # Batch warm character data into hot_data cache
     Enum.each(character_ids, fn character_id ->
-      case fetch_character_data(character_id) do
-        {:ok, data} -> Cache.put_character(character_id, data)
-        {:error, _} -> :ok
-      end
+      # fetch_character_data always returns {:ok, data}
+      {:ok, data} = fetch_character_data(character_id)
+      Cache.put_character(character_id, data)
     end)
   end
 
   defp warm_systems_batch(system_ids) do
     # Batch warm system data
     Enum.each(system_ids, fn system_id ->
-      case fetch_system_data(system_id) do
-        {:ok, data} -> Cache.put(:hot_data, {:system, system_id}, data)
-        {:error, _} -> :ok
-      end
+      # fetch_system_data always returns {:ok, data}
+      {:ok, data} = fetch_system_data(system_id)
+      Cache.put(:hot_data, {:system, system_id}, data)
     end)
   end
 
   defp warm_alliances_batch(alliance_ids) do
     # Batch warm alliance data
     Enum.each(alliance_ids, fn alliance_id ->
-      case fetch_alliance_data(alliance_id) do
-        {:ok, data} -> Cache.put(:hot_data, {:alliance, alliance_id}, data)
-        {:error, _} -> :ok
-      end
+      # fetch_alliance_data always returns {:ok, data}
+      {:ok, data} = fetch_alliance_data(alliance_id)
+      Cache.put(:hot_data, {:alliance, alliance_id}, data)
     end)
   end
 
   defp warm_items_batch(item_ids) do
     # Batch warm item data
     Enum.each(item_ids, fn item_id ->
-      case fetch_item_data(item_id) do
-        {:ok, data} -> Cache.put(:hot_data, {:item, item_id}, data)
-        {:error, _} -> :ok
-      end
+      # fetch_item_data always returns {:ok, data}
+      {:ok, data} = fetch_item_data(item_id)
+      Cache.put(:hot_data, {:item, item_id}, data)
     end)
   end
 

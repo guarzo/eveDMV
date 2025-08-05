@@ -529,12 +529,27 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.NotificationService do
 
   # Placeholder implementations for external integrations
 
+  @spec store_notification_in_database(map()) :: {:ok, :stored}
   defp store_notification_in_database(_notification), do: {:ok, :stored}
+
+  @spec get_user_webhook_url(integer()) :: {:ok, String.t()} | {:error, :not_configured}
   defp get_user_webhook_url(_user_id), do: {:error, :not_configured}
+
+  @spec get_user_email(integer()) :: {:ok, String.t()} | {:error, :not_configured}
   defp get_user_email(_user_id), do: {:error, :not_configured}
+
+  @spec get_user_push_subscription(integer()) :: {:ok, map()} | {:error, :not_configured}
   defp get_user_push_subscription(_user_id), do: {:error, :not_configured}
+
+  @spec get_user_discord_webhook(integer()) :: {:ok, String.t()} | {:error, :not_configured}
   defp get_user_discord_webhook(_user_id), do: {:error, :not_configured}
+
+  @spec send_notification_email(String.t(), map()) :: {:ok, :sent}
   defp send_notification_email(_email, _notification), do: {:ok, :sent}
+
+  @spec send_push_notification(map(), map()) :: {:ok, :sent}
   defp send_push_notification(_subscription, _notification), do: {:ok, :sent}
+
+  @spec send_discord_webhook(String.t(), map()) :: {:ok, :sent}
   defp send_discord_webhook(_webhook_url, _notification), do: {:ok, :sent}
 end

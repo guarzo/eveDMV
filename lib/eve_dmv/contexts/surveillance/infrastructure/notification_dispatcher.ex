@@ -400,8 +400,12 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.NotificationDispatcher do
     case reason do
       :email_service_unavailable -> true
       {:http_error, status_code} when status_code >= 500 -> true
+      # Client errors (4xx) are not retryable
+      {:http_error, _} -> false
       {:http_request_failed, _} -> true
       :timeout -> true
+      :email_not_configured -> false
+      :webhooks_not_configured -> false
       _ -> false
     end
   end

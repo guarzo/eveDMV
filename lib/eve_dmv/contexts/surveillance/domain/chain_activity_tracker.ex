@@ -72,27 +72,21 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainActivityTracker do
   def generate_activity_predictions(map_id, state) do
     timeline = get_chain_timeline(state, map_id)
 
-    case analyze_activity_patterns(timeline) do
-      {:ok, patterns} ->
-        predictions = predict_future_activity(patterns)
+    {:ok, patterns} = analyze_activity_patterns(timeline)
+    predictions = predict_future_activity(patterns)
 
-        event = %ChainActivityPrediction{
-          map_id: map_id,
-          prediction_type: :traffic,
-          predicted_activity: predictions,
-          confidence_score: calculate_prediction_confidence(patterns),
-          timestamp: DateTime.utc_now()
-        }
+    event = %ChainActivityPrediction{
+      map_id: map_id,
+      prediction_type: :traffic,
+      predicted_activity: predictions,
+      confidence_score: calculate_prediction_confidence(patterns),
+      timestamp: DateTime.utc_now()
+    }
 
-        EventBus.publish(event)
+    EventBus.publish(event)
 
-        Logger.debug("Generated activity predictions for chain #{map_id}")
-        {:ok, predictions}
-
-      {:error, reason} ->
-        Logger.error("Failed to generate predictions for chain #{map_id}: #{inspect(reason)}")
-        {:error, reason}
-    end
+    Logger.debug("Generated activity predictions for chain #{map_id}")
+    {:ok, predictions}
   end
 
   @doc """

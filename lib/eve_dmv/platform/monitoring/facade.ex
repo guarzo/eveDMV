@@ -104,6 +104,7 @@ defmodule EveDmv.Shared.Monitoring.Facade do
   @doc """
   Updates adaptive monitoring thresholds based on detection results.
   """
+  @spec update_monitoring_thresholds(map(), list(), keyword()) :: {:ok, map()} | {:error, term()}
   def update_monitoring_thresholds(monitoring_setup, recent_detections, options \\ []) do
     current_thresholds = get_current_thresholds(monitoring_setup)
 
@@ -134,15 +135,12 @@ defmodule EveDmv.Shared.Monitoring.Facade do
     current_time = Keyword.get(options, :current_time, DateTime.utc_now())
 
     case AlertManager.handle_alert_escalation(alert_manager, current_time) do
-      {:ok, escalation_result} ->
-        # Process any escalated alerts
-        escalated_alerts = Enum.filter(escalation_result.escalations, &(&1.status == :escalated))
-
+      {:ok, escalated_alerts} ->
         if Enum.empty?(escalated_alerts) do
           {:ok,
            %{
-             escalations: escalation_result.escalations,
-             updated_active_alerts: escalation_result.updated_active_alerts
+             escalations: [],
+             updated_active_alerts: alert_manager[:alert_queue] || []
            }}
         else
           Logger.warning("#{length(escalated_alerts)} alerts escalated")
@@ -154,18 +152,15 @@ defmodule EveDmv.Shared.Monitoring.Facade do
             {:ok, delivery_result} ->
               {:ok,
                %{
-                 escalations: escalation_result.escalations,
+                 escalations: escalated_alerts,
                  delivery_result: delivery_result,
-                 updated_active_alerts: escalation_result.updated_active_alerts
+                 updated_active_alerts: alert_manager[:alert_queue] || []
                }}
 
-            error ->
-              error
+            {:error, reason} ->
+              {:error, reason}
           end
         end
-
-      error ->
-        error
     end
   end
 

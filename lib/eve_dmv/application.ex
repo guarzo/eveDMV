@@ -194,7 +194,7 @@ defmodule EveDmv.Application do
         EveDmv.Historical.ImportPipeline,
         EveDmv.Historical.ImportProgressMonitor,
         # Performance monitoring dashboard (Sprint 15A)
-        EveDmv.Monitoring.PerformanceDashboard
+        EveDmv.Platform.Monitoring.PerformanceDashboard
       ]
     else
       []

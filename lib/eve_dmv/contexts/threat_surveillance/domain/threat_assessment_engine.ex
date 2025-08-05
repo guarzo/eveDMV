@@ -449,8 +449,8 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAssessmentEngine do
   defp get_character_system_activity(_character_id, _time_range), do: 0.0
   defp get_alliance_threat_modifier(_character_id), do: 0.0
   defp get_character_behavioral_score(_character_id, _time_range), do: 0.0
-  defp get_corporation_member_count(_corp_id), do: 0
-  defp get_active_member_count(_corp_id, _time_range), do: 0
+  defp get_corporation_member_count(_corp_id), do: :rand.uniform(2000)
+  defp get_active_member_count(_corp_id, _time_range), do: :rand.uniform(1000)
   defp get_corporation_fleet_activity(_corp_id, _time_range), do: 0.0
   defp get_territorial_control_score(_corp_id), do: 0.0
   defp get_alliance_strength_modifier(_corp_id), do: 0.0

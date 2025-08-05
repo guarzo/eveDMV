@@ -130,10 +130,6 @@ defmodule EveDmv.Eve.StaticDataLoader.FileManager do
           Logger.info("Cleared static data cache")
           :ok
 
-        {:error, reason, _file} ->
-          Logger.error("Failed to clear cache: #{inspect(reason)}")
-          {:error, reason}
-
         {:error, reason} ->
           Logger.error("Failed to clear cache: #{inspect(reason)}")
           {:error, reason}

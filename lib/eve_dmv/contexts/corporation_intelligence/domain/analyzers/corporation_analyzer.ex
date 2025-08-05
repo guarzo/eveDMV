@@ -74,7 +74,14 @@ defmodule EveDmv.Intelligence.Analyzers.CorporationAnalyzer do
   Identifies patterns in member behavior, shared operations,
   and coordination metrics.
   """
-  @spec analyze_member_correlations(list()) :: member_correlations()
+  @spec analyze_member_correlations(list()) :: %{
+          shared_operations: %{shared_kills: non_neg_integer(), common_systems: list()},
+          loss_distribution: %{
+            total_losses: non_neg_integer(),
+            high_value_losses: non_neg_integer()
+          },
+          activity_correlation: %{correlation_score: float()}
+        }
   def analyze_member_correlations(members) when is_list(members) do
     %{
       shared_operations: analyze_shared_operations(members),
@@ -119,7 +126,11 @@ defmodule EveDmv.Intelligence.Analyzers.CorporationAnalyzer do
 
   Identifies coordination levels and operational patterns.
   """
-  @spec analyze_coordination(list()) :: coordination_analysis()
+  @spec analyze_coordination(list()) :: %{
+          coordination_score: float(),
+          fleet_participation: %{participation_rate: float()},
+          operational_synergy: %{synergy_score: float()}
+        }
   def analyze_coordination(members) when is_list(members) do
     %{
       coordination_score: calculate_coordination_score(members),

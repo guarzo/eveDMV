@@ -280,7 +280,13 @@ defmodule EveDmv.Platform.PubSub.NotificationHub do
   @doc """
   Create an alert notification.
   """
-  @spec alert(String.t(), String.t(), map()) :: notification()
+  @spec alert(binary(), binary(), map()) :: %{
+          type: :alert,
+          title: binary(),
+          message: binary(),
+          data: map(),
+          priority: :high
+        }
   def alert(title, message, data \\ %{}) do
     %{
       type: :alert,
@@ -294,7 +300,13 @@ defmodule EveDmv.Platform.PubSub.NotificationHub do
   @doc """
   Create an info notification.
   """
-  @spec info(String.t(), String.t(), map()) :: notification()
+  @spec info(binary(), binary(), map()) :: %{
+          type: :info,
+          title: binary(),
+          message: binary(),
+          data: map(),
+          priority: :normal
+        }
   def info(title, message, data \\ %{}) do
     %{
       type: :info,
@@ -308,7 +320,13 @@ defmodule EveDmv.Platform.PubSub.NotificationHub do
   @doc """
   Create a warning notification.
   """
-  @spec warning(String.t(), String.t(), map()) :: notification()
+  @spec warning(binary(), binary(), map()) :: %{
+          type: :warning,
+          title: binary(),
+          message: binary(),
+          data: map(),
+          priority: :medium
+        }
   def warning(title, message, data \\ %{}) do
     %{
       type: :warning,

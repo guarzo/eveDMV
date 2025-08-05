@@ -80,7 +80,7 @@ defmodule EveDmv.Users.TokenRefreshService do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_stats, _from, state) do
     stats = %{
       refreshes_performed: state.refreshes_performed,

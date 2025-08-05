@@ -84,60 +84,58 @@ defmodule EveDmvWeb.ProfileLive do
   end
 
   defp export_user_data(user) do
-    try do
-      # Gather all user data for export
-      character_data = %{
-        character_id: user.eve_character_id,
-        character_name: user.eve_character_name,
-        corporation_id: user.eve_corporation_id,
-        corporation_name: user.eve_corporation_name,
-        alliance_id: user.eve_alliance_id,
-        alliance_name: user.eve_alliance_name,
-        created_at: user.created_at,
-        last_login_at: user.last_login_at,
-        scopes: user.scopes
-      }
+    # Gather all user data for export
+    character_data = %{
+      character_id: user.eve_character_id,
+      character_name: user.eve_character_name,
+      corporation_id: user.eve_corporation_id,
+      corporation_name: user.eve_corporation_name,
+      alliance_id: user.eve_alliance_id,
+      alliance_name: user.eve_alliance_name,
+      created_at: user.created_at,
+      last_login_at: user.last_login_at,
+      scopes: user.scopes
+    }
 
-      # Get character intelligence data
-      intelligence_data =
-        case CharacterIntelligence.get_character_intelligence_report(user.eve_character_id) do
-          {:ok, data} -> data
-          _ -> %{error: "Intelligence data not available"}
-        end
+    # Get character intelligence data
+    intelligence_data =
+      case CharacterIntelligence.get_character_intelligence_report(user.eve_character_id) do
+        {:ok, data} -> data
+        _ -> %{error: "Intelligence data not available"}
+      end
 
-      # Get threat scoring data
-      threat_data =
-        case ThreatScoringCoordinator.calculate_threat_score(user.eve_character_id) do
-          {:ok, threat_score} -> threat_score
-          {:error, _error} -> %{error: "Threat scoring data not available"}
-        end
+    # Get threat scoring data
+    threat_data =
+      case ThreatScoringCoordinator.calculate_threat_score(user.eve_character_id) do
+        {:ok, threat_score} -> threat_score
+        {:error, _error} -> %{error: "Threat scoring data not available"}
+      end
 
-      # Get activity patterns
-      activity_data =
-        case CharacterAnalyzer.get_activity_patterns(user.eve_character_id) do
-          {:ok, patterns} -> patterns
-          _ -> %{error: "Activity patterns not available"}
-        end
+    # Get activity patterns
+    activity_data =
+      case CharacterAnalyzer.get_activity_patterns(user.eve_character_id) do
+        {:ok, patterns} -> patterns
+        _ -> %{error: "Activity patterns not available"}
+      end
 
-      export_data = %{
-        character: character_data,
-        intelligence: intelligence_data,
-        threat_scoring: threat_data,
-        activity_patterns: activity_data,
-        export_timestamp: DateTime.utc_now(),
-        format_version: "1.0"
-      }
+    export_data = %{
+      character: character_data,
+      intelligence: intelligence_data,
+      threat_scoring: threat_data,
+      activity_patterns: activity_data,
+      export_timestamp: DateTime.utc_now(),
+      format_version: "1.0"
+    }
 
-      # In a real implementation, this would:
-      # 1. Generate a downloadable file (JSON/CSV)
-      # 2. Store it temporarily with a secure token
-      # 3. Send an email with download link
-      # 4. Schedule cleanup of the temporary file
+    # In a real implementation, this would:
+    # 1. Generate a downloadable file (JSON/CSV)
+    # 2. Store it temporarily with a secure token
+    # 3. Send an email with download link
+    # 4. Schedule cleanup of the temporary file
 
-      {:ok, export_data}
-    rescue
-      _ -> {:error, "Failed to compile export data"}
-    end
+    {:ok, export_data}
+  rescue
+    _ -> {:error, "Failed to compile export data"}
   end
 
   # defp format_isk(amount) when amount >= 1_000_000_000 do

@@ -67,6 +67,26 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
           }
         ]
 
+  @type weapon_preferences :: [
+          %{
+            weapon_type_id: integer(),
+            weapon_name: String.t(),
+            usage_count: non_neg_integer(),
+            percentage: float()
+          }
+        ]
+
+  @type external_groups :: [
+          %{
+            corporation_id: integer(),
+            corporation_name: String.t(),
+            alliance_id: integer() | nil,
+            alliance_name: String.t() | nil,
+            last_seen: DateTime.t(),
+            engagement_count: non_neg_integer()
+          }
+        ]
+
   @type intelligence_summary :: %{
           threat_level: atom(),
           activity_level: atom(),
@@ -198,7 +218,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   @doc """
   Get weapon preferences for a character.
   """
-  @spec get_weapon_preferences(integer(), DateTime.t()) :: [map()]
+  @spec get_weapon_preferences(integer(), DateTime.t()) :: weapon_preferences()
   def get_weapon_preferences(character_id, since_date) do
     cache_key =
       "weapon_preferences:#{character_id}:#{Date.to_iso8601(DateTime.to_date(since_date))}"
@@ -224,7 +244,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   @doc """
   Get external groups (corps/alliances) the character has flown with.
   """
-  @spec get_external_groups(integer(), DateTime.t()) :: [map()]
+  @spec get_external_groups(integer(), DateTime.t()) :: external_groups()
   def get_external_groups(character_id, since_date) do
     cache_key = "external_groups:#{character_id}:#{Date.to_iso8601(DateTime.to_date(since_date))}"
 

@@ -109,9 +109,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
   # Private Functions
 
   defp get_battle_data(battle_id) do
-    case Ash.read_one(Battle, filter: [id: battle_id], domain: BattleApi) do
-      {:ok, battle} when not is_nil(battle) -> {:ok, battle}
-      {:ok, nil} -> {:error, :battle_not_found}
+    import Ash.Query, except: [limit: 2]
+
+    query =
+      Battle
+      |> filter(id == ^battle_id)
+      |> Ash.Query.limit(1)
+    case BattleApi.read(query) do
+      {:ok, [battle]} -> {:ok, battle}
+      {:ok, []} -> {:error, :battle_not_found}
       {:error, %Ash.Error.Query.NotFound{}} -> {:error, :battle_not_found}
       {:error, error} -> {:error, error}
     end
@@ -259,12 +265,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
 
       system_id ->
         # Query system security from eve_systems table
-        case Repo.one(
-               from(s in "eve_systems",
-                 where: s.system_id == ^system_id,
-                 select: s.security_status
-               )
-             ) do
+        query =
+          from(s in "eve_systems",
+            where: s.system_id == ^system_id,
+            select: s.security_status
+          )
+
+        case query |> Repo.one() do
           nil -> 0.5
           security when is_float(security) -> security
           _ -> 0.5
@@ -319,18 +326,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
       capital_ratio > 0.3 -> :capital_brawl
       has_structure_kill?(killmails) -> :structure_bash
       gate_camp?(killmails) -> :gate_camp
-      bombing_run?(killmails) -> :bombing_run
       true -> :fleet_fight
     end
-  end
-
-  defp count_pod_kills(killmails) do
-    Enum.count(killmails, fn km ->
-      ship_type_id = get_in(km.victim, ["ship_type_id"])
-      # Capsule type ID
-      # TODO: Remove unused function - dialyzer detected this is never called
-      ship_type_id == 670
-    end)
   end
 
   defp count_solo_kills(killmails) do
@@ -407,116 +404,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
             avg_interval < 180
         )
   end
-
-  defp bombing_run?(killmails) do
-    if length(killmails) < 5,
-      do: false,
-      else:
-        (
-          # Bombing runs typically involve stealth bombers and simultaneous kills
-          # Check for multiple kills at the same time with bomber attackers
-          bomber_count =
-            killmails
-            |> Enum.flat_map(fn km ->
-              (km.raw_data["attackers"] || [])
-              |> Enum.map(&get_in(&1, ["ship_type_id"]))
-              |> Enum.filter(&(&1 != nil))
-            end)
-            |> Enum.count(fn ship_type_id ->
-              # Check if ship is stealth bomber using group name
-              case Repo.one(
-                     from(i in "eve_item_types",
-                       where: i.type_id == ^ship_type_id and i.group_name == "Stealth Bomber",
-                       select: i.type_id
-                     )
-                   ) do
-                nil -> false
-                _ -> true
-              end
-            end)
-
-          # Check for simultaneous kills (within 30 seconds)
-          kill_times = Enum.map(killmails, & &1.killmail_time)
-          min_time = Enum.min(kill_times)
-          max_time = Enum.max(kill_times)
-          time_span = DateTimeUtils.diff(max_time, min_time, :second)
-
-          # TODO: Remove unused function - dialyzer detected this is never called
-          # Bombing run if multiple bombers and kills within short timespan
-          bomber_count >= 3 and time_span <= 30
-        )
-  end
-
-  defp calculate_isk_efficiency(killmails, _participants) do
-    # Calculate ISK efficiency by comparing losses vs kills for each side
-    total_isk = calculate_total_isk(killmails)
-
-    if total_isk == 0 do
-      0.0
-    else
-      # Group killmails by alliance/corporation to determine sides
-      alliance_losses =
-        killmails
-        |> Enum.group_by(&get_in(&1.victim, ["alliance_id"]))
-        |> Enum.map(fn {alliance_id, kms} ->
-          {alliance_id, Enum.sum(Enum.map(kms, &(get_in(&1.zkb, ["totalValue"]) || 0.0)))}
-        end)
-        |> Enum.sort_by(&elem(&1, 1), :desc)
-
-      case alliance_losses do
-        [{_alliance1, losses1}, {_alliance2, losses2} | _] when losses1 > 0 and losses2 > 0 ->
-          # Calculate efficiency as (enemy losses / own losses) * 100
-          max(losses1, losses2) / (losses1 + losses2) * 100
-
-        _ ->
-          # TODO: Remove unused function - dialyzer detected this is never called
-          # Default neutral efficiency if can't determine clear sides
-          50.0
-      end
-    end
-  end
-
-  defp calculate_kd_ratio(participants) do
-    # Calculate overall kill/death ratio for the battle
-    case participants do
-      %{all_participants: all_chars} when is_list(all_chars) ->
-        total_participants = length(all_chars)
-
-        if total_participants > 0 do
-          # K/D ratio approximation: total kills / unique participants
-          # This gives average kills per participant
-          total_participants / max(total_participants, 1)
-        else
-          1.0
-          # TODO: Remove unused function - dialyzer detected this is never called
-        end
-
-      _ ->
-        1.0
-    end
-  end
-
-  defp calculate_average_on_kill(killmails) do
-    # TODO: Remove unused function - dialyzer detected this is never called
-    total_attackers =
-      Enum.reduce(killmails, 0, fn km, acc ->
-        acc + length(km.attackers || [])
-      end)
-
-    if length(killmails) > 0, do: total_attackers / length(killmails), else: 0
-  end
-
-  # TODO: Remove unused function - dialyzer detected this is never called
-
-  defp generate_headline(analysis) do
-    scale = analysis.summary.scale
-    type = analysis.summary.type
-    location = analysis.summary.location.system_id
-
-    "#{scale} #{type} in system #{location}"
-  end
-
-  # TODO: Remove unused function - dialyzer detected this is never called
 
   defp extract_key_stats(analysis) do
     [
@@ -664,5 +551,65 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
 
   defp format_isk(amount) do
     "#{round(amount)} ISK"
+  end
+
+  defp count_pod_kills(killmails) do
+    Enum.count(killmails, fn km ->
+      ship_type_id = get_in(km.victim, ["ship_type_id"])
+      # Capsules/Pods have type IDs 670 and 33_328
+      ship_type_id in [670, 33_328]
+    end)
+  end
+
+  defp calculate_isk_efficiency(killmails, _participants) do
+    # ISK efficiency = (ISK destroyed / (ISK destroyed + ISK lost)) * 100
+    # For simplicity, calculate based on total ISK in battle
+    total_isk = calculate_total_isk(killmails)
+
+    if total_isk > 0 do
+      # In a real implementation, we'd separate destroyed vs lost
+      # For now, return a placeholder efficiency
+      50.0
+    else
+      0.0
+    end
+  end
+
+  defp calculate_kd_ratio(participants) do
+    # Calculate kill/death ratio across all participants
+    total_kills = Map.get(participants, :total_kills, 0)
+    total_losses = Map.get(participants, :total_losses, 0)
+
+    if total_losses > 0 do
+      Float.round(total_kills / total_losses, 2)
+    else
+      total_kills
+    end
+  end
+
+  defp calculate_average_on_kill(killmails) do
+    # Calculate average number of attackers per kill
+    total_attackers = Enum.reduce(killmails, 0, fn km, acc ->
+      acc + length(km.attackers || [])
+    end)
+
+    if length(killmails) > 0 do
+      Float.round(total_attackers / length(killmails), 1)
+    else
+      0.0
+    end
+  end
+
+  defp generate_headline(analysis) do
+    # Generate a headline based on battle analysis
+    case analysis do
+      %{summary: %{scale: scale}, metrics: %{destruction: %{total_isk: isk}}} ->
+        scale_text = scale |> to_string() |> String.replace("_", " ") |> String.capitalize()
+        isk_text = format_isk(isk)
+        "#{scale_text} engagement - #{isk_text} destroyed"
+
+      _ ->
+        "Battle analysis complete"
+    end
   end
 end

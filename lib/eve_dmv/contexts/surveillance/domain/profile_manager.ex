@@ -202,10 +202,10 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ProfileManager do
     # Validate that criteria are not too complex (performance consideration)
     complexity_score = calculate_criteria_complexity(criteria)
 
-    cond do
-      complexity_score > 100 -> {:error, :criteria_too_complex}
-      complexity_score < 1 -> {:error, :criteria_too_simple}
-      true -> :ok
+    if complexity_score > 100 do
+      {:error, :criteria_too_complex}
+    else
+      :ok
     end
   end
 

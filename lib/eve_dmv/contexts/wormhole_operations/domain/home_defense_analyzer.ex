@@ -312,7 +312,12 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
   @doc """
   Get defense metrics for monitoring.
   """
-  @spec get_metrics() :: map()
+  @spec get_metrics() :: %{
+          active_defenses: non_neg_integer(),
+          coverage_percentage: float(),
+          response_time_avg: non_neg_integer(),
+          threat_detection_rate: float()
+        }
   def get_metrics do
     %{
       active_defenses: 0,
@@ -977,9 +982,19 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
 
   defp create_realistic_entry_points(topology, recent_activity) do
     # Create realistic entry points based on system class and activity
-    safe_topology = if is_map(topology), do: topology, else: %{}
+    safe_topology =
+      case topology do
+        t when is_map(t) -> t
+        _ -> %{}
+      end
+
     system_class = Map.get(safe_topology, :system_class, :c2)
-    activity_count = if is_list(recent_activity), do: length(recent_activity), else: 0
+
+    activity_count =
+      case recent_activity do
+        a when is_list(a) -> length(a)
+        _ -> 0
+      end
 
     # Determine realistic number of connections based on system class
     connection_count =
@@ -1051,6 +1066,10 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.HomeDefenseAnalyzer do
         :c3 -> :medium
         :c2 -> :low
         :c1 -> :low
+        # Highsec connections are low threat
+        :high -> :low
+        # Lowsec connections are medium threat
+        :low -> :medium
         _ -> :medium
       end
 

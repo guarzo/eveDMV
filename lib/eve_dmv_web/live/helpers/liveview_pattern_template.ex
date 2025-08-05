@@ -248,6 +248,12 @@ defmodule EveDmvWeb.LiveHelpers.LiveViewPatternTemplate do
         |> put_flash(:error, "Battle not found")
         |> push_navigate(to: "/battles")
 
+      {:error, :database_error} ->
+        handle_api_error(socket, "Database error occurred")
+
+      {:error, :timeline_reconstruction_failed} ->
+        handle_api_error(socket, "Failed to reconstruct battle timeline")
+
       _ ->
         handle_api_error(socket, "Service unavailable")
     end

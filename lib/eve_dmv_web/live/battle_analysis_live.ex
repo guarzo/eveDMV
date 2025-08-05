@@ -640,16 +640,6 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     |> String.capitalize()
   end
 
-  # These clauses are unreachable according to dialyzer but kept for defensive programming
-  defp format_error_reason(reason) when is_atom(reason) do
-    reason
-    |> Atom.to_string()
-    |> String.replace("_", " ")
-    |> String.capitalize()
-  end
-
-  defp format_error_reason(_reason), do: "An error occurred"
-
   # View helpers (these should be in the template but included here for completeness)
 
   def format_timestamp(nil), do: ""

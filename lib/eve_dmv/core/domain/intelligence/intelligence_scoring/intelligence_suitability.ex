@@ -263,7 +263,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
     opsec_score =
       case intel_components.operational_security do
         %{overall_opsec_score: score} -> score
-        score when is_number(score) -> score
+        value when is_number(value) -> value
         _ -> 0.5
       end
 
@@ -284,7 +284,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
     opsec_score =
       case intel_components.operational_security do
         %{overall_opsec_score: score} -> score
-        score when is_number(score) -> score
+        value when is_number(value) -> value
         _ -> 0.5
       end
 
@@ -305,7 +305,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
     opsec_score =
       case intel_components.operational_security do
         %{overall_opsec_score: score} -> score
-        score when is_number(score) -> score
+        value when is_number(value) -> value
         _ -> 0.5
       end
 
@@ -319,7 +319,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
     opsec_score =
       case intel_components.operational_security do
         %{overall_opsec_score: score} -> score
-        score when is_number(score) -> score
+        value when is_number(value) -> value
         _ -> 0.5
       end
 
@@ -333,7 +333,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
     opsec_score =
       case intel_components.operational_security do
         %{overall_opsec_score: score} -> score
-        score when is_number(score) -> score
+        value when is_number(value) -> value
         _ -> 0.5
       end
 
@@ -370,7 +370,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
     opsec_score =
       case intel_components.operational_security do
         %{overall_opsec_score: score} -> score
-        score when is_number(score) -> score
+        value when is_number(value) -> value
         _ -> 0.5
       end
 
@@ -437,7 +437,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
     opsec_score =
       case intel_components.operational_security do
         %{overall_opsec_score: score} -> score
-        score when is_number(score) -> score
+        value when is_number(value) -> value
         _ -> 0.5
       end
 

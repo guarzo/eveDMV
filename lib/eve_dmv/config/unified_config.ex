@@ -38,14 +38,6 @@ defmodule EveDmv.Config.UnifiedConfig do
 
   require Logger
 
-  # Type definitions
-  @type config_summary_map :: %{
-          categories: [atom()],
-          env_variables_set: non_neg_integer(),
-          runtime_environment: atom(),
-          validation_status: {:ok, :valid} | {:error, [String.t()]}
-        }
-
   # Configuration schema with defaults and validation
   @config_schema %{
     database: %{
@@ -162,6 +154,12 @@ defmodule EveDmv.Config.UnifiedConfig do
 
   @type config_key :: atom() | [atom()]
   @type config_value :: term()
+  @type config_summary_map :: %{
+          categories: [atom()],
+          env_variables_set: non_neg_integer(),
+          runtime_environment: atom(),
+          validation_status: {:ok, :valid} | {:error, [String.t()]}
+        }
 
   @doc """
   Get configuration value with optional default.

@@ -9,7 +9,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Infrastructure.VettingRepository do
   @doc """
   Store a vetting report for a character.
   """
-  @spec store_vetting_report(map()) :: {:ok, map()} | {:error, term()}
+  @spec store_vetting_report(map()) :: {:ok, map()}
   def store_vetting_report(vetting_report) do
     # In real implementation would:
     # - Validate report structure

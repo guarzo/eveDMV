@@ -189,10 +189,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ta
     # Identify engagement decision
     engagement_decision = identify_engagement_decision(timeline, participants)
 
-    decisions =
-      if engagement_decision,
-        do: [engagement_decision | initial_decisions],
-        else: initial_decisions
+    decisions = [engagement_decision | initial_decisions]
 
     # Identify target priority decisions
     target_decisions = identify_target_priority_decisions(timeline)

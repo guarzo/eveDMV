@@ -217,17 +217,12 @@ defmodule EveDmv.Workers.AnalysisWorkerPool do
 
   @impl GenServer
   def handle_call({:scale_pool, target_size}, _from, state) do
-    case scale_workers(state, target_size) do
-      {:ok, new_state} ->
-        Logger.info(
-          "Scaled analysis worker pool from #{state.pool_size} to #{target_size} workers"
-        )
+    {:ok, new_state} = scale_workers(state, target_size)
+    Logger.info(
+      "Scaled analysis worker pool from #{state.pool_size} to #{target_size} workers"
+    )
 
-        {:reply, :ok, new_state}
-
-      {:error, reason} ->
-        {:reply, {:error, reason}, state}
-    end
+    {:reply, :ok, new_state}
   end
 
   @impl GenServer
@@ -560,34 +555,22 @@ defmodule EveDmv.Workers.AnalysisWorkerPool do
       # Scale up if queue is building and we're not at max capacity
       queue_length > 2 and state.pool_size < @max_pool_size ->
         target_size = min(@max_pool_size, state.pool_size + 1)
+        {:ok, new_state} = scale_workers(state, target_size)
+        Logger.info(
+          "Auto-scaled analysis worker pool up to #{target_size} workers (queue: #{queue_length})"
+        )
 
-        case scale_workers(state, target_size) do
-          {:ok, new_state} ->
-            Logger.info(
-              "Auto-scaled analysis worker pool up to #{target_size} workers (queue: #{queue_length})"
-            )
-
-            new_state
-
-          {:error, _} ->
-            state
-        end
+        new_state
 
       # Scale down if too many idle workers and above minimum
       idle_workers > 2 and state.pool_size > @min_pool_size ->
         target_size = max(@min_pool_size, state.pool_size - 1)
+        {:ok, new_state} = scale_workers(state, target_size)
+        Logger.info(
+          "Auto-scaled analysis worker pool down to #{target_size} workers (idle: #{idle_workers})"
+        )
 
-        case scale_workers(state, target_size) do
-          {:ok, new_state} ->
-            Logger.info(
-              "Auto-scaled analysis worker pool down to #{target_size} workers (idle: #{idle_workers})"
-            )
-
-            new_state
-
-          {:error, _} ->
-            state
-        end
+        new_state
 
       true ->
         state

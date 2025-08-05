@@ -48,7 +48,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
       {:ok, %ThreatAssessment{threat_level: :moderate, threat_score: 52.1, ...}}
   """
   @spec assess_threat(integer(), entity_type(), assessment_options()) ::
-          {:ok, threat_assessment()} | {:error, atom()}
+          {:ok, threat_assessment()}
   def assess_threat(entity_id, entity_type, options \\ []) do
     Logger.info("Starting threat assessment for #{entity_type} #{entity_id}")
 
@@ -69,7 +69,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
   Gets cached threat assessment if available, otherwise performs new assessment.
   """
   @spec get_threat_assessment(integer(), entity_type(), assessment_options()) ::
-          {:ok, threat_assessment()} | {:error, atom()}
+          {:ok, threat_assessment()}
   def get_threat_assessment(entity_id, entity_type, options \\ []) do
     _cache_key = {:threat_assessment, entity_type, entity_id}
 
@@ -106,7 +106,22 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
   @doc """
   Gets aggregated threat statistics for monitoring and dashboard purposes.
   """
-  @spec get_threat_statistics() :: {:ok, map()}
+  @spec get_threat_statistics() ::
+          {:ok,
+           %{
+             total_assessments: non_neg_integer(),
+             threat_level_distribution: %{
+               minimal: non_neg_integer(),
+               low: non_neg_integer(),
+               moderate: non_neg_integer(),
+               high: non_neg_integer(),
+               critical: non_neg_integer(),
+               extreme: non_neg_integer()
+             },
+             cache_hit_rate: float(),
+             average_assessment_time_ms: float(),
+             last_updated: DateTime.t()
+           }}
   def get_threat_statistics do
     # Placeholder for threat statistics
     stats = %{
@@ -166,7 +181,15 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
   @doc """
   Gets threat assessment cache statistics for monitoring purposes.
   """
-  @spec get_cache_statistics() :: {:ok, map()}
+  @spec get_cache_statistics() ::
+          {:ok,
+           %{
+             cache_size: non_neg_integer(),
+             hit_rate: float(),
+             miss_rate: float(),
+             evictions: non_neg_integer(),
+             uptime_hours: non_neg_integer()
+           }}
   def get_cache_statistics do
     # Placeholder for cache statistics
     stats = %{

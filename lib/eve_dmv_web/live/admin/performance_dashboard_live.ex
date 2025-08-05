@@ -284,35 +284,27 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
   end
 
   defp get_metrics_summary_safe(time_range) do
-    try do
-      PerformanceTracker.get_metrics_summary(time_range)
-    rescue
-      _ -> %{total_queries: 0, avg_duration: 0, error_rate: 0}
-    end
+    PerformanceTracker.get_metrics_summary(time_range)
+  rescue
+    _ -> %{total_queries: 0, avg_duration: 0, error_rate: 0}
   end
 
   defp get_slow_queries_safe(threshold_ms) do
-    try do
-      PerformanceTracker.get_slow_queries(threshold_ms)
-    rescue
-      _ -> []
-    end
+    PerformanceTracker.get_slow_queries(threshold_ms)
+  rescue
+    _ -> []
   end
 
   defp get_bottlenecks_safe do
-    try do
-      PerformanceTracker.get_bottlenecks()
-    rescue
-      _ -> []
-    end
+    PerformanceTracker.get_bottlenecks()
+  rescue
+    _ -> []
   end
 
   defp get_cache_stats_safe do
-    try do
-      QueryCache.get_stats()
-    rescue
-      _ -> %{hit_rate: 0, entries: 0, memory_usage: 0}
-    end
+    QueryCache.get_stats()
+  rescue
+    _ -> %{hit_rate: 0, entries: 0, memory_usage: 0}
   end
 
   defp truncate_string(str, max_length) do

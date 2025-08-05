@@ -53,10 +53,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService do
 
       {:error, :not_found} ->
         # Try to load from database
-        # TODO: Replace with proper battle repository access
-        # UnifiedRepository doesn't support :combat domain
-        # For now, return not found
-        {:error, :not_found}
+        fetch_battle_from_db(battle_id)
     end
   end
 
@@ -399,11 +396,23 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService do
     length(participants)
   end
 
-  defp fetch_battle_from_db(_battle_id) do
-    # Try to fetch battle from database
-    # TODO: Replace with proper battle repository access
-    # For now, return not found
-    {:error, :not_found}
+  defp fetch_battle_from_db(battle_id) do
+    # Try to fetch battle from database using Ash API
+    alias EveDmv.Contexts.BattleAnalysis.Api
+    alias EveDmv.Contexts.Combat.Resources.Battle
+    import Ash.Query, except: [limit: 2]
+
+    query =
+      Battle
+      |> new()
+      |> filter(battle_id == ^battle_id)
+      |> Ash.Query.limit(1)
+
+    case Api.read(query) do
+      {:ok, [battle]} -> {:ok, battle}
+      {:ok, []} -> {:error, :not_found}
+      {:error, _reason} -> {:error, :not_found}
+    end
   end
 
   # NOTE: Removed placeholder implementations for fetch_battle_killmails and fetch_battle_participants

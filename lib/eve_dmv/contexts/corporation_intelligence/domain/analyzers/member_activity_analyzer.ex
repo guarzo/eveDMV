@@ -7,10 +7,15 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
   for specific analysis tasks.
   """
 
+  import Ash.Query
+
   alias Ecto.Adapters.SQL
+  alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Eve.EsiCorporationClient
   alias EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.CorporationAnalyzer
   alias EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.EngagementAnalyzer
+  alias EveDmv.Users.User
 
   require Logger
 
@@ -413,8 +418,12 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
         # Fallback to database lookup if no ESI auth available
         fetch_members_from_database(corporation_id)
 
-      result ->
-        result
+      {:ok, auth_token} ->
+        # Use ESI API to fetch current members
+        fetch_members_via_esi(corporation_id, auth_token)
+
+      {:error, reason} ->
+        {:error, reason}
     end
   rescue
     error ->
@@ -424,6 +433,103 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
 
   def fetch_corporation_members(_invalid_id) do
     {:error, :invalid_corporation_id}
+  end
+
+  defp fetch_members_via_esi(corporation_id, auth_token) do
+    Logger.debug("Fetching members for corporation #{corporation_id} via ESI API")
+
+    case EsiCorporationClient.get_corporation_members(corporation_id, auth_token) do
+      {:ok, member_ids} when is_list(member_ids) ->
+        # ESI returns list of character IDs, transform to expected format
+        members =
+          Enum.map(member_ids, fn character_id ->
+            %{
+              character_id: character_id,
+              # Name resolution would be done separately
+              character_name: nil,
+              source: :esi_api
+            }
+          end)
+
+        {:ok, members}
+
+      {:error, reason} ->
+        Logger.warning(
+          "ESI API call failed for corporation #{corporation_id}: #{inspect(reason)}"
+        )
+
+        # Fallback to database on ESI error
+        fetch_members_from_database(corporation_id)
+    end
+  rescue
+    error ->
+      Logger.error("ESI API call failed: #{inspect(error)}")
+      # Fallback to database on exception
+      fetch_members_from_database(corporation_id)
+  end
+
+  defp fetch_members_from_database(corporation_id) do
+    # Fallback: get members from participant/killmail data
+    query = """
+    SELECT DISTINCT p.character_id, p.character_name
+    FROM participants p
+    WHERE p.corporation_id = $1
+      AND p.character_id IS NOT NULL
+      AND p.killmail_time >= NOW() - INTERVAL '90 days'
+    ORDER BY p.character_name
+    LIMIT 1000
+    """
+
+    case SQL.query(EveDmv.Repo, query, [corporation_id]) do
+      {:ok, %{rows: rows}} ->
+        members =
+          Enum.map(rows, fn [char_id, char_name] ->
+            %{
+              character_id: char_id,
+              character_name: char_name,
+              source: :database_fallback
+            }
+          end)
+
+        {:ok, members}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  rescue
+    error ->
+      Logger.error("Database fallback failed: #{inspect(error)}")
+      {:error, :database_fallback_failed}
+  end
+
+  defp get_corporation_auth_token(corporation_id) do
+    # Find a user from this corporation with a valid access token and required scopes
+    query =
+      User
+      |> new()
+      |> filter(eve_corporation_id == ^corporation_id)
+      |> filter(not is_nil(access_token))
+      |> filter(token_expires_at > ^DateTime.utc_now())
+      |> filter(contains(scopes, "esi-corporations.read_corporation_membership.v1"))
+      |> select([:access_token])
+      |> limit(1)
+
+    case Api.read(query) do
+      {:ok, [user]} ->
+        {:ok, user.access_token}
+
+      {:ok, []} ->
+        Logger.debug("No valid auth token found for corporation #{corporation_id}")
+        {:error, :no_auth_token}
+
+      {:error, reason} ->
+        Logger.warning("Failed to query for corporation auth token: #{inspect(reason)}")
+        {:error, :query_failed}
+    end
+  rescue
+    error ->
+      Logger.error("Error getting corporation auth token: #{inspect(error)}")
+      {:error, :token_lookup_failed}
   end
 
   @doc """
@@ -1056,48 +1162,5 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
       {last, _} when last > 14 -> :medium_risk
       _ -> :low_risk
     end
-  end
-
-  # Helper functions for ESI integration
-
-  defp get_corporation_auth_token(corporation_id) do
-    # In a real implementation, this would check for valid auth tokens
-    # For now, return an error to fallback to database lookup
-    _ = corporation_id
-    {:error, :no_auth_token}
-  end
-
-  defp fetch_members_from_database(corporation_id) do
-    # Fallback: get members from participant/killmail data
-    query = """
-    SELECT DISTINCT p.character_id, p.character_name
-    FROM participants p
-    WHERE p.corporation_id = $1
-      AND p.character_id IS NOT NULL
-      AND p.killmail_time >= NOW() - INTERVAL '90 days'
-    ORDER BY p.character_name
-    LIMIT 1000
-    """
-
-    case SQL.query(EveDmv.Repo, query, [corporation_id]) do
-      {:ok, %{rows: rows}} ->
-        members =
-          Enum.map(rows, fn [char_id, char_name] ->
-            %{
-              character_id: char_id,
-              character_name: char_name,
-              source: :database_fallback
-            }
-          end)
-
-        {:ok, members}
-
-      {:error, reason} ->
-        {:error, reason}
-    end
-  rescue
-    error ->
-      Logger.error("Database fallback failed: #{inspect(error)}")
-      {:error, :database_fallback_failed}
   end
 end

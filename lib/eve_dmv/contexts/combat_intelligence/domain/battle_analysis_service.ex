@@ -140,7 +140,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
           {:ok, killmails} ->
             with {:ok, timeline} <- BattleTimelineBuilder.construct_battle_timeline(killmails),
                  {:ok, participants} <-
-                   ParticipantExtractor.extract_battle_participants(killmails),
+                   {:ok, ParticipantExtractor.extract_battle_participants(killmails)},
                  {:ok, enhanced_participants} <- enhance_participant_analysis(participants),
                  {:ok, fleet_analysis} <-
                    FleetCompositionAnalyzer.analyze_composition(killmails),
@@ -215,6 +215,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
               {:reply, {:ok, analysis}, new_state}
             else
               {:error, _reason} = error -> {:reply, error, state}
+              other -> {:reply, {:error, {:analysis_failed, other}}, state}
             end
         end
 

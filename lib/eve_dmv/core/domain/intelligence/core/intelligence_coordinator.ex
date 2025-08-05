@@ -122,15 +122,8 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
 
   def analyze_character_basic(character_id) do
     # Use direct analyzer to avoid circular dependency
-    case CharacterAnalyzer.analyze_character(character_id) do
-      {:ok, analysis} ->
-        {:ok, analysis}
-
-      {:error, reason} ->
-        Logger.warning("Basic character analysis failed, using placeholder: #{inspect(reason)}")
-
-        {:ok, get_placeholder_basic_analysis(character_id)}
-    end
+    analysis = CharacterAnalyzer.analyze_character(character_id)
+    {:ok, analysis}
   rescue
     error ->
       Logger.error("Error in basic character analysis: #{inspect(error)}")

@@ -51,7 +51,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.AnalysisCache do
 
   # GenServer implementation
 
-  @impl true
+  @impl GenServer
   def init(_opts) do
     state = %{
       cache: %{},
@@ -72,7 +72,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.AnalysisCache do
     {:ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:store, corporation_id, analysis_type, data}, _from, state) do
     cache_key = generate_cache_key(corporation_id, analysis_type)
     timestamp = System.monotonic_time(:millisecond)
@@ -91,7 +91,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.AnalysisCache do
     {:reply, :ok, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:get, corporation_id, analysis_type}, _from, state) do
     cache_key = generate_cache_key(corporation_id, analysis_type)
     current_time = System.monotonic_time(:millisecond)
@@ -124,7 +124,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.AnalysisCache do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:clear_corporation, corporation_id}, _from, state) do
     # Remove all cache entries for this corporation
     new_cache =
@@ -142,7 +142,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.AnalysisCache do
     {:reply, {:ok, removed_count}, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:clear_all, _from, state) do
     cache_size = map_size(state.cache)
     new_stats = %{state.stats | evictions: state.stats.evictions + cache_size}
@@ -152,7 +152,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.AnalysisCache do
     {:reply, {:ok, cache_size}, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_stats, _from, state) do
     stats = %{
       state.stats
@@ -163,7 +163,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.AnalysisCache do
     {:reply, stats, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:cleanup, state) do
     # Remove expired entries
     current_time = System.monotonic_time(:millisecond)

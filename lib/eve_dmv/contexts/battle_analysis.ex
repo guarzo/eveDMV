@@ -134,14 +134,12 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   """
   @spec reconstruct_battle_timeline(battle()) :: {:ok, battle_timeline()} | {:error, atom()}
   def reconstruct_battle_timeline(battle) do
-    try do
-      timeline = BattleTimelineService.reconstruct_timeline(battle)
-      {:ok, timeline}
-    rescue
-      error ->
-        Logger.error("Failed to reconstruct battle timeline: #{inspect(error)}")
-        {:error, :timeline_reconstruction_failed}
-    end
+    timeline = BattleTimelineService.reconstruct_timeline(battle)
+    {:ok, timeline}
+  rescue
+    error ->
+      Logger.error("Failed to reconstruct battle timeline: #{inspect(error)}")
+      {:error, :reconstruction_failed}
   end
 
   @doc """
@@ -152,12 +150,10 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   @spec analyze_battle_sequence([battle()]) ::
           {:ok, battle_sequence_analysis()} | {:error, atom()}
   def analyze_battle_sequence(battles) when is_list(battles) do
-    try do
-      analysis = BattleTimelineService.analyze_battle_sequence(battles)
-      {:ok, analysis}
-    rescue
-      _ -> {:error, :battle_sequence_analysis_failed}
-    end
+    analysis = BattleTimelineService.analyze_battle_sequence(battles)
+    {:ok, analysis}
+  rescue
+    _ -> {:error, :battle_sequence_analysis_failed}
   end
 
   @doc """
@@ -168,47 +164,40 @@ defmodule EveDmv.Contexts.BattleAnalysis do
     # Parse battle_id to extract system and time
     case parse_battle_id(battle_id) do
       {:ok, {system_id, start_time}} ->
-        # Detect battles in a narrow time window around this battle
-        # 1 hour window
-        end_time = DateTimeUtils.add(start_time, 3600, :second)
-
-        case detect_battles_in_system(system_id, start_time, end_time) do
-          {:ok, battles} ->
-            Logger.debug("Found #{length(battles)} battles in system #{system_id}")
-            Logger.debug("Looking for battle_id: #{battle_id}")
-            Logger.debug("Available battle IDs: #{inspect(Enum.map(battles, & &1.battle_id))}")
-            Logger.debug("Battle search window: #{inspect(start_time)} to #{inspect(end_time)}")
-
-            # Log battle details for debugging
-            Enum.each(battles, fn b ->
-              Logger.debug(
-                "Battle #{b.battle_id}: #{length(b.killmails)} kills, " <>
-                  "time range: #{inspect(b.metadata.start_time)} - #{inspect(b.metadata.end_time)}"
-              )
-            end)
-
-            case find_battle_by_id(battles, battle_id, system_id) do
-              {:ok, battle} ->
-                case reconstruct_battle_timeline(battle) do
-                  {:ok, timeline} ->
-                    {:ok, Map.put(battle, :timeline, timeline)}
-
-                  {:error, _reason} = error ->
-                    error
-                end
-
-              {:error, :battle_not_found} = error ->
-                error
-            end
-
-          error ->
-            error
-        end
+        process_battle_timeline(battle_id, system_id, start_time)
 
       _ ->
         # Fallback to old method if parsing fails
         get_battle_with_timeline_legacy(battle_id)
     end
+  end
+
+  defp process_battle_timeline(battle_id, system_id, start_time) do
+    # Detect battles in a narrow time window around this battle
+    # 1 hour window
+    end_time = DateTimeUtils.add(start_time, 3600, :second)
+
+    with {:ok, battles} <- detect_battles_in_system(system_id, start_time, end_time),
+         _ <- log_battle_detection(battles, battle_id, system_id, start_time, end_time),
+         {:ok, battle} <- find_battle_by_id(battles, battle_id, system_id),
+         {:ok, timeline} <- reconstruct_battle_timeline(battle) do
+      {:ok, Map.put(battle, :timeline, timeline)}
+    end
+  end
+
+  defp log_battle_detection(battles, battle_id, system_id, start_time, end_time) do
+    Logger.debug("Found #{length(battles)} battles in system #{system_id}")
+    Logger.debug("Looking for battle_id: #{battle_id}")
+    Logger.debug("Available battle IDs: #{inspect(Enum.map(battles, & &1.battle_id))}")
+    Logger.debug("Battle search window: #{inspect(start_time)} to #{inspect(end_time)}")
+
+    # Log battle details for debugging
+    Enum.each(battles, fn b ->
+      Logger.debug(
+        "Battle #{b.battle_id}: #{length(b.killmails)} kills, " <>
+          "time range: #{inspect(b.metadata.start_time)} - #{inspect(b.metadata.end_time)}"
+      )
+    end)
   end
 
   defp parse_battle_id(battle_id) do
@@ -298,8 +287,8 @@ defmodule EveDmv.Contexts.BattleAnalysis do
               {:ok, timeline} ->
                 {:ok, Map.put(battle, :timeline, timeline)}
 
-              {:error, _reason} = error ->
-                error
+              {:error, reason} ->
+                {:error, reason}
             end
         end
 

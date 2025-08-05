@@ -350,9 +350,15 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AdvancedFilterEngine do
         killmail_data["solar_system_id"]
 
       "killmail_time" ->
-        case DateTime.from_iso8601(killmail_data["killmail_time"]) do
-          {:ok, datetime} -> datetime
-          {:error, _} -> nil
+        case killmail_data["killmail_time"] do
+          nil ->
+            nil
+
+          time_string ->
+            case DateTime.from_iso8601(time_string) do
+              {:ok, datetime, _offset} -> datetime
+              {:error, _} -> nil
+            end
         end
 
       "total_value" ->

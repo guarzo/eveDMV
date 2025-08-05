@@ -99,8 +99,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
 
   Combines doctrine analysis, member threat assessments, and activity metrics.
   """
-  @spec get_corporation_intelligence_report(integer()) ::
-          {:ok, corporation_intelligence_report()} | {:error, atom()}
+  @spec get_corporation_intelligence_report(integer()) :: {:ok, corporation_intelligence_report()}
   def get_corporation_intelligence_report(corporation_id) do
     # Get basic info first
     corp_info =

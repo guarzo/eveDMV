@@ -89,7 +89,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
 
   # GenServer callbacks
 
-  @impl true
+  @impl GenServer
   def init(_opts) do
     # Create ETS tables
     :ets.new(@matches_table, [:named_table, :set, :public, read_concurrency: true])
@@ -114,7 +114,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
     {:ok, %{}}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:put, profile_id, killmail_id, match_data}, _from, state) do
     cache_key = build_cache_key(profile_id, killmail_id)
 
@@ -134,7 +134,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
     {:reply, :ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:get, profile_id, killmail_id}, _from, state) do
     cache_key = build_cache_key(profile_id, killmail_id)
 
@@ -157,7 +157,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:get_cached_matches, profile_id, opts}, _from, state) do
     limit = Keyword.get(opts, :limit, 100)
 
@@ -175,7 +175,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
     {:reply, {:ok, matches}, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call({:invalidate_profile, profile_id}, _from, state) do
     # Delete all entries for this profile
     pattern = {:"$1", %{profile_id: profile_id}}
@@ -192,7 +192,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
     {:reply, :ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_stats, _from, state) do
     case :ets.lookup(@stats_table, :cache_stats) do
       [{:cache_stats, stats}] ->
@@ -210,7 +210,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
     end
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:clear_all, _from, state) do
     :ets.delete_all_objects(@matches_table)
 
@@ -230,7 +230,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
     {:reply, :ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:cleanup, state) do
     perform_cleanup()
     schedule_cleanup()

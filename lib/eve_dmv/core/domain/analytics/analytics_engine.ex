@@ -6,8 +6,8 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
   code organization and maintainability.
   """
 
-  alias EveDmv.Contexts.Intelligence.Services.PlayerStatsEngine
   alias EveDmv.Analytics.ShipStatsEngine
+  alias EveDmv.Contexts.Intelligence.Services.PlayerStatsEngine
 
   @doc """
   Calculate and update player statistics for all active characters.
@@ -33,10 +33,7 @@ defmodule EveDmv.Analytics.AnalyticsEngine do
   def calculate_all_stats(opts \\ []) do
     case calculate_player_stats(opts) do
       :ok ->
-        case calculate_ship_stats(opts) do
-          :ok -> :ok
-          {:error, reason} -> {:error, reason}
-        end
+        calculate_ship_stats(opts)
 
       {:error, reason} ->
         {:error, reason}

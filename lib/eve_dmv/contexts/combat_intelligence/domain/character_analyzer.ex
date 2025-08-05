@@ -24,11 +24,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
 
   @type character_intelligence :: %{
           character_id: integer(),
-          threat_score: float(),
-          combat_patterns: map(),
-          behavioral_analysis: map(),
-          affiliations: map(),
-          analysis_timestamp: DateTime.t()
+          threat_level: atom(),
+          combat_effectiveness: float(),
+          analyzed_at: DateTime.t()
         }
 
   @type bulk_analysis_results :: %{
@@ -44,7 +42,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   @doc """
   Analyze a character's combat intelligence.
   """
-  @spec analyze(integer(), map()) :: {:ok, character_intelligence()} | {:error, Ash.Error.t()}
+  @spec analyze(integer(), map()) :: {:ok, character_intelligence()} | {:error, atom()}
   def analyze(character_id, context) do
     perform_analysis(character_id, context)
   end
@@ -52,7 +50,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   @doc """
   Get cached intelligence for a character.
   """
-  @spec get_intelligence(integer()) :: {:ok, character_intelligence()} | {:error, Ash.Error.t()}
+  @spec get_intelligence(integer()) :: {:ok, character_intelligence()} | {:error, atom()}
   def get_intelligence(character_id) do
     case AnalysisCache.get_character_analysis(character_id) do
       {:ok, analysis} -> {:ok, analysis}
@@ -63,7 +61,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   @doc """
   Refresh analysis for a character.
   """
-  @spec refresh_analysis(integer()) :: {:ok, character_intelligence()} | {:error, Ash.Error.t()}
+  @spec refresh_analysis(integer()) :: {:ok, character_intelligence()} | {:error, atom()}
   def refresh_analysis(character_id) do
     AnalysisCache.invalidate_character(character_id)
     analyze(character_id, %{force_refresh: true})
@@ -73,7 +71,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   Bulk analyze multiple characters.
   """
   @spec bulk_analyze([integer()], map()) ::
-          {:ok, bulk_analysis_results()} | {:error, Ash.Error.t()}
+          {:ok, bulk_analysis_results()} | {:error, atom()}
   def bulk_analyze(character_ids, context) do
     results =
       Enum.map(character_ids, fn id ->

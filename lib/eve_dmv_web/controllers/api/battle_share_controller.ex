@@ -40,16 +40,30 @@ defmodule EveDmvWeb.Api.BattleShareController do
           }
         })
 
-      {:error, reason} ->
-        {status, message} =
-          case reason do
-            msg when is_binary(msg) -> {:unprocessable_entity, msg}
-            _ -> {:internal_server_error, "Failed to create battle report"}
-          end
-
+      {:error, :battle_not_found} ->
         conn
-        |> put_status(status)
-        |> json(%{error: %{message: message}})
+        |> put_status(:not_found)
+        |> json(%{error: %{message: "Battle not found"}})
+
+      {:error, :database_error} ->
+        conn
+        |> put_status(:internal_server_error)
+        |> json(%{error: %{message: "Database error occurred"}})
+
+      {:error, :timeline_reconstruction_failed} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{error: %{message: "Failed to reconstruct battle timeline"}})
+
+      {:error, reason} when is_binary(reason) ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{error: %{message: reason}})
+
+      {:error, _reason} ->
+        conn
+        |> put_status(:internal_server_error)
+        |> json(%{error: %{message: "Failed to create battle report"}})
     end
   end
 end

@@ -50,7 +50,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.KillmailEventProcessor do
 
   `:ok` on successful processing, `{:error, reason}` on failure
   """
-  @spec process_killmail_for_surveillance(KillmailReceived.t()) :: :ok | {:error, term()}
+  @spec process_killmail_for_surveillance(KillmailReceived.t()) :: :ok
   def process_killmail_for_surveillance(%KillmailReceived{} = killmail_event) do
     GenServer.cast(__MODULE__, {:process_killmail, killmail_event})
     :ok
@@ -325,25 +325,23 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.KillmailEventProcessor do
   end
 
   defp cache_processing_results(killmail_event, match_results) do
-    cache_key = "surveillance:processing:#{killmail_event.killmail_id}"
+    # Cache each profile match individually
+    Enum.each(match_results, fn {profile_id, match_result} ->
+      if match_result.matched do
+        MatchCache.put(profile_id, killmail_event.killmail_id, %{
+          matched: true,
+          matched_at: DateTime.utc_now(),
+          match_details: match_result
+        })
+      end
+    end)
 
-    cache_data = %{
-      killmail_id: killmail_event.killmail_id,
-      processed_at: DateTime.utc_now(),
-      match_count: count_matches(match_results),
-      match_results: match_results
-    }
+    Logger.debug(
+      "Cached processing results for killmail #{killmail_event.killmail_id} with #{count_matches(match_results)} matches",
+      killmail_id: killmail_event.killmail_id
+    )
 
-    case MatchCache.put(cache_key, cache_data, ttl: :timer.hours(1)) do
-      :ok ->
-        Logger.debug("Cached processing results", killmail_id: killmail_event.killmail_id)
-
-      {:error, reason} ->
-        Logger.warning("Failed to cache processing results",
-          killmail_id: killmail_event.killmail_id,
-          reason: reason
-        )
-    end
+    :ok
   end
 
   defp update_processing_statistics(state, processing_result, _processing_time_ms) do

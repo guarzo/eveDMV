@@ -17,8 +17,8 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
   import Ecto.Query
 
   alias EveDmv.Api
-  alias EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer
   alias EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine
+  alias EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Killmails.KillmailRaw
@@ -109,8 +109,11 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
 
   defp get_current_threat_assessment(entity_id, entity_type) do
     case ThreatAssessmentEngine.assess_threat(entity_id, entity_type) do
-      {:ok, assessment} -> {:threat_assessment, assessment}
-      {:error, reason} -> {:threat_assessment, %{error: reason}}
+      {:ok, assessment} ->
+        {:threat_assessment, assessment}
+
+      {:error, reason} ->
+        {:threat_assessment, %{error: reason, threat_level: :unknown, confidence: 0.0}}
     end
   end
 

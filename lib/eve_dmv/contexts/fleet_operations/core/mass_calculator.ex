@@ -426,21 +426,21 @@ defmodule EveDmv.Contexts.FleetOperations.Core.MassCalculator do
     # Representative ship type IDs for each class
     case ship_class do
       # Abaddon
-      :battleships -> 24692
+      :battleships -> 24_692
       # Oracle
-      :battlecruisers -> 24483
+      :battlecruisers -> 24_483
       # Zealot
-      :cruisers -> 11176
+      :cruisers -> 11_176
       # Coercer
-      :destroyers -> 16242
+      :destroyers -> 16_242
       # Retribution
-      :assault_frigates -> 11365
+      :assault_frigates -> 11_365
       # Crusader
-      :interceptors -> 11184
+      :interceptors -> 11_184
       # Guardian
-      :support -> 11987
+      :support -> 11_987
       # Default to Abaddon
-      _ -> 24692
+      _ -> 24_692
     end
   end
 

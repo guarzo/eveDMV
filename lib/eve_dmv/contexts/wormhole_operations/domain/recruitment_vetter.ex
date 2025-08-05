@@ -230,10 +230,6 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
       {:error, :character_data_unavailable} = error ->
         Logger.warning("Character data unavailable for #{character_id}")
         error
-
-      {:error, reason} = error ->
-        Logger.warning("Vetting failed for character #{character_id}: #{inspect(reason)}")
-        error
     end
   end
 

@@ -341,12 +341,60 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
 
   # Private helper functions - stub implementations to satisfy dialyzer
 
+  @spec get_character_info(integer()) :: {:ok, map()} | {:error, atom()}
   defp get_character_info(character_id) do
-    {:ok, %{character_id: character_id, name: "Unknown Character"}}
+    # Look up character from character stats view
+    alias EveDmv.Database.CharacterRepository
+
+    case CharacterRepository.get_character_stats(character_id) do
+      {:ok, stats} when not is_nil(stats) ->
+        {:ok, %{
+          character_id: character_id,
+          name: Map.get(stats, :character_name, "Unknown Character"),
+          corporation_id: Map.get(stats, :corporation_id),
+          alliance_id: Map.get(stats, :alliance_id)
+        }}
+      {:error, :not_found} ->
+        {:error, :character_not_found}
+      {:error, _reason} ->
+        {:error, :lookup_failed}
+      _ ->
+        {:error, :character_not_found}
+    end
   end
 
+  @spec get_combat_statistics(integer()) :: {:ok, map()} | {:error, atom()}
   defp get_combat_statistics(character_id) do
-    {:ok, %{character_id: character_id, kills: 0, losses: 0, efficiency: 0.0}}
+    # Look up combat stats from character stats view
+    alias EveDmv.Database.CharacterRepository
+
+    case CharacterRepository.get_character_stats(character_id) do
+      {:ok, stats} when not is_nil(stats) ->
+        kills = Map.get(stats, :kills, 0)
+        losses = Map.get(stats, :losses, 0)
+
+        efficiency =
+          if kills + losses > 0 do
+            kills / (kills + losses) * 100.0
+          else
+            0.0
+          end
+
+        {:ok, %{
+          character_id: character_id,
+          kills: kills,
+          losses: losses,
+          efficiency: efficiency,
+          isk_killed: Map.get(stats, :isk_killed, 0.0),
+          isk_lost: Map.get(stats, :isk_lost, 0.0)
+        }}
+      {:error, :not_found} ->
+        {:error, :stats_not_found}
+      {:error, _reason} ->
+        {:error, :lookup_failed}
+      _ ->
+        {:error, :stats_not_found}
+    end
   end
 
   defp generate_intelligence_summary(threat_analysis, behavioral_patterns) do

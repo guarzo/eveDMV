@@ -1,7 +1,5 @@
 # credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 defmodule EveDmv.Eve.EsiRequestClient do
-  alias HTTPoison
-
   @moduledoc """
   Enhanced HTTP request utilities for EVE ESI API with reliability features.
 
@@ -14,6 +12,7 @@ defmodule EveDmv.Eve.EsiRequestClient do
   alias EveDmv.Eve.ErrorClassifier
   alias EveDmv.Eve.FallbackStrategy
   alias EveDmv.Eve.ReliabilityConfig
+  alias HTTPoison
   alias Jason
   require Logger
 
@@ -196,8 +195,17 @@ defmodule EveDmv.Eve.EsiRequestClient do
         _ -> :failure
       end
 
-    # TODO: Implement proper telemetry tracking
-    _ = {service, duration, status}
+    # Emit telemetry event for monitoring
+    :telemetry.execute(
+      [:eve_dmv, :esi, :request],
+      %{duration: duration},
+      %{
+        service: service,
+        path: path,
+        status: status,
+        method: :get
+      }
+    )
 
     result
   end

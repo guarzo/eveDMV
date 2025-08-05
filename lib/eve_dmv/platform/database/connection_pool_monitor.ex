@@ -38,7 +38,7 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
 
   # Server callbacks
 
-  @impl true
+  @impl GenServer
   def init(opts) do
     state = %{
       enabled: Keyword.get(opts, :enabled, true),
@@ -57,32 +57,32 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
     {:ok, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_pool_stats, _from, state) do
     stats = collect_pool_stats()
     {:reply, stats, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_call(:get_pool_health, _from, state) do
     health = analyze_pool_health(state)
     {:reply, health, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_cast(:force_check, state) do
     perform_check(state)
     {:noreply, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:check_pool, state) do
     new_state = perform_check(state)
     schedule_check(state.check_interval)
     {:noreply, new_state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(_, state), do: {:noreply, state}
 
   # Private functions

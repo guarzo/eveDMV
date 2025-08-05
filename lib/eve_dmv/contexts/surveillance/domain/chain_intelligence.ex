@@ -44,7 +44,13 @@ defmodule EveDmv.Shared.ChainIntelligence do
   Analyze chain threat level.
   Now implemented directly in this unified module.
   """
-  @spec analyze_chain_threat(map()) :: {:ok, map()}
+  @spec analyze_chain_threat(map()) ::
+          {:ok,
+           %{
+             chain_id: String.t(),
+             analysis_available: boolean(),
+             note: String.t()
+           }}
   def analyze_chain_threat(chain_data) do
     # Return minimal analysis - real implementation would analyze killmail data
     threat_indicators = %{
@@ -60,7 +66,16 @@ defmodule EveDmv.Shared.ChainIntelligence do
   Track chain activity.
   Now implemented directly in this unified module.
   """
-  @spec track_activity(map()) :: {:ok, map()}
+  @spec track_activity(map()) ::
+          {:ok,
+           %{
+             activity_id: String.t(),
+             timestamp: DateTime.t(),
+             activity_type: atom(),
+             system_id: any(),
+             pilot_count: non_neg_integer(),
+             recorded: boolean()
+           }}
   def track_activity(activity_data) do
     # Track and record activity
     tracked_activity = %{

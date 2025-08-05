@@ -46,7 +46,7 @@ defmodule EveDmv.Database.MaterializedViewRefresher do
     {:noreply, state}
   end
 
-  @impl true
+  @impl GenServer
   def handle_info(:refresh_views, state) do
     Logger.info("🔄 Starting materialized view refresh...")
     start_time = System.monotonic_time(:millisecond)

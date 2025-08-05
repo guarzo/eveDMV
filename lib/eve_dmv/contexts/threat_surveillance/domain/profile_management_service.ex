@@ -230,7 +230,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ProfileManagementService do
       {:ok, profile} ->
         {:ok, profile}
 
-      :miss ->
+      {:error, :not_found} ->
         case Api.get(Profile, profile_id) do
           {:ok, profile} ->
             UnifiedCache.put(:surveillance, cache_key, profile, @cache_ttl)
@@ -401,7 +401,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ProfileManagementService do
       {:ok, profiles} ->
         {:ok, profiles}
 
-      :miss ->
+      {:error, :not_found} ->
         query =
           Profile
           |> Ash.Query.filter(user_id == ^user_id)
@@ -451,9 +451,6 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ProfileManagementService do
 
       {:error, reason} ->
         {:error, reason}
-
-      _ ->
-        {:error, :profile_not_found}
     end
   end
 

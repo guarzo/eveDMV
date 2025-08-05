@@ -43,7 +43,12 @@ defmodule EveDmv.Core.Domain.Analytics.PatternAnalysis do
         timezone_estimate: -5
       }
   """
-  @spec analyze_activity_rhythm(map()) :: map()
+  @spec analyze_activity_rhythm(map()) :: %{
+          pattern_type: :regular | :sporadic | :bursty | :inactive,
+          peak_hours: list(non_neg_integer()),
+          consistency_score: float(),
+          timezone_estimate: integer()
+        }
   def analyze_activity_rhythm(stats) do
     killmails = Map.get(stats, :killmails, [])
 
@@ -85,7 +90,12 @@ defmodule EveDmv.Core.Domain.Analytics.PatternAnalysis do
   - `:risk_tolerance` - Float 0.0-1.0 indicating willingness to take risks
   - `:fleet_preference` - Float 0.0-1.0, closer to 1.0 means prefers fleets
   """
-  @spec analyze_engagement_patterns(map()) :: map()
+  @spec analyze_engagement_patterns(map()) :: %{
+          engagement_style: :aggressive | :cautious | :opportunistic | :support | :unknown,
+          aggression_level: float(),
+          risk_tolerance: float(),
+          fleet_preference: float()
+        }
   def analyze_engagement_patterns(stats) do
     killmails = Map.get(stats, :killmails, [])
     losses = Map.get(stats, :losses, [])
@@ -125,7 +135,12 @@ defmodule EveDmv.Core.Domain.Analytics.PatternAnalysis do
 
   Map containing social pattern analysis results.
   """
-  @spec analyze_social_patterns(map()) :: map()
+  @spec analyze_social_patterns(map()) :: %{
+          cooperation_level: float(),
+          loyalty_score: float(),
+          social_connections: non_neg_integer(),
+          group_activity_preference: float()
+        }
   def analyze_social_patterns(stats) do
     killmails = Map.get(stats, :killmails, [])
 
@@ -159,7 +174,12 @@ defmodule EveDmv.Core.Domain.Analytics.PatternAnalysis do
 
   Map containing operational pattern analysis.
   """
-  @spec analyze_operational_patterns(map()) :: map()
+  @spec analyze_operational_patterns(map()) :: %{
+          ship_specialization: :specialist | :focused | :generalist | :unknown,
+          tactical_patterns: list(atom()),
+          operational_range: :local | :regional | :roaming | :nomadic,
+          adaptability_score: float()
+        }
   def analyze_operational_patterns(stats) do
     killmails = Map.get(stats, :killmails, [])
 
@@ -232,7 +252,12 @@ defmodule EveDmv.Core.Domain.Analytics.PatternAnalysis do
 
   Map containing anomaly detection results.
   """
-  @spec detect_behavioral_anomalies(map()) :: map()
+  @spec detect_behavioral_anomalies(map()) :: %{
+          anomalies_detected: boolean(),
+          anomaly_types: list(atom()),
+          confidence_score: float(),
+          risk_indicators: list(map())
+        }
   def detect_behavioral_anomalies(stats) do
     killmails = Map.get(stats, :killmails, [])
 

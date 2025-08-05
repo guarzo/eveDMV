@@ -162,15 +162,8 @@ defmodule EveDmv.Intelligence.Core.CorrelationEngine do
   # Private helper functions
 
   defp get_character_analysis_data(character_id) do
-    case CharacterAnalyzer.analyze_character(character_id) do
-      {:ok, analysis} ->
-        {:ok, analysis}
-
-      {:error, _reason} ->
-        # Return placeholder data for missing analysis
-        Logger.debug("Character analysis unavailable for #{character_id}, using placeholder")
-        {:ok, get_placeholder_character_data(character_id)}
-    end
+    analysis = CharacterAnalyzer.analyze_character(character_id)
+    {:ok, analysis}
   rescue
     error ->
       # Handle GenServer not started or other runtime errors
@@ -210,7 +203,9 @@ defmodule EveDmv.Intelligence.Core.CorrelationEngine do
   catch
     :exit, _reason ->
       # Handle GenServer exit errors
-      Logger.debug("Vetting analysis service unavailable for #{character_id}, using placeholder")
+      Logger.debug(
+        "Vetting analysis service unavailable for #{character_id}, using placeholder"
+      )
 
       {:ok, get_placeholder_vetting_data(character_id)}
   end
@@ -337,10 +332,8 @@ defmodule EveDmv.Intelligence.Core.CorrelationEngine do
         risk_points
       end
 
-    case final_summary_points do
-      [] -> "Limited correlation data available"
-      points -> Enum.join(points, "; ")
-    end
+    # final_summary_points is guaranteed to be non-empty due to the logic above
+    Enum.join(final_summary_points, "; ")
   end
 
   defp calculate_confidence_score(correlations) do

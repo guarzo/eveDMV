@@ -11,12 +11,12 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
   - Threat score evolution
   """
 
+  import Ash.Query, only: [filter: 2, sort: 2, limit: 2, new: 1]
+
   alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Shared.Infrastructure.UnifiedCache
-
-  import Ash.Query, only: [filter: 2, sort: 2, limit: 2, new: 1]
 
   require Logger
 
@@ -129,7 +129,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
 
         deaths =
           Enum.count(killmails, fn km ->
-            # Count deaths where this character WAS the victim  
+            # Count deaths where this character WAS the victim
             km.victim_character_id == character_id
           end)
 
@@ -486,31 +486,27 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
   end
 
   defp detect_ship_specialization(ship_frequencies) do
-    if Enum.empty?(ship_frequencies) do
+    detect_ship_specialization_impl(ship_frequencies)
+  end
+
+  defp detect_ship_specialization_impl([]), do: :none
+  defp detect_ship_specialization_impl([nil | _]), do: :none
+
+  defp detect_ship_specialization_impl([{_top_ship, top_count} | _] = frequencies) do
+    total = frequencies |> Enum.map(&elem(&1, 1)) |> Enum.sum()
+
+    if total == 0 do
       :none
     else
-      case List.first(ship_frequencies) do
-        nil ->
-          :none
-
-        {_top_ship, top_count} ->
-          total = ship_frequencies |> Enum.map(&elem(&1, 1)) |> Enum.sum()
-
-          if total > 0 do
-            specialization_ratio = top_count / total
-
-            cond do
-              specialization_ratio > 0.7 -> :highly_specialized
-              specialization_ratio > 0.5 -> :specialized
-              specialization_ratio > 0.3 -> :moderate_variety
-              true -> :high_variety
-            end
-          else
-            :none
-          end
-      end
+      specialization_ratio = top_count / total
+      categorize_specialization(specialization_ratio)
     end
   end
+
+  defp categorize_specialization(ratio) when ratio > 0.7, do: :highly_specialized
+  defp categorize_specialization(ratio) when ratio > 0.5, do: :specialized
+  defp categorize_specialization(ratio) when ratio > 0.3, do: :moderate_variety
+  defp categorize_specialization(_ratio), do: :high_variety
 
   defp detect_recent_ship_changes(ship_usage) do
     # Look for changes in last 2 weeks vs previous period

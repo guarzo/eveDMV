@@ -134,7 +134,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
     %{
       analyzed_entities: count_analyzed_entities(),
       anomalies_detected: count_recent_anomalies(),
-      pattern_cache_hit_rate: UnifiedCache.get_hit_rate(:threat_surveillance),
+      pattern_cache_hit_rate: UnifiedCache.get_hit_rate(:surveillance),
       last_analysis: get_last_analysis_time()
     }
   end

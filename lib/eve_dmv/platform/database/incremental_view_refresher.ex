@@ -201,11 +201,7 @@ defmodule EveDmv.Database.IncrementalViewRefresher do
       {:ok, result} ->
         duration = System.monotonic_time(:millisecond) - start_time
 
-        rows =
-          case result.num_rows do
-            nil -> 0
-            count -> count
-          end
+        rows = result.num_rows
 
         update_refresh_tracking(view_name, "full", duration, rows)
 
@@ -259,11 +255,7 @@ defmodule EveDmv.Database.IncrementalViewRefresher do
 
     case SQL.query(EveDmv.Repo, sql, [cutoff_time]) do
       {:ok, result} ->
-        rows_updated =
-          case result.num_rows do
-            nil -> 0
-            count -> count
-          end
+        rows_updated = result.num_rows
 
         %{rows_updated: rows_updated}
 
@@ -292,11 +284,7 @@ defmodule EveDmv.Database.IncrementalViewRefresher do
 
     case SQL.query(EveDmv.Repo, sql) do
       {:ok, result} ->
-        rows_updated =
-          case result.num_rows do
-            nil -> 0
-            count -> count
-          end
+        rows_updated = result.num_rows
 
         %{rows_updated: rows_updated}
 
@@ -331,11 +319,7 @@ defmodule EveDmv.Database.IncrementalViewRefresher do
 
     case SQL.query(EveDmv.Repo, sql, [cutoff_time]) do
       {:ok, result} ->
-        rows_updated =
-          case result.num_rows do
-            nil -> 0
-            count -> count
-          end
+        rows_updated = result.num_rows
 
         %{rows_updated: rows_updated}
 

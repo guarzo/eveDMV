@@ -104,11 +104,92 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.HistoricalService do
 
   defp process_character_batch(character_ids) do
     # Process each character in the batch
+
     Enum.map(character_ids, fn character_id ->
-      # TODO: Implement real historical killmail fetching from zkillboard/ESI
-      Logger.debug("Historical killmail fetching not implemented for character #{character_id}")
-      {:ok, character_id, 0}
+      # Fetch recent killmails from zkillboard for this character
+      case fetch_character_killmails_from_zkillboard(character_id) do
+        {:ok, killmails} ->
+          # Process and store the killmails
+          processed_count = process_historical_killmails(killmails, character_id)
+          {:ok, character_id, processed_count}
+
+        {:error, reason} ->
+          Logger.warning("Failed to fetch killmails for character #{character_id}: #{inspect(reason)}")
+          {:error, character_id, reason}
+      end
     end)
+  end
+
+  defp fetch_character_killmails_from_zkillboard(character_id) do
+    # Fetch recent kills from zkillboard API
+    # Limited to last 200 kills to avoid overwhelming the system
+    url = "https://zkillboard.com/api/characterID/#{character_id}/limit/200/"
+
+    case EveDmv.Http.UnifiedClient.get(url, timeout: 30_000) do
+      {:ok, %{status: 200, body: body}} ->
+        case Jason.decode(body) do
+          {:ok, killmails} when is_list(killmails) ->
+            {:ok, killmails}
+          _ ->
+            {:error, :invalid_response}
+        end
+
+      {:ok, %{status: 404}} ->
+        # No kills found for character
+        {:ok, []}
+
+      {:ok, %{status: status}} ->
+        {:error, {:http_error, status}}
+
+      {:error, reason} ->
+        {:error, {:request_failed, reason}}
+    end
+  end
+
+  defp process_historical_killmails(killmails, character_id) do
+    # Process and store the fetched killmails
+    alias EveDmv.Api
+    alias EveDmv.Killmails.KillmailRaw
+    import Ash.Query
+
+    successful_imports =
+      killmails
+      |> Enum.map(fn zkb_killmail ->
+        # Transform zkillboard format to our internal format
+        killmail_data = %{
+          killmail_id: Map.get(zkb_killmail, "killmail_id"),
+          killmail_time: Map.get(zkb_killmail, "killmail_time"),
+          solar_system_id: Map.get(zkb_killmail, "solar_system_id"),
+          victim: Map.get(zkb_killmail, "victim", %{}),
+          attackers: Map.get(zkb_killmail, "attackers", []),
+          zkb: Map.get(zkb_killmail, "zkb", %{}),
+          raw_data: zkb_killmail
+        }
+
+        # Check if killmail already exists
+        existing_query =
+          KillmailRaw
+          |> new()
+          |> filter(killmail_id == ^killmail_data.killmail_id)
+          |> Ash.Query.limit(1)
+
+        case Api.read(existing_query) do
+          {:ok, []} ->
+            # Create new killmail
+            case Api.create(KillmailRaw, killmail_data) do
+              {:ok, _} -> 1
+              {:error, _} -> 0
+            end
+
+          _ ->
+            # Killmail already exists, skip
+            0
+        end
+      end)
+      |> Enum.sum()
+
+    Logger.info("Imported #{successful_imports} historical killmails for character #{character_id}")
+    successful_imports
   end
 
   # NOTE: Removed placeholder implementation of fetch_character_killmails
