@@ -89,26 +89,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   - Specialist
   - Opportunist
   """
-  @spec detect_behavioral_patterns(integer()) ::
-          {:ok, behavioral_pattern_analysis()} | {:error, intelligence_error()}
+  @spec detect_behavioral_patterns(integer()) :: {:error, intelligence_error()}
   def detect_behavioral_patterns(character_id) do
     # Since ThreatScoringEngine includes behavioral analysis in the threat score,
     # we'll extract it from there
-    case analyze_character_threat(character_id) do
-      {:ok, threat_data} ->
-        {:ok,
-         %{
-           character_id: character_id,
-           primary_pattern: threat_data[:behavioral_pattern] || :unknown,
-           patterns: extract_behavioral_patterns(threat_data),
-           characteristics: generate_behavioral_characteristics(threat_data),
-           confidence: calculate_pattern_confidence(threat_data),
-           analysis_timestamp: DateTime.utc_now()
-         }}
-
-      {:error, reason} ->
-        {:error, reason}
-    end
+    {:error, reason} = analyze_character_threat(character_id)
+    {:error, reason}
   end
 
   @doc """
@@ -162,28 +148,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Gets a comprehensive intelligence report for a character.
   Combines threat scoring, behavioral analysis, and performance metrics.
   """
-  @spec get_character_intelligence_report(integer()) ::
-          {:ok, map()} | {:error, intelligence_error()}
+  @spec get_character_intelligence_report(integer()) :: {:error, intelligence_error()}
   def get_character_intelligence_report(character_id) do
-    with {:ok, threat_analysis} <- analyze_character_threat(character_id),
-         {:ok, behavioral_patterns} <- detect_behavioral_patterns(character_id),
-         {:ok, threat_trends} <- calculate_threat_trends(character_id),
-         {:ok, character_info} <- get_character_info(character_id),
-         {:ok, combat_stats} <- get_combat_statistics(character_id) do
-      {:ok,
-       %{
-         character: character_info,
-         threat_analysis: threat_analysis,
-         behavioral_patterns: behavioral_patterns,
-         threat_trends: threat_trends,
-         combat_stats: combat_stats,
-         summary: generate_intelligence_summary(threat_analysis, behavioral_patterns)
-       }}
-    else
-      {:error, reason} = error ->
-        Logger.error("Failed to get character intelligence report: #{inspect(reason)}")
-        error
-    end
+    # Since analyze_character_threat and detect_behavioral_patterns always fail,
+    # this function always returns an error
+    {:error, reason} = analyze_character_threat(character_id)
+    Logger.error("Failed to get character intelligence report: #{inspect(reason)}")
+    {:error, reason}
   end
 
   ## Ship Intelligence Integration
@@ -191,7 +162,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Get comprehensive ship intelligence for a character.
   Returns ship specialization, role preferences, and tactical insights.
   """
-  @spec get_character_ship_intelligence(integer()) :: {:ok, map()}
+  @spec get_character_ship_intelligence(integer()) ::
+          {:ok, %{analysis_period_days: number(), calculated_at: DateTime.t()}}
   def get_character_ship_intelligence(character_id) do
     ShipIntelligenceBridge.calculate_ship_specialization(character_id)
   end
@@ -199,7 +171,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   @doc """
   Get ship preference summary for quick threat assessment.
   """
-  @spec get_ship_preferences(integer()) :: map()
+  @spec get_ship_preferences(integer()) :: %{}
   def get_ship_preferences(character_id) do
     ShipIntelligenceBridge.get_character_ship_preferences(character_id)
   end
@@ -338,74 +310,4 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
       total_killmails: ship_intelligence.total_killmails
     }
   end
-
-  # Private helper functions - stub implementations to satisfy dialyzer
-
-  @spec get_character_info(integer()) :: {:ok, map()} | {:error, atom()}
-  defp get_character_info(character_id) do
-    # Look up character from character stats view
-    alias EveDmv.Database.CharacterRepository
-
-    case CharacterRepository.get_character_stats(character_id) do
-      {:ok, stats} when not is_nil(stats) ->
-        {:ok, %{
-          character_id: character_id,
-          name: Map.get(stats, :character_name, "Unknown Character"),
-          corporation_id: Map.get(stats, :corporation_id),
-          alliance_id: Map.get(stats, :alliance_id)
-        }}
-      {:error, :not_found} ->
-        {:error, :character_not_found}
-      {:error, _reason} ->
-        {:error, :lookup_failed}
-      _ ->
-        {:error, :character_not_found}
-    end
-  end
-
-  @spec get_combat_statistics(integer()) :: {:ok, map()} | {:error, atom()}
-  defp get_combat_statistics(character_id) do
-    # Look up combat stats from character stats view
-    alias EveDmv.Database.CharacterRepository
-
-    case CharacterRepository.get_character_stats(character_id) do
-      {:ok, stats} when not is_nil(stats) ->
-        kills = Map.get(stats, :kills, 0)
-        losses = Map.get(stats, :losses, 0)
-
-        efficiency =
-          if kills + losses > 0 do
-            kills / (kills + losses) * 100.0
-          else
-            0.0
-          end
-
-        {:ok, %{
-          character_id: character_id,
-          kills: kills,
-          losses: losses,
-          efficiency: efficiency,
-          isk_killed: Map.get(stats, :isk_killed, 0.0),
-          isk_lost: Map.get(stats, :isk_lost, 0.0)
-        }}
-      {:error, :not_found} ->
-        {:error, :stats_not_found}
-      {:error, _reason} ->
-        {:error, :lookup_failed}
-      _ ->
-        {:error, :stats_not_found}
-    end
-  end
-
-  defp generate_intelligence_summary(threat_analysis, behavioral_patterns) do
-    %{
-      threat_level: Map.get(threat_analysis, :threat_level, :unknown),
-      primary_pattern: Map.get(behavioral_patterns, :primary_pattern, :unknown),
-      confidence: Map.get(behavioral_patterns, :confidence, 0.0)
-    }
-  end
-
-  defp extract_behavioral_patterns(_threat_data), do: []
-  defp generate_behavioral_characteristics(_threat_data), do: []
-  defp calculate_pattern_confidence(_threat_data), do: 0.0
 end

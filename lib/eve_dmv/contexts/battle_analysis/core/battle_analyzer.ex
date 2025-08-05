@@ -115,6 +115,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
       Battle
       |> filter(id == ^battle_id)
       |> Ash.Query.limit(1)
+
     case BattleApi.read(query) do
       {:ok, [battle]} -> {:ok, battle}
       {:ok, []} -> {:error, :battle_not_found}
@@ -589,9 +590,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
 
   defp calculate_average_on_kill(killmails) do
     # Calculate average number of attackers per kill
-    total_attackers = Enum.reduce(killmails, 0, fn km, acc ->
-      acc + length(km.attackers || [])
-    end)
+    total_attackers =
+      Enum.reduce(killmails, 0, fn km, acc ->
+        acc + length(km.attackers || [])
+      end)
 
     if length(killmails) > 0 do
       Float.round(total_attackers / length(killmails), 1)

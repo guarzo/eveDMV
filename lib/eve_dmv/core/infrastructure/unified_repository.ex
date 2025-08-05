@@ -466,7 +466,10 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
     rescue
       error ->
         Logger.error("Failed to fetch resources by filter: #{Exception.message(error)}")
-        Logger.error("Details: resource=#{inspect(resource)}, filter=#{inspect(filter)}, error_type=#{error.__struct__}")
+
+        Logger.error(
+          "Details: resource=#{inspect(resource)}, filter=#{inspect(filter)}, error_type=#{error.__struct__}"
+        )
 
         {:error, error}
     end

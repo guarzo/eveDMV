@@ -218,9 +218,7 @@ defmodule EveDmv.Workers.AnalysisWorkerPool do
   @impl GenServer
   def handle_call({:scale_pool, target_size}, _from, state) do
     {:ok, new_state} = scale_workers(state, target_size)
-    Logger.info(
-      "Scaled analysis worker pool from #{state.pool_size} to #{target_size} workers"
-    )
+    Logger.info("Scaled analysis worker pool from #{state.pool_size} to #{target_size} workers")
 
     {:reply, :ok, new_state}
   end
@@ -556,6 +554,7 @@ defmodule EveDmv.Workers.AnalysisWorkerPool do
       queue_length > 2 and state.pool_size < @max_pool_size ->
         target_size = min(@max_pool_size, state.pool_size + 1)
         {:ok, new_state} = scale_workers(state, target_size)
+
         Logger.info(
           "Auto-scaled analysis worker pool up to #{target_size} workers (queue: #{queue_length})"
         )
@@ -566,6 +565,7 @@ defmodule EveDmv.Workers.AnalysisWorkerPool do
       idle_workers > 2 and state.pool_size > @min_pool_size ->
         target_size = max(@min_pool_size, state.pool_size - 1)
         {:ok, new_state} = scale_workers(state, target_size)
+
         Logger.info(
           "Auto-scaled analysis worker pool down to #{target_size} workers (idle: #{idle_workers})"
         )

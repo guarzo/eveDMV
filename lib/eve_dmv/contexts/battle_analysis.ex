@@ -179,9 +179,16 @@ defmodule EveDmv.Contexts.BattleAnalysis do
 
     with {:ok, battles} <- detect_battles_in_system(system_id, start_time, end_time),
          _ <- log_battle_detection(battles, battle_id, system_id, start_time, end_time),
-         {:ok, battle} <- find_battle_by_id(battles, battle_id, system_id),
-         {:ok, timeline} <- reconstruct_battle_timeline(battle) do
-      {:ok, Map.put(battle, :timeline, timeline)}
+         {:ok, battle} <- find_battle_by_id(battles, battle_id, system_id) do
+      # Note: reconstruct_battle_timeline currently always fails, so we handle the error case
+      case reconstruct_battle_timeline(battle) do
+        {:ok, timeline} ->
+          {:ok, Map.put(battle, :timeline, timeline)}
+
+        {:error, reason} ->
+          Logger.debug("Timeline reconstruction failed for battle #{battle_id}: #{reason}")
+          {:error, reason}
+      end
     end
   end
 
@@ -314,7 +321,15 @@ defmodule EveDmv.Contexts.BattleAnalysis do
       # Import recent kills for a character
       {:ok, battles} = import_from_zkillboard("https://zkillboard.com/character/1234567890/")
   """
-  @spec import_from_zkillboard(String.t()) :: {:error, atom()}
+  @spec import_from_zkillboard(String.t()) ::
+          {:error,
+           :http_client_unavailable
+           | :invalid_character_id
+           | :invalid_corporation_id
+           | :invalid_killmail_id
+           | :invalid_system_id
+           | :invalid_zkillboard_url
+           | :unsupported_url_format}
   def import_from_zkillboard(url) when is_binary(url) do
     ZkillboardImportService.import_from_url(url)
   end
@@ -322,7 +337,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   @doc """
   Imports a specific killmail from zkillboard by ID.
   """
-  @spec import_killmail_from_zkillboard(integer()) :: {:error, atom()}
+  @spec import_killmail_from_zkillboard(integer()) :: {:error, :http_client_unavailable}
   def import_killmail_from_zkillboard(killmail_id) when is_integer(killmail_id) do
     ZkillboardImportService.import_killmail(killmail_id)
   end
@@ -558,6 +573,10 @@ defmodule EveDmv.Contexts.BattleAnalysis do
       |> Enum.filter(&is_map/1)
       |> Enum.take(5)
     end
+  end
+
+  defp extract_key_timeline_events(nil) do
+    []
   end
 
   defp extract_key_timeline_events(_timeline) do

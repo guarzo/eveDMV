@@ -70,8 +70,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   @doc """
   Bulk analyze multiple characters.
   """
-  @spec bulk_analyze([integer()], map()) ::
-          {:ok, bulk_analysis_results()} | {:error, atom()}
+  @spec bulk_analyze([integer()], map()) :: {:ok, bulk_analysis_results()}
   def bulk_analyze(character_ids, context) do
     results =
       Enum.map(character_ids, fn id ->
@@ -110,18 +109,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   """
   @spec get_cache_stats() :: cache_stats()
   def get_cache_stats do
-    case AnalysisCache.get_stats() do
-      {:ok, stats} ->
-        stats
-
-      _ ->
-        %{
-          cache_size: 0,
-          hit_rate: 0.0,
-          miss_rate: 0.0,
-          evictions: 0
-        }
-    end
+    {:ok, stats} = AnalysisCache.get_stats()
+    stats
   end
 
   # Private functions

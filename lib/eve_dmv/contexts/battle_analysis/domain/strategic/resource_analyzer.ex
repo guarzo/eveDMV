@@ -447,12 +447,14 @@ defmodule EveDmv.Shared.Strategic.ResourceAnalyzer do
   end
 
   defp identify_bottlenecks(flow_patterns) do
-    if map_size(flow_patterns) == 0 do
+    high_value_routes = Map.get(flow_patterns, :high_value_routes, [])
+
+    if Enum.empty?(high_value_routes) do
       []
     else
       # Systems that appear in multiple routes
       system_frequency =
-        flow_patterns.high_value_routes
+        high_value_routes
         |> Enum.flat_map(& &1.systems)
         |> Enum.frequencies()
         |> Enum.filter(fn {_, count} -> count >= 2 end)

@@ -104,8 +104,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   Returns previously analyzed intelligence data if available,
   or triggers a new analysis if cache is stale.
   """
-  @spec get_character_intelligence(integer()) ::
-          {:ok, intelligence_result()} | {:error, intelligence_api_error() | term()}
+  @spec get_character_intelligence(integer()) :: {:ok, intelligence_result()}
   def get_character_intelligence(character_id) do
     case CharacterAnalyzer.get_intelligence(character_id) do
       {:ok, analysis_result} ->
@@ -131,9 +130,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
         }
 
         {:ok, transformed_result}
-
-      {:error, reason} ->
-        {:error, reason}
     end
   end
 
@@ -168,8 +164,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   @doc """
   Get cached corporation intelligence data.
   """
-  @spec get_corporation_intelligence(integer()) ::
-          {:ok, corporation_intelligence_result()} | {:error, intelligence_api_error() | term()}
+  @spec get_corporation_intelligence(integer()) :: {:ok, corporation_intelligence_result()}
   def get_corporation_intelligence(corporation_id) do
     case CorporationAnalyzer.get_intelligence(corporation_id) do
       {:ok, analysis_result} ->
@@ -185,9 +180,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
         }
 
         {:ok, transformed_result}
-
-      {:error, reason} ->
-        {:error, reason}
     end
   end
 
@@ -214,7 +206,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
       {:ok, assessment}
     else
       {:error, reason} -> {:error, reason}
-      _ -> {:error, :analysis_failed}
     end
   end
 
@@ -286,7 +277,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
 
   Returns temporal activity patterns, timezone preferences, and behavioral trends.
   """
-  @spec get_activity_patterns(integer(), keyword()) :: {:ok, map()} | {:error, term()}
+  @spec get_activity_patterns(integer(), keyword()) :: {:error, term()}
   def get_activity_patterns(character_id, opts \\ []) do
     CharacterAnalyzer.get_activity_patterns(character_id, opts)
   end
@@ -304,7 +295,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
       {:ok, comparison}
     else
       {:error, reason} -> {:error, reason}
-      _ -> {:error, :comparison_failed}
     end
   end
 
@@ -316,10 +306,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   @spec get_intelligence_cache_stats() ::
           {:ok,
            %{
-             cache_size: non_neg_integer(),
-             evictions: non_neg_integer(),
-             hit_rate: float(),
-             miss_rate: float()
+             cache_size: non_neg_integer()
            }}
   def get_intelligence_cache_stats do
     # CharacterAnalyzer.get_cache_stats() returns a plain map, not a tuple
@@ -333,7 +320,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   Returns corporations and alliances the character has flown with but are not part of their own.
   Useful for understanding social connections and potential allies.
   """
-  @spec get_external_groups(integer(), DateTime.t()) :: {:ok, list()}
+  @spec get_external_groups(integer(), DateTime.t()) :: {:ok, [any()]}
   def get_external_groups(character_id, since_date) do
     Domain.ExternalGroupAnalyzer.analyze(character_id, since_date)
   end

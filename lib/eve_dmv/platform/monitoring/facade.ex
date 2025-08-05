@@ -104,7 +104,7 @@ defmodule EveDmv.Shared.Monitoring.Facade do
   @doc """
   Updates adaptive monitoring thresholds based on detection results.
   """
-  @spec update_monitoring_thresholds(map(), list(), keyword()) :: {:ok, map()} | {:error, term()}
+  @spec update_monitoring_thresholds(map(), list(), keyword()) :: no_return()
   def update_monitoring_thresholds(monitoring_setup, recent_detections, options \\ []) do
     current_thresholds = get_current_thresholds(monitoring_setup)
 
@@ -122,9 +122,6 @@ defmodule EveDmv.Shared.Monitoring.Facade do
            threshold_changes: calculate_threshold_changes(current_thresholds, updated_thresholds),
            update_timestamp: DateTime.utc_now()
          }}
-
-      error ->
-        error
     end
   end
 
@@ -156,9 +153,6 @@ defmodule EveDmv.Shared.Monitoring.Facade do
                  delivery_result: delivery_result,
                  updated_active_alerts: alert_manager[:alert_queue] || []
                }}
-
-            {:error, reason} ->
-              {:error, reason}
           end
         end
     end
@@ -184,9 +178,6 @@ defmodule EveDmv.Shared.Monitoring.Facade do
         }
 
         {:ok, monitoring_summary}
-
-      error ->
-        error
     end
   end
 

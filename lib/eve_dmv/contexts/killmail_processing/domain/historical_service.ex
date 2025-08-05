@@ -114,7 +114,10 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.HistoricalService do
           {:ok, character_id, processed_count}
 
         {:error, reason} ->
-          Logger.warning("Failed to fetch killmails for character #{character_id}: #{inspect(reason)}")
+          Logger.warning(
+            "Failed to fetch killmails for character #{character_id}: #{inspect(reason)}"
+          )
+
           {:error, character_id, reason}
       end
     end)
@@ -130,6 +133,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.HistoricalService do
         case Jason.decode(body) do
           {:ok, killmails} when is_list(killmails) ->
             {:ok, killmails}
+
           _ ->
             {:error, :invalid_response}
         end
@@ -188,7 +192,10 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.HistoricalService do
       end)
       |> Enum.sum()
 
-    Logger.info("Imported #{successful_imports} historical killmails for character #{character_id}")
+    Logger.info(
+      "Imported #{successful_imports} historical killmails for character #{character_id}"
+    )
+
     successful_imports
   end
 

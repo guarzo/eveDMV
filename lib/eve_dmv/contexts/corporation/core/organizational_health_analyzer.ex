@@ -952,7 +952,6 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   defp calculate_leadership_health(leadership_data) do
     safe_leadership_data =
       case leadership_data do
-        data when is_map(data) -> data
         _ -> %{}
       end
 
@@ -980,7 +979,6 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   defp calculate_retention_health(risk_data) do
     safe_risk_data =
       case risk_data do
-        data when is_map(data) -> data
         _ -> %{}
       end
 
@@ -993,7 +991,6 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   defp calculate_participation_health(participation_data) do
     safe_participation_data =
       case participation_data do
-        data when is_map(data) -> data
         _ -> %{}
       end
 
@@ -1061,7 +1058,6 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   defp maybe_add_stability_issue(issues, stability) do
     safe_stability =
       case stability do
-        data when is_map(data) -> data
         _ -> %{}
       end
 
@@ -1075,7 +1071,6 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   defp maybe_add_succession_issue(issues, succession) do
     safe_succession =
       case succession do
-        data when is_map(data) -> data
         _ -> %{}
       end
 
@@ -1089,7 +1084,6 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   defp generate_health_recommendations(health_metrics, _leadership_data, stability_data) do
     safe_stability_data =
       case stability_data do
-        data when is_map(data) -> data
         _ -> %{}
       end
 

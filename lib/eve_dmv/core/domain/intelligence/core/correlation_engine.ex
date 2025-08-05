@@ -203,9 +203,7 @@ defmodule EveDmv.Intelligence.Core.CorrelationEngine do
   catch
     :exit, _reason ->
       # Handle GenServer exit errors
-      Logger.debug(
-        "Vetting analysis service unavailable for #{character_id}, using placeholder"
-      )
+      Logger.debug("Vetting analysis service unavailable for #{character_id}, using placeholder")
 
       {:ok, get_placeholder_vetting_data(character_id)}
   end
