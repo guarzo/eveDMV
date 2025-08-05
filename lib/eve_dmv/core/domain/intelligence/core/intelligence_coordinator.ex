@@ -95,10 +95,9 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
     # Preload frequently accessed character data
     Logger.debug("Warming character cache")
 
-    CacheHelper.warm_cache(:character_cache, fn ->
-      # Simulate cache warming
-      %{warmed_at: DateTime.utc_now(), entries: 100}
-    end)
+    # Simulate cache warming with sample data
+    sample_entries = [%{warmed_at: DateTime.utc_now(), entries: 100}]
+    CacheHelper.warm_cache(sample_entries, 3600)
   end
 
   defp warm_analysis_cache do

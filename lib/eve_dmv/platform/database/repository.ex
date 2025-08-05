@@ -239,17 +239,17 @@ defmodule EveDmv.Database.Repository do
       @spec bulk_create([map()]) :: {:ok, [struct()]} | {:error, term()}
       def bulk_create(records_attrs) when is_list(records_attrs) do
         TelemetryHelper.measure_query(@resource_name, :bulk_create, fn ->
-          result = Ash.bulk_create(@resource, records_attrs, domain: Api)
-          
+          result = Api.bulk_create(@resource, records_attrs)
+
           case result do
             %{records: records, errors: []} ->
               # Invalidate relevant caches
               CacheHelper.invalidate_for_resource(@cache_type, @resource_name)
               {:ok, records}
-              
+
             %{records: _, errors: errors} when errors != [] ->
               {:error, errors}
-              
+
             _ ->
               {:error, "Unexpected bulk_create result"}
           end

@@ -419,50 +419,69 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
   end
 
   # Private helper functions - core implementations
-  
+
   defp analyze_battle_phases(_battle_data), do: {:ok, %{phases: []}}
   defp detect_tactical_patterns(_battle_data), do: {:ok, %{patterns: []}}
-  defp generate_candidate_highlights(_battle_data, _phase_analysis, _tactical_patterns, _include_transitions), do: {:ok, []}
+
+  defp generate_candidate_highlights(
+         _battle_data,
+         _phase_analysis,
+         _tactical_patterns,
+         _include_transitions
+       ),
+       do: {:ok, []}
+
   defp filter_highlights_by_confidence(candidates, _min_confidence), do: {:ok, candidates}
+
   defp prioritize_highlights(highlights, _focus_types, max_highlights) do
     {:ok, Enum.take(highlights, max_highlights)}
   end
+
   defp finalize_auto_detected_highlights(_battle_report_id, highlights), do: {:ok, highlights}
   defp calculate_average_confidence([]), do: 0.0
   defp calculate_average_confidence(highlights) when is_list(highlights), do: 0.75
-  
+
   defp enrich_highlight_data(highlight, _battle_data), do: {:ok, highlight}
   defp fetch_battle_highlights(_battle_report_id), do: {:ok, []}
   defp maybe_fetch_engagement_data(_highlights, _time_window, false), do: {:ok, %{}}
   defp maybe_fetch_engagement_data(_highlights, _time_window, true), do: {:ok, %{engagement: []}}
-  defp calculate_effectiveness_metrics(_highlights, _engagement_data), do: {:ok, %{average_effectiveness: 0.5}}
+
+  defp calculate_effectiveness_metrics(_highlights, _engagement_data),
+    do: {:ok, %{average_effectiveness: 0.5}}
+
   defp assess_learning_impact(_highlights), do: {:ok, %{overall_rating: :medium}}
+
   defp generate_improvement_recommendations(_highlights, _effectiveness, _learning_impact) do
     {:ok, []}
   end
-  
+
   defp fetch_candidate_highlights(_time_window, _min_rating), do: {:ok, []}
   defp analyze_highlight_quality(highlights), do: {:ok, highlights}
   defp categorize_highlights_by_learning(highlights, _categories), do: {:ok, highlights}
+
   defp select_featured_highlights(highlights, max_highlights) do
     {:ok, Enum.take(highlights, max_highlights)}
   end
-  
-  defp maybe_analyze_tactical_context(_timestamp, _battle_data, context, false), do: {:ok, context}
+
+  defp maybe_analyze_tactical_context(_timestamp, _battle_data, context, false),
+    do: {:ok, context}
+
   defp maybe_analyze_tactical_context(_timestamp, _battle_data, context, true) do
     {:ok, Map.put(context, :analyzed, true)}
   end
-  
+
   defp integrate_learning_content(highlight_type, learning_notes) do
     learning_categories = Map.get(@learning_categories, :combat_fundamentals, [])
+
     integration = %{
       highlight_type: highlight_type,
       learning_notes: learning_notes,
       categories: learning_categories
     }
+
     {:ok, integration}
   end
-  
+
   defp create_highlight_record(options) do
     highlight = %{
       highlight_id: generate_highlight_id(),
@@ -477,9 +496,10 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
       video_timestamp: options.video_timestamp,
       created_at: DateTime.utc_now()
     }
+
     {:ok, highlight}
   end
-  
+
   defp generate_highlight_id do
     :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)
   end

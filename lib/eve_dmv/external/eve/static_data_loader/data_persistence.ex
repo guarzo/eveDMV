@@ -141,16 +141,17 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
   @doc """
   Updates existing item types with new data.
   """
+  @dialyzer {:nowarn_function, bulk_update_item_types: 1}
   def bulk_update_item_types(item_data) do
     Logger.info("Bulk updating #{length(item_data)} item types")
 
     case Ash.bulk_update(item_data, ItemType, :update,
-           domain: EveDmv.Api,
            return_records?: false,
            return_errors?: true,
            stop_on_error?: false,
            authorize?: false,
-           batch_size: 500
+           batch_size: 500,
+           domain: EveDmv.Api
          ) do
       %{records: _records, errors: []} ->
         {:ok, length(item_data)}
@@ -172,16 +173,17 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
   @doc """
   Updates existing solar systems with new data.
   """
+  @dialyzer {:nowarn_function, bulk_update_solar_systems: 1}
   def bulk_update_solar_systems(system_data) do
     Logger.info("Bulk updating #{length(system_data)} solar systems")
 
     case Ash.bulk_update(system_data, SolarSystem, :update,
-           domain: EveDmv.Api,
            return_records?: false,
            return_errors?: true,
            stop_on_error?: false,
            authorize?: false,
-           batch_size: 500
+           batch_size: 500,
+           domain: EveDmv.Api
          ) do
       %{records: _records, errors: []} ->
         {:ok, length(system_data)}
@@ -236,14 +238,15 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
   @doc """
   Deletes all records from a resource.
   """
+  @dialyzer {:nowarn_function, truncate_resource: 1}
   def truncate_resource(resource) do
     Logger.info("Truncating all records from #{inspect(resource)}")
 
     case Ash.bulk_destroy(resource, :destroy,
-           domain: EveDmv.Api,
            return_records?: false,
            return_errors?: true,
-           authorize?: false
+           authorize?: false,
+           domain: EveDmv.Api
          ) do
       %{records: _records, errors: []} ->
         Logger.info("Successfully truncated #{inspect(resource)}")

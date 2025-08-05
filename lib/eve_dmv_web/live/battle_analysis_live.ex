@@ -590,43 +590,26 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       # Try to load from backend
       # Note: get_battle_with_timeline currently always returns error tuples
       case BattleAnalysis.get_battle_with_timeline(battle_id) do
-        # This pattern is unreachable with current implementation
-        {:ok, battle} ->
-          # Preload all names to prevent N+1 queries
-          BatchNameResolver.preload_battle_names(battle)
-
-          # Track this battle as recently viewed
-          track_recently_viewed_battle(battle)
-
-          # Load intelligence analysis
-          intelligence =
-            case BattleAnalysis.analyze_battle_with_intelligence(battle) do
-              {:ok, intel} -> intel
-              _error -> nil
-            end
-
-          socket
-          |> assign(:current_battle, battle)
-          |> assign(:battle_intelligence, intelligence)
-          |> assign(:selected_phase, nil)
-          |> assign(:error_message, nil)
-          |> assign(:recently_viewed_battles, load_recently_viewed_battles())
-          |> update_battle_sides()
-          |> load_combat_logs()
-          |> load_battle_metrics()
-          |> load_battle_reports()
-
-        {:error, reason} when reason in [:battle_not_found, :database_error, :timeline_reconstruction_failed] ->
+        {:error, reason}
+        when reason in [:battle_not_found, :database_error, :timeline_reconstruction_failed] ->
           require Logger
           Logger.warning("Battle #{battle_id} error: #{reason}")
 
-          error_message = case reason do
-            :battle_not_found -> "Battle not found. It may have been re-detected with a different ID."
-            :database_error -> "Database error occurred while loading battle"
-            :timeline_reconstruction_failed -> "Failed to reconstruct battle timeline"
-            # Dialyzer says :max_iterations_reached is not a possible value
-            _ -> "Failed to load battle"
-          end
+          error_message =
+            case reason do
+              :battle_not_found ->
+                "Battle not found. It may have been re-detected with a different ID."
+
+              :database_error ->
+                "Database error occurred while loading battle"
+
+              :timeline_reconstruction_failed ->
+                "Failed to reconstruct battle timeline"
+
+              # Dialyzer says :max_iterations_reached is not a possible value
+              _ ->
+                "Failed to load battle"
+            end
 
           assign(socket, :error_message, error_message)
 
@@ -656,7 +639,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     |> String.replace("_", " ")
     |> String.capitalize()
   end
-  
+
   # These clauses are unreachable according to dialyzer but kept for defensive programming
   defp format_error_reason(reason) when is_atom(reason) do
     reason

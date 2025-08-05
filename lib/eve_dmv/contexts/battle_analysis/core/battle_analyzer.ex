@@ -100,7 +100,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
         }
 
         {:ok, summary}
-      
+
       {:error, _} = error ->
         error
     end
@@ -324,12 +324,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
     end
   end
 
-
   defp count_pod_kills(killmails) do
     Enum.count(killmails, fn km ->
       ship_type_id = get_in(km.victim, ["ship_type_id"])
       # Capsule type ID
-  # TODO: Remove unused function - dialyzer detected this is never called
+      # TODO: Remove unused function - dialyzer detected this is never called
       ship_type_id == 670
     end)
   end
@@ -442,7 +441,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
           max_time = Enum.max(kill_times)
           time_span = DateTimeUtils.diff(max_time, min_time, :second)
 
-  # TODO: Remove unused function - dialyzer detected this is never called
+          # TODO: Remove unused function - dialyzer detected this is never called
           # Bombing run if multiple bombers and kills within short timespan
           bomber_count >= 3 and time_span <= 30
         )
@@ -470,7 +469,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
           max(losses1, losses2) / (losses1 + losses2) * 100
 
         _ ->
-  # TODO: Remove unused function - dialyzer detected this is never called
+          # TODO: Remove unused function - dialyzer detected this is never called
           # Default neutral efficiency if can't determine clear sides
           50.0
       end
@@ -489,7 +488,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
           total_participants / max(total_participants, 1)
         else
           1.0
-  # TODO: Remove unused function - dialyzer detected this is never called
+          # TODO: Remove unused function - dialyzer detected this is never called
         end
 
       _ ->
@@ -498,7 +497,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
   end
 
   defp calculate_average_on_kill(killmails) do
-  # TODO: Remove unused function - dialyzer detected this is never called
+    # TODO: Remove unused function - dialyzer detected this is never called
     total_attackers =
       Enum.reduce(killmails, 0, fn km, acc ->
         acc + length(km.attackers || [])
@@ -506,6 +505,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
 
     if length(killmails) > 0, do: total_attackers / length(killmails), else: 0
   end
+
   # TODO: Remove unused function - dialyzer detected this is never called
 
   defp generate_headline(analysis) do
@@ -515,6 +515,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
 
     "#{scale} #{type} in system #{location}"
   end
+
   # TODO: Remove unused function - dialyzer detected this is never called
 
   defp extract_key_stats(analysis) do

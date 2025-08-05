@@ -99,6 +99,7 @@ defmodule EveDmv.Intelligence.Cache.IntelligenceCache do
         Logger.debug("Cache miss for threat comparison: #{length(character_ids)} characters")
 
         result = generate_threat_comparison(character_ids, options)
+
         case result do
           {:ok, data} ->
             Cache.put(:analysis, cache_key, data, ttl: ttl)
@@ -125,6 +126,7 @@ defmodule EveDmv.Intelligence.Cache.IntelligenceCache do
         Logger.debug("Cache miss for threat trends: character #{character_id}")
 
         result = generate_threat_trends(character_id, options)
+
         case result do
           {:ok, data} ->
             Cache.put(:analysis, cache_key, data, ttl: ttl)

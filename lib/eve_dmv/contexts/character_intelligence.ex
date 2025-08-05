@@ -76,8 +76,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
         enhanced_threat_data = enhance_with_ship_intelligence(threat_data, character_id)
         {:ok, enhanced_threat_data}
 
-      {:error, :insufficient_data} ->
-        {:error, :insufficient_data}
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -122,15 +122,16 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
     case ThreatScoringEngine.analyze_threat_trends(character_id, analysis_window_days: days_back) do
       {:ok, trend_data} ->
         # Ensure the response matches our type spec
-        {:ok, %{
-          character_id: character_id,
-          trend_direction: trend_data[:trend_direction] || :insufficient_data,
-          trend_strength: trend_data[:trend_strength] || 0.0,
-          historical_scores: trend_data[:historical_scores] || [],
-          analysis_period_days: days_back,
-          analysis_timestamp: DateTime.utc_now()
-        }}
-      
+        {:ok,
+         %{
+           character_id: character_id,
+           trend_direction: trend_data[:trend_direction] || :insufficient_data,
+           trend_strength: trend_data[:trend_strength] || 0.0,
+           historical_scores: trend_data[:historical_scores] || [],
+           analysis_period_days: days_back,
+           analysis_timestamp: DateTime.utc_now()
+         }}
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -140,7 +141,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Compares threat levels between multiple characters.
   Useful for identifying the most dangerous opponents in a group.
   """
-  @spec compare_character_threats([integer()]) :: {:ok, [{integer(), character_threat_analysis()}]} | {:error, atom()}
+  @spec compare_character_threats([integer()]) ::
+          {:ok, [{integer(), character_threat_analysis()}]}
   def compare_character_threats(character_ids) when is_list(character_ids) do
     threat_analyses =
       character_ids
@@ -160,7 +162,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Gets a comprehensive intelligence report for a character.
   Combines threat scoring, behavioral analysis, and performance metrics.
   """
-  @spec get_character_intelligence_report(integer()) :: {:ok, map()} | {:error, intelligence_error()}
+  @spec get_character_intelligence_report(integer()) ::
+          {:ok, map()} | {:error, intelligence_error()}
   def get_character_intelligence_report(character_id) do
     with {:ok, threat_analysis} <- analyze_character_threat(character_id),
          {:ok, behavioral_patterns} <- detect_behavioral_patterns(character_id),
@@ -188,7 +191,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Get comprehensive ship intelligence for a character.
   Returns ship specialization, role preferences, and tactical insights.
   """
-  @spec get_character_ship_intelligence(integer()) :: {:ok, map()} | {:error, atom()}
+  @spec get_character_ship_intelligence(integer()) :: {:ok, map()}
   def get_character_ship_intelligence(character_id) do
     ShipIntelligenceBridge.calculate_ship_specialization(character_id)
   end
@@ -196,7 +199,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   @doc """
   Get ship preference summary for quick threat assessment.
   """
-  @spec get_ship_preferences(integer()) :: {:ok, map()} | {:error, intelligence_error()}
+  @spec get_ship_preferences(integer()) :: map()
   def get_ship_preferences(character_id) do
     ShipIntelligenceBridge.get_character_ship_preferences(character_id)
   end
@@ -206,7 +209,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Returns top ships used with usage counts, efficiency metrics, and ship classifications.
   """
   @spec get_detailed_ship_preferences(integer(), Date.t() | DateTime.t()) ::
-          {:ok, map()} | {:error, intelligence_error()}
+          {:ok, map()} | {:error, atom()}
   def get_detailed_ship_preferences(character_id, since_date) do
     CharacterIntelligenceAnalyzer.analyze_ship_preferences(
       character_id,
@@ -280,6 +283,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   end
 
   # Private helper functions
+  @dialyzer {:nowarn_function, enhance_with_ship_intelligence: 2}
   defp enhance_with_ship_intelligence(threat_data, character_id) do
     case ShipIntelligenceBridge.calculate_ship_specialization(character_id) do
       {:ok, ship_intelligence} ->
@@ -336,15 +340,15 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   end
 
   # Private helper functions - stub implementations to satisfy dialyzer
-  
+
   defp get_character_info(character_id) do
     {:ok, %{character_id: character_id, name: "Unknown Character"}}
   end
-  
+
   defp get_combat_statistics(character_id) do
     {:ok, %{character_id: character_id, kills: 0, losses: 0, efficiency: 0.0}}
   end
-  
+
   defp generate_intelligence_summary(threat_analysis, behavioral_patterns) do
     %{
       threat_level: Map.get(threat_analysis, :threat_level, :unknown),
@@ -352,7 +356,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
       confidence: Map.get(behavioral_patterns, :confidence, 0.0)
     }
   end
-  
+
   defp extract_behavioral_patterns(_threat_data), do: []
   defp generate_behavioral_characteristics(_threat_data), do: []
   defp calculate_pattern_confidence(_threat_data), do: 0.0

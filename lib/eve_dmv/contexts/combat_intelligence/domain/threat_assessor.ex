@@ -17,7 +17,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ThreatAssessor do
   @doc """
   Assess threat level for a character in a specific context.
   """
-  @spec assess_threat(integer(), atom()) :: {:ok, map()} | {:error, term()}
+  @spec assess_threat(integer(), atom()) :: {:ok, map()}
   def assess_threat(character_id, context) do
     perform_threat_assessment(character_id, context)
   end
@@ -25,7 +25,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ThreatAssessor do
   @doc """
   Get cached threat assessment for a character.
   """
-  @spec get_assessment(integer()) :: {:ok, map()} | {:error, term()}
+  @spec get_assessment(integer()) :: {:ok, map()}
   def get_assessment(character_id) do
     case AnalysisCache.get_threat_assessment(character_id) do
       {:ok, assessment} -> {:ok, assessment}
@@ -36,7 +36,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ThreatAssessor do
   @doc """
   Refresh threat assessment for a character.
   """
-  @spec refresh_assessment(integer()) :: {:ok, map()} | {:error, term()}
+  @spec refresh_assessment(integer()) :: {:ok, map()}
   def refresh_assessment(character_id) do
     AnalysisCache.invalidate_threat_assessment(character_id)
     assess_threat(character_id, :general)
@@ -45,7 +45,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ThreatAssessor do
   @doc """
   Batch assess threats for multiple characters.
   """
-  @spec batch_assess_threats([integer()], atom()) :: {:ok, map()} | {:error, term()}
+  @spec batch_assess_threats([integer()], atom()) :: {:ok, map()}
   def batch_assess_threats(character_ids, context) do
     results =
       Enum.map(character_ids, fn id ->
@@ -58,7 +58,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ThreatAssessor do
   @doc """
   Get threat factors breakdown for a character.
   """
-  @spec get_threat_factors(integer()) :: {:ok, map()} | {:error, term()}
+  @spec get_threat_factors(integer()) :: {:ok, map()}
   def get_threat_factors(character_id) do
     factors = %{
       character_id: character_id,

@@ -115,7 +115,7 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
   defp collect_pool_stats do
     pool_config = Application.get_env(:eve_dmv, Repo, [])
     pool_size = Keyword.get(pool_config, :pool_size, 10)
-    
+
     # DBConnection.status might not be available, use telemetry instead
     stats = %{
       pool_size: pool_size,
@@ -127,7 +127,7 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
       utilization: 0.0,
       timestamp: DateTime.utc_now()
     }
-    
+
     # Add derived metrics
     Map.merge(stats, %{
       connections_in_use: stats.checked_out,
@@ -144,7 +144,6 @@ defmodule EveDmv.Database.ConnectionPoolMonitor do
         timestamp: DateTime.utc_now()
       }
   end
-
 
   defp pool_stressed?(stats) do
     utilization = Map.get(stats, :utilization, 0.0)

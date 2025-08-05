@@ -1,5 +1,6 @@
 defmodule EveDmv.Intelligence.WandererClient do
   alias HTTPoison
+
   @moduledoc """
   Client for Wanderer Map API integration.
 
@@ -676,6 +677,7 @@ defmodule EveDmv.Intelligence.WandererClient do
     end
   end
 
+  @dialyzer {:nowarn_function, sse_receive_loop: 2}
   defp sse_receive_loop(parent_pid, map_id) do
     receive do
       %HTTPoison.AsyncStatus{code: code} ->

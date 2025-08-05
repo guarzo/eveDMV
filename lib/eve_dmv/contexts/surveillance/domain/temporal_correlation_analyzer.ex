@@ -714,10 +714,10 @@ defmodule EveDmv.Shared.Correlation.TemporalCorrelationAnalyzer do
     :burst
   end
 
-  defp check_temporal_dependency(_timeline1, _timeline2) do
+  defp check_temporal_dependency(timeline1, timeline2) do
     # Check temporal dependency indicators
-    # Simplified
-    true
+    # Simple check based on timeline overlap
+    length(timeline1) > 0 and length(timeline2) > 0
   end
 
   defp check_causal_dependency(_timeline1, _timeline2) do
@@ -726,12 +726,11 @@ defmodule EveDmv.Shared.Correlation.TemporalCorrelationAnalyzer do
     false
   end
 
-  defp determine_dependency_type(temporal, causal) do
-    cond do
-      temporal and causal -> :strong_dependency
-      temporal -> :temporal_dependency
-      causal -> :causal_dependency
-      true -> :no_dependency
+  defp determine_dependency_type(temporal, _causal) do
+    if temporal do
+      :temporal_dependency
+    else
+      :no_dependency
     end
   end
 

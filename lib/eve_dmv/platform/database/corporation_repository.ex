@@ -253,10 +253,16 @@ defmodule EveDmv.Platform.Database.CorporationRepository do
   def get_corporation_stats(corporation_id) when is_integer(corporation_id) do
     with {:ok, corp_info} <- get_corporation_analytics(corporation_id),
          {:ok, activity_stats} <- get_corporation_activity_stats(corporation_id) do
+      member_count =
+        case corp_info.member_count do
+          nil -> 0
+          count -> count
+        end
+
       {:ok,
        %{
          corporation_id: corporation_id,
-         member_count: corp_info.member_count || 0,
+         member_count: member_count,
          active_members_30d: activity_stats.active_members,
          total_kills_30d: activity_stats.total_kills,
          total_losses_30d: activity_stats.total_losses,

@@ -1110,5 +1110,4 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
       end
     end
   end
-
 end

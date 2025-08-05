@@ -191,20 +191,20 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
         end
       end)
 
-      # Store matches and trigger alerts
-      |> Enum.each(fn match ->
-        UnifiedCache.cache_surveillance_match(match.killmail_id, [match])
+    # Store matches and trigger alerts
+    Enum.each(matches, fn match ->
+      UnifiedCache.cache_surveillance_match(match.killmail_id, [match])
 
-        EventBus.publish(%SurveillanceMatch{
-          profile_id: match.profile_id,
-          killmail_id: match.killmail_id,
-          # Default type
-          match_type: :character,
-          match_details: %{id: match.id, matched_criteria: match.matched_criteria},
-          confidence_score: match.confidence_score,
-          timestamp: DateTime.utc_now()
-        })
-      end)
+      EventBus.publish(%SurveillanceMatch{
+        profile_id: match.profile_id,
+        killmail_id: match.killmail_id,
+        # Default type
+        match_type: :character,
+        match_details: %{id: match.id, matched_criteria: match.matched_criteria},
+        confidence_score: match.confidence_score,
+        timestamp: DateTime.utc_now()
+      })
+    end)
 
     end_time = System.monotonic_time(:millisecond)
     processing_time = end_time - start_time

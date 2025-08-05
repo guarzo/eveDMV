@@ -244,11 +244,11 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
   Generate recruitment recommendation based on analysis.
   """
   @spec generate_recommendation(map()) :: %{
-    recommendation: String.t(),
-    confidence: float(),
-    reasoning: String.t(),
-    conditions: [String.t()]
-  }
+          recommendation: String.t(),
+          confidence: float(),
+          reasoning: String.t(),
+          conditions: [String.t()]
+        }
   def generate_recommendation(analysis_data) do
     # Extract analysis components
     j_space_exp = Map.get(analysis_data, :j_space_experience, %{})
@@ -297,9 +297,9 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
   Format analysis summary for display.
   """
   @spec format_analysis_summary(map()) :: %{
-    summary_text: String.t(),
-    key_metrics: map()
-  }
+          summary_text: String.t(),
+          key_metrics: map()
+        }
   def format_analysis_summary(analysis) do
     # Handle both old format (atom) and new format (map)
     recommendation_data = Map.get(analysis, :recommendation, :unknown)
@@ -382,23 +382,23 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
     requested_by_id = Map.get(opts, :requested_by_id)
 
     # Get character info with timeout
-    character_info_result = 
+    character_info_result =
       TimeoutHelper.with_default_timeout(fn -> get_character_info(character_id) end, :api)
-    
+
     # Get killmails with timeout
-    killmails_result = 
+    killmails_result =
       TimeoutHelper.with_default_timeout(
         fn -> get_character_killmails(character_id) end,
         :query
       )
-    
+
     # Get employment history with timeout
-    employment_history_result = 
+    employment_history_result =
       TimeoutHelper.with_default_timeout(
         fn -> get_employment_history(character_id) end,
         :api
       )
-    
+
     # Check all results
     with {:ok, {:ok, character_info}} <- character_info_result,
          {:ok, {:ok, killmails}} <- killmails_result,
@@ -413,7 +413,7 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzer do
     else
       {:ok, {:error, :character_not_found}} ->
         {:error, "Character not found in ESI"}
-      
+
       {:ok, {:error, reason}} ->
         {:error, "Failed to gather vetting analysis data: #{inspect(reason)}"}
 

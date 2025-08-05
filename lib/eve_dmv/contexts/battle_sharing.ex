@@ -125,7 +125,6 @@ defmodule EveDmv.Contexts.BattleSharing do
     end
   end
 
-
   @doc """
   Gets battle reports for a specific battle.
   """

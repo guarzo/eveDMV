@@ -26,14 +26,23 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
   def analyze_behavior(character_id) do
     cache_key = {:behavioral_patterns, character_id}
 
-    Cache.get_or_compute(
-      :analysis,
-      cache_key,
-      fn ->
-        perform_behavioral_analysis(character_id)
-      end,
-      ttl: @cache_ttl
-    )
+    result =
+      Cache.get_or_compute(
+        :analysis,
+        cache_key,
+        fn ->
+          case perform_behavioral_analysis(character_id) do
+            {:ok, analysis} -> analysis
+            {:error, _reason} -> nil
+          end
+        end,
+        ttl: @cache_ttl
+      )
+
+    case result do
+      nil -> {:error, :analysis_failed}
+      analysis -> {:ok, analysis}
+    end
   end
 
   @doc """
@@ -105,6 +114,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
 
   defp get_character_killmails(character_id) do
     start_date = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
+
     case KillmailRepository.get_by_character(character_id, start_date: start_date, limit: 1000) do
       {:ok, killmails} when is_list(killmails) -> {:ok, killmails}
       {:error, _reason} -> {:ok, []}
@@ -210,6 +220,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
 
   defp calculate_average(list) when is_list(list) and length(list) > 0 do
     list_length = length(list)
+
     if list_length > 0 do
       Enum.sum(list) / list_length
     else
@@ -228,14 +239,18 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
         sessions
         |> Enum.chunk_every(2, 1, :discard)
         |> Enum.map(fn [s1, s2] ->
-          s1_first = case List.first(s1) do
-            nil -> %{killmail_time: DateTime.utc_now()}
-            km -> km
-          end
-          s2_first = case List.first(s2) do
-            nil -> %{killmail_time: DateTime.utc_now()}
-            km -> km
-          end
+          s1_first =
+            case List.first(s1) do
+              nil -> %{killmail_time: DateTime.utc_now()}
+              km -> km
+            end
+
+          s2_first =
+            case List.first(s2) do
+              nil -> %{killmail_time: DateTime.utc_now()}
+              km -> km
+            end
+
           DateTimeUtils.diff(
             s2_first.killmail_time,
             s1_first.killmail_time,
@@ -260,6 +275,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       0
     else
       values_length = length(values)
+
       if values_length > 0 do
         sum_squares =
           values
@@ -343,7 +359,8 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       |> Enum.frequencies()
 
     total = length(gang_sizes)
-    avg_gang_size = 
+
+    avg_gang_size =
       if total > 0 do
         Enum.sum(gang_sizes) / total
       else
@@ -624,6 +641,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
     hour_concentration =
       if length(hourly_activity) > 0 do
         hour_sum = Enum.sum(hourly_activity)
+
         if hour_sum > 0 do
           Enum.max(hourly_activity) / hour_sum
         else
@@ -636,6 +654,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
     system_concentration =
       if length(system_activity) > 0 do
         system_sum = Enum.sum(system_activity)
+
         if system_sum > 0 do
           Enum.max(system_activity) / system_sum
         else
@@ -709,6 +728,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
       |> length()
 
     killmail_count = length(killmails)
+
     loss_ratio =
       if killmail_count > 0 do
         length(losses) / killmail_count

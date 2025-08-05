@@ -169,7 +169,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
     time_grouped =
       killmails
       |> Enum.group_by(fn killmail ->
-        killmail.killmail_time |> DateTime.truncate(:hour)
+        dt = killmail.killmail_time
+        %{dt | minute: 0, second: 0, microsecond: {0, 0}}
       end)
 
     fleet_operations =

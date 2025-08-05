@@ -739,7 +739,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
         "Level=#{threat_result.threat_level}, " <>
         "Confidence=#{Float.round(threat_result.confidence, 2)}, " <>
         "Threats=#{length(threat_result.threats_detected)}, " <>
-        "Actions=#{length(threat_actions + alert_actions)}"
+        "Actions=#{length(threat_actions ++ alert_actions)}"
     )
   end
 

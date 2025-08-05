@@ -265,7 +265,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
           updated_cluster = %{
             target_cluster
             | killmails: [killmail | target_cluster.killmails],
-              end_time: 
+              end_time:
                 if DateTime.compare(killmail.killmail_time, target_cluster.end_time) == :gt do
                   killmail.killmail_time
                 else

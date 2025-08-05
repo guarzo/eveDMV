@@ -80,7 +80,7 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
   """
   def cleanup_archive_table(policy) do
     retention_cutoff =
-      DateTimeUtils.add(DateTime.utc_now(), -policy.retention_years * 365, :day)
+      DateTimeUtils.add(DateTime.utc_now(), -policy.retention_years * 365 * 24 * 60 * 60, :second)
 
     Logger.info(
       "Cleaning up #{policy.archive_table} - removing records older than #{retention_cutoff}"

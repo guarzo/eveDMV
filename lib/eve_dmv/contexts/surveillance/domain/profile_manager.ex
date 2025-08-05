@@ -204,7 +204,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ProfileManager do
 
     cond do
       complexity_score > 100 -> {:error, :criteria_too_complex}
-      complexity_score == 0 -> {:error, :criteria_too_simple}
+      complexity_score < 1 -> {:error, :criteria_too_simple}
       true -> :ok
     end
   end

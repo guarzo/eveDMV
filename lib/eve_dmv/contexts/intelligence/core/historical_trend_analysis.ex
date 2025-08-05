@@ -26,7 +26,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
   @doc """
   Analyze threat trends for a character based on historical data.
   """
-  @spec analyze_threat_trends(integer(), number()) :: {:ok, map()} | {:error, term()}
+  @spec analyze_threat_trends(integer(), number()) :: {:ok, map()}
   def analyze_threat_trends(character_id, current_score) do
     cache_key = {:threat_trends, character_id}
 
@@ -149,10 +149,12 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
       }
     else
       ratios = Enum.map(weekly_stats, fn {_, stats} -> stats.ratio end)
-      current = case List.last(ratios) do
-        nil -> 0.0
-        value -> value
-      end
+
+      current =
+        case List.last(ratios) do
+          nil -> 0.0
+          value -> value
+        end
 
       %{
         current: Float.round(current, 2),
@@ -198,10 +200,12 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
       }
     else
       efficiencies = Enum.map(weekly_isk, fn {_, stats} -> stats.efficiency end)
-      current = case List.last(efficiencies) do
-        nil -> 1.0
-        value -> value
-      end
+
+      current =
+        case List.last(efficiencies) do
+          nil -> 1.0
+          value -> value
+        end
 
       total_destroyed = weekly_isk |> Enum.map(fn {_, s} -> s.destroyed end) |> Enum.sum()
       total_lost = weekly_isk |> Enum.map(fn {_, s} -> s.lost end) |> Enum.sum()
@@ -375,6 +379,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
 
     if length(diffs) > 0 do
       diffs_length = length(diffs)
+
       if diffs_length > 0 do
         Float.round(Enum.sum(diffs) / diffs_length, 3)
       else
@@ -485,7 +490,9 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
       :none
     else
       case List.first(ship_frequencies) do
-        nil -> :none
+        nil ->
+          :none
+
         {_top_ship, top_count} ->
           total = ship_frequencies |> Enum.map(&elem(&1, 1)) |> Enum.sum()
 
@@ -856,7 +863,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
 
     %{
       threat_progression: threat_scores,
-      current_threat_level: 
+      current_threat_level:
         case List.last(threat_scores) do
           nil -> :unknown
           last_score -> classify_threat_level(last_score)
@@ -954,6 +961,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
 
   defp average(list) do
     len = length(list)
+
     if len > 0 do
       Enum.sum(list) / len
     else

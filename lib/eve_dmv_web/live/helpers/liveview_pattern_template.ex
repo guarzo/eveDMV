@@ -248,8 +248,8 @@ defmodule EveDmvWeb.LiveHelpers.LiveViewPatternTemplate do
         |> put_flash(:error, "Battle not found")
         |> push_navigate(to: "/battles")
 
-      {:error, reason} ->
-        handle_api_error(socket, reason)
+      _ ->
+        handle_api_error(socket, "Service unavailable")
     end
   end
 

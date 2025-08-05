@@ -224,7 +224,6 @@ jobs:
     name: Dialyzer Analysis
     runs-on: ubuntu-latest
     needs: setup
-    continue-on-error: true
     
     steps:
     - name: Checkout code
@@ -254,11 +253,17 @@ jobs:
           ${{ runner.os }}-plt-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-
     - name: Run Dialyzer
       run: |
-        echo "Running Dialyzer type analysis (warnings only)..."
-        mix dialyzer || {
-          echo "Dialyzer found type warnings, but continuing CI..."
+        echo "Running Dialyzer with zero-error enforcement..."
+        mix dialyzer --format short > dialyzer_output.txt || true
+        error_count=$(grep -c "^lib/" dialyzer_output.txt || echo "0")
+        echo "Dialyzer found $error_count errors"
+        if [ $error_count -gt 0 ]; then
+          echo "❌ Dialyzer errors found:"
+          cat dialyzer_output.txt
           exit 1
-        }
+        else
+          echo "✅ No Dialyzer errors found!"
+        fi
 
   coverage-comment:
     name: Coverage Comment

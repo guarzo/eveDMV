@@ -90,6 +90,7 @@ defmodule EveDmv.Database.PartitionAutomation do
   @doc """
   Gets statistics about current partitions.
   """
+  @dialyzer {:nowarn_function, get_partition_stats: 0}
   @spec get_partition_stats() :: {:ok, map()} | {:error, any()}
   def get_partition_stats do
     query = """

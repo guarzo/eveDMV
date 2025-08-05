@@ -578,7 +578,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
     # Infiltration vulnerabilities
     infiltration_risks = Map.get(security_risks, :infiltration_risks, %{})
     infiltration_risk_level = Map.get(infiltration_risks, :risk_level, :low)
-    
+
     infiltration_vulnerabilities =
       if infiltration_risk_level in [:high, :critical] do
         ["High infiltration risk from new/inactive members" | initial_vulnerabilities]
@@ -589,7 +589,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
     # AWOX vulnerabilities
     awox_risk_assessment = Map.get(security_risks, :awox_risk_assessment, %{})
     awox_risk_level = Map.get(awox_risk_assessment, :awox_risk_level, :low)
-    
+
     awox_vulnerabilities =
       if awox_risk_level in [:high, :critical] do
         ["Potential AWOX threats identified" | infiltration_vulnerabilities]
@@ -600,7 +600,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
     # Spy vulnerabilities
     spy_indicators = Map.get(security_risks, :spy_indicators, %{})
     spy_risk_level = Map.get(spy_indicators, :spy_risk_level, :low)
-    
+
     final_vulnerabilities =
       if spy_risk_level in [:high, :critical] do
         ["Possible intelligence gathering activities detected" | awox_vulnerabilities]
@@ -617,7 +617,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
 
   defp compile_threat_indicators(security_risks, activity_analysis) do
     infiltration_risks = Map.get(security_risks, :infiltration_risks, %{})
-    
+
     indicators = %{
       infiltration_indicators: extract_infiltration_indicators(infiltration_risks),
       behavioral_indicators: extract_behavioral_indicators(activity_analysis),
@@ -673,7 +673,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
 
     spy_indicators = Map.get(security_risks, :spy_indicators, %{})
     potential_spies = Map.get(spy_indicators, :potential_spies, [])
-    
+
     final_operational_indicators =
       if length(potential_spies) > 0 do
         ["Suspicious activity patterns detected" | initial_operational_indicators]
@@ -691,7 +691,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
     # Deductions for various risks
     infiltration_risks = Map.get(security_risks, :infiltration_risks, %{})
     infiltration_risk_level = Map.get(infiltration_risks, :risk_level, :low)
-    
+
     infiltration_penalty =
       case infiltration_risk_level do
         :critical -> 30
@@ -703,7 +703,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
 
     awox_risk_assessment = Map.get(security_risks, :awox_risk_assessment, %{})
     awox_risk_level = Map.get(awox_risk_assessment, :awox_risk_level, :low)
-    
+
     awox_penalty =
       case awox_risk_level do
         :critical -> 25
@@ -715,7 +715,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
 
     spy_indicators = Map.get(security_risks, :spy_indicators, %{})
     spy_risk_level = Map.get(spy_indicators, :spy_risk_level, :low)
-    
+
     spy_penalty =
       case spy_risk_level do
         :high -> 20
@@ -734,7 +734,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
     # Infiltration recommendations
     infiltration_risks = Map.get(security_risks, :infiltration_risks, %{})
     infiltration_risk_level = Map.get(infiltration_risks, :risk_level, :low)
-    
+
     infiltration_recommendations =
       case infiltration_risk_level do
         level when level in [:high, :critical] ->
@@ -753,7 +753,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
     # AWOX recommendations
     awox_risk_assessment = Map.get(security_risks, :awox_risk_assessment, %{})
     awox_risk_level = Map.get(awox_risk_assessment, :awox_risk_level, :low)
-    
+
     awox_recommendations =
       case awox_risk_level do
         level when level in [:high, :critical] ->
@@ -772,7 +772,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
     # Spy recommendations
     spy_indicators = Map.get(security_risks, :spy_indicators, %{})
     spy_risk_level = Map.get(spy_indicators, :spy_risk_level, :low)
-    
+
     spy_recommendations =
       case spy_risk_level do
         :high ->
@@ -790,7 +790,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
 
     # General recommendations
     overall_risk_level = Map.get(security_risks, :overall_risk_level, :low)
-    
+
     final_recommendations =
       if overall_risk_level in [:high, :critical] do
         [

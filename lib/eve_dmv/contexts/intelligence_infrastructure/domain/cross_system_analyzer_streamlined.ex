@@ -223,14 +223,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzerS
     analysis_system = starting_system || List.first(system_ids)
 
     if analysis_system do
-      with {:ok, constellation_analysis} <- analyze_wormhole_chain(analysis_system, options) do
-        results = %{
-          constellation_analysis: constellation_analysis,
-          analysis_type: :constellation_only
-        }
+      constellation_analysis = analyze_wormhole_chain(analysis_system, options)
 
-        {:ok, results}
-      end
+      results = %{
+        constellation_analysis: constellation_analysis,
+        analysis_type: :constellation_only
+      }
+
+      {:ok, results}
     else
       {:error, "No system specified for constellation analysis"}
     end

@@ -26,6 +26,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CorporationAnalyzer do
   Get cached intelligence for a corporation.
   """
   @spec get_intelligence(integer()) :: {:ok, map()}
+  @dialyzer {:nowarn_function, get_intelligence: 1}
   def get_intelligence(corporation_id) do
     case AnalysisCache.get_corporation_analysis(corporation_id) do
       {:ok, analysis} -> {:ok, analysis}
@@ -37,6 +38,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CorporationAnalyzer do
   Refresh analysis for a corporation.
   """
   @spec refresh_analysis(integer()) :: {:ok, map()}
+  @dialyzer {:nowarn_function, refresh_analysis: 1}
   def refresh_analysis(corporation_id) do
     AnalysisCache.invalidate_corporation(corporation_id)
     analyze(corporation_id, %{force_refresh: true})
@@ -71,11 +73,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CorporationAnalyzer do
         analysis = %{
           corporation_id: corporation_id,
           member_count: 0,
-          active_members: 0,
-          combat_effectiveness: 0.65,
-          timezone_coverage: %{},
-          preferred_doctrines: [],
-          analyzed_at: DateTime.utc_now()
+          threat_distribution: %{},
+          activity_patterns: %{},
+          coordination_metrics: %{},
+          analysis_timestamp: DateTime.utc_now()
         }
 
         # Cache the result

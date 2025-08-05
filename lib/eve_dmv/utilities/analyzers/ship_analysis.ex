@@ -56,6 +56,7 @@ defmodule EveDmv.Shared.ShipAnalysis do
   @doc """
   Analyze role specialization patterns for character statistics.
   """
+  @dialyzer {:nowarn_function, analyze_role_specialization: 1}
   def analyze_role_specialization(character_stats) do
     ship_usage = Map.get(character_stats, :ship_usage, %{}) || %{}
 
@@ -195,11 +196,11 @@ defmodule EveDmv.Shared.ShipAnalysis do
     roles_with_significant_usage =
       Enum.count(role_percentages, fn {_role, data} -> data.percentage > 0.1 end)
 
-    case roles_with_significant_usage do
-      0..1 -> :highly_specialized
-      2 -> :moderately_flexible
-      3 -> :flexible
-      _ -> :very_flexible
+    cond do
+      roles_with_significant_usage <= 1 -> :highly_specialized
+      roles_with_significant_usage == 2 -> :moderately_flexible
+      roles_with_significant_usage == 3 -> :flexible
+      true -> :very_flexible
     end
   end
 

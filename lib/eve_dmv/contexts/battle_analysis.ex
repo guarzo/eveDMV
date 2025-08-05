@@ -149,7 +149,8 @@ defmodule EveDmv.Contexts.BattleAnalysis do
 
   Useful for tracking roaming gangs, escalating conflicts, or multi-system engagements.
   """
-  @spec analyze_battle_sequence([battle()]) :: {:ok, battle_sequence_analysis()} | {:error, atom()}
+  @spec analyze_battle_sequence([battle()]) ::
+          {:ok, battle_sequence_analysis()} | {:error, atom()}
   def analyze_battle_sequence(battles) when is_list(battles) do
     try do
       analysis = BattleTimelineService.analyze_battle_sequence(battles)
@@ -191,6 +192,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
                 case reconstruct_battle_timeline(battle) do
                   {:ok, timeline} ->
                     {:ok, Map.put(battle, :timeline, timeline)}
+
                   {:error, _reason} = error ->
                     error
                 end
@@ -295,6 +297,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
             case reconstruct_battle_timeline(battle) do
               {:ok, timeline} ->
                 {:ok, Map.put(battle, :timeline, timeline)}
+
               {:error, _reason} = error ->
                 error
             end
@@ -322,44 +325,28 @@ defmodule EveDmv.Contexts.BattleAnalysis do
       # Import recent kills for a character
       {:ok, battles} = import_from_zkillboard("https://zkillboard.com/character/1234567890/")
   """
-  @spec import_from_zkillboard(String.t()) :: {:ok, map()} | {:error, atom()}
+  @spec import_from_zkillboard(String.t()) :: {:error, atom()}
   def import_from_zkillboard(url) when is_binary(url) do
-    case ZkillboardImportService.import_from_url(url) do
-      {:ok, killmail_ids} ->
-        # Analyze the imported killmails for battles
-        analyze_imported_killmails(killmail_ids)
-
-      error ->
-        error
-    end
+    ZkillboardImportService.import_from_url(url)
   end
 
   @doc """
   Imports a specific killmail from zkillboard by ID.
   """
-  @spec import_killmail_from_zkillboard(integer()) :: {:ok, map()} | {:error, atom()}
+  @spec import_killmail_from_zkillboard(integer()) :: {:error, atom()}
   def import_killmail_from_zkillboard(killmail_id) when is_integer(killmail_id) do
-    case ZkillboardImportService.import_killmail(killmail_id) do
-      {:ok, killmail_ids} ->
-        analyze_imported_killmails(killmail_ids)
-
-      error ->
-        error
-    end
+    ZkillboardImportService.import_killmail(killmail_id)
   end
 
   @doc """
   Imports related kills from zkillboard for a specific system and time.
   """
   @spec import_related_kills_from_zkillboard(integer(), DateTime.t()) ::
-          {:ok, map()} | {:error, atom()}
+          {:error, atom()}
   def import_related_kills_from_zkillboard(system_id, timestamp) do
     case ZkillboardImportService.import_related_kills(system_id, timestamp) do
-      {:ok, killmail_ids} ->
-        analyze_imported_killmails(killmail_ids)
-
-      error ->
-        error
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -537,16 +524,20 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   @spec get_battle_intelligence_summary(String.t()) :: {:ok, map()} | {:error, atom()}
   def get_battle_intelligence_summary(battle_id) do
     with {:ok, battle} <- get_battle_by_id(battle_id),
-         {:ok, intelligence} <- analyze_battle_with_intelligence(battle),
-         {:ok, timeline} <- reconstruct_battle_timeline(battle) do
-      summary = generate_intelligence_summary(battle, intelligence, timeline)
-      {:ok,
-       %{
-         battle: battle,
-         intelligence: intelligence,
-         timeline: timeline,
-         summary: summary
-       }}
+         {:ok, intelligence} <- analyze_battle_with_intelligence(battle) do
+      # Timeline reconstruction is not yet implemented, so we skip it
+      case reconstruct_battle_timeline(battle) do
+        {:error, _} ->
+          summary = generate_intelligence_summary(battle, intelligence, nil)
+
+          {:ok,
+           %{
+             battle: battle,
+             intelligence: intelligence,
+             timeline: nil,
+             summary: summary
+           }}
+      end
     else
       {:error, reason} -> {:error, reason}
     end
@@ -559,59 +550,47 @@ defmodule EveDmv.Contexts.BattleAnalysis do
       battle_id: battle.battle_id,
       engagement_type: Map.get(intelligence, :battle_flow, :unknown),
       tactical_assessment: summarize_tactical_phases(Map.get(intelligence, :tactical_phases, [])),
-      performance_summary: summarize_ship_performance(Map.get(intelligence, :ship_performance, %{})),
-      multi_system_context: summarize_multi_system_context(Map.get(intelligence, :multi_system_context, %{})),
+      performance_summary:
+        summarize_ship_performance(Map.get(intelligence, :ship_performance, %{})),
+      multi_system_context:
+        summarize_multi_system_context(Map.get(intelligence, :multi_system_context, %{})),
       key_timeline_events: extract_key_timeline_events(timeline),
       overall_significance: calculate_battle_significance(battle, intelligence)
     }
   end
 
-  defp extract_key_timeline_events(timeline) do
-    cond do
-      is_map(timeline) and Map.has_key?(timeline, :key_moments) ->
-        Map.get(timeline, :key_moments, [])
-      
-      is_map(timeline) ->
-        # Extract any event-like data from timeline
-        timeline
-        |> Map.values()
-        |> Enum.filter(&is_map/1)
-        |> Enum.take(5)
-      
-      true ->
-        []
+  defp extract_key_timeline_events(timeline) when is_map(timeline) do
+    if Map.has_key?(timeline, :key_moments) do
+      Map.get(timeline, :key_moments, [])
+    else
+      # Extract any event-like data from timeline
+      timeline
+      |> Map.values()
+      |> Enum.filter(&is_map/1)
+      |> Enum.take(5)
     end
+  end
+
+  defp extract_key_timeline_events(_timeline) do
+    []
   end
 
   defp calculate_battle_significance(battle, intelligence) do
     base_score = length(battle.killmails) * 0.1
-    
+
     # Add significance based on various factors
-    multi_system_bonus = if Map.get(intelligence, :multi_system_context, %{}) |> Map.get(:is_multi_system, false), do: 2.0, else: 0.0
-    
+    multi_system_bonus =
+      if Map.get(intelligence, :multi_system_context, %{}) |> Map.get(:is_multi_system, false),
+        do: 2.0,
+        else: 0.0
+
     total_score = base_score + multi_system_bonus
-    
+
     cond do
       total_score >= 10.0 -> :very_high
       total_score >= 5.0 -> :high
       total_score >= 2.0 -> :medium
       true -> :low
-    end
-  end
-
-  defp analyze_imported_killmails(killmail_ids) do
-    case analyze_battle_from_killmail_ids(killmail_ids) do
-      {:ok, battle} ->
-        # Single battle found, add timeline
-        case reconstruct_battle_timeline(battle) do
-          {:ok, timeline} ->
-            {:ok, Map.put(battle, :timeline, timeline)}
-          {:error, _reason} = error ->
-            error
-        end
-
-      error ->
-        error
     end
   end
 
@@ -662,7 +641,6 @@ defmodule EveDmv.Contexts.BattleAnalysis do
     end
   end
 
-
   defp summarize_tactical_phases(phases) do
     phase_names = Enum.map(phases, & &1.phase_type)
     "Battle progressed through #{length(phases)} phases: #{Enum.join(phase_names, " → ")}"
@@ -688,7 +666,6 @@ defmodule EveDmv.Contexts.BattleAnalysis do
       "Isolated engagement"
     end
   end
-
 
   defp extract_key_moments_from_phases(phases) do
     phases

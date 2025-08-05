@@ -361,9 +361,16 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
       older_avg_value = average_kill_value(older_kills)
 
       cond do
-        recent_avg_value > older_avg_value * 1.2 -> :escalating
-        recent_avg_value < older_avg_value * 0.8 -> :diminishing
-        true -> :stable
+        Decimal.compare(recent_avg_value, Decimal.mult(older_avg_value, Decimal.new("1.2"))) ==
+            :gt ->
+          :escalating
+
+        Decimal.compare(recent_avg_value, Decimal.mult(older_avg_value, Decimal.new("0.8"))) ==
+            :lt ->
+          :diminishing
+
+        true ->
+          :stable
       end
     end
   end

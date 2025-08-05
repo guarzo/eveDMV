@@ -55,9 +55,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
     with {:ok, assessment} <- perform_threat_assessment(entity_id, entity_type, options),
          :ok <- maybe_cache_result(assessment, options) do
       threat_level = Map.get(assessment, :threat_level, :unknown)
-      Logger.info(
-        "Threat assessment completed for #{entity_type} #{entity_id}: #{threat_level}"
-      )
+      Logger.info("Threat assessment completed for #{entity_type} #{entity_id}: #{threat_level}")
 
       {:ok, assessment}
     else
@@ -143,11 +141,8 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
       |> Enum.map(fn {entity_id, entity_type} ->
         case assess_threat(entity_id, entity_type, options) do
           {:ok, assessment} -> {entity_id, assessment}
-          # Dialyzer knows this can never match, but keep for defensive programming
-          _ -> nil
         end
       end)
-      |> Enum.reject(&is_nil/1)
 
     if Enum.empty?(individual_assessments) do
       {:error, :no_valid_assessments}
@@ -190,7 +185,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
   defp perform_threat_assessment(entity_id, entity_type, options) do
     # Stub implementation - returns complete threat assessment structure
     timeframe_days = Keyword.get(options, :timeframe_days, 30)
-    
+
     final_assessment = %{
       entity_id: entity_id,
       entity_type: entity_type,
@@ -237,7 +232,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
         data_quality: :partial
       }
     }
-    
+
     {:ok, final_assessment}
   end
 
@@ -249,66 +244,70 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
       :ok
     end
   end
-  
+
   defp extract_entities_from_killmail(event) when is_map(event) do
     entities = []
-    
+
     # Extract victim
     victim_id = get_in(event, ["victim", "character_id"])
     if victim_id, do: [{victim_id, :character} | entities], else: entities
   end
-  
+
   defp extract_entities_from_killmail(_), do: []
-  
+
   defp update_realtime_threat_indicators(_event, _entities), do: :ok
-  
+
   defp calculate_highest_threat_level(assessments) when is_list(assessments) do
     threat_levels = [:minimal, :low, :moderate, :high, :critical, :extreme]
-    
+
     assessments
-    |> Enum.map(fn {_id, assessment} -> 
+    |> Enum.map(fn {_id, assessment} ->
       Map.get(assessment, :threat_level, :minimal)
     end)
-    |> Enum.max_by(fn level -> 
-      Enum.find_index(threat_levels, &(&1 == level)) || 0
-    end, fn -> :minimal end)
+    |> Enum.max_by(
+      fn level ->
+        Enum.find_index(threat_levels, &(&1 == level)) || 0
+      end,
+      fn -> :minimal end
+    )
   end
-  
+
   defp calculate_average_threat_score(assessments) when is_list(assessments) do
-    scores = Enum.map(assessments, fn {_id, assessment} -> 
-      Map.get(assessment, :threat_score, 0.0)
-    end)
-    
+    scores =
+      Enum.map(assessments, fn {_id, assessment} ->
+        Map.get(assessment, :threat_score, 0.0)
+      end)
+
     if Enum.empty?(scores) do
       0.0
     else
       Float.round(Enum.sum(scores) / length(scores), 1)
     end
   end
-  
+
   defp calculate_threat_distribution(assessments) when is_list(assessments) do
     assessments
-    |> Enum.map(fn {_id, assessment} -> 
+    |> Enum.map(fn {_id, assessment} ->
       Map.get(assessment, :threat_level, :minimal)
     end)
     |> Enum.frequencies()
   end
-  
+
   defp analyze_combined_capabilities(assessments) when is_list(assessments) do
-    all_ship_classes = 
+    all_ship_classes =
       assessments
-      |> Enum.flat_map(fn {_id, assessment} -> 
+      |> Enum.flat_map(fn {_id, assessment} ->
         get_in(assessment, [:capability_assessment, :ship_classes]) || []
       end)
       |> Enum.uniq()
-    
+
     all_combat_roles =
       assessments
-      |> Enum.flat_map(fn {_id, assessment} -> 
+      |> Enum.flat_map(fn {_id, assessment} ->
         get_in(assessment, [:capability_assessment, :combat_roles]) || []
       end)
       |> Enum.uniq()
-    
+
     %{
       ship_classes: all_ship_classes,
       combat_roles: all_combat_roles,
@@ -316,20 +315,23 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
       diversity_score: calculate_diversity_score(all_ship_classes, all_combat_roles)
     }
   end
-  
+
   defp assess_coordination_potential(assessments) when is_list(assessments) do
-    leadership_count = 
+    leadership_count =
       assessments
-      |> Enum.count(fn {_id, assessment} -> 
+      |> Enum.count(fn {_id, assessment} ->
         get_in(assessment, [:capability_assessment, :leadership_indicators]) == true
       end)
-    
+
     fleet_experienced_count =
       assessments
-      |> Enum.count(fn {_id, assessment} -> 
-        get_in(assessment, [:capability_assessment, :fleet_participation]) in [:regular, :frequent]
+      |> Enum.count(fn {_id, assessment} ->
+        get_in(assessment, [:capability_assessment, :fleet_participation]) in [
+          :regular,
+          :frequent
+        ]
       end)
-    
+
     cond do
       leadership_count >= 2 and fleet_experienced_count >= length(assessments) * 0.7 -> :high
       leadership_count >= 1 and fleet_experienced_count >= length(assessments) * 0.5 -> :moderate
@@ -337,35 +339,34 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
       true -> :minimal
     end
   end
-  
+
   defp generate_recommendations(entity_type, threat_level) do
     # Dialyzer knows threat_level is always :moderate in current implementation
-    # Keep all patterns for future when threat calculation is implemented
-    base_recommendations = case threat_level do
-      :moderate -> ["Active threat", "Maintain situational awareness", "Consider backup options"]
-      # Currently unreachable patterns, kept for when threat calculation is implemented
-      # :minimal -> ["Low priority target", "Monitor for changes in activity"]
-      # :low -> ["Limited threat", "Basic defensive measures sufficient"]
-      # :high -> ["Significant threat", "Avoid solo engagements", "Coordinate with allies"]
-      # :critical -> ["Major threat", "Extreme caution advised", "Fleet support recommended"]
-      # :extreme -> ["Maximum threat level", "Avoid engagement unless necessary", "Full fleet response required"]
-      _ -> ["Active threat", "Maintain situational awareness", "Consider backup options"]
-    end
-    
-    entity_specific = case entity_type do
-      :character -> ["Track pilot activity patterns", "Monitor ship usage"]
-      :corporation -> ["Assess member capabilities", "Monitor corporate fleet movements"]
-      _ -> []
-    end
-    
+    # Simplified recommendations - currently only :moderate threat level is returned
+    base_recommendations =
+      case threat_level do
+        :moderate ->
+          ["Active threat", "Maintain situational awareness", "Consider backup options"]
+
+        _ ->
+          ["Active threat", "Maintain situational awareness", "Consider backup options"]
+      end
+
+    entity_specific =
+      case entity_type do
+        :character -> ["Track pilot activity patterns", "Monitor ship usage"]
+        :corporation -> ["Assess member capabilities", "Monitor corporate fleet movements"]
+        _ -> []
+      end
+
     base_recommendations ++ entity_specific
   end
-  
+
   defp calculate_diversity_score(ship_classes, combat_roles) do
     # Simple diversity calculation
     ship_diversity = min(length(ship_classes) / 10.0, 1.0)
     role_diversity = min(length(combat_roles) / 5.0, 1.0)
-    
+
     Float.round((ship_diversity + role_diversity) / 2 * 100, 1)
   end
 end

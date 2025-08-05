@@ -148,7 +148,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
       entities
       |> Enum.group_by(fn entity ->
         # Group by hour to detect coordination
-        entity.last_activity |> DateTime.truncate(:hour)
+        dt = entity.last_activity
+        %{dt | minute: 0, second: 0, microsecond: {0, 0}}
       end)
 
     coordinated_groups =
@@ -229,7 +230,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   defp group_killmails_by_time_windows(killmails) do
     killmails
     |> Enum.group_by(fn killmail ->
-      killmail.killmail_time |> DateTime.truncate(:hour)
+      dt = killmail.killmail_time
+      %{dt | minute: 0, second: 0, microsecond: {0, 0}}
     end)
   end
 

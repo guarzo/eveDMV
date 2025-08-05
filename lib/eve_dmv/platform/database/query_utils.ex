@@ -225,7 +225,7 @@ defmodule EveDmv.Database.QueryUtils do
   """
   def calculate_date_range(days_back) when is_integer(days_back) do
     end_date = DateTime.utc_now()
-    start_date = DateTimeUtils.add(end_date, -days_back, :day)
+    start_date = DateTimeUtils.add(end_date, -days_back * 86_400, :second)
     {start_date, end_date}
   end
 

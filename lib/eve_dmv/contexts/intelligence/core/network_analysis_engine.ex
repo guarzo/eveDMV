@@ -255,6 +255,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
 
     # Consistency factor (regular interactions = stronger)
     time_span = max(1, DateTimeUtils.diff(edge.last_seen, edge.first_seen, :day))
+
     consistency_factor =
       if time_span > 0 do
         interaction_count / time_span
@@ -309,6 +310,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
         |> Enum.sum()
 
       interaction_count = length(interactions)
+
       if interaction_count > 0 do
         Float.round(total / interaction_count, 1)
       else
@@ -332,12 +334,13 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
     edge_count = map_size(network_data.edges)
 
     # Calculate network density
-    max_edges = 
+    max_edges =
       if node_count > 1 do
         node_count * (node_count - 1) / 2
       else
         0
       end
+
     density = if max_edges > 0, do: edge_count / max_edges, else: 0
 
     # Calculate degree distribution
@@ -364,6 +367,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
 
   defp calculate_average_degree(degree_distribution) do
     node_count = map_size(degree_distribution)
+
     if node_count == 0 do
       0.0
     else
@@ -398,6 +402,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
         0.0
       else
         coefficient_count = length(node_coefficients)
+
         if coefficient_count > 0 do
           avg = Enum.sum(node_coefficients) / coefficient_count
           Float.round(avg, 3)
@@ -436,7 +441,8 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
 
       # Local clustering coefficient = actual triangles / possible triangles
       neighbor_count = length(neighbors)
-      max_triangles = 
+
+      max_triangles =
         if neighbor_count > 1 do
           neighbor_count * (neighbor_count - 1) / 2
         else

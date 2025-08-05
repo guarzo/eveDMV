@@ -92,15 +92,18 @@ defmodule EveDmv.Contexts.Intelligence.Services.ProfileService do
   """
   def get_shared_profile(share_token) do
     case Cache.get(:analysis, {:profile_share, share_token}) do
-      nil ->
-        {:error, :not_found}
-
-      share_record ->
+      {:ok, share_record} ->
         if DateTimeUtils.compare(DateTime.utc_now(), share_record.expires_at) == :lt do
           {:ok, share_record.profile_data}
         else
           {:error, :expired}
         end
+
+      {:error, :not_found} ->
+        {:error, :not_found}
+
+      _ ->
+        {:error, :not_found}
     end
   end
 
@@ -500,7 +503,6 @@ defmodule EveDmv.Contexts.Intelligence.Services.ProfileService do
 
     {:ok, html}
   end
-
 
   defp prepare_profile_for_sharing(profile, options) do
     # Redact sensitive information if requested

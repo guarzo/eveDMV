@@ -187,12 +187,13 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
       |> Enum.map(fn km ->
         # Access character_id correctly - it's a field in character_data
         character_id = Map.get(character_data, :character_id)
-        
+
         if km.victim_character_id == character_id do
           km.victim_ship_type_id
         else
           # Find character's ship in attackers from raw_data
           attackers = get_in(km.raw_data, ["attackers"]) || []
+
           attacker =
             Enum.find(attackers, fn att ->
               get_in(att, ["character_id"]) == character_id
@@ -249,6 +250,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
             date = DateTime.to_date(km_time)
             week = div(Date.day_of_year(date) - 1, 7) + 1
             {date.year, week}
+
           _ ->
             nil
         end
@@ -410,11 +412,13 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
   end
 
   defp calculate_midpoint(days: days) do
-    DateTime.utc_now() |> DateTimeUtils.add(-days * 24 * 60 * 60 / 2, :second)
+    seconds = div(days * 24 * 60 * 60, 2)
+    DateTime.utc_now() |> DateTimeUtils.add(-seconds, :second)
   end
 
   defp calculate_midpoint(months: months) do
-    DateTime.utc_now() |> DateTimeUtils.add(-months * 30 * 24 * 60 * 60 / 2, :second)
+    seconds = div(months * 30 * 24 * 60 * 60, 2)
+    DateTime.utc_now() |> DateTimeUtils.add(-seconds, :second)
   end
 
   defp calculate_kd_trend(early_kms, recent_kms) do

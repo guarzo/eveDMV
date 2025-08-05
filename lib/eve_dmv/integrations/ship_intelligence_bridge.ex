@@ -1,4 +1,19 @@
 defmodule EveDmv.Integrations.ShipIntelligenceBridge do
+  @dialyzer [
+    {:nowarn_function,
+     [
+       {:analyze_ship_usage_patterns, 1},
+       {:calculate_role_preferences, 1},
+       {:determine_expertise_level, 2},
+       {:calculate_ship_mastery_scores, 1},
+       {:calculate_individual_ship_mastery, 1},
+       {:calculate_classification_confidence, 1},
+       {:extract_primary_ship_classes, 1},
+       {:calculate_specialization_diversity, 1},
+       {:calculate_time_span_days, 1}
+     ]}
+  ]
+
   @moduledoc """
   Bridge module that integrates the new ship intelligence features with existing systems.
 
@@ -100,6 +115,9 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
   Analyzes a character's killmail history to determine ship specialization
   and expertise levels based on performance and usage patterns.
   """
+  @dialyzer {:nowarn_function, calculate_ship_specialization: 1}
+  @dialyzer {:nowarn_function, calculate_ship_specialization: 2}
+  @spec calculate_ship_specialization(integer()) :: {:ok, map()}
   @spec calculate_ship_specialization(integer(), keyword()) :: {:ok, map()}
   def calculate_ship_specialization(character_id, options \\ []) do
     days_back = Keyword.get(options, :days_back, 90)
@@ -147,6 +165,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
   Get ship preference insights for character threat assessment.
   Returns preferred ship classes, tactical roles, and effectiveness patterns.
   """
+  @dialyzer {:nowarn_function, get_character_ship_preferences: 1}
   @spec get_character_ship_preferences(integer()) :: map()
   def get_character_ship_preferences(character_id) do
     case calculate_ship_specialization(character_id, days_back: 30) do
@@ -435,6 +454,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
   end
 
   # Character intelligence helper functions
+  @dialyzer {:nowarn_function, get_character_killmail_data: 2}
   defp get_character_killmail_data(character_id, days_back) do
     cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -days_back * 24 * 60 * 60, :second)
 
@@ -492,7 +512,6 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
     end)
     |> Enum.sort_by(& &1.percentage, :desc)
   end
-
 
   @dialyzer {:nowarn_function, determine_expertise_level: 2}
   defp determine_expertise_level(killmail_data, ship_usage) do

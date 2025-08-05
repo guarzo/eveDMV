@@ -239,6 +239,10 @@ defmodule EveDmv.Contexts.Intelligence.Core.ThreatAssessmentEngine do
         score = analysis.unpredictability_score * 100
         {:ok, min(score, 100)}
 
+      {:error, _reason} ->
+        # Log error but return default score
+        {:ok, 0}
+
       _ ->
         {:ok, 0}
     end
@@ -423,7 +427,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.ThreatAssessmentEngine do
       {:ok, trends} ->
         trends
 
-      {:error, _} ->
+      _ ->
         # Fallback if trend analysis fails
         %{
           direction: :stable,

@@ -187,7 +187,6 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
     end
   end
 
-
   defp generate_embed_code(battle_id, options) do
     width = Map.get(options, :width, 600)
     height = Map.get(options, :height, 400)
@@ -203,13 +202,11 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
     """
   end
 
-
   defp find_battle_by_token(_share_token) do
     # Battle sharing functionality not yet implemented
     # Battle resource doesn't have share_token field
     {:error, :battle_not_found}
   end
-
 
   defp fetch_battles_for_comparison(battle_ids) do
     battles =
@@ -337,5 +334,4 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
   end
 
   # Formatting helpers
-
 end

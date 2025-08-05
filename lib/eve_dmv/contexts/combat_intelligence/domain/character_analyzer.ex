@@ -158,7 +158,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
     limit = Map.get(criteria, :limit, 100)
 
     # Search for characters with recent activity
-    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -activity_days, :day)
+    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -activity_days * 24 * 60 * 60, :second)
 
     # Query for characters with killmail activity in the specified timeframe
     query =
@@ -221,7 +221,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
     include_kills = Keyword.get(opts, :include_kills, true)
 
     # Date range for analysis
-    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -days_back, :day)
+    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -days_back * 24 * 60 * 60, :second)
 
     # Get character's killmail activity
     activity_data =
@@ -580,7 +580,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
             engagement_patterns: %{preferred_engagement_size: :unknown},
             temporal_patterns: %{peak_hours: []}
           }
-          
+
         # This branch is unreachable with current implementation
         {:ok, data} ->
           data
@@ -608,14 +608,26 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
       |> Enum.map(fn {char_id, data} -> {char_id, data.threat_score} end)
       |> Enum.sort_by(fn {_char_id, score} -> score end, :desc)
 
-    highest_threat = List.first(scores)
-    lowest_threat = List.last(scores)
+    # Handle empty scores list
+    {highest_threat, lowest_threat} =
+      case scores do
+        [] -> {nil, nil}
+        [single] -> {single, single}
+        [first | _] -> {first, List.last(scores)}
+      end
+
+    threat_score_spread =
+      if highest_threat && lowest_threat do
+        elem(highest_threat, 1) - elem(lowest_threat, 1)
+      else
+        0.0
+      end
 
     %{
       ranked_by_threat: scores,
       highest_threat: highest_threat,
       lowest_threat: lowest_threat,
-      threat_score_spread: elem(highest_threat, 1) - elem(lowest_threat, 1),
+      threat_score_spread: threat_score_spread,
       threat_level_distribution:
         character_data
         |> Enum.map(fn {_char_id, data} -> data.threat_level end)
@@ -770,7 +782,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   end
 
   defp get_recent_activity_count(character_id, days_back) do
-    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -days_back, :day)
+    # Convert days to seconds for DateTime.add
+    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -days_back * 24 * 60 * 60, :second)
 
     query =
       from(k in "killmails_raw",

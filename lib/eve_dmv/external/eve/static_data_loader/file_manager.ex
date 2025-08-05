@@ -182,8 +182,7 @@ defmodule EveDmv.Eve.StaticDataLoader.FileManager do
   # Private functions
 
   defp download_file(url) do
-    case url
-         |> Finch.build(:get)
+    case Finch.build(:get, url)
          |> Finch.request(EveDmv.Finch, receive_timeout: 30_000) do
       {:ok, %{status: 200, body: body}} ->
         {:ok, body}
@@ -200,6 +199,7 @@ defmodule EveDmv.Eve.StaticDataLoader.FileManager do
       {:error, "Download failed: #{inspect(error)}"}
   end
 
+  @dialyzer {:nowarn_function, decompress_bz2: 1}
   defp decompress_bz2(compressed_data) when is_binary(compressed_data) do
     decompressed = Bzip2.decompress!(compressed_data)
     {:ok, decompressed}

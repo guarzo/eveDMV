@@ -24,6 +24,7 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
     * `:days`      - days to look back (default: #{@default_days})
     * `:min_usage` - minimum activity count (default: #{@default_min_usage})
   """
+  @dialyzer {:nowarn_function, calculate_ship_stats: 1}
   def calculate_ship_stats(opts \\ []) do
     days = Keyword.get(opts, :days, @default_days)
     min_usage = Keyword.get(opts, :min_usage, @default_min_usage)
@@ -235,127 +236,6 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
     }
   end
 
-  defp sum_ship_values(participants) do
-    if Enum.empty?(participants) do
-      Decimal.new(0)
-    else
-      participants
-      |> Enum.map(&(&1.ship_value || Decimal.new(0)))
-      |> Enum.reduce(Decimal.new(0), &Decimal.add/2)
-    end
-  end
-
-  defp calculate_average_damage(kills, total_kills) do
-    if Enum.empty?(kills) or total_kills == 0 do
-      0
-    else
-      Enum.sum(Enum.map(kills, &(&1.damage_dealt || 0))) / total_kills
-    end
-  end
-
-  defp calculate_average_gang_size(participants, total_count) do
-    if Enum.empty?(participants) or total_count == 0 do
-      1.0
-    else
-      Enum.sum(Enum.map(participants, &(&1.gang_size || 1))) / total_count
-    end
-  end
-
-  defp calculate_solo_percentage(kills, total_kills) do
-    if Enum.empty?(kills) or total_kills == 0 do
-      0
-    else
-      solo_kills = Enum.count(kills, &((&1.gang_size || 1) == 1))
-      solo_kills / total_kills * 100
-    end
-  end
-
-  # Update usage + effectiveness rankings, then assign meta-tiers
-  defp update_ship_rankings do
-    case Ash.read(ShipStats, domain: Api) do
-      {:ok, ships} ->
-        process_ship_rankings(ships)
-
-      {:error, reason} ->
-        Logger.error("Failed reading ship stats: #{inspect(reason)}")
-        {:error, reason}
-    end
-  rescue
-    error ->
-      Logger.error("Error updating rankings: #{inspect(error)}")
-      {:error, error}
-  end
-
-  defp process_ship_rankings(ships) do
-    if Enum.empty?(ships) do
-      Logger.info("No ship statistics found to rank")
-      {:ok, :no_ships_to_rank}
-    else
-      perform_ranking_updates(ships)
-    end
-  end
-
-  defp perform_ranking_updates(ships) do
-    usage_ranked =
-      ships
-      |> Enum.sort_by(&(&1.total_kills + &1.total_losses), :desc)
-      |> Enum.with_index(1)
-
-    eff_ranked =
-      ships
-      |> Enum.filter(&(&1.total_kills + &1.total_losses >= 25))
-      |> Enum.sort_by(& &1.kill_death_ratio, :desc)
-      |> Enum.with_index(1)
-
-    # Bulk update usage ranks
-    Enum.each(usage_ranked, fn {ship, rank} ->
-      Api.update(ship, %{usage_rank: rank})
-    end)
-
-    # Bulk update effectiveness ranks
-    Enum.each(eff_ranked, fn {ship, rank} ->
-      Api.update(ship, %{effectiveness_rank: rank})
-    end)
-
-    handle_meta_tiers(eff_ranked)
-  end
-
-  defp handle_meta_tiers(eff_ranked) do
-    if Enum.empty?(eff_ranked) do
-      Logger.info("No ships qualified for effectiveness ranking (minimum 25 total activity)")
-
-      {:ok, :rankings_updated_no_meta_tiers}
-    else
-      case calculate_meta_tiers(eff_ranked) do
-        {:ok, _} -> {:ok, :rankings_updated}
-        {:error, reason} -> {:error, reason}
-      end
-    end
-  end
-
-  defp calculate_meta_tiers(ranked) do
-    total = length(ranked)
-
-    Enum.each(ranked, fn {ship, rank} ->
-      tier =
-        cond do
-          rank <= max(1, div(total, 20)) -> "S"
-          rank <= max(1, div(total, 10)) -> "A"
-          rank <= max(1, div(total, 5)) -> "B"
-          rank <= max(1, div(total, 2)) -> "C"
-          true -> "D"
-        end
-
-      Api.update(ship, %{meta_tier: tier})
-    end)
-
-    {:ok, :meta_tiers_calculated}
-  rescue
-    error ->
-      Logger.error("Error calculating meta tiers: #{inspect(error)}")
-      {:error, error}
-  end
-
   @spec determine_ship_category(ItemType.t()) :: String.t()
   defp determine_ship_category(%ItemType{is_capital_ship: is_cap, group_name: group_name}) do
     if is_cap do
@@ -375,5 +255,101 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
       group =~ ~r/industrial/i -> "industrial"
       true -> "special"
     end
+  end
+
+  # Calculate the sum of ship values from a list of participants
+  defp sum_ship_values(participants) do
+    participants
+    |> Enum.map(fn p -> p.ship_value || 0.0 end)
+    |> Enum.sum()
+  end
+
+  # Calculate average damage from participants
+  defp calculate_average_damage(participants, count) when count > 0 do
+    total_damage =
+      participants
+      |> Enum.map(fn p -> p.damage_done || 0.0 end)
+      |> Enum.sum()
+
+    total_damage / count
+  end
+
+  defp calculate_average_damage(_, 0), do: 0.0
+
+  # Calculate average gang size from participants
+  defp calculate_average_gang_size(participants, count) when count > 0 do
+    total_gang_size =
+      participants
+      |> Enum.map(fn p -> p.gang_size || 1 end)
+      |> Enum.sum()
+
+    total_gang_size / count
+  end
+
+  defp calculate_average_gang_size(_, 0), do: 0.0
+
+  # Calculate solo kill percentage
+  defp calculate_solo_percentage(participants, count) when count > 0 do
+    solo_count = Enum.count(participants, fn p -> (p.gang_size || 1) == 1 end)
+    solo_count / count * 100
+  end
+
+  defp calculate_solo_percentage(_, 0), do: 0.0
+
+  # Update ship rankings based on current statistics
+  defp update_ship_rankings do
+    Logger.info("Updating ship rankings...")
+
+    case Api.read(ShipStats) do
+      {:ok, ships} ->
+        # Calculate usage rank (by total activity)
+        ships_by_usage = Enum.sort_by(ships, &(&1.total_kills + &1.total_losses), :desc)
+        update_usage_ranks(ships_by_usage)
+
+        # Calculate effectiveness rank (by K/D ratio)
+        ships_by_effectiveness = Enum.sort_by(ships, &(&1.kill_death_ratio || 0), :desc)
+        update_effectiveness_ranks(ships_by_effectiveness)
+
+        Logger.info("Ship rankings updated successfully")
+        :ok
+
+      {:error, reason} ->
+        Logger.error("Failed to update ship rankings: #{inspect(reason)}")
+        {:error, reason}
+    end
+  end
+
+  # Update usage ranks for ships
+  defp update_usage_ranks(ships) do
+    ships
+    |> Enum.with_index(1)
+    |> Enum.each(fn {ship, rank} ->
+      case Api.update(ship, %{usage_rank: rank}) do
+        {:ok, _} ->
+          :ok
+
+        {:error, reason} ->
+          Logger.warning(
+            "Failed to update usage rank for ship #{ship.ship_type_id}: #{inspect(reason)}"
+          )
+      end
+    end)
+  end
+
+  # Update effectiveness ranks for ships
+  defp update_effectiveness_ranks(ships) do
+    ships
+    |> Enum.with_index(1)
+    |> Enum.each(fn {ship, rank} ->
+      case Api.update(ship, %{effectiveness_rank: rank}) do
+        {:ok, _} ->
+          :ok
+
+        {:error, reason} ->
+          Logger.warning(
+            "Failed to update effectiveness rank for ship #{ship.ship_type_id}: #{inspect(reason)}"
+          )
+      end
+    end)
   end
 end

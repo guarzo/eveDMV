@@ -403,7 +403,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
       |> Enum.group_by(fn event ->
         time = Map.get(event, :time)
         # Round to 5-minute intervals
-        minute = DateTime.to_unix(time, :minute)
+        seconds = DateTime.to_unix(time, :second)
+        minute = div(seconds, 60)
         div(minute, 5) * 5
       end)
       |> Enum.max_by(fn {_window, events} -> length(events) end)

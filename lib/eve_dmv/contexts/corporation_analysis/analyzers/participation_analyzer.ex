@@ -1,5 +1,11 @@
 defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
   @compile {:nowarn_unused_function}
+  @dialyzer {:nowarn_function,
+             [
+               get_member_participation_analyses: 3,
+               calculate_participation_trend: 1,
+               count_recent_activities: 2
+             ]}
   @moduledoc """
   Member participation pattern analysis for Corporation Analysis context.
 

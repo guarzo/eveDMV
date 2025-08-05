@@ -19,7 +19,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
   require Logger
 
-
   # Ideal fleet composition ratios
   @ideal_composition %{
     # Core roles
@@ -86,6 +85,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
          {:ok, vulnerabilities} <- analyze_vulnerabilities(ship_analyses, composition) do
       # Generate recommendations directly since it doesn't return a tuple
       recommendations = generate_recommendations(composition, capabilities, vulnerabilities)
+
       base_analysis = %{
         fleet_summary: %{ship_count: length(ship_analyses)},
         composition: composition,
@@ -1020,8 +1020,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
 
   # Summary and engagement profile
 
-
-
   # Counter-fleet generation
 
   @dialyzer {:nowarn_function, maybe_generate_counters: 2}
@@ -1123,7 +1121,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     ship_names = Enum.map(ship_analyses, & &1.ship_name)
     doctrine_ships = doctrine.ships ++ Map.get(doctrine, :support, [])
 
-    matching_ships = Enum.count(ship_names, fn name ->
+    matching_ships =
+      Enum.count(ship_names, fn name ->
         Enum.any?(doctrine_ships, fn doctrine_ship ->
           String.contains?(name || "", doctrine_ship)
         end)
@@ -1155,6 +1154,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
       _ -> :unknown
     end
   end
+
   # Matchup analysis
 
   @dialyzer {:nowarn_function, summarize_fleet: 1}
@@ -1218,6 +1218,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
       else
         mobility_advantages_a
       end
+
     final_advantages_b =
       if ewar_b > ewar_a + 1 do
         ["EWAR superiority" | mobility_advantages_b]
@@ -1261,7 +1262,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
       "Maintain fleet cohesion",
       "Follow FC commands"
     ]
-    
+
     # Range recommendations
     range_a = analysis_a.capabilities.engagement_range.dominant_range
     range_b = analysis_b.capabilities.engagement_range.dominant_range
@@ -1276,7 +1277,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
     # Add more tactical recommendations based on matchup
     final_recommendations
   end
-
 
   # Utility functions
 

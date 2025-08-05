@@ -588,10 +588,9 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
 
   defp generate_alert_title(match) do
     case determine_alert_type(match) do
-      :character_loss -> "Character Loss Detected"
-      :character_activity -> "Watched Character Activity"
-      :corporation_loss -> "Corporation Loss Alert"
-      :system_activity -> "System Activity Alert"
+      :target_killed -> "Target Killed"
+      :target_active -> "Target Active"
+      :location_activity -> "Location Activity Alert"
       :general_match -> "Surveillance Match"
     end
   end

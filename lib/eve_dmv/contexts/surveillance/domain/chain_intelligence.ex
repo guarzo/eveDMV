@@ -27,7 +27,7 @@ defmodule EveDmv.Shared.ChainIntelligence do
   Calculate strategic value of a system.
   Now implemented directly in this unified module.
   """
-  @spec calculate_system_strategic_value(integer()) :: {:ok, float()} | {:error, term()}
+  @spec calculate_system_strategic_value(integer()) :: {:ok, float()}
   def calculate_system_strategic_value(system_id) do
     # Calculate based on connections, traffic, and resources
     connections = get_system_connections(system_id)
@@ -44,7 +44,7 @@ defmodule EveDmv.Shared.ChainIntelligence do
   Analyze chain threat level.
   Now implemented directly in this unified module.
   """
-  @spec analyze_chain_threat(map()) :: {:ok, map()} | {:error, term()}
+  @spec analyze_chain_threat(map()) :: {:ok, map()}
   def analyze_chain_threat(chain_data) do
     # Return minimal analysis - real implementation would analyze killmail data
     threat_indicators = %{
@@ -60,7 +60,7 @@ defmodule EveDmv.Shared.ChainIntelligence do
   Track chain activity.
   Now implemented directly in this unified module.
   """
-  @spec track_activity(map()) :: {:ok, map()} | {:error, term()}
+  @spec track_activity(map()) :: {:ok, map()}
   def track_activity(activity_data) do
     # Track and record activity
     tracked_activity = %{
@@ -79,7 +79,7 @@ defmodule EveDmv.Shared.ChainIntelligence do
   Get chain status.
   Now implemented directly in this unified module.
   """
-  @spec get_chain_status(integer()) :: {:ok, map()} | {:error, term()}
+  @spec get_chain_status(integer()) :: {:ok, map()}
   def get_chain_status(chain_id) do
     # Return minimal status - real implementation would query wormhole data
     status = %{
@@ -95,7 +95,7 @@ defmodule EveDmv.Shared.ChainIntelligence do
   Monitor chain for intelligence purposes.
   Returns monitoring configuration instead of starting a GenServer.
   """
-  @spec monitor_chain(integer(), integer(), keyword()) :: {:ok, map()} | {:error, term()}
+  @spec monitor_chain(integer(), integer(), keyword()) :: {:ok, map()}
   def monitor_chain(map_id, corporation_id, opts \\ []) do
     # Return monitoring configuration instead of GenServer pid
     monitoring_config = %{

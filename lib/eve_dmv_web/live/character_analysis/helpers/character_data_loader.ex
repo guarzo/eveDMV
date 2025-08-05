@@ -62,8 +62,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
     top_ships =
       case CharacterIntelligence.get_detailed_ship_preferences(character_id, ninety_days_ago) do
         {:ok, %{preferences: ships, stats: _stats}} -> ships
-        {:ok, ships} when is_list(ships) -> ships
-        {:error, _} -> []
+        _ -> []
       end
 
     weapon_preferences =
@@ -82,7 +81,8 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
     # Get external groups analysis (15-day window for more recent activity)
     fifteen_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-15 * 24 * 60 * 60, :second)
 
-    {:ok, external_groups} = CombatIntelligence.get_external_groups(character_id, fifteen_days_ago)
+    {:ok, external_groups} =
+      CombatIntelligence.get_external_groups(character_id, fifteen_days_ago)
 
     # Get gang size patterns
     gang_size_patterns =

@@ -378,7 +378,11 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.
     # Add some variation based on time factors (simplified)
     # In real implementation, this would consider actual usage data
     hour =
-      DateTime.utc_now() |> DateTime.to_time() |> Time.to_seconds_after_midnight() |> div(3600)
+      DateTime.utc_now()
+      |> DateTime.to_time()
+      |> Time.to_seconds_after_midnight()
+      |> elem(0)
+      |> div(3600)
 
     # Peak hours (12-20 UTC) have more usage, lower stability
     time_modifier = if hour >= 12 and hour <= 20, do: -10, else: 5

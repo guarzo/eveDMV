@@ -253,6 +253,7 @@ defmodule EveDmv.Database.QueryOptimizer do
   @doc """
   Monitor query performance and detect N+1 patterns at runtime.
   """
+  @spec monitor_queries(function()) :: any()
   def monitor_queries(func) do
     # Initialize query tracking for this process
     Process.put(:query_count, 0)
@@ -286,24 +287,8 @@ defmodule EveDmv.Database.QueryOptimizer do
   end
 
   defp get_query_count do
-    # Get actual query count from telemetry if available
-    # Otherwise use process dictionary to track queries in current process
-    case :telemetry.list_handlers([[:ecto, :repo, :query]]) do
-      [] ->
-        # No telemetry handlers - use process-local counter
-        Process.get(:query_count, 0)
-
-      _handlers ->
-        # Telemetry available - get count from metrics
-        case :ets.info(:telemetry_metrics) do
-          :undefined ->
-            0
-
-          _ ->
-            # In practice, would aggregate query counts from telemetry
-            # For now, return process-local counter as fallback
-            Process.get(:query_count, 0)
-        end
-    end
+    # Use process dictionary to track queries in current process
+    # Telemetry integration would be more complex and is not implemented
+    Process.get(:query_count, 0)
   end
 end

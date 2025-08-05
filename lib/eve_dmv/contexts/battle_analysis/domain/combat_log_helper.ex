@@ -94,13 +94,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogHelper do
   end
 
   defp get_fitting_data(pilot_name) do
-    query = 
+    query =
       ShipFitting
       |> Ash.Query.new()
       |> Ash.Query.filter(pilot_name: pilot_name)
       |> Ash.Query.sort(updated_at: :desc)
       |> Ash.Query.limit(1)
-      
+
     case EveDmv.Api.read(query) do
       {:ok, [fitting | _]} -> fitting.parsed_fitting
       _ -> nil

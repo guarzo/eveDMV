@@ -72,7 +72,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
   - volume: Daily volume
   - updated_at: When the price was last updated
   """
-  @spec get_item_price(integer()) :: {:ok, price_info()} | {:error, Ash.Error.t()}
+  @spec get_item_price(integer()) :: {:ok, price_info()} | {:error, atom()}
   def get_item_price(type_id) when is_integer(type_id) do
     # Check if GenServer is running
     case Process.whereis(__MODULE__) do
@@ -92,7 +92,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
   Ships often have standard fits that affect their practical value.
   Janice provides better estimates for common ship hulls.
   """
-  @spec get_ship_price(integer()) :: {:ok, price_info()} | {:error, Ash.Error.t()}
+  @spec get_ship_price(integer()) :: {:ok, price_info()} | {:error, atom()}
   def get_ship_price(type_id) when is_integer(type_id) do
     # Check if GenServer is running
     case Process.whereis(__MODULE__) do
@@ -111,7 +111,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
 
   More efficient than individual requests. Limited to 100 items per call.
   """
-  @spec bulk_price_lookup([integer()]) :: {:ok, bulk_price_results()} | {:error, Ash.Error.t()}
+  @spec bulk_price_lookup([integer()]) :: {:ok, bulk_price_results()} | {:error, atom()}
   def bulk_price_lookup(type_ids) when is_list(type_ids) do
     # Limit to 100 items per request
     if length(type_ids) > 100 do

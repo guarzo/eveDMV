@@ -24,7 +24,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.Analyzers.FleetPilotAnalyzer do
     try do
       # Get corporation members
       {:ok, members} = get_corporation_members(corporation_id)
-      
+
       # Filter and enhance with pilot data
       available_pilots =
         members

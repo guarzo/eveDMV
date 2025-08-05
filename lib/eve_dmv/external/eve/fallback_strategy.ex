@@ -66,6 +66,7 @@ defmodule EveDmv.Eve.FallbackStrategy do
   @doc """
   Execute function with stale cache fallback only.
   """
+  @dialyzer {:nowarn_function, execute_with_stale_cache: 3}
   @spec execute_with_stale_cache(function(), String.t(), keyword()) ::
           {:error, any()} | {:ok, any()}
   def execute_with_stale_cache(primary_fn, cache_key, opts \\ []) do
@@ -248,6 +249,7 @@ defmodule EveDmv.Eve.FallbackStrategy do
     kind, reason -> {:error, {kind, reason}}
   end
 
+  @dialyzer {:nowarn_function, execute_fallback_strategy: 3}
   defp execute_fallback_strategy(error, classification, opts) do
     %{
       service: _service,
@@ -301,6 +303,7 @@ defmodule EveDmv.Eve.FallbackStrategy do
     get_stale_cache_data(cache_key, max_stale_age)
   end
 
+  @dialyzer {:nowarn_function, get_stale_cache_data: 2}
   defp get_stale_cache_data(cache_key, max_stale_age) do
     # Check for expired cache entries that are still within the acceptable stale period
     case get_cache_with_timestamp(cache_key) do
@@ -323,7 +326,8 @@ defmodule EveDmv.Eve.FallbackStrategy do
     case Cache.get(:api_responses, cache_key) do
       {:ok, data} ->
         # For fallback purposes, assume fresh data (no expiry check needed)
-        {:ok, data, System.system_time(:second) + 3600}
+        timestamp = DateTime.from_unix!(System.system_time(:second) + 3600)
+        {:ok, data, timestamp}
 
       :miss ->
         :miss

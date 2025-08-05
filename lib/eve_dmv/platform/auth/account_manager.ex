@@ -158,6 +158,7 @@ defmodule EveDmv.Users.AccountManager do
     # Move each character to target account
     Enum.each(source_characters, fn character ->
       changeset = Ash.Changeset.for_update(character, :update, %{account_id: target_account_id})
+
       case Api.update(character, changeset) do
         {:ok, updated} -> updated
         {:error, reason} -> raise "Failed to update character: #{inspect(reason)}"
@@ -166,7 +167,11 @@ defmodule EveDmv.Users.AccountManager do
 
     # If source account's primary character isn't set in target, use it
     if is_nil(target_account.primary_character_id) && source_account.primary_character_id do
-      changeset = Ash.Changeset.for_update(target_account, :update, %{primary_character_id: source_account.primary_character_id})
+      changeset =
+        Ash.Changeset.for_update(target_account, :update, %{
+          primary_character_id: source_account.primary_character_id
+        })
+
       case Api.update(target_account, changeset) do
         {:ok, updated} -> updated
         {:error, reason} -> raise "Failed to update target account: #{inspect(reason)}"
@@ -174,7 +179,10 @@ defmodule EveDmv.Users.AccountManager do
     end
 
     # Delete the source account
-    case Api.destroy(source_account) do {:ok, _} -> :ok; error -> raise "Destroy failed: #{inspect(error)}" end
+    case Api.destroy(source_account) do
+      {:ok, _} -> :ok
+      error -> raise "Destroy failed: #{inspect(error)}"
+    end
 
     {:ok, target_account}
   end
@@ -182,7 +190,8 @@ defmodule EveDmv.Users.AccountManager do
   @doc """
   Updates account activity timestamps.
   """
-  @spec update_account_activity(account_id()) :: account()
+  @dialyzer {:nowarn_function, update_account_activity: 1}
+  @spec update_account_activity(account_id()) :: {:ok, account()} | {:error, term()}
   def update_account_activity(account_id) do
     account = get_account!(account_id)
 
@@ -226,7 +235,7 @@ defmodule EveDmv.Users.AccountManager do
     User
     |> Api.get(user_id)
     |> case do
-      {:ok, user} -> user  
+      {:ok, user} -> user
       _ -> raise "User not found"
     end
   end

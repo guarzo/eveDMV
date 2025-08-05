@@ -97,8 +97,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.ShipPreferenceAnalyzer do
 
   defp get_ship_usage_data(character_id) do
     case CharacterRepository.get_character_ship_usage(character_id) do
-      {:ok, usage} when is_map(usage) -> {:ok, usage}
-      {:ok, _} -> {:ok, %{}}
+      {:ok, usage} -> {:ok, usage}
       error -> error
     end
   end

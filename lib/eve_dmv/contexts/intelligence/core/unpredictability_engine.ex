@@ -31,6 +31,9 @@ defmodule EveDmv.Contexts.Intelligence.Core.UnpredictabilityEngine do
       }
 
       {:ok, analysis}
+    else
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :analysis_failed}
     end
   end
 
@@ -144,7 +147,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.UnpredictabilityEngine do
       |> Enum.frequencies()
 
     %{
-      total_transitions: length(system_transitions),
+      total_transitions: map_size(system_transitions),
       repeated_routes: count_repeated_routes(system_transitions),
       route_diversity: map_size(system_transitions)
     }

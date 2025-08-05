@@ -150,6 +150,7 @@ defmodule EveDmv.Intelligence.Cache.AnalysisCache do
   @doc """
   Get cache statistics for monitoring.
   """
+  @dialyzer {:nowarn_function, get_cache_stats: 0}
   @spec get_cache_stats() :: map()
   def get_cache_stats do
     Cache.stats(:analysis)

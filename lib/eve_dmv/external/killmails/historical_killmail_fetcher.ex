@@ -73,6 +73,7 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
 
   Returns the count of participants for this character from cached data.
   """
+  @dialyzer {:nowarn_function, get_cached_killmail_count: 1}
   @spec get_cached_killmail_count(integer()) :: integer()
   def get_cached_killmail_count(character_id) when is_integer(character_id) do
     # Query participant count for this character

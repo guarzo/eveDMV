@@ -45,7 +45,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
   - `{:ok, analysis}` - Comprehensive threat analysis
   - `{:error, reason}` - Error if analysis fails
   """
-  @spec get_comprehensive_analysis(integer(), atom(), keyword()) :: {:ok, map()} | {:error, term()}
+  @spec get_comprehensive_analysis(integer(), atom(), keyword()) :: {:ok, map()}
   def get_comprehensive_analysis(entity_id, entity_type, options \\ []) do
     Logger.info("Performing comprehensive threat analysis",
       entity_id: entity_id,
@@ -59,17 +59,9 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
         {:ok, cached_analysis}
 
       {:error, :not_found} ->
-        case perform_comprehensive_analysis(entity_id, entity_type, options) do
-          {:ok, analysis} ->
-            UnifiedCache.put(:threat, cache_key, analysis, @cache_ttl)
-            {:ok, analysis}
-
-          {:error, reason} ->
-            {:error, reason}
-
-          _ ->
-            {:error, :analysis_failed}
-        end
+        {:ok, analysis} = perform_comprehensive_analysis(entity_id, entity_type, options)
+        UnifiedCache.put(:threat, cache_key, analysis, @cache_ttl)
+        {:ok, analysis}
     end
   end
 
@@ -143,17 +135,24 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
     # Query character stats from materialized view
     import Ash.Query, only: [new: 1, filter: 2]
     query = CharacterStats |> new() |> filter(character_id: character_id)
+
     case Api.read_one(query) do
       {:ok, stats} ->
         %{
           total_kills: Map.get(stats, :total_kills, 0),
           total_losses: Map.get(stats, :total_losses, 0),
           kill_death_ratio:
-            calculate_kill_death_ratio(Map.get(stats, :total_kills, 0), Map.get(stats, :total_losses, 0)),
+            calculate_kill_death_ratio(
+              Map.get(stats, :total_kills, 0),
+              Map.get(stats, :total_losses, 0)
+            ),
           total_isk_destroyed: Map.get(stats, :total_isk_destroyed, 0),
           total_isk_lost: Map.get(stats, :total_isk_lost, 0),
           isk_efficiency:
-            calculate_isk_efficiency(Map.get(stats, :total_isk_destroyed), Map.get(stats, :total_isk_lost)),
+            calculate_isk_efficiency(
+              Map.get(stats, :total_isk_destroyed),
+              Map.get(stats, :total_isk_lost)
+            ),
           last_seen: Map.get(stats, :last_seen),
           danger_rating: Map.get(stats, :danger_rating, 0),
           pvp_experience_days: Map.get(stats, :pvp_experience_days, 0)
@@ -250,12 +249,15 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
         threat_vectors: []
       }
     else
-      gang_sizes = Enum.map(killmails, fn km -> 
-        attackers = Map.get(km, :attackers, [])
-        if is_list(attackers), do: length(attackers), else: 0
-      end)
+      gang_sizes =
+        Enum.map(killmails, fn km ->
+          attackers = Map.get(km, :attackers, [])
+          if is_list(attackers), do: length(attackers), else: 0
+        end)
+
       gang_size_count = length(gang_sizes)
-      avg_gang_size = 
+
+      avg_gang_size =
         if gang_size_count > 0 do
           Enum.sum(gang_sizes) / gang_size_count
         else
@@ -273,7 +275,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
       # Analyze combat role based on ship types
       ship_types =
         killmails
-        |> Enum.map(fn km -> 
+        |> Enum.map(fn km ->
           case Map.get(km, :victim) do
             %{"ship_type_id" => id} -> id
             _ -> nil
@@ -345,12 +347,12 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
           %{threat_level: level} -> level
           _ -> :unknown
         end,
-      threat_score: 
+      threat_score:
         case Map.get(analysis_data, :threat_assessment) do
           %{threat_score: score} -> score
           _ -> 0
         end,
-      danger_rating: 
+      danger_rating:
         case Map.get(analysis_data, :threat_assessment) do
           %{danger_rating: rating} -> rating
           _ -> 0
@@ -613,7 +615,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
       role_weights
       |> Enum.max_by(fn {_role, weight} -> weight end)
 
-    primary_percentage = 
+    primary_percentage =
       if total_weight > 0 do
         primary_weight / total_weight
       else
@@ -657,7 +659,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
   defp identify_threat_vectors(killmails) do
     # Find most dangerous opponents
     killmails
-    |> Enum.flat_map(fn km -> 
+    |> Enum.flat_map(fn km ->
       attackers = Map.get(km, :attackers, [])
       if is_list(attackers), do: attackers, else: []
     end)
@@ -723,12 +725,12 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
       end
     end)
     |> then(fn risk_factors ->
-      solo_percentage = 
+      solo_percentage =
         case Map.get(behavioral, :engagement_patterns) do
           %{solo_percentage: pct} -> pct
           _ -> 0
         end
-      
+
       if solo_percentage > 70 do
         [
           %{
@@ -748,8 +750,8 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
     # Classify the type of threat based on patterns
     engagement = Map.get(analysis_data, :engagement_patterns, %{})
     behavioral = Map.get(analysis_data, :behavioral_patterns, %{})
-    
-    timezone = 
+
+    timezone =
       case Map.get(behavioral, :activity_patterns) do
         %{estimated_timezone: tz} -> tz
         _ -> nil
@@ -795,12 +797,12 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
     end)
     |> then(fn recommendations ->
       # Add specific recommendations based on patterns
-      peak_hours = 
+      peak_hours =
         case Map.get(behavioral, :activity_patterns) do
           %{peak_hours: hours} when is_list(hours) -> hours
           _ -> []
         end
-      
+
       if peak_hours != [] do
         ["Highest threat during hours: #{Enum.join(peak_hours, ", ")}" | recommendations]
       else

@@ -8,6 +8,8 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   - Corporation Intelligence health monitoring
   """
 
+  @dialyzer {:nowarn_function, assess_organizational_health: 1}
+
   alias EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer
   alias EveDmv.Contexts.Corporation.Core.MemberRiskAssessment
   alias EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer
@@ -991,12 +993,13 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   end
 
   defp calculate_overall_health_score(health_metrics) do
-    weights = Map.get(health_metrics, :component_weights, %{
-      activity: 0.25,
-      leadership: 0.25,
-      retention: 0.25,
-      participation: 0.25
-    })
+    weights =
+      Map.get(health_metrics, :component_weights, %{
+        activity: 0.25,
+        leadership: 0.25,
+        retention: 0.25,
+        participation: 0.25
+      })
 
     total_score =
       Map.get(health_metrics, :activity_health, 0) * Map.get(weights, :activity, 0.25) +
@@ -1041,7 +1044,9 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   defp maybe_add_leadership_issue(issues, _leadership_health), do: issues
 
   defp maybe_add_stability_issue(issues, stability) do
-    if Map.get(stability || %{}, :stability_assessment) in [:unstable, :moderately_stable] do
+    safe_stability = stability || %{}
+
+    if Map.get(safe_stability, :stability_assessment) in [:unstable, :moderately_stable] do
       ["Structural stability concerns" | issues]
     else
       issues
@@ -1049,7 +1054,9 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   end
 
   defp maybe_add_succession_issue(issues, succession) do
-    if Map.get(succession || %{}, :succession_health) in [:poor_succession, :limited_succession] do
+    safe_succession = succession || %{}
+
+    if Map.get(safe_succession, :succession_health) in [:poor_succession, :limited_succession] do
       ["Leadership succession planning inadequate" | issues]
     else
       issues

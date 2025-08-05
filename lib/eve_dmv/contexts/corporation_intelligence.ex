@@ -99,7 +99,8 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
 
   Combines doctrine analysis, member threat assessments, and activity metrics.
   """
-  @spec get_corporation_intelligence_report(integer()) :: {:ok, corporation_intelligence_report()}
+  @spec get_corporation_intelligence_report(integer()) ::
+          {:ok, corporation_intelligence_report()} | {:error, atom()}
   def get_corporation_intelligence_report(corporation_id) do
     # Get basic info first
     corp_info =
@@ -191,16 +192,30 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
         threat_results =
           member_activities
           |> Enum.map(fn {character_id, activity_count} ->
-            {:ok, threat_data} = CharacterIntelligence.analyze_character_threat(character_id)
-            character_name = NameResolver.character_name(character_id)
+            case CharacterIntelligence.analyze_character_threat(character_id) do
+              {:ok, threat_data} ->
+                character_name = NameResolver.character_name(character_id)
 
-            %{
-              character_id: character_id,
-              character_name: character_name,
-              threat_score: threat_data.threat_score,
-              activity_count: activity_count,
-              threat_level: categorize_threat_level(threat_data.threat_score)
-            }
+                %{
+                  character_id: character_id,
+                  character_name: character_name,
+                  threat_score: threat_data.threat_score,
+                  activity_count: activity_count,
+                  threat_level: categorize_threat_level(threat_data.threat_score)
+                }
+
+              {:error, _reason} ->
+                # Return basic info if threat analysis fails
+                character_name = NameResolver.character_name(character_id)
+
+                %{
+                  character_id: character_id,
+                  character_name: character_name,
+                  threat_score: 0,
+                  activity_count: activity_count,
+                  threat_level: :unknown
+                }
+            end
           end)
           |> Enum.sort_by(& &1.threat_score, :desc)
           |> Enum.take(limit)

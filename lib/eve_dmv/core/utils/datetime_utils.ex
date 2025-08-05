@@ -123,12 +123,19 @@ defmodule EveDmv.Core.Utils.DateTimeUtils do
   @doc """
   Adds time to a datetime value.
   """
-  @spec add(DateTime.t() | NaiveDateTime.t() | nil, integer(), System.time_unit() | :minute) ::
+  @spec add(
+          DateTime.t() | NaiveDateTime.t() | nil,
+          integer(),
+          System.time_unit() | :minute | :day
+        ) ::
           DateTime.t() | NaiveDateTime.t() | nil
   def add(nil, _amount, _unit), do: nil
   def add(%DateTime{} = dt, amount, :minute), do: DateTime.add(dt, amount * 60, :second)
   def add(%DateTime{} = dt, amount, unit), do: DateTime.add(dt, amount, unit)
-  def add(%NaiveDateTime{} = ndt, amount, :minute), do: NaiveDateTime.add(ndt, amount * 60, :second)
+
+  def add(%NaiveDateTime{} = ndt, amount, :minute),
+    do: NaiveDateTime.add(ndt, amount * 60, :second)
+
   def add(%NaiveDateTime{} = ndt, amount, unit), do: NaiveDateTime.add(ndt, amount, unit)
 
   @doc """

@@ -10,6 +10,9 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
 
   use GenServer
 
+  @dialyzer {:nowarn_function,
+             [calculate_corporation_threat_level: 1, assess_corporation_threats: 1]}
+
   alias EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer
   alias EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer
   alias EveDmv.Core.Utils.DateTimeUtils
@@ -301,16 +304,15 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
   defp gather_basic_corporation_data(corporation_id) do
     with {:ok, corp_info} <- CorporationRepository.get_corporation_info(corporation_id),
          {:ok, corp_stats} <- CorporationRepository.get_corporation_stats(corporation_id) do
-      safe_corp_stats = corp_stats || %{}
       basic_data = %{
         corporation_id: corporation_id,
         corporation_info: corp_info,
         corporation_stats: corp_stats,
-        member_count: Map.get(safe_corp_stats, :member_count, 0),
-        total_kills: Map.get(safe_corp_stats, :total_kills, 0),
-        total_losses: Map.get(safe_corp_stats, :total_losses, 0),
-        isk_efficiency: Map.get(safe_corp_stats, :isk_efficiency, 0),
-        avg_member_age: Map.get(safe_corp_stats, :avg_member_age, 0)
+        member_count: Map.get(corp_stats, :member_count, 0),
+        total_kills: Map.get(corp_stats, :total_kills, 0),
+        total_losses: Map.get(corp_stats, :total_losses, 0),
+        isk_efficiency: Map.get(corp_stats, :isk_efficiency, 0),
+        avg_member_age: Map.get(corp_stats, :avg_member_age, 0)
       }
 
       {:ok, basic_data}

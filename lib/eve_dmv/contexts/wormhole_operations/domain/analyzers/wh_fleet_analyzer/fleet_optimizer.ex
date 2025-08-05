@@ -63,7 +63,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.Analyzers.WhFleetAnalyzer.Fl
          ) do
       {:ok, analyses} ->
         analyses
-      
+
       {:error, _reason} ->
         # Return empty list on error
         []
@@ -247,5 +247,4 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.Analyzers.WhFleetAnalyzer.Fl
       "ewar" => "Consider EWAR for force multiplication"
     }
   end
-
 end

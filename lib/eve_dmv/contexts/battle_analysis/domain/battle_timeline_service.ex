@@ -30,12 +30,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService do
     key_moments = identify_key_moments(events, phases)
 
     # Handle empty events case
-    {start_time, end_time} = 
+    {start_time, end_time} =
       case events do
-        [] -> 
+        [] ->
           # Fallback to battle metadata or current time
           now = DateTime.utc_now()
           {now, now}
+
         [first | _] ->
           {first.timestamp, List.last(events).timestamp}
       end

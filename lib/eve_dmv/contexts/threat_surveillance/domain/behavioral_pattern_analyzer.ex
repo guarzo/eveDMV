@@ -66,9 +66,6 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
         else
           {:error, reason} -> {:error, reason}
         end
-
-      {:error, reason} ->
-        {:error, reason}
     end
   end
 
@@ -401,7 +398,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
     else
       item_counts
       |> Enum.reduce(0.0, fn {_item, count}, acc ->
-        proportion = 
+        proportion =
           if total > 0 do
             count / total
           else
@@ -453,6 +450,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
       0
     else
       values_length = length(values)
+
       if values_length > 0 do
         Enum.sum(values) / values_length
       else
@@ -473,6 +471,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
 
   defp calculate_average(list) when length(list) > 0 do
     list_length = length(list)
+
     if list_length > 0 do
       Float.round(Enum.sum(list) / list_length, 2)
     else
@@ -506,7 +505,8 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
     else
       # Calculate coefficient of variation (lower = more consistent)
       intervals_length = length(intervals)
-      mean = 
+
+      mean =
         if intervals_length > 0 do
           Enum.sum(intervals) / intervals_length
         else
@@ -738,6 +738,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
 
   defp calculate_percentage_new_systems(new_systems, recent_systems) do
     recent_count = length(recent_systems)
+
     if recent_count > 0 do
       Float.round(length(new_systems) / recent_count * 100, 1)
     else
@@ -753,7 +754,8 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
   defp extract_attacker_count(killmail) do
     case killmail.raw_data do
       %{"attackers" => attackers} when is_list(attackers) -> length(attackers)
-      _ -> 1  # Default to 1 if no attacker data
+      # Default to 1 if no attacker data
+      _ -> 1
     end
   end
 end

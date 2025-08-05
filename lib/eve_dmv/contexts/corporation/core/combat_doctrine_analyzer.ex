@@ -679,25 +679,26 @@ defmodule EveDmv.Contexts.Corporation.Core.CombatDoctrineAnalyzer do
       |> Map.values()
       |> Enum.map(& &1.fleet_engagements)
 
-    result = if Enum.empty?(fleet_data) do
-      %{
-        compositions: [],
-        patterns: %{},
-        doctrine_strength: 0
-      }
-    else
-      # Aggregate fleet composition data
-      _all_patterns =
-        fleet_data
-        |> Enum.flat_map(& &1.fleet_composition_patterns.common_patterns)
+    result =
+      if Enum.empty?(fleet_data) do
+        %{
+          compositions: [],
+          patterns: %{},
+          doctrine_strength: 0
+        }
+      else
+        # Aggregate fleet composition data
+        _all_patterns =
+          fleet_data
+          |> Enum.flat_map(& &1.fleet_composition_patterns.common_patterns)
 
-      %{
-        avg_fleet_size: calculate_corp_avg_fleet_size(fleet_data),
-        size_distribution: aggregate_size_distributions(fleet_data),
-        common_compositions: aggregate_composition_patterns(fleet_data),
-        tactical_preferences: identify_tactical_preferences(fleet_data)
-      }
-    end
+        %{
+          avg_fleet_size: calculate_corp_avg_fleet_size(fleet_data),
+          size_distribution: aggregate_size_distributions(fleet_data),
+          common_compositions: aggregate_composition_patterns(fleet_data),
+          tactical_preferences: identify_tactical_preferences(fleet_data)
+        }
+      end
 
     {:ok, result}
   end

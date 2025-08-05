@@ -333,7 +333,7 @@ defmodule EveDmv.Contexts.Combat.Core.BattleAnalyzer do
     # Calculate basic ISK efficiency
     total_isk = calculate_total_isk(killmails)
     participant_count = MapSet.size(participants.all_participants || MapSet.new())
-    
+
     if participant_count > 0 do
       total_isk / participant_count
     else
@@ -344,7 +344,7 @@ defmodule EveDmv.Contexts.Combat.Core.BattleAnalyzer do
   defp calculate_kd_ratio(participants) do
     # Simple K/D ratio calculation
     all_participants = participants.all_participants || MapSet.new()
-    
+
     if MapSet.size(all_participants) > 0 do
       # Placeholder - would need actual kill/death data
       1.0
@@ -451,15 +451,4 @@ defmodule EveDmv.Contexts.Combat.Core.BattleAnalyzer do
     last = List.last(sorted).killmail_time
     DateTimeUtils.diff(last, first, :second)
   end
-
-
-
-
-
-
-
-
-
-
-
 end

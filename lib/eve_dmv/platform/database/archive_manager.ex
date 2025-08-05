@@ -157,12 +157,17 @@ defmodule EveDmv.Database.ArchiveManager do
   defdelegate perform_archive_check(archive_policies), to: MaintenanceScheduler
 
   # Delegation to ArchiveOperations
+  @dialyzer {:nowarn_function, check_and_archive_table: 1}
   defdelegate check_and_archive_table(policy), to: ArchiveOperations
+
+  @dialyzer {:nowarn_function, archive_table_data: 3}
   defdelegate archive_table_data(policy, cutoff_date, total_count), to: ArchiveOperations
 
+  @dialyzer {:nowarn_function, archive_batch: 5}
   defdelegate archive_batch(policy, cutoff_date, batch_size, batch_id, batch_num),
     to: ArchiveOperations
 
+  @dialyzer {:nowarn_function, perform_table_archive: 1}
   defdelegate perform_table_archive(table_name), to: ArchiveOperations
 
   # Delegation to RestoreOperations

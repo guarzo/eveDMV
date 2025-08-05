@@ -7,6 +7,7 @@ defmodule EveDmv.Database.KillmailRepository do
   intelligence gathering.
   """
 
+  # Suppress unknown type warnings for generated functions
   use EveDmv.Database.Repository,
     resource: EveDmv.Killmails.KillmailRaw,
     cache_type: :hot_data
@@ -506,7 +507,8 @@ defmodule EveDmv.Database.KillmailRepository do
     killmails
     |> Enum.group_by(fn km ->
       # Group by system and rough time window (1 hour)
-      hour = DateTime.truncate(km.killmail_time, :hour)
+      # Truncate to hour by zeroing out minutes, seconds, and microseconds
+      hour = %{km.killmail_time | minute: 0, second: 0, microsecond: {0, 0}}
       {km.solar_system_id, hour}
     end)
     |> Enum.filter(fn {_key, kms} -> length(kms) >= min_engagements end)

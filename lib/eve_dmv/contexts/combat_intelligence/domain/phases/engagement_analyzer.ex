@@ -396,33 +396,54 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Engage
   defp analyze_fleet_battle_mechanics(_killmails, _participants), do: %{}
   defp analyze_large_scale_logistics(_killmails, _participants), do: %{}
   defp calculate_engagement_complexity(_killmails, _participants), do: 0.0
-  defp analyze_strategic_positioning(_killmails, _timeline), do: %{}
-  defp analyze_escape_route_management(_killmails, _timeline), do: %{}
-  defp analyze_mobility_utilization(_killmails, _timeline), do: %{}
-  defp calculate_tactical_advantage(_killmails, _timeline), do: %{}
+  defp analyze_strategic_positioning(_killmails, _timeline), do: 0.5
+  defp analyze_escape_route_management(_killmails, _timeline), do: 0.5
+  defp analyze_mobility_utilization(_killmails, _timeline), do: 0.5
+  defp calculate_tactical_advantage(_killmails, _timeline), do: 0.5
   defp identify_positioning_mistakes(_killmails, _timeline), do: %{}
   defp generate_positioning_recommendations(_killmails, _timeline), do: %{}
   defp analyze_outcome_certainty(_killmails, _sides), do: %{}
   defp identify_turning_points(_killmails, _sides), do: %{}
-  defp analyze_command_structure(_killmails, _fleet_compositions), do: %{}
-  defp analyze_target_calling_efficiency(_killmails), do: %{}
-  defp analyze_fleet_movement_coordination(_killmails), do: %{}
-  defp analyze_role_execution(_killmails, _fleet_compositions), do: %{}
-  defp analyze_communication_effectiveness(_killmails), do: %{}
-  defp calculate_overall_coordination_score(_metrics), do: 0.0
+  defp analyze_command_structure(_killmails, _fleet_compositions), do: 0.5
+  defp analyze_target_calling_efficiency(_killmails), do: 0.5
+  defp analyze_fleet_movement_coordination(_killmails), do: 0.5
+  defp analyze_role_execution(_killmails, _fleet_compositions), do: 0.5
+  defp analyze_communication_effectiveness(_killmails), do: 0.5
+
+  defp calculate_overall_coordination_score(metrics) do
+    if Enum.empty?(metrics) do
+      0.0
+    else
+      metrics
+      |> Enum.sum()
+      |> Kernel./(length(metrics))
+      |> Float.round(2)
+    end
+  end
+
   defp analyze_alternative_outcomes(_killmails, _sides), do: %{}
   defp analyze_post_engagement_effects(_killmails, _sides), do: %{}
 
   # Missing functions that need to be implemented
   defp identify_coordination_breakdowns(_killmails, _fleet_compositions), do: []
-  defp analyze_target_priority_adherence(_killmails), do: %{}
-  defp analyze_focus_fire_execution(_killmails), do: %{}
-  defp analyze_alpha_strike_effectiveness(_killmails), do: %{}
-  defp analyze_logistics_support_utilization(_killmails), do: %{}
-  defp analyze_ewar_deployment(_killmails), do: %{}
-  defp analyze_execution_timing(_killmails), do: %{}
+  defp analyze_target_priority_adherence(_killmails), do: 0.5
+  defp analyze_focus_fire_execution(_killmails), do: 0.5
+  defp analyze_alpha_strike_effectiveness(_killmails), do: 0.5
+  defp analyze_logistics_support_utilization(_killmails), do: 0.5
+  defp analyze_ewar_deployment(_killmails), do: 0.5
+  defp analyze_execution_timing(_killmails), do: 0.5
   defp identify_tactical_innovations(_killmails), do: []
-  defp calculate_positioning_effectiveness(_killmails, _timeline), do: 0.0
-  defp analyze_range_control(_killmails, _timeline), do: 0.0
-  defp calculate_overall_tactical_score(_metrics), do: 0.0
+  defp calculate_positioning_effectiveness(_killmails, _timeline), do: 0.5
+  defp analyze_range_control(_killmails, _timeline), do: 0.5
+
+  defp calculate_overall_tactical_score(metrics) do
+    if Enum.empty?(metrics) do
+      0.0
+    else
+      metrics
+      |> Enum.sum()
+      |> Kernel./(length(metrics))
+      |> Float.round(2)
+    end
+  end
 end

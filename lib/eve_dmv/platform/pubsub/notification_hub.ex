@@ -213,6 +213,7 @@ defmodule EveDmv.Platform.PubSub.NotificationHub do
   @doc """
   Subscribe to global notifications.
   """
+  @dialyzer {:nowarn_function, subscribe_global: 0}
   @spec subscribe_global() :: :ok | {:error, term()}
   def subscribe_global do
     PubSub.subscribe(@pubsub, @global_channel)
@@ -268,6 +269,7 @@ defmodule EveDmv.Platform.PubSub.NotificationHub do
   @doc """
   Get subscriber count for a channel.
   """
+  @dialyzer {:nowarn_function, subscriber_count: 1}
   @spec subscriber_count(String.t()) :: integer()
   def subscriber_count(channel) do
     get_subscribers(channel) |> length()

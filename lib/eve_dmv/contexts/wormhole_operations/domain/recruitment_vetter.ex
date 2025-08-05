@@ -230,8 +230,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
       {:error, :character_data_unavailable} = error ->
         Logger.warning("Character data unavailable for #{character_id}")
         error
-      
-      error -> 
+
+      {:error, reason} = error ->
+        Logger.warning("Vetting failed for character #{character_id}: #{inspect(reason)}")
         error
     end
   end
@@ -362,7 +363,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
 
   defp assess_security_status_risks(character_data) do
     security_status = Map.get(character_data, :security_status, 5.0)
-    
+
     if security_status < -2.0 do
       [
         %{
@@ -658,8 +659,10 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
            first_activity: first_seen,
            last_activity: last_seen,
            # Placeholder values - would get from ESI
-           total_sp: 10_000_000,  # Default SP value
-           security_status: 5.0,   # Default neutral security status
+           # Default SP value
+           total_sp: 10_000_000,
+           # Default neutral security status
+           security_status: 5.0,
            alliance_id: nil
          }}
 
@@ -1173,7 +1176,8 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.RecruitmentVetter do
               :high -> 0.3
               :medium -> 0.2
               :low -> 0.1
-              _ -> 0.1  # Default to low risk for unknown severity
+              # Default to low risk for unknown severity
+              _ -> 0.1
             end
           end)
         )

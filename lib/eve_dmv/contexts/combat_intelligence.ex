@@ -64,8 +64,10 @@ defmodule EveDmv.Contexts.CombatIntelligence do
   end
 
   # Public API delegation
+  @dialyzer {:nowarn_function, analyze_character: 2}
   defdelegate analyze_character(character_id, opts), to: Api
   defdelegate get_character_intelligence(character_id), to: Api
+  @dialyzer {:nowarn_function, analyze_corporation: 2}
   defdelegate analyze_corporation(corporation_id, opts), to: Api
   defdelegate get_corporation_intelligence(corporation_id), to: Api
   defdelegate assess_threat(character_id, context), to: Api

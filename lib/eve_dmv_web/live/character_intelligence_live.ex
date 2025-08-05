@@ -97,10 +97,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
           {:noreply,
            assign(socket, :comparison_characters, [character_info | comparison_characters])}
 
-        {:error, :insufficient_data} ->
-          {:noreply, put_flash(socket, :error, "Insufficient data for character analysis")}
-
-        {:error, _error} ->
+        _ ->
           {:noreply, put_flash(socket, :error, "Failed to analyze character")}
       end
     else

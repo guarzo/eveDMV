@@ -29,22 +29,22 @@ defmodule EveDmvWeb.Api.CharacterBehaviorController do
           }
         })
 
-      {:error, reason} ->
-        {status, message, code} = 
-          case reason do
-            :insufficient_data -> 
-              {:unprocessable_entity, "Insufficient data to analyze behavioral patterns", "INSUFFICIENT_DATA"}
-            :character_not_found -> 
-              {:not_found, "Character not found", "CHARACTER_NOT_FOUND"}
-            :analysis_failed -> 
-              {:internal_server_error, "Analysis failed", "ANALYSIS_FAILED"}
-            _ -> 
-              {:internal_server_error, "Failed to analyze behavioral patterns", "INTERNAL_ERROR"}
-          end
-
+      {:error, :insufficient_data} ->
         conn
-        |> put_status(status)
-        |> json(%{error: %{message: message, code: code}})
+        |> put_status(:unprocessable_entity)
+        |> json(%{
+          error: %{
+            message: "Insufficient data to analyze behavioral patterns",
+            code: "INSUFFICIENT_DATA"
+          }
+        })
+
+      _ ->
+        conn
+        |> put_status(:internal_server_error)
+        |> json(%{
+          error: %{message: "Failed to analyze behavioral patterns", code: "INTERNAL_ERROR"}
+        })
     end
   end
 end

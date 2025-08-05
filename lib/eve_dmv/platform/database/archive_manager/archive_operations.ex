@@ -15,7 +15,8 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
   Check if a table needs archiving and perform the archive operation.
   """
   def check_and_archive_table(policy) do
-    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -policy.archive_after_days, :day)
+    cutoff_date =
+      DateTimeUtils.add(DateTime.utc_now(), -policy.archive_after_days * 24 * 60 * 60, :second)
 
     # Check how many records need archiving
     count_query = """
@@ -267,7 +268,8 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
   Count records eligible for archiving.
   """
   def count_eligible_records(policy) do
-    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -policy.archive_after_days, :day)
+    cutoff_date =
+      DateTimeUtils.add(DateTime.utc_now(), -policy.archive_after_days * 24 * 60 * 60, :second)
 
     query = """
     SELECT COUNT(*)

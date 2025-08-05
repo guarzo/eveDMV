@@ -78,6 +78,7 @@ defmodule EveDmv.Killmails.KillmailBroadcaster do
   Combines data from raw and enriched changesets into a format that
   the surveillance matching engine expects.
   """
+  @dialyzer {:nowarn_function, build_killmail_data_for_matching: 2}
   @spec build_killmail_data_for_matching(map(), map()) :: map()
   def build_killmail_data_for_matching(raw_changeset, enriched_changeset) do
     # Combine data from both raw and enriched changesets

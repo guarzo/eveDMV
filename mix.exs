@@ -41,18 +41,14 @@ defmodule EveDmv.MixProject do
         stop_on_missing_beam_file: false,
         treat_no_relevant_lines_as_covered: true
       ],
-      # Dialyzer configuration - optimized for speed
+      # Dialyzer configuration - exclude unused_fun warnings per Zero Error Plan
       dialyzer: [
         plt_file: {:no_warn, "priv/plts/dialyzer.plt"},
         plt_add_apps: [:mix, :ex_unit],
         plt_core_path: "priv/plts/core.plt",
         list_unused_filters: true,
-        # Reduced flags for faster analysis while keeping essential checks
-        flags: [:error_handling, :underspecs],
-        # Exclude unused function warnings
-        warnings: [
-          no_unused: true
-        ],
+        # Exclude unused_fun warnings as per DIALYZER_ZERO_ERROR_PLAN_FINAL.md
+        flags: [:error_handling, :underspecs, :no_unused],
         # Skip analysis of test files to speed up CI
         paths: ["_build/#{Mix.env()}/lib/eve_dmv/ebin"],
         # Skip PLT checking to improve speed

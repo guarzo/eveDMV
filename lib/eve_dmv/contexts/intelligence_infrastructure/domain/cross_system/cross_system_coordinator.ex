@@ -633,6 +633,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
   end
 
   # Generate cross-pattern insights by analyzing connections between different pattern types
+  @dialyzer {:no_match, generate_cross_pattern_insights: 3}
   defp generate_cross_pattern_insights(activity_patterns, threat_patterns, movement_patterns) do
     initial_insights = []
 

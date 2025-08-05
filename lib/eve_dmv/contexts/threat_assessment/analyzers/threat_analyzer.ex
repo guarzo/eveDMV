@@ -548,11 +548,14 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
   end
 
   defp build_standing_description(standings) do
+    corp_standing = Map.get(standings, :corporation_standing)
+    alliance_standing = Map.get(standings, :alliance_standing)
+
     cond do
-      standings.corporation_standing == :red or standings.alliance_standing == :red ->
+      corp_standing == :red or alliance_standing == :red ->
         "RED STANDING - Known hostile entity. "
 
-      standings.corporation_standing == :blue or standings.alliance_standing == :blue ->
+      corp_standing == :blue or alliance_standing == :blue ->
         "BLUE STANDING - Friendly entity. "
 
       true ->

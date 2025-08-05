@@ -77,7 +77,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
       summary: %{
         dominant_corporation: AffiliationAnalyzer.find_dominant_affiliation(corporations),
         dominant_alliance: AffiliationAnalyzer.find_dominant_affiliation(alliances),
-        coalition_count: length(coalitions),
+        coalition_count: map_size(coalitions),
         affiliation_diversity:
           AffiliationAnalyzer.calculate_affiliation_diversity(corporations, alliances)
       }

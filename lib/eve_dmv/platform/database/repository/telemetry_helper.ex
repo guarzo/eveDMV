@@ -20,6 +20,7 @@ defmodule EveDmv.Database.Repository.TelemetryHelper do
         Api.read(Ash.Query.limit(query, 1)) |> case do {:ok, [result]} -> {:ok, result}; {:ok, []} -> {:error, :not_found}; error -> error end
       end)
   """
+  @dialyzer {:nowarn_function, measure_query: 3}
   @spec measure_query(String.t(), atom(), function()) :: term()
   def measure_query(resource_name, operation, query_fun) do
     start_time = System.monotonic_time()
@@ -128,6 +129,7 @@ defmodule EveDmv.Database.Repository.TelemetryHelper do
   @doc """
   Get repository performance statistics.
   """
+  @dialyzer {:nowarn_function, get_performance_stats: 0}
   @spec get_performance_stats() :: map()
   def get_performance_stats do
     # Get stats from ETS table if available

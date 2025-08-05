@@ -120,7 +120,7 @@ defmodule EveDmvWeb.Api.ApiKeysController do
           permissions: key_record.permissions
         })
 
-      {:error, :invalid_api_key} ->
+      {:error, :not_found} ->
         conn
         |> put_status(:unauthorized)
         |> json(%{valid: false, error: "Invalid API key"})

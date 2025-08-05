@@ -568,9 +568,9 @@ defmodule EveDmv.Analytics.ModuleClassifier do
         {:logistics, :logistics} -> 1.0
         {:command_ship, :command} -> 1.0
         {:interceptor, :tackle} -> 0.9
-        {_, :dps} when ship_category in ["Battleship", "Cruiser", "Battlecruiser"] -> 0.8
-        {_, :tackle} when ship_category == "Frigate" -> 0.8
-        {_, :ewar} when ship_category == "Cruiser" -> 0.7
+        {_, :dps} when ship_category == :subcapital -> 0.8
+        {_, :tackle} when ship_category == :subcapital -> 0.8
+        {_, :ewar} when ship_category == :subcapital -> 0.7
         _ -> 0.5
       end
 

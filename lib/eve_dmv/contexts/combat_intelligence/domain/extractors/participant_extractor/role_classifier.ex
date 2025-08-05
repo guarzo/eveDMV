@@ -917,7 +917,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Pa
       end)
 
     completeness_score =
-      if existing_count + not Enum.empty?(missing_roles.missing_roles) do
+      if existing_count > 0 and not Enum.empty?(missing_roles.missing_roles) do
         existing_count / (existing_count + missing_critical)
       else
         0.0

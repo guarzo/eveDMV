@@ -329,9 +329,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleCompari
       TacticalAnalysisEngine.detect_tactical_adaptation_patterns(prev_battle, curr_battle)
 
     final_adaptations =
-      if tactical_adaptation,
-        do: [tactical_adaptation | composition_adaptations],
-        else: composition_adaptations
+      case tactical_adaptation do
+        nil -> composition_adaptations
+        adaptation -> [adaptation | composition_adaptations]
+      end
 
     %{
       battle_transition: "Battle #{index} → Battle #{index + 1}",

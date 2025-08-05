@@ -165,7 +165,9 @@ defmodule EveDmv.Database.CharacterRepository do
 
           query =
             if active_only do
-              cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -min_activity_days, :day)
+              cutoff_date =
+                DateTimeUtils.add(DateTime.utc_now(), -min_activity_days * 24 * 60 * 60, :second)
+
               Ash.Query.filter(query, last_calculated_at >= ^cutoff_date)
             else
               query

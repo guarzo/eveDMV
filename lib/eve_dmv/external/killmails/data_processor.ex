@@ -25,6 +25,7 @@ defmodule EveDmv.Killmails.DataProcessor do
   This reduces parsing overhead and provides a consistent data structure
   for downstream consumers.
   """
+  @dialyzer {:nowarn_function, process_killmail: 1}
   @spec process_killmail(map()) :: {:ok, processed_data()} | {:error, term()}
   def process_killmail(enriched_data) when is_map(enriched_data) do
     # Single pass through the data to create all required formats

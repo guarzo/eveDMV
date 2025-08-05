@@ -198,7 +198,9 @@ defmodule EveDmv.Eve.CircuitBreaker do
 
   @impl GenServer
   def handle_call({:set_state, new_state}, _from, state) do
-    Logger.info("Circuit breaker state set to #{new_state} for service: #{inspect(state.service_name)}")
+    Logger.info(
+      "Circuit breaker state set to #{new_state} for service: #{inspect(state.service_name)}"
+    )
 
     updated_state = %{state | state: new_state}
     {:reply, :ok, updated_state}

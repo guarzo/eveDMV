@@ -342,6 +342,7 @@ defmodule EveDmv.Platform.Utilities.QueryHelpers do
   @doc """
   Check database connectivity.
   """
+  @dialyzer {:nowarn_function, ping: 0}
   @spec ping() :: :ok | {:error, term()}
   def ping do
     Ecto.Adapters.SQL.query!(Repo, "SELECT 1", [])

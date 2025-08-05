@@ -231,7 +231,6 @@ defmodule EveDmv.Intelligence.Analyzers.HomeDefenseAnalyzer do
     |> Enum.into(%{})
   end
 
-
   defp get_members_from_killmails(corporation_id) do
     # Extract member list from recent killmail activity
     # Last 30 days

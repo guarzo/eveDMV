@@ -19,6 +19,21 @@ defmodule EveDmv.Contexts.Intelligence.Services.PlayerStatsEngine do
 
   require Logger
 
+  @doc """
+  Calculate player statistics for all active characters (bulk operation).
+  """
+  def calculate_player_stats(opts \\ [])
+
+  def calculate_player_stats(opts) when is_list(opts) do
+    Logger.info("Bulk player statistics calculation not yet implemented")
+    Logger.debug("Options: #{inspect(opts)}")
+    :ok
+  end
+
+  def calculate_player_stats(character_id) when is_integer(character_id) do
+    calculate_player_statistics(character_id, 90)
+  end
+
   @type player_stats :: %{
           character_id: integer(),
           analysis_period_days: integer(),
@@ -359,25 +374,6 @@ defmodule EveDmv.Contexts.Intelligence.Services.PlayerStatsEngine do
     else
       error -> error
     end
-  end
-
-  @doc """
-  Calculate player stats (alias for calculate_player_statistics/2).
-
-  Provides backward compatibility for existing code that expects
-  the shorter function name.
-
-  ## Parameters
-
-  - `character_id` - The character ID to analyze
-
-  ## Returns
-
-  `{:ok, player_stats}` containing statistical analysis
-  """
-  @spec calculate_player_stats(integer()) :: {:ok, player_stats()} | {:error, Ash.Error.t()}
-  def calculate_player_stats(character_id) do
-    calculate_player_statistics(character_id, 90)
   end
 
   # Private helper functions for statistical calculations

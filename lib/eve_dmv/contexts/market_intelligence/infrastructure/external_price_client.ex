@@ -29,14 +29,14 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.ExternalPriceClient 
   - :janice - Use Janice API only
   - :killmail - Use killmail-derived prices only
   """
-  @spec get_price(integer(), atom()) :: {:ok, external_price_info()} | {:error, Ash.Error.t()}
+  @spec get_price(integer(), atom()) :: {:ok, external_price_info()} | {:error, atom()}
   def get_price(type_id, source \\ :best) when is_integer(type_id) do
     case source do
       :best ->
         # Try Janice first, fallback to killmail analysis
         case JaniceClient.get_item_price(type_id) do
           {:ok, price_info} ->
-            format_price_response(price_info)
+            {:ok, format_price_info(price_info)}
 
           {:error, _} ->
             get_killmail_derived_price(type_id)
@@ -46,7 +46,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.ExternalPriceClient 
         # Janice API only
         case JaniceClient.get_item_price(type_id) do
           {:ok, price_info} ->
-            format_price_response(price_info)
+            {:ok, format_price_info(price_info)}
 
           {:error, reason} ->
             Logger.warning("Janice API failed for type #{type_id}: #{inspect(reason)}")
@@ -65,7 +65,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.ExternalPriceClient 
   @doc """
   Get prices for multiple type IDs from external source.
   """
-  @spec get_prices([integer()], atom()) :: {:ok, bulk_price_response()} | {:error, Ash.Error.t()}
+  @spec get_prices([integer()], atom()) :: {:ok, bulk_price_response()} | {:error, atom()}
   def get_prices(type_ids, source \\ :best) when is_list(type_ids) do
     case source do
       :best ->
@@ -121,12 +121,6 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.ExternalPriceClient 
   end
 
   # Private functions
-
-  defp format_price_response({:ok, price_info}) do
-    {:ok, format_price_info(price_info)}
-  end
-
-  defp format_price_response(error), do: error
 
   defp format_price_info(price_info) do
     %{

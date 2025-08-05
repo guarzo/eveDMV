@@ -19,7 +19,7 @@ defmodule EveDmvWeb.Api.CorporationThreatController do
     corporation_id = String.to_integer(corporation_id_str)
 
     {:ok, report} = CorporationIntelligence.get_corporation_intelligence_report(corporation_id)
-    
+
     json(conn, %{
       data: %{
         corporation_id: corporation_id,

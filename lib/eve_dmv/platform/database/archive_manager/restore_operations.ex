@@ -119,15 +119,12 @@ defmodule EveDmv.Database.ArchiveManager.RestoreOperations do
       end)
 
     # Prepare batch insert
-    case prepare_batch_insert(policy.table, filtered_records, original_columns) do
-      {:ok, insert_sql, values} ->
-        case SQL.query(Repo, insert_sql, values) do
-          {:ok, %{num_rows: count}} ->
-            {:ok, count}
+    {:ok, insert_sql, values} =
+      prepare_batch_insert(policy.table, filtered_records, original_columns)
 
-          {:error, error} ->
-            {:error, error}
-        end
+    case SQL.query(Repo, insert_sql, values) do
+      {:ok, %{num_rows: count}} ->
+        {:ok, count}
 
       {:error, error} ->
         {:error, error}

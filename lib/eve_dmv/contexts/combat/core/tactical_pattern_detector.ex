@@ -927,5 +927,4 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
       average(overlaps)
     end
   end
-
 end

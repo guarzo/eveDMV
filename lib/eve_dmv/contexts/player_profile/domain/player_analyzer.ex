@@ -250,21 +250,28 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
       }
 
       {:ok, analysis}
+    else
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
   defp gather_base_data(character_id) do
-    {:ok, player_data} = PlayerRepository.get_player_data(character_id)
+    case PlayerRepository.get_player_data(character_id) do
+      {:ok, player_data} ->
+        # Gather all necessary base data
+        base_data = %{
+          character_stats: player_data,
+          killmail_stats: PlayerRepository.get_killmail_stats(character_id),
+          activity_data: PlayerRepository.get_activity_data(character_id),
+          corporation_history: PlayerRepository.get_corporation_history(character_id)
+        }
 
-    # Gather all necessary base data
-    base_data = %{
-      character_stats: player_data,
-      killmail_stats: PlayerRepository.get_killmail_stats(character_id),
-      activity_data: PlayerRepository.get_activity_data(character_id),
-      corporation_history: PlayerRepository.get_corporation_history(character_id)
-    }
+        {:ok, base_data}
 
-    {:ok, base_data}
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   defp analyze_combat_stats(character_id, base_data, _opts) do

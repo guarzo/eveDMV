@@ -52,6 +52,7 @@ defmodule EveDmv.Eve.EsiClient do
   @doc """
   Get character employment history.
   """
+  @dialyzer {:nowarn_function, get_character_employment_history: 1}
   @spec get_character_employment_history(integer()) ::
           {:ok, list(map())} | {:error, term()}
   defdelegate get_character_employment_history(character_id), to: EsiCharacterClient

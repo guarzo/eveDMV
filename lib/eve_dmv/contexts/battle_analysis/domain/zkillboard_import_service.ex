@@ -6,15 +6,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
   by parsing zkillboard URLs and fetching data from their API.
   """
 
-  alias EveDmv.Api
-  alias EveDmv.Killmails.KillmailRaw
-  alias EveDmv.Repo
-
   require Logger
-  import Ash.Query, only: [new: 1, filter: 2]
 
   @zkillboard_api_base "https://zkillboard.com/api"
-  @esi_base "https://esi.evetech.net/latest"
 
   @doc """
   Imports killmail data from a zkillboard URL.
@@ -46,10 +40,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
   def import_killmail(killmail_id) when is_integer(killmail_id) do
     Logger.info("Importing killmail #{killmail_id} from zkillboard")
 
-    with {:ok, zkb_data} <- fetch_zkillboard_data("/kills/killID/#{killmail_id}/"),
-         {:ok, killmail_data} <- process_zkillboard_response(zkb_data),
-         {:ok, imported_ids} <- store_killmails(killmail_data) do
-      {:ok, imported_ids}
+    case fetch_zkillboard_data("/kills/killID/#{killmail_id}/") do
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -62,10 +54,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
     # Format timestamp for zkillboard (YYYYMMDDHHMM)
     formatted_time = format_timestamp_for_zkb(timestamp)
 
-    with {:ok, zkb_data} <- fetch_zkillboard_data("/related/#{system_id}/#{formatted_time}/"),
-         {:ok, killmail_data} <- process_zkillboard_response(zkb_data),
-         {:ok, imported_ids} <- store_killmails(killmail_data) do
-      {:ok, imported_ids}
+    case fetch_zkillboard_data("/related/#{system_id}/#{formatted_time}/") do
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -126,18 +116,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
   defp import_killmails(import_spec) do
     case import_spec do
       {:single_kill, killmail_id} ->
-        # First import the single kill, then try to get related kills
-        with {:ok, imported_ids} <- import_killmail(killmail_id),
-             single_id <- List.first(imported_ids),
-             {:ok, killmail} <- get_killmail_details(single_id) do
-          # Try to import related kills from the same battle
-          import_related_from_killmail(killmail)
-        else
-          error ->
-            Logger.warning("Failed to import related kills: #{inspect(error)}")
-            # Fallback to just the single kill import
-            import_killmail(killmail_id)
-        end
+        # Import single kill (currently unavailable)
+        import_killmail(killmail_id)
 
       {:related_kills, system_id, timestamp} ->
         import_related_kills(system_id, timestamp)
@@ -156,33 +136,27 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
   defp import_character_recent_kills(character_id) do
     Logger.info("Importing recent kills for character #{character_id}")
 
-    # Get last 100 kills/losses for the character
-    with {:ok, zkb_data} <- fetch_zkillboard_data("/characterID/#{character_id}/limit/100/"),
-         {:ok, killmail_data} <- process_zkillboard_response(zkb_data),
-         {:ok, imported_ids} <- store_killmails(killmail_data) do
-      {:ok, imported_ids}
+    # Get last 100 kills/losses for the character (currently unavailable)
+    case fetch_zkillboard_data("/characterID/#{character_id}/limit/100/") do
+      {:error, reason} -> {:error, reason}
     end
   end
 
   defp import_corporation_recent_kills(corporation_id) do
     Logger.info("Importing recent kills for corporation #{corporation_id}")
 
-    # Get last 100 kills/losses for the corporation
-    with {:ok, zkb_data} <- fetch_zkillboard_data("/corporationID/#{corporation_id}/limit/100/"),
-         {:ok, killmail_data} <- process_zkillboard_response(zkb_data),
-         {:ok, imported_ids} <- store_killmails(killmail_data) do
-      {:ok, imported_ids}
+    # Get last 100 kills/losses for the corporation (currently unavailable)
+    case fetch_zkillboard_data("/corporationID/#{corporation_id}/limit/100/") do
+      {:error, reason} -> {:error, reason}
     end
   end
 
   defp import_system_recent_kills(system_id) do
     Logger.info("Importing recent kills for system #{system_id}")
 
-    # Get last 100 kills in the system
-    with {:ok, zkb_data} <- fetch_zkillboard_data("/systemID/#{system_id}/limit/100/"),
-         {:ok, killmail_data} <- process_zkillboard_response(zkb_data),
-         {:ok, imported_ids} <- store_killmails(killmail_data) do
-      {:ok, imported_ids}
+    # Get last 100 kills in the system (currently unavailable)
+    case fetch_zkillboard_data("/systemID/#{system_id}/limit/100/") do
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -191,157 +165,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
 
     Logger.debug("Fetching zkillboard data from: #{url}")
 
-    _headers = [
-      {"User-Agent", "EVE DMV Battle Analysis"},
-      {"Accept", "application/json"}
-    ]
-
     # Use a fallback approach since HTTPoison may not be available
-    Logger.warning("HTTP client not available - zkillboard import requires HTTP client configuration")
+    Logger.warning(
+      "HTTP client not available - zkillboard import requires HTTP client configuration"
+    )
+
     {:error, :http_client_unavailable}
   end
-
-  defp process_zkillboard_response(zkb_data) when is_list(zkb_data) do
-    # zkillboard returns an array of killmail objects
-    killmails =
-      zkb_data
-      |> Enum.map(&extract_killmail_info/1)
-      |> Enum.filter(&(&1 != nil))
-
-    {:ok, killmails}
-  end
-
-  defp process_zkillboard_response(_), do: {:error, :unexpected_response_format}
-
-  defp extract_killmail_info(zkb_kill) do
-    killmail_id = zkb_kill["killmail_id"]
-    hash = zkb_kill["zkb"]["hash"]
-
-    if killmail_id && hash do
-      %{
-        killmail_id: killmail_id,
-        hash: hash,
-        zkb_data: zkb_kill["zkb"]
-      }
-    else
-      nil
-    end
-  end
-
-  defp store_killmails(killmail_infos) do
-    # Fetch full killmail data from ESI and store
-    {existing_ids, new_ids} =
-      killmail_infos
-      |> Enum.map(&fetch_and_store_killmail/1)
-      |> Enum.split_with(fn
-        {:existing, _id} -> true
-        _ -> false
-      end)
-
-    existing_count = length(existing_ids)
-    new_count = length(Enum.filter(new_ids, &(&1 != nil)))
-
-    all_ids =
-      (Enum.map(existing_ids, fn {:existing, id} -> id end) ++
-         Enum.filter(new_ids, &(&1 != nil)))
-      |> Enum.uniq()
-
-    Logger.info("Found #{existing_count} existing killmails, imported #{new_count} new killmails")
-    {:ok, all_ids}
-  end
-
-  defp fetch_and_store_killmail(%{killmail_id: killmail_id, hash: hash} = info) do
-    # Check if we already have this killmail
-    case check_existing_killmail(killmail_id) do
-      true ->
-        Logger.debug("Killmail #{killmail_id} already exists, skipping")
-        {:existing, killmail_id}
-
-      false ->
-        # Fetch from ESI
-        case fetch_killmail_from_esi(killmail_id, hash) do
-          {:ok, esi_data} ->
-            store_killmail_data(killmail_id, hash, esi_data, info.zkb_data)
-
-          {:error, reason} ->
-            Logger.error("Failed to fetch killmail #{killmail_id} from ESI: #{inspect(reason)}")
-            nil
-        end
-    end
-  end
-
-  defp check_existing_killmail(killmail_id) do
-    # Check if killmail already exists in our database
-    # Use raw SQL for more efficient check
-    query = """
-      SELECT EXISTS(
-        SELECT 1 FROM killmails_raw
-        WHERE killmail_id = $1
-        LIMIT 1
-      )
-    """
-
-    case Ecto.Adapters.SQL.query(Repo, query, [killmail_id]) do
-      {:ok, %{rows: [[exists]]}} ->
-        exists
-
-      _ ->
-        false
-    end
-  end
-
-  defp fetch_killmail_from_esi(killmail_id, hash) do
-    url = "#{@esi_base}/killmails/#{killmail_id}/#{hash}/"
-
-    Logger.debug("Fetching killmail from ESI: #{url}")
-
-    _headers = [
-      {"User-Agent", "EVE DMV Battle Analysis"},
-      {"Accept", "application/json"}
-    ]
-
-    # Use a fallback approach since HTTPoison may not be available
-    Logger.warning("HTTP client not available - ESI fetching requires HTTP client configuration")
-    {:error, :http_client_unavailable}
-  end
-
-  defp store_killmail_data(killmail_id, hash, esi_data, zkb_data) do
-    # Extract required fields from ESI data
-    killmail_time = parse_datetime(esi_data["killmail_time"])
-
-    killmail_attrs = %{
-      killmail_id: killmail_id,
-      killmail_time: killmail_time,
-      killmail_hash: hash,
-      solar_system_id: esi_data["solar_system_id"],
-      victim_character_id: get_in(esi_data, ["victim", "character_id"]),
-      victim_corporation_id: get_in(esi_data, ["victim", "corporation_id"]),
-      victim_alliance_id: get_in(esi_data, ["victim", "alliance_id"]),
-      victim_ship_type_id: get_in(esi_data, ["victim", "ship_type_id"]),
-      attacker_count: length(esi_data["attackers"] || []),
-      raw_data: Map.merge(esi_data, %{"zkb" => zkb_data}),
-      source: "zkillboard_import"
-    }
-
-    case Api.create(KillmailRaw, killmail_attrs) do
-      {:ok, _killmail} ->
-        Logger.info("Stored killmail #{killmail_id}")
-        killmail_id
-
-      {:error, error} ->
-        Logger.error("Failed to store killmail #{killmail_id}: #{inspect(error)}")
-        nil
-    end
-  end
-
-  defp parse_datetime(datetime_string) when is_binary(datetime_string) do
-    case NaiveDateTime.from_iso8601(datetime_string) do
-      {:ok, datetime} -> datetime
-      _ -> NaiveDateTime.utc_now()
-    end
-  end
-
-  defp parse_datetime(_), do: NaiveDateTime.utc_now()
 
   defp format_timestamp_for_zkb(timestamp) when is_binary(timestamp) do
     # Already a string, return as-is (assuming it's in YYYYMMDDHHMM format)
@@ -361,57 +191,5 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ZkillboardImportService do
   defp format_timestamp_for_zkb(timestamp) do
     # Fallback for other types, try to convert to string
     to_string(timestamp)
-  end
-
-  defp get_killmail_details(killmail_id) do
-    # Fetch the killmail from our database to get system and time info
-    query = KillmailRaw |> new() |> filter(killmail_id: killmail_id)
-    
-    case Api.read_one(query) do
-      {:ok, killmail} when killmail != nil ->
-        {:ok, killmail}
-
-      _ ->
-        {:error, :killmail_not_found}
-    end
-  end
-
-  defp import_related_from_killmail(killmail) do
-    Logger.info(
-      "Fetching related kills for killmail #{killmail.killmail_id} in system #{killmail.solar_system_id}"
-    )
-
-    # Round the time to nearest 5 minutes for better matching
-    rounded_time = round_to_nearest_5_minutes(killmail.killmail_time)
-
-    # Import related kills
-    case import_related_kills(killmail.solar_system_id, rounded_time) do
-      {:ok, imported_ids} ->
-        # Make sure our original kill is included
-        all_ids = Enum.uniq([killmail.killmail_id | imported_ids])
-        Logger.info("Imported #{length(all_ids)} total kills (including related)")
-        {:ok, all_ids}
-
-      error ->
-        # If related fails, at least return the original
-        Logger.warning("Failed to fetch related kills: #{inspect(error)}")
-        {:ok, [killmail.killmail_id]}
-    end
-  end
-
-  defp round_to_nearest_5_minutes(datetime) do
-    # Round to nearest 5-minute interval for better zkillboard matching
-    # This helps match kills that happened in the same battle window
-    {:ok, dt} =
-      NaiveDateTime.new(
-        datetime.year,
-        datetime.month,
-        datetime.day,
-        datetime.hour,
-        div(datetime.minute, 5) * 5,
-        0
-      )
-
-    dt
   end
 end

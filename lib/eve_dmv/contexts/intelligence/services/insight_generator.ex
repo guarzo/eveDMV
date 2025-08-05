@@ -371,19 +371,9 @@ defmodule EveDmv.Contexts.Intelligence.Services.InsightGenerator do
 
     _disabled_tactical_recommendations =
       case :placeholder do
-        :hot_dropper ->
-          [
-            "Beware of capital backup",
-            "Monitor for cyno ships",
-            "Have escape plan ready" | ship_recommendations
-          ]
-
-        :gate_camper ->
-          [
-            "Avoid predictable routes",
-            "Use scouts",
-            "Consider alternative paths" | ship_recommendations
-          ]
+        :placeholder ->
+          # Disabled for now - would need behavioral pattern detection
+          []
 
         _ ->
           ship_recommendations

@@ -28,13 +28,19 @@ defmodule EveDmvWeb.Api.BattleIntelligenceController do
         })
 
       {:error, reason} ->
-        {status, message, code} = 
+        {status, message, code} =
           case reason do
-            :battle_not_found -> {:not_found, "Battle not found", "BATTLE_NOT_FOUND"}
-            :database_error -> {:internal_server_error, "Database error occurred", "DATABASE_ERROR"}
-            :max_iterations_reached -> {:internal_server_error, "Battle analysis timed out", "ANALYSIS_TIMEOUT"}
-            :timeline_reconstruction_failed -> {:internal_server_error, "Timeline reconstruction failed", "TIMELINE_ERROR"}
-            _other -> {:internal_server_error, "Failed to load battle intelligence", "INTERNAL_ERROR"}
+            :battle_not_found ->
+              {:not_found, "Battle not found", "BATTLE_NOT_FOUND"}
+
+            :database_error ->
+              {:internal_server_error, "Database error occurred", "DATABASE_ERROR"}
+
+            :max_iterations_reached ->
+              {:internal_server_error, "Battle analysis timed out", "ANALYSIS_TIMEOUT"}
+
+            _ ->
+              {:internal_server_error, "Failed to load battle intelligence", "INTERNAL_ERROR"}
           end
 
         conn
