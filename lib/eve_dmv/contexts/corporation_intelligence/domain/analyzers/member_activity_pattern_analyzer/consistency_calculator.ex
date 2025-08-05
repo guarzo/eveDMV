@@ -1,4 +1,6 @@
-defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivityPatternAnalyzer.ConsistencyCalculator do
+alias EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivityPatternAnalyzer
+
+defmodule MemberActivityPatternAnalyzer.ConsistencyCalculator do
   @moduledoc """
   Specialized calculator for activity consistency metrics.
 
