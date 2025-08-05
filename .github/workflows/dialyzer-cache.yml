@@ -43,6 +43,11 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-plt-${{ env.ELIXIR_VERSION }}-${{ env.OTP_VERSION }}-
     
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libbz2-dev bc erlang-dev
+    
     - name: Install dependencies
       run: |
         mix deps.get
