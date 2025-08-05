@@ -11,6 +11,9 @@ echo "=================================="
 echo "Running dialyzer analysis..."
 mix dialyzer 2>&1 | tee dialyzer_full_output.txt || true
 
+# Create dialyzer.txt for the regression test
+cp dialyzer_full_output.txt dialyzer.txt
+
 # Extract key metrics
 TOTAL_ERRORS=$(grep "Total errors:" dialyzer_full_output.txt | grep -oE "Total errors: [0-9]+" | grep -oE "[0-9]+")
 SKIPPED_ERRORS=$(grep "Total errors:" dialyzer_full_output.txt | grep -oE "Skipped: [0-9]+" | grep -oE "[0-9]+")
