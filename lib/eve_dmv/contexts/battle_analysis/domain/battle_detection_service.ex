@@ -503,6 +503,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
     |> Enum.map(fn killmail ->
       case PriceService.calculate_killmail_value(killmail) do
         %{total_value: value} when is_number(value) -> value
+        %{} -> 0.0
         _ -> 0.0
       end
     end)

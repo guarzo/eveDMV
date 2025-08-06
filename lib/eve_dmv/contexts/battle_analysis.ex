@@ -180,15 +180,8 @@ defmodule EveDmv.Contexts.BattleAnalysis do
     with {:ok, battles} <- detect_battles_in_system(system_id, start_time, end_time),
          _ <- log_battle_detection(battles, battle_id, system_id, start_time, end_time),
          {:ok, battle} <- find_battle_by_id(battles, battle_id, system_id) do
-      # Note: reconstruct_battle_timeline currently always fails, so we handle the error case
-      case reconstruct_battle_timeline(battle) do
-        {:ok, timeline} ->
-          {:ok, Map.put(battle, :timeline, timeline)}
-
-        {:error, reason} ->
-          Logger.debug("Timeline reconstruction failed for battle #{battle_id}: #{reason}")
-          {:error, reason}
-      end
+      # Note: reconstruct_battle_timeline currently returns {:error, :reconstruction_failed}
+      reconstruct_battle_timeline(battle)
     end
   end
 
@@ -290,13 +283,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
             {:error, :battle_not_found}
 
           battle ->
-            case reconstruct_battle_timeline(battle) do
-              {:ok, timeline} ->
-                {:ok, Map.put(battle, :timeline, timeline)}
-
-              {:error, reason} ->
-                {:error, reason}
-            end
+            reconstruct_battle_timeline(battle)
         end
 
       error ->
@@ -573,10 +560,6 @@ defmodule EveDmv.Contexts.BattleAnalysis do
       |> Enum.filter(&is_map/1)
       |> Enum.take(5)
     end
-  end
-
-  defp extract_key_timeline_events(nil) do
-    []
   end
 
   defp extract_key_timeline_events(_timeline) do

@@ -41,13 +41,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
       "Creating battle report for battle #{battle_id} by character #{creator_character_id}"
     )
 
-    case fetch_battle_data(battle_id) do
-      {:ok, battle_data} ->
-        create_battle_report_from_data(battle_data, creator_character_id, options)
-
-      {:error, reason} ->
-        {:error, reason}
-    end
+    fetch_battle_data(battle_id)
   end
 
   @doc """
@@ -97,9 +91,6 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
     case fetch_battle_report(report_id) do
       {:ok, battle_report} ->
         CommunityManager.rate_battle_report(battle_report, rater_character_id, rating, options)
-
-      _ ->
-        {:error, :report_not_found}
     end
   end
 

@@ -102,7 +102,7 @@ defmodule EveDmv.Contexts.Combat.Services.ZkillboardImporter do
   def import_battle_report(battle_report_url) do
     # Parse battle report URL and extract parameters
     with {:ok, params} <- parse_battle_report_url(battle_report_url),
-         {:ok, killmails} <- fetch_battle_report_kills(params),
+         {:ok, killmails} <- fetch_related_kills(params),
          {:ok, battle} <- create_battle_from_imports(killmails) do
       {:ok, battle}
     end
@@ -149,7 +149,7 @@ defmodule EveDmv.Contexts.Combat.Services.ZkillboardImporter do
   end
 
   defp fetch_zkillboard_data(:battle_report, params) do
-    fetch_battle_report_kills(params)
+    fetch_related_kills(params)
   end
 
   defp fetch_single_kill(kill_id) do
@@ -290,7 +290,7 @@ defmodule EveDmv.Contexts.Combat.Services.ZkillboardImporter do
     end
   end
 
-  defp fetch_battle_report_kills(%{battle_report_id: br_id}) do
+  defp fetch_related_kills(%{battle_report_id: br_id}) do
     # Battle reports require fetching from zkillboard's BR API
     url = "#{@zkillboard_base_url}/br/#{br_id}/"
 

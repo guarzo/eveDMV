@@ -163,7 +163,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Returns ship specialization, role preferences, and tactical insights.
   """
   @spec get_character_ship_intelligence(integer()) ::
-          {:ok, %{analysis_period_days: number(), calculated_at: DateTime.t()}}
+          {:ok, map()}
   def get_character_ship_intelligence(character_id) do
     ShipIntelligenceBridge.calculate_ship_specialization(character_id)
   end
@@ -171,7 +171,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   @doc """
   Get ship preference summary for quick threat assessment.
   """
-  @spec get_ship_preferences(integer()) :: %{}
+  @spec get_ship_preferences(integer()) :: map()
   def get_ship_preferences(character_id) do
     ShipIntelligenceBridge.get_character_ship_preferences(character_id)
   end

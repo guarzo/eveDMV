@@ -161,46 +161,8 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
 
     Logger.info("Creating tactical highlight for battle #{battle_report_id} at #{timestamp}s")
 
-    start_time = System.monotonic_time(:millisecond)
-
-    with {:ok, battle_data} <- fetch_battle_report_data(battle_report_id),
-         {:ok, _validated_timing} <-
-           maybe_validate_timing(timestamp, battle_data, validate_timing),
-         {:ok, highlight_context} <-
-           maybe_analyze_tactical_context(
-             timestamp,
-             battle_data,
-             tactical_context,
-             auto_analyze
-           ),
-         {:ok, learning_integration} <-
-           integrate_learning_content(highlight_type, learning_notes),
-         {:ok, tactical_highlight} <-
-           create_highlight_record(%HighlightOptions{
-             battle_report_id: battle_report_id,
-             creator_id: creator_character_id,
-             timestamp: timestamp,
-             title: title,
-             description: description,
-             highlight_type: highlight_type,
-             context: highlight_context,
-             learning_integration: learning_integration,
-             video_timestamp: video_timestamp
-           }),
-         {:ok, enriched_highlight} <- enrich_highlight_data(tactical_highlight, battle_data) do
-      end_time = System.monotonic_time(:millisecond)
-      duration_ms = end_time - start_time
-
-      Logger.info("""
-      Tactical highlight created successfully in #{duration_ms}ms:
-      - Highlight ID: #{enriched_highlight.highlight_id}
-      - Type: #{highlight_type}
-      - Timestamp: #{timestamp}s
-      - Learning value: #{@highlight_types[highlight_type].learning_value}
-      """)
-
-      {:ok, enriched_highlight}
-    end
+    # fetch_battle_report_data always returns error - no battle storage system implemented
+    fetch_battle_report_data(battle_report_id)
   end
 
   @doc """

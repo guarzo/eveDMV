@@ -562,8 +562,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
           :mining -> 15_000
           :structure -> 5_000_000
           :unknown -> 30_000
-          # Conservative default for any other value
-          _ -> 30_000
         end
     end
   end

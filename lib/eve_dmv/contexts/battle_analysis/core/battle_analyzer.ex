@@ -56,7 +56,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
        }}
     else
       {:error, _} = error -> error
-      _ -> {:error, :analysis_failed}
     end
   end
 

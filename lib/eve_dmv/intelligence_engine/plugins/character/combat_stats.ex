@@ -19,6 +19,8 @@ defmodule EveDmv.IntelligenceEngine.Plugins.Character.CombatStats do
       name: "Combat Statistics",
       description: "Analyzes character combat performance and statistics",
       version: "2.0.0",
+      author: "EVE DMV Team",
+      tags: [:combat, :statistics, :character],
       dependencies: [EveDmv.Database.CharacterRepository, EveDmv.Database.KillmailRepository]
     }
   end
@@ -70,6 +72,7 @@ defmodule EveDmv.IntelligenceEngine.Plugins.Character.CombatStats do
   @impl EveDmv.IntelligenceEngine.Plugin
   def cache_strategy do
     %{
+      strategy: :ttl,
       ttl_seconds: 300,
       invalidate_on: [:killmail_update, :character_update]
     }

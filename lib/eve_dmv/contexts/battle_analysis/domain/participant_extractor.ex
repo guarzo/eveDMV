@@ -234,5 +234,4 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
     }
   end
 
-  defp normalize_victim_data(_), do: nil
 end

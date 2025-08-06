@@ -42,8 +42,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   @doc """
   Analyze a character's combat intelligence.
   """
+  @spec analyze(integer()) :: {:ok, character_intelligence()} | {:error, atom()}
   @spec analyze(integer(), map()) :: {:ok, character_intelligence()} | {:error, atom()}
-  def analyze(character_id, context) do
+  def analyze(character_id, context \\ %{}) do
     perform_analysis(character_id, context)
   end
 
