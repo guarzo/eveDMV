@@ -2,6 +2,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
   use EveDmv.DataCase, async: true
 
   alias EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService
+  import EveDmv.Test.PartitionHelpers
+
+  setup do
+    # Create partitions for the test dates (January 2024)
+    ensure_test_partitions()
+    :ok
+  end
 
   describe "detect_battles/3" do
     test "clusters killmails by time and space into battles" do
