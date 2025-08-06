@@ -64,7 +64,7 @@ defmodule EveDmv.Test.PartitionHelpers do
           {:error, %Postgrex.Error{postgres: %{code: :duplicate_table}}} ->
             :ok
 
-          {:error, error} ->
+          {:error, _error} ->
             # Log the error but don't fail - partition might exist
             :ok
         end
