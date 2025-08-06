@@ -1,8 +1,8 @@
 defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
   use EveDmv.DataCase, async: true
+  import EveDmv.Test.PartitionHelpers
 
   alias EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService
-  import EveDmv.Test.PartitionHelpers
 
   setup do
     # Create partitions for the test dates (January 2024)

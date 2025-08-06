@@ -66,7 +66,6 @@ defmodule EveDmv.Test.PartitionHelpers do
 
           {:error, error} ->
             # Log the error but don't fail - partition might exist
-            IO.puts("Warning: Could not create partition #{partition_name}: #{inspect(error)}")
             :ok
         end
 
