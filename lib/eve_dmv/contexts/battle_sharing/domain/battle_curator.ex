@@ -36,7 +36,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
   @doc """
   Creates a shareable battle report with comprehensive analysis and media integration.
   """
-  def create_battle_report(battle_id, creator_character_id, options \\ []) do
+  def create_battle_report(battle_id, creator_character_id, _options \\ []) do
     Logger.info(
       "Creating battle report for battle #{battle_id} by character #{creator_character_id}"
     )

@@ -233,5 +233,4 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor do
       weapon_type_id: nil
     }
   end
-
 end

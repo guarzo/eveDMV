@@ -153,7 +153,6 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
         case BehavioralPatternAnalyzer.analyze_patterns(char_id, :character, timeframe: timeframe) do
           {:ok, patterns} -> Map.put(acc, char_id, patterns)
           {:error, _} -> Map.put(acc, char_id, %{})
-          _ -> Map.put(acc, char_id, %{})
         end
       end)
 

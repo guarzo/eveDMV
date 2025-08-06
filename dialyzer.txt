@@ -1,10 +1,151 @@
+Compiling 25 files (.ex)
+    warning: variable "options" is unused (if the variable is not meant to be used, prefix it with an underscore)
+    │
+ 39 │   def create_battle_report(battle_id, creator_character_id, options \\ []) do
+    │                                                             ~~~~~~~
+    │
+    └─ lib/eve_dmv/contexts/battle_sharing/domain/battle_curator.ex:39:61: EveDmv.Contexts.BattleSharing.Domain.BattleCurator.create_battle_report/3
+
+     warning: variable "auto_analyze" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     │
+ 151 │     auto_analyze = Keyword.get(options, :auto_analyze, true)
+     │     ~~~~~~~~~~~~
+     │
+     └─ lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:151:5: EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager.create_tactical_highlight/4
+
+     warning: variable "creator_character_id" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     │
+ 147 │         creator_character_id,
+     │         ~~~~~~~~~~~~~~~~~~~~
+     │
+     └─ lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:147:9: EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager.create_tactical_highlight/4
+
+     warning: variable "description" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     │
+ 156 │     description = Map.get(highlight_data, :description)
+     │     ~~~~~~~~~~~
+     │
+     └─ lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:156:5: EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager.create_tactical_highlight/4
+
+     warning: variable "highlight_type" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     │
+ 157 │     highlight_type = Map.get(highlight_data, :highlight_type)
+     │     ~~~~~~~~~~~~~~
+     │
+     └─ lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:157:5: EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager.create_tactical_highlight/4
+
+     warning: variable "learning_notes" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     │
+ 159 │     learning_notes = Map.get(highlight_data, :learning_notes, [])
+     │     ~~~~~~~~~~~~~~
+     │
+     └─ lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:159:5: EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager.create_tactical_highlight/4
+
+     warning: variable "tactical_context" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     │
+ 158 │     tactical_context = Map.get(highlight_data, :tactical_context, %{})
+     │     ~~~~~~~~~~~~~~~~
+     │
+     └─ lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:158:5: EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager.create_tactical_highlight/4
+
+     warning: variable "title" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     │
+ 155 │     title = Map.get(highlight_data, :title)
+     │     ~~~~~
+     │
+     └─ lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:155:5: EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager.create_tactical_highlight/4
+
+     warning: variable "validate_timing" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     │
+ 152 │     validate_timing = Keyword.get(options, :validate_timing, true)
+     │     ~~~~~~~~~~~~~~~
+     │
+     └─ lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:152:5: EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager.create_tactical_highlight/4
+
+     warning: variable "video_timestamp" is unused (if the variable is not meant to be used, prefix it with an underscore)
+     │
+ 160 │     video_timestamp = Map.get(highlight_data, :video_timestamp)
+     │     ~~~~~~~~~~~~~~~
+     │
+     └─ lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:160:5: EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager.create_tactical_highlight/4
+
+     warning: function create_highlight_record/1 is unused
+     │
+ 447 │   defp create_highlight_record(options) do
+     │        ~
+     │
+     └─ lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:447:8: EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager (module)
+
+     warning: function enrich_highlight_data/2 is unused
+     │
+ 406 │   defp enrich_highlight_data(highlight, _battle_data), do: {:ok, highlight}
+     │        ~
+     │
+     └─ lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:406:8: EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager (module)
+
+     warning: function generate_highlight_id/0 is unused
+     │
+ 465 │   defp generate_highlight_id do
+     │        ~
+     │
+     └─ lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:465:8: EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager (module)
+
+     warning: function integrate_learning_content/2 is unused
+     │
+ 435 │   defp integrate_learning_content(highlight_type, learning_notes) do
+     │        ~
+     │
+     └─ lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:435:8: EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager (module)
+
+     warning: function maybe_analyze_tactical_context/4 is unused
+     │
+ 428 │   defp maybe_analyze_tactical_context(_timestamp, _battle_data, context, false),
+     │        ~
+     │
+     └─ lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:428:8: EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager (module)
+
+     warning: function maybe_validate_timing/3 is unused
+     │
+ 359 │   defp maybe_validate_timing(timestamp, battle_data, validate_timing) do
+     │        ~
+     │
+     └─ lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:359:8: EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager (module)
+
+     warning: function validate_timestamp_against_battle/2 is unused
+     │
+ 368 │   defp validate_timestamp_against_battle(timestamp, battle_data) do
+     │        ~
+     │
+     └─ lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:368:8: EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager (module)
+
+    warning: module attribute @highlight_types was set but never used
+    │
+ 24 │   @highlight_types %{
+    │   ~~~~~~~~~~~~~~~~~~~
+    │
+    └─ lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:24: EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager (module)
+
 Finding suitable PLTs
 Checking PLT...
-[:ash, :ash_authentication, :ash_authentication_phoenix, :ash_json_api, :ash_phoenix, :ash_postgres, :ash_sql, :asn1, :assent, :bandit, :bcrypt_elixir, :broadway, :bypass, :bzip2, :cachex, :castore, :certifi, :comeonin, :compiler, :conv_case, :cowboy, :cowboy_telemetry, :cowlib, :crypto, :db_connection, :decimal, :dns_cluster, :dotenvy, :ecto, :ecto_sql, :eex, :elixir, :eternal, :ets, :eve_dmv, :ex_hash_ring, :ex_unit, :excoveralls, :expo, :finch, :floki, :gen_stage, :gettext, :gun, :hackney, :hpax, :httpoison, :idna, :inets, :iterex, ...]
-Looking up modules in dialyzer.plt
-Finding applications for dialyzer.plt
-Finding modules for dialyzer.plt
-Removing 4753 modules from dialyzer.plt
+[:ash, :ash_authentication, :ash_authentication_phoenix, :ash_json_api, :ash_phoenix, :ash_postgres, :ash_sql, :asn1, :assent, :bandit, :bcrypt_elixir, :broadway, :bzip2, :cachex, :castore, :certifi, :comeonin, :compiler, :conv_case, :cowboy, :cowlib, :crypto, :db_connection, :decimal, :dns_cluster, :dotenvy, :ecto, :ecto_sql, :eex, :elixir, :esbuild, :eternal, :ets, :eve_dmv, :ex_hash_ring, :ex_unit, :expo, :exsync, :file_system, :finch, :gen_stage, :gettext, :gun, :hackney, :hpax, :httpoison, :idna, :inets, :iterex, :jason, ...]
+PLT is up to date!
+ignore_warnings: .dialyzer_ignore.exs
 
-23:40:17.769 [notice] SIGTERM received - shutting down
-
+Starting Dialyzer
+[
+  check_plt: false,
+  init_plt: ~c"/workspace/priv/plts/dialyzer.plt",
+  files: [~c"_build/dev/lib/eve_dmv/ebin/Elixir.EveDmv.Market.RateLimiter.beam",
+   ~c"_build/dev/lib/eve_dmv/ebin/Elixir.EveDmv.Contexts.MarketIntelligence.Api.beam",
+   ~c"_build/dev/lib/eve_dmv/ebin/Elixir.EveDmv.Intelligence.ThreatAssessment.beam",
+   ~c"_build/dev/lib/eve_dmv/ebin/Elixir.EveDmv.Intelligence.Analyzers.FleetAssetManager.ReadinessAnalyzer.beam",
+   ~c"_build/dev/lib/eve_dmv/ebin/Elixir.EveDmv.Contexts.BattleAnalysis.Services.BattleService.beam",
+   ...],
+  warnings: [:error_handling, :underspecs, :no_unused, :unknown]
+]
+:dialyzer.run error: Analysis failed with error:
+Could not scan the following file(s):
+  Unknown function maybe_validate_timing/3 at location lib/eve_dmv/contexts/battle_sharing/domain/tactical_highlight_manager.ex:1
+Last messages in the log cache:
+  Reading files and computing callgraph... 
+Halting VM with exit status 1

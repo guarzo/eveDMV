@@ -21,78 +21,79 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
   @highlight_confidence_threshold 0.7
 
   # Highlight types and their characteristics
-  @highlight_types %{
-    first_engagement: %{
-      name: "First Engagement",
-      description: "Initial hostile contact and engagement",
-      tactical_significance: :high,
-      auto_detectable: true,
-      learning_value: :medium
-    },
-    tactical_shift: %{
-      name: "Tactical Shift",
-      description: "Significant change in tactical approach or positioning",
-      tactical_significance: :high,
-      auto_detectable: true,
-      learning_value: :high
-    },
-    escalation: %{
-      name: "Escalation",
-      description: "Combat escalation or reinforcements arrival",
-      tactical_significance: :very_high,
-      auto_detectable: true,
-      learning_value: :high
-    },
-    key_elimination: %{
-      name: "Key Elimination",
-      description: "Elimination of strategically important target",
-      tactical_significance: :high,
-      auto_detectable: true,
-      learning_value: :medium
-    },
-    tactical_error: %{
-      name: "Tactical Error",
-      description: "Significant tactical mistake with consequences",
-      tactical_significance: :medium,
-      auto_detectable: false,
-      learning_value: :very_high
-    },
-    brilliant_play: %{
-      name: "Brilliant Play",
-      description: "Exceptional tactical execution or decision",
-      tactical_significance: :high,
-      auto_detectable: false,
-      learning_value: :very_high
-    },
-    phase_transition: %{
-      name: "Phase Transition",
-      description: "Transition between tactical phases",
-      tactical_significance: :medium,
-      auto_detectable: true,
-      learning_value: :high
-    },
-    critical_moment: %{
-      name: "Critical Moment",
-      description: "Decisive moment that determined battle outcome",
-      tactical_significance: :very_high,
-      auto_detectable: false,
-      learning_value: :very_high
-    },
-    coordination_success: %{
-      name: "Coordination Success",
-      description: "Excellent team coordination and execution",
-      tactical_significance: :medium,
-      auto_detectable: false,
-      learning_value: :high
-    },
-    positioning_mastery: %{
-      name: "Positioning Mastery",
-      description: "Superior positioning and spatial awareness",
-      tactical_significance: :medium,
-      auto_detectable: false,
-      learning_value: :high
-    }
-  }
+  # TODO: Re-enable when highlight type validation is implemented
+  # @highlight_types %{
+  #   first_engagement: %{
+  #     name: "First Engagement",
+  #     description: "Initial hostile contact and engagement",
+  #     tactical_significance: :high,
+  #     auto_detectable: true,
+  #     learning_value: :medium
+  #   },
+  #   tactical_shift: %{
+  #     name: "Tactical Shift",
+  #     description: "Significant change in tactical approach or positioning",
+  #     tactical_significance: :high,
+  #     auto_detectable: true,
+  #     learning_value: :high
+  #   },
+  #   escalation: %{
+  #     name: "Escalation",
+  #     description: "Combat escalation or reinforcements arrival",
+  #     tactical_significance: :very_high,
+  #     auto_detectable: true,
+  #     learning_value: :high
+  #   },
+  #   key_elimination: %{
+  #     name: "Key Elimination",
+  #     description: "Elimination of strategically important target",
+  #     tactical_significance: :high,
+  #     auto_detectable: true,
+  #     learning_value: :medium
+  #   },
+  #   tactical_error: %{
+  #     name: "Tactical Error",
+  #     description: "Significant tactical mistake with consequences",
+  #     tactical_significance: :medium,
+  #     auto_detectable: false,
+  #     learning_value: :very_high
+  #   },
+  #   brilliant_play: %{
+  #     name: "Brilliant Play",
+  #     description: "Exceptional tactical execution or decision",
+  #     tactical_significance: :high,
+  #     auto_detectable: false,
+  #     learning_value: :very_high
+  #   },
+  #   phase_transition: %{
+  #     name: "Phase Transition",
+  #     description: "Transition between tactical phases",
+  #     tactical_significance: :medium,
+  #     auto_detectable: true,
+  #     learning_value: :high
+  #   },
+  #   critical_moment: %{
+  #     name: "Critical Moment",
+  #     description: "Decisive moment that determined battle outcome",
+  #     tactical_significance: :very_high,
+  #     auto_detectable: false,
+  #     learning_value: :very_high
+  #   },
+  #   coordination_success: %{
+  #     name: "Coordination Success",
+  #     description: "Excellent team coordination and execution",
+  #     tactical_significance: :medium,
+  #     auto_detectable: false,
+  #     learning_value: :high
+  #   },
+  #   positioning_mastery: %{
+  #     name: "Positioning Mastery",
+  #     description: "Superior positioning and spatial awareness",
+  #     tactical_significance: :medium,
+  #     auto_detectable: false,
+  #     learning_value: :high
+  #   }
+  # }
 
   # Learning categories for educational integration
   @learning_categories %{
@@ -144,20 +145,20 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
   """
   def create_tactical_highlight(
         battle_report_id,
-        creator_character_id,
+        _creator_character_id,
         highlight_data,
         options \\ []
       ) do
-    auto_analyze = Keyword.get(options, :auto_analyze, true)
-    validate_timing = Keyword.get(options, :validate_timing, true)
+    _auto_analyze = Keyword.get(options, :auto_analyze, true)
+    _validate_timing = Keyword.get(options, :validate_timing, true)
 
     timestamp = Map.get(highlight_data, :timestamp)
-    title = Map.get(highlight_data, :title)
-    description = Map.get(highlight_data, :description)
-    highlight_type = Map.get(highlight_data, :highlight_type)
-    tactical_context = Map.get(highlight_data, :tactical_context, %{})
-    learning_notes = Map.get(highlight_data, :learning_notes, [])
-    video_timestamp = Map.get(highlight_data, :video_timestamp)
+    _title = Map.get(highlight_data, :title)
+    _description = Map.get(highlight_data, :description)
+    _highlight_type = Map.get(highlight_data, :highlight_type)
+    _tactical_context = Map.get(highlight_data, :tactical_context, %{})
+    _learning_notes = Map.get(highlight_data, :learning_notes, [])
+    _video_timestamp = Map.get(highlight_data, :video_timestamp)
 
     Logger.info("Creating tactical highlight for battle #{battle_report_id} at #{timestamp}s")
 
@@ -355,31 +356,6 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
     {:error, :battle_data_unavailable}
   end
 
-  @dialyzer {:nowarn_function, maybe_validate_timing: 3}
-  defp maybe_validate_timing(timestamp, battle_data, validate_timing) do
-    if validate_timing do
-      validate_timestamp_against_battle(timestamp, battle_data)
-    else
-      {:ok, timestamp}
-    end
-  end
-
-  @dialyzer {:nowarn_function, validate_timestamp_against_battle: 2}
-  defp validate_timestamp_against_battle(timestamp, battle_data) do
-    battle_duration = Map.get(battle_data, :duration_seconds, 0)
-
-    cond do
-      timestamp < 0 ->
-        {:error, :negative_timestamp}
-
-      timestamp > battle_duration ->
-        {:error, :timestamp_exceeds_battle_duration}
-
-      true ->
-        {:ok, timestamp}
-    end
-  end
-
   # Private helper functions - core implementations
 
   defp analyze_battle_phases(_battle_data), do: {:ok, %{phases: []}}
@@ -403,7 +379,6 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
   defp calculate_average_confidence([]), do: 0.0
   defp calculate_average_confidence(highlights) when is_list(highlights), do: 0.75
 
-  defp enrich_highlight_data(highlight, _battle_data), do: {:ok, highlight}
   defp fetch_battle_highlights(_battle_report_id), do: {:ok, []}
   defp maybe_fetch_engagement_data(_highlights, _time_window, false), do: {:ok, %{}}
   defp maybe_fetch_engagement_data(_highlights, _time_window, true), do: {:ok, %{engagement: []}}
@@ -423,46 +398,5 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
 
   defp select_featured_highlights(highlights, max_highlights) do
     {:ok, Enum.take(highlights, max_highlights)}
-  end
-
-  defp maybe_analyze_tactical_context(_timestamp, _battle_data, context, false),
-    do: {:ok, context}
-
-  defp maybe_analyze_tactical_context(_timestamp, _battle_data, context, true) do
-    {:ok, Map.put(context, :analyzed, true)}
-  end
-
-  defp integrate_learning_content(highlight_type, learning_notes) do
-    learning_categories = Map.get(@learning_categories, :combat_fundamentals, [])
-
-    integration = %{
-      highlight_type: highlight_type,
-      learning_notes: learning_notes,
-      categories: learning_categories
-    }
-
-    {:ok, integration}
-  end
-
-  defp create_highlight_record(options) do
-    highlight = %{
-      highlight_id: generate_highlight_id(),
-      battle_report_id: options.battle_report_id,
-      creator_id: options.creator_id,
-      timestamp: options.timestamp,
-      title: options.title,
-      description: options.description,
-      highlight_type: options.highlight_type,
-      context: options.context,
-      learning_integration: options.learning_integration,
-      video_timestamp: options.video_timestamp,
-      created_at: DateTime.utc_now()
-    }
-
-    {:ok, highlight}
-  end
-
-  defp generate_highlight_id do
-    :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)
   end
 end
