@@ -11,7 +11,7 @@ defmodule EveDmv.Factories do
   # Rifter, Punisher, Merlin, Incursus, etc.
   @frigates [587, 588, 589, 590, 591, 592, 593, 594]
   # Algos, Catalyst, Cormorant, Coercer
-  @destroyers [16219, 16227, 16236, 16242]
+  @destroyers [16_219, 16_227, 16_236, 16_242]
   # Arbitrator, Augoror, Bellicose, etc.
   @cruisers [620, 621, 622, 623, 624, 625, 626, 627]
   # Abaddon, Apocalypse, Armageddon, Megathron, etc.
@@ -64,6 +64,7 @@ defmodule EveDmv.Factories do
   }
 
   # Get a random ship by role
+  @spec random_ship_by_role(atom()) :: integer()
   def random_ship_by_role(role) do
     ship_ids =
       case role do
@@ -83,8 +84,10 @@ defmodule EveDmv.Factories do
     Enum.random(ship_ids)
   end
 
+  @spec ship_name_for_id(integer()) :: String.t()
   def ship_name_for_id(ship_type_id), do: Map.get(@ship_names, ship_type_id, "Unknown Ship")
 
+  @spec character_factory() :: map()
   def character_factory do
     %{
       eve_character_id: Enum.random(90_000_000..100_000_000),
@@ -94,6 +97,7 @@ defmodule EveDmv.Factories do
     }
   end
 
+  @spec killmail_raw_factory() :: map()
   def killmail_raw_factory do
     killmail_time = DateTime.add(DateTime.utc_now(), -Enum.random(1..3600), :second)
     killmail_data = build_realistic_killmail_data()
@@ -113,6 +117,7 @@ defmodule EveDmv.Factories do
     }
   end
 
+  @spec user_factory() :: map()
   def user_factory do
     character_id = Enum.random(90_000_000..100_000_000)
 
@@ -127,6 +132,7 @@ defmodule EveDmv.Factories do
     }
   end
 
+  @spec killmail_enriched_factory() :: map()
   def killmail_enriched_factory do
     # Since KillmailEnriched was removed, we create a KillmailRaw with enriched-like data
     killmail_time = DateTime.add(DateTime.utc_now(), -Enum.random(1..3600), :second)
@@ -200,12 +206,14 @@ defmodule EveDmv.Factories do
     }
   end
 
+  @spec build(atom(), map()) :: map()
   def build(factory_name, attrs \\ %{}) do
     factory_name
     |> build_factory()
     |> Map.merge(attrs)
   end
 
+  @spec create(atom(), map()) :: map()
   def create(factory_name, attrs \\ %{}) do
     factory_name
     |> build(attrs)
@@ -666,10 +674,12 @@ defmodule EveDmv.Factories do
   end
 
   # Helper functions for generating consistent test IDs
+  @spec character_id() :: integer()
   def character_id do
     Enum.random(90_000_000..100_000_000)
   end
 
+  @spec corporation_id() :: integer()
   def corporation_id do
     Enum.random(1_000_000..2_000_000)
   end

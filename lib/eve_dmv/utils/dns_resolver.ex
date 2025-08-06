@@ -15,7 +15,7 @@ defmodule EveDmv.Utils.DnsResolver do
 
       iex> DnsResolver.resolve_hostname("host.docker.internal")
       {:ok, "127.0.0.1"}
-      
+
       iex> DnsResolver.resolve_hostname("invalid.domain")
       {:error, :nxdomain}
   """
@@ -37,7 +37,7 @@ defmodule EveDmv.Utils.DnsResolver do
 
       iex> DnsResolver.get_service_url(:wanderer)
       "http://127.0.0.1:4004"
-      
+
       iex> DnsResolver.get_service_url(:esi)
       "https://esi.evetech.net"
   """
@@ -154,7 +154,7 @@ defmodule EveDmv.Utils.DnsResolver do
         sse_url = working_url <> "/api/v1/kills/stream"
         Application.put_env(:eve_dmv, :wanderer_kills_sse_url, sse_url)
 
-        # Update WebSocket URL  
+        # Update WebSocket URL
         ws_url = String.replace(working_url, "http://", "ws://") <> "/socket"
         Application.put_env(:eve_dmv, :wanderer_kills_ws_url, ws_url)
 

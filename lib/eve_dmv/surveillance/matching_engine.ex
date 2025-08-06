@@ -83,8 +83,7 @@ defmodule EveDmv.Surveillance.MatchingEngine do
   def init(_opts) do
     Logger.info("Starting surveillance matching engine")
 
-    # Create ETS tables
-    IndexManager.create_ets_tables()
+    # Create ETS IndexManager.create_ets_tables(tables)
 
     # Load active profiles
     state = %{
@@ -173,7 +172,7 @@ defmodule EveDmv.Surveillance.MatchingEngine do
   @impl GenServer
   def handle_info(:batch_record_matches, state) do
     # Process pending matches in batch
-    if length(state.pending_matches) > 0 do
+    if not Enum.empty?(state.pending_matches) do
       Logger.info("📝 Recording batch of #{length(state.pending_matches)} surveillance matches")
 
       # Record matches asynchronously to avoid blocking
@@ -185,8 +184,7 @@ defmodule EveDmv.Surveillance.MatchingEngine do
       IndexManager.update_profile_metadata(state.pending_matches)
     end
 
-    # Clean up expired cache entries
-    IndexManager.cleanup_expired_cache()
+    # Clean up expired cache IndexManager.cleanup_expired_cache(entries)
 
     # Schedule next batch recording
     schedule_batch_recording()
@@ -255,43 +253,40 @@ defmodule EveDmv.Surveillance.MatchingEngine do
   end
 
   defp load_active_profiles do
-    # Clear existing data
-    IndexManager.clear_all_tables()
+    # Clear existing IndexManager.clear_all_tables(data)
 
     # Load active profiles from database
-    try do
-      case Ash.read(Profile,
-             action: :active_profiles,
-             domain: SurveillanceApi,
-             load: [:filter_tree]
-           ) do
-        {:ok, profiles} ->
-          # Preload profile names to avoid N+1 queries
-          EveDmv.Performance.BatchNameResolver.preload_profile_names(profiles)
+    case Ash.read(Profile,
+           action: :active_profiles,
+           domain: SurveillanceApi,
+           load: [:filter_tree]
+         ) do
+      {:ok, profiles} ->
+        # Preload profile names to avoid N+1 queries
+        EveDmv.Performance.BatchNameResolver.preload_profile_names(profiles)
 
-          # Process profiles in parallel batches for better performance
-          profiles
-          # Process in batches of 10
-          |> Enum.chunk_every(10)
-          |> Task.async_stream(&process_profile_batch/1,
-            max_concurrency: 4,
-            timeout: 30_000
-          )
-          |> Enum.reduce(0, fn
-            {:ok, count}, acc -> acc + count
-            {:error, _}, acc -> acc
-          end)
+        # Process profiles in parallel batches for better performance
+        profiles
+        # Process in batches of 10
+        |> Enum.chunk_every(10)
+        |> Task.async_stream(&process_profile_batch/1,
+          max_concurrency: 4,
+          timeout: 30_000
+        )
+        |> Enum.reduce(0, fn
+          {:ok, count}, acc -> acc + count
+          {:error, _}, acc -> acc
+        end)
 
-        {:error, error} ->
-          Logger.error("Failed to load surveillance profiles: #{inspect(error)}")
-          0
-      end
-    rescue
-      error ->
-        # Handle database not ready errors gracefully during startup
-        Logger.warning("Database may not be ready yet, skipping profile load: #{inspect(error)}")
+      {:error, error} ->
+        Logger.error("Failed to load surveillance profiles: #{inspect(error)}")
         0
     end
+  rescue
+    error ->
+      # Handle database not ready errors gracefully during startup
+      Logger.warning("Database may not be ready yet, skipping profile load: #{inspect(error)}")
+      0
   end
 
   defp process_profile_batch(profiles) do
@@ -345,15 +340,13 @@ defmodule EveDmv.Surveillance.MatchingEngine do
   end
 
   defp database_connected? do
-    try do
-      # Simple ping to check database connectivity
-      case Ecto.Adapters.SQL.query(EveDmv.Repo, "SELECT 1", []) do
-        {:ok, _} -> true
-        _ -> false
-      end
-    rescue
+    # Simple ping to check database connectivity
+    case Ecto.Adapters.SQL.query(EveDmv.Repo, "SELECT 1", []) do
+      {:ok, _} -> true
       _ -> false
     end
+  rescue
+    _ -> false
   end
 
   defp pipeline_running? do

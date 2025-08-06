@@ -9,6 +9,8 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.NotificationDispatcher do
   use GenServer
   use EveDmv.ErrorHandler
 
+  alias EveDmv.Core.Utils.DateTimeUtils
+
   require Logger
 
   # HTTP client configuration
@@ -103,7 +105,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.NotificationDispatcher do
               type: :email,
               data: email_data,
               attempts: 1,
-              next_retry: DateTime.add(DateTime.utc_now(), @retry_backoff_ms, :millisecond),
+              next_retry: DateTimeUtils.add(DateTime.utc_now(), @retry_backoff_ms, :millisecond),
               last_error: reason
             }
 
@@ -147,7 +149,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.NotificationDispatcher do
               type: :webhook,
               data: webhook_data,
               attempts: 1,
-              next_retry: DateTime.add(DateTime.utc_now(), @retry_backoff_ms, :millisecond),
+              next_retry: DateTimeUtils.add(DateTime.utc_now(), @retry_backoff_ms, :millisecond),
               last_error: reason
             }
 
@@ -209,7 +211,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.NotificationDispatcher do
     # Process items ready for retry
     {ready_for_retry, still_waiting} =
       Enum.split_with(state.retry_queue, fn item ->
-        DateTime.compare(current_time, item.next_retry) != :lt
+        DateTimeUtils.compare(current_time, item.next_retry) != :lt
       end)
 
     # Attempt retries
@@ -238,7 +240,8 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.NotificationDispatcher do
               updated_item = %{
                 item
                 | attempts: item.attempts + 1,
-                  next_retry: DateTime.add(current_time, round(next_retry_delay), :millisecond),
+                  next_retry:
+                    DateTimeUtils.add(current_time, round(next_retry_delay), :millisecond),
                   last_error: reason
               }
 
@@ -397,8 +400,12 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.NotificationDispatcher do
     case reason do
       :email_service_unavailable -> true
       {:http_error, status_code} when status_code >= 500 -> true
+      # Client errors (4xx) are not retryable
+      {:http_error, _} -> false
       {:http_request_failed, _} -> true
       :timeout -> true
+      :email_not_configured -> false
+      :webhooks_not_configured -> false
       _ -> false
     end
   end

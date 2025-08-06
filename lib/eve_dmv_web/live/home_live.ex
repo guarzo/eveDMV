@@ -5,12 +5,13 @@ defmodule EveDmvWeb.HomeLive do
 
   use EveDmvWeb, :live_view
 
+  alias Ecto.Adapters.SQL
   alias EveDmv.Eve.SolarSystem
 
   # Load current user from session on mount (optional for public pages)
   on_mount({EveDmvWeb.AuthLive, :load_from_session_optional})
 
-  @impl true
+  @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     {:ok,
      assign(socket,
@@ -23,7 +24,7 @@ defmodule EveDmvWeb.HomeLive do
      )}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("search", %{"query" => query}, socket) do
     socket =
       socket
@@ -33,18 +34,18 @@ defmodule EveDmvWeb.HomeLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("search_focus", _params, socket) do
     {:noreply, assign(socket, search_focused: true, show_search_dropdown: true)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("search_blur", _params, socket) do
     Process.send_after(self(), :hide_search_dropdown, 200)
     {:noreply, assign(socket, search_focused: false)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("select_search_result", %{"type" => type, "id" => id}, socket) do
     path =
       case type do
@@ -57,7 +58,7 @@ defmodule EveDmvWeb.HomeLive do
     {:noreply, push_navigate(socket, to: path)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("clear_search", _params, socket) do
     {:noreply,
      assign(socket,
@@ -67,7 +68,7 @@ defmodule EveDmvWeb.HomeLive do
      )}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info(:hide_search_dropdown, socket) do
     if socket.assigns.search_focused do
       {:noreply, socket}
@@ -76,7 +77,7 @@ defmodule EveDmvWeb.HomeLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:search_results, query, results}, socket) do
     if query == socket.assigns.search_query do
       {:noreply,
@@ -162,7 +163,7 @@ defmodule EveDmvWeb.HomeLive do
     LIMIT 3
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, system_query, [search_pattern]) do
+    case SQL.query(EveDmv.Repo, system_query, [search_pattern]) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [id, name, region, security_class] ->
           %{
@@ -195,7 +196,7 @@ defmodule EveDmvWeb.HomeLive do
     LIMIT 3
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, character_query, [search_pattern]) do
+    case SQL.query(EveDmv.Repo, character_query, [search_pattern]) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [id, name, corp, _] ->
           %{
@@ -227,7 +228,7 @@ defmodule EveDmvWeb.HomeLive do
     LIMIT 3
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, corp_query, [search_pattern]) do
+    case SQL.query(EveDmv.Repo, corp_query, [search_pattern]) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [id, name, members] ->
           %{
@@ -244,5 +245,12 @@ defmodule EveDmvWeb.HomeLive do
 
   def has_search_results?(results) do
     results.systems != [] || results.characters != [] || results.corporations != []
+  end
+
+  def show_search_dropdown?(assigns) do
+    assigns[:current_user] &&
+      assigns.show_search_dropdown &&
+      !assigns.search_loading &&
+      has_search_results?(assigns.search_results)
   end
 end

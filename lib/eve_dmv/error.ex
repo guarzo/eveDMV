@@ -100,12 +100,10 @@ defmodule EveDmv.Error do
   @spec user_message(t()) :: String.t()
   def user_message(%__MODULE__{} = error) do
     case EveDmv.ErrorCodes.category(error.code) do
-      :validation -> "Invalid request: #{error.message}"
-      :not_found -> "Requested data not found"
       :external_service -> "External service temporarily unavailable"
-      :system -> "System error occurred. Please try again."
-      :business_logic -> error.message
-      _ -> "An error occurred: #{error.message}"
+      :database -> "System error occurred. Please try again."
+      :application -> error.message
+      :unknown -> "An error occurred: #{error.message}"
     end
   end
 
@@ -148,6 +146,4 @@ defmodule EveDmv.Error do
     |> String.replace("_", " ")
     |> String.capitalize()
   end
-
-  defp humanize(other), do: inspect(other)
 end

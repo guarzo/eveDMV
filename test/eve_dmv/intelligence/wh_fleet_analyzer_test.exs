@@ -4,7 +4,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
   """
   use EveDmv.DataCase, async: false
 
-  alias EveDmv.Intelligence.Analyzers.WhFleetAnalyzer
+  alias EveDmv.Contexts.WormholeOperations.Domain.Analyzers.WhFleetAnalyzer
   alias EveDmv.TestMocks
 
   # Wormhole type constants for testing
@@ -362,7 +362,7 @@ defmodule EveDmv.Intelligence.WHFleetAnalyzerTest do
       # Should identify key roles
       assert Map.has_key?(balance, "dps")
       assert Map.has_key?(balance, "logistics")
-      assert Map.has_key?(balance, "tackle")
+      assert Map.has_key?(balance, "fc")
     end
   end
 

@@ -194,9 +194,8 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
   defp extract_weapons_from_ships(ship_usage) do
     Enum.frequencies(
       Enum.flat_map(ship_usage, fn {_ship_id, ship_data} ->
-        fits = Map.get(ship_data, :common_fits, [])
-
-        Enum.flat_map(fits, fn fit ->
+        Map.get(ship_data, :common_fits, [])
+        |> Enum.flat_map(fn fit ->
           Map.get(fit, :weapons, [])
         end)
       end)
@@ -310,24 +309,21 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
       |> Enum.into(%{})
 
     total_kills =
-      security_stats
-      |> Map.values()
+      Map.values(security_stats)
       |> Enum.map(& &1.kills)
       |> Enum.sum()
 
-    Enum.into(
-      Enum.map(security_stats, fn {sec_type, stats} ->
-        percentage =
-          if total_kills > 0 do
-            Float.round(stats.kills / total_kills * 100, 1)
-          else
-            0.0
-          end
+    Enum.map(security_stats, fn {sec_type, stats} ->
+      percentage =
+        if total_kills > 0 do
+          Float.round(stats.kills / total_kills * 100, 1)
+        else
+          0.0
+        end
 
-        {sec_type, Map.put(stats, :percentage, percentage)}
-      end),
-      %{}
-    )
+      {sec_type, Map.put(stats, :percentage, percentage)}
+    end)
+    |> Enum.into(%{})
   end
 
   defp analyze_engagement_timing(character_stats) do
@@ -425,8 +421,9 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
     cond do
       percentile >= 90 -> :elite
       percentile >= 70 -> :above_average
-      percentile >= 30 -> :average
-      true -> :below_average
+      # Dialyzer knows percentile is always >= 30 based on the caller
+      # so the last case is unreachable
+      true -> :average
     end
   end
 
@@ -437,14 +434,12 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
       0.0
     else
       total_usage =
-        ship_usage
-        |> Map.values()
+        Map.values(ship_usage)
         |> Enum.map(fn ship_data -> Map.get(ship_data, :times_used, 0) end)
         |> Enum.sum()
 
       max_usage =
-        ship_usage
-        |> Map.values()
+        Map.values(ship_usage)
         |> Enum.map(fn ship_data -> Map.get(ship_data, :times_used, 0) end)
         |> Enum.max(fn -> 0 end)
 

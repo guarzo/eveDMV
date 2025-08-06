@@ -180,10 +180,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.IngestionService do
     ]
 
     # Publish events through the infrastructure layer
-    case Infrastructure.EventPublisher.publish_events(events_to_publish) do
-      :ok -> {:ok, length(events_to_publish)}
-      error -> error
-    end
+    Infrastructure.EventPublisher.publish_events(events_to_publish)
   end
 
   defp publish_failure_event(raw_killmail, reason) do
@@ -248,13 +245,10 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.IngestionService do
     }
   end
 
-  defp determine_failure_stage(reason) do
-    case reason do
-      {:validation_error, _} -> :ingestion
-      {:enrichment_error, _} -> :enrichment
-      {:storage_error, _} -> :storage
-      _ -> :ingestion
-    end
+  defp determine_failure_stage(_reason) do
+    # All failures are treated as ingestion stage failures
+    # More specific error categorization could be added here if needed
+    :ingestion
   end
 
   defp extract_victim_summary(killmail) do

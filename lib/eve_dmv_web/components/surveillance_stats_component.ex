@@ -49,7 +49,7 @@ defmodule EveDmvWeb.SurveillanceStatsComponent do
       <div class="p-6">
         <h2 class="text-lg font-semibold text-gray-200 mb-4">Recent Matches</h2>
         <div class="space-y-3">
-          <%= if length(@recent_matches) > 0 do %>
+          <%= if not Enum.empty?(@recent_matches) do %>
             <%= for match <- Enum.take(@recent_matches, 10) do %>
               <div class="bg-gray-700 rounded-lg p-3">
                 <div class="flex items-center justify-between mb-2">

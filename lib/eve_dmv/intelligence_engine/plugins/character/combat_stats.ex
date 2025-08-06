@@ -13,14 +13,15 @@ defmodule EveDmv.IntelligenceEngine.Plugins.Character.CombatStats do
   @doc """
   Plugin metadata and information.
   """
+  @impl EveDmv.IntelligenceEngine.Plugin
   def plugin_info do
     %{
       name: "Combat Statistics",
       description: "Analyzes character combat performance and statistics",
       version: "2.0.0",
-      dependencies: [EveDmv.Database.CharacterRepository, EveDmv.Database.KillmailRepository],
-      author: "EVE DMV Development Team",
-      tags: ["character", "combat", "statistics", "analysis"]
+      author: "EVE DMV Team",
+      tags: [:combat, :statistics, :character],
+      dependencies: [EveDmv.Database.CharacterRepository, EveDmv.Database.KillmailRepository]
     }
   end
 
@@ -29,9 +30,10 @@ defmodule EveDmv.IntelligenceEngine.Plugins.Character.CombatStats do
 
   Delegates to the bounded context analyzer.
   """
-  def analyze(entity_id, base_data, opts \\ []) do
-    # Delegate to the bounded context analyzer
-    case CombatStatsAnalyzer.analyze(entity_id, opts) do
+  @impl EveDmv.IntelligenceEngine.Plugin
+  def analyze(entity_id, base_data, _opts \\ []) do
+    # Delegate to the bounded context analyzer with the correct arguments
+    case CombatStatsAnalyzer.analyze(entity_id, base_data) do
       {:ok, result} ->
         {:ok,
          Map.merge(base_data, %{
@@ -39,6 +41,9 @@ defmodule EveDmv.IntelligenceEngine.Plugins.Character.CombatStats do
            plugin_version: "2.0.0",
            analyzed_at: DateTime.utc_now()
          })}
+
+      {:error, %EveDmv.Error{} = error} ->
+        {:error, error}
 
       {:error, reason} ->
         {:error, reason}
@@ -48,6 +53,7 @@ defmodule EveDmv.IntelligenceEngine.Plugins.Character.CombatStats do
   @doc """
   Whether this plugin supports batch analysis.
   """
+  @impl EveDmv.IntelligenceEngine.Plugin
   def supports_batch? do
     true
   end
@@ -55,6 +61,7 @@ defmodule EveDmv.IntelligenceEngine.Plugins.Character.CombatStats do
   @doc """
   Plugin dependencies.
   """
+  @impl EveDmv.IntelligenceEngine.Plugin
   def dependencies do
     [EveDmv.Database.CharacterRepository, EveDmv.Database.KillmailRepository]
   end
@@ -62,9 +69,10 @@ defmodule EveDmv.IntelligenceEngine.Plugins.Character.CombatStats do
   @doc """
   Cache strategy for this plugin.
   """
+  @impl EveDmv.IntelligenceEngine.Plugin
   def cache_strategy do
     %{
-      strategy: :memory,
+      strategy: :ttl,
       ttl_seconds: 300,
       invalidate_on: [:killmail_update, :character_update]
     }

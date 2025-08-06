@@ -5,6 +5,8 @@ defmodule EveDmvWeb.SessionController do
 
   use EveDmvWeb, :controller
 
+  import Plug.Conn
+
   def clear(conn, _params) do
     conn
     |> clear_session()

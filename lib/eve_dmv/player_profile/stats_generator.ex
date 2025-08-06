@@ -134,7 +134,7 @@ defmodule EveDmv.PlayerProfile.StatsGenerator do
   end
 
   defp determine_gang_preference(%Decimal{} = avg_gang_size) do
-    avg_gang_size |> Decimal.to_float() |> determine_gang_preference()
+    Decimal.to_float(avg_gang_size) |> determine_gang_preference()
   end
 
   defp determine_gang_preference(_), do: "solo"

@@ -8,7 +8,6 @@ defmodule EveDmv.Application do
   use Application
 
   alias EveDmv.Config.RateLimit
-  alias EveDmv.Eve.NameResolver
   alias EveDmv.Eve.StaticDataLoader
   alias EveDmv.Performance.RegressionDetector
 
@@ -17,8 +16,8 @@ defmodule EveDmv.Application do
     # Initialize ETS table for fitting cache
     :ets.new(:battle_fitting_cache, [:set, :public, :named_table])
 
-    # Initialize EVE name resolver cache early
-    NameResolver.start_cache()
+    # Initialize EVE name resolver cache
+    # NameResolver.start_cache()
 
     # Only set up security handlers in non-test environments
     if Application.get_env(:eve_dmv, :environment, :prod) != :test do
@@ -51,12 +50,12 @@ defmodule EveDmv.Application do
       EveDmv.Infrastructure.EventBusSupervisor,
       # Start the Finch HTTP client for sending emails
       {Finch, name: EveDmv.Finch},
-      # Start the price cache
-      EveDmv.Market.PriceCache,
+      # Start the unified cache system (replaces individual caches)
+      EveDmv.Shared.Infrastructure.UnifiedCache,
+      # Start the unified event processor
+      EveDmv.Shared.Infrastructure.UnifiedEventProcessor,
       # Start the ESI cache
       EveDmv.Eve.EsiCache,
-      # Start the analysis cache for character and corporation intelligence
-      EveDmv.Cache.AnalysisCache,
       # Start the static data cache for system/ship names
       EveDmv.Cache.StaticDataCache,
       # Start the query cache for expensive database queries
@@ -79,8 +78,10 @@ defmodule EveDmv.Application do
       {EveDmv.Market.RateLimiter, [name: :janice_rate_limiter] ++ RateLimit.janice_rate_limit()},
       # Start the Janice API client for market pricing
       EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient,
-      # Start the surveillance context (includes matching engine, profile repository, etc.)
-      maybe_start_surveillance_context(),
+      # Start the unified threat surveillance context
+      maybe_start_threat_surveillance_context(),
+      # Start the unified combat analysis context
+      maybe_start_combat_analysis_context(),
       # Conditionally start database-dependent processes
       maybe_start_database_processes(),
       # Start the Wanderer API client for chain intelligence
@@ -139,7 +140,7 @@ defmodule EveDmv.Application do
                   Logger.info("Admin users already exist, skipping bootstrap")
 
                 {:error, _} ->
-                  # Database not ready or other issue, proceed with bootstrap attempt
+                  # Database not ready or other issue, proceed with bootstrap
                   EveDmv.Admin.Bootstrap.bootstrap_from_env()
               end
             end
@@ -150,11 +151,11 @@ defmodule EveDmv.Application do
           end
         end)
 
-        # Attach global error telemetry handlers
-        EveDmv.ErrorHandler.attach_telemetry_handlers()
+        # Attach global error telemetry
+        # EveDmv.ErrorHandler.attach_telemetry_handlers()
 
-        # Attach query performance monitoring
-        EveDmv.Performance.QueryMonitor.attach_telemetry_handlers()
+        # Attach query performance
+        # EveDmv.Performance.QueryMonitor.attach_telemetry_handlers()
 
         # Start performance regression detection
         if Application.get_env(:eve_dmv, :environment, :prod) != :test do
@@ -193,20 +194,32 @@ defmodule EveDmv.Application do
         EveDmv.Historical.ImportPipeline,
         EveDmv.Historical.ImportProgressMonitor,
         # Performance monitoring dashboard (Sprint 15A)
-        EveDmv.Monitoring.PerformanceDashboard
+        EveDmv.Platform.Monitoring.PerformanceDashboard
       ]
     else
       []
     end
   end
 
-  # Conditionally start surveillance context
-  defp maybe_start_surveillance_context do
+  # Conditionally start unified threat surveillance context
+  defp maybe_start_threat_surveillance_context do
     if Application.get_env(:eve_dmv, :environment, :prod) != :test do
-      EveDmv.Contexts.Surveillance
+      EveDmv.Contexts.ThreatSurveillance
     else
       %{
-        id: EveDmv.Contexts.Surveillance,
+        id: EveDmv.Contexts.ThreatSurveillance,
+        start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}
+      }
+    end
+  end
+
+  # Conditionally start unified combat analysis context
+  defp maybe_start_combat_analysis_context do
+    if Application.get_env(:eve_dmv, :environment, :prod) != :test do
+      EveDmv.Contexts.CombatAnalysis
+    else
+      %{
+        id: EveDmv.Contexts.CombatAnalysis,
         start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}
       }
     end
@@ -315,7 +328,7 @@ defmodule EveDmv.Application do
             )
 
             # Warm the cache after loading
-            NameResolver.warm_cache()
+            # NameResolver.warm_cache()
             Logger.info("Name resolver cache warmed")
 
           {:error, reason} ->
@@ -348,31 +361,27 @@ defmodule EveDmv.Application do
 
   # Check if database connection is available
   defp check_database_connection do
-    try do
-      case Ecto.Adapters.SQL.query(EveDmv.Repo, "SELECT 1", []) do
-        {:ok, _} -> :ok
-        {:error, %{message: message}} -> {:error, message}
-        _ -> {:error, "Unknown database error"}
-      end
-    rescue
-      error -> {:error, inspect(error)}
+    case Ecto.Adapters.SQL.query(EveDmv.Repo, "SELECT 1", []) do
+      {:ok, _} -> :ok
+      {:error, %{message: message}} -> {:error, message}
+      _ -> {:error, "Unknown database error"}
     end
+  rescue
+    error -> {:error, inspect(error)}
   end
 
   # Check if admin users already exist
   defp check_existing_admin_users do
-    try do
-      case Ecto.Adapters.SQL.query(
-             EveDmv.Repo,
-             "SELECT EXISTS(SELECT 1 FROM users WHERE is_admin = true)",
-             []
-           ) do
-        {:ok, %{rows: [[true]]}} -> {:ok, true}
-        {:ok, %{rows: [[false]]}} -> {:ok, false}
-        {:error, reason} -> {:error, reason}
-      end
-    rescue
-      error -> {:error, inspect(error)}
+    case Ecto.Adapters.SQL.query(
+           EveDmv.Repo,
+           "SELECT EXISTS(SELECT 1 FROM users WHERE is_admin = true)",
+           []
+         ) do
+      {:ok, %{rows: [[true]]}} -> {:ok, true}
+      {:ok, %{rows: [[false]]}} -> {:ok, false}
+      {:error, reason} -> {:error, reason}
     end
+  rescue
+    error -> {:error, inspect(error)}
   end
 end

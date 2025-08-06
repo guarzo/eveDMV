@@ -79,7 +79,7 @@
 
   <!-- Filters -->
   <div class="bg-white rounded-lg shadow-sm border p-4 mb-6">
-    <form phx-change="filter_alerts">
+    <form id="alert-filters" phx-change="filter_alerts" phx-submit="filter_alerts">
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
@@ -131,7 +131,7 @@
     <%= if length(@alerts) > 0 do %>
       <div class="divide-y divide-gray-200">
         <%= for alert <- @alerts do %>
-          <div class="p-4 hover:bg-gray-50 cursor-pointer" phx-click="show_alert_details" phx-value-alert_id={alert.id}>
+          <div class="p-4 hover:bg-gray-50 cursor-pointer" phx-click="show_alert_details" phx-value-alert_id={alert.id} data-alert-state={alert.state}>
             <div class="flex items-start justify-between">
               <div class="flex-1 min-w-0">
                 <div class="flex items-center space-x-3 mb-2">

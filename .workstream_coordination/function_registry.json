@@ -1,0 +1,51 @@
+{
+  "baseline_error_count": 1840,
+  "target_error_count": 1500,
+  "sprint": 1,
+  "start_date": "2025-08-03",
+  "workstream_status": {
+    "alpha": {
+      "status": "active",
+      "focus": "infrastructure/platform modules",
+      "target_errors": 80,
+      "errors_fixed": 0,
+      "modules": [
+        "lib/eve_dmv/platform/",
+        "lib/eve_dmv/infrastructure/",
+        "lib/eve_dmv/external/",
+        "lib/eve_dmv/utilities/"
+      ]
+    },
+    "beta": {
+      "status": "pending",
+      "focus": "battle analysis modules",
+      "target_errors": 80,
+      "errors_fixed": 0,
+      "modules": []
+    },
+    "gamma": {
+      "status": "pending",
+      "focus": "intelligence modules",
+      "target_errors": 70,
+      "errors_fixed": 0,
+      "modules": []
+    },
+    "delta": {
+      "status": "pending", 
+      "focus": "contexts and domains",
+      "target_errors": 60,
+      "errors_fixed": 0,
+      "modules": []
+    },
+    "epsilon": {
+      "status": "pending",
+      "focus": "web and test files",
+      "target_errors": 50,
+      "errors_fixed": 0,
+      "modules": []
+    }
+  },
+  "removal_requests": {},
+  "completed_removals": []
+}
+EOF < /dev/null

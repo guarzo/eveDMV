@@ -49,19 +49,14 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainThreatAnalyzer do
     patterns = analyze_activity_patterns(activity_history)
     current_threats = detect_active_threats(chain_data)
 
-    case generate_predictions(patterns, current_threats) do
-      {:ok, predictions} ->
-        {:ok,
-         %{
-           predictions: predictions,
-           confidence: calculate_prediction_confidence(patterns),
-           generated_at: DateTime.utc_now()
-         }}
+    {:ok, predictions} = generate_predictions(patterns, current_threats)
 
-      {:error, reason} ->
-        Logger.error("Failed to generate predictions for chain #{map_id}: #{inspect(reason)}")
-        {:error, reason}
-    end
+    {:ok,
+     %{
+       predictions: predictions,
+       confidence: calculate_prediction_confidence(patterns),
+       generated_at: DateTime.utc_now()
+     }}
   end
 
   # Private helper functions

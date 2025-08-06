@@ -12,6 +12,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.KillmailOrchestrator do
   use GenServer
   alias EveDmv.Contexts.KillmailProcessing.Domain
   # alias EveDmv.Contexts.KillmailProcessing.Infrastructure
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.DomainEvents
   alias EveDmv.Infrastructure.EventBus
   require Logger
@@ -257,7 +258,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.KillmailOrchestrator do
   defp calculate_uptime(nil), do: nil
 
   defp calculate_uptime(start_time) do
-    DateTime.diff(DateTime.utc_now(), start_time, :second)
+    DateTimeUtils.diff(DateTime.utc_now(), start_time, :second)
   end
 
   defp initialize_metrics do
@@ -297,7 +298,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.KillmailOrchestrator do
           0
 
         last_time ->
-          time_diff_minutes = DateTime.diff(now, last_time, :second) / 60
+          time_diff_minutes = DateTimeUtils.diff(now, last_time, :second) / 60
           if time_diff_minutes > 0, do: 1 / time_diff_minutes, else: 0
       end
 

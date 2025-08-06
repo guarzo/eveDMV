@@ -1,15 +1,30 @@
 defmodule EveDmv.Api do
   @moduledoc """
-  The main Ash API for the EVE PvP Tracker application.
+  The main Ash API for the EVE DMV application.
 
-  This API contains core resources needed for the application's primary
-  functionality. Additional specialized resources are managed through
-  focused sub-domains to reduce complexity and dependencies.
+  This API provides the central access point for all core resources and
+  standardized CRUD operations with comprehensive error handling and
+  type safety.
 
-  Sub-domains:
+  ## Core Resources
+  - Users and authentication (User, Token, ApiAuthentication)
+  - Killmail data (KillmailRaw, Participant)
+  - EVE static data (ItemType, SolarSystem, ShipAttributes)
+  - Intelligence data (CharacterStats, CharacterProfile)
+  - Corporation data (Corporation, Alliance, etc.)
+
+  ## Sub-domains
   - EveDmv.Api.SurveillanceApi - Surveillance resources
   - EveDmv.Api.AnalyticsApi - Analytics resources
   - EveDmv.Api.BattleAnalysisApi - Battle analysis resources
+
+  ## Error Handling
+  All functions return standardized `{:ok, result}` or `{:error, reason}` tuples
+  for consistent error handling across the application.
+
+  ## Type Safety
+  All public functions include comprehensive `@spec` annotations for
+  compile-time type checking with Dialyzer.
   """
 
   use Ash.Domain,
@@ -19,6 +34,7 @@ defmodule EveDmv.Api do
   # Core application resources only
   resources do
     # Essential user and authentication
+    resource(EveDmv.Users.Account)
     resource(EveDmv.Users.User)
     resource(EveDmv.Users.Token)
     resource(EveDmv.Security.ApiAuthentication)
@@ -34,9 +50,20 @@ defmodule EveDmv.Api do
     # Essential EVE static data
     resource(EveDmv.Eve.ItemType)
     resource(EveDmv.Eve.SolarSystem)
+    resource(EveDmv.StaticData.ShipAttributes)
 
     # Core intelligence resources
     resource(EveDmv.Intelligence.CharacterStats)
+    resource(EveDmv.Contexts.Intelligence.Resources.CharacterProfile)
+    # Corporation resources
+    resource(EveDmv.Contexts.Corporation.Resources.Alliance)
+    resource(EveDmv.Contexts.Corporation.Resources.Corporation)
+    resource(EveDmv.Contexts.Corporation.Resources.CorporationMember)
+    resource(EveDmv.Contexts.Corporation.Resources.ActivityMetric)
+    resource(EveDmv.Contexts.Corporation.Resources.RecruitmentApplication)
+    resource(EveDmv.Contexts.Corporation.Resources.MemberPerformanceSnapshot)
+    resource(EveDmv.Contexts.Corporation.Resources.MemberActivityLog)
+    resource(EveDmv.Contexts.Corporation.Resources.RecruitmentCampaign)
   end
 
   # Authorization configuration
@@ -51,5 +78,107 @@ defmodule EveDmv.Api do
     [
       {EveDmv.Ash.Preparations.QuerySafety, [limit: 1000]}
     ]
+  end
+
+  @doc """
+  Executes a read query against this domain and returns the result or raises an error.
+  """
+  @spec read!(Ash.Query.t()) :: [Ash.Resource.record()] | Ash.Resource.record()
+  def read!(query) do
+    Ash.read!(query, domain: __MODULE__)
+  end
+
+  @doc """
+  Executes a read query against this domain with options.
+  """
+  @spec read!(Ash.Resource.t(), keyword()) :: [Ash.Resource.record()] | Ash.Resource.record()
+  def read!(resource, opts) when is_atom(resource) do
+    Ash.read!(resource, opts ++ [domain: __MODULE__])
+  end
+
+  @doc """
+  Executes a read query against this domain.
+  """
+  @spec read(Ash.Query.t()) ::
+          {:ok, [Ash.Resource.record()]} | {:ok, Ash.Resource.record()} | {:error, any()}
+  def read(query) do
+    Ash.read(query, domain: __MODULE__)
+  end
+
+  @doc """
+  Executes a read query against this domain with options.
+  """
+  @spec read(Ash.Resource.t(), keyword()) ::
+          {:ok, [Ash.Resource.record()]} | {:ok, Ash.Resource.record()} | {:error, any()}
+  def read(resource, opts) when is_atom(resource) do
+    Ash.read(resource, opts ++ [domain: __MODULE__])
+  end
+
+  @doc """
+  Creates a record in this domain.
+  """
+  @spec create(Ash.Resource.t(), map(), keyword()) ::
+          {:ok, Ash.Resource.record()} | {:error, any()}
+  def create(resource, attrs, opts \\ []) do
+    Ash.create(resource, attrs, opts ++ [domain: __MODULE__])
+  end
+
+  @doc """
+  Updates a record in this domain.
+  """
+  @spec update(Ash.Resource.record(), map(), keyword()) ::
+          {:ok, Ash.Resource.record()} | {:error, any()}
+  def update(record, attrs, opts \\ []) do
+    Ash.update(record, attrs, opts ++ [domain: __MODULE__])
+  end
+
+  @doc """
+  Destroys a record in this domain.
+  """
+  @spec destroy(Ash.Resource.record(), keyword()) :: :ok | {:error, any()}
+  def destroy(record, opts \\ []) do
+    Ash.destroy(record, opts ++ [domain: __MODULE__])
+  end
+
+  @doc """
+  Bulk creates records in this domain.
+
+  Note: This follows Ash.bulk_create's parameter order for consistency.
+  """
+  @spec bulk_create([map()], Ash.Resource.t(), atom(), keyword()) :: Ash.BulkResult.t()
+  def bulk_create(attrs_list, resource, action \\ :create, opts \\ []) do
+    Ash.bulk_create(attrs_list, resource, action, opts ++ [domain: __MODULE__])
+  end
+
+  @doc """
+  Gets a record by ID in this domain.
+  """
+  @spec get(Ash.Resource.t(), any(), keyword()) :: {:ok, Ash.Resource.record()} | {:error, any()}
+  def get(resource, id, opts \\ []) do
+    Ash.get(resource, id, opts ++ [domain: __MODULE__])
+  end
+
+  @doc """
+  Counts records in this domain.
+  """
+  @spec count(Ash.Query.t()) :: {:ok, non_neg_integer()} | {:error, any()}
+  def count(query) do
+    Ash.count(query, domain: __MODULE__)
+  end
+
+  @doc """
+  Reads one record from a query.
+  """
+  @spec read_one(Ash.Query.t()) :: {:ok, Ash.Resource.record()} | {:ok, nil} | {:error, any()}
+  def read_one(query) do
+    Ash.read_one(query, domain: __MODULE__)
+  end
+
+  @doc """
+  Reads one record from a query and raises on error.
+  """
+  @spec read_one!(Ash.Query.t()) :: Ash.Resource.record() | nil
+  def read_one!(query) do
+    Ash.read_one!(query, domain: __MODULE__)
   end
 end

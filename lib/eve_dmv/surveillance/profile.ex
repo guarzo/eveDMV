@@ -231,15 +231,15 @@ defmodule EveDmv.Surveillance.Profile do
   # Private validation functions
   defp validate_filter_tree(%{"condition" => condition, "rules" => rules})
        when condition in ["and", "or"] and is_list(rules) do
-    if length(rules) > 0 do
+    if Enum.empty?(rules) do
+      {:error, "rules cannot be empty"}
+    else
       Enum.reduce_while(rules, :ok, fn rule, :ok ->
         case validate_rule(rule) do
           :ok -> {:cont, :ok}
           error -> {:halt, error}
         end
       end)
-    else
-      {:error, "rules cannot be empty"}
     end
   end
 
@@ -309,7 +309,7 @@ defmodule EveDmv.Surveillance.Profile do
 
   defp validate_value_for_operator(op, value)
        when op in ["in", "not_in", "contains_any", "contains_all", "not_contains"] do
-    if is_list(value) and length(value) > 0 do
+    if is_list(value) and not Enum.empty?(value) do
       :ok
     else
       {:error, "#{op} requires a non-empty list"}

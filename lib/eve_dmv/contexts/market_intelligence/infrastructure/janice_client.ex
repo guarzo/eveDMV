@@ -9,40 +9,41 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
   API Documentation: https://janice.e-351.com/api/rest/v2
   """
 
-  use Tesla
+  use GenServer
+
+  alias EveDmv.Config.Http
+  alias EveDmv.Http.UnifiedClient
+
   require Logger
 
+  # Configuration
   @base_url "https://janice.e-351.com/api/rest/v2"
   # 15 minutes
   @cache_ttl_seconds 900
   @rate_limit_per_minute 100
   @rate_limit_window_ms 60_000
 
-  # Configure Tesla client
-  plug(Tesla.Middleware.BaseUrl, @base_url)
-  plug(Tesla.Middleware.JSON)
-  plug(Tesla.Middleware.Timeout, timeout: 10_000)
+  # Type definitions
+  @type price_info :: %{
+          sell_price: float() | nil,
+          buy_price: float() | nil,
+          volume: integer() | nil,
+          updated_at: DateTime.t() | nil
+        }
 
-  # Use Tesla.Mock adapter in test environment
-  if Application.compile_env(:eve_dmv, :environment) == :test do
-    adapter(Tesla.Mock)
-  end
+  @type rate_limit_status :: %{
+          requests_in_window: non_neg_integer(),
+          limit: non_neg_integer(),
+          remaining: non_neg_integer(),
+          window_ms: non_neg_integer()
+        }
 
-  plug(Tesla.Middleware.Retry,
-    delay: 500,
-    max_retries: 3,
-    max_delay: 4_000,
-    should_retry: fn
-      {:ok, %{status: status}} when status in 500..599 -> true
-      # Rate limited
-      {:ok, %{status: 429}} -> true
-      {:error, _} -> true
-      _ -> false
-    end
-  )
-
-  # GenServer for rate limiting
-  use GenServer
+  @type bulk_price_results :: %{
+          prices: %{integer() => price_info()},
+          failed_items: [integer()],
+          total_items: non_neg_integer(),
+          successful_items: non_neg_integer()
+        }
 
   defmodule State do
     @moduledoc false
@@ -71,7 +72,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
   - volume: Daily volume
   - updated_at: When the price was last updated
   """
-  @spec get_item_price(integer()) :: {:ok, map()} | {:error, term()}
+  @spec get_item_price(integer()) :: {:ok, price_info()} | {:error, atom()}
   def get_item_price(type_id) when is_integer(type_id) do
     # Check if GenServer is running
     case Process.whereis(__MODULE__) do
@@ -91,7 +92,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
   Ships often have standard fits that affect their practical value.
   Janice provides better estimates for common ship hulls.
   """
-  @spec get_ship_price(integer()) :: {:ok, map()} | {:error, term()}
+  @spec get_ship_price(integer()) :: {:ok, price_info()} | {:error, atom()}
   def get_ship_price(type_id) when is_integer(type_id) do
     # Check if GenServer is running
     case Process.whereis(__MODULE__) do
@@ -110,7 +111,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
 
   More efficient than individual requests. Limited to 100 items per call.
   """
-  @spec bulk_price_lookup([integer()]) :: {:ok, map()} | {:error, term()}
+  @spec bulk_price_lookup([integer()]) :: {:ok, bulk_price_results()} | {:error, atom()}
   def bulk_price_lookup(type_ids) when is_list(type_ids) do
     # Limit to 100 items per request
     if length(type_ids) > 100 do
@@ -130,7 +131,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
   @doc """
   Get current rate limit status.
   """
-  @spec get_rate_limit_status() :: map()
+  @spec get_rate_limit_status() :: rate_limit_status()
   def get_rate_limit_status do
     case Process.whereis(__MODULE__) do
       nil ->
@@ -298,7 +299,10 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
   defp fetch_and_cache_item_price(type_id, state) do
     Logger.debug("Fetching price from Janice for type_id #{type_id}")
 
-    case get("/market/#{type_id}") do
+    url = "#{@base_url}/market/#{type_id}"
+    opts = [timeout: Http.service_timeout(:janice)]
+
+    case UnifiedClient.get(url, opts) do
       {:ok, %{status: 200, body: body}} ->
         price_info = parse_price_response(body)
         new_cache = cache_price(state.cache, type_id, price_info)
@@ -329,8 +333,10 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
 
     # Janice bulk endpoint expects comma-separated type IDs
     type_ids_param = Enum.join(missing_ids, ",")
+    url = "#{@base_url}/market/bulk/#{type_ids_param}"
+    opts = [timeout: Http.service_timeout(:janice)]
 
-    case get("/market/bulk/#{type_ids_param}") do
+    case UnifiedClient.get(url, opts) do
       {:ok, %{status: 200, body: body}} ->
         bulk_prices = parse_bulk_price_response(body)
         new_cache = cache_bulk_prices(state.cache, bulk_prices)
@@ -350,7 +356,8 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
   defp split_cached_items(type_ids, cache) do
     now = System.system_time(:second)
 
-    Enum.reduce(type_ids, {%{}, []}, fn type_id, {cached, missing} ->
+    type_ids
+    |> Enum.reduce({%{}, []}, fn type_id, {cached, missing} ->
       case Map.get(cache, type_id) do
         {price_info, cached_at} when now - cached_at < @cache_ttl_seconds ->
           {Map.put(cached, type_id, price_info), missing}
@@ -367,6 +374,17 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
       buy_price: get_in(body, ["buy", "max"]) || 0.0,
       sell_volume: get_in(body, ["sell", "volume"]) || 0,
       buy_volume: get_in(body, ["buy", "volume"]) || 0,
+      updated_at: DateTime.utc_now()
+    }
+  end
+
+  defp parse_price_response(_body) do
+    # Fallback for unexpected response format (e.g., HTML error pages)
+    %{
+      sell_price: 0.0,
+      buy_price: 0.0,
+      sell_volume: 0,
+      buy_volume: 0,
       updated_at: DateTime.utc_now()
     }
   end
@@ -388,7 +406,8 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
   defp cache_bulk_prices(cache, bulk_prices) do
     now = System.system_time(:second)
 
-    Enum.reduce(bulk_prices, cache, fn {type_id, price_info}, acc ->
+    bulk_prices
+    |> Enum.reduce(cache, fn {type_id, price_info}, acc ->
       Map.put(acc, type_id, {price_info, now})
     end)
   end
@@ -398,7 +417,10 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
   defp fetch_item_price_direct(type_id) do
     Logger.debug("Direct API call to Janice for type_id #{type_id}")
 
-    case get("/market/#{type_id}") do
+    url = "#{@base_url}/market/#{type_id}"
+    opts = [timeout: Http.service_timeout(:janice)]
+
+    case UnifiedClient.get(url, opts) do
       {:ok, %{status: 200, body: body}} ->
         price_info = parse_price_response(body)
         {:ok, price_info}
@@ -418,8 +440,10 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
     Logger.debug("Direct bulk API call to Janice for #{length(type_ids)} items")
 
     type_ids_param = Enum.join(type_ids, ",")
+    url = "#{@base_url}/market/bulk/#{type_ids_param}"
+    opts = [timeout: Http.service_timeout(:janice)]
 
-    case get("/market/bulk/#{type_ids_param}") do
+    case UnifiedClient.get(url, opts) do
       {:ok, %{status: 200, body: body}} ->
         bulk_prices = parse_bulk_price_response(body)
         {:ok, bulk_prices}

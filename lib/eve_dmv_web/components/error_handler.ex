@@ -1,13 +1,13 @@
 defmodule EveDmvWeb.Components.ErrorHandler do
-  import Phoenix.Component, only: [assign: 3]
-  require Logger
-
   @moduledoc """
   Standardized error handling utilities for EVE DMV LiveView components.
 
   Provides consistent error handling patterns, user-friendly error messages,
   and proper logging with user context.
   """
+
+  import Phoenix.Component, only: [assign: 3]
+  require Logger
 
   @doc """
   Safely executes a database operation with proper error handling and logging.
@@ -127,9 +127,9 @@ defmodule EveDmvWeb.Components.ErrorHandler do
   ## Examples
       def handle_event("save_profile", params, socket) do
         case ProfileService.save_profile(params) do
-          {:ok, profile} -> 
+          {:ok, profile} ->
             {:noreply, assign(socket, :profile, profile)}
-          {:error, error} -> 
+          {:error, error} ->
             {:noreply, handle_event_error(socket, "save profile", error)}
         end
       end

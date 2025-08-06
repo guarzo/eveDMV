@@ -44,7 +44,10 @@ defmodule EveDmvWeb.FormatHelpers do
         "#{Float.round(number / 1_000, 1)}K"
 
       true ->
-        number |> Float.round(2) |> Float.to_string() |> add_commas()
+        number
+        |> Float.round(2)
+        |> Float.to_string()
+        |> add_commas()
     end
   end
 
@@ -72,9 +75,17 @@ defmodule EveDmvWeb.FormatHelpers do
   """
   def format_ratio(kills, losses) do
     case {kills, losses} do
-      {0, 0} -> "0.00"
-      {k, 0} -> "#{k}.00"
-      {k, l} -> (k / l) |> Float.round(2) |> Float.to_string() |> add_commas()
+      {0, 0} ->
+        "0.00"
+
+      {k, 0} ->
+        "#{k}.00"
+
+      {k, l} ->
+        (k / l)
+        |> Float.round(2)
+        |> Float.to_string()
+        |> add_commas()
     end
   end
 
@@ -82,7 +93,7 @@ defmodule EveDmvWeb.FormatHelpers do
   Formats net ISK with appropriate sign and styling.
   """
   def format_net_isk(destroyed, lost) do
-    if destroyed && lost && is_struct(destroyed, Decimal) && is_struct(lost, Decimal) do
+    if both_are_decimals?(destroyed, lost) do
       net_isk = Decimal.sub(destroyed, lost)
       format_isk(net_isk)
     else
@@ -95,7 +106,7 @@ defmodule EveDmvWeb.FormatHelpers do
   Returns CSS class for net ISK based on positive/negative value.
   """
   def net_isk_class(destroyed, lost) do
-    if destroyed && lost && is_struct(destroyed, Decimal) && is_struct(lost, Decimal) do
+    if both_are_decimals?(destroyed, lost) do
       net_isk = Decimal.sub(destroyed, lost)
       if Decimal.positive?(net_isk), do: "text-green-400", else: "text-red-400"
     else
@@ -153,11 +164,55 @@ defmodule EveDmvWeb.FormatHelpers do
   def format_avg_gang_size(nil), do: "1.0"
   def format_avg_gang_size(size), do: format_number(size)
 
+  @doc """
+  Formats underscore-separated strings into title case.
+  """
+  def format_title_case(nil), do: ""
+
+  def format_title_case(text) do
+    text
+    |> String.replace("_", " ")
+    |> String.split()
+    |> Enum.map_join(" ", &String.capitalize/1)
+  end
+
   # Private helper for adding commas to number strings
   defp add_commas(number_string) do
     number_string
     |> String.reverse()
     |> String.replace(~r/(\d{3})(?=\d)/, "\\1,")
     |> String.reverse()
+  end
+
+  defp both_are_decimals?(value1, value2) do
+    value1 && value2 && is_struct(value1, Decimal) && is_struct(value2, Decimal)
+  end
+
+  @doc """
+  Common CSS classes for small gray text elements.
+  """
+  def small_gray_text_class, do: "text-sm text-gray-400"
+
+  @doc """
+  Common CSS classes for muted secondary text.
+  """
+  def muted_text_class, do: "text-sm text-gray-500"
+
+  @doc """
+  Formats error messages consistently across the application.
+  """
+  def format_error_message(operation, reason) do
+    "#{operation} failed: #{inspect(reason)}"
+  end
+
+  @doc """
+  Formats error messages for user display (without inspect).
+  """
+  def format_user_error_message(operation, reason) when is_binary(reason) do
+    "#{operation} failed: #{reason}"
+  end
+
+  def format_user_error_message(operation, _reason) do
+    "#{operation} failed. Please try again."
   end
 end

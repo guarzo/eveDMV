@@ -8,7 +8,6 @@ defmodule EveDmv.Contexts.MarketIntelligence.Api do
   """
 
   alias EveDmv.Contexts.MarketIntelligence.Domain
-  alias EveDmv.Result
 
   @type type_id :: integer()
   @type price_options :: [
@@ -21,6 +20,44 @@ defmodule EveDmv.Contexts.MarketIntelligence.Api do
           price: float(),
           source: atom(),
           updated_at: DateTime.t()
+        }
+
+  @type killmail_valuation :: %{
+          total_value: float(),
+          hull_value: float(),
+          modules_value: float(),
+          cargo_value: float(),
+          implants_value: float(),
+          breakdown: %{
+            atom() => [
+              %{
+                type_id: integer(),
+                quantity: integer(),
+                unit_price: float(),
+                total_price: float()
+              }
+            ]
+          },
+          calculated_at: DateTime.t()
+        }
+
+  @type fleet_valuation :: %{
+          total_fleet_value: float(),
+          ship_count: non_neg_integer(),
+          average_ship_value: float(),
+          ship_values: [%{ship_type_id: integer(), value: float(), fit_value: float()}],
+          value_distribution: %{atom() => float()},
+          calculated_at: DateTime.t()
+        }
+
+  @type market_trend_analysis :: %{
+          type_ids: [type_id()],
+          period: atom(),
+          trend_direction: :rising | :falling | :stable | :volatile,
+          price_change_percent: float(),
+          volume_change_percent: float(),
+          anomalies: [%{type: atom(), detected_at: DateTime.t(), details: String.t()}],
+          analysis_timestamp: DateTime.t()
         }
 
   @doc """
@@ -39,12 +76,15 @@ defmodule EveDmv.Contexts.MarketIntelligence.Api do
       iex> get_price(34, source: :mutamarket, region_id: 10_000043)
       {:ok, %{type_id: 34, price: 5.1, source: :mutamarket, updated_at: ~U[2024-01-01 12:00:00Z]}}
   """
-  @spec get_price(type_id()) :: Result.t(price_result())
-  @spec get_price(type_id(), price_options()) :: Result.t(price_result())
+  @spec get_price(type_id()) :: {:ok, price_result()} | {:error, atom()}
+  @spec get_price(type_id(), price_options()) :: {:ok, price_result()} | {:error, atom()}
   def get_price(type_id, options \\ []) do
-    with :ok <- validate_type_id(type_id),
-         {:ok, price_data} <- Domain.PriceService.get_price(type_id, options) do
-      {:ok, price_data}
+    case validate_type_id(type_id) do
+      :ok ->
+        Domain.PriceService.get_price(type_id, options)
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -54,11 +94,15 @@ defmodule EveDmv.Contexts.MarketIntelligence.Api do
   More efficient than multiple individual get_price/2 calls.
   Returns a map with type_id as keys and price_result as values.
   """
-  @spec get_prices([type_id()], price_options()) :: Result.t(%{type_id() => price_result()})
+  @spec get_prices([type_id()], price_options()) ::
+          {:ok, %{type_id() => price_result()}} | {:error, atom()}
   def get_prices(type_ids, options \\ []) do
-    with :ok <- validate_type_ids(type_ids),
-         {:ok, prices} <- Domain.PriceService.get_prices(type_ids, options) do
-      {:ok, prices}
+    case validate_type_ids(type_ids) do
+      :ok ->
+        Domain.PriceService.get_prices(type_ids, options)
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -68,11 +112,14 @@ defmodule EveDmv.Contexts.MarketIntelligence.Api do
   Includes ship hull, modules, cargo, and implants if available.
   Returns detailed breakdown by category.
   """
-  @spec calculate_killmail_value(map()) :: {:ok, map()} | {:error, term()}
+  @spec calculate_killmail_value(map()) :: {:ok, killmail_valuation()} | {:error, atom()}
   def calculate_killmail_value(killmail) do
-    with :ok <- validate_killmail(killmail),
-         {:ok, valuation} <- Domain.ValuationService.calculate_killmail_value(killmail) do
-      {:ok, valuation}
+    case validate_killmail(killmail) do
+      :ok ->
+        Domain.ValuationService.calculate_killmail_value(killmail)
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -81,11 +128,14 @@ defmodule EveDmv.Contexts.MarketIntelligence.Api do
 
   Input should be a list of ships with their fits.
   """
-  @spec calculate_fleet_value([map()]) :: {:ok, map()} | {:error, term()}
+  @spec calculate_fleet_value([map()]) :: {:ok, fleet_valuation()} | {:error, atom()}
   def calculate_fleet_value(ships) do
-    with :ok <- validate_fleet_composition(ships),
-         {:ok, valuation} <- Domain.ValuationService.calculate_fleet_value(ships) do
-      {:ok, valuation}
+    case validate_fleet_composition(ships) do
+      :ok ->
+        Domain.ValuationService.calculate_fleet_value(ships)
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -95,19 +145,27 @@ defmodule EveDmv.Contexts.MarketIntelligence.Api do
   Returns trend data including price changes, volume patterns, and anomalies.
   """
   @spec analyze_market_trends([type_id()], period :: :day | :week | :month) ::
-          {:ok, map()} | {:error, term()}
+          {:ok, market_trend_analysis()} | {:error, atom()}
   def analyze_market_trends(type_ids, period \\ :week) do
-    with :ok <- validate_type_ids(type_ids),
-         :ok <- validate_period(period),
-         {:ok, analysis} <- Domain.MarketAnalyzer.analyze_trends(type_ids, period) do
-      {:ok, analysis}
+    case validate_type_ids(type_ids) do
+      :ok ->
+        case validate_period(period) do
+          :ok ->
+            Domain.MarketAnalyzer.analyze_trends(type_ids, period)
+
+          {:error, reason} ->
+            {:error, reason}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
   @doc """
   Get cached price statistics for monitoring and debugging.
   """
-  @spec get_price_cache_stats() :: Result.t(map())
+  @spec get_price_cache_stats() :: {:ok, map()}
   def get_price_cache_stats do
     stats = Domain.PriceService.get_cache_stats()
     {:ok, stats}
@@ -118,11 +176,17 @@ defmodule EveDmv.Contexts.MarketIntelligence.Api do
 
   Bypasses cache and fetches fresh data from external sources.
   """
-  @spec refresh_prices([type_id()], price_options()) :: Result.t(:ok)
+  @spec refresh_prices([type_id()], price_options()) :: :ok | {:error, atom()}
   def refresh_prices(type_ids, options \\ []) do
-    with :ok <- validate_type_ids(type_ids),
-         :ok <- Domain.PriceService.refresh_prices(type_ids, options) do
-      {:ok, :ok}
+    case validate_type_ids(type_ids) do
+      :ok ->
+        case Domain.PriceService.refresh_prices(type_ids, options) do
+          {:ok, _results} -> :ok
+          {:error, reason} -> {:error, reason}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 

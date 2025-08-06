@@ -5,6 +5,8 @@ defmodule EveDmvWeb.HealthController do
 
   use EveDmvWeb, :controller
 
+  import Plug.Conn
+
   alias EveDmv.Database.HealthCheck
 
   @doc """

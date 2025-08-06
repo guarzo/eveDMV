@@ -23,15 +23,27 @@ defmodule EveDmvWeb.Api.CharacterThreatController do
         json(conn, %{
           data: %{
             character_id: character_id,
-            threat_score: threat_analysis.threat_score || threat_analysis.overall_score,
+            threat_score: threat_analysis.overall_score,
             threat_level: threat_analysis.threat_level,
-            dimensions: threat_analysis.dimensions,
-            analysis_period: threat_analysis.analysis_period,
-            data_points: threat_analysis.data_points
+            threat_classification: threat_analysis.threat_classification,
+            key_strengths: threat_analysis.key_strengths,
+            key_weaknesses: threat_analysis.key_weaknesses,
+            detailed_breakdown: Map.get(threat_analysis, :detailed_breakdown),
+            metadata: threat_analysis.metadata
           }
         })
 
-      {:error, _} ->
+      {:error, :insufficient_data} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{
+          error: %{
+            message: "Insufficient data to analyze character threat",
+            code: "INSUFFICIENT_DATA"
+          }
+        })
+
+      _ ->
         conn
         |> put_status(:internal_server_error)
         |> json(%{error: %{message: "Failed to analyze character threat", code: "INTERNAL_ERROR"}})

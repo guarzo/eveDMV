@@ -6,7 +6,9 @@ defmodule EveDmvWeb.SearchComponent do
 
   use EveDmvWeb, :live_component
 
-  @impl true
+  alias Ecto.Adapters.SQL
+
+  @impl Phoenix.LiveComponent
   def mount(socket) do
     {:ok,
      assign(socket,
@@ -21,12 +23,12 @@ defmodule EveDmvWeb.SearchComponent do
      )}
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def update(assigns, socket) do
     {:ok, assign(socket, assigns)}
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def handle_event("search", %{"query" => query}, socket) do
     socket =
       socket
@@ -36,18 +38,18 @@ defmodule EveDmvWeb.SearchComponent do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def handle_event("focus", _params, socket) do
     {:noreply, assign(socket, focused: true, show_dropdown: true)}
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def handle_event("blur", _params, socket) do
     send(self(), {:hide_dropdown, socket.assigns.id})
     {:noreply, assign(socket, focused: false)}
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def handle_event("select_result", %{"type" => type, "id" => id}, socket) do
     path =
       case type do
@@ -64,7 +66,7 @@ defmodule EveDmvWeb.SearchComponent do
      |> push_event("navigate", %{path: path})}
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def handle_event("clear_search", _params, socket) do
     {:noreply, assign(socket, query: "", results: [], show_dropdown: false)}
   end
@@ -94,7 +96,7 @@ defmodule EveDmvWeb.SearchComponent do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveComponent
   def render(assigns) do
     ~H"""
     <div class="relative" id={@id}>
@@ -116,14 +118,14 @@ defmodule EveDmvWeb.SearchComponent do
               @class
             ]}
           />
-          
+
           <!-- Search Icon -->
           <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
             </svg>
           </div>
-          
+
           <!-- Clear Button -->
           <%= if @query != "" do %>
             <button
@@ -139,7 +141,7 @@ defmodule EveDmvWeb.SearchComponent do
           <% end %>
         </div>
       </form>
-      
+
       <!-- Search Results Dropdown -->
       <%= if @show_dropdown && !@loading && @results != [] do %>
         <div class="absolute mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg shadow-lg max-h-80 overflow-y-auto z-50">
@@ -168,7 +170,7 @@ defmodule EveDmvWeb.SearchComponent do
           <% end %>
         </div>
       <% end %>
-      
+
       <!-- Loading State -->
       <%= if @loading do %>
         <div class="absolute mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg shadow-lg p-3">
@@ -178,7 +180,7 @@ defmodule EveDmvWeb.SearchComponent do
           </div>
         </div>
       <% end %>
-      
+
       <!-- No Results -->
       <%= if @show_dropdown && !@loading && @results == [] && @query != "" do %>
         <div class="absolute mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg shadow-lg p-3">
@@ -267,7 +269,7 @@ defmodule EveDmvWeb.SearchComponent do
 
     search_pattern = "%#{query}%"
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, character_query, [search_pattern]) do
+    case SQL.query(EveDmv.Repo, character_query, [search_pattern]) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [char_id, char_name, corp_name, alliance_name, _activity] ->
           %{
@@ -302,7 +304,7 @@ defmodule EveDmvWeb.SearchComponent do
 
     search_pattern = "%#{query}%"
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, corp_query, [search_pattern]) do
+    case SQL.query(EveDmv.Repo, corp_query, [search_pattern]) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [corp_id, corp_name, alliance_name, members] ->
           %{
@@ -321,8 +323,8 @@ defmodule EveDmvWeb.SearchComponent do
   defp format_character_subtitle(corp_name, alliance_name) do
     parts =
       []
-      |> (&if(corp_name, do: [corp_name | &1], else: &1)).()
-      |> (&if(alliance_name, do: [alliance_name | &1], else: &1)).()
+      |> then(&if(corp_name, do: [corp_name | &1], else: &1))
+      |> then(&if(alliance_name, do: [alliance_name | &1], else: &1))
 
     case parts do
       [] -> "Independent"

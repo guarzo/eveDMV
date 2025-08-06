@@ -7,9 +7,8 @@ defmodule EveDmvWeb.TokenRefreshPlug do
   """
 
   import Plug.Conn
-  require Logger
-
   alias EveDmv.Users.TokenRefreshService
+  require Logger
 
   def init(opts), do: opts
 

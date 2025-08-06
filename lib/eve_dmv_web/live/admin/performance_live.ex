@@ -7,17 +7,16 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
 
   use EveDmvWeb, :live_view
 
-  alias EveDmv.Monitoring.PerformanceDashboard
+  alias EveDmv.Platform.Monitoring.PerformanceDashboard
   alias Phoenix.PubSub
 
   # 5 seconds
   @refresh_interval 5_000
 
-  @impl true
+  @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     if connected?(socket) do
       # Subscribe to performance updates
-      PerformanceDashboard.subscribe()
       PubSub.subscribe(EveDmv.PubSub, "performance:alerts")
 
       # Schedule periodic refresh
@@ -25,8 +24,8 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
     end
 
     # Load initial metrics
-    metrics = PerformanceDashboard.get_metrics()
-    report = PerformanceDashboard.generate_report(60)
+    metrics = get_metrics_safely()
+    report = get_report_safely(60)
 
     socket =
       socket
@@ -39,13 +38,13 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
     {:ok, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_params(params, _url, socket) do
     tab = String.to_existing_atom(params["tab"] || "overview")
     {:noreply, assign(socket, :selected_tab, tab)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("select_tab", %{"tab" => tab}, socket) do
     {:noreply,
      socket
@@ -68,12 +67,12 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info(:refresh, socket) do
     if socket.assigns.auto_refresh do
       # Refresh metrics
-      metrics = PerformanceDashboard.get_metrics()
-      report = PerformanceDashboard.generate_report(60)
+      metrics = get_metrics_safely()
+      report = get_report_safely(60)
 
       socket =
         socket
@@ -97,66 +96,66 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
   def handle_info({:performance_alert, alert}, socket) do
     # Add new alert to report
     report = socket.assigns.report
-    alerts = [alert | report.alerts] |> Enum.take(50)
+    alerts = Enum.take([alert | report.alerts], 50)
     updated_report = %{report | alerts: alerts}
 
     {:noreply, assign(socket, :report, updated_report)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
     <div class="performance-dashboard">
       <div class="dashboard-header">
         <h1 class="text-2xl font-bold">Performance Monitor</h1>
         <div class="controls">
-          <button 
-            phx-click="toggle_refresh" 
+          <button
+            phx-click="toggle_refresh"
             class={"btn " <> if @auto_refresh, do: "btn-primary", else: "btn-secondary"}
           >
             <%= if @auto_refresh, do: "Auto Refresh: ON", else: "Auto Refresh: OFF" %>
           </button>
         </div>
       </div>
-      
+
       <div class="tabs">
-        <button 
-          phx-click="select_tab" 
-          phx-value-tab="overview" 
+        <button
+          phx-click="select_tab"
+          phx-value-tab="overview"
           class={"tab " <> if @selected_tab == :overview, do: "active", else: ""}
         >
-          Overview
+    Overview
         </button>
-        <button 
-          phx-click="select_tab" 
-          phx-value-tab="queries" 
+        <button
+          phx-click="select_tab"
+          phx-value-tab="queries"
           class={"tab " <> if @selected_tab == :queries, do: "active", else: ""}
         >
-          Queries
+    Queries
         </button>
-        <button 
-          phx-click="select_tab" 
-          phx-value-tab="cache" 
+        <button
+          phx-click="select_tab"
+          phx-value-tab="cache"
           class={"tab " <> if @selected_tab == :cache, do: "active", else: ""}
         >
-          Cache
+    Cache
         </button>
-        <button 
-          phx-click="select_tab" 
-          phx-value-tab="memory" 
+        <button
+          phx-click="select_tab"
+          phx-value-tab="memory"
           class={"tab " <> if @selected_tab == :memory, do: "active", else: ""}
         >
-          Memory
+    Memory
         </button>
-        <button 
-          phx-click="select_tab" 
-          phx-value-tab="alerts" 
+        <button
+          phx-click="select_tab"
+          phx-value-tab="alerts"
           class={"tab " <> if @selected_tab == :alerts, do: "active", else: ""}
         >
-          Alerts <%= if length(@report.alerts) > 0, do: "(#{length(@report.alerts)})", else: "" %>
+          Alerts <%= if not Enum.empty?(@report.alerts), do: "(#{length(@report.alerts)})", else: "" %>
         </button>
       </div>
-      
+
       <div class="tab-content">
         <%= case @selected_tab do %>
           <% :overview -> %>
@@ -183,7 +182,7 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
         <h3>System Uptime</h3>
         <div class="metric-value"><%= @report.summary.uptime %></div>
       </div>
-      
+
       <div class="metric-card">
         <h3>Total Queries</h3>
         <div class="metric-value"><%= format_number(@metrics.queries.count) %></div>
@@ -191,25 +190,25 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
           Avg: <%= @metrics.queries.stats.avg_duration %>ms
         </div>
       </div>
-      
+
       <div class="metric-card">
         <h3>Cache Hit Rate</h3>
         <div class={"metric-value #{cache_hit_class(@metrics.cache.hit_rate)}"}>
           <%= @metrics.cache.hit_rate %>%
         </div>
         <div class="metric-sub">
-          <%= format_number(@metrics.cache.hits) %> hits / 
+          <%= format_number(@metrics.cache.hits) %> hits /
           <%= format_number(@metrics.cache.misses) %> misses
         </div>
       </div>
-      
+
       <div class="metric-card">
         <h3>Memory Usage</h3>
         <div class={"metric-value #{memory_class(@metrics.memory.total_mb)}"}>
           <%= round(@metrics.memory.total_mb) %> MB
         </div>
       </div>
-      
+
       <div class="metric-card">
         <h3>Broadway Pipeline</h3>
         <div class="metric-value">
@@ -219,7 +218,7 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
           Messages processed
         </div>
       </div>
-      
+
       <div class="metric-card">
         <h3>Import Activity</h3>
         <div class="metric-value">
@@ -234,18 +233,18 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
     <div class="trends-section">
       <h2>Performance Trends</h2>
       <div class="trends-grid">
-        <.trend_indicator 
-          label="Cache Performance" 
-          trend={@report.trends.cache_hit_trend} 
+        <.trend_indicator
+          label="Cache Performance"
+          trend={@report.trends.cache_hit_trend}
         />
-        <.trend_indicator 
-          label="Memory Usage" 
+        <.trend_indicator
+          label="Memory Usage"
           trend={@report.trends.memory_trend}
-          inverse={true} 
+          inverse={true}
         />
-        <.trend_indicator 
-          label="Query Rate" 
-          trend={@report.trends.query_rate_trend} 
+        <.trend_indicator
+          label="Query Rate"
+          trend={@report.trends.query_rate_trend}
         />
       </div>
     </div>
@@ -279,7 +278,7 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
           </table>
         </div>
       </div>
-      
+
       <div class="top-queries">
         <h3>Top Queries by Total Time</h3>
         <table class="data-table">
@@ -303,8 +302,8 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
           </tbody>
         </table>
       </div>
-      
-      <%= if length(@metrics.queries.slow_queries) > 0 do %>
+
+      <%= if not Enum.empty?(@metrics.queries.slow_queries) do %>
         <div class="slow-queries">
           <h3>Recent Slow Queries</h3>
           <table class="data-table">
@@ -345,7 +344,7 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
             <div class="rate-label">Hit Rate</div>
           </div>
         </div>
-        
+
         <div class="cache-stats">
           <h3>Cache Statistics</h3>
           <table class="stats-table">
@@ -368,7 +367,7 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
           </table>
         </div>
       </div>
-      
+
       <div class="cache-recommendations">
         <h3>Recommendations</h3>
         <%= cache_recommendations(@metrics.cache) %>
@@ -384,7 +383,7 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
       <div class="memory-overview">
         <h3>Memory Usage: <%= round(@metrics.memory.total_mb) %> MB</h3>
       </div>
-      
+
       <div class="memory-breakdown">
         <div class="process-memory">
           <h3>Top Processes by Memory</h3>
@@ -407,7 +406,7 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
             </tbody>
           </table>
         </div>
-        
+
         <div class="ets-memory">
           <h3>ETS Tables</h3>
           <table class="data-table">
@@ -444,8 +443,8 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
           Clear All
         </button>
       </div>
-      
-      <%= if length(@alerts) == 0 do %>
+
+      <%= if Enum.empty?(@alerts) do %>
         <div class="no-alerts">
           ✅ No active performance alerts
         </div>
@@ -553,5 +552,18 @@ defmodule EveDmvWeb.Admin.PerformanceLive do
       true ->
         "✅ Cache performance is within acceptable parameters."
     end
+  end
+
+  # Private helper functions for safe service calls
+  defp get_metrics_safely do
+    PerformanceDashboard.get_metrics()
+  rescue
+    _ -> %{total_queries: 0, avg_response_time: 0, error_rate: 0, slow_queries: 0}
+  end
+
+  defp get_report_safely(minutes) do
+    PerformanceDashboard.generate_report(minutes)
+  rescue
+    _ -> %{alerts: [], trends: [], recommendations: []}
   end
 end

@@ -5,7 +5,7 @@ defmodule EveDmv.Repo.Migrations.AddIntelligenceIndexesSprint16 do
   def up do
     # Use regular indexes for test environment, concurrent for others
     concurrently = if Mix.env() == :test, do: "", else: "CONCURRENTLY"
-    
+
     # Critical GIN index for JSONB attacker queries in threat scoring
     # This dramatically improves performance when searching for character_ids in raw_data attackers array
     execute """
@@ -33,10 +33,10 @@ defmodule EveDmv.Repo.Migrations.AddIntelligenceIndexesSprint16 do
   def down do
     # Use regular drop for test environment, concurrent for others
     concurrently = if Mix.env() == :test, do: "", else: "CONCURRENTLY"
-    
+
     # Drop the GIN indexes
     execute "DROP INDEX #{concurrently} IF EXISTS idx_killmails_raw_attackers_gin"
-    
+
     # Drop the composite and partial indexes
     execute "DROP INDEX #{concurrently} IF EXISTS idx_killmails_time_victim_char"
     execute "DROP INDEX #{concurrently} IF EXISTS idx_killmails_recent_intelligence"

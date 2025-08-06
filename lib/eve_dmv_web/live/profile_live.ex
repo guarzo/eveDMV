@@ -5,6 +5,12 @@ defmodule EveDmvWeb.ProfileLive do
 
   use EveDmvWeb, :live_view
 
+  alias EveDmv.Contexts.CharacterIntelligence
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator
+  alias EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer
+  alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Integrations.ShipIntelligenceBridge
+
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
@@ -18,7 +24,8 @@ defmodule EveDmvWeb.ProfileLive do
         |> assign(:page_title, "Profile")
         |> assign(:current_user, current_user)
         |> assign(:loading_stats, true)
-        |> load_character_stats()
+
+      socket = load_character_stats(socket)
 
       {:ok, socket}
     else
@@ -43,6 +50,7 @@ defmodule EveDmvWeb.ProfileLive do
       ship_intelligence = get_character_ship_intelligence(current_user.eve_character_id)
 
       send(self(), {:stats_loaded, stats, ship_intelligence})
+      :ok
     end)
 
     socket
@@ -62,14 +70,16 @@ defmodule EveDmvWeb.ProfileLive do
   end
 
   defp get_character_combat_stats(character_id) do
-    case EveDmv.Contexts.CharacterIntelligence.get_character_intelligence_report(character_id) do
+    case CharacterIntelligence.get_character_intelligence_report(character_id) do
       {:ok, report} -> report.combat_stats
+      _ -> %{}
     end
   end
 
   defp get_character_ship_intelligence(character_id) do
-    case EveDmv.Integrations.ShipIntelligenceBridge.calculate_ship_specialization(character_id) do
+    case ShipIntelligenceBridge.calculate_ship_specialization(character_id) do
       {:ok, intelligence} -> intelligence
+      _ -> %{}
     end
   end
 
@@ -89,28 +99,23 @@ defmodule EveDmvWeb.ProfileLive do
 
     # Get character intelligence data
     intelligence_data =
-      case EveDmv.Contexts.CharacterIntelligence.get_character_intelligence_report(
-             user.eve_character_id
-           ) do
-        {:ok, report} -> report
+      case CharacterIntelligence.get_character_intelligence_report(user.eve_character_id) do
+        {:ok, data} -> data
+        _ -> %{error: "Intelligence data not available"}
       end
 
     # Get threat scoring data
     threat_data =
-      case EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator.calculate_threat_score(
-             user.eve_character_id
-           ) do
+      case ThreatScoringCoordinator.calculate_threat_score(user.eve_character_id) do
         {:ok, threat_score} -> threat_score
-        {:error, _} -> %{error: "Threat scoring data not available"}
+        {:error, _error} -> %{error: "Threat scoring data not available"}
       end
 
     # Get activity patterns
     activity_data =
-      case EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer.get_activity_patterns(
-             user.eve_character_id
-           ) do
+      case CharacterAnalyzer.get_activity_patterns(user.eve_character_id) do
         {:ok, patterns} -> patterns
-        {:error, _} -> %{error: "Activity patterns not available"}
+        _ -> %{error: "Activity patterns not available"}
       end
 
     export_data = %{
@@ -129,6 +134,8 @@ defmodule EveDmvWeb.ProfileLive do
     # 4. Schedule cleanup of the temporary file
 
     {:ok, export_data}
+  rescue
+    _ -> {:error, "Failed to compile export data"}
   end
 
   # defp format_isk(amount) when amount >= 1_000_000_000 do
@@ -155,7 +162,7 @@ defmodule EveDmvWeb.ProfileLive do
   def handle_event("refresh_token", _params, socket) do
     current_user = socket.assigns.current_user
 
-    case EveDmv.Auth.refresh_user_token(current_user) do
+    case EveDmv.Users.TokenRefreshService.refresh_user_token(current_user.id) do
       {:ok, updated_user} ->
         {:noreply,
          socket
@@ -181,8 +188,8 @@ defmodule EveDmvWeb.ProfileLive do
            "Data export completed. Check your email for the download link."
          )}
 
-      _ ->
-        {:noreply, put_flash(socket, :error, "Failed to export data")}
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, "Failed to export data: #{reason}")}
     end
   end
 
@@ -225,8 +232,8 @@ defmodule EveDmvWeb.ProfileLive do
         <div class="bg-gray-800 rounded-lg p-6">
           <div class="text-center">
             <!-- EVE Character Portrait -->
-            <img 
-              src={character_portrait(@current_user.eve_character_id)} 
+            <img
+              src={character_portrait(@current_user.eve_character_id)}
               alt="Character portrait"
               class="w-32 h-32 rounded-lg mx-auto mb-4 border-2 border-gray-600"
             />
@@ -244,7 +251,7 @@ defmodule EveDmvWeb.ProfileLive do
             <p class="text-gray-500 text-xs mb-4">
               ID: {@current_user.eve_character_id}
             </p>
-            
+
             <!-- Quick Combat Stats -->
             <%= if assigns[:combat_stats] && @combat_stats do %>
               <div class="mt-4 p-3 bg-gray-900 rounded-lg">
@@ -273,7 +280,7 @@ defmodule EveDmvWeb.ProfileLive do
                 </div>
               <% end %>
             <% end %>
-            
+
             <p class="text-gray-400 text-sm mt-4">
               Last Login:
               <%= if @current_user.last_login_at do %>
@@ -320,7 +327,7 @@ defmodule EveDmvWeb.ProfileLive do
             <div>
               <label class="block text-sm font-medium text-gray-300 mb-1">Authorized Scopes</label>
               <div class="bg-gray-700 px-3 py-2 rounded-md text-white">
-                <%= if @current_user.scopes && length(@current_user.scopes) > 0 do %>
+                <%= if @current_user.scopes && not Enum.empty?(@current_user.scopes) do %>
                   <div class="flex flex-wrap gap-2">
                     <%= for scope <- @current_user.scopes do %>
                       <span class="bg-blue-600 text-white px-2 py-1 rounded text-xs">
@@ -339,7 +346,7 @@ defmodule EveDmvWeb.ProfileLive do
               <div class="bg-gray-700 px-3 py-2 rounded-md text-white">
                 <%= if @current_user.token_expires_at do %>
                   <div class="flex items-center">
-                    <%= if DateTime.compare(@current_user.token_expires_at, DateTime.utc_now()) == :gt do %>
+                    <%= if DateTimeUtils.compare(@current_user.token_expires_at, DateTime.utc_now()) == :gt do %>
                       <svg class="w-4 h-4 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
                         <path
                           fill-rule="evenodd"

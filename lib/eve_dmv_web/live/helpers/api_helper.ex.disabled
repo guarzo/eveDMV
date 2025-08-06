@@ -1,13 +1,13 @@
 defmodule EveDmvWeb.Live.Helpers.ApiHelper do
   @moduledoc """
   Standardized API consumption patterns for LiveView pages.
-  
+
   Provides consistent patterns for Ash API calls, error handling,
   loading states, and async data operations across all LiveView modules.
   """
 
   alias EveDmv.Api
-  
+
   import Phoenix.LiveView, only: [assign: 3]
   require Logger
 
@@ -17,16 +17,16 @@ defmodule EveDmvWeb.Live.Helpers.ApiHelper do
 
   @doc """
   Standard domain reference for all Ash API calls.
-  
+
   Use this instead of hardcoding domain references throughout LiveView modules.
   """
   def domain, do: Api
 
   @doc """
   Standardized async data loading pattern for LiveView pages.
-  
+
   ## Usage:
-  
+
       def handle_info(:load_data, socket) do
         {:noreply, load_data_async(socket, :character_data, fn ->
           CharacterAnalyzer.analyze_character(socket.assigns.character_id)
@@ -38,12 +38,12 @@ defmodule EveDmvWeb.Live.Helpers.ApiHelper do
     socket = assign(socket, assign_key, nil)
     socket = assign(socket, :"#{assign_key}_loading", true)
     socket = assign(socket, :"#{assign_key}_error", nil)
-    
+
     # Load data asynchronously
     Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
       try do
         result = data_loader_fn.()
-        
+
         # Send result back to LiveView
         send(self(), {:"#{assign_key}_loaded", result})
       rescue
@@ -52,19 +52,19 @@ defmodule EveDmvWeb.Live.Helpers.ApiHelper do
           send(self(), {:"#{assign_key}_error", error})
       end
     end)
-    
+
     socket
   end
 
   @doc """
   Handle async data loading results with standardized patterns.
-  
+
   ## Usage:
-  
+
       def handle_info({:character_data_loaded, result}, socket) do
         {:noreply, handle_async_result(socket, :character_data, result)}
       end
-      
+
       def handle_info({:character_data_error, error}, socket) do
         {:noreply, handle_async_error(socket, :character_data, error)}
       end
@@ -90,7 +90,7 @@ defmodule EveDmvWeb.Live.Helpers.ApiHelper do
 
   def handle_async_error(socket, assign_key, reason) do
     Logger.warning("Data loading error for #{assign_key}: #{inspect(reason)}")
-    
+
     socket
     |> assign(assign_key, nil)
     |> assign(:"#{assign_key}_loading", false)
@@ -99,30 +99,30 @@ defmodule EveDmvWeb.Live.Helpers.ApiHelper do
 
   @doc """
   Standardized Ash resource query with consistent error handling.
-  
+
   ## Usage:
-  
+
       case ash_read(KillmailRaw, query) do
         {:ok, killmails} -> handle_success(killmails)
         {:error, reason} -> handle_error(reason)
       end
   """
   def ash_read(resource, query_or_options \\ []) do
-    result = 
+    result =
       cond do
         is_list(query_or_options) ->
           # Simple read with options
           Ash.read(resource, Keyword.put(query_or_options, :domain, domain()))
-          
+
         match?(%Ash.Query{}, query_or_options) ->
           # Pre-built query
           Ash.read(query_or_options, domain: domain())
-          
+
         true ->
           # Single resource read
           Ash.read(resource, domain: domain())
       end
-    
+
     case result do
       {:ok, data} -> {:ok, data}
       {:error, reason} ->
@@ -136,7 +136,7 @@ defmodule EveDmvWeb.Live.Helpers.ApiHelper do
   """
   def ash_get(resource, id, options \\ []) do
     result = Ash.get(resource, id, Keyword.put(options, :domain, domain()))
-    
+
     case result do
       {:ok, data} -> {:ok, data}
       {:error, reason} ->
@@ -154,9 +154,9 @@ defmodule EveDmvWeb.Live.Helpers.ApiHelper do
 
   @doc """
   Apply filters to an Ash query using a standardized pattern.
-  
+
   ## Usage:
-  
+
       query = ash_query(KillmailRaw)
       |> apply_filters([
         {:killmail_time, :gte, start_time},
@@ -176,15 +176,15 @@ defmodule EveDmvWeb.Live.Helpers.ApiHelper do
 
   @doc """
   Standardized pagination for large datasets.
-  
+
   ## Usage:
-  
+
       paginate_query(query, page: 1, page_size: 50)
   """
   def paginate_query(query, options \\ []) do
     page = Keyword.get(options, :page, 1)
     page_size = Keyword.get(options, :page_size, 25)
-    
+
     query
     |> Ash.Query.limit(page_size)
     |> Ash.Query.offset((page - 1) * page_size)
@@ -192,9 +192,9 @@ defmodule EveDmvWeb.Live.Helpers.ApiHelper do
 
   @doc """
   Standardized timeframe filtering for intelligence and analysis queries.
-  
+
   ## Usage:
-  
+
       cutoff_time = calculate_timeframe_cutoff(:last_24h)
       query = ash_query(KillmailRaw)
       |> Ash.Query.filter(killmail_time >= ^cutoff_time)
@@ -227,22 +227,22 @@ defmodule EveDmvWeb.Live.Helpers.ApiHelper do
     case error do
       %Ash.Error.Unknown{} ->
         "An unexpected error occurred. Please try again."
-        
+
       %Ash.Error.Invalid{} ->
         "Invalid data provided. Please check your input."
-        
+
       %Ecto.NoResultsError{} ->
         "No records found matching your criteria."
-        
+
       {:error, :not_found} ->
         "The requested resource was not found."
-        
+
       {:error, :timeout} ->
         "The request timed out. Please try again."
-        
+
       binary when is_binary(binary) ->
         binary
-        
+
       _ ->
         "An error occurred while processing your request."
     end
@@ -250,7 +250,7 @@ defmodule EveDmvWeb.Live.Helpers.ApiHelper do
 
   @doc """
   Standardized loading state management for LiveView assigns.
-  
+
   Sets up the standard loading/error state assigns for a data key.
   """
   def init_loading_state(socket, data_keys) when is_list(data_keys) do

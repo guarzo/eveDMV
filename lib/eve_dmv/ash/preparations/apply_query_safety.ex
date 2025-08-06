@@ -8,7 +8,7 @@ defmodule EveDmv.Ash.Preparations.ApplyQuerySafety do
   Usage in resource preparations block:
 
       preparations do
-        prepare EveDmv.Ash.Preparations.ApplyQuerySafety.default_safety(), for: :read
+        EveDmv.Ash.Preparations.ApplyQuerySafety.default_safety(prepare), for: :read
       end
   """
 
@@ -18,7 +18,7 @@ defmodule EveDmv.Ash.Preparations.ApplyQuerySafety do
   This can be called in a resource's `preparations` block:
 
       preparations do
-        prepare EveDmv.Ash.Preparations.ApplyQuerySafety.default_safety(), for: :read
+        EveDmv.Ash.Preparations.ApplyQuerySafety.default_safety(prepare), for: :read
       end
   """
   def default_safety do

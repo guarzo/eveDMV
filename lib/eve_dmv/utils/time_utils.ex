@@ -7,17 +7,19 @@ defmodule EveDmv.Utils.TimeUtils do
   data processing.
   """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
+
   @doc """
   Calculate days between two DateTime structs.
 
   ## Examples
 
       iex> days_between(~U[2024-06-01 12:00:00Z], ~U[2024-07-01 12:00:00Z])
-      30
+    30
   """
   def days_between(start_time, end_time)
       when is_struct(start_time, DateTime) and is_struct(end_time, DateTime) do
-    DateTime.diff(end_time, start_time, :day)
+    DateTimeUtils.diff(end_time, start_time, :day)
   end
 
   @doc """
@@ -26,7 +28,7 @@ defmodule EveDmv.Utils.TimeUtils do
   ## Examples
 
       iex> days_since(~U[2024-06-01 12:00:00Z])
-      30
+    30
   """
   def days_since(datetime) when is_struct(datetime, DateTime) do
     days_between(datetime, DateTime.utc_now())
@@ -38,11 +40,11 @@ defmodule EveDmv.Utils.TimeUtils do
   ## Examples
 
       iex> hours_between(~U[2024-07-01 12:00:00Z], ~U[2024-07-01 15:00:00Z])
-      3
+    3
   """
   def hours_between(start_time, end_time)
       when is_struct(start_time, DateTime) and is_struct(end_time, DateTime) do
-    DateTime.diff(end_time, start_time, :hour)
+    DateTimeUtils.diff(end_time, start_time, :hour)
   end
 
   @doc """
@@ -51,11 +53,11 @@ defmodule EveDmv.Utils.TimeUtils do
   ## Examples
 
       iex> minutes_between(~U[2024-07-01 12:00:00Z], ~U[2024-07-01 12:30:00Z])
-      30
+    30
   """
   def minutes_between(start_time, end_time)
       when is_struct(start_time, DateTime) and is_struct(end_time, DateTime) do
-    DateTime.diff(end_time, start_time, :minute)
+    DateTimeUtils.diff(end_time, start_time, :minute)
   end
 
   @doc """
@@ -64,11 +66,11 @@ defmodule EveDmv.Utils.TimeUtils do
   ## Examples
 
       iex> seconds_between(~U[2024-07-01 12:00:00Z], ~U[2024-07-01 12:00:30Z])
-      30
+    30
   """
   def seconds_between(start_time, end_time)
       when is_struct(start_time, DateTime) and is_struct(end_time, DateTime) do
-    DateTime.diff(end_time, start_time, :second)
+    DateTimeUtils.diff(end_time, start_time, :second)
   end
 
   @doc """
@@ -121,10 +123,10 @@ defmodule EveDmv.Utils.TimeUtils do
   ## Examples
 
       iex> same_day?(~U[2024-07-01 08:00:00Z], ~U[2024-07-01 20:00:00Z])
-      true
+    true
 
       iex> same_day?(~U[2024-07-01 23:59:59Z], ~U[2024-07-02 00:00:01Z])
-      false
+    false
   """
   def same_day?(datetime1, datetime2)
       when is_struct(datetime1, DateTime) and is_struct(datetime2, DateTime) do
@@ -141,7 +143,7 @@ defmodule EveDmv.Utils.TimeUtils do
   """
   def date_range(start_date, end_date)
       when is_struct(start_date, Date) and is_struct(end_date, Date) do
-    Enum.to_list(Date.range(start_date, end_date))
+    Date.range(start_date, end_date) |> Enum.to_list()
   end
 
   @doc """
@@ -161,8 +163,9 @@ defmodule EveDmv.Utils.TimeUtils do
 
     hours_diff = hours_between(start_hour, end_hour)
 
-    Enum.map(0..hours_diff, fn hour_offset ->
-      DateTime.add(start_hour, hour_offset, :hour)
+    0..hours_diff
+    |> Enum.map(fn hour_offset ->
+      DateTimeUtils.add(start_hour, hour_offset * 60 * 60, :second)
     end)
   end
 
@@ -172,13 +175,13 @@ defmodule EveDmv.Utils.TimeUtils do
   ## Examples
 
       iex> to_seconds(5, :minute)
-      300
+    300
 
       iex> to_seconds(2, :hour)
-      7200
+    7200
 
       iex> to_seconds(1, :day)
-      86_400
+    86_400
   """
   def to_seconds(amount, :second), do: amount
   def to_seconds(amount, :minute), do: amount * 60
@@ -226,12 +229,12 @@ defmodule EveDmv.Utils.TimeUtils do
 
   ## Examples
 
-      iex> time_until(DateTime.add(DateTime.utc_now(), 3600, :second))
-      3600
+      iex> time_until(DateTimeUtils.add(DateTime.utc_now(), 3600, :second))
+    3600
   """
   def time_until(future_datetime) when is_struct(future_datetime, DateTime) do
     now = DateTime.utc_now()
-    diff = DateTime.diff(future_datetime, now, :second)
+    diff = DateTimeUtils.diff(future_datetime, now, :second)
     max(0, diff)
   end
 
@@ -242,12 +245,12 @@ defmodule EveDmv.Utils.TimeUtils do
 
   ## Examples
 
-      iex> time_since(DateTime.add(DateTime.utc_now(), -3600, :second))
-      3600
+      iex> time_since(DateTimeUtils.add(DateTime.utc_now(), -3600, :second))
+    3600
   """
   def time_since(past_datetime) when is_struct(past_datetime, DateTime) do
     now = DateTime.utc_now()
-    diff = DateTime.diff(now, past_datetime, :second)
+    diff = DateTimeUtils.diff(now, past_datetime, :second)
     max(0, diff)
   end
 
@@ -256,11 +259,11 @@ defmodule EveDmv.Utils.TimeUtils do
 
   ## Examples
 
-      iex> within_window?(DateTime.add(DateTime.utc_now(), -1800, :second), 3600)
-      true
+      iex> within_window?(DateTimeUtils.add(DateTime.utc_now(), -1800, :second), 3600)
+    true
 
-      iex> within_window?(DateTime.add(DateTime.utc_now(), -7200, :second), 3600)
-      false
+      iex> within_window?(DateTimeUtils.add(DateTime.utc_now(), -7200, :second), 3600)
+    false
   """
   def within_window?(datetime, window_seconds)
       when is_struct(datetime, DateTime) and is_integer(window_seconds) do
@@ -276,7 +279,7 @@ defmodule EveDmv.Utils.TimeUtils do
   ## Examples
 
       iex> eve_timezone_offset()
-      0
+    0
   """
   def eve_timezone_offset, do: 0
 

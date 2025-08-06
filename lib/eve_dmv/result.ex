@@ -13,14 +13,14 @@ defmodule EveDmv.Result do
 
       # Chain operations
       {:ok, 5}
-      |> Result.map(&(&1 * 2))               # {:ok, 10}
-      |> Result.flat_map(&divide_by_two/1)    # {:ok, 5}
-      |> Result.unwrap_or(0)                 # 5
+    Result.map(&(&1 * 2))               # {:ok, 10}
+    Result.flat_map(&divide_by_two/1)    # {:ok, 5}
+    Result.unwrap_or(0)                 # 5
 
       # Handle errors
       {:error, error}
-      |> Result.map_error(&add_context/1)    # Add context to error
-      |> Result.unwrap_or("default")         # "default"
+    Result.map_error(&add_context/1)    # Add context to error
+    Result.unwrap_or("default")         # "default"
   """
 
   alias EveDmv.Error
@@ -68,10 +68,10 @@ defmodule EveDmv.Result do
   ## Examples
 
       {:ok, 5}
-      |> Result.flat_map(fn x -> Result.ok(x * 2) end)  # {:ok, 10}
+    Result.flat_map(fn x -> Result.ok(x * 2) end)  # {:ok, 10}
 
       {:ok, 0}
-      |> Result.flat_map(fn x ->
+    Result.flat_map(fn x ->
            if x == 0, do: Result.error(:division_by_zero, "Cannot divide by zero"),
                      else: Result.ok(10 / x)
          end)  # {:error, %EveDmv.Error{code: :division_by_zero}}

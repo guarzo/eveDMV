@@ -13,10 +13,10 @@ defmodule EveDmvWeb.Live.Helpers.StandardComponents do
 
   ## Usage:
 
-      <.loading_state 
-        loading={@data_loading} 
-        message="Loading character data..." 
-        size={:large} 
+      <.loading_state
+        loading={@data_loading}
+        message="Loading character data..."
+        size={:large}
       />
   """
   attr(:loading, :boolean, default: false)
@@ -42,10 +42,10 @@ defmodule EveDmvWeb.Live.Helpers.StandardComponents do
 
   ## Usage:
 
-      <.error_state 
-        error={@data_error} 
+      <.error_state
+        error={@data_error}
         title="Loading Failed"
-        retry_event="retry_load" 
+        retry_event="retry_load"
       />
   """
   attr(:error, :string, default: nil)
@@ -67,7 +67,7 @@ defmodule EveDmvWeb.Live.Helpers.StandardComponents do
               phx-click={@retry_event}
               class="ml-4 px-3 py-1 bg-red-700 hover:bg-red-600 text-white text-sm rounded transition-colors"
             >
-              Retry
+    Retry
             </button>
           <% end %>
         </div>
@@ -81,7 +81,7 @@ defmodule EveDmvWeb.Live.Helpers.StandardComponents do
 
   ## Usage:
 
-      <.empty_state 
+      <.empty_state
         title="No Data Found"
         message="No killmails match your search criteria."
         action_text="Clear Filters"
@@ -120,7 +120,7 @@ defmodule EveDmvWeb.Live.Helpers.StandardComponents do
 
   ## Usage:
 
-      <.page_header 
+      <.page_header
         title="Intelligence Dashboard"
         subtitle="Real-time threat monitoring"
         back_url="/dashboard"
@@ -143,23 +143,23 @@ defmodule EveDmvWeb.Live.Helpers.StandardComponents do
       <div class="flex justify-between items-start">
         <div>
           <%= if @back_url do %>
-            <.link 
-              navigate={@back_url} 
+            <.link
+              navigate={@back_url}
               class="inline-flex items-center text-blue-400 hover:text-blue-300 transition-colors mb-2"
             >
               <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
               </svg>
-              Back
+    Back
             </.link>
           <% end %>
-          
+
           <h1 class="text-3xl font-bold text-white"><%= @title %></h1>
           <%= if @subtitle do %>
             <p class="text-gray-400 mt-1"><%= @subtitle %></p>
           <% end %>
         </div>
-        
+
         <%= if @action != [] do %>
           <div class="flex space-x-2">
             <%= for action <- @action do %>
@@ -177,7 +177,7 @@ defmodule EveDmvWeb.Live.Helpers.StandardComponents do
 
   ## Usage:
 
-      <.data_table 
+      <.data_table
         data={@killmails}
         columns={[
           %{key: :killmail_time, label: "Time", sortable: true},
@@ -232,7 +232,7 @@ defmodule EveDmvWeb.Live.Helpers.StandardComponents do
               <% end %>
             </tr>
           </thead>
-          
+
           <tbody>
             <%= if @loading do %>
               <tr>
@@ -275,7 +275,7 @@ defmodule EveDmvWeb.Live.Helpers.StandardComponents do
 
   ## Usage:
 
-      <.tab_navigation 
+      <.tab_navigation
         active_tab={@active_tab}
         tabs={[
           {"overview", "Overview"},
@@ -300,8 +300,8 @@ defmodule EveDmvWeb.Live.Helpers.StandardComponents do
             phx-value-tab={tab_key}
             class={[
               "py-2 px-1 border-b-2 font-medium text-sm transition-colors",
-              if(@active_tab == tab_key, 
-                do: "border-blue-500 text-blue-400", 
+              if(@active_tab == tab_key,
+                do: "border-blue-500 text-blue-400",
                 else: "border-transparent text-gray-400 hover:text-gray-300"
               )
             ]}

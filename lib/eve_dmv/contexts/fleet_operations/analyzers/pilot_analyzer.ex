@@ -19,6 +19,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
 
   use EveDmv.ErrorHandler
   alias EveDmv.Contexts.FleetOperations.Infrastructure.PilotDataProvider
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Result
 
   require Logger
@@ -89,24 +90,20 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
   """
   def get_available_pilots(corporation_id, base_data \\ %{}, _opts \\ [])
       when is_integer(corporation_id) do
-    case get_corporation_pilots(base_data, corporation_id) do
-      {:ok, corporation_pilots} ->
-        available_pilots =
-          corporation_pilots
-          |> Enum.filter(&pilot_available_for_fleet?/1)
-          |> Enum.map(&enrich_pilot_data/1)
-          |> Enum.sort_by(& &1.activity_score, :desc)
+    {:ok, corporation_pilots} = get_corporation_pilots(base_data, corporation_id)
 
-        Result.ok(%{
-          corporation_id: corporation_id,
-          total_pilots: length(corporation_pilots),
-          available_pilots: length(available_pilots),
-          pilot_details: available_pilots
-        })
+    available_pilots =
+      corporation_pilots
+      |> Enum.filter(&pilot_available_for_fleet?/1)
+      |> Enum.map(&enrich_pilot_data/1)
+      |> Enum.sort_by(& &1.activity_score, :desc)
 
-      {:error, _reason} = error ->
-        error
-    end
+    Result.ok(%{
+      corporation_id: corporation_id,
+      total_pilots: length(corporation_pilots),
+      available_pilots: length(available_pilots),
+      pilot_details: available_pilots
+    })
   rescue
     exception ->
       Result.error(
@@ -136,21 +133,22 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
         assigned_pilots =
           assign_pilots_to_role(role, role_data, available_pilots, required_count)
 
-        Enum.reduce(assigned_pilots, acc, fn pilot, acc2 ->
-          assignment = %{
-            character_name: pilot.character_name,
-            assigned_role: role,
-            assigned_ship:
-              select_best_ship_for_pilot(pilot, Map.get(role_data, "preferred_ships", [])),
-            skill_readiness: calculate_skill_readiness(pilot, role),
-            availability: assess_pilot_availability(pilot),
-            experience_rating: calculate_pilot_experience_rating(pilot, role),
-            backup_roles: find_backup_roles_for_pilot(pilot, doctrine_template),
-            suitability_score: calculate_pilot_suitability_score(pilot, role)
-          }
+        _assignments =
+          Enum.reduce(assigned_pilots, acc, fn pilot, acc2 ->
+            assignment = %{
+              character_name: pilot.character_name,
+              assigned_role: role,
+              assigned_ship:
+                select_best_ship_for_pilot(pilot, Map.get(role_data, "preferred_ships", [])),
+              skill_readiness: calculate_skill_readiness(pilot, role),
+              availability: assess_pilot_availability(pilot),
+              experience_rating: calculate_pilot_experience_rating(pilot, role),
+              backup_roles: find_backup_roles_for_pilot(pilot, doctrine_template),
+              suitability_score: calculate_pilot_suitability_score(pilot, role)
+            }
 
-          Map.put(acc2, Integer.to_string(pilot.pilot_id), assignment)
-        end)
+            Map.put(acc2, Integer.to_string(pilot.pilot_id), assignment)
+          end)
       end)
 
     Result.ok(assignments)
@@ -288,7 +286,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
         true
 
       last_date ->
-        days_since = DateTime.diff(DateTime.utc_now(), last_date, :day)
+        days_since = DateTimeUtils.diff(DateTime.utc_now(), last_date, :day)
         days_since <= 30
     end
   end
@@ -639,7 +637,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
 
   defp estimate_form_up_time(pilot_assignments) do
     # Estimate form-up time based on pilot availability and readiness
-    avg_availability =
+    sum =
       pilot_assignments
       |> Enum.map(fn {_pilot_id, assignment} ->
         case assignment.availability do
@@ -650,8 +648,8 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
         end
       end)
       |> Enum.sum()
-      |> Kernel./(map_size(pilot_assignments))
 
+    avg_availability = sum / map_size(pilot_assignments)
     trunc(avg_availability)
   end
 end

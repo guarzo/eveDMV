@@ -1,115 +1,74 @@
 # EVE DMV Documentation
 
-This directory contains comprehensive documentation for the EVE DMV project, organized for easy navigation and maintenance.
+Essential documentation for EVE DMV development and deployment.
 
-## 📁 Documentation Structure
+## 📋 Core Documentation
 
-### 📋 Core Project Documents
-- **[product-requirements.md](./product-requirements.md)** - Complete product requirements document
-- **[PROJECT_STATUS.md](../PROJECT_STATUS.md)** - Current project status and progress
-- **[DEVELOPMENT_PROGRESS_TRACKER.md](../DEVELOPMENT_PROGRESS_TRACKER.md)** - Sprint history and metrics
-- **[DEPLOYMENT_GUIDE.md](../DEPLOYMENT_GUIDE.md)** - Production deployment instructions
+### **Project Overview**
+1. **[REVISED_REQUIREMENTS.md](REVISED_REQUIREMENTS.md)** - Current project scope and feature requirements
+2. **[IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md)** - Current implementation status (validated against codebase)
+3. **[IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)** - Development roadmap and completed features
 
-### 🏗️ Architecture & Design
-- **[architecture/](./architecture/)** - System architecture and design documents
-  - `DESIGN.md` - Complete technical design document
-  - `caching-strategy.md` - Performance caching implementation
-  - `database-partitioning.md` - Database scaling strategy
-  - `database-schema.md` - Complete database schema
+### **Technical References**
+4. **[ARCHITECTURE.md](ARCHITECTURE.md)** - System design, patterns, and technical architecture
+5. **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Production deployment and operations guide
+6. **[PG_CRON_SETUP_GUIDE.md](PG_CRON_SETUP_GUIDE.md)** - Database partition automation setup
 
-### 💻 Implementation Guides
-- **[implementation/](./implementation/)** - Feature specifications and guides
-  - `character_intelligence_spec.md` - Character analysis requirements
-  - `surveillance_system_guide.md` - Surveillance system user guide
-  - `surveillance-profile-matching.md` - Technical matching implementation
-  - `wormhole-features-specification.md` - Wormhole intelligence features
-  - `esi-integration-summary.md` - EVE API integration details
-  - `data-freshness.md` - Data quality management
+### **Development Standards**
+7. **[CLEAN_CODEBASE_VISION.md](CLEAN_CODEBASE_VISION.md)** - Quality standards and "Definition of Done"
+8. **[TEAM_STYLE_GUIDE.md](TEAM_STYLE_GUIDE.md)** - Code standards and team conventions
+9. **[QUALITY_IMPROVEMENT_PLAN.md](QUALITY_IMPROVEMENT_PLAN.md)** - Quality improvement strategy and metrics
 
-### 🚀 Development Workflow
-- **[development/](./development/)** - Development tools and processes
-  - `performance-optimization.md` - Performance best practices
-  - `pull-request-checklist.md` - Code review checklist
-  - `devcontainer.md` - Development environment setup
+### **Process Templates**
+10. **[SPRINT_PLAN_TEMPLATE.md](SPRINT_PLAN_TEMPLATE.md)** - Sprint planning template for future development
 
-### 🧪 Testing & Quality
-- **[testing/](./testing/)** - Testing documentation and guides
-  - `manual-testing-guide.md` - Manual testing procedures
-  - `coverage-reporting.md` - Test coverage requirements
+## 🚀 Quick Start Guides
 
-### 📚 Reference Materials
-- **[reference/](./reference/)** - Reference data and external integrations
-  - `ship_info.md` - EVE ship tactical information and fleet doctrines
-  - `external-data-sources.md` - Third-party API documentation
-  - `configuration.md` - Environment configuration reference
-  - `module-tags.md` - Module classification system
+### **For New Developers:**
+1. Start with **[REVISED_REQUIREMENTS.md](REVISED_REQUIREMENTS.md)** to understand project scope
+2. Review **[IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md)** to see what's working
+3. Check **[ARCHITECTURE.md](ARCHITECTURE.md)** for technical patterns
+4. Reference **[TEAM_STYLE_GUIDE.md](TEAM_STYLE_GUIDE.md)** for code standards
 
-### 📈 Project Management
-- **[project-management/](./project-management/)** - Strategic planning and vision
-  - `project_vision.md` - Project goals, personas, and strategic direction
-  - `feedback.md` - User feedback and community input
-  - `ai-sprint-prompts.md` - AI-assisted development workflows
+### **For Operations/Deployment:**
+1. Follow **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** for production setup
+2. Use **[PG_CRON_SETUP_GUIDE.md](PG_CRON_SETUP_GUIDE.md)** for database automation
+3. Reference **[ARCHITECTURE.md](ARCHITECTURE.md)** for infrastructure understanding
 
-### 🏃‍♂️ Sprint Planning
-- **[sprints/](./sprints/)** - Sprint planning and execution
-  - `current/` - Active sprint documentation
-  - `completed/` - Historical sprint records and lessons learned
-  - `planning/` - Future sprint ideas and backlog
+### **For Quality Assurance:**
+1. Use **[CLEAN_CODEBASE_VISION.md](CLEAN_CODEBASE_VISION.md)** as quality criteria
+2. Follow **[QUALITY_IMPROVEMENT_PLAN.md](QUALITY_IMPROVEMENT_PLAN.md)** for improvement strategy
+3. Apply **[TEAM_STYLE_GUIDE.md](TEAM_STYLE_GUIDE.md)** for code reviews
 
-### 📦 Archived Documents
-- **[archive/](./archive/)** - Outdated or superseded documentation
-  - Historical implementation plans
-  - Completed audit documents
-  - Legacy roadmaps
+## 🎯 Current Project Status
 
-### 🗂️ Improvements & Proposals
-- **[improvements/](./improvements/)** - Feature enhancement proposals
-  - Combat log analysis improvements
-  - Ship performance optimization plans
+**EVE DMV is FEATURE COMPLETE** as of January 2025:
+- ✅ All 8 major implementation gaps have been resolved
+- ✅ Zero placeholder implementations remain in core features  
+- ✅ Production-ready feature set achieved
+- ✅ Clean codebase principles established
 
-## 🔍 Quick Navigation
+See **[IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)** for complete details.
 
-### For New Developers
-1. Start with [product-requirements.md](./product-requirements.md)
-2. Review [architecture/DESIGN.md](./architecture/DESIGN.md)
-3. Check current sprint in [sprints/current/](./sprints/current/)
-4. Set up environment with [development/devcontainer.md](./development/devcontainer.md)
+## 📝 Main Project Instructions
 
-### For Feature Development
-1. Check [PROJECT_STATUS.md](../PROJECT_STATUS.md) for current capabilities
-2. Review relevant specification in [implementation/](./implementation/)
-3. Follow [development/pull-request-checklist.md](./development/pull-request-checklist.md)
+The primary development guide is located at: **[`/CLAUDE.md`](../CLAUDE.md)**
 
-### For System Operations
-1. Use [DEPLOYMENT_GUIDE.md](../DEPLOYMENT_GUIDE.md) for deployment
-2. Reference [architecture/](./architecture/) for system understanding
-3. Check [reference/configuration.md](./reference/configuration.md) for settings
+This file contains:
+- Commands for setup, testing, and development
+- Architecture overview and key concepts  
+- Essential development rules and patterns
+- Environment configuration and setup
+- Database operations and maintenance
 
-### For Strategic Planning
-1. Review [project-management/project_vision.md](./project-management/project_vision.md)
-2. Check [sprints/planning/SPRINT_IDEAS.md](./sprints/planning/SPRINT_IDEAS.md)
-3. Analyze [DEVELOPMENT_PROGRESS_TRACKER.md](../DEVELOPMENT_PROGRESS_TRACKER.md)
+## 📁 Archive
 
-## 📝 Documentation Standards
-
-### Maintenance Guidelines
-- **Current Documents**: Keep up-to-date with implementation reality
-- **Archived Documents**: Move outdated content to `archive/` folder
-- **Consolidation**: Merge overlapping documents when possible
-- **Organization**: Maintain logical folder structure
-
-### Writing Standards
-- Use clear, actionable language
-- Include code examples where helpful
-- Maintain consistent markdown formatting
-- Reference related documents with relative links
-
-### Update Process
-- Update documentation as part of feature development
-- Archive outdated content rather than deleting
-- Consolidate overlapping information
-- Review documentation organization quarterly
+Historical implementation documentation has been moved to **[`archive/`](archive/)** for reference:
+- Feature-specific implementation guides
+- Completed development documentation
+- Historical analysis and planning documents
 
 ---
 
-*Documentation structure as of Sprint 10 (July 2025)*
+*Documentation last updated: 2025-01-26*
+*Project status: Feature Complete - Ready for Production*

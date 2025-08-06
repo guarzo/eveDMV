@@ -1,5 +1,6 @@
 defmodule EveDmv.Surveillance.Notification do
   @moduledoc """
+
   Notification resource for surveillance profile matches and other system events.
 
   Stores notifications for users about surveillance profile matches, allowing
@@ -11,6 +12,8 @@ defmodule EveDmv.Surveillance.Notification do
     domain: EveDmv.Api.SurveillanceApi,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
+
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   postgres do
     table("surveillance_notifications")
@@ -239,8 +242,9 @@ defmodule EveDmv.Surveillance.Notification do
       calculation(fn records, _context ->
         now = DateTime.utc_now()
 
-        Enum.map(records, fn record ->
-          DateTime.diff(now, record.inserted_at, :minute)
+        records
+        |> Enum.map(fn record ->
+          DateTimeUtils.diff(now, record.inserted_at, :minute)
         end)
       end)
     end

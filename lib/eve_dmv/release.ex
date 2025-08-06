@@ -117,7 +117,7 @@ defmodule EveDmv.Release do
 
       {:error, reason} ->
         Logger.warning("Failed to parse killmail time '#{time_string}': #{inspect(reason)}")
-        DateTime.utc_now()
+        |> DateTime.utc_now()
     end
   end
 

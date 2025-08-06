@@ -115,8 +115,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
     ship_usage = Map.get(character_stats, :ship_usage, %{})
 
     ship_values =
-      ship_usage
-      |> Map.values()
+      Map.values(ship_usage)
       |> Enum.map(&Map.get(&1, "estimated_value", 0))
       |> Enum.filter(&(&1 > 0))
 
@@ -220,7 +219,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
 
   defp calculate_tech_level_distribution(ship_usage) do
     total_usage =
-      ship_usage |> Map.values() |> Enum.map(&Map.get(&1, "times_used", 0)) |> Enum.sum()
+      Map.values(ship_usage) |> Enum.map(&Map.get(&1, "times_used", 0)) |> Enum.sum()
 
     if total_usage == 0 do
       %{tech1: 0, tech2: 0, tech3: 0, faction: 0}
@@ -293,8 +292,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
       0.0
     else
       ship_classes =
-        ship_usage
-        |> Map.keys()
+        Map.keys(ship_usage)
         |> Enum.map(fn ship_type_id_str ->
           ship_type_id = String.to_integer(ship_type_id_str)
 
@@ -315,47 +313,55 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
     if map_size(active_systems) == 0 do
       %{highsec: 0, lowsec: 0, nullsec: 0, wspace: 0}
     else
-      total_activity =
-        active_systems
-        |> Map.values()
-        |> Enum.map(fn system_data ->
-          Map.get(system_data, "kills", 0) + Map.get(system_data, "losses", 0)
-        end)
-        |> Enum.sum()
+      total_activity = calculate_total_activity(active_systems)
 
       if total_activity == 0 do
         %{highsec: 0, lowsec: 0, nullsec: 0, wspace: 0}
       else
-        security_activity =
-          active_systems
-          |> Enum.reduce(%{highsec: 0, lowsec: 0, nullsec: 0, wspace: 0}, fn {_system_id,
-                                                                              system_data},
-                                                                             acc ->
-            security = Map.get(system_data, "security", 0.0)
-            activity = Map.get(system_data, "kills", 0) + Map.get(system_data, "losses", 0)
-
-            security_type =
-              cond do
-                security >= 0.5 -> :highsec
-                security > 0.0 -> :lowsec
-                security == 0.0 -> :nullsec
-                security < 0.0 -> :wspace
-                true -> :unknown
-              end
-
-            if security_type != :unknown do
-              Map.update(acc, security_type, activity, &(&1 + activity))
-            else
-              acc
-            end
-          end)
-
-        # Convert to percentages
-        security_activity
-        |> Enum.map(fn {sec_type, activity} -> {sec_type, activity / total_activity} end)
-        |> Enum.into(%{})
+        security_activity = aggregate_security_activity(active_systems)
+        convert_to_percentages(security_activity, total_activity)
       end
     end
+  end
+
+  defp calculate_total_activity(active_systems) do
+    Map.values(active_systems)
+    |> Enum.map(fn system_data ->
+      Map.get(system_data, "kills", 0) + Map.get(system_data, "losses", 0)
+    end)
+    |> Enum.sum()
+  end
+
+  defp aggregate_security_activity(active_systems) do
+    active_systems
+    |> Enum.reduce(%{highsec: 0, lowsec: 0, nullsec: 0, wspace: 0}, fn {_system_id, system_data},
+                                                                       acc ->
+      security = Map.get(system_data, "security", 0.0)
+      activity = Map.get(system_data, "kills", 0) + Map.get(system_data, "losses", 0)
+      security_type = classify_security_type(security)
+
+      if security_type != :unknown do
+        Map.update(acc, security_type, activity, &(&1 + activity))
+      else
+        acc
+      end
+    end)
+  end
+
+  defp classify_security_type(security) do
+    cond do
+      security >= 0.5 -> :highsec
+      security > 0.0 -> :lowsec
+      security == 0.0 -> :nullsec
+      security < 0.0 -> :wspace
+      true -> :unknown
+    end
+  end
+
+  defp convert_to_percentages(security_activity, total_activity) do
+    security_activity
+    |> Enum.map(fn {sec_type, activity} -> {sec_type, activity / total_activity} end)
+    |> Enum.into(%{})
   end
 
   defp find_most_active_system(active_systems) do
@@ -377,8 +383,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
       1.0
     else
       activities =
-        active_systems
-        |> Map.values()
+        Map.values(active_systems)
         |> Enum.map(fn system_data ->
           Map.get(system_data, "kills", 0) + Map.get(system_data, "losses", 0)
         end)
@@ -410,7 +415,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
         end
       )
 
-    total_usage = weapon_categories |> Map.values() |> Enum.sum()
+    total_usage = Map.values(weapon_categories) |> Enum.sum()
 
     if total_usage == 0 do
       []
@@ -469,7 +474,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
         Map.update(acc, tank_type, times_used, &(&1 + times_used))
       end)
 
-    total_usage = tank_types |> Map.values() |> Enum.sum()
+    total_usage = Map.values(tank_types) |> Enum.sum()
 
     if total_usage == 0 do
       []
@@ -496,40 +501,40 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
 
   defp identify_fitting_patterns(ship_usage) do
     # Identify common fitting patterns from ship usage
-    patterns = []
+    base_patterns = []
 
     # Check for logistics patterns
     logistics_usage = count_ships_by_role(ship_usage, :logistics)
 
-    patterns =
+    logistics_patterns =
       if logistics_usage > 0 do
-        ["Logistics Support" | patterns]
+        ["Logistics Support" | base_patterns]
       else
-        patterns
+        base_patterns
       end
 
     # Check for EWAR patterns
     ewar_usage = count_ships_by_role(ship_usage, :ewar)
 
-    patterns =
+    ewar_patterns =
       if ewar_usage > 0 do
-        ["Electronic Warfare" | patterns]
+        ["Electronic Warfare" | logistics_patterns]
       else
-        patterns
+        logistics_patterns
       end
 
     # Check for capital patterns
     capital_usage =
       count_ships_by_class(ship_usage, [:dreadnought, :carrier, :supercarrier, :titan])
 
-    patterns =
+    final_patterns =
       if capital_usage > 0 do
-        ["Capital Operations" | patterns]
+        ["Capital Operations" | ewar_patterns]
       else
-        patterns
+        ewar_patterns
       end
 
-    patterns
+    final_patterns
   end
 
   defp count_ships_by_role(ship_usage, target_role) do
@@ -594,8 +599,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
   defp analyze_preferred_gang_sizes(ship_usage) do
     # Analyze preferred gang sizes from ship usage data
     gang_sizes =
-      ship_usage
-      |> Map.values()
+      Map.values(ship_usage)
       |> Enum.map(&Map.get(&1, "avg_gang_size", 1.0))
       |> Enum.filter(&(&1 > 0))
 

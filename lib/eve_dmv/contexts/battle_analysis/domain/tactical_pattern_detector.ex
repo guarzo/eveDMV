@@ -11,6 +11,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
   Sprint 17 BA-005 implementation with real data analysis.
   """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
+
   require Logger
 
   @doc """
@@ -29,7 +31,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
       tactical_phases: identify_tactical_phases(killmails),
       pattern_summary: generate_pattern_summary(killmails),
       analysis_metadata: %{
-        analyzed_at: DateTime.utc_now(),
+        analyzed_at: DateTimeUtils.utc_now(),
         killmail_count: length(killmails),
         options: options
       }
@@ -53,7 +55,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
         %{
           window_start: window_start,
-          window_end: DateTime.add(window_start, 30, :second),
+          window_end: DateTimeUtils.add(window_start, 30, :second),
           killmail_count: length(window_killmails),
           focus_score: metrics.focus_score,
           target_concentration: metrics.target_concentration,
@@ -242,10 +244,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
   defp calculate_overall_focus_score(focus_fire_windows) do
     scores = Enum.map(focus_fire_windows, & &1.focus_score)
 
-    if length(scores) > 0 do
-      Float.round(Enum.sum(scores) / length(scores), 2)
-    else
+    if Enum.empty?(scores) do
       0.0
+    else
+      Float.round(Enum.sum(scores) / length(scores), 2)
     end
   end
 
@@ -265,10 +267,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
     avg_score = calculate_overall_focus_score(focus_fire_windows)
 
     cond do
-      avg_score >= 80 -> :excellent
-      avg_score >= 60 -> :good
-      avg_score >= 40 -> :moderate
-      avg_score >= 20 -> :poor
+      avg_score >= 70 -> :excellent
+      avg_score >= 50 -> :good
+      avg_score >= 30 -> :moderate
+      avg_score >= 15 -> :poor
       true -> :very_poor
     end
   end
@@ -305,7 +307,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
             {:cont, [km]}
 
           [last | _] ->
-            gap = DateTime.diff(km.killmail_time, last.killmail_time)
+            gap = DateTimeUtils.diff(km.killmail_time, last.killmail_time, :second)
 
             if gap > gap_seconds do
               {:cont, Enum.reverse(acc), [km]}
@@ -331,7 +333,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
     # Calculate composition percentages
     total_ships = length(all_ships)
 
-    Enum.map(ship_roles, fn {role, ships} ->
+    ship_roles
+    |> Enum.map(fn {role, ships} ->
       {role,
        %{
          count: length(ships),
@@ -359,17 +362,19 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
     victim_ships ++ attacker_ships
   end
 
-  defp categorize_ship_role(ship_type_id) do
+  defp categorize_ship_role(ship_type_id) when is_integer(ship_type_id) do
     # Simplified ship role categorization
     # In production, this would use actual EVE ship data
     case ship_type_id do
-      id when id in [11978, 11985, 11987, 11989] -> :logistics
-      id when id in [22428, 22430, 22436, 22440] -> :command
-      id when id in [11379, 11377, 11381, 11383] -> :interdiction
-      id when id in [11957, 11959, 11961, 11963] -> :ewar
+      id when id in [11_978, 11_985, 11_987, 11_989] -> :logistics
+      id when id in [22_428, 22_430, 22_436, 22_440] -> :command
+      id when id in [11_379, 11_377, 11_381, 11_383] -> :interdiction
+      id when id in [11_957, 11_959, 11_961, 11_963] -> :ewar
       _ -> :dps
     end
   end
+
+  defp categorize_ship_role(_), do: :dps
 
   defp detect_formation_type(ship_composition) do
     # Analyze composition to determine formation type
@@ -400,7 +405,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
       times = Enum.map(killmails, & &1.killmail_time)
       first_time = Enum.min(times)
       last_time = Enum.max(times)
-      duration = DateTime.diff(last_time, first_time)
+      duration = DateTimeUtils.diff(last_time, first_time, :second)
 
       # Ideal cohesion: all kills within short timeframe
       # Degrade score based on time spread
@@ -423,11 +428,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
     effectiveness =
       case formation_type do
-        :fleet_doctrine when kill_count > 10 -> :highly_effective
-        :fleet_doctrine -> :effective
+        :fleet_doctrine when kill_count >= 10 -> :highly_effective
+        :fleet_doctrine when kill_count >= 5 -> :effective
+        :fleet_doctrine -> :moderately_effective
         :tackle_heavy when kill_count > 5 -> :effective
         :ewar_doctrine when kill_count > 3 -> :effective
-        :dps_ball when kill_count > 15 -> :highly_effective
+        :dps_ball when kill_count >= 10 -> :highly_effective
+        :dps_ball when kill_count >= 5 -> :effective
         :yolo_fleet when kill_count > 5 -> :surprisingly_effective
         _ -> :moderately_effective
       end
@@ -472,8 +479,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
   end
 
   defp identify_dominant_formation(formations) do
-    formations
-    |> Enum.max_by(& &1.formation_cohesion, fn -> nil end)
+    Enum.max_by(formations, & &1.formation_cohesion, fn -> nil end)
   end
 
   defp calculate_formation_adaptability(formations) do
@@ -482,7 +488,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
       formations
       |> Enum.map(& &1.formation_type)
       |> Enum.uniq()
-      |> length()
+      |> Kernel.length()
 
     effectiveness_scores = %{
       highly_effective: 100,
@@ -500,11 +506,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
     # Combine variety and effectiveness
     adaptability_score =
-      (unique_formations * 20 + avg_effectiveness * 0.8)
-      |> min(100)
-      |> Float.round(2)
+      unique_formations * 20 + avg_effectiveness * 0.8
 
-    adaptability_score
+    min(adaptability_score, 100)
+    |> Float.round(2)
   end
 
   defp track_attacker_target_switches(sorted_killmails) do
@@ -539,7 +544,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
             from_target: prev_target,
             to_target: curr_target,
             switch_time: curr_time,
-            time_on_prev_target: DateTime.diff(curr_time, prev_time)
+            time_on_prev_target: DateTimeUtils.diff(curr_time, prev_time, :second)
           }
         end)
 
@@ -549,14 +554,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
   end
 
   defp calculate_switch_frequency(switches) do
-    if length(switches) > 0 do
+    if Enum.empty?(switches) do
+      0.0
+    else
       # Calculate average time between switches
       times = Enum.map(switches, & &1.switch_time)
 
       if length(times) > 1 do
         first_time = List.first(times)
         last_time = List.last(times)
-        duration_minutes = DateTime.diff(last_time, first_time) / 60
+        duration_minutes = DateTimeUtils.diff(last_time, first_time, :second) / 60
 
         if duration_minutes > 0 do
           Float.round(length(switches) / duration_minutes, 2)
@@ -566,18 +573,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
       else
         0.0
       end
-    else
-      0.0
     end
   end
 
   defp calculate_avg_engagement_duration(switches) do
     durations = Enum.map(switches, & &1.time_on_prev_target)
 
-    if length(durations) > 0 do
-      Float.round(Enum.sum(durations) / length(durations), 2)
-    else
+    if Enum.empty?(durations) do
       0.0
+    else
+      Float.round(Enum.sum(durations) / length(durations), 2)
     end
   end
 
@@ -618,41 +623,66 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
   end
 
   defp identify_coordinated_switches(sorted_killmails) do
-    # Look for multiple attackers switching targets within short time windows
-    time_windows = group_by_time_windows(sorted_killmails, 10)
+    # Look for multiple attackers switching targets across consecutive time windows
+    if length(sorted_killmails) < 2 do
+      []
+    else
+      # Group killmails by victim to track when attackers move between targets
+      victim_groups =
+        sorted_killmails
+        |> Enum.group_by(& &1.victim_character_id)
+        |> Enum.sort_by(fn {_victim_id, kms} ->
+          List.first(kms).killmail_time
+        end)
 
-    coordinated_switches =
-      Enum.flat_map(time_windows, fn {window_start, window_kms} ->
-        # Track target changes in this window
-        attacker_targets =
-          extract_attacker_targets(window_kms)
-          |> Enum.group_by(& &1.attacker_id)
+      # Look for coordinated switches between consecutive victim groups
+      victim_groups
+      |> Enum.chunk_every(2, 1, :discard)
+      |> Enum.flat_map(fn [{victim1_id, victim1_kms}, {victim2_id, victim2_kms}] ->
+        # Get attackers from first victim
+        attackers1 =
+          victim1_kms
+          |> Enum.flat_map(&get_attackers_from_killmail/1)
+          |> Enum.map(& &1["character_id"])
+          |> Enum.uniq()
+          |> MapSet.new()
 
-        # Count how many attackers switched in this window
+        # Get attackers from second victim
+        attackers2 =
+          victim2_kms
+          |> Enum.flat_map(&get_attackers_from_killmail/1)
+          |> Enum.map(& &1["character_id"])
+          |> Enum.uniq()
+          |> MapSet.new()
+
+        # Find common attackers (those who switched)
         switching_attackers =
-          Enum.count(attacker_targets, fn {_attacker_id, targets} ->
-            unique_targets =
-              targets
-              |> Enum.map(& &1.target_id)
-              |> Enum.uniq()
+          attackers1
+          |> MapSet.intersection(attackers2)
+          |> MapSet.size()
 
-            length(unique_targets) > 1
-          end)
+        # Get time gap between victim groups
+        last_time1 = victim1_kms |> Enum.map(& &1.killmail_time) |> Enum.max()
+        first_time2 = victim2_kms |> Enum.map(& &1.killmail_time) |> Enum.min()
+        time_gap = DateTimeUtils.diff(first_time2, last_time1, :second)
 
-        if switching_attackers >= 3 do
+        # Consider it coordinated if multiple attackers switch within reasonable time
+        if switching_attackers >= 3 and time_gap <= 30 do
           [
             %{
-              window: window_start,
+              window: first_time2,
               switching_attackers: switching_attackers,
-              coordination_level: rate_coordination_level(switching_attackers)
+              coordination_level: rate_coordination_level(switching_attackers),
+              from_target: victim1_id,
+              to_target: victim2_id,
+              time_gap_seconds: time_gap
             }
           ]
         else
           []
         end
       end)
-
-    coordinated_switches
+    end
   end
 
   defp rate_coordination_level(switching_count) do
@@ -667,9 +697,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
   defp rate_switching_efficiency(switching_analysis) do
     # Rate based on effectiveness distribution
     effectiveness_counts =
-      switching_analysis
-      |> Enum.map(& &1.effectiveness)
-      |> Enum.frequencies()
+      switching_analysis |> Enum.map(& &1.effectiveness) |> Enum.frequencies()
 
     highly_effective = Map.get(effectiveness_counts, :highly_effective, 0)
     effective = Map.get(effectiveness_counts, :effective, 0)
@@ -699,7 +727,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
           window_kms
           |> Enum.flat_map(&get_attackers_from_killmail/1)
           |> Enum.uniq_by(& &1["character_id"])
-          |> length()
+          |> Kernel.length()
 
         damage_total =
           window_kms
@@ -713,7 +741,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
           damage_total: damage_total,
           damage_per_attacker: if(attacker_count > 0, do: damage_total / attacker_count, else: 0),
           coordination_score:
-            calculate_damage_coordination_score(attacker_count, length(window_kms))
+            calculate_damage_coordination_score(attacker_count, Kernel.length(window_kms))
         }
       end)
 
@@ -756,7 +784,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
         target_id: km.victim_character_id,
         ship_type: km.victim_ship_type_id,
         timestamp: km.killmail_time,
-        attackers: get_attackers_from_killmail(km) |> length()
+        attackers: km |> get_attackers_from_killmail() |> Kernel.length()
       }
     end)
   end
@@ -764,7 +792,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
   defp analyze_target_priority_adherence(_target_sequences) do
     # Check if high-value targets are prioritized
     # In real implementation, would check ship values
-    Float.round(:rand.uniform() * 100, 2)
+    # Return placeholder value for now
+    50.0
   end
 
   defp analyze_simultaneous_targeting(killmails) do
@@ -776,7 +805,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
         kms
         |> Enum.map(& &1.victim_character_id)
         |> Enum.uniq()
-        |> length()
+        |> Kernel.length()
 
       %{
         window: window,
@@ -808,7 +837,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
   defp analyze_movement_coordination(_killmails) do
     # Simplified movement coordination analysis
     %{
-      formation_maintenance: Float.round(:rand.uniform() * 100, 2),
+      formation_maintenance: 75.0,
       synchronized_warps: 0,
       scatter_incidents: 0
     }
@@ -816,9 +845,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
   defp calculate_overall_coordination(damage_coord, target_coord, movement_coord) do
     # Combine all coordination scores
-    damage_score = damage_coord.average_coordination || 0
-    target_score = target_coord.target_priority_adherence || 0
-    movement_score = movement_coord.formation_maintenance || 0
+    damage_score = Map.get(damage_coord, :average_coordination, 0)
+    target_score = Map.get(target_coord, :target_priority_adherence, 0)
+    movement_score = Map.get(movement_coord, :formation_maintenance, 0)
 
     overall = damage_score * 0.4 + target_score * 0.4 + movement_score * 0.2
     Float.round(overall, 2)
@@ -827,10 +856,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
   defp calculate_average_coordination(coordination_windows) do
     scores = Enum.map(coordination_windows, & &1.coordination_score)
 
-    if length(scores) > 0 do
-      Float.round(Enum.sum(scores) / length(scores), 2)
-    else
+    if Enum.empty?(scores) do
       0.0
+    else
+      Float.round(Enum.sum(scores) / length(scores), 2)
     end
   end
 
@@ -838,7 +867,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
     # Identify periods where coordination broke down
     time_windows = group_by_time_windows(killmails, 60)
 
-    Enum.filter(time_windows, fn {_window, kms} ->
+    time_windows
+    |> Enum.filter(fn {_window, kms} ->
       # Low kill count in a minute indicates breakdown
       length(kms) < 2
     end)
@@ -855,7 +885,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
     # Identify periods of peak coordination
     time_windows = group_by_time_windows(killmails, 30)
 
-    Enum.filter(time_windows, fn {_window, kms} ->
+    time_windows
+    |> Enum.filter(fn {_window, kms} ->
       length(kms) >= 5
     end)
     |> Enum.map(fn {window, kms} ->
@@ -881,13 +912,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
   end
 
   defp calculate_phase_duration(phase_killmails) do
-    if length(phase_killmails) > 0 do
+    if Enum.empty?(phase_killmails) do
+      0
+    else
       times = Enum.map(phase_killmails, & &1.killmail_time)
       first = Enum.min(times)
       last = Enum.max(times)
-      DateTime.diff(last, first)
-    else
-      0
+      DateTimeUtils.diff(last, first, :second)
     end
   end
 
@@ -928,7 +959,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
   defp generate_pattern_summary(killmails) do
     %{
-      total_patterns_detected: :rand.uniform(10),
+      total_patterns_detected: 3,
       confidence_level: calculate_confidence_level(length(killmails)),
       most_effective_pattern: :focus_fire,
       recommendations: generate_tactical_recommendations(killmails)
@@ -946,16 +977,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetector do
 
   defp generate_tactical_recommendations(killmails) do
     # Generate recommendations based on analysis
-    recommendations = []
-
-    # Add recommendations based on killmail count
-    recommendations =
-      if length(killmails) < 10 do
-        ["Insufficient data for comprehensive tactical analysis" | recommendations]
-      else
-        ["Continue current tactical approach" | recommendations]
-      end
-
-    recommendations
+    if length(killmails) < 10 do
+      ["Insufficient data for comprehensive tactical analysis"]
+    else
+      ["Continue current tactical approach"]
+    end
   end
 end

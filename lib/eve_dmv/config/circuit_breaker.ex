@@ -27,7 +27,7 @@ defmodule EveDmv.Config.CircuitBreaker do
   @doc """
   Get recovery timeout in milliseconds (how long circuit stays open).
 
-  Environment: EVE_DMV_CIRCUIT_BREAKER_RECOVERY_TIMEOUT_MS (default: 30000)
+  Environment: EVE_DMV_CIRCUIT_BREAKER_RECOVERY_TIMEOUT_MS (default: 30_000)
   """
   @spec recovery_timeout() :: pos_integer()
   def recovery_timeout do
@@ -76,7 +76,9 @@ defmodule EveDmv.Config.CircuitBreaker do
 
     # ESI-specific overrides if configured
     esi_failure_threshold = Config.get(:eve_dmv, :esi_circuit_breaker_failure_threshold)
-    esi_recovery_timeout = Config.get(:eve_dmv, :esi_circuit_breaker_recovery_timeout_ms)
+
+    esi_recovery_timeout =
+      Config.get(:eve_dmv, :esi_circuit_breaker_recovery_timeout_ms)
 
     base_config
     |> Keyword.put_new(:failure_threshold, esi_failure_threshold || failure_threshold())
@@ -88,7 +90,9 @@ defmodule EveDmv.Config.CircuitBreaker do
 
     # Janice-specific overrides if configured
     janice_failure_threshold = Config.get(:eve_dmv, :janice_circuit_breaker_failure_threshold)
-    janice_recovery_timeout = Config.get(:eve_dmv, :janice_circuit_breaker_recovery_timeout_ms)
+
+    janice_recovery_timeout =
+      Config.get(:eve_dmv, :janice_circuit_breaker_recovery_timeout_ms)
 
     base_config
     |> Keyword.put_new(:failure_threshold, janice_failure_threshold || failure_threshold())

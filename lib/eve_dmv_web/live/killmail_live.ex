@@ -5,14 +5,13 @@ defmodule EveDmvWeb.KillmailLive do
 
   use EveDmvWeb, :live_view
 
+  import Ash.Query
   alias EveDmv.Api
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Market.PriceService
-
-  import Ash.Query
   require Logger
 
-  @impl true
+  @impl Phoenix.LiveView
   def mount(%{"killmail_id" => killmail_id_str}, _session, socket) do
     case Integer.parse(killmail_id_str) do
       {killmail_id, ""} ->
@@ -37,7 +36,7 @@ defmodule EveDmvWeb.KillmailLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("export_killmail", %{"format" => format}, socket) do
     case socket.assigns.killmail do
       nil ->
@@ -63,12 +62,12 @@ defmodule EveDmvWeb.KillmailLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("change_export_format", %{"format" => format}, socket) do
     {:noreply, assign(socket, :export_format, format)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("copy_zkb_link", _params, socket) do
     case socket.assigns.killmail do
       nil ->
@@ -96,27 +95,29 @@ defmodule EveDmvWeb.KillmailLive do
     |> assign(:loading, true)
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({ref, result}, socket) when socket.assigns.loading_task.ref == ref do
     Process.demonitor(ref, [:flush])
 
-    case result do
-      {:ok, killmail} ->
-        socket
-        |> assign(:killmail, killmail)
-        |> assign(:loading, false)
-        |> assign(:loading_task, nil)
+    socket =
+      case result do
+        {:ok, killmail} ->
+          socket
+          |> assign(:killmail, killmail)
+          |> assign(:loading, false)
+          |> assign(:loading_task, nil)
 
-      {:error, reason} ->
-        socket
-        |> assign(:error, reason)
-        |> assign(:loading, false)
-        |> assign(:loading_task, nil)
-    end
-    |> then(&{:noreply, &1})
+        {:error, reason} ->
+          socket
+          |> assign(:error, reason)
+          |> assign(:loading, false)
+          |> assign(:loading_task, nil)
+      end
+
+    {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:DOWN, _ref, :process, _pid, _reason}, socket) do
     # Handle task crash
     socket =
@@ -129,31 +130,29 @@ defmodule EveDmvWeb.KillmailLive do
   end
 
   defp fetch_killmail_details(killmail_id) do
-    try do
-      query =
-        KillmailRaw
-        |> new()
-        |> filter(killmail_id: killmail_id)
-        |> limit(1)
+    query =
+      KillmailRaw
+      |> new()
+      |> filter(killmail_id: killmail_id)
+      |> limit(1)
 
-      case Ash.read(query, domain: Api) do
-        {:ok, [killmail]} ->
-          # Enrich killmail with additional data
-          enriched_killmail = enrich_killmail_data(killmail)
-          {:ok, enriched_killmail}
+    case Ash.read(query, domain: Api) do
+      {:ok, [killmail]} ->
+        # Enrich killmail with additional data
+        enriched_killmail = enrich_killmail_data(killmail)
+        {:ok, enriched_killmail}
 
-        {:ok, []} ->
-          {:error, "Killmail not found"}
+      {:ok, []} ->
+        {:error, "Killmail not found"}
 
-        {:error, error} ->
-          Logger.error("Failed to fetch killmail #{killmail_id}: #{inspect(error)}")
-          {:error, "Database error"}
-      end
-    rescue
-      error ->
-        Logger.error("Exception fetching killmail #{killmail_id}: #{inspect(error)}")
-        {:error, "Failed to load killmail"}
+      {:error, error} ->
+        Logger.error("Failed to fetch killmail #{killmail_id}: #{inspect(error)}")
+        {:error, "Database error"}
     end
+  rescue
+    error ->
+      Logger.error("Exception fetching killmail #{killmail_id}: #{inspect(error)}")
+      {:error, "Failed to load killmail"}
   end
 
   defp enrich_killmail_data(killmail) do
@@ -161,12 +160,13 @@ defmodule EveDmvWeb.KillmailLive do
     killmail_value =
       case PriceService.calculate_killmail_value(killmail) do
         %{total_value: value} when is_number(value) -> value
+        _ -> 0
       end
 
     # Parse victim data
     victim_data = parse_victim_data(killmail)
 
-    # Parse attackers data  
+    # Parse attackers data
     attackers_data = parse_attackers_data(killmail)
 
     # Parse fitted items
@@ -287,72 +287,70 @@ defmodule EveDmvWeb.KillmailLive do
   end
 
   defp generate_csv_export(killmail) do
-    try do
-      # Create CSV with killmail summary and attackers
-      headers = [
-        "killmail_id",
-        "killmail_time",
-        "system_id",
-        "victim_name",
-        "victim_corp",
-        "victim_ship",
-        "attacker_name",
-        "attacker_corp",
-        "attacker_ship",
-        "damage_done",
-        "final_blow",
-        "total_value"
-      ]
+    # Create CSV with killmail summary and attackers
+    headers = [
+      "killmail_id",
+      "killmail_time",
+      "system_id",
+      "victim_name",
+      "victim_corp",
+      "victim_ship",
+      "attacker_name",
+      "attacker_corp",
+      "attacker_ship",
+      "damage_done",
+      "final_blow",
+      "total_value"
+    ]
 
-      base_data = [
-        killmail.killmail_id,
-        killmail.killmail_time,
-        killmail.solar_system_id,
-        killmail.victim_details.character_name,
-        killmail.victim_details.corporation_name,
-        killmail.victim_details.ship_name,
-        "",
-        "",
-        "",
-        "",
-        "",
-        killmail.calculated_value
-      ]
+    base_data = [
+      killmail.killmail_id,
+      killmail.killmail_time,
+      killmail.solar_system_id,
+      killmail.victim_details.character_name,
+      killmail.victim_details.corporation_name,
+      killmail.victim_details.ship_name,
+      "",
+      "",
+      "",
+      "",
+      "",
+      killmail.calculated_value
+    ]
 
-      attacker_rows =
-        killmail.attackers_details
-        |> Enum.map(fn attacker ->
-          [
-            killmail.killmail_id,
-            killmail.killmail_time,
-            killmail.solar_system_id,
-            killmail.victim_details.character_name,
-            killmail.victim_details.corporation_name,
-            killmail.victim_details.ship_name,
-            attacker.character_name,
-            attacker.corporation_name,
-            attacker.ship_name,
-            attacker.damage_done,
-            attacker.final_blow,
-            killmail.calculated_value
-          ]
-        end)
+    attacker_rows =
+      killmail.attackers_details
+      |> Enum.map(fn attacker ->
+        [
+          killmail.killmail_id,
+          killmail.killmail_time,
+          killmail.solar_system_id,
+          killmail.victim_details.character_name,
+          killmail.victim_details.corporation_name,
+          killmail.victim_details.ship_name,
+          attacker.character_name,
+          attacker.corporation_name,
+          attacker.ship_name,
+          attacker.damage_done,
+          attacker.final_blow,
+          killmail.calculated_value
+        ]
+      end)
 
-      all_rows = [headers] ++ if Enum.empty?(attacker_rows), do: [base_data], else: attacker_rows
+    all_rows = [headers] ++ if Enum.empty?(attacker_rows), do: [base_data], else: attacker_rows
 
-      content =
-        Enum.map_join(all_rows, "\n", fn row ->
-          row
-          |> Enum.map(&to_string/1)
-          |> Enum.map_join(",", &escape_csv_field/1)
-        end)
+    content =
+      Enum.map_join(all_rows, "\n", fn row ->
+        row
+        |> Enum.map(&to_string/1)
+        |> Enum.map_join(",", &escape_csv_field/1)
+      end)
 
-      {:ok, content}
-    rescue
-      error ->
-        Logger.error("CSV export failed: #{inspect(error)}")
-        {:error, "CSV generation failed"}
-    end
+    {:ok, content}
+  rescue
+    error ->
+      Logger.error("CSV export failed: #{inspect(error)}")
+      {:error, "CSV generation failed"}
   end
 
   defp escape_csv_field(field) do
@@ -363,7 +361,7 @@ defmodule EveDmvWeb.KillmailLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
     <div class="container mx-auto px-4 py-8">
@@ -407,7 +405,7 @@ defmodule EveDmvWeb.KillmailLive do
                 </p>
               </div>
               <div class="flex space-x-2">
-                <button 
+                <button
                   phx-click="copy_zkb_link"
                   class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors"
                   title="Copy zKillboard URL"
@@ -416,7 +414,7 @@ defmodule EveDmvWeb.KillmailLive do
                 </button>
               </div>
             </div>
-            
+
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div class="bg-gray-700 rounded p-4">
                 <h3 class="text-sm font-medium text-gray-400 mb-1">Total Value</h3>
@@ -448,17 +446,17 @@ defmodule EveDmvWeb.KillmailLive do
                   <%= @killmail.victim_details.character_name %>
                 </h3>
                 <p class="text-gray-300 mb-1">
-                  <span class="text-gray-400">Corporation:</span> 
+                  <span class="text-gray-400">Corporation:</span>
                   <%= @killmail.victim_details.corporation_name %>
                 </p>
                 <%= if @killmail.victim_details.alliance_name do %>
                   <p class="text-gray-300 mb-1">
-                    <span class="text-gray-400">Alliance:</span> 
+                    <span class="text-gray-400">Alliance:</span>
                     <%= @killmail.victim_details.alliance_name %>
                   </p>
                 <% end %>
                 <p class="text-gray-300">
-                  <span class="text-gray-400">Ship:</span> 
+                  <span class="text-gray-400">Ship:</span>
                   <%= @killmail.victim_details.ship_name %>
                 </p>
               </div>
@@ -524,7 +522,7 @@ defmodule EveDmvWeb.KillmailLive do
           <%= if @killmail.fitted_items do %>
             <div class="bg-gray-800 rounded-lg p-6">
               <h2 class="text-xl font-bold text-white mb-4">Fitted Items</h2>
-              
+
               <%= for {category, items} <- @killmail.fitted_items do %>
                 <%= if not Enum.empty?(items) do %>
                   <div class="mb-4">
@@ -558,17 +556,17 @@ defmodule EveDmvWeb.KillmailLive do
           <div class="bg-gray-800 rounded-lg p-6">
             <h2 class="text-xl font-bold text-white mb-4">Export Killmail Data</h2>
             <div class="flex items-center space-x-4">
-              <select 
-                phx-change="change_export_format" 
-                name="format" 
+              <select
+                phx-change="change_export_format"
+                name="format"
                 value={@export_format}
                 class="bg-gray-700 border border-gray-600 text-white rounded px-3 py-2"
               >
                 <option value="json">JSON</option>
                 <option value="csv">CSV</option>
               </select>
-              <button 
-                phx-click="export_killmail" 
+              <button
+                phx-click="export_killmail"
                 phx-value-format={@export_format}
                 class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition-colors"
               >
@@ -597,16 +595,14 @@ defmodule EveDmvWeb.KillmailLive do
 
   # Helper function to replace Number.Delimit.number_to_delimited
   defp number_to_delimited(number) when is_integer(number) do
-    number
-    |> Integer.to_string()
+    Integer.to_string(number)
     |> String.reverse()
     |> String.replace(~r/\d{3}(?=\d)/, "\\0,")
     |> String.reverse()
   end
 
   defp number_to_delimited(number) when is_float(number) do
-    number
-    |> round()
+    round(number)
     |> number_to_delimited()
   end
 

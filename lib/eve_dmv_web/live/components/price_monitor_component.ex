@@ -8,6 +8,7 @@ defmodule EveDmvWeb.PriceMonitorComponent do
 
   use EveDmvWeb, :live_component
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Enrichment.RealTimePriceUpdater
 
   @impl Phoenix.LiveComponent
@@ -109,7 +110,7 @@ defmodule EveDmvWeb.PriceMonitorComponent do
             phx-target={@myself}
             class="px-3 py-1 text-sm bg-gray-600 hover:bg-gray-700 text-white rounded transition-colors"
           >
-            Clear
+    Clear
           </button>
         </div>
       </div>
@@ -235,7 +236,7 @@ defmodule EveDmvWeb.PriceMonitorComponent do
   defp change_percentage_class(_), do: "text-gray-400"
 
   defp format_time_ago(datetime) do
-    seconds_ago = DateTime.diff(DateTime.utc_now(), datetime)
+    seconds_ago = DateTimeUtils.diff(DateTime.utc_now(), datetime, :second)
 
     cond do
       seconds_ago < 60 ->

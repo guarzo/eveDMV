@@ -5,7 +5,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   Analyzes character combat data across multiple dimensions to generate accurate threat assessments:
 
   - Combat Skill: Kill efficiency, survival rates, target selection patterns
-  - Ship Mastery: Ship diversity, fitting optimization, tactical adaptation  
+  - Ship Mastery: Ship diversity, fitting optimization, tactical adaptation
   - Gang Effectiveness: Fleet coordination, role execution, leadership indicators
   - Unpredictability: Tactical variance, engagement pattern diversity
   - Recent Activity: Weighted performance trends and current form
@@ -14,12 +14,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   techniques to provide actionable intelligence for fleet commanders and solo pilots.
   """
 
-  import Ash.Query
-
   alias EveDmv.Api
-  alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
+  alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Killmails.KillmailRaw
 
+  require Ash.Query
   require Logger
 
   # Threat scoring parameters optimized for EVE PvP
@@ -178,25 +179,25 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
 
   defp fetch_character_combat_data(character_id, analysis_window_days) do
     cutoff_date =
-      NaiveDateTime.add(NaiveDateTime.utc_now(), -analysis_window_days * 24 * 60 * 60, :second)
+      DateTimeUtils.add(NaiveDateTime.utc_now(), -analysis_window_days * 24 * 60 * 60, :second)
 
     # Fetch killmails where character was victim
     victim_query =
       KillmailRaw
-      |> new()
-      |> filter(victim_character_id: character_id)
-      |> filter(killmail_time: [gte: cutoff_date])
-      |> sort(killmail_time: :desc)
+      |> Ash.Query.new()
+      |> Ash.Query.filter(victim_character_id: character_id)
+      |> Ash.Query.filter(killmail_time: [gte: cutoff_date])
+      |> Ash.Query.sort(killmail_time: :desc)
       # Reasonable limit for analysis
-      |> limit(500)
+      |> Ash.Query.limit(500)
 
     # Fetch killmails where character was attacker
     attacker_query =
       KillmailRaw
-      |> new()
-      |> filter(killmail_time: [gte: cutoff_date])
+      |> Ash.Query.new()
+      |> Ash.Query.filter(killmail_time: [gte: cutoff_date])
       # Larger limit to search for attacker involvement
-      |> limit(1000)
+      |> Ash.Query.limit(1000)
 
     with {:ok, victim_killmails} <- Ash.read(victim_query, domain: Api),
          {:ok, potential_attacker_killmails} <- Ash.read(attacker_query, domain: Api) do
@@ -422,11 +423,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
 
   defp calculate_recent_activity_score(combat_data, weight_recent) do
     if weight_recent do
-      recent_cutoff = NaiveDateTime.add(NaiveDateTime.utc_now(), -30 * 24 * 60 * 60, :second)
+      recent_cutoff = DateTimeUtils.add(NaiveDateTime.utc_now(), -30 * 24 * 60 * 60, :second)
 
       recent_killmails =
         Enum.filter(combat_data.killmails, fn km ->
-          NaiveDateTime.compare(km.killmail_time, recent_cutoff) != :lt
+          DateTimeUtils.compare(km.killmail_time, recent_cutoff) != :lt
         end)
 
       if length(recent_killmails) < 3 do
@@ -601,14 +602,14 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
         (usage_score + diversity_score) / 2
       end)
 
-    if length(mastery_scores) > 0 do
+    if Enum.empty?(mastery_scores) do
+      0.0
+    else
       average_mastery = Enum.sum(mastery_scores) / length(mastery_scores)
       # 6 main ship classes
       class_breadth = min(1.0, classes_used / 6)
 
       average_mastery * 0.7 + class_breadth * 0.3
-    else
-      0.0
     end
   end
 
@@ -658,8 +659,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     if map_size(ship_types_map) == 0 do
       0.5
     else
-      total_uses = ship_types_map |> Map.values() |> Enum.sum()
-      max_usage = ship_types_map |> Map.values() |> Enum.max()
+      total_uses = Map.values(ship_types_map) |> Enum.sum()
+      max_usage = Map.values(ship_types_map) |> Enum.max()
 
       specialization_ratio = max_usage / total_uses
       diversity_count = map_size(ship_types_map)
@@ -798,7 +799,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
         |> Enum.sort_by(& &1.killmail_time)
         |> Enum.chunk_every(2, 1, :discard)
         |> Enum.count(fn [km1, km2] ->
-          time_diff = NaiveDateTime.diff(km2.killmail_time, km1.killmail_time, :second)
+          time_diff = DateTimeUtils.diff(km2.killmail_time, km1.killmail_time, :second)
           # Within 5 minutes
           time_diff < 300
         end)
@@ -839,7 +840,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
       killmails
       |> Enum.filter(fn km ->
         support_ship?(km.victim_ship_type_id) or
-          has_support_ship_in_attackers(km)
+          has_support_ship_in_attackers?(km)
       end)
 
     if Enum.empty?(support_ships_used) do
@@ -857,7 +858,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     end
   end
 
-  defp has_support_ship_in_attackers(killmail) do
+  defp has_support_ship_in_attackers?(killmail) do
     case killmail.raw_data do
       %{"attackers" => attackers} when is_list(attackers) ->
         Enum.any?(attackers, fn att ->
@@ -921,12 +922,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
       hours =
         killmails
         |> Enum.map(fn km ->
-          km.killmail_time
-          |> NaiveDateTime.to_time()
-          |> Time.to_seconds_after_midnight()
-          |> elem(0)
-          # Convert to hour of day
-          |> div(3600)
+          time = NaiveDateTime.to_time(km.killmail_time)
+          {seconds, _microseconds} = Time.to_seconds_after_midnight(time)
+          div(seconds, 3600)
         end)
         |> Enum.frequencies()
 
@@ -945,7 +943,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
       0.3
     else
       # Analyze entropy in ship selection
-      total_uses = ship_types |> Map.values() |> Enum.sum()
+      total_uses = Map.values(ship_types) |> Enum.sum()
 
       entropy =
         ship_types
@@ -1076,38 +1074,38 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     kills = Enum.count(killmails, &(&1.victim_character_id == nil))
     _deaths = length(killmails) - kills
 
-    if length(killmails) > 0 do
-      kills / length(killmails)
-    else
+    if Enum.empty?(killmails) do
       0.5
+    else
+      kills / length(killmails)
     end
   end
 
   defp identify_behavioral_patterns(killmails) do
     # Identify specific behavioral patterns
     solo_hunter_pattern =
-      if is_solo_hunter(killmails) do
+      if solo_hunter?(killmails) do
         [:solo_hunter]
       else
         []
       end
 
     fleet_anchor_pattern =
-      if is_fleet_anchor(killmails) do
+      if fleet_anchor?(killmails) do
         [:fleet_anchor]
       else
         []
       end
 
     opportunist_pattern =
-      if is_opportunist(killmails) do
+      if opportunist?(killmails) do
         [:opportunist]
       else
         []
       end
 
     specialist_pattern =
-      if is_specialist(killmails) do
+      if specialist?(killmails) do
         [:specialist]
       else
         []
@@ -1116,7 +1114,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     solo_hunter_pattern ++ fleet_anchor_pattern ++ opportunist_pattern ++ specialist_pattern
   end
 
-  defp is_solo_hunter(killmails) do
+  defp solo_hunter?(killmails) do
     solo_kills =
       Enum.count(killmails, fn km ->
         case km.raw_data do
@@ -1129,12 +1127,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
         end
       end)
 
-    solo_rate = if length(killmails) > 0, do: solo_kills / length(killmails), else: 0
+    solo_rate = if Enum.empty?(killmails), do: 0, else: solo_kills / length(killmails)
     # 60%+ solo activity
     solo_rate > 0.6
   end
 
-  defp is_fleet_anchor(killmails) do
+  defp fleet_anchor?(killmails) do
     fleet_kills =
       Enum.count(killmails, fn km ->
         case km.raw_data do
@@ -1147,12 +1145,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
         end
       end)
 
-    fleet_rate = if length(killmails) > 0, do: fleet_kills / length(killmails), else: 0
+    fleet_rate = if Enum.empty?(killmails), do: 0, else: fleet_kills / length(killmails)
     # 70%+ fleet activity
     fleet_rate > 0.7
   end
 
-  defp is_opportunist(killmails) do
+  defp opportunist?(killmails) do
     # High value targets relative to own ship usage
     high_value_kills =
       Enum.count(killmails, fn km ->
@@ -1160,19 +1158,21 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
         estimate_killmail_value(km) > 500_000_000
       end)
 
-    opportunist_rate = if length(killmails) > 0, do: high_value_kills / length(killmails), else: 0
+    opportunist_rate =
+      if Enum.empty?(killmails), do: 0, else: high_value_kills / length(killmails)
+
     # 30%+ high value targets
     opportunist_rate > 0.3
   end
 
-  defp is_specialist(killmails) do
+  defp specialist?(killmails) do
     ship_types = extract_ship_types_used(killmails)
 
     if map_size(ship_types) == 0 do
       false
     else
-      total_uses = ship_types |> Map.values() |> Enum.sum()
-      max_usage = ship_types |> Map.values() |> Enum.max()
+      total_uses = Map.values(ship_types) |> Enum.sum()
+      max_usage = Map.values(ship_types) |> Enum.max()
 
       specialization_ratio = max_usage / total_uses
       # 60%+ usage in one ship type
@@ -1352,71 +1352,39 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
 
   defp count_total_killmails(dimensional_scores) do
     # Extract killmail count from one of the dimensional scores
-    dimensional_scores.combat_skill.components
-    |> Map.get(:total_killmails, 0)
+    Map.get(dimensional_scores.combat_skill.components, :total_killmails, 0)
   end
 
   # Insight generation functions
 
   defp generate_combat_skill_insights(raw_score, kd_ratio, isk_efficiency, survival_rate) do
-    insights = []
-
-    insights =
-      if kd_ratio > 3.0 do
-        ["Excellent kill/death ratio (#{Float.round(kd_ratio, 1)}:1)" | insights]
-      else
-        insights
-      end
-
-    insights =
-      if isk_efficiency > 2.0 do
-        ["Strong ISK efficiency - destroys more value than lost" | insights]
-      else
-        insights
-      end
-
-    insights =
-      if survival_rate > 0.8 do
-        ["High survival rate (#{round(survival_rate * 100)}%) - good at disengaging" | insights]
-      else
-        insights
-      end
-
-    insights =
-      if raw_score > 0.8 do
-        ["Elite combat performance across all metrics" | insights]
-      else
-        insights
-      end
-
-    insights
+    []
+    |> maybe_add_insight(
+      "Excellent kill/death ratio (#{Float.round(kd_ratio, 1)}:1)",
+      kd_ratio > 3.0
+    )
+    |> maybe_add_insight(
+      "Strong ISK efficiency - destroys more value than lost",
+      isk_efficiency > 2.0
+    )
+    |> maybe_add_insight(
+      "High survival rate (#{round(survival_rate * 100)}%) - good at disengaging",
+      survival_rate > 0.8
+    )
+    |> maybe_add_insight("Elite combat performance across all metrics", raw_score > 0.8)
   end
 
   defp generate_ship_mastery_insights(ship_diversity, class_mastery, specialization_score) do
-    insights = []
-
-    insights =
-      if ship_diversity > 0.8 do
-        ["Excellent ship diversity - comfortable with many hull types" | insights]
-      else
-        insights
-      end
-
-    insights =
-      if class_mastery > 0.8 do
-        ["Strong mastery across multiple ship classes" | insights]
-      else
-        insights
-      end
-
-    insights =
-      if specialization_score > 0.8 do
-        ["Good balance between specialization and versatility" | insights]
-      else
-        insights
-      end
-
-    insights
+    []
+    |> maybe_add_insight(
+      "Excellent ship diversity - comfortable with many hull types",
+      ship_diversity > 0.8
+    )
+    |> maybe_add_insight("Strong mastery across multiple ship classes", class_mastery > 0.8)
+    |> maybe_add_insight(
+      "Good balance between specialization and versatility",
+      specialization_score > 0.8
+    )
   end
 
   defp generate_gang_effectiveness_insights(
@@ -1424,30 +1392,19 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
          role_execution,
          leadership_indicators
        ) do
-    insights = []
-
-    insights =
+    base_insight =
       if fleet_participation > 0.7 do
-        ["Primarily operates in fleet environments" | insights]
+        "Primarily operates in fleet environments"
       else
-        ["Operates frequently in small gang or solo scenarios" | insights]
+        "Operates frequently in small gang or solo scenarios"
       end
 
-    insights =
-      if leadership_indicators > 0.7 do
-        ["Shows strong leadership patterns - likely FC or key fleet member" | insights]
-      else
-        insights
-      end
-
-    insights =
-      if role_execution > 0.8 do
-        ["Excellent fleet role execution" | insights]
-      else
-        insights
-      end
-
-    insights
+    [base_insight]
+    |> maybe_add_insight(
+      "Shows strong leadership patterns - likely FC or key fleet member",
+      leadership_indicators > 0.7
+    )
+    |> maybe_add_insight("Excellent fleet role execution", role_execution > 0.8)
   end
 
   defp generate_unpredictability_insights(tactical_variance, ship_selection_variance) do
@@ -1469,23 +1426,23 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   end
 
   defp generate_recent_activity_insights(recent_performance, activity_level) do
-    insights = []
+    base_insights = []
 
-    insights =
+    performance_insights =
       if recent_performance > 0.8 do
-        ["Currently in excellent form - recent performance above average" | insights]
+        ["Currently in excellent form - recent performance above average" | base_insights]
       else
-        insights
+        base_insights
       end
 
-    insights =
+    final_insights =
       if activity_level > 0.8 do
-        ["Highly active - regular combat engagement" | insights]
+        ["Highly active - regular combat engagement" | performance_insights]
       else
-        ["Limited recent activity - may be inactive or cautious" | insights]
+        ["Limited recent activity - may be inactive or cautious" | performance_insights]
       end
 
-    insights
+    final_insights
   end
 
   # Comparative analysis functions
@@ -1681,5 +1638,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
 
   defp average(values) do
     SharedUtilities.average(values)
+  end
+
+  defp maybe_add_insight(insights, message, condition) do
+    if condition do
+      [message | insights]
+    else
+      insights
+    end
   end
 end

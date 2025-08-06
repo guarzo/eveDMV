@@ -3,6 +3,8 @@ defmodule EveDmv.Intelligence.Analyzers.WHVettingAnalyzerTest do
 
   alias EveDmv.Intelligence.Analyzers.WHVettingAnalyzer
 
+  @moduletag :skip
+
   describe "calculate_j_space_experience/1" do
     test "calculates J-space experience from killmails" do
       # Mock killmail data

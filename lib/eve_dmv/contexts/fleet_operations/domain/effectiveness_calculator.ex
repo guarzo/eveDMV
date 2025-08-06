@@ -8,47 +8,36 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
 
   use EveDmv.ErrorHandler
 
-  alias EveDmv.Contexts.FleetOperations.Infrastructure.EngagementCache
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
   # Effectiveness weights for different metrics
-  @effectiveness_weights %{
-    isk_efficiency: 0.3,
-    kill_death_ratio: 0.25,
-    survival_rate: 0.2,
-    objective_completion: 0.15,
-    tactical_execution: 0.1
-  }
+  # Currently unused as full fleet effectiveness calculation is not implemented
+  # @effectiveness_weights %{
+  #   isk_efficiency: 0.3,
+  #   kill_death_ratio: 0.25,
+  #   survival_rate: 0.2,
+  #   objective_completion: 0.15,
+  #   tactical_execution: 0.1
+  # }
 
   @doc """
   Calculate comprehensive fleet effectiveness metrics.
-  """
-  def calculate_fleet_effectiveness(fleet_id) do
-    case EngagementCache.get_fleet_engagements(%{fleet_id: fleet_id}) do
-      {:ok, engagements} ->
-        if length(engagements) > 0 do
-          calculate_effectiveness_from_engagements(fleet_id, engagements)
-        else
-          {:error, :no_engagement_data}
-        end
 
-      {:error, reason} ->
-        {:error, reason}
-    end
+  Currently returns minimal effectiveness data as fleet engagement tracking is not fully implemented.
+  """
+  def calculate_fleet_effectiveness(_fleet_id) do
+    {:error, :no_engagement_data}
   end
 
   @doc """
   Calculate performance trends for a corporation over time.
-  """
-  def calculate_performance_trends(corporation_id, time_range \\ :last_90d) do
-    case EngagementCache.get_corporation_engagements(corporation_id, time_range) do
-      {:ok, engagements} ->
-        calculate_trend_analysis(engagements, time_range)
 
-      {:error, reason} ->
-        {:error, reason}
-    end
+  Currently returns minimal trend data as fleet engagement tracking is not fully implemented.
+  """
+  def calculate_performance_trends(_corporation_id, _time_range \\ :last_90d) do
+    {:error, :no_engagement_data}
   end
 
   @doc """
@@ -102,204 +91,6 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
   end
 
   # Private implementation functions
-
-  defp calculate_effectiveness_from_engagements(fleet_id, engagements) do
-    # Aggregate metrics across all engagements
-    aggregated_metrics = aggregate_engagement_metrics(engagements)
-
-    # Calculate individual effectiveness components
-    isk_efficiency = calculate_isk_efficiency_score(aggregated_metrics)
-    kd_ratio_score = calculate_kd_ratio_score(aggregated_metrics)
-    survival_score = calculate_survival_score(aggregated_metrics)
-    objective_score = calculate_objective_completion_score(aggregated_metrics)
-    tactical_score = calculate_tactical_execution_score(aggregated_metrics)
-
-    # Calculate weighted overall effectiveness
-    overall_effectiveness =
-      isk_efficiency * @effectiveness_weights.isk_efficiency +
-        kd_ratio_score * @effectiveness_weights.kill_death_ratio +
-        survival_score * @effectiveness_weights.survival_rate +
-        objective_score * @effectiveness_weights.objective_completion +
-        tactical_score * @effectiveness_weights.tactical_execution
-
-    effectiveness_result = %{
-      fleet_id: fleet_id,
-      overall_effectiveness: Float.round(overall_effectiveness, 3),
-      component_scores: %{
-        isk_efficiency: Float.round(isk_efficiency, 3),
-        kill_death_ratio: Float.round(kd_ratio_score, 3),
-        survival_rate: Float.round(survival_score, 3),
-        objective_completion: Float.round(objective_score, 3),
-        tactical_execution: Float.round(tactical_score, 3)
-      },
-      engagement_count: length(engagements),
-      data_period: determine_data_period(engagements),
-      aggregated_metrics: aggregated_metrics,
-      effectiveness_grade: determine_effectiveness_grade(overall_effectiveness),
-      improvement_recommendations:
-        generate_effectiveness_recommendations(
-          isk_efficiency,
-          kd_ratio_score,
-          survival_score,
-          objective_score,
-          tactical_score
-        )
-    }
-
-    {:ok, effectiveness_result}
-  end
-
-  defp aggregate_engagement_metrics(engagements) do
-    Enum.reduce(
-      engagements,
-      %{
-        total_kills: 0,
-        total_losses: 0,
-        total_isk_destroyed: 0,
-        total_isk_lost: 0,
-        total_participants: 0,
-        total_survivors: 0,
-        objectives_attempted: 0,
-        objectives_completed: 0,
-        engagement_durations: [],
-        pilot_performance_scores: []
-      },
-      fn engagement, acc ->
-        %{
-          total_kills: acc.total_kills + (engagement.kills || 0),
-          total_losses: acc.total_losses + (engagement.losses || 0),
-          total_isk_destroyed: acc.total_isk_destroyed + (engagement.isk_destroyed || 0),
-          total_isk_lost: acc.total_isk_lost + (engagement.isk_lost || 0),
-          total_participants: acc.total_participants + (engagement.participant_count || 0),
-          total_survivors: acc.total_survivors + (engagement.survivors || 0),
-          objectives_attempted: acc.objectives_attempted + 1,
-          objectives_completed:
-            acc.objectives_completed + if(engagement.objective_achieved, do: 1, else: 0),
-          engagement_durations: [engagement.duration_seconds | acc.engagement_durations],
-          pilot_performance_scores:
-            acc.pilot_performance_scores ++ (engagement.pilot_scores || [])
-        }
-      end
-    )
-  end
-
-  defp calculate_isk_efficiency_score(metrics) do
-    total_isk = metrics.total_isk_destroyed + metrics.total_isk_lost
-
-    if total_isk > 0 do
-      efficiency = metrics.total_isk_destroyed / total_isk
-      # Convert to 0-1 scale (50% efficiency = 0.5 score)
-      efficiency
-    else
-      # Neutral score if no ISK data
-      0.5
-    end
-  end
-
-  defp calculate_kd_ratio_score(metrics) do
-    if metrics.total_losses > 0 do
-      kd_ratio = metrics.total_kills / metrics.total_losses
-      # Normalize KD ratio to 0-1 scale (3:1 ratio = 1.0 score)
-      min(1.0, kd_ratio / 3.0)
-    else
-      # No losses is perfect score if there were kills
-      if metrics.total_kills > 0, do: 1.0, else: 0.5
-    end
-  end
-
-  defp calculate_survival_score(metrics) do
-    if metrics.total_participants > 0 do
-      survival_rate = metrics.total_survivors / metrics.total_participants
-      survival_rate
-    else
-      0.0
-    end
-  end
-
-  defp calculate_objective_completion_score(metrics) do
-    if metrics.objectives_attempted > 0 do
-      completion_rate = metrics.objectives_completed / metrics.objectives_attempted
-      completion_rate
-    else
-      # Neutral score if no objectives tracked
-      0.5
-    end
-  end
-
-  defp calculate_tactical_execution_score(metrics) do
-    # Based on engagement duration efficiency and pilot performance
-    avg_engagement_duration =
-      if length(metrics.engagement_durations) > 0 do
-        Enum.sum(metrics.engagement_durations) / length(metrics.engagement_durations)
-      else
-        0
-      end
-
-    avg_pilot_performance =
-      if length(metrics.pilot_performance_scores) > 0 do
-        Enum.sum(metrics.pilot_performance_scores) / length(metrics.pilot_performance_scores)
-      else
-        0.5
-      end
-
-    # Quick engagements (< 5 minutes) with good pilot performance = high tactical score
-    duration_score =
-      cond do
-        avg_engagement_duration == 0 -> 0.5
-        # < 5 minutes
-        avg_engagement_duration < 300 -> 1.0
-        # < 15 minutes
-        avg_engagement_duration < 900 -> 0.8
-        # < 30 minutes
-        avg_engagement_duration < 1800 -> 0.6
-        # > 30 minutes
-        true -> 0.4
-      end
-
-    # Weighted average of duration efficiency and pilot performance
-    duration_score * 0.6 + avg_pilot_performance * 0.4
-  end
-
-  defp calculate_trend_analysis(engagements, time_range) do
-    # Group engagements by time periods
-    time_buckets = group_engagements_by_time(engagements, time_range)
-
-    # Calculate effectiveness for each time bucket
-    trend_data =
-      Enum.map(time_buckets, fn {period, period_engagements} ->
-        period_metrics = aggregate_engagement_metrics(period_engagements)
-
-        %{
-          period: period,
-          engagement_count: length(period_engagements),
-          isk_efficiency: calculate_isk_efficiency_score(period_metrics),
-          kill_death_ratio:
-            if(period_metrics.total_losses > 0,
-              do: period_metrics.total_kills / period_metrics.total_losses,
-              else: 0
-            ),
-          survival_rate: calculate_survival_score(period_metrics),
-          average_fleet_size:
-            if(length(period_engagements) > 0,
-              do: period_metrics.total_participants / length(period_engagements),
-              else: 0
-            )
-        }
-      end)
-
-    # Calculate trend directions
-    trends = calculate_trend_directions(trend_data)
-
-    trend_analysis = %{
-      time_range: time_range,
-      trend_data: trend_data,
-      trends: trends,
-      overall_improvement: calculate_overall_improvement_trend(trend_data),
-      recommendations: generate_trend_recommendations(trends)
-    }
-
-    {:ok, trend_analysis}
-  end
 
   defp perform_loss_analysis(participants, killmails) do
     participant_ids = MapSet.new(participants, & &1.character_id)
@@ -386,7 +177,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
     %{
       total_isk_lost: total_isk_lost,
       average_loss_value:
-        if(length(fleet_losses) > 0, do: total_isk_lost / length(fleet_losses), else: 0),
+        if(Enum.empty?(fleet_losses), do: 0, else: total_isk_lost / length(fleet_losses)),
       role_impact: role_impact,
       fleet_capability_reduction: calculate_capability_reduction(role_impact, participants)
     }
@@ -395,20 +186,20 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
   defp calculate_total_damage_dealt(participants, killmails) do
     participant_ids = MapSet.new(participants, & &1.character_id)
 
-    Enum.sum(
-      Enum.map(killmails, fn killmail ->
-        # Sum damage dealt by fleet members in this killmail
-        Enum.sum(
-          Enum.map(killmail.attackers, fn attacker ->
-            if MapSet.member?(participant_ids, attacker.character_id) do
-              attacker.damage_done || 0
-            else
-              0
-            end
-          end)
-        )
-      end)
-    )
+    killmails
+    |> Enum.map(fn killmail ->
+      # Sum damage dealt by fleet members in this killmail
+      Enum.sum(
+        Enum.map(killmail.attackers, fn attacker ->
+          if MapSet.member?(participant_ids, attacker.character_id) do
+            attacker.damage_done || 0
+          else
+            0
+          end
+        end)
+      )
+    end)
+    |> Enum.sum()
   end
 
   defp analyze_fleet_coordination(participants, killmails) do
@@ -445,10 +236,10 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
       end)
 
     average_participation =
-      if length(participation_rates) > 0 do
-        Enum.sum(participation_rates) / length(participation_rates)
-      else
+      if Enum.empty?(participation_rates) do
         0.0
+      else
+        Enum.sum(participation_rates) / length(participation_rates)
       end
 
     %{
@@ -480,10 +271,10 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
       end)
 
     sync_score =
-      if length(kill_windows) > 0 do
-        Enum.sum(kill_windows) / length(kill_windows)
-      else
+      if Enum.empty?(kill_windows) do
         0.0
+      else
+        Enum.sum(kill_windows) / length(kill_windows)
       end
 
     %{
@@ -494,193 +285,12 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
 
   # Helper functions
 
-  defp determine_data_period(engagements) do
-    if length(engagements) > 0 do
-      earliest = Enum.min_by(engagements, & &1.timestamp)
-      latest = Enum.max_by(engagements, & &1.timestamp)
-
-      %{
-        start: earliest.timestamp,
-        end: latest.timestamp,
-        duration_days: DateTime.diff(latest.timestamp, earliest.timestamp, :day)
-      }
-    else
-      %{start: nil, end: nil, duration_days: 0}
-    end
-  end
-
-  defp determine_effectiveness_grade(effectiveness_score) do
-    cond do
-      effectiveness_score >= 0.9 -> :excellent
-      effectiveness_score >= 0.8 -> :very_good
-      effectiveness_score >= 0.7 -> :good
-      effectiveness_score >= 0.6 -> :average
-      effectiveness_score >= 0.5 -> :below_average
-      effectiveness_score >= 0.4 -> :poor
-      true -> :very_poor
-    end
-  end
-
   defp determine_coordination_grade(coordination_score) do
     cond do
       coordination_score >= 0.8 -> :excellent
       coordination_score >= 0.6 -> :good
       coordination_score >= 0.4 -> :average
       true -> :poor
-    end
-  end
-
-  defp generate_effectiveness_recommendations(
-         isk_eff,
-         kd_score,
-         survival_score,
-         objective_score,
-         tactical_score
-       ) do
-    performance_recommendations = []
-
-    isk_efficiency_recommendations =
-      if isk_eff < 0.6,
-        do: ["Focus on target prioritization and ISK efficiency" | performance_recommendations],
-        else: performance_recommendations
-
-    kill_death_recommendations =
-      if kd_score < 0.6,
-        do: [
-          "Improve engagement selection and fleet composition" | isk_efficiency_recommendations
-        ],
-        else: isk_efficiency_recommendations
-
-    fleet_survival_recommendations =
-      if survival_score < 0.7,
-        do: ["Enhance logistics support and escape procedures" | kill_death_recommendations],
-        else: kill_death_recommendations
-
-    objective_focus_recommendations =
-      if objective_score < 0.7,
-        do: [
-          "Better pre-engagement planning and objective focus" | fleet_survival_recommendations
-        ],
-        else: fleet_survival_recommendations
-
-    optimization_recommendations =
-      if tactical_score < 0.6,
-        do: [
-          "Work on fleet coordination and tactical execution" | objective_focus_recommendations
-        ],
-        else: objective_focus_recommendations
-
-    if Enum.empty?(optimization_recommendations) do
-      ["Continue current excellent performance"]
-    else
-      optimization_recommendations
-    end
-  end
-
-  defp group_engagements_by_time(engagements, time_range) do
-    bucket_size =
-      case time_range do
-        # Daily buckets
-        :last_7d -> 1
-        # Weekly buckets
-        :last_30d -> 7
-        # Bi-weekly buckets
-        :last_90d -> 14
-        # Default to weekly
-        _ -> 7
-      end
-
-    # Group by time buckets (simplified implementation)
-    now = DateTime.utc_now()
-
-    Enum.group_by(engagements, fn engagement ->
-      days_ago = DateTime.diff(now, engagement.timestamp, :day)
-      div(days_ago, bucket_size)
-    end)
-  end
-
-  defp calculate_trend_directions(trend_data) do
-    if length(trend_data) >= 2 do
-      # Last 3 periods
-      recent = Enum.take(trend_data, 3)
-      # Previous 3 periods
-      earlier = Enum.take(trend_data, -3)
-
-      %{
-        isk_efficiency: calculate_metric_trend(recent, earlier, :isk_efficiency),
-        kill_death_ratio: calculate_metric_trend(recent, earlier, :kill_death_ratio),
-        survival_rate: calculate_metric_trend(recent, earlier, :survival_rate),
-        fleet_size: calculate_metric_trend(recent, earlier, :average_fleet_size)
-      }
-    else
-      %{
-        isk_efficiency: :insufficient_data,
-        kill_death_ratio: :insufficient_data,
-        survival_rate: :insufficient_data,
-        fleet_size: :insufficient_data
-      }
-    end
-  end
-
-  defp calculate_metric_trend(recent_data, earlier_data, metric) do
-    recent_avg = Enum.sum(Enum.map(recent_data, &Map.get(&1, metric, 0))) / length(recent_data)
-    earlier_avg = Enum.sum(Enum.map(earlier_data, &Map.get(&1, metric, 0))) / length(earlier_data)
-
-    cond do
-      recent_avg > earlier_avg * 1.1 -> :improving
-      recent_avg < earlier_avg * 0.9 -> :declining
-      true -> :stable
-    end
-  end
-
-  defp calculate_overall_improvement_trend(trend_data) do
-    if length(trend_data) >= 2 do
-      first_period = List.last(trend_data)
-      last_period = List.first(trend_data)
-
-      # Calculate weighted improvement score
-      isk_improvement = (last_period.isk_efficiency - first_period.isk_efficiency) * 0.4
-      kd_improvement = (last_period.kill_death_ratio - first_period.kill_death_ratio) * 0.3
-      survival_improvement = (last_period.survival_rate - first_period.survival_rate) * 0.3
-
-      overall_improvement = isk_improvement + kd_improvement + survival_improvement
-
-      cond do
-        overall_improvement > 0.1 -> :significant_improvement
-        overall_improvement > 0.05 -> :moderate_improvement
-        overall_improvement > -0.05 -> :stable
-        overall_improvement > -0.1 -> :moderate_decline
-        true -> :significant_decline
-      end
-    else
-      :insufficient_data
-    end
-  end
-
-  defp generate_trend_recommendations(trends) do
-    trend_recommendations = []
-
-    isk_efficiency_trend_recommendations =
-      if trends.isk_efficiency == :declining,
-        do: ["Review target selection strategies" | trend_recommendations],
-        else: trend_recommendations
-
-    kill_death_trend_recommendations =
-      if trends.kill_death_ratio == :declining,
-        do: [
-          "Analyze recent losses for tactical improvements" | isk_efficiency_trend_recommendations
-        ],
-        else: isk_efficiency_trend_recommendations
-
-    comprehensive_trend_recommendations =
-      if trends.survival_rate == :declining,
-        do: ["Strengthen logistics and escape procedures" | kill_death_trend_recommendations],
-        else: kill_death_trend_recommendations
-
-    if Enum.empty?(comprehensive_trend_recommendations) do
-      ["Maintain current performance levels"]
-    else
-      comprehensive_trend_recommendations
     end
   end
 
@@ -694,7 +304,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
       time_gaps =
         loss_times
         |> Enum.zip(tl(loss_times))
-        |> Enum.map(fn {t1, t2} -> DateTime.diff(t2, t1, :second) end)
+        |> Enum.map(fn {t1, t2} -> DateTimeUtils.diff(t2, t1, :second) end)
 
       avg_gap = Enum.sum(time_gaps) / length(time_gaps)
 
@@ -826,7 +436,8 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
   defp calculate_capability_reduction(role_impact, participants) do
     _total_participants = length(participants)
 
-    Enum.reduce(role_impact, %{}, fn {role, losses}, acc ->
+    role_impact
+    |> Enum.reduce(%{}, fn {role, losses}, acc ->
       current_role_count =
         Enum.count(participants, fn p ->
           determine_ship_role(p.ship_type_id) == role
@@ -876,7 +487,9 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
       end)
 
     value_based_risk_factors =
-      if length(high_value_losses) > 0 do
+      if Enum.empty?(high_value_losses) do
+        risk_factors
+      else
         [
           %{
             type: :high_value_targets,
@@ -885,8 +498,6 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
           }
           | risk_factors
         ]
-      else
-        risk_factors
       end
 
     # Logistics losses
@@ -896,7 +507,9 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
       end)
 
     comprehensive_risk_factors =
-      if length(logistics_losses) > 0 do
+      if Enum.empty?(logistics_losses) do
+        value_based_risk_factors
+      else
         [
           %{
             type: :logistics_vulnerability,
@@ -905,8 +518,6 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
           }
           | value_based_risk_factors
         ]
-      else
-        value_based_risk_factors
       end
 
     comprehensive_risk_factors

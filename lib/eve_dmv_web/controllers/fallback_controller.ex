@@ -8,6 +8,8 @@ defmodule EveDmvWeb.FallbackController do
   """
 
   use EveDmvWeb, :controller
+
+  import Plug.Conn
   require Logger
 
   @doc """
@@ -389,6 +391,10 @@ defmodule EveDmvWeb.FallbackController do
   defp humanize_error_atom(:external_api_error), do: "External API request failed"
   defp humanize_error_atom(:cache_error), do: "Cache operation failed"
 
-  defp humanize_error_atom(atom),
-    do: atom |> to_string() |> String.replace("_", " ") |> String.capitalize()
+  defp humanize_error_atom(atom) do
+    atom
+    |> to_string()
+    |> String.replace("_", " ")
+    |> String.capitalize()
+  end
 end

@@ -22,11 +22,13 @@ defmodule EveDmvWeb.SurveillanceLive.BatchOperationService do
   def batch_delete_profiles(profile_ids, actor) do
     # First, fetch all profiles in a single query
     profiles_query =
-      Ash.Query.filter(Profile, id in ^profile_ids)
+      Profile
+      |> Ash.Query.filter(id in ^profile_ids)
 
     case Ash.read(profiles_query, domain: SurveillanceApi, actor: actor) do
       {:ok, profiles} ->
         found_ids = Enum.map(profiles, & &1.id)
+
         not_found_ids = profile_ids -- found_ids
 
         # Log any profiles that weren't found
@@ -74,11 +76,13 @@ defmodule EveDmvWeb.SurveillanceLive.BatchOperationService do
   def batch_update_profiles(profile_ids, update_data, actor) do
     # First, fetch all profiles in a single query
     profiles_query =
-      Ash.Query.filter(Profile, id in ^profile_ids)
+      Profile
+      |> Ash.Query.filter(id in ^profile_ids)
 
     case Ash.read(profiles_query, domain: SurveillanceApi, actor: actor) do
       {:ok, profiles} ->
         found_ids = Enum.map(profiles, & &1.id)
+
         not_found_ids = profile_ids -- found_ids
 
         # Log any profiles that weren't found

@@ -41,18 +41,14 @@ defmodule ConfigHelper do
     [
       {:janice,
        [
-         api_key: System.get_env("JANICE_API_KEY"),
-         base_url: System.get_env("JANICE_BASE_URL", "https://janice.e-351.com/api"),
-         enabled: System.get_env("JANICE_ENABLED", "true") == "true"
+         base_url: System.get_env("JANICE_BASE_URL", "https://janice.e-351.com/api")
        ]},
       {:mutamarket,
        [
-         api_key: System.get_env("MUTAMARKET_API_KEY"),
          base_url: System.get_env("MUTAMARKET_BASE_URL", "https://mutamarket.com/api/v1")
        ]},
       {:esi,
        [
-         client_id: System.get_env("EVE_SSO_CLIENT_ID"),
          base_url: System.get_env("ESI_BASE_URL", "https://esi.evetech.net")
        ]}
     ]
@@ -81,46 +77,69 @@ unless config_env() == :test do
   end
 end
 
-# Override application configuration with .env values for development only
-# Never override database config for test environment to preserve SQL Sandbox
-if config_env() == :dev and System.get_env("MIX_ENV") != "test" do
-  # Database configuration for development
-  if database_url = System.get_env("DATABASE_URL") do
-    config :eve_dmv, EveDmv.Repo, url: database_url
-  end
+# Common configuration for all non-test environments
+unless config_env() == :test do
+  # Authentication configuration
+  config :eve_dmv,
+    token_signing_secret: System.get_env("TOKEN_SIGNING_SECRET"),
+    eve_sso: [
+      client_id: System.get_env("EVE_SSO_CLIENT_ID", "your-eve-sso-client-id"),
+      client_secret: System.get_env("EVE_SSO_CLIENT_SECRET", "your-eve-sso-client-secret"),
+      redirect_uri:
+        System.get_env("EVE_SSO_REDIRECT_URI", "http://localhost:4010/auth/user/eve_sso/callback")
+    ]
 
+  # Pipeline configuration
+  config :eve_dmv,
+    pipeline_enabled: System.get_env("PIPELINE_ENABLED", "true") == "true",
+    mock_sse_server_enabled: System.get_env("MOCK_SSE_SERVER_ENABLED", "false") == "true",
+    # SDE configuration
+    sde_auto_update: System.get_env("SDE_AUTO_UPDATE", "true") == "true",
+    static_data_load_delay:
+      ConfigHelper.safe_string_to_integer(System.get_env("STATIC_DATA_LOAD_DELAY"), 5000)
+
+  # External service configuration
   config :eve_dmv,
     wanderer_kills_sse_url: System.get_env("WANDERER_KILLS_SSE_URL", "http://localhost:8080/sse"),
     wanderer_kills_websocket_url:
       System.get_env("WANDERER_KILLS_WS_URL", "ws://localhost:4004/socket"),
     wanderer_kills_base_url:
       System.get_env("WANDERER_KILLS_BASE_URL", "http://host.docker.internal:4004"),
-    # Wanderer Map Integration
     wanderer_base_url: System.get_env("WANDERER_BASE_URL", "http://host.docker.internal:4004"),
-    # Default chain for chain intelligence
-    default_chain_id: System.get_env("DEFAULT_CHAIN_ID"),
     wanderer_ws_url:
       System.get_env("WANDERER_WS_URL", "ws://host.docker.internal:4004/socket/events"),
     wanderer_api_token: System.get_env("WANDERER_API_TOKEN"),
-    pipeline_enabled: System.get_env("PIPELINE_ENABLED", "true") == "true",
-    mock_sse_server_enabled: System.get_env("MOCK_SSE_SERVER_ENABLED", "false") == "true",
-    # Broadway Performance Configuration (Sprint 15A)
+    default_chain_id: System.get_env("DEFAULT_CHAIN_ID")
+
+  # Performance configuration
+  config :eve_dmv,
     batch_size: ConfigHelper.safe_string_to_integer(System.get_env("BATCH_SIZE"), 100),
     batch_timeout: ConfigHelper.safe_string_to_integer(System.get_env("BATCH_TIMEOUT"), 30000),
     pipeline_concurrency:
       ConfigHelper.safe_string_to_integer(System.get_env("PIPELINE_CONCURRENCY"), 12),
     batcher_concurrency:
-      ConfigHelper.safe_string_to_integer(System.get_env("BATCHER_CONCURRENCY"), 4)
+      ConfigHelper.safe_string_to_integer(System.get_env("BATCHER_CONCURRENCY"), 4),
+    price_cache_ttl_hours:
+      ConfigHelper.safe_string_to_integer(System.get_env("PRICE_CACHE_TTL_HOURS"), 24)
 
   # External API configurations
   for {api_name, api_config} <- ConfigHelper.configure_external_apis() do
     config :eve_dmv, api_name, api_config
   end
+end
 
-  # Price cache configuration
-  config :eve_dmv,
-    price_cache_ttl_hours:
-      ConfigHelper.safe_string_to_integer(System.get_env("PRICE_CACHE_TTL_HOURS"), 24)
+# Development-specific database configuration
+# Never override database config in test environment
+if config_env() == :dev and System.get_env("MIX_ENV") != "test" and Mix.env() != :test do
+  if database_url = System.get_env("DATABASE_URL") do
+    # Only apply DATABASE_URL if we're not in a test context
+    # Additional safety check to ensure we never override test pool config
+    current_pool = Application.get_env(:eve_dmv, EveDmv.Repo)[:pool]
+
+    if current_pool != Ecto.Adapters.SQL.Sandbox do
+      config :eve_dmv, EveDmv.Repo, url: database_url
+    end
+  end
 end
 
 # Test environment specific configuration
@@ -204,27 +223,8 @@ if config_env() == :prod do
     ],
     secret_key_base: secret_key_base
 
-  # Production configuration for external services
-  config :eve_dmv,
-    wanderer_kills_sse_url: System.get_env("WANDERER_KILLS_SSE_URL"),
-    pipeline_enabled: System.get_env("PIPELINE_ENABLED", "true") == "true",
-    # Broadway Performance Configuration (Sprint 15A)
-    batch_size: ConfigHelper.safe_string_to_integer(System.get_env("BATCH_SIZE"), 100),
-    batch_timeout: ConfigHelper.safe_string_to_integer(System.get_env("BATCH_TIMEOUT"), 30000),
-    pipeline_concurrency:
-      ConfigHelper.safe_string_to_integer(System.get_env("PIPELINE_CONCURRENCY"), 12),
-    batcher_concurrency:
-      ConfigHelper.safe_string_to_integer(System.get_env("BATCHER_CONCURRENCY"), 4)
-
-  # External API configurations
-  for {api_name, api_config} <- ConfigHelper.configure_external_apis() do
-    config :eve_dmv, api_name, api_config
-  end
-
-  # Price cache configuration
-  config :eve_dmv,
-    price_cache_ttl_hours:
-      ConfigHelper.safe_string_to_integer(System.get_env("PRICE_CACHE_TTL_HOURS"), 24)
+  # Production-specific configuration is now handled in the common block above
+  # No additional configuration needed here since it's already covered
 
   # ## SSL Support
   #

@@ -97,7 +97,14 @@ config :logger, :console,
     :response_time,
     :memory_usage,
     :priority,
-    :description
+    :description,
+    :url,
+    :body,
+    :headers,
+    :body_type,
+    :profile_id,
+    :name,
+    :new_level
   ]
 
 # Filter sensitive parameters from logs
@@ -132,33 +139,34 @@ config :eve_dmv,
     EveDmv.Domains.Analytics,
     EveDmv.Domains.Intelligence,
     EveDmv.Domains.Surveillance,
-    EveDmv.Contexts.BattleAnalysis.Api
+    EveDmv.Contexts.BattleAnalysis.Api,
+    EveDmv.Contexts.FleetOperations.Domain,
+    EveDmv.Api.WormholeOperationsApi
   ]
 
 # AshPostgres configuration
 config :ash_postgres, AshPostgres.DataLayer,
   migration_ignore_attributes: [AshPostgres.MigrationGenerator.Reference]
 
-# Token signing secret for authentication (loaded from environment)
-config :eve_dmv, :token_signing_secret, System.get_env("TOKEN_SIGNING_SECRET")
+# Environment-specific configuration is now handled in runtime.exs
+# This ensures consistent behavior across all environments and eliminates
+# duplication between config.exs and runtime.exs files
 
-# EVE SSO OAuth2 Configuration
-config :eve_dmv, :eve_sso,
-  client_id: System.get_env("EVE_SSO_CLIENT_ID", "your-eve-sso-client-id"),
-  client_secret: System.get_env("EVE_SSO_CLIENT_SECRET", "your-eve-sso-client-secret"),
-  redirect_uri:
-    System.get_env("EVE_SSO_REDIRECT_URI", "http://localhost:4010/auth/user/eve_sso/callback")
-
-# Killmail Pipeline Configuration
+# Default application configuration (overridden by runtime.exs)
 config :eve_dmv,
-  wanderer_kills_sse_url: System.get_env("WANDERER_KILLS_SSE_URL", "http://localhost:8080/sse"),
-  pipeline_enabled: System.get_env("PIPELINE_ENABLED", "true") == "true"
-
-# SDE (Static Data Export) Configuration
-config :eve_dmv,
-  sde_auto_update: System.get_env("SDE_AUTO_UPDATE", "true") == "true",
-  static_data_load_delay: String.to_integer(System.get_env("STATIC_DATA_LOAD_DELAY", "5000")),
-  mock_sse_server_enabled: System.get_env("MOCK_SSE_SERVER_ENABLED", "false") == "true"
+  # Authentication defaults (overridden by environment variables)
+  token_signing_secret: nil,
+  eve_sso: [
+    client_id: "your-eve-sso-client-id",
+    client_secret: "your-eve-sso-client-secret",
+    redirect_uri: "http://localhost:4010/auth/user/eve_sso/callback"
+  ],
+  # Pipeline defaults (overridden by environment variables)
+  pipeline_enabled: true,
+  mock_sse_server_enabled: false,
+  # SDE defaults (overridden by environment variables)
+  sde_auto_update: true,
+  static_data_load_delay: 5000
 
 # Name Resolver Cache Warming Configuration
 config :eve_dmv, :name_resolver_cache_warming,

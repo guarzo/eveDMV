@@ -104,14 +104,23 @@
                   class="px-3 py-1 bg-blue-700 border border-blue-600 rounded text-sm text-gray-100"
                 >
                   <option value="">+ Add Filter</option>
-                  <option value="character">Character</option>
-                  <option value="corporation">Corporation</option>
-                  <option value="alliance">Alliance</option>
-                  <option value="system">System</option>
-                  <option value="ship_type">Ship Type</option>
-                  <option value="chain">Chain Awareness</option>
-                  <option value="isk_value">ISK Value</option>
-                  <option value="participant_count">Participant Count</option>
+                  <optgroup label="Basic Filters">
+                    <option value="character">Character</option>
+                    <option value="corporation">Corporation</option>
+                    <option value="alliance">Alliance</option>
+                    <option value="system">System</option>
+                    <option value="ship_type">Ship Type</option>
+                  </optgroup>
+                  <optgroup label="Advanced Filters">
+                    <option value="isk_range">ISK Value Range</option>
+                    <option value="participant_count">Participant Count</option>
+                    <option value="time_range">Time of Day</option>
+                    <option value="system_distance">System Distance</option>
+                    <option value="chain">Chain Proximity</option>
+                  </optgroup>
+                  <optgroup label="Logic Groups">
+                    <option value="nested_group">Nested Condition Group</option>
+                  </optgroup>
                 </select>
               </div>
             </div>
@@ -135,7 +144,7 @@
                   </button>
                 </div>
                 
-                <%= render_filter_inputs(condition, index) %>
+                <%= render_filter_inputs(%{condition: condition, index: index}) %>
               </div>
             <% end %>
             

@@ -6,14 +6,14 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractorTest do
   describe "extract_participants/1" do
     test "extracts participant IDs from killmail with victim and attackers" do
       killmail = %{
-        victim_character_id: 12345,
+        victim_character_id: 12_345,
         raw_data: %{
           "victim" => %{
-            "character_id" => 12345
+            "character_id" => 12_345
           },
           "attackers" => [
-            %{"character_id" => 67890},
-            %{"character_id" => 11111},
+            %{"character_id" => 67_890},
+            %{"character_id" => 11_111},
             %{"character_id" => nil}
           ]
         }
@@ -21,34 +21,34 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractorTest do
 
       result = ParticipantExtractor.extract_participants(killmail)
 
-      assert Enum.sort(result) == [11111, 12345, 67890]
+      assert Enum.sort(result) == [11_111, 12_345, 67_890]
     end
 
     test "handles string character IDs" do
       killmail = %{
-        victim_character_id: 12345,
+        victim_character_id: 12_345,
         raw_data: %{
           "attackers" => [
-            %{"character_id" => "67890"},
-            %{"character_id" => "11111"}
+            %{"character_id" => "67_890"},
+            %{"character_id" => "11_111"}
           ]
         }
       }
 
       result = ParticipantExtractor.extract_participants(killmail)
 
-      assert Enum.sort(result) == [11111, 12345, 67890]
+      assert Enum.sort(result) == [11_111, 12_345, 67_890]
     end
 
     test "returns empty list for killmail with no attackers" do
       killmail = %{
-        victim_character_id: 12345,
+        victim_character_id: 12_345,
         raw_data: %{}
       }
 
       result = ParticipantExtractor.extract_participants(killmail)
 
-      assert result == [12345]
+      assert result == [12_345]
     end
   end
 
@@ -58,12 +58,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractorTest do
         raw_data: %{
           "attackers" => [
             %{
-              "character_id" => 67890,
+              "character_id" => 67_890,
               "character_name" => "Test Character",
-              "corporation_id" => 98765,
+              "corporation_id" => 98_765,
               "corporation_name" => "Test Corp",
               "corporation_ticker" => "TEST",
-              "alliance_id" => 54321,
+              "alliance_id" => 54_321,
               "alliance_name" => "Test Alliance",
               "alliance_ticker" => "TESTA",
               "ship_type_id" => 588,
@@ -85,12 +85,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractorTest do
       assert length(result) == 1
       attacker = hd(result)
 
-      assert attacker.character_id == 67890
+      assert attacker.character_id == 67_890
       assert attacker.character_name == "Test Character"
-      assert attacker.corporation_id == 98765
+      assert attacker.corporation_id == 98_765
       assert attacker.corporation_name == "Test Corp"
       assert attacker.corporation_ticker == "TEST"
-      assert attacker.alliance_id == 54321
+      assert attacker.alliance_id == 54_321
       assert attacker.alliance_name == "Test Alliance"
       assert attacker.alliance_ticker == "TESTA"
       assert attacker.ship_type_id == 588
@@ -109,7 +109,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractorTest do
         raw_data: %{
           "attackers" => [
             %{
-              "character_id" => 67890,
+              "character_id" => 67_890,
               "ship_type_id" => 588
             }
           ]
@@ -121,7 +121,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractorTest do
       assert length(result) == 1
       attacker = hd(result)
 
-      assert attacker.character_id == 67890
+      assert attacker.character_id == 67_890
       assert attacker.ship_type_id == 588
       assert attacker.damage_done == 0
       assert attacker.final_blow == false
@@ -135,9 +135,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractorTest do
       killmail = %{
         raw_data: %{
           "victim" => %{
-            "character_id" => 12345,
+            "character_id" => 12_345,
             "character_name" => "Victim Name",
-            "corporation_id" => 98765,
+            "corporation_id" => 98_765,
             "ship_type_id" => 588,
             "damage_taken" => 5000,
             "security_status" => 0.5
@@ -147,9 +147,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractorTest do
 
       result = ParticipantExtractor.extract_victim_details(killmail)
 
-      assert result.character_id == 12345
+      assert result.character_id == 12_345
       assert result.character_name == "Victim Name"
-      assert result.corporation_id == 98765
+      assert result.corporation_id == 98_765
       assert result.ship_type_id == 588
       assert result.damage_taken == 5000
       assert result.final_blow == false
@@ -159,18 +159,18 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractorTest do
 
     test "falls back to killmail direct fields when no raw_data victim" do
       killmail = %{
-        victim_character_id: 12345,
-        victim_corporation_id: 98765,
-        victim_alliance_id: 54321,
+        victim_character_id: 12_345,
+        victim_corporation_id: 98_765,
+        victim_alliance_id: 54_321,
         victim_ship_type_id: 588,
         raw_data: %{}
       }
 
       result = ParticipantExtractor.extract_victim_details(killmail)
 
-      assert result.character_id == 12345
-      assert result.corporation_id == 98765
-      assert result.alliance_id == 54321
+      assert result.character_id == 12_345
+      assert result.corporation_id == 98_765
+      assert result.alliance_id == 54_321
       assert result.ship_type_id == 588
       assert result.final_blow == false
       assert is_nil(result.damage_taken)
@@ -248,23 +248,23 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractorTest do
   describe "extract_corporation_ids/1" do
     test "extracts unique corporation IDs from all participants" do
       killmail = %{
-        victim_character_id: 12345,
+        victim_character_id: 12_345,
         raw_data: %{
           "victim" => %{
-            "character_id" => 12345,
-            "corporation_id" => 98765
+            "character_id" => 12_345,
+            "corporation_id" => 98_765
           },
           "attackers" => [
-            %{"character_id" => 111, "corporation_id" => 98765},
-            %{"character_id" => 222, "corporation_id" => 54321},
-            %{"character_id" => 333, "corporation_id" => 98765}
+            %{"character_id" => 111, "corporation_id" => 98_765},
+            %{"character_id" => 222, "corporation_id" => 54_321},
+            %{"character_id" => 333, "corporation_id" => 98_765}
           ]
         }
       }
 
       result = ParticipantExtractor.extract_corporation_ids(killmail)
 
-      assert Enum.sort(result) == [54321, 98765]
+      assert Enum.sort(result) == [54_321, 98_765]
     end
   end
 
@@ -273,20 +273,20 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractorTest do
       killmail = %{
         raw_data: %{
           "victim" => %{
-            "character_id" => 12345,
-            "alliance_id" => 11111
+            "character_id" => 12_345,
+            "alliance_id" => 11_111
           },
           "attackers" => [
-            %{"character_id" => 111, "alliance_id" => 22222},
-            %{"character_id" => 222, "alliance_id" => 11111},
-            %{"character_id" => 333, "alliance_id" => 33333}
+            %{"character_id" => 111, "alliance_id" => 22_222},
+            %{"character_id" => 222, "alliance_id" => 11_111},
+            %{"character_id" => 333, "alliance_id" => 33_333}
           ]
         }
       }
 
       result = ParticipantExtractor.extract_alliance_ids(killmail)
 
-      assert Enum.sort(result) == [11111, 22222, 33333]
+      assert Enum.sort(result) == [11_111, 22_222, 33_333]
     end
   end
 
@@ -295,7 +295,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractorTest do
       killmail = %{
         raw_data: %{
           "victim" => %{
-            "character_id" => 12345,
+            "character_id" => 12_345,
             "ship_type_id" => 588
           },
           "attackers" => [

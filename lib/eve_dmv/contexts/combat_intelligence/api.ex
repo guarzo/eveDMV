@@ -7,7 +7,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   """
 
   alias EveDmv.Contexts.CombatIntelligence.Domain
-  alias EveDmv.Result
+  alias EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer
+  alias EveDmv.Contexts.CombatIntelligence.Domain.CorporationAnalyzer
 
   @type analysis_options :: [
           analysis_type: :full | :quick | :threat_only | :activity_only,
@@ -26,6 +27,25 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
           recommendations: [String.t()],
           last_updated: DateTime.t()
         }
+
+  @type corporation_intelligence_result :: %{
+          corporation_id: integer(),
+          corporation_name: String.t(),
+          member_count: non_neg_integer(),
+          activity_patterns: map(),
+          threat_distribution: map(),
+          coordination_metrics: map(),
+          last_updated: DateTime.t()
+        }
+
+  @type intelligence_api_error ::
+          :character_not_found
+          | :corporation_not_found
+          | :invalid_options
+          | :analysis_failed
+          | :timeout
+          | :cache_error
+          | :not_found
 
   @doc """
   Perform comprehensive character intelligence analysis.
@@ -46,11 +66,35 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
       iex> analyze_character(123456789, analysis_type: :threat_only)
       {:ok, %{threat_level: %ThreatLevel{level: :medium, score: 0.6}, ...}}
   """
-  @spec analyze_character(integer(), analysis_options()) :: Result.t(intelligence_result())
+  @spec analyze_character(integer(), analysis_options()) ::
+          {:ok, intelligence_result()} | {:error, intelligence_api_error() | term()}
   def analyze_character(character_id, opts \\ []) do
     with :ok <- validate_analysis_options(opts),
-         {:ok, analysis_result} <- Domain.CharacterAnalyzer.analyze(character_id, opts) do
-      {:ok, analysis_result}
+         {:ok, analysis_result} <- CharacterAnalyzer.analyze(character_id, opts) do
+      # Transform the analyzer result to match the API's expected structure
+      transformed_result = %{
+        character_id: analysis_result.character_id,
+        character_name: Map.get(analysis_result, :character_name, "Unknown"),
+        threat_level: Map.get(analysis_result, :threat_level, :unknown),
+        analysis_summary: %{
+          combat_effectiveness: Map.get(analysis_result, :combat_effectiveness, 0.0),
+          analyzed_at: Map.get(analysis_result, :analyzed_at, DateTime.utc_now())
+        },
+        detailed_metrics:
+          Map.drop(analysis_result, [
+            :character_id,
+            :character_name,
+            :threat_level,
+            :combat_effectiveness,
+            :analyzed_at
+          ]),
+        recommendations: [],
+        last_updated: Map.get(analysis_result, :analyzed_at, DateTime.utc_now())
+      }
+
+      {:ok, transformed_result}
+    else
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -60,10 +104,33 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   Returns previously analyzed intelligence data if available,
   or triggers a new analysis if cache is stale.
   """
-  @spec get_character_intelligence(integer()) ::
-          Result.t(intelligence_result()) | Result.t(:not_found)
+  @spec get_character_intelligence(integer()) :: {:ok, intelligence_result()}
   def get_character_intelligence(character_id) do
-    Domain.CharacterAnalyzer.get_intelligence(character_id)
+    case CharacterAnalyzer.get_intelligence(character_id) do
+      {:ok, analysis_result} ->
+        # Transform to match intelligence_result type
+        transformed_result = %{
+          character_id: analysis_result.character_id,
+          character_name: Map.get(analysis_result, :character_name, "Unknown"),
+          threat_level: Map.get(analysis_result, :threat_level, :unknown),
+          analysis_summary: %{
+            combat_effectiveness: Map.get(analysis_result, :combat_effectiveness, 0.0),
+            analyzed_at: Map.get(analysis_result, :analyzed_at, DateTime.utc_now())
+          },
+          detailed_metrics:
+            Map.drop(analysis_result, [
+              :character_id,
+              :character_name,
+              :threat_level,
+              :combat_effectiveness,
+              :analyzed_at
+            ]),
+          recommendations: [],
+          last_updated: Map.get(analysis_result, :analyzed_at, DateTime.utc_now())
+        }
+
+        {:ok, transformed_result}
+    end
   end
 
   @doc """
@@ -72,20 +139,48 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   Provides insights into corporation member activity, timezone coverage,
   and overall combat effectiveness.
   """
-  @spec analyze_corporation(integer(), analysis_options()) :: Result.t(map())
+  @spec analyze_corporation(integer(), analysis_options()) ::
+          {:ok, corporation_intelligence_result()} | {:error, intelligence_api_error() | term()}
   def analyze_corporation(corporation_id, opts \\ []) do
     with :ok <- validate_analysis_options(opts),
-         {:ok, analysis_result} <- Domain.CorporationAnalyzer.analyze(corporation_id, opts) do
-      {:ok, analysis_result}
+         {:ok, analysis_result} <- CorporationAnalyzer.analyze(corporation_id, opts) do
+      # Transform the analyzer result to match the API's expected structure
+      transformed_result = %{
+        corporation_id: analysis_result.corporation_id,
+        corporation_name: Map.get(analysis_result, :corporation_name, "Unknown"),
+        member_count: Map.get(analysis_result, :member_count, 0),
+        activity_patterns: Map.get(analysis_result, :activity_patterns, %{}),
+        threat_distribution: Map.get(analysis_result, :threat_distribution, %{}),
+        coordination_metrics: Map.get(analysis_result, :coordination_metrics, %{}),
+        last_updated: Map.get(analysis_result, :analysis_timestamp, DateTime.utc_now())
+      }
+
+      {:ok, transformed_result}
+    else
+      {:error, reason} -> {:error, reason}
     end
   end
 
   @doc """
   Get cached corporation intelligence data.
   """
-  @spec get_corporation_intelligence(integer()) :: Result.t(map()) | Result.t(:not_found)
+  @spec get_corporation_intelligence(integer()) :: {:ok, corporation_intelligence_result()}
   def get_corporation_intelligence(corporation_id) do
-    Domain.CorporationAnalyzer.get_intelligence(corporation_id)
+    case CorporationAnalyzer.get_intelligence(corporation_id) do
+      {:ok, analysis_result} ->
+        # Transform to match corporation_intelligence_result type
+        transformed_result = %{
+          corporation_id: analysis_result.corporation_id,
+          corporation_name: Map.get(analysis_result, :corporation_name, "Unknown"),
+          member_count: Map.get(analysis_result, :member_count, 0),
+          activity_patterns: Map.get(analysis_result, :activity_patterns, %{}),
+          threat_distribution: Map.get(analysis_result, :threat_distribution, %{}),
+          coordination_metrics: Map.get(analysis_result, :coordination_metrics, %{}),
+          last_updated: Map.get(analysis_result, :analysis_timestamp, DateTime.utc_now())
+        }
+
+        {:ok, transformed_result}
+    end
   end
 
   @doc """
@@ -104,18 +199,20 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
       iex> assess_threat(123456789, :wormhole_operations)
       {:ok, %{threat_level: :high, factors: [...], recommendations: [...]}}
   """
-  @spec assess_threat(integer(), atom()) :: Result.t(map())
+  @spec assess_threat(integer(), atom()) :: {:ok, map()} | {:error, atom()}
   def assess_threat(character_id, context \\ :general) do
     with :ok <- validate_threat_context(context),
          {:ok, assessment} <- Domain.ThreatAssessor.assess_threat(character_id, context) do
       {:ok, assessment}
+    else
+      {:error, reason} -> {:error, reason}
     end
   end
 
   @doc """
   Get cached threat assessment data.
   """
-  @spec get_threat_assessment(integer()) :: Result.t(map()) | Result.t(:not_found)
+  @spec get_threat_assessment(integer()) :: {:ok, map()}
   def get_threat_assessment(character_id) do
     Domain.ThreatAssessor.get_assessment(character_id)
   end
@@ -130,7 +227,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   - `:solo_pilot_score` - Solo PvP effectiveness
   - `:awox_risk_score` - Risk of betrayal/awoxing
   """
-  @spec calculate_intelligence_score(integer(), atom()) :: Result.t(map())
+  @spec calculate_intelligence_score(integer(), atom()) :: {:ok, map()} | {:error, atom()}
   def calculate_intelligence_score(character_id, scoring_type) do
     with :ok <- validate_scoring_type(scoring_type),
          {:ok, score_result} <-
@@ -145,7 +242,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   Returns actionable intelligence based on the character's patterns,
   strengths, and weaknesses.
   """
-  @spec get_character_recommendations(integer()) :: Result.t([map()])
+  @spec get_character_recommendations(integer()) :: {:ok, [map()]}
   def get_character_recommendations(character_id) do
     Domain.IntelligenceScoring.get_recommendations(character_id)
   end
@@ -160,11 +257,16 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   - `%{min_kills: 100, preferred_ship_class: :cruiser, timezone: "US"}`
   - `%{corporation_id: 123, hunter_score: 0.8}`
   """
-  @spec search_characters_by_criteria(map()) :: Result.t([intelligence_result()])
+  @spec search_characters_by_criteria(map()) :: {:ok, [intelligence_result()]} | {:error, atom()}
   def search_characters_by_criteria(criteria) when is_map(criteria) do
-    with :ok <- validate_search_criteria(criteria),
-         {:ok, matching_characters} <- Domain.CharacterAnalyzer.search_by_criteria(criteria) do
-      {:ok, matching_characters}
+    case validate_search_criteria(criteria) do
+      :ok ->
+        # Domain.CharacterAnalyzer.search_by_criteria always returns {:error, :search_error}
+        # Keep the function structure for future implementation
+        Domain.CharacterAnalyzer.search_by_criteria(criteria)
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -175,9 +277,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
 
   Returns temporal activity patterns, timezone preferences, and behavioral trends.
   """
-  @spec get_activity_patterns(integer(), keyword()) :: Result.t(map())
+  @spec get_activity_patterns(integer(), keyword()) :: {:error, :analysis_failed}
   def get_activity_patterns(character_id, opts \\ []) do
-    Domain.CharacterAnalyzer.get_activity_patterns(character_id, opts)
+    CharacterAnalyzer.get_activity_patterns(character_id, opts)
   end
 
   @doc """
@@ -186,11 +288,13 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   Useful for recruitment decisions or identifying the most dangerous
   opponents in a group.
   """
-  @spec compare_characters([integer()]) :: Result.t(map())
+  @spec compare_characters([integer()]) :: {:ok, map()} | {:error, atom()}
   def compare_characters(character_ids) when is_list(character_ids) do
     with :ok <- validate_character_ids(character_ids),
          {:ok, comparison} <- Domain.CharacterAnalyzer.compare_characters(character_ids) do
       {:ok, comparison}
+    else
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -199,10 +303,21 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   @doc """
   Get cache statistics for monitoring and debugging.
   """
-  @spec get_intelligence_cache_stats() :: Result.t(map())
+  @spec get_intelligence_cache_stats() :: map()
   def get_intelligence_cache_stats do
-    stats = Domain.CharacterAnalyzer.get_cache_stats()
-    {:ok, stats}
+    # CharacterAnalyzer.get_cache_stats() returns a plain map, not a tuple
+    CharacterAnalyzer.get_cache_stats()
+  end
+
+  @doc """
+  Get external groups that a character has collaborated with.
+
+  Returns corporations and alliances the character has flown with but are not part of their own.
+  Useful for understanding social connections and potential allies.
+  """
+  @spec get_external_groups(integer(), DateTime.t()) :: {:ok, list()}
+  def get_external_groups(character_id, since_date) do
+    Domain.ExternalGroupAnalyzer.analyze(character_id, since_date)
   end
 
   # Private validation functions
@@ -266,7 +381,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   defp validate_search_criteria(_), do: {:error, :invalid_search_criteria}
 
   defp validate_character_ids(character_ids)
-       when is_list(character_ids) and length(character_ids) > 0 do
+       when is_list(character_ids) and character_ids != [] do
     if Enum.all?(character_ids, &(is_integer(&1) and &1 > 0)) do
       :ok
     else

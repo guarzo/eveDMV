@@ -1,7 +1,9 @@
 defmodule EveDmv.Workers.GenericTaskSupervisorTest do
   use ExUnit.Case, async: true
 
-  alias EveDmv.Workers.{UITaskSupervisor, BackgroundTaskSupervisor, RealtimeTaskSupervisor}
+  alias EveDmv.Workers.BackgroundTaskSupervisor
+  alias EveDmv.Workers.RealtimeTaskSupervisor
+  alias EveDmv.Workers.UITaskSupervisor
 
   describe "UITaskSupervisor" do
     test "has correct configuration" do

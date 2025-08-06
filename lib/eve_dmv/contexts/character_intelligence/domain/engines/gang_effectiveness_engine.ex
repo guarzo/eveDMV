@@ -1,0 +1,746 @@
+defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.GangEffectivenessEngine do
+  @moduledoc """
+  Gang effectiveness scoring engine for analyzing fleet coordination and leadership.
+
+  Analyzes fleet role execution, leadership patterns, and gang coordination
+  to determine gang effectiveness threat level.
+  """
+
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
+  require Logger
+
+  @doc """
+  Calculate gang effectiveness score based on combat data.
+  """
+  def calculate_gang_effectiveness_score(combat_data) do
+    Logger.debug("Calculating gang effectiveness score")
+
+    all_killmails = Map.get(combat_data, :killmails, [])
+    attacker_killmails = Map.get(combat_data, :attacker_killmails, [])
+
+    # Fleet role execution effectiveness
+    fleet_role_score = analyze_fleet_role_execution(combat_data)
+
+    # Leadership patterns analysis
+    leadership_score = analyze_leadership_patterns(attacker_killmails)
+
+    # Gang coordination analysis
+    gang_patterns = analyze_gang_patterns(all_killmails)
+    coordination_score = gang_patterns.coordination_score
+
+    # Team synergy calculation
+    team_synergy = calculate_team_synergy(all_killmails)
+
+    # Weighted gang effectiveness score
+    raw_score =
+      fleet_role_score * 0.30 +
+        leadership_score * 0.25 +
+        coordination_score * 0.25 +
+        team_synergy * 0.20
+
+    %{
+      raw_score: raw_score,
+      normalized_score: normalize_to_10_scale(raw_score),
+      components: %{
+        fleet_role_execution: fleet_role_score,
+        leadership_patterns: leadership_score,
+        gang_coordination: coordination_score,
+        team_synergy: team_synergy
+      },
+      gang_patterns: gang_patterns,
+      insights:
+        generate_gang_effectiveness_insights(
+          raw_score,
+          fleet_role_score,
+          leadership_score,
+          coordination_score
+        )
+    }
+  end
+
+  @doc """
+  Analyze fleet role execution effectiveness.
+  """
+  def analyze_fleet_role_execution(combat_data) do
+    Logger.debug("Analyzing fleet role execution")
+
+    all_killmails = Map.get(combat_data, :killmails, [])
+    attacker_killmails = Map.get(combat_data, :attacker_killmails, [])
+
+    if Enum.empty?(all_killmails) do
+      0.5
+    else
+      # Analyze ship role consistency
+      ship_roles = extract_character_ship_roles(all_killmails)
+      role_consistency = calculate_role_consistency(ship_roles)
+
+      # Analyze engagement timing (good fleet members engage at right times)
+      timing_effectiveness = analyze_engagement_timing(attacker_killmails)
+
+      # Analyze support behavior (logistics, EWAR usage)
+      support_effectiveness = analyze_support_behavior(ship_roles, attacker_killmails)
+
+      # Analyze target prioritization in fleet context
+      target_priority_score = analyze_fleet_target_priority(attacker_killmails)
+
+      # Weighted fleet role execution score
+      role_consistency * 0.30 +
+        timing_effectiveness * 0.25 +
+        support_effectiveness * 0.25 +
+        target_priority_score * 0.20
+    end
+  end
+
+  @doc """
+  Analyze leadership patterns in gangs.
+  """
+  def analyze_leadership_patterns(attacker_killmails) do
+    Logger.debug("Analyzing leadership patterns for #{length(attacker_killmails)} killmails")
+
+    if Enum.empty?(attacker_killmails) do
+      0.5
+    else
+      # Analyze command ship usage
+      command_ship_usage = analyze_command_ship_usage(attacker_killmails)
+
+      # Analyze first aggressor patterns (leaders often engage first)
+      first_aggressor_rate = calculate_first_aggressor_rate(attacker_killmails)
+
+      # Analyze fleet composition influence
+      composition_influence = analyze_fleet_composition_influence(attacker_killmails)
+
+      # Analyze tactical calling patterns (high-value target selection)
+      tactical_calling = analyze_tactical_calling_patterns(attacker_killmails)
+
+      # Weighted leadership score
+      command_ship_usage * 0.25 +
+        first_aggressor_rate * 0.25 +
+        composition_influence * 0.25 +
+        tactical_calling * 0.25
+    end
+  end
+
+  @doc """
+  Analyze gang coordination patterns.
+  """
+  def analyze_gang_patterns(killmails) do
+    Logger.debug("Analyzing gang patterns for #{length(killmails)} killmails")
+
+    if Enum.empty?(killmails) do
+      %{
+        coordination_score: 0.5,
+        communication_score: 0.5,
+        tactical_execution: 0.5,
+        gang_size_analysis: %{average_gang_size: 0, coordination_efficiency: 0.5}
+      }
+    else
+      # Analyze gang size patterns
+      gang_sizes = extract_gang_sizes(killmails)
+
+      avg_gang_size =
+        if Enum.empty?(gang_sizes), do: 1, else: Enum.sum(gang_sizes) / length(gang_sizes)
+
+      # Coordination analysis based on engagement patterns
+      coordination_score = analyze_coordination_patterns(killmails, gang_sizes)
+
+      # Communication inference from timing and targeting
+      communication_score = analyze_communication_patterns(killmails)
+
+      # Tactical execution effectiveness
+      tactical_execution = analyze_tactical_execution_effectiveness(killmails, gang_sizes)
+
+      # Gang composition analysis
+      composition_analysis = analyze_gang_composition_quality(killmails)
+
+      %{
+        coordination_score: coordination_score,
+        communication_score: communication_score,
+        tactical_execution: tactical_execution,
+        gang_size_analysis: %{
+          average_gang_size: avg_gang_size,
+          coordination_efficiency:
+            calculate_coordination_efficiency(avg_gang_size, coordination_score)
+        },
+        composition_analysis: composition_analysis
+      }
+    end
+  end
+
+  # Private helper functions
+
+  defp calculate_team_synergy(killmails) do
+    if Enum.empty?(killmails) do
+      0.5
+    else
+      # Analyze multi-kill participation (team fights)
+      multi_kill_rate = calculate_multi_kill_participation(killmails)
+
+      # Analyze damage distribution (good teams have balanced damage)
+      damage_distribution = analyze_damage_distribution_balance(killmails)
+
+      # Analyze role synergy (complementary ship types)
+      role_synergy = analyze_role_synergy_in_gangs(killmails)
+
+      multi_kill_rate * 0.4 + damage_distribution * 0.3 + role_synergy * 0.3
+    end
+  end
+
+  defp extract_character_ship_roles(killmails) do
+    SharedUtilities.extract_character_ship_roles(killmails)
+  end
+
+  defp classify_ship_role(ship_type_id) do
+    SharedUtilities.classify_ship_role(ship_type_id)
+  end
+
+  defp calculate_role_consistency(ship_roles) do
+    if map_size(ship_roles) == 0 do
+      0.5
+    else
+      total_usage = Enum.sum(Map.values(ship_roles))
+      primary_role_usage = Enum.max(Map.values(ship_roles))
+
+      # Good role consistency means specialization in 1-2 roles
+      consistency_ratio = primary_role_usage / total_usage
+
+      cond do
+        # High specialization
+        consistency_ratio > 0.7 -> 1.0
+        # Good focus
+        consistency_ratio > 0.5 -> 0.8
+        # Some consistency
+        consistency_ratio > 0.3 -> 0.6
+        # Jack of all trades
+        true -> 0.4
+      end
+    end
+  end
+
+  defp analyze_engagement_timing(attacker_killmails) do
+    if Enum.empty?(attacker_killmails) do
+      0.5
+    else
+      # Analyze if character engages at optimal times (within first few aggressors)
+      early_engagement_count =
+        Enum.count(attacker_killmails, fn km ->
+          # Top 3 aggressors
+          analyze_aggressor_position(km) <= 3
+        end)
+
+      early_engagement_rate = early_engagement_count / length(attacker_killmails)
+      # Bonus for being early
+      min(1.0, early_engagement_rate * 1.5)
+    end
+  end
+
+  defp analyze_aggressor_position(killmail) do
+    case killmail.raw_data do
+      %{"attackers" => attackers} when is_list(attackers) ->
+        # Sort by damage done and find character's position
+        sorted_attackers =
+          attackers
+          |> Enum.filter(&(&1["damage_done"] != nil))
+          |> Enum.sort_by(&(-(&1["damage_done"] || 0)))
+
+        character_position =
+          Enum.find_index(sorted_attackers, &(&1["character_id"] == killmail.victim_character_id))
+
+        if character_position, do: character_position + 1, else: 999
+
+      _ ->
+        999
+    end
+  end
+
+  defp analyze_support_behavior(ship_roles, attacker_killmails) do
+    logistics_usage = Map.get(ship_roles, :logistics, 0)
+    ewar_usage = Map.get(ship_roles, :ewar, 0)
+    total_usage = Enum.sum(Map.values(ship_roles))
+
+    if total_usage == 0 do
+      0.5
+    else
+      support_ratio = (logistics_usage + ewar_usage) / total_usage
+
+      # Analyze support effectiveness through survival rates and kill participation
+      support_effectiveness =
+        if support_ratio > 0 do
+          # Support players should have good kill participation but fewer deaths
+          calculate_support_effectiveness_metrics(attacker_killmails)
+        else
+          # Neutral for non-support players
+          0.5
+        end
+
+      support_ratio * 0.6 + support_effectiveness * 0.4
+    end
+  end
+
+  defp calculate_support_effectiveness_metrics(attacker_killmails) do
+    # Support effectiveness based on consistent participation
+    if length(attacker_killmails) > 5 do
+      # Good participation indicates effective support
+      0.8
+    else
+      0.6
+    end
+  end
+
+  defp analyze_fleet_target_priority(attacker_killmails) do
+    if Enum.empty?(attacker_killmails) do
+      0.5
+    else
+      # Priority targets: logistics, command ships, high-value targets
+      priority_kills =
+        Enum.count(attacker_killmails, fn km ->
+          priority_target?(km.victim_ship_type_id)
+        end)
+
+      priority_rate = priority_kills / length(attacker_killmails)
+      # Bonus for targeting priority ships
+      min(1.0, priority_rate * 2.0)
+    end
+  end
+
+  defp priority_target?(ship_type_id) do
+    ship_type_id in [
+      # Logistics
+      11_978,
+      11_987,
+      11_985,
+      12_003,
+      # Command ships
+      22_470,
+      22_852,
+      17_918,
+      17_920,
+      # Force Recon
+      11_957,
+      11_958,
+      11_959,
+      11_961
+    ]
+  end
+
+  defp analyze_command_ship_usage(attacker_killmails) do
+    command_ship_kills =
+      Enum.count(attacker_killmails, fn km ->
+        classify_ship_role(km.victim_ship_type_id) == :command
+      end)
+
+    if Enum.empty?(attacker_killmails) do
+      0.5
+    else
+      command_ratio = command_ship_kills / length(attacker_killmails)
+      # Strong bonus for command ship usage
+      min(1.0, command_ratio * 5.0)
+    end
+  end
+
+  defp calculate_first_aggressor_rate(attacker_killmails) do
+    if Enum.empty?(attacker_killmails) do
+      0.5
+    else
+      first_aggressor_count =
+        Enum.count(attacker_killmails, fn km ->
+          analyze_aggressor_position(km) == 1
+        end)
+
+      first_aggressor_rate = first_aggressor_count / length(attacker_killmails)
+      # Bonus for being first aggressor
+      min(1.0, first_aggressor_rate * 3.0)
+    end
+  end
+
+  defp analyze_fleet_composition_influence(attacker_killmails) do
+    # Analyze if kills show good fleet composition (diverse ship types)
+    ship_types_in_kills =
+      attacker_killmails
+      |> Enum.map(& &1.victim_ship_type_id)
+      |> Enum.uniq()
+      |> length()
+
+    if Enum.empty?(attacker_killmails) do
+      0.5
+    else
+      diversity_ratio = ship_types_in_kills / length(attacker_killmails)
+      min(1.0, diversity_ratio * 2.0)
+    end
+  end
+
+  defp analyze_tactical_calling_patterns(attacker_killmails) do
+    if Enum.empty?(attacker_killmails) do
+      0.5
+    else
+      # Good tactical calling = high-value targets, priority targets
+      high_value_kills =
+        Enum.count(attacker_killmails, fn km ->
+          estimate_ship_value(km.victim_ship_type_id) > 100_000_000
+        end)
+
+      tactical_rate = high_value_kills / length(attacker_killmails)
+      min(1.0, tactical_rate * 2.0)
+    end
+  end
+
+  defp estimate_ship_value(ship_type_id) do
+    SharedUtilities.estimate_ship_value(ship_type_id)
+  end
+
+  defp extract_gang_sizes(killmails) do
+    killmails
+    |> Enum.map(fn km ->
+      case km.raw_data do
+        %{"attackers" => attackers} when is_list(attackers) ->
+          length(attackers)
+
+        _ ->
+          1
+      end
+    end)
+  end
+
+  defp analyze_coordination_patterns(killmails, gang_sizes) do
+    if Enum.empty?(killmails) do
+      0.5
+    else
+      # Larger gangs require better coordination
+      avg_gang_size = Enum.sum(gang_sizes) / length(gang_sizes)
+
+      # Coordination efficiency decreases with gang size
+      base_coordination =
+        cond do
+          # Small gang, easy coordination
+          avg_gang_size <= 5 -> 0.9
+          # Medium gang
+          avg_gang_size <= 15 -> 0.7
+          # Large gang
+          avg_gang_size <= 30 -> 0.5
+          # Fleet, hard coordination
+          true -> 0.3
+        end
+
+      # Analyze timing consistency (good coordination = consistent engage times)
+      timing_consistency = analyze_engagement_timing_consistency(killmails)
+
+      base_coordination * 0.6 + timing_consistency * 0.4
+    end
+  end
+
+  defp analyze_engagement_timing_consistency(killmails) do
+    # Analyze if character consistently engages at similar times in fights
+    engagement_positions =
+      killmails
+      |> Enum.map(&analyze_aggressor_position/1)
+      # Only consider meaningful positions
+      |> Enum.filter(&(&1 < 10))
+
+    if length(engagement_positions) < 2 do
+      0.5
+    else
+      # Calculate variance in engagement positions
+      avg_position = Enum.sum(engagement_positions) / length(engagement_positions)
+
+      variance =
+        engagement_positions
+        |> Enum.map(&((&1 - avg_position) * (&1 - avg_position)))
+        |> Enum.sum()
+        |> Kernel./(length(engagement_positions))
+
+      # Lower variance = better consistency
+      consistency_score = max(0.0, 1.0 - variance / 10.0)
+      consistency_score
+    end
+  end
+
+  defp analyze_communication_patterns(killmails) do
+    if Enum.empty?(killmails) do
+      0.5
+    else
+      # Infer communication from synchronized targeting
+      synchronized_kills = analyze_synchronized_targeting(killmails)
+
+      # Good communication = quick target switches, coordinated focus
+      target_focus = analyze_target_focus_patterns(killmails)
+
+      synchronized_kills * 0.6 + target_focus * 0.4
+    end
+  end
+
+  defp analyze_synchronized_targeting(_killmails) do
+    # Look for patterns where character attacks same targets as gang
+    # This is complex to implement without full gang data, so simplified
+    # Placeholder - would need cross-character analysis
+    0.6
+  end
+
+  defp analyze_target_focus_patterns(killmails) do
+    # Analyze if kills show focused targeting (not scattered)
+    if length(killmails) < 3 do
+      0.5
+    else
+      # Look at victim ship types diversity
+      ship_types = killmails |> Enum.map(& &1.victim_ship_type_id) |> Enum.uniq()
+      focus_ratio = length(ship_types) / length(killmails)
+
+      # Lower ratio = better focus
+      max(0.0, 1.0 - focus_ratio)
+    end
+  end
+
+  defp analyze_tactical_execution_effectiveness(killmails, gang_sizes) do
+    if Enum.empty?(killmails) do
+      0.5
+    else
+      # Tactical execution = appropriate targets for gang size
+      avg_gang_size = Enum.sum(gang_sizes) / length(gang_sizes)
+
+      appropriate_targets =
+        Enum.count(killmails, fn km ->
+          target_appropriate_for_gang_size?(km.victim_ship_type_id, avg_gang_size)
+        end)
+
+      execution_rate = appropriate_targets / length(killmails)
+      min(1.0, execution_rate * 1.2)
+    end
+  end
+
+  defp target_appropriate_for_gang_size?(ship_type_id, gang_size) do
+    ship_class = classify_ship_class(ship_type_id)
+
+    case {ship_class, gang_size} do
+      # Always appropriate
+      {:frigate, _} -> true
+      # Need small gang for cruisers
+      {:cruiser, size} when size >= 3 -> true
+      # Need decent gang for BS
+      {:battleship, size} when size >= 5 -> true
+      # Need fleet for capitals
+      {:capital, size} when size >= 10 -> true
+      _ -> false
+    end
+  end
+
+  defp classify_ship_class(ship_type_id) do
+    SharedUtilities.classify_ship_type(ship_type_id)
+  end
+
+  defp analyze_gang_composition_quality(killmails) do
+    # Analyze if gangs have good composition (mix of roles)
+    if Enum.empty?(killmails) do
+      %{balance_score: 0.5, role_coverage: 0.5}
+    else
+      ship_roles =
+        killmails
+        |> Enum.flat_map(fn km ->
+          case km.raw_data do
+            %{"attackers" => attackers} when is_list(attackers) ->
+              attackers
+              |> Enum.filter(&(&1["ship_type_id"] != nil))
+              |> Enum.map(&classify_ship_role(&1["ship_type_id"]))
+
+            _ ->
+              []
+          end
+        end)
+        |> Enum.frequencies()
+
+      role_coverage = calculate_role_coverage(ship_roles)
+      balance_score = calculate_composition_balance(ship_roles)
+
+      %{
+        balance_score: balance_score,
+        role_coverage: role_coverage,
+        dominant_roles: get_dominant_roles(ship_roles)
+      }
+    end
+  end
+
+  defp calculate_role_coverage(ship_roles) do
+    essential_roles = [:dps, :tackle, :logistics]
+
+    covered_roles =
+      essential_roles
+      |> Enum.count(&(Map.get(ship_roles, &1, 0) > 0))
+
+    if Enum.empty?(essential_roles) do
+      0.0
+    else
+      covered_roles / length(essential_roles)
+    end
+  end
+
+  defp calculate_composition_balance(ship_roles) do
+    if map_size(ship_roles) == 0 do
+      0.5
+    else
+      total_ships = Enum.sum(Map.values(ship_roles))
+
+      # Calculate how balanced the composition is (avoid too much of one role)
+      max_role_usage = Enum.max(Map.values(ship_roles))
+      balance_ratio = max_role_usage / total_ships
+
+      # Good balance = no single role dominates too much
+      cond do
+        # Very balanced
+        balance_ratio <= 0.4 -> 1.0
+        # Good balance
+        balance_ratio <= 0.6 -> 0.8
+        # Some imbalance
+        balance_ratio <= 0.8 -> 0.6
+        # Poor balance
+        true -> 0.4
+      end
+    end
+  end
+
+  defp get_dominant_roles(ship_roles) do
+    ship_roles
+    |> Enum.sort_by(&elem(&1, 1), :desc)
+    |> Enum.take(2)
+    |> Enum.map(&elem(&1, 0))
+  end
+
+  defp calculate_coordination_efficiency(gang_size, coordination_score) do
+    # Efficiency decreases with gang size but good coordination compensates
+    size_penalty =
+      cond do
+        gang_size <= 5 -> 1.0
+        gang_size <= 15 -> 0.8
+        gang_size <= 30 -> 0.6
+        true -> 0.4
+      end
+
+    coordination_score * size_penalty
+  end
+
+  defp calculate_multi_kill_participation(killmails) do
+    # Multi-kill = more than one attacker
+    multi_kills =
+      Enum.count(killmails, fn km ->
+        case km.raw_data do
+          %{"attackers" => attackers} when is_list(attackers) ->
+            length(attackers) > 1
+
+          _ ->
+            false
+        end
+      end)
+
+    if Enum.empty?(killmails) do
+      0.5
+    else
+      multi_kills / length(killmails)
+    end
+  end
+
+  defp analyze_damage_distribution_balance(killmails) do
+    # Good teams have balanced damage contribution
+    damage_contributions =
+      killmails
+      |> Enum.map(&extract_character_damage_contribution/1)
+      |> Enum.filter(&(&1 > 0))
+
+    if length(damage_contributions) < 2 do
+      0.5
+    else
+      # Calculate variance in damage contributions
+      avg_contribution = Enum.sum(damage_contributions) / length(damage_contributions)
+
+      variance =
+        damage_contributions
+        |> Enum.map(&((&1 - avg_contribution) * (&1 - avg_contribution)))
+        |> Enum.sum()
+        |> Kernel./(length(damage_contributions))
+
+      # Lower variance = better balance
+      balance_score = max(0.0, 1.0 - variance)
+      balance_score
+    end
+  end
+
+  defp extract_character_damage_contribution(killmail) do
+    case killmail.raw_data do
+      %{"victim" => %{"damage_taken" => total_damage}, "attackers" => attackers}
+      when is_list(attackers) and is_number(total_damage) and total_damage > 0 ->
+        character_attacker =
+          attackers
+          |> Enum.find(&(&1["character_id"] == killmail.victim_character_id))
+
+        character_damage =
+          case character_attacker do
+            %{"damage_done" => damage} when is_number(damage) -> damage
+            _ -> 0
+          end
+
+        character_damage / total_damage
+
+      _ ->
+        0.0
+    end
+  end
+
+  defp analyze_role_synergy_in_gangs(killmails) do
+    # Analyze if gangs have complementary roles
+    gang_compositions =
+      killmails
+      |> Enum.map(&extract_gang_composition/1)
+      |> Enum.filter(&(map_size(&1) > 1))
+
+    if Enum.empty?(gang_compositions) do
+      0.5
+    else
+      synergy_scores = Enum.map(gang_compositions, &calculate_role_synergy_score/1)
+
+      Enum.sum(synergy_scores) / length(synergy_scores)
+    end
+  end
+
+  defp extract_gang_composition(killmail) do
+    case killmail.raw_data do
+      %{"attackers" => attackers} when is_list(attackers) ->
+        attackers
+        |> Enum.filter(&(&1["ship_type_id"] != nil))
+        |> Enum.map(&classify_ship_role(&1["ship_type_id"]))
+        |> Enum.frequencies()
+
+      _ ->
+        %{}
+    end
+  end
+
+  defp calculate_role_synergy_score(composition) do
+    # Good synergy = balanced mix of complementary roles
+    has_dps = Map.get(composition, :dps, 0) > 0
+    has_tackle = Map.get(composition, :tackle, 0) > 0
+    has_logistics = Map.get(composition, :logistics, 0) > 0
+    has_ewar = Map.get(composition, :ewar, 0) > 0
+
+    synergy_elements = Enum.count([has_dps, has_tackle, has_logistics, has_ewar], & &1)
+    # Normalize to 0-1
+    synergy_elements / 4
+  end
+
+  defp generate_gang_effectiveness_insights(
+         raw_score,
+         fleet_role_score,
+         leadership_score,
+         coordination_score
+       ) do
+    base_insights = []
+
+    base_insights
+    |> add_insight_if(raw_score > 0.8, "Excellent gang effectiveness - strong team player")
+    |> add_insight_if(fleet_role_score > 0.8, "Highly effective in fleet roles")
+    |> add_insight_if(leadership_score > 0.7, "Shows strong leadership indicators")
+    |> add_insight_if(coordination_score > 0.8, "Excellent coordination with gang members")
+  end
+
+  defp add_insight_if(insights, condition, insight) do
+    if condition, do: [insight | insights], else: insights
+  end
+
+  defp normalize_to_10_scale(score) do
+    SharedUtilities.normalize_to_10_scale(score)
+  end
+end

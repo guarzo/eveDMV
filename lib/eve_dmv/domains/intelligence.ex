@@ -13,9 +13,9 @@ defmodule EveDmv.Domains.Intelligence do
     resource(EveDmv.Intelligence.ChainAnalysis.ChainTopology)
     resource(EveDmv.Intelligence.SystemInhabitant)
     resource(EveDmv.Intelligence.ChainAnalysis.ChainConnection)
-    resource(EveDmv.Intelligence.Wormhole.Vetting)
+    resource(EveDmv.Contexts.WormholeOperations.Domain.Wormhole.WhVetting)
     resource(EveDmv.Intelligence.HomeDefenseAnalytics)
-    resource(EveDmv.Intelligence.Wormhole.FleetComposition)
+    resource(EveDmv.Contexts.WormholeOperations.Domain.Wormhole.WhFleetComposition)
     resource(EveDmv.Intelligence.MemberActivityIntelligence)
   end
 

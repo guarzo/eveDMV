@@ -8,11 +8,16 @@ defmodule EveDmvWeb.SystemLive do
 
   use EveDmvWeb, :live_view
 
-  alias EveDmv.Cache.AnalysisCache
-  alias EveDmv.Eve.SolarSystem
-  alias EveDmv.Analytics.BattleDetector
+  import EveDmvWeb.FormatHelpers
 
-  @impl true
+  alias Ecto.Adapters.SQL
+  alias EveDmv.Analytics.BattleDetector
+  alias EveDmv.Cache.AnalysisCache
+  alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Eve.SolarSystem
+  alias EveDmv.Repo
+
+  @impl Phoenix.LiveView
   def mount(%{"system_id" => system_id}, _session, socket) do
     system_id = String.to_integer(system_id)
 
@@ -49,7 +54,7 @@ defmodule EveDmvWeb.SystemLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info({:cache_updated, cache_key}, socket) do
     if String.contains?(cache_key, "system_#{socket.assigns.system_id}") do
       # Refresh system data when cache is updated
@@ -128,7 +133,7 @@ defmodule EveDmvWeb.SystemLive do
 
   # Get activity statistics for the last 30 days
   defp get_activity_statistics(system_id) do
-    thirty_days_ago = DateTime.add(DateTime.utc_now(), -30, :day)
+    thirty_days_ago = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
 
     # Query killmail activity in this system
     killmail_query = """
@@ -145,7 +150,7 @@ defmodule EveDmvWeb.SystemLive do
       AND p.final_blow = true
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, killmail_query, [system_id, thirty_days_ago]) do
+    case SQL.query(Repo, killmail_query, [system_id, thirty_days_ago]) do
       {:ok, %{rows: [[total_kills, active_days, unique_pilots, unique_corps, unique_alliances]]}} ->
         {:ok,
          %{
@@ -165,7 +170,7 @@ defmodule EveDmvWeb.SystemLive do
 
   # Get structure and citadel kills
   defp get_structure_kills(system_id) do
-    thirty_days_ago = DateTime.add(DateTime.utc_now(), -30, :day)
+    thirty_days_ago = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
 
     structure_query = """
     SELECT
@@ -195,7 +200,7 @@ defmodule EveDmvWeb.SystemLive do
     LIMIT 20
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, structure_query, [system_id, thirty_days_ago]) do
+    case SQL.query(Repo, structure_query, [system_id, thirty_days_ago]) do
       {:ok, %{rows: rows}} ->
         structures =
           Enum.map(rows, fn [type_name, type_id, count] ->
@@ -215,7 +220,7 @@ defmodule EveDmvWeb.SystemLive do
 
   # Get corporation and alliance presence
   defp get_corporation_presence(system_id) do
-    thirty_days_ago = DateTime.add(DateTime.utc_now(), -30, :day)
+    thirty_days_ago = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
 
     presence_query = """
     SELECT
@@ -237,7 +242,7 @@ defmodule EveDmvWeb.SystemLive do
     LIMIT 20
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, presence_query, [system_id, thirty_days_ago]) do
+    case SQL.query(Repo, presence_query, [system_id, thirty_days_ago]) do
       {:ok, %{rows: rows}} ->
         corporations =
           Enum.map(rows, fn [
@@ -272,8 +277,8 @@ defmodule EveDmvWeb.SystemLive do
 
   # Calculate danger assessment score
   defp calculate_danger_assessment(system_id) do
-    seven_days_ago = DateTime.add(DateTime.utc_now(), -7, :day)
-    thirty_days_ago = DateTime.add(DateTime.utc_now(), -30, :day)
+    seven_days_ago = DateTimeUtils.add(DateTime.utc_now(), -7 * 24 * 60 * 60, :second)
+    thirty_days_ago = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
 
     danger_query = """
     SELECT
@@ -288,7 +293,7 @@ defmodule EveDmvWeb.SystemLive do
       AND p.final_blow = true
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, danger_query, [
+    case SQL.query(Repo, danger_query, [
            system_id,
            seven_days_ago,
            thirty_days_ago
@@ -332,7 +337,7 @@ defmodule EveDmvWeb.SystemLive do
 
   # Get 24-hour activity heatmap
   defp get_activity_heatmap(system_id) do
-    thirty_days_ago = DateTime.add(DateTime.utc_now(), -30, :day)
+    thirty_days_ago = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
 
     heatmap_query = """
     SELECT
@@ -345,34 +350,40 @@ defmodule EveDmvWeb.SystemLive do
     ORDER BY hour
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, heatmap_query, [system_id, thirty_days_ago]) do
+    case SQL.query(Repo, heatmap_query, [system_id, thirty_days_ago]) do
       {:ok, %{rows: rows}} ->
-        # Create array for all 24 hours
-        activity_by_hour =
-          Enum.map(0..23, fn hour ->
-            count =
-              Enum.find_value(rows, 0, fn [h, count] -> if h == hour, do: count, else: nil end)
-
-            %{hour: hour, count: count}
-          end)
-
-        max_count = Map.get(Enum.max_by(activity_by_hour, & &1.count), :count, 1)
-
-        # Calculate percentages for visualization
-        heatmap_data =
-          Enum.map(activity_by_hour, fn %{hour: hour, count: count} ->
-            %{
-              hour: hour,
-              count: count,
-              percentage: if(max_count > 0, do: round(count / max_count * 100), else: 0)
-            }
-          end)
-
+        heatmap_data = process_activity_heatmap_data(rows)
         {:ok, heatmap_data}
 
       {:error, reason} ->
         {:error, reason}
     end
+  end
+
+  defp process_activity_heatmap_data(rows) do
+    # Create array for all 24 hours
+    activity_by_hour =
+      Enum.map(0..23, fn hour ->
+        count = find_hour_count(rows, hour)
+        %{hour: hour, count: count}
+      end)
+
+    max_count = activity_by_hour |> Enum.max_by(& &1.count) |> Map.get(:count, 1)
+
+    # Calculate percentages for visualization
+    Enum.map(activity_by_hour, fn %{hour: hour, count: count} ->
+      %{
+        hour: hour,
+        count: count,
+        percentage: if(max_count > 0, do: round(count / max_count * 100), else: 0)
+      }
+    end)
+  end
+
+  defp find_hour_count(rows, hour) do
+    Enum.find_value(rows, 0, fn [hour_value, count] ->
+      if hour_value == hour, do: count, else: nil
+    end)
   end
 
   # Calculate primary timezone based on peak activity hour

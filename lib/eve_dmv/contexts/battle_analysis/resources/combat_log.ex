@@ -7,6 +7,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
     domain: EveDmv.Contexts.BattleAnalysis.Api,
     data_layer: AshPostgres.DataLayer
 
+  alias EveDmv.Contexts.BattleAnalysis.Domain.CombatLogHelper
+
   require Logger
 
   postgres do
@@ -85,7 +87,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
         # Read and compress file content
         {:ok, content} = File.read(file.path)
         compressed = :zlib.compress(content)
-        content_hash = content |> :crypto.hash(:sha256) |> Base.encode16(case: :lower)
+
+        content_hash =
+          content
+          |> :crypto.hash(:sha256)
+          |> Base.encode16(case: :lower)
 
         changeset
         |> Ash.Changeset.change_attribute(:raw_content, Base.encode64(compressed))
@@ -117,7 +123,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
         # Parse the log using helper module
         Logger.info("🔍 PARSING COMBAT LOG #{log.id}")
 
-        case EveDmv.Contexts.BattleAnalysis.Domain.CombatLogHelper.parse_combat_log_content(
+        case CombatLogHelper.parse_combat_log_content(
                content,
                pilot_name: log.pilot_name
              ) do
@@ -152,13 +158,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
         log = changeset.data
 
         if log.parse_status == :completed && log.parsed_data[:events] do
-          case EveDmv.Contexts.BattleAnalysis.Domain.CombatLogHelper.analyze_performance_metrics(
+          case CombatLogHelper.analyze_performance_metrics(
                  log.parsed_data,
                  log.pilot_name
                ) do
             {:ok, performance_metrics} ->
-              changeset
-              |> Ash.Changeset.change_attribute(:performance_metrics, performance_metrics)
+              Ash.Changeset.change_attribute(changeset, :performance_metrics, performance_metrics)
 
             {:error, _reason} ->
               changeset
@@ -180,13 +185,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
         if log.parse_status == :completed && log.parsed_data[:events] do
           events = log.parsed_data.events
 
-          case EveDmv.Contexts.BattleAnalysis.Domain.CombatLogHelper.correlate_with_battle(
+          case CombatLogHelper.correlate_with_battle(
                  events,
                  battle.killmails
                ) do
             {:ok, battle_correlation} ->
-              changeset
-              |> Ash.Changeset.change_attribute(:battle_correlation, battle_correlation)
+              Ash.Changeset.change_attribute(changeset, :battle_correlation, battle_correlation)
 
             {:error, _reason} ->
               changeset

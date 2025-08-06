@@ -72,29 +72,27 @@ defmodule EveDmv.Historical.KillmailImporter do
   Import a batch of killmails using Ash.bulk_create.
   """
   def import_batch(killmails) do
-    try do
-      transformed_killmails = Enum.map(killmails, &transform_killmail/1)
+    transformed_killmails = Enum.map(killmails, &transform_killmail/1)
 
-      case Ash.bulk_create(
-             transformed_killmails,
-             EveDmv.Killmails.KillmailRaw,
-             :ingest_from_source,
-             return_records?: true,
-             return_errors?: true,
-             stop_on_error?: false
-           ) do
-        %Ash.BulkResult{status: :success, records: records} ->
-          {:ok, length(records)}
+    case Ash.bulk_create(
+           transformed_killmails,
+           EveDmv.Killmails.KillmailRaw,
+           :ingest_from_source,
+           return_records?: true,
+           return_errors?: true,
+           stop_on_error?: false
+         ) do
+      %Ash.BulkResult{status: :success, records: records} ->
+        {:ok, length(records)}
 
-        %Ash.BulkResult{status: :partial_success} = result ->
-          handle_partial_success(result)
+      %Ash.BulkResult{status: :partial_success} = result ->
+        handle_partial_success(result)
 
-        %Ash.BulkResult{status: :error, errors: errors} ->
-          handle_error_result(errors)
-      end
-    rescue
-      error -> {:error, Exception.message(error)}
+      %Ash.BulkResult{status: :error, errors: errors} ->
+        handle_error_result(errors)
     end
+  rescue
+    error -> {:error, Exception.message(error)}
   end
 
   # Private functions

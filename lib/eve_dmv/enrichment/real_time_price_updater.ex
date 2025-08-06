@@ -11,10 +11,12 @@ defmodule EveDmv.Enrichment.RealTimePriceUpdater do
   use GenServer
 
   alias EveDmv.Api
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Market.PriceService
   alias Phoenix.PubSub
 
+  require Ash.Query
   require Logger
 
   @pubsub EveDmv.PubSub
@@ -127,7 +129,7 @@ defmodule EveDmv.Enrichment.RealTimePriceUpdater do
     Logger.debug("Checking recent killmails for price updates")
 
     # Get killmails from the last hour
-    one_hour_ago = DateTime.add(DateTime.utc_now(), -3600, :second)
+    one_hour_ago = DateTimeUtils.add(DateTime.utc_now(), -3600, :second)
 
     case get_recent_enriched_killmails(one_hour_ago, 100) do
       {:ok, killmails} ->

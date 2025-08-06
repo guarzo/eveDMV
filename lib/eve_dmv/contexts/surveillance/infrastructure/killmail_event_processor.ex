@@ -1,311 +1,411 @@
 defmodule EveDmv.Contexts.Surveillance.Infrastructure.KillmailEventProcessor do
   @moduledoc """
-  Event processor for handling killmail events in the surveillance context.
+  Killmail event processor for surveillance context.
 
-  Receives killmail events and coordinates the surveillance matching process,
-  ensuring proper transformation and validation before processing.
+  Processes incoming killmail events for surveillance profile matching,
+  alert generation, and real-time notification dispatch.
+
+  This module was created to resolve undefined function warnings during
+  Phase 3 cleanup, specifically for surveillance killmail processing.
+
+  ## Responsibilities
+
+  - Process killmail events for surveillance matching
+  - Trigger profile matching engine
+  - Generate surveillance alerts
+  - Dispatch notifications for matches
+  - Maintain match history and statistics
   """
 
   use GenServer
-  use EveDmv.ErrorHandler
+
+  alias EveDmv.Contexts.Surveillance.Domain.AlertService
   alias EveDmv.Contexts.Surveillance.Domain.MatchingEngine
-  alias EveDmv.DomainEvents.KillmailEnriched
+  alias EveDmv.Contexts.Surveillance.Domain.NotificationService
+  alias EveDmv.Contexts.Surveillance.Infrastructure.MatchCache
+  alias EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.DomainEvents.KillmailReceived
-  alias EveDmv.Infrastructure.EventBus
 
   require Logger
 
+  @doc """
+  Start the killmail event processor.
+  """
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  # Public API
-
   @doc """
   Process a killmail for surveillance matching.
 
-  This is called by the Surveillance context when a killmail event is received.
+  Takes a killmail event and processes it through the surveillance
+  matching engine to identify profile matches and generate alerts.
+
+  ## Parameters
+
+  - `killmail_event` - The KillmailReceived event to process
+
+  ## Returns
+
+  `:ok` on successful processing, `{:error, reason}` on failure
   """
-  def process_killmail_for_surveillance(killmail_event) do
+  @spec process_killmail_for_surveillance(KillmailReceived.t()) :: :ok
+  def process_killmail_for_surveillance(%KillmailReceived{} = killmail_event) do
     GenServer.cast(__MODULE__, {:process_killmail, killmail_event})
+    :ok
   end
 
   @doc """
-  Get processing metrics and statistics.
+  Process a killmail synchronously for surveillance matching.
+
+  Synchronous version that waits for processing to complete before returning.
+
+  ## Parameters
+
+  - `killmail_event` - The KillmailReceived event to process
+  - `timeout` - Timeout in milliseconds (default: 5000)
+
+  ## Returns
+
+  `{:ok, match_results}` on successful processing with match details
   """
-  def get_processing_metrics do
-    GenServer.call(__MODULE__, :get_processing_metrics)
+  @spec process_killmail_sync(KillmailReceived.t(), integer()) :: {:ok, map()} | {:error, term()}
+  def process_killmail_sync(%KillmailReceived{} = killmail_event, timeout \\ 5000) do
+    GenServer.call(__MODULE__, {:process_killmail_sync, killmail_event}, timeout)
+  end
+
+  @doc """
+  Get processing statistics.
+
+  Returns statistics about killmail processing performance
+  and surveillance matching results.
+
+  ## Returns
+
+  `{:ok, statistics}` containing processing metrics
+  """
+  @spec get_processing_statistics() :: {:ok, map()} | {:error, term()}
+  def get_processing_statistics do
+    GenServer.call(__MODULE__, :get_statistics)
   end
 
   @doc """
   Get current processing status.
+
+  Returns information about the current state of the event processor.
+
+  ## Returns
+
+  `{:ok, status}` containing processor status information
   """
-  def get_processing_status do
-    GenServer.call(__MODULE__, :get_processing_status)
+  @spec get_processor_status() :: {:ok, map()} | {:error, term()}
+  def get_processor_status do
+    GenServer.call(__MODULE__, :get_status)
   end
 
   # GenServer implementation
 
   @impl GenServer
-  def init(_opts) do
-    # Subscribe to killmail events from the event bus
-    EventBus.subscribe_process(:killmail_received, self())
-    EventBus.subscribe_process(:killmail_enriched, self())
+  def init(opts) do
+    Logger.info("Starting surveillance killmail event processor")
 
-    state = %{
-      processing_metrics: %{
-        total_processed: 0,
-        successful_matches: 0,
-        failed_processing: 0,
-        average_processing_time_ms: 0,
-        last_processed_at: nil
-      },
-      processing_queue: [],
-      processing_status: :ready,
-      # Keep last 100 processing times for averaging
-      recent_processing_times: []
+    initial_state = %{
+      processing_count: 0,
+      match_count: 0,
+      alert_count: 0,
+      error_count: 0,
+      start_time: DateTime.utc_now(),
+      last_processed: nil,
+      options: opts
     }
 
-    Logger.info("KillmailEventProcessor started and subscribed to killmail events")
-    {:ok, state}
+    {:ok, initial_state}
   end
 
   @impl GenServer
   def handle_cast({:process_killmail, killmail_event}, state) do
+    Logger.debug("Processing killmail for surveillance",
+      killmail_id: killmail_event.killmail_id
+    )
+
     start_time = System.monotonic_time(:millisecond)
 
-    # Transform event to surveillance-compatible format
-    case transform_killmail_event(killmail_event) do
-      {:ok, surveillance_killmail} ->
-        # Send to matching engine
-        MatchingEngine.process_killmail(surveillance_killmail)
+    result = perform_surveillance_processing(killmail_event)
 
-        # Update metrics for successful processing
-        end_time = System.monotonic_time(:millisecond)
-        processing_time = end_time - start_time
+    processing_time = System.monotonic_time(:millisecond) - start_time
 
-        new_metrics = update_success_metrics(state.processing_metrics, processing_time)
-        new_processing_times = [processing_time | Enum.take(state.recent_processing_times, 99)]
+    updated_state = update_processing_statistics(state, result, processing_time)
 
-        new_state = %{
-          state
-          | processing_metrics: new_metrics,
-            recent_processing_times: new_processing_times
-        }
+    {:noreply, updated_state}
+  end
 
-        {:noreply, new_state}
+  @impl GenServer
+  def handle_call({:process_killmail_sync, killmail_event}, _from, state) do
+    Logger.debug("Processing killmail synchronously for surveillance",
+      killmail_id: killmail_event.killmail_id
+    )
 
-      {:error, reason} ->
-        Logger.warning("Failed to transform killmail event for surveillance: #{inspect(reason)}")
+    start_time = System.monotonic_time(:millisecond)
 
-        # Update metrics for failed processing
-        new_metrics = %{
-          state.processing_metrics
-          | failed_processing: state.processing_metrics.failed_processing + 1,
-            total_processed: state.processing_metrics.total_processed + 1,
-            last_processed_at: DateTime.utc_now()
-        }
+    result = perform_surveillance_processing(killmail_event)
 
-        new_state = %{state | processing_metrics: new_metrics}
+    processing_time = System.monotonic_time(:millisecond) - start_time
 
-        {:noreply, new_state}
+    updated_state = update_processing_statistics(state, result, processing_time)
+
+    case result do
+      {:ok, match_results} ->
+        {:reply, {:ok, match_results}, updated_state}
+
+      {:error, _reason} = error ->
+        {:reply, error, updated_state}
     end
   end
 
   @impl GenServer
-  def handle_call(:get_processing_metrics, _from, state) do
-    # Calculate current average processing time
-    current_avg =
-      case state.recent_processing_times do
-        [] -> 0
-        times -> Enum.sum(times) / length(times)
-      end
+  def handle_call(:get_statistics, _from, state) do
+    uptime_seconds = DateTimeUtils.diff(DateTime.utc_now(), state.start_time, :second)
 
-    metrics = %{
-      state.processing_metrics
-      | average_processing_time_ms: Float.round(current_avg, 2)
+    statistics = %{
+      uptime_seconds: uptime_seconds,
+      total_processed: state.processing_count,
+      total_matches: state.match_count,
+      total_alerts: state.alert_count,
+      total_errors: state.error_count,
+      processing_rate: calculate_processing_rate(state.processing_count, uptime_seconds),
+      match_rate: calculate_match_rate(state.match_count, state.processing_count),
+      error_rate: calculate_error_rate(state.error_count, state.processing_count),
+      last_processed: state.last_processed,
+      status: :running
     }
 
-    {:reply, {:ok, metrics}, state}
+    {:reply, {:ok, statistics}, state}
   end
 
   @impl GenServer
-  def handle_call(:get_processing_status, _from, state) do
-    status_info = %{
-      status: state.processing_status,
-      queue_size: length(state.processing_queue),
-      recent_activity: state.processing_metrics.last_processed_at != nil,
-      uptime_seconds: get_uptime_seconds()
+  def handle_call(:get_status, _from, state) do
+    status = %{
+      processor_name: __MODULE__,
+      status: :running,
+      start_time: state.start_time,
+      current_time: DateTime.utc_now(),
+      processing_count: state.processing_count,
+      last_activity: state.last_processed,
+      memory_usage: get_memory_usage(),
+      message_queue_length: Process.info(self(), :message_queue_len) |> elem(1)
     }
 
-    {:reply, {:ok, status_info}, state}
+    {:reply, {:ok, status}, state}
   end
 
   @impl GenServer
-  def handle_info({:event, %KillmailReceived{} = event}, state) do
-    # Process killmail received event
-    handle_cast({:process_killmail, event}, state)
-  end
-
-  @impl GenServer
-  def handle_info({:event, %KillmailEnriched{} = event}, state) do
-    # We can also process enriched killmails for more detailed matching
-    # Convert enriched event to received format for consistency
-    received_event = %KillmailReceived{
-      killmail_id: event.killmail_id,
-      # Not available in enriched event
-      hash: "",
-      occurred_at: event.timestamp || DateTime.utc_now(),
-      received_at: DateTime.utc_now()
-    }
-
-    handle_cast({:process_killmail, received_event}, state)
-  end
-
-  @impl GenServer
-  def handle_info(_message, state) do
-    # Ignore other messages
+  def handle_info(_msg, state) do
+    Logger.warning("Received unexpected message")
     {:noreply, state}
   end
 
-  # Private transformation functions
+  # Private helper functions for surveillance processing
 
-  defp transform_killmail_event(%KillmailReceived{} = event) do
-    # Transform KillmailReceived event to surveillance-compatible format
-    case parse_killmail_data(event.raw_data) do
-      {:ok, parsed_data} ->
-        surveillance_killmail = %{
-          killmail_id: event.killmail_id,
-          killmail_time: event.killmail_time,
-          solar_system_id: event.solar_system_id,
-          zkb_total_value: event.zkb_total_value,
-          victim: extract_victim_data(parsed_data, event),
-          attackers: extract_attackers_data(parsed_data),
-          timestamp: event.timestamp,
-          raw_data: event.raw_data
-        }
+  defp perform_surveillance_processing(%KillmailReceived{} = killmail_event) do
+    with {:ok, active_profiles} <- get_active_surveillance_profiles(),
+         {:ok, match_results} <- run_profile_matching(killmail_event, active_profiles),
+         {:ok, alert_results} <- process_matches_for_alerts(match_results),
+         {:ok, notification_results} <- dispatch_notifications(alert_results) do
+      # Cache the results for performance metrics
+      cache_processing_results(killmail_event, match_results)
 
-        {:ok, surveillance_killmail}
-
-      {:error, reason} ->
-        {:error, {:parse_failed, reason}}
-    end
-  end
-
-  defp transform_killmail_event(event) do
-    Logger.warning("Received unknown killmail event type: #{inspect(event.__struct__)}")
-    {:error, :unknown_event_type}
-  end
-
-  defp parse_killmail_data(raw_data) when is_map(raw_data) do
-    # Raw data is already parsed JSON
-    {:ok, raw_data}
-  end
-
-  defp parse_killmail_data(raw_data) when is_binary(raw_data) do
-    # Raw data is JSON string
-    case Jason.decode(raw_data) do
-      {:ok, parsed} -> {:ok, parsed}
-      {:error, reason} -> {:error, {:json_decode_failed, reason}}
-    end
-  end
-
-  defp parse_killmail_data(_raw_data) do
-    {:error, :invalid_raw_data_format}
-  end
-
-  defp extract_victim_data(parsed_data, event) do
-    victim_data = parsed_data["victim"] || %{}
-
-    %{
-      character_id: get_safe_integer(victim_data["character_id"]) || event.character_id,
-      corporation_id: get_safe_integer(victim_data["corporation_id"]) || event.corporation_id,
-      alliance_id: get_safe_integer(victim_data["alliance_id"]) || event.alliance_id,
-      ship_type_id: get_safe_integer(victim_data["ship_type_id"]) || event.ship_type_id,
-      damage_taken: get_safe_integer(victim_data["damage_taken"]),
-      position: extract_position_data(victim_data["position"])
-    }
-  end
-
-  defp extract_attackers_data(parsed_data) do
-    attackers_data = parsed_data["attackers"] || []
-
-    attackers_data
-    |> Enum.map(fn attacker ->
-      %{
-        character_id: get_safe_integer(attacker["character_id"]),
-        corporation_id: get_safe_integer(attacker["corporation_id"]),
-        alliance_id: get_safe_integer(attacker["alliance_id"]),
-        ship_type_id: get_safe_integer(attacker["ship_type_id"]),
-        weapon_type_id: get_safe_integer(attacker["weapon_type_id"]),
-        damage_done: get_safe_integer(attacker["damage_done"]),
-        final_blow: get_safe_boolean(attacker["final_blow"]),
-        security_status: get_safe_float(attacker["security_status"])
+      processing_summary = %{
+        killmail_id: killmail_event.killmail_id,
+        profiles_checked: length(active_profiles),
+        matches_found: count_matches(match_results),
+        alerts_generated: count_alerts(alert_results),
+        notifications_sent: count_notifications(notification_results),
+        processing_status: :success
       }
-    end)
-    |> Enum.filter(fn attacker ->
-      # Filter out attackers without character_id (like structures)
-      is_map(attacker) and Map.has_key?(attacker, :character_id) and attacker.character_id != nil
-    end)
+
+      {:ok, processing_summary}
+    else
+      {:error, :no_active_profiles} ->
+        Logger.debug("No active surveillance profiles",
+          killmail_id: killmail_event.killmail_id
+        )
+
+        {:ok, %{killmail_id: killmail_event.killmail_id, matches_found: 0, reason: :no_profiles}}
+
+      {:error, reason} = error ->
+        Logger.error("Surveillance processing failed",
+          killmail_id: killmail_event.killmail_id,
+          reason: reason
+        )
+
+        error
+    end
+  rescue
+    error ->
+      Logger.error("Exception during surveillance processing",
+        killmail_id: killmail_event.killmail_id,
+        error: inspect(error)
+      )
+
+      {:error, :processing_exception}
   end
 
-  defp extract_position_data(position_data) when is_map(position_data) do
-    %{
-      x: get_safe_float(position_data["x"]),
-      y: get_safe_float(position_data["y"]),
-      z: get_safe_float(position_data["z"])
-    }
-  end
+  defp get_active_surveillance_profiles do
+    case ProfileRepository.get_active_profiles() do
+      {:ok, [_ | _] = profiles} ->
+        {:ok, profiles}
 
-  defp extract_position_data(_), do: nil
+      {:ok, []} ->
+        {:error, :no_active_profiles}
 
-  # Safe data extraction helpers
-
-  defp get_safe_integer(value) when is_integer(value), do: value
-
-  defp get_safe_integer(value) when is_binary(value) do
-    case Integer.parse(value) do
-      {int_val, ""} -> int_val
-      _ -> nil
+      {:error, reason} = error ->
+        Logger.error("Failed to retrieve active surveillance profiles", reason: reason)
+        error
     end
   end
 
-  defp get_safe_integer(_), do: nil
+  defp run_profile_matching(killmail_event, profiles) do
+    Logger.debug("Running profile matching")
 
-  defp get_safe_float(value) when is_float(value), do: value
-  defp get_safe_float(value) when is_integer(value), do: value * 1.0
+    match_results =
+      Enum.map(profiles, fn profile ->
+        case MatchingEngine.match_killmail_against_profile(killmail_event, profile) do
+          {:ok, match_result} ->
+            match_result
 
-  defp get_safe_float(value) when is_binary(value) do
-    case Float.parse(value) do
-      {float_val, ""} -> float_val
-      _ -> nil
-    end
+          {:error, reason} ->
+            Logger.warning("Profile matching failed", profile_id: profile.id, reason: reason)
+            %{profile_id: profile.id, matched: false, error: reason}
+        end
+      end)
+
+    {:ok, match_results}
   end
 
-  defp get_safe_float(_), do: nil
+  defp process_matches_for_alerts(match_results) do
+    Logger.debug("Processing matches for alert generation")
 
-  defp get_safe_boolean(value) when is_boolean(value), do: value
-  defp get_safe_boolean(1), do: true
-  defp get_safe_boolean(0), do: false
-  defp get_safe_boolean("true"), do: true
-  defp get_safe_boolean("false"), do: false
-  defp get_safe_boolean(_), do: false
+    alert_results =
+      match_results
+      |> Enum.filter(& &1.matched)
+      |> Enum.map(fn match ->
+        case AlertService.generate_alert_for_match(match) do
+          {:ok, alert} ->
+            %{match_id: match.id, alert: alert, status: :success}
 
-  # Metrics helpers
+          {:error, reason} ->
+            Logger.warning("Alert generation failed")
+            %{match_id: match.id, status: :error, reason: reason}
+        end
+      end)
 
-  defp update_success_metrics(current_metrics, _processing_time) do
+    {:ok, alert_results}
+  end
+
+  defp dispatch_notifications(alert_results) do
+    Logger.debug("Dispatching notifications")
+
+    notification_results =
+      alert_results
+      |> Enum.filter(&(&1.status == :success))
+      |> Enum.map(fn alert_result ->
+        case NotificationService.dispatch_alert_notification(alert_result.alert) do
+          {:ok, notification} ->
+            %{alert_id: alert_result.alert.id, notification: notification, status: :sent}
+
+          {:error, reason} ->
+            Logger.warning("Notification dispatch failed")
+
+            %{alert_id: alert_result.alert.id, status: :failed, reason: reason}
+        end
+      end)
+
+    {:ok, notification_results}
+  end
+
+  defp cache_processing_results(killmail_event, match_results) do
+    # Cache each profile match individually
+    Enum.each(match_results, fn {profile_id, match_result} ->
+      if match_result.matched do
+        MatchCache.put(profile_id, killmail_event.killmail_id, %{
+          matched: true,
+          matched_at: DateTime.utc_now(),
+          match_details: match_result
+        })
+      end
+    end)
+
+    Logger.debug(
+      "Cached processing results for killmail #{killmail_event.killmail_id} with #{count_matches(match_results)} matches",
+      killmail_id: killmail_event.killmail_id
+    )
+
+    :ok
+  end
+
+  defp update_processing_statistics(state, processing_result, _processing_time_ms) do
+    new_processing_count = state.processing_count + 1
+
+    {new_match_count, new_alert_count, new_error_count} =
+      case processing_result do
+        {:ok, summary} ->
+          matches = Map.get(summary, :matches_found, 0)
+          alerts = Map.get(summary, :alerts_generated, 0)
+          {state.match_count + matches, state.alert_count + alerts, state.error_count}
+
+        {:error, _} ->
+          {state.match_count, state.alert_count, state.error_count + 1}
+      end
+
     %{
-      current_metrics
-      | total_processed: current_metrics.total_processed + 1,
-        successful_matches: current_metrics.successful_matches + 1,
-        last_processed_at: DateTime.utc_now()
+      state
+      | processing_count: new_processing_count,
+        match_count: new_match_count,
+        alert_count: new_alert_count,
+        error_count: new_error_count,
+        last_processed: DateTime.utc_now()
     }
   end
 
-  defp get_uptime_seconds do
-    # Calculate uptime since process start
-    # This is a simplified implementation
-    {uptime_ms, _} = :erlang.statistics(:wall_clock)
-    div(uptime_ms, 1000)
+  # Utility functions for counting and metrics
+
+  defp count_matches(match_results) do
+    Enum.count(match_results, & &1.matched)
+  end
+
+  @dialyzer {:nowarn_function, count_alerts: 1}
+  defp count_alerts(alert_results) do
+    Enum.count(alert_results, &(&1.status == :success))
+  end
+
+  @dialyzer {:nowarn_function, count_notifications: 1}
+  defp count_notifications(notification_results) do
+    Enum.count(notification_results, &(&1.status == :sent))
+  end
+
+  defp calculate_processing_rate(total_processed, uptime_seconds) when uptime_seconds > 0 do
+    Float.round(total_processed / uptime_seconds, 2)
+  end
+
+  defp calculate_processing_rate(_, _), do: 0.0
+
+  defp calculate_match_rate(total_matches, total_processed) when total_processed > 0 do
+    Float.round(total_matches / total_processed, 3)
+  end
+
+  defp calculate_match_rate(_, _), do: 0.0
+
+  defp calculate_error_rate(total_errors, total_processed) when total_processed > 0 do
+    Float.round(total_errors / total_processed, 3)
+  end
+
+  defp calculate_error_rate(_, _), do: 0.0
+
+  defp get_memory_usage do
+    case Process.info(self(), :memory) do
+      {:memory, memory_bytes} -> memory_bytes
+      _ -> 0
+    end
   end
 end

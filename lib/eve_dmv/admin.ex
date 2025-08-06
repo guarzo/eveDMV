@@ -11,6 +11,7 @@ defmodule EveDmv.Admin do
   alias EveDmv.Api
   alias EveDmv.Users.User
 
+  require Ash.Query
   require Logger
 
   @doc """
@@ -20,20 +21,22 @@ defmodule EveDmv.Admin do
 
       iex> EveDmv.Admin.promote_user_to_admin(123456789)
       {:ok, %User{is_admin: true}}
-      
+
       iex> EveDmv.Admin.promote_user_to_admin(999999999)
       {:error, :user_not_found}
   """
   def promote_user_to_admin(character_id) when is_integer(character_id) do
-    case Ash.read_one(User, domain: Api, filter: [eve_character_id: character_id]) do
+    case User |> Ash.Query.filter(eve_character_id: character_id) |> Api.read_one() do
       {:ok, %User{} = user} -> update_user_admin_status(user, true)
+      {:ok, nil} -> {:error, :user_not_found}
       {:error, _} -> {:error, :user_not_found}
     end
   end
 
   def promote_user_to_admin(character_name) when is_binary(character_name) do
-    case Ash.read_one(User, domain: Api, filter: [eve_character_name: character_name]) do
+    case User |> Ash.Query.filter(eve_character_name: character_name) |> Api.read_one() do
       {:ok, %User{} = user} -> update_user_admin_status(user, true)
+      {:ok, nil} -> {:error, :user_not_found}
       {:error, _} -> {:error, :user_not_found}
     end
   end
@@ -42,7 +45,7 @@ defmodule EveDmv.Admin do
   Remove admin status from a user.
   """
   def demote_admin(character_id) when is_integer(character_id) do
-    case Ash.read_one(User, domain: Api, filter: [eve_character_id: character_id]) do
+    case User |> Ash.Query.filter(eve_character_id: character_id) |> Api.read_one() do
       {:ok, %User{} = user} -> update_user_admin_status(user, false)
       {:error, _} -> {:error, :user_not_found}
     end
@@ -52,21 +55,21 @@ defmodule EveDmv.Admin do
   List all admin users.
   """
   def list_admins do
-    Ash.read!(User, domain: Api, filter: [is_admin: true])
+    User |> Ash.Query.filter(is_admin: true) |> Api.read!()
   end
 
   @doc """
   Check if a user is an admin by character ID.
   """
-  def is_admin?(character_id) when is_integer(character_id) do
-    case Ash.read_one(User, domain: Api, filter: [eve_character_id: character_id]) do
+  def admin?(character_id) when is_integer(character_id) do
+    case User |> Ash.Query.filter(eve_character_id: character_id) |> Api.read_one() do
       {:ok, %User{is_admin: true}} -> true
       _ -> false
     end
   end
 
-  def is_admin?(character_name) when is_binary(character_name) do
-    case Ash.read_one(User, domain: Api, filter: [eve_character_name: character_name]) do
+  def admin?(character_name) when is_binary(character_name) do
+    case User |> Ash.Query.filter(eve_character_name: character_name) |> Api.read_one() do
       {:ok, %User{is_admin: true}} -> true
       _ -> false
     end
@@ -80,7 +83,7 @@ defmodule EveDmv.Admin do
 
       # In IEx console:
       EveDmv.Admin.bootstrap_first_admin("Your Character Name")
-      
+
   ## Environment Variable Bootstrap (Recommended)
 
   For production deployment, use environment variables instead:
@@ -88,11 +91,11 @@ defmodule EveDmv.Admin do
       # In production environment:
       ADMIN_BOOTSTRAP_CHARACTERS="Your Character Name,Another Admin"
       ADMIN_BOOTSTRAP_CHARACTER_IDS="123456789,987654321"
-      
+
   Admin users will be automatically promoted during application startup.
   """
   def bootstrap_first_admin(character_name) when is_binary(character_name) do
-    admin_count = Ash.count!(User, domain: Api, filter: [is_admin: true])
+    {:ok, admin_count} = User |> Ash.Query.filter(is_admin: true) |> Api.count()
 
     if admin_count == 0 do
       case promote_user_to_admin(character_name) do
@@ -119,7 +122,7 @@ defmodule EveDmv.Admin do
 
   # Private helper function to update user admin status
   defp update_user_admin_status(user, admin_status) do
-    case Ash.update(user, %{is_admin: admin_status}, domain: Api) do
+    case Api.update(user, %{is_admin: admin_status}) do
       {:ok, updated_user} -> {:ok, updated_user}
       {:error, reason} -> {:error, reason}
     end

@@ -13,22 +13,22 @@ defmodule EveDmv.Repo.Migrations.ImplementKillmailPartitioning do
   def up do
     # Step 1: Create partitioned table structure
     create_partitioned_table()
-    
+
     # Step 2: Create monthly partitions
     create_partitions()
-    
+
     # Step 3: Copy indexes to new partitioned table
     copy_indexes()
-    
+
     # Step 4: Migrate data (this is the slow part)
     migrate_data()
-    
+
     # Step 5: Create partition management functions
     create_partition_management_functions()
-    
+
     # Step 6: Swap tables
     swap_tables()
-    
+
     Logger.info("Killmail partitioning completed successfully!")
   end
 
@@ -37,7 +37,7 @@ defmodule EveDmv.Repo.Migrations.ImplementKillmailPartitioning do
     execute """
     -- Drop the partitioned table if we renamed it
     DROP TABLE IF EXISTS killmails_raw_partitioned CASCADE;
-    
+
     -- If we already swapped, restore the original
     DO $$
     BEGIN
@@ -55,9 +55,9 @@ defmodule EveDmv.Repo.Migrations.ImplementKillmailPartitioning do
     CREATE TABLE killmails_raw_partitioned (
       LIKE killmails_raw INCLUDING ALL EXCLUDING INDEXES
     ) PARTITION BY RANGE (killmail_time);
-    
+
     -- Add comment
-    COMMENT ON TABLE killmails_raw_partitioned IS 
+    COMMENT ON TABLE killmails_raw_partitioned IS
       'Partitioned killmail data by month for improved query performance';
     """
   end
@@ -66,7 +66,7 @@ defmodule EveDmv.Repo.Migrations.ImplementKillmailPartitioning do
     # Generate partitions from start date to 3 months in future
     start_date = Date.from_iso8601!(@start_date)
     end_date = Date.utc_today() |> Date.add(90)  # 3 months ahead
-    
+
     create_partitions_between(start_date, end_date)
   end
 
@@ -75,17 +75,17 @@ defmodule EveDmv.Repo.Migrations.ImplementKillmailPartitioning do
     year = current_date.year
     month = current_date.month |> Integer.to_string() |> String.pad_leading(2, "0")
     partition_name = "killmails_raw_#{year}_#{month}"
-    
+
     # Calculate next month for partition boundary
     next_month = Date.add(current_date, Date.days_in_month(current_date))
-    
+
     execute """
     CREATE TABLE #{partition_name} PARTITION OF killmails_raw_partitioned
     FOR VALUES FROM ('#{current_date}') TO ('#{next_month}');
     """
-    
+
     Logger.info("Created partition: #{partition_name}")
-    
+
     # Move to next month
     create_partitions_between(next_month, end_date)
   end
@@ -101,20 +101,20 @@ defmodule EveDmv.Repo.Migrations.ImplementKillmailPartitioning do
     AND indexname NOT LIKE '%_pkey'
     ORDER BY indexname;
     """
-    
+
     indexes = Ecto.Adapters.SQL.query!(repo(), indexes_query).rows
-    
+
     # Create each index on the partitioned table
     Enum.each(indexes, fn [name, definition] ->
       # Replace table name in definition
       new_definition = String.replace(definition, "killmails_raw", "killmails_raw_partitioned")
       new_definition = String.replace(new_definition, "INDEX #{name}", "INDEX #{name}_part")
-      
+
       # Add CONCURRENTLY if not present
       unless String.contains?(new_definition, "CONCURRENTLY") do
         new_definition = String.replace(new_definition, "CREATE INDEX", "CREATE INDEX CONCURRENTLY")
       end
-      
+
       execute new_definition
       Logger.info("Created index: #{name}_part")
     end)
@@ -122,15 +122,15 @@ defmodule EveDmv.Repo.Migrations.ImplementKillmailPartitioning do
 
   defp migrate_data do
     Logger.info("Starting data migration (this may take a while)...")
-    
+
     # Get total row count for progress tracking
     total_count = Ecto.Adapters.SQL.query!(
-      repo(), 
+      repo(),
       "SELECT COUNT(*) FROM killmails_raw"
     ).rows |> List.first() |> List.first()
-    
+
     Logger.info("Total rows to migrate: #{total_count}")
-    
+
     # Migrate in batches to avoid memory issues
     migrate_in_batches(0, total_count)
   end
@@ -148,10 +148,10 @@ defmodule EveDmv.Repo.Migrations.ImplementKillmailPartitioning do
       """,
       [@batch_size, offset]
     ).num_rows
-    
+
     progress = Float.round((offset / total) * 100, 2)
     Logger.info("Migration progress: #{progress}% (#{offset}/#{total} rows)")
-    
+
     # Continue with next batch
     migrate_in_batches(offset + @batch_size, total)
   end
@@ -174,7 +174,7 @@ defmodule EveDmv.Repo.Migrations.ImplementKillmailPartitioning do
       start_date := date_trunc('month', partition_date);
       end_date := start_date + interval '1 month';
       partition_name := table_name || '_' || to_char(start_date, 'YYYY_MM');
-      
+
       -- Check if partition already exists
       IF NOT EXISTS (
         SELECT 1 FROM pg_class
@@ -200,7 +200,7 @@ defmodule EveDmv.Repo.Migrations.ImplementKillmailPartitioning do
       i integer;
     BEGIN
       current_date := date_trunc('month', CURRENT_DATE);
-      
+
       FOR i IN 0..months_ahead LOOP
         target_date := current_date + (i || ' months')::interval;
         PERFORM create_monthly_partition(table_name, target_date);
@@ -218,7 +218,7 @@ defmodule EveDmv.Repo.Migrations.ImplementKillmailPartitioning do
       partition_record record;
     BEGIN
       cutoff_date := date_trunc('month', CURRENT_DATE - (months_to_keep || ' months')::interval);
-      
+
       FOR partition_record IN
         SELECT tablename
         FROM pg_tables
@@ -240,13 +240,13 @@ defmodule EveDmv.Repo.Migrations.ImplementKillmailPartitioning do
     execute """
     -- Begin transaction for atomic swap
     BEGIN;
-    
+
     -- Rename original table
     ALTER TABLE killmails_raw RENAME TO killmails_raw_old;
-    
+
     -- Rename partitioned table to original name
     ALTER TABLE killmails_raw_partitioned RENAME TO killmails_raw;
-    
+
     -- Rename all indexes to remove _part suffix
     DO $$
     DECLARE
@@ -265,10 +265,10 @@ defmodule EveDmv.Repo.Migrations.ImplementKillmailPartitioning do
         );
       END LOOP;
     END $$;
-    
+
     COMMIT;
     """
-    
+
     Logger.info("Table swap completed successfully!")
   end
 end

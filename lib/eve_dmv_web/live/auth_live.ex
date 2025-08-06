@@ -6,7 +6,10 @@ defmodule EveDmvWeb.AuthLive do
   import Phoenix.LiveView
   import Phoenix.Component
 
+  alias EveDmv.Api
   alias EveDmv.Security.AuditLogger
+  alias EveDmv.Users.Account
+  alias EveDmv.Users.User
 
   def on_mount(:load_from_session, _params, session, socket) do
     socket = assign_current_user(socket, session)
@@ -25,24 +28,26 @@ defmodule EveDmvWeb.AuthLive do
     case check_session_timeout(session) do
       :timeout ->
         Logger.debug("Session timeout detected")
-        socket = assign(socket, current_user: nil)
+        socket = assign(socket, current_user: nil, current_account: nil)
         Process.send_after(self(), :session_timeout, 100)
         socket
 
       :valid ->
         # Get current user from session using user ID
-        case Map.get(session, "current_user_id") do
-          nil ->
+        case {Map.get(session, "current_user_id"), Map.get(session, "current_account_id")} do
+          {nil, _} ->
             Logger.debug("No current_user_id in session")
-            assign(socket, current_user: nil)
+            assign(socket, current_user: nil, current_account: nil)
 
-          user_id ->
+          {user_id, account_id} ->
             Logger.debug("Loading user from database: #{user_id}")
             # Load user by ID from database
-            case Ash.get(EveDmv.Users.User, user_id, domain: EveDmv.Api) do
+            case Ash.get(User, user_id, domain: Api) do
               {:ok, user} ->
                 Logger.debug("User loaded successfully: #{user.eve_character_name}")
-                assign(socket, current_user: user)
+                # Also load account if present
+                account = load_account_if_present(account_id)
+                assign(socket, current_user: user, current_account: account)
 
               {:error, %Ash.Error.Query.NotFound{}} ->
                 Logger.warning(
@@ -50,7 +55,7 @@ defmodule EveDmvWeb.AuthLive do
                 )
 
                 # Clear the invalid session by not scheduling any timeout
-                assign(socket, current_user: nil)
+                assign(socket, current_user: nil, current_account: nil)
 
               {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{}]}} ->
                 Logger.warning(
@@ -58,11 +63,11 @@ defmodule EveDmvWeb.AuthLive do
                 )
 
                 # Clear the invalid session by not scheduling any timeout
-                assign(socket, current_user: nil)
+                assign(socket, current_user: nil, current_account: nil)
 
               {:error, reason} ->
                 Logger.warning("Failed to load user #{user_id}: #{inspect(reason)}")
-                assign(socket, current_user: nil)
+                assign(socket, current_user: nil, current_account: nil)
             end
         end
     end
@@ -75,26 +80,28 @@ defmodule EveDmvWeb.AuthLive do
     case check_session_timeout(session) do
       :timeout ->
         Logger.debug("Session timeout detected (optional)")
-        assign(socket, current_user: nil)
+        assign(socket, current_user: nil, current_account: nil)
 
       :valid ->
         # Get current user from session using user ID
-        case Map.get(session, "current_user_id") do
-          nil ->
+        case {Map.get(session, "current_user_id"), Map.get(session, "current_account_id")} do
+          {nil, _} ->
             Logger.debug("No current_user_id in session (optional)")
-            assign(socket, current_user: nil)
+            assign(socket, current_user: nil, current_account: nil)
 
-          user_id ->
+          {user_id, account_id} ->
             Logger.debug("Loading user from database (optional): #{user_id}")
             # Load user by ID from database
-            case Ash.get(EveDmv.Users.User, user_id, domain: EveDmv.Api) do
+            case Ash.get(User, user_id, domain: Api) do
               {:ok, user} ->
                 Logger.debug("User loaded successfully (optional): #{user.eve_character_name}")
-                assign(socket, current_user: user)
+                # Also load account if present
+                account = load_account_if_present(account_id)
+                assign(socket, current_user: user, current_account: account)
 
               _error ->
                 Logger.debug("Failed to load user (optional), continuing without auth")
-                assign(socket, current_user: nil)
+                assign(socket, current_user: nil, current_account: nil)
             end
         end
     end
@@ -121,6 +128,15 @@ defmodule EveDmvWeb.AuthLive do
       _ ->
         # Invalid timestamp format, consider timed out
         :timeout
+    end
+  end
+
+  defp load_account_if_present(nil), do: nil
+
+  defp load_account_if_present(account_id) do
+    case Ash.get(Account, account_id, domain: Api) do
+      {:ok, acc} -> acc
+      _ -> nil
     end
   end
 

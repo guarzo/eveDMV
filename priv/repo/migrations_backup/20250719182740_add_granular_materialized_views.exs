@@ -1,12 +1,12 @@
 defmodule EveDmv.Repo.Migrations.AddGranularMaterializedViews do
   use Ecto.Migration
   require Logger
-  
+
   def up do
     # Create recent activity view (smaller, refreshes more frequently)
     execute """
     CREATE MATERIALIZED VIEW IF NOT EXISTS recent_character_activity AS
-    SELECT 
+    SELECT
       p.character_id,
       p.character_name,
       COUNT(*) FILTER (WHERE p.is_victim = false) as kills_24h,
@@ -18,13 +18,13 @@ defmodule EveDmv.Repo.Migrations.AddGranularMaterializedViews do
     WHERE k.killmail_time >= NOW() - INTERVAL '24 hours'
     GROUP BY p.character_id, p.character_name;
     """
-    
+
     # Create unique index for concurrent refresh
     execute """
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_recent_character_activity_character_id 
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_recent_character_activity_character_id
     ON recent_character_activity (character_id);
     """
-    
+
     # System activity heatmap for the last 7 days
     execute """
     CREATE MATERIALIZED VIEW IF NOT EXISTS system_activity_heatmap AS
@@ -43,18 +43,18 @@ defmodule EveDmv.Repo.Migrations.AddGranularMaterializedViews do
     WHERE k.killmail_time >= NOW() - INTERVAL '7 days'
     GROUP BY k.solar_system_id, s.solar_system_name, s.security_status, DATE_TRUNC('hour', k.killmail_time);
     """
-    
+
     # Create indexes for efficient querying
     execute """
-    CREATE INDEX IF NOT EXISTS idx_system_activity_heatmap_system_hour 
+    CREATE INDEX IF NOT EXISTS idx_system_activity_heatmap_system_hour
     ON system_activity_heatmap (solar_system_id, hour DESC);
     """
-    
+
     execute """
-    CREATE INDEX IF NOT EXISTS idx_system_activity_heatmap_hour 
+    CREATE INDEX IF NOT EXISTS idx_system_activity_heatmap_hour
     ON system_activity_heatmap (hour DESC);
     """
-    
+
     # Corporation activity summary (last 30 days)
     execute """
     CREATE MATERIALIZED VIEW IF NOT EXISTS corporation_activity_summary AS
@@ -74,12 +74,12 @@ defmodule EveDmv.Repo.Migrations.AddGranularMaterializedViews do
       AND p.corporation_id IS NOT NULL
     GROUP BY p.corporation_id, p.corporation_name;
     """
-    
+
     execute """
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_corporation_activity_summary_corp_id 
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_corporation_activity_summary_corp_id
     ON corporation_activity_summary (corporation_id);
     """
-    
+
     # Ship usage trends (last 7 days)
     execute """
     CREATE MATERIALIZED VIEW IF NOT EXISTS ship_usage_trends AS
@@ -99,12 +99,12 @@ defmodule EveDmv.Repo.Migrations.AddGranularMaterializedViews do
       AND p.ship_type_id IS NOT NULL
     GROUP BY p.ship_type_id, ship.type_name, ship_group.group_name, DATE_TRUNC('day', k.killmail_time);
     """
-    
+
     execute """
-    CREATE INDEX IF NOT EXISTS idx_ship_usage_trends_ship_day 
+    CREATE INDEX IF NOT EXISTS idx_ship_usage_trends_ship_day
     ON ship_usage_trends (ship_type_id, day DESC);
     """
-    
+
     # High-value kill summary
     execute """
     CREATE MATERIALIZED VIEW IF NOT EXISTS high_value_kills_summary AS
@@ -130,24 +130,24 @@ defmodule EveDmv.Repo.Migrations.AddGranularMaterializedViews do
     ORDER BY k.total_value DESC
     LIMIT 1000;
     """
-    
+
     execute """
-    CREATE INDEX IF NOT EXISTS idx_high_value_kills_summary_value 
+    CREATE INDEX IF NOT EXISTS idx_high_value_kills_summary_value
     ON high_value_kills_summary (total_value DESC);
     """
-    
+
     execute """
-    CREATE INDEX IF NOT EXISTS idx_high_value_kills_summary_time 
+    CREATE INDEX IF NOT EXISTS idx_high_value_kills_summary_time
     ON high_value_kills_summary (killmail_time DESC);
     """
-    
+
     # Initial refresh of all views
     execute "REFRESH MATERIALIZED VIEW recent_character_activity;"
     execute "REFRESH MATERIALIZED VIEW system_activity_heatmap;"
     execute "REFRESH MATERIALIZED VIEW corporation_activity_summary;"
     execute "REFRESH MATERIALIZED VIEW ship_usage_trends;"
     execute "REFRESH MATERIALIZED VIEW high_value_kills_summary;"
-    
+
     Logger.info("Granular materialized views created successfully")
   end
 

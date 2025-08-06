@@ -6,14 +6,14 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
 
   use EveDmvWeb, :live_view
 
-  alias EveDmv.Monitoring.PerformanceTracker
   alias EveDmv.Cache.QueryCache
+  alias EveDmv.Monitoring.PerformanceTracker
   require Logger
 
   # 5 seconds
   @refresh_interval 5_000
 
-  @impl true
+  @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     if connected?(socket) do
       :timer.send_interval(@refresh_interval, self(), :refresh_metrics)
@@ -29,12 +29,12 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
     {:ok, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_info(:refresh_metrics, socket) do
     {:noreply, load_metrics(socket)}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("change_time_range", %{"range" => range}, socket) do
     time_range = String.to_existing_atom(range)
 
@@ -46,7 +46,7 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
     {:noreply, socket}
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def handle_event("change_threshold", %{"threshold" => threshold}, socket) do
     case Integer.parse(threshold) do
       {threshold_ms, _} ->
@@ -62,7 +62,7 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
     end
   end
 
-  @impl true
+  @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
     <div class="container mx-auto px-4 py-8">
@@ -70,14 +70,14 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
         <h1 class="text-3xl font-bold text-white mb-2">Performance Dashboard</h1>
         <p class="text-gray-400">Real-time monitoring of system performance and bottlenecks</p>
       </div>
-      
+
       <!-- Controls -->
       <div class="bg-gray-800 rounded-lg p-4 mb-6">
         <div class="flex flex-wrap gap-4">
           <div>
             <label class="text-sm text-gray-400">Time Range</label>
-            <select 
-              phx-change="change_time_range" 
+            <select
+              phx-change="change_time_range"
               name="range"
               class="ml-2 bg-gray-700 text-white rounded px-3 py-1"
             >
@@ -86,11 +86,11 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
               <option value="day" selected={@time_range == :day}>Last 24 Hours</option>
             </select>
           </div>
-          
+
           <div>
             <label class="text-sm text-gray-400">Slow Query Threshold (ms)</label>
-            <input 
-              type="number" 
+            <input
+              type="number"
               phx-change="change_threshold"
               name="threshold"
               value={@threshold_ms}
@@ -99,7 +99,7 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
           </div>
         </div>
       </div>
-      
+
       <!-- Metrics Summary -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <%= for {type, label} <- [{:query, "Database Queries"}, {:api_call, "API Calls"}, {:liveview, "LiveView Operations"}] do %>
@@ -132,7 +132,7 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
           </div>
         <% end %>
       </div>
-      
+
       <!-- Bottlenecks Analysis -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <!-- Slow Queries -->
@@ -162,7 +162,7 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
             <p class="text-gray-500">No slow queries detected</p>
           <% end %>
         </div>
-        
+
         <!-- Performance Degradation -->
         <div class="bg-gray-800 rounded-lg p-6">
           <h3 class="text-lg font-semibold text-white mb-4">
@@ -191,7 +191,7 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
           <% end %>
         </div>
       </div>
-      
+
       <!-- Cache Statistics -->
       <div class="bg-gray-800 rounded-lg p-6 mb-8">
         <h3 class="text-lg font-semibold text-white mb-4">Query Cache Statistics</h3>
@@ -218,14 +218,14 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
             </div>
           </div>
           <div class="mt-4 text-sm text-gray-400">
-            Evictions: <%= @cache_stats.evictions %> | 
+            Evictions: <%= @cache_stats.evictions %> |
             Uptime: <%= @cache_stats.uptime_hours %>h
           </div>
         <% else %>
           <p class="text-gray-500">Cache statistics unavailable</p>
         <% end %>
       </div>
-      
+
       <!-- High Frequency Operations -->
       <div class="bg-gray-800 rounded-lg p-6">
         <h3 class="text-lg font-semibold text-white mb-4">
@@ -271,16 +271,40 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
   # Private functions
 
   defp load_metrics(socket) do
-    metrics_summary = PerformanceTracker.get_metrics_summary(socket.assigns.time_range)
-    slow_queries = PerformanceTracker.get_slow_queries(socket.assigns.threshold_ms)
-    bottlenecks = PerformanceTracker.get_bottlenecks()
-    cache_stats = QueryCache.get_stats()
+    metrics_summary = get_metrics_summary_safe(socket.assigns.time_range)
+    slow_queries = get_slow_queries_safe(socket.assigns.threshold_ms)
+    bottlenecks = get_bottlenecks_safe()
+    cache_stats = get_cache_stats_safe()
 
     socket
     |> assign(:metrics_summary, metrics_summary)
     |> assign(:slow_queries, slow_queries)
     |> assign(:bottlenecks, bottlenecks)
     |> assign(:cache_stats, cache_stats)
+  end
+
+  defp get_metrics_summary_safe(time_range) do
+    PerformanceTracker.get_metrics_summary(time_range)
+  rescue
+    _ -> %{total_queries: 0, avg_duration: 0, error_rate: 0}
+  end
+
+  defp get_slow_queries_safe(threshold_ms) do
+    PerformanceTracker.get_slow_queries(threshold_ms)
+  rescue
+    _ -> []
+  end
+
+  defp get_bottlenecks_safe do
+    PerformanceTracker.get_bottlenecks()
+  rescue
+    _ -> []
+  end
+
+  defp get_cache_stats_safe do
+    QueryCache.get_stats()
+  rescue
+    _ -> %{hit_rate: 0, entries: 0, memory_usage: 0}
   end
 
   defp truncate_string(str, max_length) do

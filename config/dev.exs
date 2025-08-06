@@ -136,4 +136,5 @@ config :eve_dmv, EveDmv.Repo,
   ownership_timeout: 20_000,
   pool_timeout: 5_000
 
-# Development-specific killmail pipeline configuration moved to runtime.exs
+# Development-specific configuration is handled in runtime.exs for consistency
+# This eliminates duplication and ensures all environments use the same patterns

@@ -32,7 +32,7 @@ defmodule EveDmv.Config.Pipeline do
   @doc """
   Get task timeout in milliseconds.
 
-  Environment: EVE_DMV_PIPELINE_TASK_TIMEOUT_MS (default: 30000)
+  Environment: EVE_DMV_PIPELINE_TASK_TIMEOUT_MS (default: 30_000)
   """
   @spec task_timeout() :: pos_integer()
   def task_timeout do

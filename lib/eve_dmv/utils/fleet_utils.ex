@@ -40,7 +40,7 @@ defmodule EveDmv.Utils.FleetUtils do
       ship_type_id in [29_248, 29_984, 29_986, 29_988] -> "T3 Destroyer"
       # Frigates
       ship_type_id in 582..650 -> "Frigate"
-      # Regular Destroyers  
+      # Regular Destroyers
       ship_type_id in [16_219, 16_227, 16_236, 16_242] -> "Destroyer"
       ship_type_id in 324..380 -> "Destroyer"
       # Cruisers
@@ -119,7 +119,7 @@ defmodule EveDmv.Utils.FleetUtils do
   """
   def calculate_average_ship_value(participants) do
     total_value = Enum.sum(Enum.map(participants, &Map.get(&1, :ship_value, 0)))
-    if length(participants) > 0, do: round(total_value / length(participants)), else: 0
+    if Enum.empty?(participants), do: 0, else: round(total_value / length(participants))
   end
 
   @doc """
@@ -138,7 +138,10 @@ defmodule EveDmv.Utils.FleetUtils do
   def calculate_fleet_coordination_score(participants) do
     # Simple coordination score based on ship diversity and role distribution
     ship_types =
-      Enum.count(Stream.uniq(Stream.map(participants, &Map.get(&1, :ship_name))))
+      participants
+      |> Stream.map(&Map.get(&1, :ship_name))
+      |> Stream.uniq()
+      |> Enum.count()
 
     total_pilots = length(participants)
 
@@ -159,13 +162,13 @@ defmodule EveDmv.Utils.FleetUtils do
     total_value = Enum.sum(Enum.map(participants, &Map.get(&1, :ship_value, 0)))
     victims = Enum.count(participants, &Map.get(&1, :is_victim, false))
 
-    if length(participants) > 0 do
+    if Enum.empty?(participants) do
+      0
+    else
       risk_factor = victims / length(participants)
       # Normalize to 1B ISK
       value_factor = min(1.0, total_value / 1_000_000_000)
       round((risk_factor + value_factor) * 50)
-    else
-      0
     end
   end
 
@@ -191,19 +194,20 @@ defmodule EveDmv.Utils.FleetUtils do
   """
   def extract_attacker_data(killmail) do
     raw_data = Map.get(killmail, :raw_data, %{})
-    attackers = Map.get(raw_data, "attackers", [])
 
-    Enum.map(attackers, fn attacker ->
-      %{
-        character_id: Map.get(attacker, "character_id"),
-        character_name: Map.get(attacker, "character_name"),
-        corporation_id: Map.get(attacker, "corporation_id"),
-        alliance_id: Map.get(attacker, "alliance_id"),
-        ship_type_id: Map.get(attacker, "ship_type_id"),
-        role: :attacker,
-        final_blow: Map.get(attacker, "final_blow", false)
-      }
-    end)
+    _attackers =
+      Map.get(raw_data, "attackers", [])
+      |> Enum.map(fn attacker ->
+        %{
+          character_id: Map.get(attacker, "character_id"),
+          character_name: Map.get(attacker, "character_name"),
+          corporation_id: Map.get(attacker, "corporation_id"),
+          alliance_id: Map.get(attacker, "alliance_id"),
+          ship_type_id: Map.get(attacker, "ship_type_id"),
+          role: :attacker,
+          final_blow: Map.get(attacker, "final_blow", false)
+        }
+      end)
   end
 
   @doc """
@@ -223,9 +227,13 @@ defmodule EveDmv.Utils.FleetUtils do
         pilots: pilots,
         ship_count: length(pilots),
         unique_ship_types:
-          Enum.count(Stream.uniq(Stream.map(pilots, &Map.get(&1, :ship_type_id))))
+          pilots
+          |> Stream.map(&Map.get(&1, :ship_type_id))
+          |> Stream.uniq()
+          |> Enum.count()
       }
     end)
+
     # Only include _sides with multiple ships
     |> Enum.filter(fn side -> side.ship_count > 1 end)
   end

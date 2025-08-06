@@ -47,21 +47,21 @@ defmodule EveDmvWeb.Components.PaginationComponent do
           <svg class="pagination-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
           </svg>
-          Previous
+    Previous
         </button>
-        
+
         <button
           :if={!@has_previous_page}
           class="pagination-btn pagination-prev pagination-disabled"
-          disabled
+    disabled
           aria-label="Previous page (disabled)"
         >
           <svg class="pagination-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
           </svg>
-          Previous
+    Previous
         </button>
-        
+
         <!-- Page info -->
         <div class="pagination-info">
           <span class="pagination-text">
@@ -71,7 +71,7 @@ defmodule EveDmvWeb.Components.PaginationComponent do
             <% end %>
           </span>
         </div>
-        
+
         <!-- Next page button -->
         <button
           :if={@has_next_page}
@@ -81,25 +81,25 @@ defmodule EveDmvWeb.Components.PaginationComponent do
           class="pagination-btn pagination-next"
           aria-label="Next page"
         >
-          Next
+    Next
           <svg class="pagination-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
           </svg>
         </button>
-        
+
         <button
           :if={!@has_next_page}
           class="pagination-btn pagination-next pagination-disabled"
-          disabled
+    disabled
           aria-label="Next page (disabled)"
         >
-          Next
+    Next
           <svg class="pagination-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
           </svg>
         </button>
       </div>
-      
+
       <!-- Page size selector -->
       <div class="pagination-size-selector">
         <label for="page-size-select" class="sr-only">Items per page</label>

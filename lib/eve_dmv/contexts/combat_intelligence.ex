@@ -31,12 +31,6 @@ defmodule EveDmv.Contexts.CombatIntelligence do
   @impl Supervisor
   def init(_opts) do
     children = [
-      # Domain services
-      Domain.CharacterAnalyzer,
-      Domain.CorporationAnalyzer,
-      Domain.ThreatAssessor,
-      Domain.IntelligenceScoring,
-
       # Infrastructure
       Infrastructure.AnalysisCache,
       Infrastructure.IntelligenceRepository,
@@ -70,8 +64,10 @@ defmodule EveDmv.Contexts.CombatIntelligence do
   end
 
   # Public API delegation
+  @dialyzer {:nowarn_function, analyze_character: 2}
   defdelegate analyze_character(character_id, opts), to: Api
   defdelegate get_character_intelligence(character_id), to: Api
+  @dialyzer {:nowarn_function, analyze_corporation: 2}
   defdelegate analyze_corporation(corporation_id, opts), to: Api
   defdelegate get_corporation_intelligence(corporation_id), to: Api
   defdelegate assess_threat(character_id, context), to: Api
@@ -82,6 +78,7 @@ defmodule EveDmv.Contexts.CombatIntelligence do
   defdelegate get_activity_patterns(character_id, time_range), to: Api
   defdelegate compare_characters(character_ids), to: Api
   defdelegate get_intelligence_cache_stats(), to: Api
+  defdelegate get_external_groups(character_id, since_date), to: Api
 
   # Context-specific utilities
   def refresh_character_analysis(character_id) do

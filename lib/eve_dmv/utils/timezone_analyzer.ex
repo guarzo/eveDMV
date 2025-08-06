@@ -78,7 +78,7 @@ defmodule EveDmv.Utils.TimezoneAnalyzer do
   # Private functions
 
   defp extract_hour_from_killmail(%{killmail_time: %DateTime{} = dt}) do
-    dt |> DateTime.to_time() |> Time.to_erl() |> elem(0)
+    DateTime.to_time(dt) |> Time.to_erl() |> elem(0)
   end
 
   defp extract_hour_from_killmail(_), do: nil
@@ -92,16 +92,14 @@ defmodule EveDmv.Utils.TimezoneAnalyzer do
     end
   end
 
-  defp eutz_hours, do: 16..20 |> Enum.to_list()
-  defp autz_hours, do: 8..14 |> Enum.to_list()
+  defp eutz_hours, do: Enum.to_list(16..20)
+  defp autz_hours, do: Enum.to_list(8..14)
 
   # USTZ wraps around midnight (21-23 + 0-3)
   defp ustz_hours, do: [21, 22, 23, 0, 1, 2, 3]
 
   defp calculate_timezone_activity(hourly_distribution, timezone_hours) do
-    timezone_hours
-    |> Enum.map(&Map.get(hourly_distribution, &1, 0))
-    |> Enum.sum()
+    timezone_hours |> Enum.map(&Map.get(hourly_distribution, &1, 0)) |> Enum.sum()
   end
 
   defp determine_primary_from_distribution(eutz, ustz, autz) do

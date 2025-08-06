@@ -95,16 +95,10 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
           }
 
           {:noreply,
-           socket
-           |> assign(
-             :comparison_characters,
-             List.insert_at(comparison_characters, -1, character_info)
-           )
-           |> assign(:search_query, "")
-           |> assign(:search_results, [])}
+           assign(socket, :comparison_characters, [character_info | comparison_characters])}
 
         _ ->
-          {:noreply, socket}
+          {:noreply, put_flash(socket, :error, "Failed to analyze character")}
       end
     else
       {:noreply, socket}
@@ -170,8 +164,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
   def behavior_pattern_icon(_), do: "❓"
 
   def format_dimension_name(dimension) do
-    dimension
-    |> to_string()
+    to_string(dimension)
     |> String.replace("_", " ")
     |> String.split()
     |> Enum.map_join(" ", &String.capitalize/1)
@@ -232,8 +225,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
   end
 
   def transform_behavioral_characteristics(characteristics) when is_list(characteristics) do
-    characteristics
-    |> Enum.with_index()
+    Enum.with_index(characteristics)
     |> Enum.map(fn {char, index} ->
       %{
         indicator_type: "behavioral_#{index}",
@@ -250,10 +242,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
     if Enum.empty?(patterns) do
       0.0
     else
-      patterns
-      |> Map.values()
-      |> Enum.sum()
-      |> Kernel./(length(Map.values(patterns)))
+      (Map.values(patterns) |> Enum.sum()) / length(Map.values(patterns))
     end
   end
 

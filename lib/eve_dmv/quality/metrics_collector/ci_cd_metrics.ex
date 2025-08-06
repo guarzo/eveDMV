@@ -282,14 +282,13 @@ defmodule EveDmv.Quality.MetricsCollector.CiCdMetrics do
   end
 
   defp calculate_deployment_readiness do
-    scores = [
+    [
       if(File.exists?("Dockerfile"), do: 30, else: 0),
       if(check_release_config(), do: 30, else: 0),
       if(File.exists?(".env.example"), do: 20, else: 0),
       if(File.exists?("docker-compose.yml"), do: 20, else: 0)
     ]
-
-    Enum.sum(scores)
+    |> Enum.sum()
   end
 
   # Monitoring setup
@@ -354,13 +353,12 @@ defmodule EveDmv.Quality.MetricsCollector.CiCdMetrics do
   end
 
   defp calculate_monitoring_completeness do
-    scores = [
+    [
       if(check_telemetry_setup(), do: 30, else: 0),
       if(check_logging_config(), do: 25, else: 0),
       if(check_health_endpoints(), do: 25, else: 0),
       if(check_metrics_endpoint(), do: 20, else: 0)
     ]
-
-    Enum.sum(scores)
+    |> Enum.sum()
   end
 end

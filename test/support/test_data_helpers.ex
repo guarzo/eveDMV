@@ -8,14 +8,14 @@ defmodule EveDmv.TestDataHelpers do
 
   @common_ships [
     %{
-      type_id: 11987,
+      type_id: 11_987,
       type_name: "Guardian",
       group_id: 832,
       is_ship: true,
       mass: Decimal.new("11200000")
     },
     %{
-      type_id: 11174,
+      type_id: 11_174,
       type_name: "Keres",
       group_id: 893,
       is_ship: true,
@@ -29,35 +29,35 @@ defmodule EveDmv.TestDataHelpers do
       mass: Decimal.new("10650000")
     },
     %{
-      type_id: 22456,
+      type_id: 22_456,
       type_name: "Damnation",
       group_id: 419,
       is_ship: true,
       mass: Decimal.new("15500000")
     },
     %{
-      type_id: 29990,
+      type_id: 29_990,
       type_name: "Loki",
       group_id: 963,
       is_ship: true,
       mass: Decimal.new("12500000")
     },
     %{
-      type_id: 29984,
+      type_id: 29_984,
       type_name: "Tengu",
       group_id: 963,
       is_ship: true,
       mass: Decimal.new("14300000")
     },
     %{
-      type_id: 29986,
+      type_id: 29_986,
       type_name: "Legion",
       group_id: 963,
       is_ship: true,
       mass: Decimal.new("13000000")
     },
     %{
-      type_id: 29988,
+      type_id: 29_988,
       type_name: "Proteus",
       group_id: 963,
       is_ship: true,
@@ -115,15 +115,23 @@ defmodule EveDmv.TestDataHelpers do
     %{
       type_id: 2834,
       type_name: "Crucifier",
-      group_id: 25,
+      group_id: 893,
       is_ship: true,
       mass: Decimal.new("1160000")
+    },
+    %{
+      type_id: 11_202,
+      type_name: "Ares",
+      group_id: 831,
+      is_ship: true,
+      mass: Decimal.new("1000000")
     }
   ]
 
   @doc """
   Seeds the database with common ship data for tests.
   """
+  @spec seed_test_ships() :: :ok
   def seed_test_ships do
     Enum.each(@common_ships, fn ship_data ->
       case Ash.create(ItemType, ship_data,
@@ -143,6 +151,7 @@ defmodule EveDmv.TestDataHelpers do
   @doc """
   Seeds a specific ship by name and type_id.
   """
+  @spec seed_ship(integer(), String.t(), keyword()) :: {:ok, any()} | {:error, any()}
   def seed_ship(type_id, type_name, opts \\ []) do
     defaults = %{
       type_id: type_id,

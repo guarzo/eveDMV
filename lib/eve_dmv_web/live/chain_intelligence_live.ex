@@ -1,17 +1,6 @@
 # credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 # credo:disable-for-this-file Credo.Check.Readability.StrictModuleLayout
 defmodule EveDmvWeb.ChainIntelligenceLive do
-  import EveDmvWeb.Components.PageHeaderComponent
-  import EveDmvWeb.Components.EmptyStateComponent
-  alias EveDmv.Api
-  alias EveDmv.Intelligence.ChainAnalysis.ChainMonitor
-  alias EveDmv.Intelligence.ChainAnalysis.ChainTopology
-  alias EveDmv.Intelligence.ChainConnection
-  alias EveDmv.Intelligence.SystemInhabitant
-  alias EveDmv.IntelligenceMigrationAdapter
-  alias EveDmvWeb.Helpers.TimeFormatter
-  require Ash.Query
-
   @moduledoc """
   LiveView for real-time wormhole chain intelligence surveillance.
 
@@ -21,8 +10,20 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
 
   use EveDmvWeb, :live_view
 
+  import EveDmvWeb.Components.PageHeaderComponent
+  import EveDmvWeb.Components.EmptyStateComponent
+
+  alias EveDmv.Api
+  alias EveDmv.Intelligence.ChainAnalysis.ChainMonitor
+  alias EveDmv.Intelligence.ChainAnalysis.ChainTopology
+  alias EveDmv.Intelligence.ChainConnection
+  alias EveDmv.Intelligence.SystemInhabitant
+  alias EveDmv.IntelligenceMigrationAdapter
+  alias EveDmvWeb.Helpers.TimeFormatter
+
+  require Ash.Query
+
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
-  # Import reusable components
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     # Subscribe to chain intelligence updates
@@ -280,7 +281,7 @@ defmodule EveDmvWeb.ChainIntelligenceLive do
       Application.get_env(:eve_dmv, :default_chain_id) ||
         System.get_env("DEFAULT_CHAIN_ID")
 
-    if default_chain_id && length(socket.assigns.monitored_chains) > 0 do
+    if default_chain_id && not Enum.empty?(socket.assigns.monitored_chains) do
       # Find the configured chain in our monitored chains
       configured_chain =
         Enum.find(socket.assigns.monitored_chains, fn chain ->

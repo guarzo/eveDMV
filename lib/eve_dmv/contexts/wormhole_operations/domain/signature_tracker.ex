@@ -13,8 +13,9 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
   - Integration with chain tracking for connection management
   """
 
-  alias EveDmv.StaticData
   alias EveDmv.Contexts.WormholeOperations.Domain.ChainTracker
+  alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.StaticData
   require Logger
 
   @doc """
@@ -61,17 +62,24 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
     # In production, would fetch from database
     # For now, create updated signature
 
-    with {:ok, _system} <- validate_system(system_id) do
-      updated_sig =
-        %{
-          system_id: system_id,
-          sig_id: sig_id,
-          updated_at: DateTime.utc_now()
-        }
-        |> Map.merge(updates)
-        |> handle_status_transition()
+    case validate_system(system_id) do
+      {:ok, _system} ->
+        updated_sig =
+          %{
+            system_id: system_id,
+            sig_id: sig_id,
+            updated_at: DateTime.utc_now()
+          }
+          |> Map.merge(updates)
+          |> handle_status_transition()
 
-      {:ok, updated_sig}
+        {:ok, updated_sig}
+
+      {:error, reason} ->
+        {:error, reason}
+
+      _ ->
+        {:error, :validation_failed}
     end
   end
 
@@ -85,44 +93,51 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
   - Recommended actions
   """
   def analyze_system_signatures(system_id, current_sigs, previous_sigs \\ []) do
-    with {:ok, system} <- validate_system(system_id) do
-      current_ids = MapSet.new(current_sigs, & &1.sig_id)
-      previous_ids = MapSet.new(previous_sigs, & &1.sig_id)
+    case validate_system(system_id) do
+      {:ok, system} ->
+        current_ids = MapSet.new(current_sigs, & &1.sig_id)
+        previous_ids = MapSet.new(previous_sigs, & &1.sig_id)
 
-      # Detect changes
-      new_sigs = MapSet.difference(current_ids, previous_ids) |> MapSet.to_list()
-      missing_sigs = MapSet.difference(previous_ids, current_ids) |> MapSet.to_list()
+        # Detect changes
+        new_sigs = MapSet.difference(current_ids, previous_ids) |> MapSet.to_list()
+        missing_sigs = MapSet.difference(previous_ids, current_ids) |> MapSet.to_list()
 
-      # Find new K162s (incoming wormholes)
-      new_k162s =
-        current_sigs
-        |> Enum.filter(fn sig ->
-          sig.sig_id in new_sigs and
-            get_in(sig, [:metadata, :wormhole_type]) == "K162"
-        end)
+        # Find new K162s (incoming wormholes)
+        new_k162s =
+          current_sigs
+          |> Enum.filter(fn sig ->
+            sig.sig_id in new_sigs and
+              get_in(sig, [:metadata, :wormhole_type]) == "K162"
+          end)
 
-      # Analyze site composition
-      site_breakdown = analyze_site_composition(current_sigs)
+        # Analyze site composition
+        site_breakdown = analyze_site_composition(current_sigs)
 
-      # Generate threat assessment
-      threat_assessment =
-        assess_signature_threats(new_k162s, site_breakdown, system.security_class)
+        # Generate threat assessment
+        threat_assessment =
+          assess_signature_threats(new_k162s, site_breakdown, system.security_class)
 
-      analysis = %{
-        system_id: system_id,
-        system_name: system.system_name,
-        total_signatures: length(current_sigs),
-        changes: %{
-          new: length(new_sigs),
-          missing: length(missing_sigs),
-          new_k162s: length(new_k162s)
-        },
-        composition: site_breakdown,
-        threat_assessment: threat_assessment,
-        recommendations: generate_recommendations(new_k162s, site_breakdown, threat_assessment)
-      }
+        analysis = %{
+          system_id: system_id,
+          system_name: system.system_name,
+          total_signatures: length(current_sigs),
+          changes: %{
+            new: length(new_sigs),
+            missing: length(missing_sigs),
+            new_k162s: length(new_k162s)
+          },
+          composition: site_breakdown,
+          threat_assessment: threat_assessment,
+          recommendations: generate_recommendations(new_k162s, site_breakdown, threat_assessment)
+        }
 
-      {:ok, analysis}
+        {:ok, analysis}
+
+      {:error, reason} ->
+        {:error, reason}
+
+      _ ->
+        {:error, :validation_failed}
     end
   end
 
@@ -135,12 +150,12 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
   - Chain rolling (systematic connection cycling)
   """
   def detect_activity_patterns(_system_id, signature_history, time_window_minutes \\ 60) do
-    cutoff_time = DateTime.add(DateTime.utc_now(), -time_window_minutes * 60, :second)
+    cutoff_time = DateTimeUtils.add(DateTime.utc_now(), -time_window_minutes * 60, :second)
 
     # Filter recent signatures
     recent_sigs =
       Enum.filter(signature_history, fn sig ->
-        DateTime.compare(sig.created_at, cutoff_time) == :gt
+        DateTimeUtils.compare(sig.created_at, cutoff_time) == :gt
       end)
 
     # Group by signature ID to track lifecycle
@@ -306,37 +321,36 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
   end
 
   defp assess_signature_threats(new_k162s, site_breakdown, security_class) do
-    threat_score = 0
+    base_threat_score = 0
 
     # K162s are immediate threats
-    threat_score = threat_score + length(new_k162s) * 30
+    k162_threat_score = base_threat_score + length(new_k162s) * 30
 
     # Many combat sites might indicate active farmers
     combat_count = get_in(site_breakdown, [:combat, :count]) || 0
-    threat_score = threat_score + if combat_count > 5, do: 20, else: 0
+    combat_threat_score = k162_threat_score + if combat_count > 5, do: 20, else: 0
 
     # Low-class wormholes with many sigs are high-traffic
     total_sigs =
-      site_breakdown
-      |> Map.values()
+      Map.values(site_breakdown)
       |> Enum.map(& &1.count)
       |> Enum.sum()
 
-    threat_score =
+    final_threat_score =
       if security_class in ["C1", "C2", "C3"] and total_sigs > 10 do
-        threat_score + 15
+        combat_threat_score + 15
       else
-        threat_score
+        combat_threat_score
       end
 
     %{
-      score: threat_score,
+      score: final_threat_score,
       level:
         cond do
-          threat_score >= 60 -> :extreme
-          threat_score >= 40 -> :high
-          threat_score >= 20 -> :medium
-          threat_score >= 10 -> :low
+          final_threat_score >= 60 -> :extreme
+          final_threat_score >= 40 -> :high
+          final_threat_score >= 20 -> :medium
+          final_threat_score >= 10 -> :low
           true -> :minimal
         end,
       factors: %{
@@ -348,43 +362,46 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
   end
 
   defp generate_recommendations(new_k162s, site_breakdown, threat_assessment) do
-    recommendations = []
+    initial_recommendations = []
 
     # K162 recommendations
-    recommendations =
-      if length(new_k162s) > 0 do
-        ["#{length(new_k162s)} new K162(s) detected - check for hostiles" | recommendations]
+    k162_recommendations =
+      if Enum.empty?(new_k162s) do
+        initial_recommendations
       else
-        recommendations
+        [
+          "#{length(new_k162s)} new K162(s) detected - check for hostiles"
+          | initial_recommendations
+        ]
       end
 
     # Threat level recommendations
-    recommendations =
+    threat_recommendations =
       case threat_assessment.level do
         level when level in [:extreme, :high] ->
-          ["High threat environment - maintain hole control" | recommendations]
+          ["High threat environment - maintain hole control" | k162_recommendations]
 
         :medium ->
-          ["Moderate activity - keep scouts active" | recommendations]
+          ["Moderate activity - keep scouts active" | k162_recommendations]
 
         _ ->
-          recommendations
+          k162_recommendations
       end
 
     # Site recommendations
     wh_count = get_in(site_breakdown, [:wormhole, :count]) || 0
 
-    recommendations =
+    final_recommendations =
       if wh_count > 3 do
-        ["Multiple wormholes present - map chain carefully" | recommendations]
+        ["Multiple wormholes present - map chain carefully" | threat_recommendations]
       else
-        recommendations
+        threat_recommendations
       end
 
-    if Enum.empty?(recommendations) do
+    if Enum.empty?(final_recommendations) do
       ["System appears quiet - continue normal operations"]
     else
-      recommendations
+      final_recommendations
     end
   end
 
@@ -444,7 +461,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
 
     max_collapses =
       if map_size(wh_collapses) > 0 do
-        wh_collapses |> Map.values() |> Enum.max()
+        Map.values(wh_collapses) |> Enum.max()
       else
         0
       end
@@ -496,35 +513,21 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
   end
 
   defp activity_recommendations(patterns) do
-    recommendations = []
-
     recommendations =
-      if patterns.rage_rolling.detected do
-        ["Rage rolling detected - hostile fleet likely seeking targets" | recommendations]
-      else
-        recommendations
-      end
-
-    recommendations =
-      if patterns.active_farming.detected do
-        ["Active farming detected - potential targets in system" | recommendations]
-      else
-        recommendations
-      end
-
-    recommendations =
-      if patterns.chain_rolling.detected do
-        ["Chain rolling detected - someone controlling connections" | recommendations]
-      else
-        recommendations
-      end
-
-    recommendations =
-      case patterns.scanning_activity.efficiency do
-        :excellent -> ["Very high scan rate - multiple scanners active" | recommendations]
-        :slow -> ["Low scan activity - possibly safe to operate" | recommendations]
-        _ -> recommendations
-      end
+      []
+      |> add_recommendation_if(
+        patterns.rage_rolling.detected,
+        "Rage rolling detected - hostile fleet likely seeking targets"
+      )
+      |> add_recommendation_if(
+        patterns.active_farming.detected,
+        "Active farming detected - potential targets in system"
+      )
+      |> add_recommendation_if(
+        patterns.chain_rolling.detected,
+        "Chain rolling detected - someone controlling connections"
+      )
+      |> add_scanning_activity_recommendation(patterns.scanning_activity.efficiency)
 
     if Enum.empty?(recommendations) do
       ["Normal signature activity detected"]
@@ -536,42 +539,15 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
   defp calculate_priority_score(signature, priorities) do
     base_priority = Map.get(priorities, signature.sig_type, 0)
 
-    # Adjust based on signature properties
-    adjustments = 0
+    # Calculate adjustments based on signature properties
+    k162_boost = if get_in(signature, [:metadata, :wormhole_type]) == "K162", do: 50, else: 0
+    unscanned_boost = if signature.status == :unscanned, do: 20, else: 0
+    cleared_penalty = if get_in(signature, [:metadata, :cleared]), do: -30, else: 0
+    critical_boost = if signature.status == :critical, do: 30, else: 0
 
-    # Boost K162 priority
-    adjustments =
-      if get_in(signature, [:metadata, :wormhole_type]) == "K162" do
-        adjustments + 50
-      else
-        adjustments
-      end
+    total_adjustments = k162_boost + unscanned_boost + cleared_penalty + critical_boost
 
-    # Boost unscanned signatures
-    adjustments =
-      if signature.status == :unscanned do
-        adjustments + 20
-      else
-        adjustments
-      end
-
-    # Reduce priority for cleared sites
-    adjustments =
-      if get_in(signature, [:metadata, :cleared]) do
-        adjustments - 30
-      else
-        adjustments
-      end
-
-    # Boost critical wormholes
-    adjustments =
-      if signature.status == :critical do
-        adjustments + 30
-      else
-        adjustments
-      end
-
-    max(0, min(100, base_priority + adjustments))
+    max(0, min(100, base_priority + total_adjustments))
   end
 
   defp estimate_scan_time(signatures) do
@@ -611,7 +587,7 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
 
   defp calculate_lifetime(signature) do
     if signature.created_at and Map.get(signature, :collapsed_at) do
-      DateTime.diff(signature.collapsed_at, signature.created_at, :minute)
+      DateTimeUtils.diff(signature.collapsed_at, signature.created_at, :minute)
     else
       0
     end
@@ -623,9 +599,21 @@ defmodule EveDmv.Contexts.WormholeOperations.Domain.SignatureTracker do
     if length(sorted) >= 2 do
       first = List.first(sorted)
       last = List.last(sorted)
-      DateTime.diff(last.created_at, first.created_at, :minute)
+      DateTimeUtils.diff(last.created_at, first.created_at, :minute)
     else
       0
+    end
+  end
+
+  defp add_recommendation_if(recommendations, condition, recommendation) do
+    if condition, do: [recommendation | recommendations], else: recommendations
+  end
+
+  defp add_scanning_activity_recommendation(recommendations, efficiency) do
+    case efficiency do
+      :excellent -> ["Very high scan rate - multiple scanners active" | recommendations]
+      :slow -> ["Low scan activity - possibly safe to operate" | recommendations]
+      _ -> recommendations
     end
   end
 end

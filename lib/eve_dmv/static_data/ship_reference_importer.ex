@@ -1,7 +1,4 @@
 defmodule EveDmv.StaticData.ShipReferenceImporter do
-  import Ecto.Query
-  alias EveDmv.Repo
-
   @moduledoc """
   Imports ship reference data from docs/reference/ship_info.md.
 
@@ -9,6 +6,9 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
   populates the ship_role_patterns and doctrine_patterns tables with
   baseline role classifications and fleet doctrine information.
   """
+
+  import Ecto.Query
+  alias EveDmv.Repo
 
   @ship_info_file "docs/reference/ship_info.md"
   @doc """
@@ -48,18 +48,18 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
   def parse_ship_data(content) do
     # Parse different ship sections
     ships =
-      []
-      |> Kernel.++(parse_battleships(content))
-      |> Kernel.++(parse_battlecruisers(content))
-      |> Kernel.++(parse_command_ships(content))
-      |> Kernel.++(parse_heavy_assault_cruisers(content))
-      |> Kernel.++(parse_strategic_cruisers(content))
-      |> Kernel.++(parse_logistics_ships(content))
-      |> Kernel.++(parse_interdictors(content))
-      |> Kernel.++(parse_heavy_interdictors(content))
-      |> Kernel.++(parse_recon_ships(content))
-      |> Kernel.++(parse_interceptors(content))
-      |> Kernel.++(parse_command_destroyers(content))
+      [] ++
+        parse_battleships(content) ++
+        parse_battlecruisers(content) ++
+        parse_command_ships(content) ++
+        parse_heavy_assault_cruisers(content) ++
+        parse_strategic_cruisers(content) ++
+        parse_logistics_ships(content) ++
+        parse_interdictors(content) ++
+        parse_heavy_interdictors(content) ++
+        parse_recon_ships(content) ++
+        parse_interceptors(content) ++
+        parse_command_destroyers(content)
 
     {:ok, ships}
   end
@@ -550,12 +550,11 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
 
     # Check if ship pattern already exists
     existing =
-      Repo.one(
-        from(s in "ship_role_patterns",
-          where: s.ship_type_id == ^ship.type_id,
-          select: %{ship_type_id: s.ship_type_id}
-        )
+      from(s in "ship_role_patterns",
+        where: s.ship_type_id == ^ship.type_id,
+        select: %{ship_type_id: s.ship_type_id}
       )
+      |> Repo.one()
 
     case existing do
       nil ->
@@ -565,8 +564,8 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
         end
 
       _existing ->
-        case Repo.update_all(
-               from(s in "ship_role_patterns", where: s.ship_type_id == ^ship.type_id),
+        case from(s in "ship_role_patterns", where: s.ship_type_id == ^ship.type_id)
+             |> Repo.update_all(
                set: [
                  ship_name: ship.name,
                  reference_role: ship.reference_role,
@@ -595,12 +594,11 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
 
     # Check if doctrine pattern already exists
     existing =
-      Repo.one(
-        from(d in "doctrine_patterns",
-          where: d.doctrine_name == ^doctrine.doctrine_name,
-          select: %{doctrine_name: d.doctrine_name}
-        )
+      from(d in "doctrine_patterns",
+        where: d.doctrine_name == ^doctrine.doctrine_name,
+        select: %{doctrine_name: d.doctrine_name}
       )
+      |> Repo.one()
 
     case existing do
       nil ->
@@ -610,8 +608,8 @@ defmodule EveDmv.StaticData.ShipReferenceImporter do
         end
 
       _existing ->
-        case Repo.update_all(
-               from(d in "doctrine_patterns", where: d.doctrine_name == ^doctrine.doctrine_name),
+        case from(d in "doctrine_patterns", where: d.doctrine_name == ^doctrine.doctrine_name)
+             |> Repo.update_all(
                set: [
                  ship_composition: doctrine.ship_composition,
                  tank_type: doctrine.tank_type,

@@ -1,15 +1,6 @@
 # credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 # credo:disable-for-this-file Credo.Check.Readability.StrictModuleLayout
 defmodule EveDmvWeb.AllianceLive do
-  import EveDmvWeb.Components.PageHeaderComponent
-  import EveDmvWeb.Components.StatsGridComponent
-  import EveDmvWeb.Components.ErrorStateComponent
-  import EveDmvWeb.Components.EmptyStateComponent
-  import EveDmvWeb.FormatHelpers
-  alias EveDmv.Api
-  alias EveDmv.Killmails.Participant
-  alias EveDmvWeb.Helpers.TimeFormatter
-
   @moduledoc """
   LiveView for displaying alliance analytics dashboard.
 
@@ -19,9 +10,20 @@ defmodule EveDmvWeb.AllianceLive do
 
   use EveDmvWeb, :live_view
 
+  import EveDmvWeb.Components.PageHeaderComponent
+  import EveDmvWeb.Components.StatsGridComponent
+  import EveDmvWeb.Components.ErrorStateComponent
+  import EveDmvWeb.Components.EmptyStateComponent
+  import EveDmvWeb.FormatHelpers
+
+  alias EveDmv.Api
+  alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Killmails.Participant
+  alias EveDmvWeb.Helpers.TimeFormatter
+
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
-  # Import reusable components
+
   # Helper function for template
   defp time_ago(datetime), do: TimeFormatter.format_relative_time(datetime)
   @impl Phoenix.LiveView
@@ -123,9 +125,14 @@ defmodule EveDmvWeb.AllianceLive do
           participants
           |> Enum.group_by(& &1.corporation_id)
           |> Enum.map(fn {corp_id, corp_participants} ->
-            corp_name = corp_participants |> List.first() |> Map.get(:corporation_name, "Unknown")
+            corp_name = Map.get(List.first(corp_participants), :corporation_name, "Unknown")
             # Calculate corporation stats
-            members = corp_participants |> Enum.map(& &1.character_id) |> Enum.uniq() |> length()
+            members =
+              corp_participants
+              |> Enum.map(& &1.character_id)
+              |> Enum.uniq()
+              |> length()
+
             kills = Enum.count(corp_participants, &(not &1.is_victim))
             losses = Enum.count(corp_participants, & &1.is_victim)
             # Get latest activity
@@ -191,8 +198,8 @@ defmodule EveDmvWeb.AllianceLive do
         participants
         |> Enum.group_by(& &1.character_id)
         |> Enum.map(fn {character_id, participations} ->
-          character_name = participations |> List.first() |> Map.get(:character_name, "Unknown")
-          corp_name = participations |> List.first() |> Map.get(:corporation_name, "Unknown")
+          character_name = Map.get(List.first(participations), :character_name, "Unknown")
+          corp_name = Map.get(List.first(participations), :corporation_name, "Unknown")
           kills = Enum.count(participations, &(not &1.is_victim))
           losses = Enum.count(participations, & &1.is_victim)
 
@@ -216,10 +223,27 @@ defmodule EveDmvWeb.AllianceLive do
 
   defp calculate_alliance_stats(corporations, _alliance_id) do
     total_corporations = length(corporations)
-    total_members = corporations |> Enum.map(& &1.member_count) |> Enum.sum()
-    total_kills = corporations |> Enum.map(& &1.total_kills) |> Enum.sum()
-    total_losses = corporations |> Enum.map(& &1.total_losses) |> Enum.sum()
-    total_activity = corporations |> Enum.map(& &1.total_activity) |> Enum.sum()
+
+    total_members =
+      corporations
+      |> Enum.map(& &1.member_count)
+      |> Enum.sum()
+
+    total_kills =
+      corporations
+      |> Enum.map(& &1.total_kills)
+      |> Enum.sum()
+
+    total_losses =
+      corporations
+      |> Enum.map(& &1.total_losses)
+      |> Enum.sum()
+
+    total_activity =
+      corporations
+      |> Enum.map(& &1.total_activity)
+      |> Enum.sum()
+
     # Calculate averages
     avg_activity_per_corp =
       if total_corporations > 0, do: total_activity / total_corporations, else: 0
@@ -258,8 +282,8 @@ defmodule EveDmvWeb.AllianceLive do
   end
 
   defp calculate_week_activity(alliance_id, weeks_ago, end_date) do
-    week_end = DateTime.add(end_date, -weeks_ago * 7 * 24 * 60 * 60, :second)
-    week_start = DateTime.add(week_end, -7 * 24 * 60 * 60, :second)
+    week_end = DateTimeUtils.add(end_date, -weeks_ago * 7 * 24 * 60 * 60, :second)
+    week_start = DateTimeUtils.add(week_end, -7 * 24 * 60 * 60, :second)
 
     case Ash.read(Participant,
            filter: %{
@@ -285,8 +309,17 @@ defmodule EveDmvWeb.AllianceLive do
   end
 
   defp calculate_trend_direction(weeks) do
-    recent = weeks |> Enum.take(2) |> Enum.map(& &1.total) |> Enum.sum()
-    older = weeks |> Enum.drop(2) |> Enum.map(& &1.total) |> Enum.sum()
+    recent =
+      weeks
+      |> Enum.take(2)
+      |> Enum.map(& &1.total)
+      |> Enum.sum()
+
+    older =
+      weeks
+      |> Enum.drop(2)
+      |> Enum.map(& &1.total)
+      |> Enum.sum()
 
     cond do
       recent > older * 1.2 -> :increasing

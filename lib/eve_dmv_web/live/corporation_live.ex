@@ -1,20 +1,6 @@
 # credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
 # credo:disable-for-this-file Credo.Check.Readability.StrictModuleLayout
 defmodule EveDmvWeb.CorporationLive do
-  import EveDmvWeb.Components.ErrorStateComponent
-  import EveDmvWeb.Components.EmptyStateComponent
-  import EveDmvWeb.Components.ThreatLevelComponent
-  import EveDmvWeb.Components.ActivityOverviewComponent
-  import EveDmvWeb.Components.IskStatsComponent
-  import EveDmvWeb.EveImageComponents
-  import EveDmvWeb.FormatHelpers
-  alias EveDmv.Analytics.BattleDetector
-  alias EveDmv.Cache.AnalysisCache
-  alias EveDmv.Contexts.CorporationIntelligence
-  alias EveDmvWeb.Helpers.TimeFormatter
-  alias EveDmvWeb.CorporationLive.DataLoader
-  require Logger
-
   @moduledoc """
   LiveView for displaying corporation overview and member activity.
 
@@ -24,9 +10,26 @@ defmodule EveDmvWeb.CorporationLive do
 
   use EveDmvWeb, :live_view
 
+  import EveDmvWeb.Components.ErrorStateComponent
+  import EveDmvWeb.Components.EmptyStateComponent
+  import EveDmvWeb.Components.ThreatLevelComponent
+  import EveDmvWeb.Components.ActivityOverviewComponent
+  import EveDmvWeb.Components.IskStatsComponent
+  import EveDmvWeb.EveImageComponents
+  import EveDmvWeb.FormatHelpers
+
+  alias EveDmv.Analytics.BattleDetector
+  alias EveDmv.Cache.AnalysisCache
+  alias EveDmv.Contexts.CorporationIntelligence
+  alias EveDmv.Pagination.CursorPaginator
+  alias EveDmvWeb.CorporationLive.DataLoader
+  alias EveDmvWeb.Helpers.TimeFormatter
+
+  require Logger
+
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
-  # Import reusable components
+
   # Template helper functions
   def format_relative_time(datetime) do
     TimeFormatter.format_friendly_time(datetime)
@@ -127,13 +130,13 @@ defmodule EveDmvWeb.CorporationLive do
     corporation_id = socket.assigns.corporation_id
     page_size = socket.assigns[:members_page_size] || 50
 
-    case EveDmv.Pagination.CursorPaginator.paginate_corporation_members(
+    case CursorPaginator.paginate_corporation_members(
            corporation_id,
            after: cursor,
            page_size: page_size
          ) do
       paginator ->
-        pagination = EveDmv.Pagination.CursorPaginator.pagination_assigns(paginator)
+        pagination = CursorPaginator.pagination_assigns(paginator)
 
         socket =
           socket
@@ -148,13 +151,13 @@ defmodule EveDmvWeb.CorporationLive do
     corporation_id = socket.assigns.corporation_id
     page_size = socket.assigns[:members_page_size] || 50
 
-    case EveDmv.Pagination.CursorPaginator.paginate_corporation_members(
+    case CursorPaginator.paginate_corporation_members(
            corporation_id,
            before: cursor,
            page_size: page_size
          ) do
       paginator ->
-        pagination = EveDmv.Pagination.CursorPaginator.pagination_assigns(paginator)
+        pagination = CursorPaginator.pagination_assigns(paginator)
 
         socket =
           socket
@@ -170,12 +173,12 @@ defmodule EveDmvWeb.CorporationLive do
     page_size = String.to_integer(size_str)
 
     # Reset to first page with new size
-    case EveDmv.Pagination.CursorPaginator.paginate_corporation_members(
+    case CursorPaginator.paginate_corporation_members(
            corporation_id,
            page_size: page_size
          ) do
       paginator ->
-        pagination = EveDmv.Pagination.CursorPaginator.pagination_assigns(paginator)
+        pagination = CursorPaginator.pagination_assigns(paginator)
 
         socket =
           socket
@@ -220,44 +223,40 @@ defmodule EveDmvWeb.CorporationLive do
 
   # Private helper functions
   defp load_all_corporation_data(corporation_id) do
-    try do
-      # Load all data using the optimized data loader
-      data = DataLoader.load_corporation_data(corporation_id)
+    # Load all data using the optimized data loader
+    data = DataLoader.load_corporation_data(corporation_id)
 
-      # Load additional data that isn't in the optimized loader yet
-      # (these can be migrated to the data loader later)
-      # Temporary placeholder
-      {:ok, location_stats} = DataLoader.load_corporation_info(corporation_id)
-      # Temporary placeholder
-      {:ok, victim_stats} = DataLoader.load_corporation_info(corporation_id)
+    # Load additional data that isn't in the optimized loader yet
+    # (these can be migrated to the data loader later)
+    # Temporary placeholder
+    {:ok, location_stats} = DataLoader.load_corporation_info(corporation_id)
+    # Temporary placeholder
+    {:ok, victim_stats} = DataLoader.load_corporation_info(corporation_id)
 
-      # Load intelligence data
-      intelligence_data =
-        case CorporationIntelligence.get_corporation_intelligence_report(corporation_id) do
-          {:ok, data} -> data
-          {:error, _} -> nil
-        end
+    # Load intelligence data
+    # get_corporation_intelligence_report always returns {:ok, map()} per its spec
+    {:ok, intelligence_data} =
+      CorporationIntelligence.get_corporation_intelligence_report(corporation_id)
 
-      # Load battle data
-      battles = BattleDetector.detect_corporation_battles(corporation_id, 10)
-      battle_stats = BattleDetector.get_corporation_battle_stats(corporation_id)
-      fleet_doctrines = BattleDetector.get_corporation_fleet_doctrines(corporation_id)
+    # Load battle data
+    battles = BattleDetector.detect_corporation_battles(corporation_id, 10)
+    battle_stats = BattleDetector.get_corporation_battle_stats(corporation_id)
+    fleet_doctrines = BattleDetector.get_corporation_fleet_doctrines(corporation_id)
 
-      # Combine all data
-      {:ok,
-       Map.merge(data, %{
-         location_stats: location_stats,
-         victim_stats: victim_stats,
-         intelligence: intelligence_data,
-         battles: battles,
-         battle_stats: battle_stats,
-         fleet_doctrines: fleet_doctrines
-       })}
-    rescue
-      error ->
-        Logger.error("Error loading corporation data: #{inspect(error)}")
-        {:error, error}
-    end
+    # Combine all data
+    {:ok,
+     Map.merge(data, %{
+       location_stats: location_stats,
+       victim_stats: victim_stats,
+       intelligence: intelligence_data,
+       battles: battles,
+       battle_stats: battle_stats,
+       fleet_doctrines: fleet_doctrines
+     })}
+  rescue
+    error ->
+      Logger.error("Error loading corporation data: #{inspect(error)}")
+      {:error, error}
   end
 
   # Helper functions
@@ -304,18 +303,16 @@ defmodule EveDmvWeb.CorporationLive do
 
   # Sprint 15A: Helper function for loading more activity with pagination
   defp load_more_recent_activity(corporation_id, cursor) do
-    try do
-      activities =
-        EveDmv.Pagination.CursorPaginator.paginate_character_activity(
-          corporation_id,
-          after: cursor,
-          page_size: 50
-        )
+    activities =
+      CursorPaginator.paginate_character_activity(
+        corporation_id,
+        after: cursor,
+        page_size: 50
+      )
 
-      {:ok, activities.edges |> Enum.map(& &1.node)}
-    rescue
-      _ -> {:error, :pagination_failed}
-    end
+    {:ok, activities.edges |> Enum.map(& &1.node)}
+  rescue
+    _ -> {:error, :pagination_failed}
   end
 
   defp calculate_participation_data(members, corp_info) do
@@ -364,8 +361,7 @@ defmodule EveDmvWeb.CorporationLive do
   end
 
   def format_doctrine_name(doctrine) do
-    doctrine
-    |> to_string()
+    to_string(doctrine)
     |> String.replace("_", " ")
     |> String.split()
     |> Enum.map_join(" ", &String.capitalize/1)

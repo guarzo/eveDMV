@@ -6,8 +6,8 @@ defmodule EveDmv.StaticData.SystemData do
   This module should be enhanced with actual EVE static data when available.
   """
 
-  alias EveDmv.Repo
   import Ecto.Query
+  alias EveDmv.Repo
   require Logger
 
   # System ID ranges for different space types (currently unused but kept for future expansion)
@@ -90,6 +90,13 @@ defmodule EveDmv.StaticData.SystemData do
   def get_security_status(_), do: 0.5
 
   @doc """
+  Alias for get_security_status/1 for backward compatibility.
+  """
+  def get_system_security(system_id) do
+    get_security_status(system_id)
+  end
+
+  @doc """
   Classify a system by its security type.
   """
   def classify_security_type(system_id) when is_integer(system_id) do
@@ -129,7 +136,7 @@ defmodule EveDmv.StaticData.SystemData do
   @doc """
   Check if a system is a trade hub.
   """
-  def is_trade_hub?(system_id) do
+  def trade_hub?(system_id) do
     Map.has_key?(@trade_hubs, system_id)
   end
 

@@ -1,9 +1,9 @@
 defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
   @moduledoc """
   Cache management for combat intelligence analysis results.
-  """
 
-  use GenServer
+  Simplified cache module that provides direct cache operations without GenServer overhead.
+  """
 
   alias EveDmv.Cache
 
@@ -11,22 +11,40 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
 
   @cache_type :analysis
 
-  def start_link(opts \\ []) do
-    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
-  end
+  # Type definitions for cached analysis data
+  @type character_analysis :: %{
+          character_id: integer(),
+          threat_score: float(),
+          combat_patterns: map(),
+          behavioral_analysis: map(),
+          affiliations: map(),
+          analysis_timestamp: DateTime.t()
+        }
+
+  @type corporation_analysis :: %{
+          corporation_id: integer(),
+          member_count: non_neg_integer(),
+          threat_distribution: map(),
+          activity_patterns: map(),
+          coordination_metrics: map(),
+          analysis_timestamp: DateTime.t()
+        }
 
   @doc """
   Invalidate cached analysis for a character.
   """
   @spec invalidate_character(integer()) :: :ok
   def invalidate_character(character_id) do
-    GenServer.cast(__MODULE__, {:invalidate_character, character_id})
+    cache_key = {:character_analysis, character_id}
+    Cache.delete(@cache_type, cache_key)
+    Logger.debug("Invalidated character analysis cache", character_id: character_id)
+    :ok
   end
 
   @doc """
   Store character analysis in cache.
   """
-  @spec put_character_analysis(integer(), map()) :: :ok
+  @spec put_character_analysis(integer(), character_analysis()) :: :ok
   def put_character_analysis(character_id, analysis) do
     cache_key = {:character_analysis, character_id}
     Cache.put(@cache_type, cache_key, analysis, ttl: :timer.minutes(30))
@@ -35,7 +53,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
   @doc """
   Get character analysis from cache.
   """
-  @spec get_character_analysis(integer()) :: {:ok, map()} | {:error, :not_found}
+  @spec get_character_analysis(integer()) :: {:ok, character_analysis()} | {:error, :not_found}
   def get_character_analysis(character_id) do
     cache_key = {:character_analysis, character_id}
 
@@ -48,7 +66,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
   @doc """
   Store corporation analysis in cache.
   """
-  @spec put_corporation_analysis(integer(), map()) :: :ok
+  @spec put_corporation_analysis(integer(), corporation_analysis()) :: :ok
   def put_corporation_analysis(corporation_id, analysis) do
     cache_key = {:corporation_analysis, corporation_id}
     Cache.put(@cache_type, cache_key, analysis, ttl: :timer.minutes(30))
@@ -57,7 +75,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
   @doc """
   Get corporation analysis from cache.
   """
-  @spec get_corporation_analysis(integer()) :: {:ok, map()} | {:error, :not_found}
+  @spec get_corporation_analysis(integer()) ::
+          {:ok, corporation_analysis()} | {:error, :not_found}
   def get_corporation_analysis(corporation_id) do
     cache_key = {:corporation_analysis, corporation_id}
 
@@ -72,7 +91,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
   """
   @spec invalidate_corporation(integer()) :: :ok
   def invalidate_corporation(corporation_id) do
-    GenServer.cast(__MODULE__, {:invalidate_corporation, corporation_id})
+    cache_key = {:corporation_analysis, corporation_id}
+    Cache.delete(@cache_type, cache_key)
+    Logger.debug("Invalidated corporation analysis cache", corporation_id: corporation_id)
+    :ok
   end
 
   @doc """
@@ -102,7 +124,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
   """
   @spec invalidate_threat_assessment(integer()) :: :ok
   def invalidate_threat_assessment(character_id) do
-    GenServer.cast(__MODULE__, {:invalidate_threat_assessment, character_id})
+    cache_key = {:threat_assessment, character_id}
+    Cache.delete(@cache_type, cache_key)
+    Logger.debug("Invalidated threat assessment cache", character_id: character_id)
+    :ok
   end
 
   @doc """
@@ -163,49 +188,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
   """
   @spec invalidate_intelligence_scores(integer()) :: :ok
   def invalidate_intelligence_scores(character_id) do
-    GenServer.cast(__MODULE__, {:invalidate_intelligence_scores, character_id})
-  end
-
-  # GenServer callbacks
-
-  @impl GenServer
-  def init(_opts) do
-    {:ok, %{invalidation_count: 0}}
-  end
-
-  @impl GenServer
-  def handle_cast({:invalidate_character, character_id}, state) do
-    cache_key = {:character_analysis, character_id}
-    Cache.delete(@cache_type, cache_key)
-
-    Logger.debug("Invalidated character analysis cache", character_id: character_id)
-
-    {:noreply, %{state | invalidation_count: state.invalidation_count + 1}}
-  end
-
-  @impl GenServer
-  def handle_cast({:invalidate_corporation, corporation_id}, state) do
-    cache_key = {:corporation_analysis, corporation_id}
-    Cache.delete(@cache_type, cache_key)
-
-    Logger.debug("Invalidated corporation analysis cache", corporation_id: corporation_id)
-
-    {:noreply, %{state | invalidation_count: state.invalidation_count + 1}}
-  end
-
-  @impl GenServer
-  def handle_cast({:invalidate_threat_assessment, character_id}, state) do
-    cache_key = {:threat_assessment, character_id}
-    Cache.delete(@cache_type, cache_key)
-
-    Logger.debug("Invalidated threat assessment cache", character_id: character_id)
-
-    {:noreply, %{state | invalidation_count: state.invalidation_count + 1}}
-  end
-
-  @impl GenServer
-  def handle_cast({:invalidate_intelligence_scores, character_id}, state) do
-    # Invalidate all score types for this character
     score_types = [
       :danger_rating,
       :hunter_score,
@@ -220,7 +202,18 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
     end)
 
     Logger.debug("Invalidated intelligence scores cache", character_id: character_id)
+    :ok
+  end
 
-    {:noreply, %{state | invalidation_count: state.invalidation_count + 1}}
+  @doc """
+  Get cache statistics.
+  """
+  @spec get_stats() :: {:ok, %{size: non_neg_integer(), memory_bytes: non_neg_integer()}}
+  def get_stats do
+    # Get cache stats from the Cache module if available
+    # Cache.stats returns a plain map, not a tuple
+    # Cache.stats always returns a map
+    stats = Cache.stats(@cache_type)
+    {:ok, stats}
   end
 end

@@ -10,8 +10,9 @@ defmodule EveDmvWeb.FleetOperationsLive do
 
   alias EveDmv.Contexts.BattleAnalysis
   alias EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer
+  alias EveDmv.Contexts.WormholeOperations.Domain.Analyzers.WhFleetAnalyzer
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Eve.NameResolver
-  alias EveDmv.Intelligence.Analyzers.WhFleetAnalyzer
 
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
@@ -159,91 +160,85 @@ defmodule EveDmvWeb.FleetOperationsLive do
   # Analysis functions
 
   defp analyze_fleet_composition(fleet_data) do
-    try do
-      # CompositionAnalyzer expects fleet_id as integer and base_data structure
-      # Convert string to integer
-      fleet_id_hash = :erlang.phash2(fleet_data.fleet_id)
+    # CompositionAnalyzer expects fleet_id as integer and base_data structure
+    # Convert string to integer
+    fleet_id_hash = :erlang.phash2(fleet_data.fleet_id)
 
-      # Fix the fleet participants key mapping
-      fleet_participants_fixed = %{
-        fleet_id_hash => Map.get(fleet_data.fleet_participants, fleet_data.fleet_id, [])
-      }
+    # Fix the fleet participants key mapping
+    fleet_participants_fixed = %{
+      fleet_id_hash => Map.get(fleet_data.fleet_participants, fleet_data.fleet_id, [])
+    }
 
-      base_data = %{
-        fleet_data: %{fleet_id_hash => fleet_data.fleet_data},
-        fleet_participants: fleet_participants_fixed
-      }
+    base_data = %{
+      fleet_data: %{fleet_id_hash => fleet_data.fleet_data},
+      fleet_participants: fleet_participants_fixed
+    }
 
-      case CompositionAnalyzer.analyze(fleet_id_hash, base_data) do
-        {:ok, analysis} ->
-          %{
-            type: "composition",
-            success: true,
-            data: analysis,
-            summary: generate_composition_summary(analysis)
-          }
+    case CompositionAnalyzer.analyze(fleet_id_hash, base_data) do
+      {:ok, analysis} ->
+        %{
+          type: "composition",
+          success: true,
+          data: analysis,
+          summary: generate_composition_summary(analysis)
+        }
 
-        {:error, reason} ->
-          %{type: "composition", success: false, error: inspect(reason)}
+      {:error, %EveDmv.Error{} = error} ->
+        %{type: "composition", success: false, error: error.message}
 
-        %EveDmv.Error{} = error ->
-          %{type: "composition", success: false, error: error.message}
-      end
-    rescue
-      error ->
-        %{type: "composition", success: false, error: "Analysis failed: #{inspect(error)}"}
+      {:error, reason} ->
+        %{type: "composition", success: false, error: inspect(reason)}
     end
+  rescue
+    error ->
+      %{type: "composition", success: false, error: "Analysis failed: #{inspect(error)}"}
   end
 
   defp analyze_fleet_effectiveness(fleet_data) do
-    try do
-      participant_data = Map.get(fleet_data, :fleet_participants, %{})
-      participants = Map.get(participant_data, fleet_data.fleet_id, [])
+    participant_data = Map.get(fleet_data, :fleet_participants, %{})
+    participants = Map.get(participant_data, fleet_data.fleet_id, [])
 
-      fleet_analysis = WhFleetAnalyzer.analyze_fleet_composition_from_members(participants)
-      effectiveness = WhFleetAnalyzer.calculate_fleet_effectiveness(fleet_analysis)
+    fleet_analysis = WhFleetAnalyzer.analyze_fleet_composition_from_members(participants)
+    effectiveness = WhFleetAnalyzer.calculate_fleet_effectiveness(fleet_analysis)
 
-      improvements =
-        WhFleetAnalyzer.recommend_fleet_improvements(%{
-          effectiveness_metrics: effectiveness,
-          role_distribution: fleet_analysis.role_distribution,
-          doctrine_compliance: fleet_analysis.doctrine_compliance
-        })
+    improvements =
+      WhFleetAnalyzer.recommend_fleet_improvements(%{
+        effectiveness_metrics: effectiveness,
+        role_distribution: fleet_analysis.role_distribution,
+        doctrine_compliance: fleet_analysis.doctrine_compliance
+      })
 
-      %{
-        type: "effectiveness",
-        success: true,
-        data: %{
-          fleet_analysis: fleet_analysis,
-          effectiveness: effectiveness,
-          improvements: improvements
-        },
-        summary: generate_effectiveness_summary(effectiveness)
-      }
-    rescue
-      error ->
-        %{type: "effectiveness", success: false, error: "Analysis failed: #{inspect(error)}"}
-    end
+    %{
+      type: "effectiveness",
+      success: true,
+      data: %{
+        fleet_analysis: fleet_analysis,
+        effectiveness: effectiveness,
+        improvements: improvements
+      },
+      summary: generate_effectiveness_summary(effectiveness)
+    }
+  rescue
+    error ->
+      %{type: "effectiveness", success: false, error: "Analysis failed: #{inspect(error)}"}
   end
 
   defp analyze_pilot_performance(fleet_data) do
-    try do
-      participant_data = Map.get(fleet_data, :fleet_participants, %{})
-      participants = Map.get(participant_data, fleet_data.fleet_id, [])
+    participant_data = Map.get(fleet_data, :fleet_participants, %{})
+    participants = Map.get(participant_data, fleet_data.fleet_id, [])
 
-      # Calculate real pilot performance metrics from battle data
-      performance_metrics = calculate_pilot_performance_metrics(participants)
+    # Calculate real pilot performance metrics from battle data
+    performance_metrics = calculate_pilot_performance_metrics(participants)
 
-      %{
-        type: "performance",
-        success: true,
-        data: performance_metrics,
-        summary: generate_performance_summary(performance_metrics)
-      }
-    rescue
-      error ->
-        %{type: "performance", success: false, error: "Analysis failed: #{inspect(error)}"}
-    end
+    %{
+      type: "performance",
+      success: true,
+      data: performance_metrics,
+      summary: generate_performance_summary(performance_metrics)
+    }
+  rescue
+    error ->
+      %{type: "performance", success: false, error: "Analysis failed: #{inspect(error)}"}
   end
 
   # Calculate pilot performance metrics from battle data
@@ -345,7 +340,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
     # Battles are generated dynamically, so we need to regenerate them to find the specific battle
     end_time = DateTime.utc_now()
     # Look back 48 hours
-    start_time = DateTime.add(end_time, -48, :hour)
+    start_time = DateTimeUtils.add(end_time, -48 * 60 * 60, :second)
 
     case BattleAnalysis.detect_battles(start_time, end_time) do
       {:ok, battles} ->
@@ -394,7 +389,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
     # This is not ideal for performance, but battles aren't persisted yet
     end_time = DateTime.utc_now()
     # Look back 48 hours
-    start_time = DateTime.add(end_time, -48, :hour)
+    start_time = DateTimeUtils.add(end_time, -48 * 60 * 60, :second)
 
     case BattleAnalysis.detect_battles(start_time, end_time) do
       {:ok, battles} ->
@@ -489,9 +484,9 @@ defmodule EveDmvWeb.FleetOperationsLive do
 
   defp extract_attacker_data(killmail) do
     raw_data = Map.get(killmail, :raw_data, %{})
-    attackers = Map.get(raw_data, "attackers", [])
 
-    Enum.map(attackers, fn attacker ->
+    Map.get(raw_data, "attackers", [])
+    |> Enum.map(fn attacker ->
       %{
         character_id: Map.get(attacker, "character_id"),
         character_name: Map.get(attacker, "character_name"),
@@ -506,18 +501,20 @@ defmodule EveDmvWeb.FleetOperationsLive do
 
   defp group_participants_into_sides(participants) do
     # Group by alliance (or corporation if no alliance)
-    groups =
-      Enum.group_by(participants, fn p ->
-        Map.get(p, :alliance_id) || Map.get(p, :corporation_id) || "unknown"
-      end)
-
-    Enum.map(groups, fn {group_id, pilots} ->
+    participants
+    |> Enum.group_by(fn p ->
+      Map.get(p, :alliance_id) || Map.get(p, :corporation_id) || "unknown"
+    end)
+    |> Enum.map(fn {group_id, pilots} ->
       %{
         group_id: group_id,
         pilots: pilots,
         ship_count: length(pilots),
         unique_ship_types:
-          pilots |> Enum.map(&Map.get(&1, :ship_type_id)) |> Enum.uniq() |> length()
+          pilots
+          |> Enum.map(&Map.get(&1, :ship_type_id))
+          |> Enum.uniq()
+          |> length()
       }
     end)
     # Only include sides with multiple ships
@@ -589,7 +586,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
     <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
       <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Fleet Composition Analysis</h3>
       <div class="space-y-6">
-        
+
         <!-- Fleet Summary -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div class="bg-white dark:bg-gray-600 p-4 rounded-lg">
@@ -605,9 +602,11 @@ defmodule EveDmvWeb.FleetOperationsLive do
             <div class="text-xl font-bold text-purple-600">#{Map.get(ship_composition, :unique_ship_classes, 0)}</div>
           </div>
         </div>
-        
+
         <!-- Most Common Ships -->
-        #{if length(most_common_ships) > 0 do
+        #{if Enum.empty?(most_common_ships) do
+      ""
+    else
       """
       <div>
         <h4 class="font-medium text-gray-900 dark:text-white mb-2">Most Common Ships</h4>
@@ -626,10 +625,8 @@ defmodule EveDmvWeb.FleetOperationsLive do
         </div>
       </div>
       """
-    else
-      ""
     end}
-        
+
         <!-- Ship Classes Overview -->
         <div>
           <h4 class="font-medium text-gray-900 dark:text-white mb-2">Ship Classes</h4>
@@ -658,7 +655,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
     end)}
           </div>
         </div>
-        
+
         <!-- Fleet Roles -->
         <div>
           <h4 class="font-medium text-gray-900 dark:text-white mb-2">Fleet Roles</h4>
@@ -696,10 +693,10 @@ defmodule EveDmvWeb.FleetOperationsLive do
     end)}
           </div>
         </div>
-        
+
         <!-- Fleet Tactical Insights -->
         #{case Map.get(data || %{}, :composition_summary) do
-      %{fleet_insights: insights} when is_list(insights) and length(insights) > 0 -> """
+      %{fleet_insights: insights} when is_list(insights) and insights != [] -> """
         <div>
           <h4 class="font-medium text-gray-900 dark:text-white mb-2">Tactical Insights</h4>
           <div class="space-y-2">
@@ -713,7 +710,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
         """
       _ -> ""
     end}
-        
+
       </div>
     </div>
     """
@@ -739,26 +736,26 @@ defmodule EveDmvWeb.FleetOperationsLive do
     <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
       <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Fleet Effectiveness Analysis</h3>
       <div class="space-y-6">
-        
+
         <!-- Overall Rating -->
         <div class="text-center bg-white dark:bg-gray-600 p-4 rounded-lg">
           <div class="text-sm text-gray-600 dark:text-gray-300 mb-1">Overall Effectiveness</div>
           <div class="text-3xl font-bold text-indigo-600">#{overall_effectiveness}%</div>
           <div class="text-xs text-gray-500 dark:text-gray-400">Combined fleet performance rating</div>
         </div>
-        
+
         <!-- Combat Capabilities -->
         <div>
           <h4 class="font-medium text-gray-900 dark:text-white mb-3">Combat Capabilities</h4>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="bg-white dark:bg-gray-600 p-4 rounded-lg">
               <div class="text-sm text-gray-600 dark:text-gray-300">Estimated DPS</div>
-              <div class="text-xl font-bold text-red-600">#{estimated_dps |> format_number()}</div>
+              <div class="text-xl font-bold text-red-600">#{format_number(estimated_dps)}</div>
               <div class="text-xs text-gray-500 dark:text-gray-400">Total fleet damage per second</div>
             </div>
             <div class="bg-white dark:bg-gray-600 p-4 rounded-lg">
               <div class="text-sm text-gray-600 dark:text-gray-300">Fleet EHP</div>
-              <div class="text-xl font-bold text-blue-600">#{estimated_ehp |> format_ehp()}</div>
+              <div class="text-xl font-bold text-blue-600">#{format_ehp(estimated_ehp)}</div>
               <div class="text-xs text-gray-500 dark:text-gray-400">Total effective hit points</div>
             </div>
             <div class="bg-white dark:bg-gray-600 p-4 rounded-lg">
@@ -768,7 +765,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
             </div>
           </div>
         </div>
-        
+
         <!-- Performance Ratings -->
         <div>
           <h4 class="font-medium text-gray-900 dark:text-white mb-3">Performance Ratings</h4>
@@ -811,7 +808,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
             </div>
           </div>
         </div>
-        
+
         <!-- Fleet Command -->
         <div class="bg-white dark:bg-gray-600 p-4 rounded-lg">
           <div class="flex justify-between items-center">
@@ -821,7 +818,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
             </span>
           </div>
         </div>
-        
+
       </div>
     </div>
     """
@@ -839,7 +836,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
     <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
       <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Pilot Performance Analysis</h3>
       <div class="space-y-6">
-        
+
         <!-- Performance Overview -->
         <div>
           <h4 class="font-medium text-gray-900 dark:text-white mb-3">Battle Performance</h4>
@@ -861,7 +858,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
             </div>
           </div>
         </div>
-        
+
         <!-- Ship Distribution -->
         #{if map_size(ship_distribution) > 0 do
       """
@@ -877,12 +874,12 @@ defmodule EveDmvWeb.FleetOperationsLive do
         </div>
       </div>
       """
-    else
-      ""
     end}
-        
+
         <!-- Top Performers -->
-        #{if length(top_performers) > 0 do
+        #{if Enum.empty?(top_performers) do
+      ""
+    else
       """
       <div>
         <h4 class="font-medium text-gray-900 dark:text-white mb-3">Top Performers</h4>
@@ -912,10 +909,8 @@ defmodule EveDmvWeb.FleetOperationsLive do
         </div>
       </div>
       """
-    else
-      ""
     end}
-        
+
         <!-- Battle Statistics -->
         <div>
           <h4 class="font-medium text-gray-900 dark:text-white mb-3">Battle Statistics</h4>
@@ -932,7 +927,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
             </div>
           </div>
         </div>
-        
+
       </div>
     </div>
     """
@@ -990,7 +985,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
 
   defp calculate_average_ship_value(participants) do
     total_value = Enum.sum(Enum.map(participants, &Map.get(&1, :ship_value, 0)))
-    if length(participants) > 0, do: round(total_value / length(participants)), else: 0
+    if Enum.empty?(participants), do: 0, else: round(total_value / length(participants))
   end
 
   defp get_most_common_ship(ship_distribution) do
@@ -1002,7 +997,12 @@ defmodule EveDmvWeb.FleetOperationsLive do
 
   defp calculate_fleet_coordination_score(participants) do
     # Simple coordination score based on ship diversity and role distribution
-    ship_types = participants |> Enum.map(&Map.get(&1, :ship_name)) |> Enum.uniq() |> length()
+    ship_types =
+      participants
+      |> Enum.map(&Map.get(&1, :ship_name))
+      |> Enum.uniq()
+      |> length()
+
     total_pilots = length(participants)
 
     if total_pilots > 0 do
@@ -1019,71 +1019,68 @@ defmodule EveDmvWeb.FleetOperationsLive do
     total_value = Enum.sum(Enum.map(participants, &Map.get(&1, :ship_value, 0)))
     victims = Enum.count(participants, &Map.get(&1, :is_victim, false))
 
-    if length(participants) > 0 do
+    if Enum.empty?(participants) do
+      0
+    else
       risk_factor = victims / length(participants)
       # Normalize to 1B ISK
       value_factor = min(1.0, total_value / 1_000_000_000)
       round((risk_factor + value_factor) * 50)
-    else
-      0
     end
   end
 
   defp extract_side_participants(battle, side) do
-    try do
-      killmails = Map.get(battle, :killmails, [])
-      participants = extract_participants_from_killmails(killmails)
-      fleet_sides = group_participants_into_sides(participants)
+    killmails = Map.get(battle, :killmails, [])
+    participants = extract_participants_from_killmails(killmails)
+    fleet_sides = group_participants_into_sides(participants)
 
-      # Add side_id to fleet sides for compatibility with battle analysis
-      fleet_sides_with_ids =
-        fleet_sides
-        |> Enum.with_index()
-        |> Enum.map(fn {fleet_side, index} ->
-          Map.put(fleet_side, :side_id, "side_#{index + 1}")
-        end)
+    # Add side_id to fleet sides for compatibility with battle analysis
+    fleet_sides_with_ids =
+      Enum.with_index(fleet_sides)
+      |> Enum.map(fn {fleet_side, index} ->
+        Map.put(fleet_side, :side_id, "side_#{index + 1}")
+      end)
 
-      require Logger
+    require Logger
 
-      Logger.info(
-        "Available fleet sides: #{inspect(Enum.map(fleet_sides_with_ids, fn s -> %{group_id: s.group_id, side_id: s.side_id} end))}"
-      )
+    Logger.info(
+      "Available fleet sides: #{inspect(Enum.map(fleet_sides_with_ids, fn s -> %{group_id: s.group_id, side_id: s.side_id} end))}"
+    )
 
-      Logger.info("Looking for side: #{inspect(side)}")
+    Logger.info("Looking for side: #{inspect(side)}")
 
-      # Improved side matching with both group_id and side_id
-      target_side =
-        Enum.find(fleet_sides_with_ids, fn fleet_side ->
-          # Try exact side_id match (side_1, side_2, etc.)
-          # Try exact group_id match (alliance/corp ID)
-          # Try index-based matching (side_1 -> first side, side_2 -> second side)
-          Map.get(fleet_side, :side_id) == side or
-            to_string(Map.get(fleet_side, :group_id)) == side or
-            (side == "side_1" and Map.get(fleet_side, :side_id) == "side_1") or
-            (side == "side_2" and Map.get(fleet_side, :side_id) == "side_2")
-        end)
+    # Improved side matching with both group_id and side_id
+    target_side =
+      Enum.find(fleet_sides_with_ids, fn fleet_side ->
+        # Try exact side_id match (side_1, side_2, etc.)
+        # Try exact group_id match (alliance/corp ID)
+        # Try index-based matching (side_1 -> first side, side_2 -> second side)
+        Map.get(fleet_side, :side_id) == side or
+          to_string(Map.get(fleet_side, :group_id)) == side or
+          (side == "side_1" and Map.get(fleet_side, :side_id) == "side_1") or
+          (side == "side_2" and Map.get(fleet_side, :side_id) == "side_2")
+      end)
 
-      case target_side do
-        nil ->
-          available_sides =
-            Enum.map(fleet_sides_with_ids, fn s ->
-              "#{s.side_id} (#{s.group_id})"
-            end)
+    case target_side do
+      nil ->
+        available_sides =
+          Enum.map(fleet_sides_with_ids, fn s ->
+            "#{s.side_id} (#{s.group_id})"
+          end)
 
-          {:error,
-           "Side '#{side}' not found in battle. Available sides: #{inspect(available_sides)}"}
+        {:error,
+         "Side '#{side}' not found in battle. Available sides: #{inspect(available_sides)}"}
 
-        side_data ->
-          Logger.info(
-            "Found side data: #{side_data.side_id} with #{length(Map.get(side_data, :pilots, []))} pilots"
-          )
+      side_data ->
+        Logger.info(
+          "Found side data: #{side_data.side_id} with #{length(Map.get(side_data, :pilots, []))} pilots"
+        )
 
-          {:ok, Map.get(side_data, :pilots, [])}
-      end
-    rescue
-      error ->
-        {:error, "Failed to extract side participants: #{inspect(error)}"}
+        {:ok, Map.get(side_data, :pilots, [])}
     end
+  rescue
+    error ->
+      {:error, "Failed to extract side participants: #{inspect(error)}"}
   end
 
   defp convert_pilot_to_fleet_member(pilot) do
@@ -1167,7 +1164,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
       ship_type_id in [29_248, 29_984, 29_986, 29_988] -> "T3 Destroyer"
       # Frigates
       ship_type_id in 582..650 -> "Frigate"
-      # Regular Destroyers  
+      # Regular Destroyers
       ship_type_id in [16_219, 16_227, 16_236, 16_242] -> "Destroyer"
       ship_type_id in 324..380 -> "Destroyer"
       # Cruisers

@@ -7,13 +7,12 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   """
 
   use EveDmvWeb, :live_view
+  import EveDmvWeb.BattleAnalysisLive.Helpers
 
   alias EveDmv.Contexts.BattleAnalysis
-  alias EveDmv.Contexts.BattleAnalysis.Resources.CombatLog
-  alias EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting
   alias EveDmv.Contexts.BattleSharing
-  alias EveDmv.Eve.NameResolver
   alias EveDmv.Performance.BatchNameResolver
+  alias EveDmvWeb.BattleAnalysisLive.Helpers
 
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
@@ -22,62 +21,10 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   def mount(_params, _session, socket) do
     socket =
       socket
-      |> assign(:page_title, "Battle Analysis")
-      |> assign(:import_url, "")
-      |> assign(:importing, false)
-      |> assign(:current_battle, nil)
-      |> assign(:recent_battles, [])
-      # Recently viewed battles (from ETS cache)
-      |> assign(:recently_viewed_battles, load_recently_viewed_battles())
-      # Pilot suggestions for autocomplete
-      |> assign(:pilot_suggestions, [])
-      |> assign(:show_pilot_suggestions, false)
-      |> assign(:error_message, nil)
-      |> assign(:selected_phase, nil)
-      # Main tabs: :metrics, :ship_performance, :timeline, :fleet
-      |> assign(:main_view, :metrics)
-      # Timeline subtabs: :phases, :events, :fleet
-      |> assign(:timeline_view, :phases)
-      # Manual ship side assignments
-      |> assign(:ship_side_assignments, %{})
-      # Toggle for edit mode
-      |> assign(:editing_fleet_sides, false)
-      # Default sides
-      |> assign(:custom_sides, ["side_1", "side_2"])
-      # Corporation statistics
-      |> assign(:corp_summaries, %{})
-      # Combat logs for current battle
-      |> assign(:combat_logs, [])
-      # Toggle for upload form
-      |> assign(:show_log_upload, false)
-      # Upload errors
-      |> assign(:log_upload_errors, [])
-      # Pilot name for upload
-      |> assign(:pilot_name, "")
-      # Ship performance analysis
-      |> assign(:selected_ship, nil)
-      |> assign(:ship_performance, nil)
-      |> assign(:show_fitting_import, false)
-      # Fitting cache now uses ETS table :battle_fitting_cache
-      # Battle metrics
-      |> assign(:battle_metrics, nil)
-      |> assign(:show_metrics_dashboard, true)
-      |> assign(:battle_intelligence, nil)
-      # Battle sharing
-      |> assign(:show_share_modal, false)
-      |> assign(:share_form, %{
-        title: "",
-        description: "",
-        video_url: "",
-        visibility: "public"
-      })
-      |> assign(:battle_reports, [])
-      |> allow_upload(:combat_log,
-        accept: ~w(.txt),
-        max_entries: 1,
-        # 10MB limit
-        max_file_size: 10_000_000
-      )
+      |> initialize_battle_state()
+      |> initialize_ui_state()
+      |> initialize_upload_state()
+      |> initialize_share_state()
       |> load_recent_battles()
 
     {:ok, socket}
@@ -201,7 +148,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       socket =
         socket
         |> assign(:pilot_suggestions, suggestions)
-        |> assign(:show_pilot_suggestions, length(suggestions) > 0)
+        |> assign(:show_pilot_suggestions, not Enum.empty?(suggestions))
         |> assign(:pilot_name, search_term)
 
       {:noreply, socket}
@@ -258,43 +205,35 @@ defmodule EveDmvWeb.BattleAnalysisLive do
               content = :zlib.uncompress(compressed)
 
               # Parse the log with ENHANCED parser
-              case EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser.parse_combat_log(
-                     content,
-                     pilot_name: combat_log.pilot_name
-                   ) do
-                {:ok,
-                 %{
-                   events: events,
-                   summary: summary,
-                   metadata: metadata,
-                   tactical_analysis: tactical_analysis,
-                   recommendations: recommendations
-                 }} ->
-                  # Update the log with parsed data including tactical analysis
-                  {:ok, updated_log} =
-                    Ash.update(combat_log, %{
-                      parsed_data: %{
-                        events: events,
-                        tactical_analysis: tactical_analysis,
-                        recommendations: recommendations
-                      },
-                      summary: summary,
-                      event_count: length(events),
-                      start_time: metadata[:start_time],
-                      end_time: metadata[:end_time],
-                      parse_status: :completed
-                    })
+              {:ok,
+               %{
+                 events: events,
+                 summary: summary,
+                 metadata: metadata,
+                 tactical_analysis: tactical_analysis,
+                 recommendations: recommendations
+               }} =
+                EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser.parse_combat_log(
+                  content,
+                  pilot_name: combat_log.pilot_name
+                )
 
-                  send(self, {:combat_log_parsed, updated_log})
+              # Update the log with parsed data including tactical analysis
+              {:ok, updated_log} =
+                Ash.update(combat_log, %{
+                  parsed_data: %{
+                    events: events,
+                    tactical_analysis: tactical_analysis,
+                    recommendations: recommendations
+                  },
+                  summary: summary,
+                  event_count: length(events),
+                  start_time: metadata[:start_time],
+                  end_time: metadata[:end_time],
+                  parse_status: :completed
+                })
 
-                _ ->
-                  # Update with error status
-                  {:ok, _} =
-                    Ash.update(combat_log, %{
-                      parse_status: :failed,
-                      parse_error: "Parse failed"
-                    })
-              end
+              send(self, {:combat_log_parsed, updated_log})
             rescue
               error ->
                 # Update with error status
@@ -396,26 +335,23 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       |> Map.put(:fitting_data, existing_fitting)
       |> Map.put(:combat_log_analysis, combat_log_analysis)
 
-    case EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer.analyze_ship_performance(
-           enhanced_ship_data,
-           socket.assigns.current_battle
-         ) do
-      {:ok, performance} ->
-        # Update ETS cache with current fitting
-        if existing_fitting do
-          :ets.insert(:battle_fitting_cache, {ship_key, existing_fitting})
-        end
+    {:ok, performance} =
+      EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer.analyze_ship_performance(
+        enhanced_ship_data,
+        socket.assigns.current_battle
+      )
 
-        socket =
-          socket
-          |> assign(:selected_ship, ship_data)
-          |> assign(:ship_performance, performance)
-
-        {:noreply, socket}
-
-      _ ->
-        {:noreply, socket}
+    # Update ETS cache with current fitting
+    if existing_fitting do
+      :ets.insert(:battle_fitting_cache, {ship_key, existing_fitting})
     end
+
+    socket =
+      socket
+      |> assign(:selected_ship, ship_data)
+      |> assign(:ship_performance, performance)
+
+    {:noreply, socket}
   end
 
   def handle_event("toggle_fitting_import", _, socket) do
@@ -484,48 +420,24 @@ defmodule EveDmvWeb.BattleAnalysisLive do
         visibility: String.to_existing_atom(params["visibility"])
       ]
 
-      case BattleSharing.create_battle_report_from_data(
-             socket.assigns.current_battle,
-             creator_id,
-             options
-           ) do
-        {:ok, _report} ->
-          {:noreply,
-           socket
-           |> put_flash(:info, "Battle report created successfully!")
-           |> assign(:show_share_modal, false)
-           |> assign(:share_form, %{
-             title: "",
-             description: "",
-             video_url: "",
-             visibility: "public"
-           })
-           |> load_battle_reports()}
+      {:ok, _report} =
+        BattleSharing.create_battle_report_from_data(
+          socket.assigns.current_battle,
+          creator_id,
+          options
+        )
 
-        {:error, :battle_not_found} ->
-          {:noreply,
-           socket
-           |> put_flash(
-             :error,
-             "Battle not found. This may be due to battle ID changes. Try refreshing the page."
-           )
-           |> assign(:show_share_modal, false)}
-
-        {:error, :max_iterations_reached} ->
-          {:noreply,
-           socket
-           |> put_flash(
-             :error,
-             "Unable to create battle report due to processing limits."
-           )
-           |> assign(:show_share_modal, false)}
-
-        {:error, reason} ->
-          {:noreply,
-           socket
-           |> put_flash(:error, "Failed to create battle report: #{inspect(reason)}")
-           |> assign(:show_share_modal, false)}
-      end
+      {:noreply,
+       socket
+       |> put_flash(:info, "Battle report created successfully!")
+       |> assign(:show_share_modal, false)
+       |> assign(:share_form, %{
+         title: "",
+         description: "",
+         video_url: "",
+         visibility: "public"
+       })
+       |> load_battle_reports()}
     else
       {:noreply, socket}
     end
@@ -544,8 +456,9 @@ defmodule EveDmvWeb.BattleAnalysisLive do
          |> put_flash(:info, "Rating submitted!")
          |> load_battle_reports()}
 
-      {:error, _} ->
-        {:noreply, put_flash(socket, :error, "Failed to submit rating")}
+      {:error, reason} ->
+        error_message = format_error_reason(reason)
+        {:noreply, put_flash(socket, :error, error_message)}
     end
   end
 
@@ -591,21 +504,18 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       # Update ship data with new fitting
       ship_data = Map.put(socket.assigns.selected_ship, :fitting_data, fitting.parsed_fitting)
 
-      case EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer.analyze_ship_performance(
-             ship_data,
-             socket.assigns.current_battle
-           ) do
-        {:ok, performance} ->
-          socket =
-            socket
-            |> assign(:selected_ship, ship_data)
-            |> assign(:ship_performance, performance)
+      {:ok, performance} =
+        EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer.analyze_ship_performance(
+          ship_data,
+          socket.assigns.current_battle
+        )
 
-          {:noreply, socket}
+      socket =
+        socket
+        |> assign(:selected_ship, ship_data)
+        |> assign(:ship_performance, performance)
 
-        _ ->
-          {:noreply, socket}
-      end
+      {:noreply, socket}
     else
       {:noreply, socket}
     end
@@ -678,43 +588,32 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       |> load_battle_reports()
     else
       # Try to load from backend
+      # Note: get_battle_with_timeline currently always returns error tuples
       case BattleAnalysis.get_battle_with_timeline(battle_id) do
-        {:ok, battle} ->
-          # Preload all names to prevent N+1 queries
-          BatchNameResolver.preload_battle_names(battle)
+        {:error, reason}
+        when reason in [:battle_not_found, :database_error, :timeline_reconstruction_failed] ->
+          require Logger
+          Logger.warning("Battle #{battle_id} error: #{reason}")
 
-          # Track this battle as recently viewed
-          track_recently_viewed_battle(battle)
+          error_message =
+            case reason do
+              :battle_not_found ->
+                "Battle not found. It may have been re-detected with a different ID."
 
-          # Load intelligence analysis
-          intelligence =
-            case BattleAnalysis.analyze_battle_with_intelligence(battle) do
-              {:ok, intel} -> intel
-              _ -> nil
+              :database_error ->
+                "Database error occurred while loading battle"
+
+              :timeline_reconstruction_failed ->
+                "Failed to reconstruct battle timeline"
+
+              # Dialyzer says :max_iterations_reached is not a possible value
+              _ ->
+                "Failed to load battle"
             end
 
-          socket
-          |> assign(:current_battle, battle)
-          |> assign(:battle_intelligence, intelligence)
-          |> assign(:selected_phase, nil)
-          |> assign(:error_message, nil)
-          |> assign(:recently_viewed_battles, load_recently_viewed_battles())
-          |> update_battle_sides()
-          |> load_combat_logs()
-          |> load_battle_metrics()
-          |> load_battle_reports()
+          assign(socket, :error_message, error_message)
 
-        {:error, :battle_not_found} ->
-          require Logger
-          Logger.warning("Battle #{battle_id} not found in backend, showing error")
-
-          assign(
-            socket,
-            :error_message,
-            "Battle not found. It may have been re-detected with a different ID."
-          )
-
-        _ ->
+        {:error, _reason} ->
           assign(socket, :error_message, "Failed to load battle")
       end
     end
@@ -722,9 +621,24 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   defp format_error(:invalid_zkillboard_url), do: "Invalid zkillboard URL"
   defp format_error(:unsupported_url_format), do: "Unsupported zkillboard URL format"
-  defp format_error({:http_error, _}), do: "Failed to connect to zkillboard"
+  defp format_error({:http_error, _error}), do: "Failed to connect to zkillboard"
   defp format_error({:api_error, status}), do: "zkillboard API error (#{status})"
-  defp format_error(_), do: "Import failed"
+  defp format_error(_error), do: "Import failed"
+
+  # Dialyzer indicates reason is always a binary string, never an atom
+  defp format_error_reason("curator_unavailable"),
+    do: "Battle curator service is temporarily unavailable"
+
+  defp format_error_reason("report_not_found"), do: "Battle report not found"
+
+  defp format_error_reason("permission_denied"),
+    do: "You don't have permission to perform this action"
+
+  defp format_error_reason(reason) when is_binary(reason) do
+    reason
+    |> String.replace("_", " ")
+    |> String.capitalize()
+  end
 
   # View helpers (these should be in the template but included here for completeness)
 
@@ -791,121 +705,21 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   # Name resolution helpers
   def resolve_system_name(system_id) when is_integer(system_id) do
-    NameResolver.system_name(system_id)
+    EveDmv.Eve.NameResolver.StaticDataResolver.system_name(system_id)
   end
 
   def resolve_system_name(_), do: "Unknown System"
 
   def resolve_character_name(character_id) when is_integer(character_id) do
-    NameResolver.character_name(character_id)
+    EveDmv.Eve.NameResolver.EsiEntityResolver.character_name(character_id)
   end
 
   def resolve_character_name(_), do: "Unknown"
 
-  def resolve_ship_name(type_id) when is_integer(type_id) do
-    NameResolver.ship_name(type_id)
-  end
-
-  def resolve_ship_name(_), do: "Unknown Ship"
-
-  def resolve_corporation_name(corp_id) when is_integer(corp_id) do
-    NameResolver.corporation_name(corp_id)
-  end
-
-  def resolve_corporation_name(_), do: "Unknown Corp"
-
-  def resolve_alliance_name(alliance_id) when is_integer(alliance_id) do
-    NameResolver.alliance_name(alliance_id)
-  end
-
-  def resolve_alliance_name(_), do: nil
-
-  # Portrait/icon URLs
-  def character_portrait(character_id, size \\ 64) do
-    "https://images.evetech.net/characters/#{character_id}/portrait?size=#{size}"
-  end
-
-  def corporation_logo(corp_id, size \\ 64) do
-    "https://images.evetech.net/corporations/#{corp_id}/logo?size=#{size}"
-  end
-
-  def alliance_logo(alliance_id, size \\ 64) do
-    "https://images.evetech.net/alliances/#{alliance_id}/logo?size=#{size}"
-  end
-
-  def ship_render(type_id, size \\ 64) do
-    "https://images.evetech.net/types/#{type_id}/render?size=#{size}"
-  end
-
-  # Get weapon name from attacker data
-  def get_weapon_name(attacker) do
-    case attacker[:weapon_type_id] do
-      nil ->
-        nil
-
-      weapon_id ->
-        weapon_name = NameResolver.item_name(weapon_id)
-        if String.starts_with?(weapon_name, "Unknown"), do: nil, else: weapon_name
-    end
-  end
-
-  # Get ship class from type ID (simplified mapping)
-  # Format ISK values in short form (1.2B, 850M, etc)
-  def format_isk_short(value) when is_number(value) do
-    cond do
-      value >= 1_000_000_000 -> "#{Float.round(value / 1_000_000_000, 1)}B"
-      value >= 1_000_000 -> "#{Float.round(value / 1_000_000, 1)}M"
-      value >= 1_000 -> "#{Float.round(value / 1_000, 1)}K"
-      true -> "#{round(value)}"
-    end
-  end
-
-  def format_isk_short(_), do: "0"
-
-  # Humanize upload errors
-  def humanize_upload_error(:too_large), do: "File too large (max 10MB)"
-  def humanize_upload_error(:not_accepted), do: "Invalid file type (only .txt or .log allowed)"
-  def humanize_upload_error(error), do: "Upload error: #{inspect(error)}"
-
-  def ship_class_from_id(type_id) when is_integer(type_id) do
-    # This is a simplified mapping - in production would use SDE data
-    cond do
-      type_id in 582..650 -> "Frigate"
-      type_id in 324..380 -> "Destroyer"
-      type_id in 620..634 -> "Cruiser"
-      type_id in 1201..1310 -> "Battlecruiser"
-      type_id in 638..645 -> "Battleship"
-      type_id in 547..554 -> "Carrier"
-      type_id in 671..671 -> "Dreadnought"
-      type_id in 3514..3518 -> "Titan"
-      type_id in 11_567..12_034 -> "Tech 3 Cruiser"
-      type_id in 29_984..29_990 -> "Tech 3 Destroyer"
-      type_id in 35_779..35_781 -> "Triglavian"
-      true -> "Ship"
-    end
-  end
-
-  def ship_class_from_id(_), do: "Unknown"
-
-  # Get effective ship side (manual assignment or automatic)
-  def get_ship_side(pilot, ship_side_assignments) do
-    # Use character_id and ship_type_id for unique pilot/ship combo
-    pilot_key = "pilot_#{pilot.character_id}_#{pilot.ship_type_id}"
-
-    case Map.get(ship_side_assignments, pilot_key) do
-      nil ->
-        # Use automatic side detection based on pilot's analyzed side
-        pilot[:side] || "unassigned"
-
-      manual_side ->
-        manual_side
-    end
-  end
-
   # Get ships for a specific side
   def get_ships_for_side(pilots, side, ship_side_assignments) do
     Enum.filter(pilots || [], fn pilot ->
-      get_ship_side(pilot, ship_side_assignments) == side
+      Helpers.get_ship_side(pilot, ship_side_assignments) == side
     end)
   end
 
@@ -937,7 +751,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       all_sides = (pilot_sides ++ battle_sides) |> Enum.uniq() |> Enum.sort()
 
       # Use detected sides or default to side_1, side_2
-      custom_sides = if length(all_sides) > 0, do: all_sides, else: ["side_1", "side_2"]
+      custom_sides = if Enum.empty?(all_sides), do: ["side_1", "side_2"], else: all_sides
 
       # Calculate corporation summaries
       corp_summaries = calculate_corp_summaries(battle)
@@ -953,65 +767,72 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   # Calculate corporation kill/loss/ISK statistics
   defp calculate_corp_summaries(battle) do
     if battle && battle.timeline && battle.timeline.events do
-      Enum.reduce(battle.timeline.events, %{}, fn event, acc ->
-        # Process victim corporation
-        victim_corp = event.victim.corporation_id
-        victim_value = event[:isk_value] || 0
-
-        acc =
-          if victim_corp do
-            Map.update(
-              acc,
-              victim_corp,
-              %{
-                kills: 0,
-                losses: 1,
-                isk_destroyed: 0,
-                isk_lost: victim_value,
-                name: event.victim.corporation_name
-              },
-              fn stats ->
-                %{stats | losses: stats.losses + 1, isk_lost: stats.isk_lost + victim_value}
-              end
-            )
-          else
-            acc
-          end
-
-        # Process attacker corporations - accumulate in acc properly
-        event.attackers
-        |> Enum.filter(& &1.corporation_id)
-        |> Enum.reduce(acc, fn attacker, acc2 ->
-          # Distribute victim value among all attackers
-          attacker_share =
-            if length(event.attackers) > 0 do
-              victim_value / length(event.attackers)
-            else
-              0
-            end
-
-          Map.update(
-            acc2,
-            attacker.corporation_id,
-            %{
-              kills: if(attacker.final_blow, do: 1, else: 0),
-              losses: 0,
-              isk_destroyed: attacker_share,
-              isk_lost: 0,
-              name: attacker.corporation_name
-            },
-            fn stats ->
-              %{
-                stats
-                | kills: stats.kills + if(attacker.final_blow, do: 1, else: 0),
-                  isk_destroyed: stats.isk_destroyed + attacker_share
-              }
-            end
-          )
-        end)
-      end)
+      battle.timeline.events
+      |> Enum.reduce(%{}, &process_event_for_corp_stats/2)
     else
       %{}
+    end
+  end
+
+  defp process_event_for_corp_stats(event, acc) do
+    acc = process_victim_corporation(event, acc)
+    process_attacker_corporations(event, acc)
+  end
+
+  defp process_victim_corporation(event, acc) do
+    victim_corp = event.victim.corporation_id
+    victim_value = event[:isk_value] || 0
+
+    if victim_corp do
+      Map.update(
+        acc,
+        victim_corp,
+        %{
+          kills: 0,
+          losses: 1,
+          isk_destroyed: 0,
+          isk_lost: victim_value,
+          name: event.victim.corporation_name
+        },
+        fn stats ->
+          %{stats | losses: stats.losses + 1, isk_lost: stats.isk_lost + victim_value}
+        end
+      )
+    else
+      acc
+    end
+  end
+
+  defp process_attacker_corporations(event, acc) do
+    victim_value = event[:isk_value] || 0
+
+    event.attackers
+    |> Enum.filter(& &1.corporation_id)
+    |> Enum.reduce(acc, fn attacker, acc2 ->
+      attacker_share = calculate_attacker_share(event.attackers, victim_value)
+
+      Map.update(
+        acc2,
+        attacker.corporation_id,
+        %{
+          kills: if(attacker.final_blow, do: 1, else: 0),
+          losses: 0,
+          isk_destroyed: attacker_share,
+          isk_lost: 0,
+          name: attacker.corporation_name
+        },
+        fn stats ->
+          update_attacker_stats(stats, attacker, attacker_share)
+        end
+      )
+    end)
+  end
+
+  defp calculate_attacker_share(attackers, victim_value) do
+    if Enum.empty?(attackers) do
+      0
+    else
+      victim_value / length(attackers)
     end
   end
 
@@ -1034,15 +855,12 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   defp load_battle_metrics(socket) do
     if socket.assigns.current_battle do
-      case EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator.calculate_battle_metrics(
-             socket.assigns.current_battle
-           ) do
-        {:ok, metrics} ->
-          assign(socket, :battle_metrics, metrics)
+      {:ok, metrics} =
+        EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator.calculate_battle_metrics(
+          socket.assigns.current_battle
+        )
 
-        {:error, _} ->
-          socket
-      end
+      assign(socket, :battle_metrics, metrics)
     else
       socket
     end
@@ -1152,6 +970,7 @@ defmodule EveDmvWeb.BattleAnalysisLive do
 
   # Get pilot suggestions for autocomplete based on current battle participants
   defp get_pilot_suggestions(nil, _search_term), do: []
+  # No battle data available for suggestions
 
   defp get_pilot_suggestions(battle, search_term) when is_binary(search_term) do
     # First try to get pilots from the current battle if available
@@ -1172,9 +991,9 @@ defmodule EveDmvWeb.BattleAnalysisLive do
           %{
             character_id: pilot.character_id,
             character_name: pilot[:character_name] || resolve_character_name(pilot.character_id),
-            ship_name: pilot[:ship_name] || resolve_ship_name(pilot.ship_type_id),
+            ship_name: pilot[:ship_name] || Helpers.resolve_ship_name(pilot.ship_type_id),
             corporation_name:
-              pilot[:corporation_name] || resolve_corporation_name(pilot.corporation_id)
+              pilot[:corporation_name] || Helpers.resolve_corporation_name(pilot.corporation_id)
           }
         end)
       else
@@ -1200,14 +1019,16 @@ defmodule EveDmvWeb.BattleAnalysisLive do
           []
       end
     else
-      Enum.take(battle_pilots, 8)
+      battle_pilots
+      |> Enum.take(8)
     end
   end
 
   # Check if a target from combat log actually died in this battle
-  defp target_died?(target_name, battle) when is_binary(target_name) and not is_nil(battle) do
+  defp target_died?(target_name, battle) when is_binary(target_name) and is_map(battle) do
     if battle.killmails do
-      Enum.any?(battle.killmails, fn killmail ->
+      battle.killmails
+      |> Enum.any?(fn killmail ->
         victim_name = get_in(killmail.raw_data, ["victim", "character_name"])
         victim_name == target_name
       end)
@@ -1256,17 +1077,19 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       [victim | attackers]
     end)
     # Filter out entries without character_id (NPC corporations, etc.)
-    |> Enum.filter(&(&1.character_id && &1.character_name))
+    |> Enum.filter(&has_valid_character_data?/1)
     # Remove duplicates based on character_id and ship_type_id
     |> Enum.uniq_by(&{&1.character_id, &1.ship_type_id})
     |> Enum.sort_by(&(&1.character_name || ""))
   end
 
   defp get_all_pilots_from_battle(_), do: []
+  # Battle data structure not available
 
   defp has_combat_log?(pilot_name, combat_logs)
        when is_binary(pilot_name) and is_list(combat_logs) do
-    Enum.any?(combat_logs, fn log ->
+    combat_logs
+    |> Enum.any?(fn log ->
       case log do
         %{pilot_name: ^pilot_name} -> true
         %{"pilot_name" => ^pilot_name} -> true
@@ -1356,5 +1179,74 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       :resolution -> "Battle conclusion"
       _ -> "Tactical activity phase"
     end
+  end
+
+  # Private helper functions for mount initialization
+
+  defp initialize_battle_state(socket) do
+    socket
+    |> assign(:page_title, "Battle Analysis")
+    |> assign(:current_battle, nil)
+    |> assign(:recent_battles, [])
+    |> assign(:recently_viewed_battles, load_recently_viewed_battles())
+    |> assign(:corp_summaries, %{})
+    |> assign(:battle_metrics, nil)
+    |> assign(:battle_intelligence, nil)
+    |> assign(:battle_reports, [])
+  end
+
+  defp initialize_ui_state(socket) do
+    socket
+    |> assign(:main_view, :metrics)
+    |> assign(:timeline_view, :phases)
+    |> assign(:selected_phase, nil)
+    |> assign(:show_metrics_dashboard, true)
+    |> assign(:error_message, nil)
+    |> assign(:pilot_suggestions, [])
+    |> assign(:show_pilot_suggestions, false)
+    |> assign(:editing_fleet_sides, false)
+    |> assign(:custom_sides, ["side_1", "side_2"])
+    |> assign(:ship_side_assignments, %{})
+    |> assign(:selected_ship, nil)
+    |> assign(:ship_performance, nil)
+    |> assign(:show_fitting_import, false)
+  end
+
+  defp initialize_upload_state(socket) do
+    socket
+    |> assign(:import_url, "")
+    |> assign(:importing, false)
+    |> assign(:combat_logs, [])
+    |> assign(:show_log_upload, false)
+    |> assign(:log_upload_errors, [])
+    |> assign(:pilot_name, "")
+    |> allow_upload(:combat_log,
+      accept: ~w(.txt),
+      max_entries: 1,
+      max_file_size: 10_000_000
+    )
+  end
+
+  defp initialize_share_state(socket) do
+    socket
+    |> assign(:show_share_modal, false)
+    |> assign(:share_form, %{
+      title: "",
+      description: "",
+      video_url: "",
+      visibility: "public"
+    })
+  end
+
+  defp has_valid_character_data?(participant) do
+    participant.character_id && participant.character_name
+  end
+
+  defp update_attacker_stats(stats, attacker, attacker_share) do
+    %{
+      stats
+      | kills: stats.kills + if(attacker.final_blow, do: 1, else: 0),
+        isk_destroyed: stats.isk_destroyed + attacker_share
+    }
   end
 end

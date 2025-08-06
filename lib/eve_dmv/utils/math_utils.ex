@@ -210,10 +210,10 @@ defmodule EveDmv.Utils.MathUtils do
   ## Examples
 
       iex> MathUtils.clamp_score(150, 0, 100)
-      100
+    100
 
       iex> MathUtils.clamp_score(-10, 0, 100)
-      0
+    0
   """
   @spec clamp_score(number(), number(), number()) :: number()
   def clamp_score(score, min_val \\ 0, max_val \\ 100) do
@@ -417,10 +417,12 @@ defmodule EveDmv.Utils.MathUtils do
   """
   @spec categorize_by_thresholds(number(), map()) :: atom()
   def categorize_by_thresholds(score, thresholds) do
-    thresholds
-    |> Enum.sort_by(fn {_category, threshold} -> threshold end)
-    |> Enum.find(fn {_category, threshold} -> score <= threshold end)
-    |> case do
+    result =
+      thresholds
+      |> Enum.sort_by(fn {_category, threshold} -> threshold end)
+      |> Enum.find(fn {_category, threshold} -> score <= threshold end)
+
+    case result do
       {category, _threshold} -> category
       nil -> :maximum
     end

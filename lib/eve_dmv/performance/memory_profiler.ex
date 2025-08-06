@@ -38,7 +38,7 @@ defmodule EveDmv.Performance.MemoryProfiler do
     Memory Profile - #{description}:
     Execution Time: #{execution_time}ms
     Memory Usage:
-      - Total: #{format_bytes(memory_diff.total)} 
+      - Total: #{format_bytes(memory_diff.total)}
       - Processes: #{format_bytes(memory_diff.processes)}
       - Atom: #{format_bytes(memory_diff.atom)}
       - Binary: #{format_bytes(memory_diff.binary)}

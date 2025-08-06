@@ -58,9 +58,10 @@ defmodule EveDmvWeb.Router do
   scope "/", EveDmvWeb do
     pipe_through([:browser, :require_authenticated_user])
 
-    live("/dashboard", DashboardLive)
+    live("/dashboard", UnifiedDashboardLive)
     live("/profile", ProfileLive)
-    live("/character", CharacterSearchLive)
+    # Consolidated character search - redirect to universal search with filter
+    live("/character", UniversalSearchLive, as: :character_search)
     live("/character/:character_id", CharacterAnalysisLive)
     # Redirect old intelligence route to main character page
     get("/character/:character_id/intelligence", PageController, :redirect_to_character)
@@ -69,7 +70,8 @@ defmodule EveDmvWeb.Router do
     live("/corporation/:corporation_id", CorporationLive)
     live("/alliance/:alliance_id", AllianceLive)
     live("/system/:system_id", SystemLive)
-    live("/search/systems", SystemSearchLive)
+    # Consolidated system search - redirect to universal search with filter
+    live("/search/systems", UniversalSearchLive, as: :system_search)
     live("/search", UniversalSearchLive)
 
     # Redirects for backward compatibility
@@ -78,17 +80,24 @@ defmodule EveDmvWeb.Router do
     live("/surveillance", SurveillanceLive)
     live("/surveillance-profiles", SurveillanceProfilesLive)
     live("/surveillance-alerts", SurveillanceAlertsLive)
-    live("/surveillance-dashboard", SurveillanceDashboardLive)
     live("/chain-intelligence", ChainIntelligenceLive)
     live("/chain-intelligence/:map_id", ChainIntelligenceLive)
     live("/wh-vetting", WHVettingLive)
-    live("/intelligence-dashboard", IntelligenceDashboardLive)
+    # Redirect old dashboard routes to unified dashboard with appropriate tab
+    live("/intelligence-dashboard", UnifiedDashboardLive, as: :intelligence_dashboard)
+    live("/monitoring", UnifiedDashboardLive, as: :monitoring_dashboard)
+    live("/surveillance-dashboard", UnifiedDashboardLive, as: :surveillance_dashboard)
     live("/battle", BattleAnalysisLive)
     live("/battle/:battle_id", BattleAnalysisLive)
     live("/fleet", FleetOperationsLive)
 
-    # System monitoring (admin only in production)
-    live("/monitoring", MonitoringDashboardLive)
+    # System activity analytics
+    live("/system-activity", SystemActivityLive)
+
+    # Character comparison tools
+    live("/character-comparison", CharacterComparisonLive)
+
+    # System monitoring redirected to unified dashboard
 
     # Performance monitoring dashboard (Sprint 15A)
     live("/admin/performance", Admin.PerformanceLive)
@@ -102,6 +111,10 @@ defmodule EveDmvWeb.Router do
     sign_in_route()
     sign_out_route(AuthController)
     reset_route([])
+
+    # Character switching routes
+    get("/switch/:character_id", CharacterSwitchController, :switch)
+    post("/set_primary/:character_id", CharacterSwitchController, :set_primary)
   end
 
   # Login page with rate limiting

@@ -11,8 +11,8 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.CharacterHeaderComponent do
     <div class="mb-6 bg-gray-800 rounded-lg p-6">
       <div class="flex items-start justify-between">
         <div class="flex items-center gap-4">
-          <.character_portrait 
-            character_id={@character_id} 
+          <.character_portrait
+            character_id={@character_id}
             name={@analysis.character_name || "Unknown Pilot"}
             size={96}
           />
@@ -51,7 +51,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.CharacterHeaderComponent do
             </div>
           </div>
         </div>
-        
+
         <!-- Threat Score (if intelligence data available) -->
         <%= if @intelligence && @intelligence.threat_analysis do %>
           <div class={"ml-auto px-6 py-3 rounded-lg border " <> threat_level_bg(@intelligence.threat_analysis.threat_score)}>
@@ -64,7 +64,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.CharacterHeaderComponent do
             </div>
           </div>
         <% end %>
-        
+
       </div>
     </div>
     """

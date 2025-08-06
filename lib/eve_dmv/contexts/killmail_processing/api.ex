@@ -77,10 +77,37 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
 
   Returns both raw and enriched data if available.
   """
-  @spec get_killmail_by_id(integer()) :: {:error, :not_found | :invalid_killmail_id}
+  @spec get_killmail_by_id(integer()) ::
+          Result.t(map()) | {:error, :not_found | :invalid_killmail_id}
   def get_killmail_by_id(killmail_id) when is_integer(killmail_id) and killmail_id > 0 do
-    # For now, return a mock response since the table doesn't exist
-    {:error, :not_found}
+    # Try to get enriched killmail first, fall back to raw if needed
+    case Ash.get(EveDmv.Killmails.KillmailEnriched, killmail_id, domain: EveDmv.Api) do
+      {:ok, enriched} ->
+        {:ok,
+         %{
+           killmail: enriched,
+           type: :enriched,
+           found_at: DateTime.utc_now()
+         }}
+
+      {:error, %Ash.Error.Invalid{}} ->
+        # Try raw killmail if enriched not found
+        case Ash.get(EveDmv.Killmails.KillmailRaw, killmail_id, domain: EveDmv.Api) do
+          {:ok, raw} ->
+            {:ok,
+             %{
+               killmail: raw,
+               type: :raw,
+               found_at: DateTime.utc_now()
+             }}
+
+          {:error, _} ->
+            {:error, :not_found}
+        end
+
+      {:error, _} ->
+        {:error, :not_found}
+    end
   end
 
   def get_killmail_by_id(_), do: {:error, :invalid_killmail_id}
@@ -172,11 +199,16 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
       {:ok, %{task_ref: #Reference<>, character_count: 3}}
   """
   @spec fetch_historical_killmails([integer()], keyword()) :: Result.t(map())
-  def fetch_historical_killmails(character_ids, _opts \\ []) do
+  def fetch_historical_killmails(character_ids, opts \\ []) do
     with :ok <- validate_character_ids(character_ids) do
-      # For now, return a placeholder response until historical service is implemented
-      {:ok,
-       %{task_ref: make_ref(), character_count: length(character_ids), status: :not_implemented}}
+      # Start historical fetching task using the domain service
+      case Domain.HistoricalService.start_fetch_task(character_ids, opts) do
+        {:ok, task_info} ->
+          {:ok, task_info}
+
+        {:error, reason} ->
+          {:error, reason}
+      end
     end
   end
 
@@ -192,17 +224,16 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
       {:ok, %{kill_count: 1500, total_value: 45_000_000_000, top_ships: [...]}}
   """
   @spec get_system_statistics(integer(), TimeRange.t()) :: Result.t(map())
-  def get_system_statistics(system_id, _time_range) do
+  def get_system_statistics(system_id, time_range) do
     with {:ok, system_id_vo} <- SolarSystemId.new(system_id) do
-      # For now, return a placeholder response until statistics service is implemented
-      {:ok,
-       %{
-         kill_count: 0,
-         total_value: 0,
-         top_ships: [],
-         system_id: system_id_vo.value,
-         status: :not_implemented
-       }}
+      # Calculate real statistics from killmail data
+      case Domain.StatisticsService.calculate_system_statistics(system_id_vo.value, time_range) do
+        {:ok, statistics} ->
+          {:ok, statistics}
+
+        {:error, reason} ->
+          {:error, reason}
+      end
     end
   end
 
@@ -225,8 +256,20 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
   @spec get_display_data(killmail_options()) :: Result.t(map())
   def get_display_data(opts \\ []) do
     with :ok <- validate_killmail_options(opts) do
-      # For now, return a placeholder response until display service is implemented
-      {:ok, %{killmails: [], total_count: 0, status: :not_implemented}}
+      # Get real killmail display data from enriched killmails
+      case get_recent_killmails(opts) do
+        {:ok, killmails} ->
+          display_data = %{
+            killmails: Enum.map(killmails, &format_for_display/1),
+            total_count: length(killmails),
+            last_updated: DateTime.utc_now()
+          }
+
+          {:ok, display_data}
+
+        {:error, reason} ->
+          {:error, reason}
+      end
     end
   end
 
@@ -286,4 +329,28 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
   end
 
   defp validate_character_ids(_), do: {:error, :invalid_character_ids_format}
+
+  # Helper functions
+
+  defp format_for_display(killmail) do
+    %{
+      id: killmail.killmail_id,
+      killmail_time: killmail.killmail_time,
+      solar_system_id: killmail.solar_system_id,
+      victim: %{
+        character_id: killmail.victim_character_id,
+        corporation_id: killmail.victim_corporation_id,
+        alliance_id: killmail.victim_alliance_id,
+        ship_type_id: killmail.victim_ship_type_id
+      },
+      total_value: Map.get(killmail, :total_value, 0),
+      participant_count: Map.get(killmail, :participant_count, 0),
+      location: %{
+        solar_system_id: killmail.solar_system_id,
+        # Add region/constellation if available
+        region_id: Map.get(killmail, :region_id),
+        constellation_id: Map.get(killmail, :constellation_id)
+      }
+    }
+  end
 end

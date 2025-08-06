@@ -100,7 +100,8 @@ defmodule EveDmv.Constants.Isk do
 
   Returns the divisor value for the given scale.
   """
-  @spec get_multiplier(:thousand | :million | :billion | :trillion) :: pos_integer()
+  @spec get_multiplier(:thousand | :million | :billion | :trillion) ::
+          1_000 | 1_000_000 | 1_000_000_000 | 1_000_000_000_000
   def get_multiplier(:thousand), do: @thousand
   def get_multiplier(:million), do: @million
   def get_multiplier(:billion), do: @billion

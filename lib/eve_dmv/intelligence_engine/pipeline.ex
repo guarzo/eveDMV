@@ -20,7 +20,8 @@ defmodule EveDmv.IntelligenceEngine.Pipeline do
   def validate_entity_id(entity_id) when is_integer(entity_id) and entity_id > 0, do: :ok
 
   def validate_entity_id(entity_ids) when is_list(entity_ids) do
-    if Enum.all?(entity_ids, fn id -> is_integer(id) and id > 0 end) and length(entity_ids) > 0 do
+    if Enum.all?(entity_ids, fn id -> is_integer(id) and id > 0 end) and
+         not Enum.empty?(entity_ids) do
       :ok
     else
       {:error, :invalid_entity_id}
@@ -38,8 +39,7 @@ defmodule EveDmv.IntelligenceEngine.Pipeline do
   defp format_entity_id(entity_id) when is_integer(entity_id) do
     # Only format large numbers (more than 6 digits) with underscores for readability
     if entity_id >= 1_000_000 do
-      entity_id
-      |> Integer.to_string()
+      Integer.to_string(entity_id)
       |> String.graphemes()
       |> Enum.reverse()
       |> Enum.chunk_every(3)

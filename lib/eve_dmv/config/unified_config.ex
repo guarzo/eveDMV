@@ -154,6 +154,12 @@ defmodule EveDmv.Config.UnifiedConfig do
 
   @type config_key :: atom() | [atom()]
   @type config_value :: term()
+  @type config_summary_map :: %{
+          categories: [atom()],
+          env_variables_set: non_neg_integer(),
+          runtime_environment: atom(),
+          validation_status: {:ok, :valid} | {:error, [String.t()]}
+        }
 
   @doc """
   Get configuration value with optional default.
@@ -205,7 +211,7 @@ defmodule EveDmv.Config.UnifiedConfig do
   @doc """
   Get all configuration for a category.
   """
-  @spec get_category(atom()) :: map()
+  @spec get_category(atom()) :: %{atom() => any()}
   def get_category(category) do
     case Map.get(@config_schema, category) do
       nil ->
@@ -236,7 +242,7 @@ defmodule EveDmv.Config.UnifiedConfig do
   @doc """
   Get configuration summary for debugging.
   """
-  @spec config_summary() :: map()
+  @spec config_summary() :: config_summary_map()
   def config_summary do
     %{
       categories: Map.keys(@config_schema),
@@ -318,9 +324,8 @@ defmodule EveDmv.Config.UnifiedConfig do
   end
 
   defp generate_env_var_name(key_path) do
-    key_path
-    |> Enum.map_join("_", &(&1 |> to_string() |> String.upcase()))
-    |> then(&("EVE_DMV_" <> &1))
+    env_suffix = Enum.map_join(key_path, "_", &String.upcase(to_string(&1)))
+    "EVE_DMV_" <> env_suffix
   end
 
   defp build_category_config(category, schema) do

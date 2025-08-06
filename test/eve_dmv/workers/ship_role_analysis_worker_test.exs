@@ -2,9 +2,10 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorkerTest do
   # Not async due to GenServer state
   use EveDmv.DataCase, async: false
 
-  alias EveDmv.Workers.ShipRoleAnalysisWorker
-  alias EveDmv.Repo
   import Ecto.Query
+
+  alias EveDmv.Repo
+  alias EveDmv.Workers.ShipRoleAnalysisWorker
 
   setup do
     # Clean up any existing ship role patterns from other tests
@@ -41,7 +42,10 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorkerTest do
       assert %DateTime{} = stats.completed_at
 
       # Verify ship role patterns were created/updated
-      pattern_count = Repo.one(from(s in "ship_role_patterns", select: count(s.ship_type_id)))
+      pattern_count =
+        from(s in "ship_role_patterns", select: count(s.ship_type_id))
+        |> Repo.one()
+
       assert pattern_count > 0
     end
 
@@ -105,19 +109,18 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorkerTest do
 
       # Check the ship role pattern was created
       pattern =
-        Repo.one(
-          from(s in "ship_role_patterns",
-            where: s.ship_type_id == ^ship_type_id,
-            select: %{
-              ship_type_id: s.ship_type_id,
-              primary_role: s.primary_role,
-              confidence_score: s.confidence_score,
-              sample_size: s.sample_size,
-              last_analyzed: s.last_analyzed,
-              role_distribution: s.role_distribution
-            }
-          )
+        from(s in "ship_role_patterns",
+          where: s.ship_type_id == ^ship_type_id,
+          select: %{
+            ship_type_id: s.ship_type_id,
+            primary_role: s.primary_role,
+            confidence_score: s.confidence_score,
+            sample_size: s.sample_size,
+            last_analyzed: s.last_analyzed,
+            role_distribution: s.role_distribution
+          }
         )
+        |> Repo.one()
 
       assert pattern != nil
       assert pattern.primary_role == "dps"
@@ -166,7 +169,7 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorkerTest do
         })
       end
 
-      # 2 Logistics killmails  
+      # 2 Logistics killmails
       for i <- 5..6 do
         insert_test_killmail(999_100 + i, %{
           "victim" => %{
@@ -183,16 +186,15 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorkerTest do
 
       # Check aggregated results
       pattern =
-        Repo.one(
-          from(s in "ship_role_patterns",
-            where: s.ship_type_id == ^ship_type_id,
-            select: %{
-              ship_type_id: s.ship_type_id,
-              primary_role: s.primary_role,
-              role_distribution: s.role_distribution
-            }
-          )
+        from(s in "ship_role_patterns",
+          where: s.ship_type_id == ^ship_type_id,
+          select: %{
+            ship_type_id: s.ship_type_id,
+            primary_role: s.primary_role,
+            role_distribution: s.role_distribution
+          }
         )
+        |> Repo.one()
 
       assert pattern != nil
 
@@ -248,15 +250,14 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorkerTest do
 
       # Check meta trend
       pattern =
-        Repo.one(
-          from(s in "ship_role_patterns",
-            where: s.ship_type_id == ^ship_type_id,
-            select: %{
-              ship_type_id: s.ship_type_id,
-              meta_trend: s.meta_trend
-            }
-          )
+        from(s in "ship_role_patterns",
+          where: s.ship_type_id == ^ship_type_id,
+          select: %{
+            ship_type_id: s.ship_type_id,
+            meta_trend: s.meta_trend
+          }
         )
+        |> Repo.one()
 
       assert pattern.meta_trend == "stable"
     end
@@ -285,16 +286,15 @@ defmodule EveDmv.Workers.ShipRoleAnalysisWorkerTest do
 
       # Check confidence score
       pattern =
-        Repo.one(
-          from(s in "ship_role_patterns",
-            where: s.ship_type_id == ^ship_type_id,
-            select: %{
-              ship_type_id: s.ship_type_id,
-              primary_role: s.primary_role,
-              confidence_score: s.confidence_score
-            }
-          )
+        from(s in "ship_role_patterns",
+          where: s.ship_type_id == ^ship_type_id,
+          select: %{
+            ship_type_id: s.ship_type_id,
+            primary_role: s.primary_role,
+            confidence_score: s.confidence_score
+          }
         )
+        |> Repo.one()
 
       confidence = Decimal.to_float(pattern.confidence_score)
 

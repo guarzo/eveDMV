@@ -9,6 +9,9 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository do
   use GenServer
   use EveDmv.ErrorHandler
 
+  alias Ecto.Adapters.SQL
+  alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Repo
   require Logger
 
   # This would typically use an Ash resource, but for this implementation
@@ -67,6 +70,13 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository do
   """
   def get_active_profiles do
     GenServer.call(__MODULE__, :get_active_profiles)
+  end
+
+  @doc """
+  List all active profiles for matching (alias for get_active_profiles).
+  """
+  def list_active_profiles do
+    get_active_profiles()
   end
 
   @doc """
@@ -299,7 +309,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository do
         # Profile is inactive and last updated before cutoff
         not profile.is_active and
           not profile.is_archived and
-          DateTime.compare(profile.updated_at, cutoff_date) == :lt
+          DateTimeUtils.compare(profile.updated_at, cutoff_date) == :lt
       end)
 
     {:reply, {:ok, inactive_profiles}, state}
@@ -380,7 +390,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository do
 
           # Calculate average matches per day
           profile = Map.get(new_profiles, profile_id)
-          days_since_creation = DateTime.diff(current_time, profile.created_at, :day)
+          days_since_creation = DateTimeUtils.diff(current_time, profile.created_at, :day)
 
           average_matches_per_day =
             if days_since_creation > 0 do
@@ -411,7 +421,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository do
 
   defp calculate_matches_in_period(profile_id, state, current_time, period_seconds) do
     # Calculate matches in the specified time period
-    cutoff_time = DateTime.add(current_time, -period_seconds, :second)
+    cutoff_time = DateTimeUtils.add(current_time, -period_seconds, :second)
 
     # Get profile from state
     profile = Map.get(state.profiles, profile_id)
@@ -429,41 +439,39 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository do
 
   defp count_recent_matches(profile, cutoff_time) do
     # Query killmails that match the profile criteria since cutoff_time
-    try do
-      # Build query based on profile criteria
-      base_query = "SELECT COUNT(*) FROM killmails_raw WHERE killmail_time >= $1"
-      params = [cutoff_time]
+    # Build query based on profile criteria
+    base_query = "SELECT COUNT(*) FROM killmails_raw WHERE killmail_time >= $1"
+    params = [cutoff_time]
 
-      # Add profile-specific filters
-      {query, final_params} = add_profile_filters(base_query, params, profile)
+    # Add profile-specific filters
+    {query, final_params} = add_profile_filters(base_query, params, profile)
 
-      case Ecto.Adapters.SQL.query(EveDmv.Repo, query, final_params) do
-        {:ok, %{rows: [[count]]}} -> count
-        _ -> 0
-      end
-    rescue
+    case SQL.query(Repo, query, final_params) do
+      {:ok, %{rows: [[count]]}} -> count
       _ -> 0
     end
+  rescue
+    _ -> 0
   end
 
   defp add_profile_filters(query, params, profile) do
     # Add filters based on profile criteria
     case profile.criteria do
-      %{character_ids: character_ids} when is_list(character_ids) and length(character_ids) > 0 ->
+      %{character_ids: character_ids} when is_list(character_ids) and character_ids != [] ->
         placeholders =
           Enum.map_join(1..length(character_ids), ", ", fn i -> "$#{i + length(params)}" end)
 
         updated_query = "#{query} AND victim_character_id IN (#{placeholders})"
         {updated_query, params ++ character_ids}
 
-      %{corporation_ids: corp_ids} when is_list(corp_ids) and length(corp_ids) > 0 ->
+      %{corporation_ids: corp_ids} when is_list(corp_ids) and corp_ids != [] ->
         placeholders =
           Enum.map_join(1..length(corp_ids), ", ", fn i -> "$#{i + length(params)}" end)
 
         updated_query = "#{query} AND victim_corporation_id IN (#{placeholders})"
         {updated_query, params ++ corp_ids}
 
-      %{system_ids: system_ids} when is_list(system_ids) and length(system_ids) > 0 ->
+      %{system_ids: system_ids} when is_list(system_ids) and system_ids != [] ->
         placeholders =
           Enum.map_join(1..length(system_ids), ", ", fn i -> "$#{i + length(params)}" end)
 

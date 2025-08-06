@@ -66,7 +66,7 @@
         </div>
         
         <!-- Search Results Dropdown (only for authenticated users) -->
-        <%= if assigns[:current_user] && @show_search_dropdown && !@search_loading && has_search_results?(@search_results) do %>
+        <%= if show_search_dropdown?(assigns) do %>
           <div class="absolute mt-2 w-full bg-gray-800 border border-gray-700 rounded-lg shadow-lg max-h-96 overflow-y-auto z-50">
               <%= if @search_results.systems != [] do %>
                 <div class="border-b border-gray-700">

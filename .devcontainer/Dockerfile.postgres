@@ -1,0 +1,13 @@
+# Custom PostgreSQL image with pg_cron extension for EVE DMV development
+FROM postgres:17-alpine
+
+# Install pg_cron from Alpine community repository
+RUN apk add --no-cache \
+    --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community \
+    pg_cron
+
+# Add initialization script to enable pg_cron
+COPY postgres-init.sql /docker-entrypoint-initdb.d/
+
+# Set default database for pg_cron
+ENV POSTGRES_DB=eve_tracker_dev

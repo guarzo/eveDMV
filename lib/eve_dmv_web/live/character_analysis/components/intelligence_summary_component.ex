@@ -23,7 +23,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.IntelligenceSummaryComponent do
             </div>
           </div>
         <% end %>
-        
+
         <%= if @analysis.intelligence_summary.top_location do %>
           <div class="flex items-center space-x-2">
             <span class="text-blue-400">🌍</span>
@@ -35,7 +35,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.IntelligenceSummaryComponent do
             </div>
           </div>
         <% end %>
-        
+
         <%= if @analysis.intelligence_summary.primary_timezone do %>
           <div class="flex items-center space-x-2">
             <span class="text-green-400">⏰</span>

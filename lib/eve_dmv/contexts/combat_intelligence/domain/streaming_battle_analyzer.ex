@@ -14,10 +14,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
   """
 
   use GenServer
-  require Logger
-
-  alias EveDmv.Repo
   alias EveDmv.Contexts.CombatIntelligence.Domain.Shared.KillmailMapper
+  alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Repo
+  require Logger
 
   # Configuration constants
   @default_batch_size 1000
@@ -49,7 +49,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
         end_time: ~U[2024-01-02 00:00:00Z],
         batch_size: 1000
       )
-      
+
       results = Enum.to_list(stream)
   """
   def stream_battle_analysis(params, opts \\ []) do
@@ -243,7 +243,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
   defp fetch_killmail_batch(cursor, params) do
     # Build optimized query with cursor pagination
     base_query = """
-    SELECT 
+    SELECT
       killmail_id,
       killmail_time,
       killmail_hash,
@@ -254,7 +254,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
       victim_ship_type_id,
       attacker_count,
       raw_data,
-      source
+    source
     FROM killmails_raw
     WHERE 1=1
     """
@@ -452,7 +452,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
       total_killmails: length(killmails),
       total_isk_destroyed: total_value,
       unique_attackers: unique_attackers,
-      average_value: if(length(killmails) > 0, do: div(total_value, length(killmails)), else: 0),
+      average_value: if(Enum.empty?(killmails), do: 0, else: div(total_value, length(killmails))),
       time_span: calculate_time_span(killmails)
     }
   end
@@ -517,20 +517,20 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
     |> Enum.take(10)
   end
 
-  defp calculate_time_span(killmails) when length(killmails) > 0 do
+  defp calculate_time_span(killmails) when killmails != [] do
     times = Enum.map(killmails, & &1.killmail_time)
     min_time = Enum.min(times, DateTime)
     max_time = Enum.max(times, DateTime)
-    DateTime.diff(max_time, min_time, :second)
+    DateTimeUtils.diff(max_time, min_time, :second)
   end
 
   defp calculate_time_span(_), do: 0
 
-  defp calculate_event_time_span(events) when length(events) > 0 do
+  defp calculate_event_time_span(events) when events != [] do
     timestamps = Enum.map(events, & &1.timestamp)
     min_time = Enum.min(timestamps, DateTime)
     max_time = Enum.max(timestamps, DateTime)
-    DateTime.diff(max_time, min_time, :second)
+    DateTimeUtils.diff(max_time, min_time, :second)
   end
 
   defp calculate_event_time_span(_), do: 0
@@ -539,16 +539,18 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.StreamingBattleAnalyzer do
     # Group events into 1-minute windows and find peak
     events
     |> Enum.group_by(fn event ->
-      event.timestamp
-      |> DateTime.to_unix()
-      |> div(60)
+      DateTime.to_unix(event.timestamp) |> div(60)
     end)
     |> Enum.map(fn {_window, window_events} -> length(window_events) end)
     |> Enum.max(fn -> 0 end)
   end
 
   defp calculate_average_engagement_size(events) do
-    total_participants = events |> Enum.map(& &1.attacker_count) |> Enum.sum()
-    if length(events) > 0, do: div(total_participants, length(events)), else: 0
+    total_participants =
+      events
+      |> Enum.map(& &1.attacker_count)
+      |> Enum.sum()
+
+    if Enum.empty?(events), do: 0, else: div(total_participants, length(events))
   end
 end

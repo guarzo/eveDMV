@@ -1,7 +1,7 @@
 defmodule EveDmvWeb.IntelligenceNavigationComponent do
   @moduledoc """
   Navigation component specifically for intelligence-related pages.
-  
+
   Provides contextual navigation between intelligence features,
   quick access to common intelligence tools, and breadcrumb navigation.
   """
@@ -11,7 +11,7 @@ defmodule EveDmvWeb.IntelligenceNavigationComponent do
 
   @doc """
   Renders the intelligence navigation bar.
-  
+
   ## Attributes
   - `:current_page` - Current page identifier for highlighting active nav
   - `:character_id` - Character ID when viewing character-specific intelligence
@@ -34,7 +34,7 @@ defmodule EveDmvWeb.IntelligenceNavigationComponent do
                 Dashboard
               </.link>
             </li>
-            
+
             <li>
               <div class="flex items-center">
                 <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
@@ -45,7 +45,7 @@ defmodule EveDmvWeb.IntelligenceNavigationComponent do
                 </.link>
               </div>
             </li>
-            
+
             <%= if @current_page != :dashboard do %>
               <li aria-current="page">
                 <div class="flex items-center">
@@ -67,32 +67,32 @@ defmodule EveDmvWeb.IntelligenceNavigationComponent do
         <div class="flex items-center justify-between">
           <!-- Primary Navigation -->
           <nav class="flex space-x-8">
-            <.nav_link 
-              navigate={~p"/intelligence-dashboard"} 
+            <.nav_link
+              navigate={~p"/intelligence-dashboard"}
               active={@current_page == :dashboard}
               icon="dashboard"
             >
               Dashboard
             </.nav_link>
-            
-            <.nav_link 
-              navigate={~p"/character"} 
+
+            <.nav_link
+              navigate={~p"/character"}
               active={@current_page == :character_search}
               icon="character"
             >
               Character Analysis
             </.nav_link>
-            
-            <.nav_link 
-              navigate={~p"/chain-intelligence"} 
+
+            <.nav_link
+              navigate={~p"/chain-intelligence"}
               active={@current_page == :chain_intelligence}
               icon="chain"
             >
               Chain Intelligence
             </.nav_link>
-            
-            <.nav_link 
-              navigate={~p"/wh-vetting"} 
+
+            <.nav_link
+              navigate={~p"/wh-vetting"}
               active={@current_page == :wh_vetting}
               icon="vetting"
             >
@@ -103,21 +103,21 @@ defmodule EveDmvWeb.IntelligenceNavigationComponent do
           <!-- Quick Actions -->
           <div class="flex items-center space-x-3">
             <%= if @character_id do %>
-              <.quick_action_button 
+              <.quick_action_button
                 navigate={~p"/character/#{@character_id}"}
                 icon="analyze"
                 label="Analyze Character"
               />
             <% end %>
-            
-            <.quick_action_button 
+
+            <.quick_action_button
               phx-click="export_intelligence_data"
               phx-target={@myself}
               icon="export"
               label="Export Data"
             />
-            
-            <.quick_action_button 
+
+            <.quick_action_button
               phx-click="refresh_intelligence"
               phx-target={@myself}
               icon="refresh"
@@ -133,16 +133,16 @@ defmodule EveDmvWeb.IntelligenceNavigationComponent do
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-4">
               <span class="text-sm text-gray-400">Character Tools:</span>
-              
+
               <.link navigate={~p"/character/#{@character_id}"} class="text-sm text-blue-400 hover:text-blue-300 transition-colors">
                 Full Analysis
               </.link>
-              
+
               <.link navigate={~p"/wh-vetting?character_id=#{@character_id}"} class="text-sm text-blue-400 hover:text-blue-300 transition-colors">
                 Create Vetting
               </.link>
-              
-              <button 
+
+              <button
                 phx-click="add_to_watchlist"
                 phx-value-character-id={@character_id}
                 phx-target={@myself}
@@ -165,8 +165,8 @@ defmodule EveDmvWeb.IntelligenceNavigationComponent do
       navigate={@navigate}
       class={[
         "flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors",
-        if(@active, 
-          do: "bg-blue-600 text-white", 
+        if(@active,
+          do: "bg-blue-600 text-white",
           else: "text-gray-300 hover:text-white hover:bg-gray-700"
         )
       ]}
@@ -179,7 +179,7 @@ defmodule EveDmvWeb.IntelligenceNavigationComponent do
 
   # Quick action button component
   defp quick_action_button(assigns) do
-    button_attrs = 
+    button_attrs =
       if assigns[:navigate] do
         [navigate: assigns.navigate]
       else
@@ -210,25 +210,25 @@ defmodule EveDmvWeb.IntelligenceNavigationComponent do
     svg_content = case assigns.type do
       "dashboard" ->
         ~s(<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2-2V7a2 2 0 012-2h2a2 2 0 002 2v2a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 00-2 2h-2a2 2 0 00-2 2v6a2 2 0 01-2 2H9z"/>)
-      
+
       "character" ->
         ~s(<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>)
-      
+
       "chain" ->
         ~s(<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>)
-      
+
       "vetting" ->
         ~s(<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>)
-      
+
       "analyze" ->
         ~s(<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v6a2 2 0 002 2h2m0 0V9a2 2 0 012-2h2a2 2 0 012 2v6a2 2 0 01-2 2H9z"/>)
-      
+
       "export" ->
         ~s(<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>)
-      
+
       "refresh" ->
         ~s(<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>)
-        
+
       _ ->
         ~s(<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>)
     end

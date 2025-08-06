@@ -1,23 +1,26 @@
 defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
   @moduledoc """
-  High-performance cache for surveillance matches.
+  Caching layer for surveillance profile matches.
 
-  Provides fast storage and retrieval of surveillance matches with
-  automatic expiration and statistical aggregation.
+  Provides fast access to match results and prevents duplicate processing
+  of killmails against surveillance profiles.
   """
 
   use GenServer
-  use EveDmv.ErrorHandler
+
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
+  # ETS table names
+  @matches_table :surveillance_matches
+  @stats_table :surveillance_match_stats
+
   # Cache configuration
-  # 30 days
-  @default_ttl_seconds 30 * 24 * 3600
-  # 5 minutes
-  @cleanup_interval 5 * 60 * 1000
-  # Per profile limit
-  @max_matches_per_profile 10_000
+  # 1 hour default TTL
+  @default_ttl 3600
+  # Cleanup every 5 minutes
+  @cleanup_interval 300_000
 
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
@@ -26,415 +29,289 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
   # Public API
 
   @doc """
-  Store a surveillance match in the cache.
+  Cache a match result for a profile and killmail.
   """
-  def store_match(match) do
-    GenServer.cast(__MODULE__, {:store_match, match})
+  @spec put(String.t(), integer(), map()) :: :ok
+  def put(profile_id, killmail_id, match_data) do
+    GenServer.call(__MODULE__, {:put, profile_id, killmail_id, match_data})
   end
 
   @doc """
-  Get recent matches across all profiles.
+  Get cached match result for a profile and killmail.
   """
-  def get_recent_matches(limit \\ 50, since \\ nil, profile_id \\ nil) do
-    GenServer.call(__MODULE__, {:get_recent_matches, limit, since, profile_id})
+  @spec get(String.t(), integer()) :: {:ok, map()} | {:error, :not_found}
+  def get(profile_id, killmail_id) do
+    GenServer.call(__MODULE__, {:get, profile_id, killmail_id})
   end
 
   @doc """
-  Get matches for a specific profile.
+  Get all cached matches for a profile.
   """
-  def get_profile_matches(profile_id, limit \\ 50, since \\ nil) do
-    GenServer.call(__MODULE__, {:get_profile_matches, profile_id, limit, since})
+  @spec get_cached_matches(String.t(), keyword()) :: {:ok, [map()]} | {:error, term()}
+  def get_cached_matches(profile_id, opts \\ []) do
+    GenServer.call(__MODULE__, {:get_cached_matches, profile_id, opts})
   end
 
   @doc """
-  Get detailed information about a specific match.
+  Invalidate cache for a specific profile.
   """
-  def get_match_details(match_id) do
-    GenServer.call(__MODULE__, {:get_match_details, match_id})
+  @spec invalidate_profile_cache(String.t()) :: :ok
+  def invalidate_profile_cache(profile_id) do
+    GenServer.call(__MODULE__, {:invalidate_profile, profile_id})
   end
 
   @doc """
-  Get match statistics for a profile.
+  Check if a killmail has been processed for a profile.
   """
-  def get_match_statistics(profile_id, time_range \\ :last_30d) do
-    GenServer.call(__MODULE__, {:get_match_statistics, profile_id, time_range})
+  @spec has_match?(String.t(), integer()) :: boolean()
+  def has_match?(profile_id, killmail_id) do
+    case get(profile_id, killmail_id) do
+      {:ok, _} -> true
+      {:error, :not_found} -> false
+    end
   end
 
   @doc """
-  Clear all matches for a profile.
+  Get cache statistics.
   """
-  def clear_profile_matches(profile_id) do
-    GenServer.call(__MODULE__, {:clear_profile_matches, profile_id})
+  @spec get_stats() :: map()
+  def get_stats do
+    GenServer.call(__MODULE__, :get_stats)
   end
 
   @doc """
-  Get cache statistics and metrics.
+  Clear all cached data.
   """
-  def get_cache_metrics do
-    GenServer.call(__MODULE__, :get_cache_metrics)
+  @spec clear_all() :: :ok
+  def clear_all do
+    GenServer.call(__MODULE__, :clear_all)
   end
 
-  # GenServer implementation
+  # GenServer callbacks
 
   @impl GenServer
   def init(_opts) do
-    state = %{
-      # match_id -> match_data
-      matches: %{},
-      # profile_id -> [match_ids] (ordered by timestamp)
-      profile_matches: %{},
-      # [match_ids] (ordered by timestamp, global)
-      recent_matches: [],
-      # profile_id -> aggregated_stats
-      match_statistics: %{},
-      cache_metrics: %{
+    # Create ETS tables
+    :ets.new(@matches_table, [:named_table, :set, :public, read_concurrency: true])
+    :ets.new(@stats_table, [:named_table, :set, :public, read_concurrency: true])
+
+    # Initialize stats
+    :ets.insert(@stats_table, {
+      :cache_stats,
+      %{
         total_matches: 0,
-        profiles_with_matches: 0,
-        memory_usage_bytes: 0,
+        cache_hits: 0,
+        cache_misses: 0,
+        profiles_cached: 0,
         last_cleanup: DateTime.utc_now()
       }
-    }
+    })
 
     # Schedule periodic cleanup
     schedule_cleanup()
 
-    Logger.info("MatchCache started")
-    {:ok, state}
+    Logger.info("MatchCache started with ETS tables")
+    {:ok, %{}}
   end
 
   @impl GenServer
-  def handle_cast({:store_match, match}, state) do
-    match_id = match.id
+  def handle_call({:put, profile_id, killmail_id, match_data}, _from, state) do
+    cache_key = build_cache_key(profile_id, killmail_id)
 
-    # Store match with expiration timestamp
-    enriched_match =
-      Map.put(match, :expires_at, DateTime.add(DateTime.utc_now(), @default_ttl_seconds, :second))
-
-    new_matches = Map.put(state.matches, match_id, enriched_match)
-
-    # Add to profile matches (maintain order)
-    profile_id = match.profile_id
-    current_profile_matches = Map.get(state.profile_matches, profile_id, [])
-
-    # Add new match and limit size
-    new_profile_matches =
-      Enum.take([match_id | current_profile_matches], @max_matches_per_profile)
-
-    updated_profile_matches = Map.put(state.profile_matches, profile_id, new_profile_matches)
-
-    # Add to recent matches (global)
-    # Keep last 1000 recent matches
-    new_recent_matches =
-      Enum.take([match_id | state.recent_matches], 1000)
-
-    # Update statistics
-    new_statistics = update_match_statistics(state.match_statistics, match)
-
-    # Update cache metrics
-    new_metrics = %{
-      state.cache_metrics
-      | total_matches: state.cache_metrics.total_matches + 1,
-        profiles_with_matches: map_size(updated_profile_matches)
+    cache_entry = %{
+      profile_id: profile_id,
+      killmail_id: killmail_id,
+      match_data: match_data,
+      cached_at: DateTime.utc_now(),
+      expires_at: DateTimeUtils.add(DateTime.utc_now(), @default_ttl, :second)
     }
 
-    new_state = %{
-      state
-      | matches: new_matches,
-        profile_matches: updated_profile_matches,
-        recent_matches: new_recent_matches,
-        match_statistics: new_statistics,
-        cache_metrics: new_metrics
-    }
+    :ets.insert(@matches_table, {cache_key, cache_entry})
 
-    {:noreply, new_state}
+    # Update stats
+    update_cache_stats(:put)
+
+    {:reply, :ok, state}
   end
 
   @impl GenServer
-  def handle_call({:get_recent_matches, limit, since, profile_id_filter}, _from, state) do
-    # Start with recent matches or profile-specific matches
-    candidate_match_ids =
-      if profile_id_filter do
-        Map.get(state.profile_matches, profile_id_filter, [])
-      else
-        state.recent_matches
-      end
+  def handle_call({:get, profile_id, killmail_id}, _from, state) do
+    cache_key = build_cache_key(profile_id, killmail_id)
 
-    # Filter and limit matches
-    filtered_matches =
-      candidate_match_ids
-      # Take more to account for filtering
-      |> Enum.take(limit * 2)
-      |> Enum.map(&Map.get(state.matches, &1))
-      |> Enum.filter(&(&1 != nil))
-      |> filter_matches_by_time(since)
-      |> Enum.take(limit)
+    case :ets.lookup(@matches_table, cache_key) do
+      [{^cache_key, cache_entry}] ->
+        # Check if entry has expired
+        if DateTimeUtils.compare(DateTime.utc_now(), cache_entry.expires_at) == :lt do
+          update_cache_stats(:hit)
+          {:reply, {:ok, cache_entry.match_data}, state}
+        else
+          # Entry expired, remove it
+          :ets.delete(@matches_table, cache_key)
+          update_cache_stats(:miss)
+          {:reply, {:error, :not_found}, state}
+        end
 
-    {:reply, {:ok, filtered_matches}, state}
-  end
-
-  @impl GenServer
-  def handle_call({:get_profile_matches, profile_id, limit, since}, _from, state) do
-    profile_match_ids = Map.get(state.profile_matches, profile_id, [])
-
-    profile_matches =
-      profile_match_ids
-      # Take more to account for filtering
-      |> Enum.take(limit * 2)
-      |> Enum.map(&Map.get(state.matches, &1))
-      |> Enum.filter(&(&1 != nil))
-      |> filter_matches_by_time(since)
-      |> Enum.take(limit)
-
-    {:reply, {:ok, profile_matches}, state}
-  end
-
-  @impl GenServer
-  def handle_call({:get_match_details, match_id}, _from, state) do
-    case Map.get(state.matches, match_id) do
-      nil -> {:reply, {:error, :match_not_found}, state}
-      match -> {:reply, {:ok, match}, state}
+      [] ->
+        update_cache_stats(:miss)
+        {:reply, {:error, :not_found}, state}
     end
   end
 
   @impl GenServer
-  def handle_call({:get_match_statistics, profile_id, time_range}, _from, state) do
-    profile_stats = Map.get(state.match_statistics, profile_id, %{})
+  def handle_call({:get_cached_matches, profile_id, opts}, _from, state) do
+    limit = Keyword.get(opts, :limit, 100)
 
-    # Calculate time-range specific statistics
-    time_filtered_stats = calculate_time_range_statistics(state, profile_id, time_range)
+    # Pattern match for all entries with this profile_id
+    pattern = {:"$1", %{profile_id: profile_id, match_data: :"$2", cached_at: :"$3"}}
 
-    combined_stats = Map.merge(profile_stats, time_filtered_stats)
+    matches =
+      :ets.match(@matches_table, pattern)
+      |> Enum.map(fn [_key, match_data, cached_at] ->
+        %{match_data: match_data, cached_at: cached_at}
+      end)
+      |> Enum.sort_by(& &1.cached_at, {:desc, DateTime})
+      |> Enum.take(limit)
 
-    {:reply, {:ok, combined_stats}, state}
+    {:reply, {:ok, matches}, state}
   end
 
   @impl GenServer
-  def handle_call({:clear_profile_matches, profile_id}, _from, state) do
-    # Get profile match IDs to remove
-    profile_match_ids = Map.get(state.profile_matches, profile_id, [])
+  def handle_call({:invalidate_profile, profile_id}, _from, state) do
+    # Delete all entries for this profile
+    pattern = {:"$1", %{profile_id: profile_id}}
+    keys_to_delete = :ets.match(@matches_table, pattern) |> Enum.map(&hd/1)
 
-    # Remove matches from main storage
-    new_matches =
-      Enum.reduce(profile_match_ids, state.matches, fn match_id, acc ->
-        Map.delete(acc, match_id)
-      end)
+    Enum.each(keys_to_delete, fn key ->
+      :ets.delete(@matches_table, key)
+    end)
 
-    # Remove profile from profile matches
-    new_profile_matches = Map.delete(state.profile_matches, profile_id)
+    Logger.debug(
+      "Invalidated cache for profile #{profile_id}, removed #{length(keys_to_delete)} entries"
+    )
 
-    # Remove from recent matches
-    new_recent_matches =
-      Enum.reject(state.recent_matches, fn match_id ->
-        match_id in profile_match_ids
-      end)
-
-    # Remove from statistics
-    new_statistics = Map.delete(state.match_statistics, profile_id)
-
-    # Update metrics
-    new_metrics = %{
-      state.cache_metrics
-      | total_matches: map_size(new_matches),
-        profiles_with_matches: map_size(new_profile_matches)
-    }
-
-    new_state = %{
-      state
-      | matches: new_matches,
-        profile_matches: new_profile_matches,
-        recent_matches: new_recent_matches,
-        match_statistics: new_statistics,
-        cache_metrics: new_metrics
-    }
-
-    Logger.info("Cleared #{length(profile_match_ids)} matches for profile #{profile_id}")
-
-    {:reply, {:ok, length(profile_match_ids)}, new_state}
+    {:reply, :ok, state}
   end
 
   @impl GenServer
-  def handle_call(:get_cache_metrics, _from, state) do
-    # Calculate current memory usage (approximation)
-    memory_usage =
-      :erlang.external_size(state.matches) +
-        :erlang.external_size(state.profile_matches) +
-        :erlang.external_size(state.recent_matches)
+  def handle_call(:get_stats, _from, state) do
+    case :ets.lookup(@stats_table, :cache_stats) do
+      [{:cache_stats, stats}] ->
+        # Add current table sizes
+        enhanced_stats =
+          Map.merge(stats, %{
+            total_cached_entries: :ets.info(@matches_table, :size),
+            memory_usage_words: :ets.info(@matches_table, :memory)
+          })
 
-    metrics = %{
-      state.cache_metrics
-      | memory_usage_bytes: memory_usage,
-        profiles_with_matches: map_size(state.profile_matches),
-        total_matches: map_size(state.matches)
-    }
+        {:reply, enhanced_stats, state}
 
-    {:reply, {:ok, metrics}, state}
-  end
-
-  @impl GenServer
-  def handle_info(:cleanup_expired, state) do
-    current_time = DateTime.utc_now()
-
-    # Find expired matches
-    {expired_matches, active_matches} =
-      Enum.split_with(state.matches, fn {_match_id, match} ->
-        DateTime.compare(match.expires_at, current_time) == :lt
-      end)
-
-    expired_match_ids =
-      MapSet.new(Enum.map(expired_matches, fn {match_id, _match} -> match_id end))
-
-    # Clean up expired matches from all structures
-    new_matches = Map.new(active_matches)
-
-    new_profile_matches =
-      Map.new(state.profile_matches, fn {profile_id, match_ids} ->
-        filtered_ids = Enum.reject(match_ids, &MapSet.member?(expired_match_ids, &1))
-        {profile_id, filtered_ids}
-      end)
-
-    new_recent_matches = Enum.reject(state.recent_matches, &MapSet.member?(expired_match_ids, &1))
-
-    # Update statistics to remove expired data points
-    new_statistics = clean_expired_statistics(state.match_statistics, expired_match_ids)
-
-    expired_count = length(expired_matches)
-
-    if expired_count > 0 do
-      Logger.info("Cleaned up #{expired_count} expired matches from cache")
+      [] ->
+        {:reply, %{}, state}
     end
+  end
 
-    # Update metrics
-    new_metrics = %{
-      state.cache_metrics
-      | total_matches: map_size(new_matches),
-        profiles_with_matches: map_size(new_profile_matches),
-        last_cleanup: current_time
-    }
+  @impl GenServer
+  def handle_call(:clear_all, _from, state) do
+    :ets.delete_all_objects(@matches_table)
 
-    # Schedule next cleanup
+    # Reset stats
+    :ets.insert(@stats_table, {
+      :cache_stats,
+      %{
+        total_matches: 0,
+        cache_hits: 0,
+        cache_misses: 0,
+        profiles_cached: 0,
+        last_cleanup: DateTime.utc_now()
+      }
+    })
+
+    Logger.info("Cleared all cache data")
+    {:reply, :ok, state}
+  end
+
+  @impl GenServer
+  def handle_info(:cleanup, state) do
+    perform_cleanup()
     schedule_cleanup()
-
-    new_state = %{
-      state
-      | matches: new_matches,
-        profile_matches: new_profile_matches,
-        recent_matches: new_recent_matches,
-        match_statistics: new_statistics,
-        cache_metrics: new_metrics
-    }
-
-    {:noreply, new_state}
+    {:noreply, state}
   end
 
-  # Private helper functions
+  # Private functions
 
-  defp filter_matches_by_time(matches, nil), do: matches
-
-  defp filter_matches_by_time(matches, since) do
-    Enum.filter(matches, fn match ->
-      DateTime.compare(match.timestamp, since) == :gt
-    end)
+  defp build_cache_key(profile_id, killmail_id) do
+    "#{profile_id}:#{killmail_id}"
   end
 
-  defp update_match_statistics(current_statistics, match) do
-    profile_id = match.profile_id
-    profile_stats = Map.get(current_statistics, profile_id, initialize_profile_statistics())
+  defp update_cache_stats(operation) do
+    case :ets.lookup(@stats_table, :cache_stats) do
+      [{:cache_stats, current_stats}] ->
+        updated_stats =
+          case operation do
+            :put ->
+              %{current_stats | total_matches: current_stats.total_matches + 1}
 
-    updated_stats = %{
-      profile_stats
-      | total_matches: profile_stats.total_matches + 1,
-        last_match_at: match.timestamp,
-        confidence_scores: [
-          match.confidence_score | Enum.take(profile_stats.confidence_scores, 99)
-        ],
-        match_types: update_match_type_counts(profile_stats.match_types, match.matched_criteria),
-        hourly_distribution:
-          update_hourly_distribution(profile_stats.hourly_distribution, match.timestamp)
-    }
+            :hit ->
+              %{current_stats | cache_hits: current_stats.cache_hits + 1}
 
-    Map.put(current_statistics, profile_id, updated_stats)
-  end
+            :miss ->
+              %{current_stats | cache_misses: current_stats.cache_misses + 1}
+          end
 
-  defp initialize_profile_statistics do
-    %{
-      total_matches: 0,
-      last_match_at: nil,
-      confidence_scores: [],
-      match_types: %{},
-      hourly_distribution: %{},
-      daily_counts: %{}
-    }
-  end
+        :ets.insert(@stats_table, {:cache_stats, updated_stats})
 
-  defp update_match_type_counts(current_counts, matched_criteria) do
-    Enum.reduce(matched_criteria, current_counts, fn criterion, acc ->
-      type = criterion.type
-      Map.update(acc, type, 1, &(&1 + 1))
-    end)
-  end
+      [] ->
+        # Initialize stats if not present
+        initial_stats = %{
+          total_matches: if(operation == :put, do: 1, else: 0),
+          cache_hits: if(operation == :hit, do: 1, else: 0),
+          cache_misses: if(operation == :miss, do: 1, else: 0),
+          profiles_cached: 0,
+          last_cleanup: DateTime.utc_now()
+        }
 
-  defp update_hourly_distribution(current_distribution, timestamp) do
-    hour = timestamp |> DateTime.to_time() |> Map.get(:hour)
-    Map.update(current_distribution, hour, 1, &(&1 + 1))
-  end
-
-  defp calculate_time_range_statistics(state, profile_id, time_range) do
-    cutoff_time =
-      case time_range do
-        :last_hour -> DateTime.add(DateTime.utc_now(), -3600, :second)
-        :last_24h -> DateTime.add(DateTime.utc_now(), -24 * 3600, :second)
-        :last_7d -> DateTime.add(DateTime.utc_now(), -7 * 24 * 3600, :second)
-        :last_30d -> DateTime.add(DateTime.utc_now(), -30 * 24 * 3600, :second)
-        {start_time, _end_time} -> start_time
-      end
-
-    profile_match_ids = Map.get(state.profile_matches, profile_id, [])
-
-    time_filtered_matches =
-      profile_match_ids
-      |> Enum.map(&Map.get(state.matches, &1))
-      |> Enum.filter(&(&1 != nil))
-      |> filter_matches_by_time(cutoff_time)
-
-    %{
-      matches_in_range: length(time_filtered_matches),
-      time_range: time_range,
-      average_confidence: calculate_average_confidence(time_filtered_matches),
-      match_rate: calculate_match_rate(time_filtered_matches, time_range)
-    }
-  end
-
-  defp calculate_average_confidence([]), do: 0.0
-
-  defp calculate_average_confidence(matches) do
-    confidence_sum = Enum.sum(Enum.map(matches, & &1.confidence_score))
-    confidence_sum / length(matches)
-  end
-
-  defp calculate_match_rate(matches, time_range) do
-    match_count = length(matches)
-
-    hours_in_range =
-      case time_range do
-        :last_hour -> 1
-        :last_24h -> 24
-        :last_7d -> 7 * 24
-        :last_30d -> 30 * 24
-        # Default
-        _ -> 24
-      end
-
-    match_count / hours_in_range
-  end
-
-  defp clean_expired_statistics(statistics, _expired_match_ids) do
-    # In a more complete implementation, this would remove specific
-    # data points from statistics. For now, we'll keep statistics as-is
-    # since they're aggregated
-    statistics
+        :ets.insert(@stats_table, {:cache_stats, initial_stats})
+    end
   end
 
   defp schedule_cleanup do
-    Process.send_after(self(), :cleanup_expired, @cleanup_interval)
+    Process.send_after(self(), :cleanup, @cleanup_interval)
+  end
+
+  defp perform_cleanup do
+    current_time = DateTime.utc_now()
+
+    # Find expired entries
+    expired_keys =
+      :ets.foldl(
+        fn {key, entry}, acc ->
+          if DateTimeUtils.compare(current_time, entry.expires_at) != :lt do
+            [key | acc]
+          else
+            acc
+          end
+        end,
+        [],
+        @matches_table
+      )
+
+    # Remove expired entries
+    Enum.each(expired_keys, fn key ->
+      :ets.delete(@matches_table, key)
+    end)
+
+    # Update cleanup timestamp
+    case :ets.lookup(@stats_table, :cache_stats) do
+      [{:cache_stats, stats}] ->
+        updated_stats = %{stats | last_cleanup: current_time}
+        :ets.insert(@stats_table, {:cache_stats, updated_stats})
+
+      [] ->
+        :ok
+    end
+
+    if length(expired_keys) > 0 do
+      Logger.debug("Cleaned up #{length(expired_keys)} expired cache entries")
+    end
   end
 end

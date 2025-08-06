@@ -16,8 +16,8 @@ defmodule EveDmv.Admin.Bootstrap do
   ```
   """
 
-  require Logger
   alias EveDmv.Admin
+  require Logger
 
   @doc """
   Bootstrap admin users from environment variables.

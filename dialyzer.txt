@@ -1,0 +1,580 @@
+Compiling 18 files (.ex)
+Finding suitable PLTs
+Checking PLT...
+[:ash, :ash_authentication, :ash_authentication_phoenix, :ash_json_api, :ash_phoenix, :ash_postgres, :ash_sql, :asn1, :assent, :bandit, :bcrypt_elixir, :broadway, :bzip2, :cachex, :castore, :certifi, :comeonin, :compiler, :conv_case, :cowboy, :cowlib, :crypto, :db_connection, :decimal, :dns_cluster, :dotenvy, :ecto, :ecto_sql, :eex, :elixir, :esbuild, :eternal, :ets, :eve_dmv, :ex_hash_ring, :ex_unit, :expo, :exsync, :file_system, :finch, :gen_stage, :gettext, :gun, :hackney, :hpax, :httpoison, :idna, :inets, :iterex, :jason, ...]
+PLT is up to date!
+ignore_warnings: .dialyzer_ignore.exs
+
+Starting Dialyzer
+[
+  check_plt: false,
+  init_plt: ~c"/workspace/priv/plts/dialyzer.plt",
+  files: [~c"_build/dev/lib/eve_dmv/ebin/Elixir.EveDmv.Market.RateLimiter.beam",
+   ~c"_build/dev/lib/eve_dmv/ebin/Elixir.EveDmv.Contexts.MarketIntelligence.Api.beam",
+   ~c"_build/dev/lib/eve_dmv/ebin/Elixir.EveDmv.Intelligence.ThreatAssessment.beam",
+   ~c"_build/dev/lib/eve_dmv/ebin/Elixir.EveDmv.Intelligence.Analyzers.FleetAssetManager.ReadinessAnalyzer.beam",
+   ~c"_build/dev/lib/eve_dmv/ebin/Elixir.EveDmv.Contexts.BattleAnalysis.Services.BattleService.beam",
+   ...],
+  warnings: [:error_handling, :underspecs, :no_unused, :unknown]
+]
+Total errors: 203, Skipped: 3, Unnecessary Skips: 0
+done in 0m56.19s
+lib/eve_dmv/contexts/battle_analysis.ex:1:pattern_match The pattern can never match the type true.
+lib/eve_dmv/contexts/battle_analysis.ex:555:pattern_match_cov The pattern variable _timeline@1 can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/battle_analysis.ex:567:pattern_match_cov The pattern variable __timeline@1 can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/battle_analysis/domain/battle_detection_service.ex:507:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/battle_analysis/domain/battle_metrics_calculator.ex:1:pattern_match The pattern can never match the type true.
+lib/eve_dmv/contexts/character_intelligence.ex:137:pattern_match The pattern can never match the type {:error, :insufficient_data}.
+lib/eve_dmv/contexts/character_intelligence.ex:151:extra_range @spec for get_character_intelligence_report has more types than are returned by the function.
+lib/eve_dmv/contexts/character_intelligence.ex:152:no_return Function get_character_intelligence_report/1 has no local return.
+lib/eve_dmv/contexts/character_intelligence.ex:153:pattern_match The pattern can never match the type {:error, :insufficient_data}.
+lib/eve_dmv/contexts/character_intelligence.ex:170:contract_supertype Type specification for get_character_ship_intelligence is a supertype of the success typing.
+lib/eve_dmv/contexts/character_intelligence.ex:178:contract_supertype Type specification for get_ship_preferences is a supertype of the success typing.
+lib/eve_dmv/contexts/character_intelligence/domain/engines/player_stats_engine.ex:1:pattern_match The pattern can never match the type true.
+lib/eve_dmv/contexts/combat/core/tactical_pattern_detector.ex:874:pattern_match_cov The pattern variable _list@1 can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/combat/services/doctrine_effectiveness_service.ex:1:pattern_match The pattern can never match the type true.
+lib/eve_dmv/contexts/combat_analysis/domain/threat_assessment_engine.ex:180:contract_supertype Type specification for get_cache_statistics is a supertype of the success typing.
+lib/eve_dmv/contexts/combat_intelligence/api.ex:306:contract_supertype Type specification for get_intelligence_cache_stats is a supertype of the success typing.
+lib/eve_dmv/contexts/combat_intelligence/api.ex:318:invalid_contract Invalid type specification for function get_external_groups.
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:45:extra_range @spec for analyze has more types than are returned by the function.
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:53:extra_range @spec for get_intelligence has more types than are returned by the function.
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:64:extra_range @spec for refresh_analysis has more types than are returned by the function.
+lib/eve_dmv/contexts/combat_intelligence/domain/character_analyzer.ex:110:invalid_contract Invalid type specification for function get_cache_stats.
+lib/eve_dmv/contexts/combat_intelligence/domain/external_group_analyzer.ex:14:invalid_contract Invalid type specification for function analyze.
+lib/eve_dmv/contexts/combat_intelligence/domain/extractors/killmail_extractor.ex:1:pattern_match The pattern can never match the type true.
+lib/eve_dmv/contexts/corporation/core/threat_detector.ex:1:pattern_match The pattern can never match the type true.
+lib/eve_dmv/contexts/corporation/services/analytics_service.ex:1:pattern_match The pattern can never match the type true.
+lib/eve_dmv/contexts/corporation/services/analytics_service.ex:62:pattern_match The pattern can never match the type {:ok, _}.
+lib/eve_dmv/contexts/corporation_intelligence.ex:102:contract_supertype Type specification for get_corporation_intelligence_report is a supertype of the success typing.
+lib/eve_dmv/contexts/corporation_intelligence.ex:134:pattern_match The pattern can never match the type 
+  {:ok,
+   %{
+     :average_threat_score => float(),
+     :threat_distribution => map(),
+     :top_threats => [any()]
+   }}
+.
+lib/eve_dmv/contexts/corporation_intelligence.ex:142:pattern_match The pattern can never match the type 
+  {:ok,
+   %{
+     :active_members => non_neg_integer(),
+     :activity_trend => :decreasing | :increasing | :stable,
+     :engagement_frequency => float(),
+     :kills_per_day => float(),
+     :prime_timezone => <<_::32, _::size(8)>>
+   }}
+.
+lib/eve_dmv/contexts/corporation_intelligence.ex:166:extra_range @spec for analyze_top_member_threats has more types than are returned by the function.
+lib/eve_dmv/contexts/corporation_intelligence.ex:195:pattern_match The pattern can never match the type {:error, :insufficient_data}.
+lib/eve_dmv/contexts/corporation_intelligence.ex:247:extra_range @spec for calculate_activity_metrics has more types than are returned by the function.
+lib/eve_dmv/contexts/corporation_intelligence/domain/analyzers/corporation_analyzer.ex:77:contract_supertype Type specification for analyze_member_correlations is a supertype of the success typing.
+lib/eve_dmv/contexts/corporation_intelligence/domain/analyzers/corporation_analyzer.ex:122:contract_supertype Type specification for analyze_coordination is a supertype of the success typing.
+lib/eve_dmv/contexts/intelligence/core/behavioral_pattern_analyzer.ex:36:pattern_match The pattern can never match the type 
+  {:ok,
+   %{
+     :activity_patterns => %{
+       :activity_level => :high | :low | :minimal | :moderate | :very_high,
+       :daily_distribution => map(),
+       :hourly_distribution => map(),
+       :peak_days => [any()],
+       :peak_hours => [any()],
+       :session_patterns => map()
+     },
+     :analyzed_at => %DateTime{
+       :calendar => atom(),
+       :day => pos_integer(),
+       :hour => non_neg_integer(),
+       :microsecond => {_, _},
+       :minute => non_neg_integer(),
+       :month => pos_integer(),
+       :second => non_neg_integer(),
+       :std_offset => integer(),
+       :time_zone => binary(),
+       :utc_offset => integer(),
+       :year => integer(),
+       :zone_abbr => binary()
+     },
+     :character_id => integer(),
+     :consistency_metrics => %{
+       :activity_variance => number(),
+       :consistency_score => float(),
+       :reliability_rating =>
+         :moderate | :reliable | :unpredictable | :unreliable | :very_reliable
+     },
+     :engagement_patterns => %{
+       :aggression_level =>
+         :aggressive
+         | :balanced
+         | :defensive
+         | :unknown
+         | :very_aggressive
+         | :very_defensive,
+       :escape_tendency => :unknown,
+       :revenge_seeking => false,
+       :target_selection => map()
+     },
+     :gang_preferences => %{
+       :average_gang_size => float(),
+       :flexibility => :fixed | :flexible | :limited | :moderate | :very_flexible,
+       :gang_distribution => map(),
+       :preferred_size => _
+     },
+     :geographic_preferences => %{
+       :active_systems => non_neg_integer(),
+       :home_systems => [any()],
+       :regional_focus => :focused | :moderate | :nomadic | :single_region | :unknown,
+       :roaming_range => :inter_regional | :local | :nomadic | :regional,
+       :security_preferences => _
+     },
+     :operational_patterns => %{
+       :defensive_patterns => map(),
+       :hunt_patterns => map(),
+       :tactical_preferences => map(),
+       :target_selection => map()
+     },
+     :predictability => float(),
+     :risk_tolerance =>
+       :balanced_risk_profile
+       | :high_risk_tolerance
+       | :moderate_risk_tolerance
+       | :risk_averse,
+     :timezone => <<_::40, _::size(16)>>
+   }}
+.
+lib/eve_dmv/contexts/intelligence/core/threat_assessment_engine.ex:427:pattern_match The pattern can never match the type {:ok, map()}.
+lib/eve_dmv/contexts/intelligence/services/insight_generator.ex:833:guard_fail The guard clause can never succeed.
+lib/eve_dmv/contexts/intelligence_infrastructure/domain/analyzers/single_system_analyzer.ex:68:pattern_match The pattern can never match the type 
+  {:error,
+   %{
+     :__exception__ => true,
+     :__struct__ => atom(),
+     :bread_crumbs => [binary()],
+     :class => :forbidden | :framework | :invalid | :unknown,
+     :context => map(),
+     :stacktrace => nil | %Splode.Stacktrace{:stacktrace => [any()]},
+     :vars => [{_, _}],
+     atom() => _
+   }}
+.
+lib/eve_dmv/contexts/intelligence_infrastructure/domain/analyzers/single_system_analyzer.ex:98:pattern_match The pattern can never match the type 
+  {:error,
+   %{
+     :__exception__ => true,
+     :__struct__ => atom(),
+     :bread_crumbs => [binary()],
+     :class => :forbidden | :framework | :invalid | :unknown,
+     :context => map(),
+     :stacktrace => nil | %Splode.Stacktrace{:stacktrace => [any()]},
+     :vars => [{_, _}],
+     atom() => _
+   }}
+.
+lib/eve_dmv/contexts/intelligence_infrastructure/domain/cross_system/cross_system_coordinator.ex:103:no_return Function analyze_cross_system_patterns/1 has no local return.
+lib/eve_dmv/contexts/intelligence_infrastructure/domain/cross_system/cross_system_coordinator.ex:103:no_return Function analyze_cross_system_patterns/2 has no local return.
+lib/eve_dmv/contexts/intelligence_infrastructure/domain/cross_system/cross_system_coordinator.ex:265:no_return Function generate_cross_system_insights/4 has no local return.
+lib/eve_dmv/contexts/intelligence_infrastructure/domain/cross_system/cross_system_coordinator.ex:289:call The function call ++ will not succeed.
+lib/eve_dmv/contexts/intelligence_infrastructure/domain/cross_system_analyzer/monitoring_engine.ex:32:no_return Function update_monitoring_thresholds/2 has no local return.
+lib/eve_dmv/contexts/intelligence_infrastructure/domain/cross_system_analyzer/monitoring_engine.ex:32:no_return Function update_monitoring_thresholds/3 has no local return.
+lib/eve_dmv/contexts/intelligence_infrastructure/domain/cross_system_analyzer_streamlined.ex:73:pattern_match_cov The pattern variable _error@1 can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/intelligence_infrastructure/domain/cross_system_analyzer_streamlined.ex:99:pattern_match_cov The pattern variable _error@1 can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/killmail_processing/api.ex:270:pattern_match The pattern can never match the type {:ok, [struct()]}.
+lib/eve_dmv/contexts/killmail_processing/domain/killmail_orchestrator.ex:82:pattern_match_cov The pattern variable _error@1 can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/killmail_processing/domain/killmail_orchestrator.ex:104:pattern_match_cov The pattern variable _error@1 can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/killmail_processing/domain/killmail_orchestrator.ex:167:pattern_match_cov The pattern pattern {_error@2, _new_state@2} can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/market_intelligence/api.ex:168:contract_supertype Type specification for get_price_cache_stats is a supertype of the success typing.
+lib/eve_dmv/contexts/market_intelligence/domain/price_service.ex:199:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/market_intelligence/domain/price_service.ex:212:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/market_intelligence/domain/price_service.ex:257:pattern_match The pattern can never match the type {:error, atom()}.
+lib/eve_dmv/contexts/market_intelligence/infrastructure/external_price_client.ex:160:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/player_profile/domain/player_analyzer.ex:198:pattern_match The pattern can never match the type 
+  {:error,
+   %EveDmv.Error{
+     :code => atom(),
+     :context => map(),
+     :details => map(),
+     :message => binary(),
+     :stacktrace => nil | [any()]
+   }}
+.
+lib/eve_dmv/contexts/player_profile/domain/player_analyzer.ex:217:pattern_match The pattern can never match the type 
+  {:error,
+   %EveDmv.Error{
+     :code => atom(),
+     :context => map(),
+     :details => map(),
+     :message => binary(),
+     :stacktrace => nil | [any()]
+   }}
+.
+lib/eve_dmv/contexts/player_profile/domain/player_analyzer.ex:241:pattern_match The pattern can never match the type 
+  {:error,
+   %EveDmv.Error{
+     :code => atom(),
+     :context => map(),
+     :details => map(),
+     :message => binary(),
+     :stacktrace => nil | [any()]
+   }}
+.
+lib/eve_dmv/contexts/player_profile/domain/player_analyzer.ex:272:pattern_match The pattern can never match the type 
+  {:ok,
+   %{
+     :alliance_id => nil | integer(),
+     :alliance_name => nil | binary(),
+     :character_id => integer(),
+     :corporation_id => nil | integer(),
+     :corporation_name => nil | binary(),
+     :created_at => %DateTime{
+       :calendar => atom(),
+       :day => pos_integer(),
+       :hour => non_neg_integer(),
+       :microsecond => {non_neg_integer(), non_neg_integer()},
+       :minute => non_neg_integer(),
+       :month => pos_integer(),
+       :second => non_neg_integer(),
+       :std_offset => integer(),
+       :time_zone => binary(),
+       :utc_offset => integer(),
+       :year => integer(),
+       :zone_abbr => binary()
+     },
+     :last_seen => %DateTime{
+       :calendar => atom(),
+       :day => pos_integer(),
+       :hour => non_neg_integer(),
+       :microsecond => {non_neg_integer(), non_neg_integer()},
+       :minute => non_neg_integer(),
+       :month => pos_integer(),
+       :second => non_neg_integer(),
+       :std_offset => integer(),
+       :time_zone => binary(),
+       :utc_offset => integer(),
+       :year => integer(),
+       :zone_abbr => binary()
+     },
+     :name => binary()
+   }}
+.
+lib/eve_dmv/contexts/player_profile/domain/player_analyzer.ex:378:pattern_match The pattern can never match the type :batch_analysis.
+lib/eve_dmv/contexts/player_profile/infrastructure/player_repository.ex:221:invalid_contract Invalid type specification for function get_weapon_preferences.
+lib/eve_dmv/contexts/player_profile/infrastructure/player_repository.ex:247:invalid_contract Invalid type specification for function get_external_groups.
+lib/eve_dmv/contexts/player_profile/infrastructure/player_repository.ex:276:invalid_contract Invalid type specification for function get_gang_size_patterns.
+lib/eve_dmv/contexts/player_profile/infrastructure/player_repository.ex:301:invalid_contract Invalid type specification for function get_intelligence_summary.
+lib/eve_dmv/contexts/surveillance/domain/chain_intelligence.ex:1:pattern_match The pattern can never match the type true.
+lib/eve_dmv/contexts/surveillance/domain/chain_intelligence_helper.ex:201:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/surveillance/domain/chain_intelligence_helper.ex:207:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/surveillance/domain/chain_intelligence_helper.ex:858:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/surveillance/infrastructure/notification_dispatcher.ex:406:pattern_match The pattern can never match the type :email_not_configured | :webhooks_not_configured.
+lib/eve_dmv/contexts/surveillance/infrastructure/notification_dispatcher.ex:409:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/threat_assessment/analyzers/threat_analyzer.ex:632:pattern_match The pattern can never match the type false.
+lib/eve_dmv/contexts/threat_assessment/analyzers/threat_analyzer.ex:901:pattern_match The pattern can never match the type 
+  {:ok,
+   %{
+     :alliance_id => nil,
+     :character_id => 0,
+     :character_name => <<_::56>>,
+     :corporation_id => 0,
+     :threat_level => :unknown
+   }}
+.
+lib/eve_dmv/contexts/threat_assessment/domain/threat_analyzer.ex:1:pattern_match The pattern can never match the type true.
+lib/eve_dmv/contexts/threat_assessment/domain/threat_analyzer.ex:277:call The function call get_by_character will not succeed.
+lib/eve_dmv/contexts/threat_surveillance/domain/alert_management_service.ex:225:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/threat_surveillance/domain/behavioral_pattern_analyzer.ex:1:pattern_match The pattern can never match the type true.
+lib/eve_dmv/contexts/threat_surveillance/domain/notification_service.ex:302:call The function call store_notification_in_database will not succeed.
+lib/eve_dmv/contexts/threat_surveillance/domain/notification_service.ex:480:invalid_contract Invalid type specification for function store_notification_in_database.
+lib/eve_dmv/contexts/threat_surveillance/domain/profile_management_service.ex:282:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/threat_surveillance/domain/surveillance_matching_engine.ex:148:pattern_match_cov The pattern variable _error@1 can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/threat_surveillance/domain/surveillance_matching_engine.ex:161:pattern_match_cov The pattern variable _error@1 can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/threat_surveillance/domain/threat_analysis_service.ex:115:pattern_match The pattern can never match the type 
+  {:ok,
+   %{
+     :assessment_timestamp => %DateTime{
+       :calendar => atom(),
+       :day => pos_integer(),
+       :hour => non_neg_integer(),
+       :microsecond => {_, _},
+       :minute => non_neg_integer(),
+       :month => pos_integer(),
+       :second => non_neg_integer(),
+       :std_offset => integer(),
+       :time_zone => binary(),
+       :utc_offset => integer(),
+       :year => integer(),
+       :zone_abbr => binary()
+     },
+     :capability_assessment => map(),
+     :combat_patterns => map(),
+     :combat_stats => map(),
+     :confidence => float(),
+     :entity_id => integer(),
+     :entity_type => :character | :corporation,
+     :metadata => map(),
+     :recent_activity => map(),
+     :recommendations => [binary(), ...],
+     :tactical_profile => map(),
+     :threat_level => :moderate,
+     :threat_score => float()
+   }}
+.
+lib/eve_dmv/contexts/threat_surveillance/domain/threat_assessment_engine.ex:143:pattern_match_cov The pattern variable _error@1 can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/wormhole_operations/analyzers/wh_fleet_analyzer.ex:431:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/wormhole_operations/analyzers/wh_fleet_analyzer.ex:564:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/wormhole_operations/analyzers/wh_fleet_analyzer.ex:575:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/wormhole_operations/domain/analyzers/wh_fleet_analyzer/fleet_analyzer.ex:431:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/wormhole_operations/domain/analyzers/wh_fleet_analyzer/fleet_analyzer.ex:564:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/wormhole_operations/domain/analyzers/wh_fleet_analyzer/fleet_analyzer.ex:575:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/wormhole_operations/domain/chain_tracker.ex:219:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/wormhole_operations/domain/home_defense_analyzer.ex:315:contract_supertype Type specification for get_metrics is a supertype of the success typing.
+lib/eve_dmv/contexts/wormhole_operations/domain/home_defense_analyzer.ex:988:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/wormhole_operations/domain/home_defense_analyzer.ex:1064:pattern_match The pattern can never match the type :c1 | :c2 | :c3 | :high | :low.
+lib/eve_dmv/contexts/wormhole_operations/domain/home_defense_analyzer.ex:1065:pattern_match The pattern can never match the type :c1 | :c2 | :c3 | :high | :low.
+lib/eve_dmv/contexts/wormhole_operations/domain/home_defense_analyzer.ex:1073:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/wormhole_operations/domain/signature_tracker.ex:81:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/wormhole_operations/domain/signature_tracker.ex:139:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/contexts/wormhole_operations/infrastructure/vetting_repository.ex:12:contract_supertype Type specification for store_vetting_report is a supertype of the success typing.
+lib/eve_dmv/core/domain/analytics/pattern_analysis.ex:177:contract_supertype Type specification for analyze_operational_patterns is a supertype of the success typing.
+lib/eve_dmv/core/domain/analytics/pattern_analysis.ex:570:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/core/domain/intelligence/core/cache_helper.ex:163:contract_supertype Type specification for get_cache_stats is a supertype of the success typing.
+lib/eve_dmv/core/domain/intelligence/core/config.ex:85:contract_supertype Type specification for get_analysis_quality is a supertype of the success typing.
+lib/eve_dmv/core/domain/intelligence/core/config.ex:167:contract_supertype Type specification for get_resource_limits is a supertype of the success typing.
+lib/eve_dmv/core/domain/intelligence/core/config.ex:180:contract_supertype Type specification for get_db_config is a supertype of the success typing.
+lib/eve_dmv/core/domain/intelligence/core/intelligence_coordinator.ex:94:no_return Function warm_character_cache/0 has no local return.
+lib/eve_dmv/core/domain/intelligence/core/intelligence_coordinator.ex:100:call The function call warm_cache will not succeed.
+lib/eve_dmv/core/domain/intelligence/core/timeout_helper.ex:153:contract_supertype Type specification for with_default_timeout is a supertype of the success typing.
+lib/eve_dmv/core/domain/intelligence/intelligence_scoring/fleet_scoring.ex:28:pattern_match The pattern can never match the type 
+  {:ok,
+   %{
+     :component_scores => %{
+       :behavioral_stability => float(),
+       :combat_competency => float(),
+       :intelligence_reliability => float(),
+       :operational_value => float(),
+       :security_risk => float(),
+       :tactical_intelligence => float()
+     },
+     :overall_score => float()
+   }}
+.
+lib/eve_dmv/core/domain/intelligence/intelligence_scoring/intelligence_suitability.ex:373:pattern_match_cov The pattern variable _value@1 can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/core/domain/intelligence/intelligence_scoring/intelligence_suitability.ex:374:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/core/domain/intelligence/intelligence_scoring/intelligence_suitability.ex:440:pattern_match_cov The pattern variable _value@1 can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/core/domain/intelligence/intelligence_scoring/intelligence_suitability.ex:441:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/core/domain/intelligence/intelligence_scoring/recruitment_scoring.ex:56:pattern_match The pattern can never match the type 
+  {:ok,
+   %{
+     :background_check => :passed,
+     :communication_style_fit => float(),
+     :experience_level => float(),
+     :learning_aptitude => float(),
+     :references => :positive,
+     :social_compatibility => float()
+   }}
+.
+lib/eve_dmv/core/domain/intelligence/intelligence_scoring/recruitment_scoring.ex:284:no_return Function calculate_role_match/2 has no local return.
+lib/eve_dmv/core/domain/intelligence/intelligence_scoring/recruitment_scoring.ex:290:call The function call length will not succeed.
+lib/eve_dmv/core/infrastructure/unified_cache.ex:155:contract_supertype Type specification for get_stats is a supertype of the success typing.
+lib/eve_dmv/core/infrastructure/unified_event_processor.ex:102:no_return Function init/1 has no local return.
+lib/eve_dmv/core/infrastructure/unified_event_processor.ex:107:call The function call subscribe will not succeed.
+lib/eve_dmv/core/infrastructure/unified_event_processor.ex:481:contract_supertype Type specification for health_check is a supertype of the success typing.
+lib/eve_dmv/core/infrastructure/unified_repository.ex:387:contract_supertype Type specification for get_repository_stats is a supertype of the success typing.
+lib/eve_dmv/core/infrastructure/unified_repository.ex:714:pattern_match_cov The pattern variable __error@1 can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/core/infrastructure/unified_repository.ex:767:contract_supertype Type specification for health_check is a supertype of the success typing.
+lib/eve_dmv/core/shared_kernel/policies/security_classification.ex:28:extra_range @spec for classify_by_security_status has more types than are returned by the function.
+lib/eve_dmv/core/shared_kernel/policies/security_classification.ex:166:contract_supertype Type specification for threat_modifiers is a supertype of the success typing.
+lib/eve_dmv/core/shared_kernel/policies/threat_classification.ex:122:contract_supertype Type specification for threat_priority is a supertype of the success typing.
+lib/eve_dmv/core/shared_kernel/policies/threat_classification.ex:178:contract_supertype Type specification for recommended_response_time is a supertype of the success typing.
+lib/eve_dmv/core/utils/naive_datetime_utils.ex:47:contract_supertype Type specification for truncate is a supertype of the success typing.
+lib/eve_dmv/external/eve/esi_market_client.ex:1:pattern_match The pattern can never match the type true.
+lib/eve_dmv/external/eve/esi_request_client.ex:1:pattern_match The pattern can never match the type true.
+lib/eve_dmv/external/eve/esi_request_client.ex:410:pattern_match_cov The pattern variable _non_list@1 can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/external/eve/market_data_service.ex:260:pattern_match The pattern can never match the type {:ok, map()}.
+lib/eve_dmv/external/eve/name_resolver/cache_manager.ex:144:contract_supertype Type specification for get_cache_stats is a supertype of the success typing.
+lib/eve_dmv/external/eve/name_resolver/cache_manager.ex:147:pattern_match The pattern can never match the type %{:memory_bytes => non_neg_integer(), :size => non_neg_integer()}.
+lib/eve_dmv/external/eve/static_data_loader/file_manager.ex:115:pattern_match_cov The pattern variable _error@1 can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/external/eve/static_data_loader/file_manager.ex:127:pattern_match The pattern can never match the type {:error, atom(), binary()}.
+lib/eve_dmv/external/eve/static_data_loader/sde_version_manager.ex:74:pattern_match The pattern can never match the type {:ok, _}.
+lib/eve_dmv/external/market/strategies/esi_strategy.ex:1:pattern_match The pattern can never match the type true.
+lib/eve_dmv/external/market/strategies/esi_strategy.ex:42:pattern_match The pattern can never match the type [map()].
+lib/eve_dmv/external/market/strategies/esi_strategy.ex:49:pattern_match_cov The pattern variable _other@1 can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/intelligence_engine/plugins/character/combat_stats.ex:17:callback_type_mismatch Type mismatch for @callback plugin_info.
+lib/eve_dmv/intelligence_engine/plugins/character/combat_stats.ex:48:pattern_match_cov The pattern pattern {'error', _reason@1} can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/intelligence_engine/plugins/character/combat_stats.ex:73:callback_type_mismatch Type mismatch for @callback cache_strategy.
+lib/eve_dmv/intelligence_migration_adapter.ex:138:pattern_match The pattern can never match the type 
+  {:ok,
+   %{
+     :analysis_timestamp => %DateTime{
+       :calendar => atom(),
+       :day => pos_integer(),
+       :hour => non_neg_integer(),
+       :microsecond => {_, _},
+       :minute => non_neg_integer(),
+       :month => pos_integer(),
+       :second => non_neg_integer(),
+       :std_offset => integer(),
+       :time_zone => binary(),
+       :utc_offset => integer(),
+       :year => integer(),
+       :zone_abbr => binary()
+     },
+     :composition_breakdown => %{
+       :diversity_score => float(),
+       :ship_classes => map(),
+       :total_ships => non_neg_integer()
+     },
+     :composition_score => float(),
+     :effectiveness_score => float(),
+     :mass_analysis => %{
+       :mass_category => :capital | :heavy | :light | :medium,
+       :per_pilot_average => integer(),
+       :total_mass => integer(),
+       :wormhole_compatibility => _
+     },
+     :participant_count => non_neg_integer(),
+     :role_distribution => %{
+       :missing_essential_roles => [any()],
+       :role_balance_score => float(),
+       :roles => map()
+     }
+   }}
+.
+lib/eve_dmv/platform/auth/account_manager.ex:150:extra_range @spec for merge_accounts has more types than are returned by the function.
+lib/eve_dmv/platform/auth/security/api_authentication.ex:190:pattern_match The pattern can never match the type 
+  {:error,
+   :not_found
+   | %{
+       :__exception__ => true,
+       :__struct__ => atom(),
+       :bread_crumbs => [any()],
+       :class => :forbidden | :framework | :invalid | :unknown,
+       :context => map(),
+       :stacktrace => nil | map(),
+       :vars => [any()],
+       atom() => _
+     }}
+  | {:ok, [struct(), ...] | struct()}
+.
+lib/eve_dmv/platform/auth/user.ex:390:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/platform/auth/user.ex:556:pattern_match The pattern can never match the type map().
+lib/eve_dmv/platform/auth/user.ex:558:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/platform/cache/intelligence/intelligence_cache.ex:108:pattern_match_cov The pattern variable _error@1 can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/platform/cache/intelligence/intelligence_cache.ex:135:pattern_match_cov The pattern variable _error@1 can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/platform/database/character_repository.ex:9:call The function call bulk_create will not succeed.
+lib/eve_dmv/platform/database/character_repository.ex:9:no_return The created anonymous function has no local return.
+lib/eve_dmv/platform/database/corporation_repository.ex:258:pattern_match The pattern can never match the type non_neg_integer().
+lib/eve_dmv/platform/database/killmail_repository.ex:11:call The function call bulk_create will not succeed.
+lib/eve_dmv/platform/database/killmail_repository.ex:11:no_return The created anonymous function has no local return.
+lib/eve_dmv/platform/database/query_optimizer.ex:256:contract_supertype Type specification for monitor_queries is a supertype of the success typing.
+lib/eve_dmv/platform/monitoring/baseline_manager.ex:563:pattern_match The pattern can never match the type 
+  :battlecruiser
+  | :battleship
+  | :capital
+  | :cruiser
+  | :destroyer
+  | :frigate
+  | :industrial
+  | :mining
+  | :structure
+  | :supercapital
+  | :unknown
+.
+lib/eve_dmv/platform/monitoring/error_recovery_worker.ex:223:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/platform/monitoring/facade.ex:108:no_return Function update_monitoring_thresholds/2 has no local return.
+lib/eve_dmv/platform/monitoring/facade.ex:112:call The function call update_adaptive_thresholds will not succeed.
+lib/eve_dmv/platform/workers/background_task_supervisor.ex:100:call The function call await will not succeed.
+lib/eve_dmv/platform/workers/background_task_supervisor.ex:161:pattern_match_cov The pattern pattern {'error', _reason@2} can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/platform/workers/ship_role_analysis_worker.ex:260:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/result.ex:112:contract_supertype Type specification for unwrap! is a supertype of the success typing.
+lib/eve_dmv/shutdown/graceful_shutdown.ex:238:call The function call set_signal will not succeed.
+lib/eve_dmv/static_data/sde_importer.ex:230:pattern_match_cov The pattern variable _float@1 can never match the type, because it is covered by previous clauses.
+lib/eve_dmv/static_data/ship_attribute_importer.ex:1:pattern_match The pattern can never match the type true.
+lib/eve_dmv/static_data/ship_attributes_service.ex:19:pattern_match The pattern can never match the type 
+  ({:cont, _} | {:halt, _} | {:suspend, _}, _ ->
+     {:done, _} | {:halted, _} | {:suspended, _, (_ -> any())})
+  | [struct()]
+  | %{
+      :__struct__ => Ash.Page.Keyset | Ash.Page.Offset | Stream,
+      :accs => maybe_improper_list(),
+      :done => nil,
+      :funs => maybe_improper_list(),
+      _ => _
+    }
+.
+lib/eve_dmv/static_data/ship_types.ex:40:extra_range @spec for classify_ship_type has more types than are returned by the function.
+lib/eve_dmv/utilities/calculators/metrics_calculator.ex:158:contract_supertype Type specification for default_analyzer_metrics is a supertype of the success typing.
+lib/eve_dmv/utils/dns_resolver.ex:64:pattern_match The pattern can never match the type 
+  {:ok,
+   %HTTPoison.AsyncResponse{
+     :body => _,
+     :headers => [any()],
+     :id => reference(),
+     :request => %HTTPoison.Request{
+       :body => _,
+       :headers => _,
+       :method => :delete | :get | :head | :options | :patch | :post | :put,
+       :options => _,
+       :params => _,
+       :url => binary()
+     },
+     :request_url => _,
+     :status_code => integer()
+   }}
+.
+lib/eve_dmv/utils/number_formatter.ex:77:contract_supertype Type specification for percentage is a supertype of the success typing.
+lib/eve_dmv/utils/number_formatter.ex:114:contract_supertype Type specification for duration_to_human is a supertype of the success typing.
+lib/eve_dmv_web/components/battle_timeline_component.ex:540:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv_web/controllers/api/battle_intelligence_controller.ex:42:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv_web/controllers/api/battle_share_controller.ex:31:pattern_match The pattern can never match the type {:error, :battle_not_found | :database_error | :reconstruction_failed | <<_::112>>}.
+lib/eve_dmv_web/controllers/api/battle_share_controller.ex:53:pattern_match The pattern can never match the type {:error, :reconstruction_failed | <<_::112>>}.
+lib/eve_dmv_web/controllers/api/character_behavior_controller.ex:22:pattern_match The pattern can never match the type {:error, :feature_not_implemented}.
+lib/eve_dmv_web/controllers/api/character_behavior_controller.ex:32:pattern_match The pattern can never match the type {:error, :feature_not_implemented}.
+lib/eve_dmv_web/controllers/api/character_threat_controller.ex:22:pattern_match The pattern can never match the type {:error, :insufficient_data}.
+lib/eve_dmv_web/controllers/api/character_threat_controller.ex:46:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv_web/live/admin/users_live.ex:12:no_return Function mount/3 has no local return.
+lib/eve_dmv_web/live/admin/users_live.ex:85:no_return Function list_users/0 has no local return.
+lib/eve_dmv_web/live/admin/users_live.ex:86:call The function call read will not succeed.
+lib/eve_dmv_web/live/battle_analysis_live.ex:606:pattern_match The pattern can never match the type :battle_not_found | :database_error.
+lib/eve_dmv_web/live/battle_analysis_live.ex:610:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv_web/live/character_analysis/character_analysis_live.ex:61:no_return The created anonymous function has no local return.
+lib/eve_dmv_web/live/character_comparison_live.ex:141:pattern_match The pattern can never match the type {:ok, _}.
+lib/eve_dmv_web/live/character_comparison_live.ex:233:call The function call find_similar_characters will not succeed.
+lib/eve_dmv_web/live/character_intelligence_live.ex:83:pattern_match The pattern can never match the type {:error, :insufficient_data}.
+lib/eve_dmv_web/live/character_intelligence_live.ex:123:no_return The created anonymous function has no local return.
+lib/eve_dmv_web/live/helpers/liveview_pattern_template.ex:243:pattern_match The pattern can never match the type {:error, :battle_not_found | :database_error | :reconstruction_failed}.
+lib/eve_dmv_web/live/helpers/liveview_pattern_template.ex:254:pattern_match The pattern can never match the type {:error, :reconstruction_failed}.
+lib/eve_dmv_web/live/killmail_live.ex:163:pattern_match_cov The pattern variable _ can never match the type, because it is covered by previous clauses.
+lib/eve_dmv_web/live/profile_live.ex:44:no_return The created anonymous function has no local return.
+lib/eve_dmv_web/live/profile_live.ex:72:no_return Function get_character_combat_stats/1 has no local return.
+lib/eve_dmv_web/live/profile_live.ex:182:pattern_match The pattern can never match the type {:error, <<_::232>>}.
+lib/eve_dmv_web/live/wh_vetting_live.ex:161:pattern_match The pattern can never match the type 
+  {:ok,
+   %{
+     :analysis_metadata => _,
+     :character_id => _,
+     :j_space_experience => %{
+       :j_space_time_percent => _,
+       :total_j_kills => _,
+       :total_j_losses => _
+     },
+     :recommendation => <<_::48, _::size(8)>>,
+     :risk_score => 20 | 40 | 60 | 70 | 80 | 90 | 100 | 110 | 130,
+     :security_concerns => [<<_::64, _::size(8)>>]
+   }}
+.
+lib/eve_dmv_web/plugs/api_auth.ex:168:pattern_match The pattern can never match the type 
+  :expired
+  | :insufficient_permissions
+  | :not_found
+  | %{
+      :__exception__ => true,
+      :__struct__ => atom(),
+      :bread_crumbs => [any()],
+      :class => :forbidden | :framework | :invalid | :unknown,
+      :context => map(),
+      :stacktrace => nil | map(),
+      :vars => [any()],
+      atom() => _
+    }
+.
+done (warnings were emitted)
+Halting VM with exit status 2

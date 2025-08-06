@@ -9,6 +9,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
   use GenServer
   use EveDmv.ErrorHandler
   alias EveDmv.Contexts.Surveillance.Domain.NotificationService
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.DomainEvents.SurveillanceAlert
   alias EveDmv.DomainEvents.SurveillanceMatch
   alias EveDmv.Infrastructure.EventBus
@@ -30,6 +31,40 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
 
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
+  end
+
+  @doc """
+  Generate an alert for a surveillance match.
+
+  Returns the generated alert or error if alert generation fails.
+  """
+  def generate_alert_for_match(match) do
+    priority = calculate_alert_priority(match)
+
+    alert_data = %{
+      id: generate_alert_id(),
+      profile_id: match.profile_id,
+      killmail_id: match.killmail_id,
+      match_id: match.match_id || "unknown",
+      alert_type: determine_alert_type(match),
+      priority: priority,
+      state: @state_new,
+      title: generate_alert_title(match),
+      description: generate_alert_description(match),
+      metadata: %{
+        matched_criteria: match.matched_criteria || [],
+        match_confidence: match.match_confidence || 0.0,
+        killmail_value: match.killmail_value || 0
+      },
+      created_at: DateTime.utc_now(),
+      expires_at: calculate_expiry_time(priority)
+    }
+
+    {:ok, alert_data}
+  rescue
+    _error ->
+      Logger.error("Failed to generate alert for match")
+      {:error, :alert_generation_failed}
   end
 
   @doc """
@@ -271,11 +306,11 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
   def handle_info(:cleanup_old_alerts, state) do
     # Remove alerts older than 30 days to prevent memory growth
     current_time = DateTime.utc_now()
-    cutoff_time = DateTime.add(current_time, -30 * 24 * 3600, :second)
+    cutoff_time = DateTimeUtils.add(current_time, -30 * 24 * 3600, :second)
 
     {remaining_alerts, removed_count} =
       Enum.reduce(state.alerts, {%{}, 0}, fn {alert_id, alert}, {acc_alerts, acc_count} ->
-        if DateTime.compare(alert.created_at, cutoff_time) == :gt do
+        if DateTimeUtils.compare(alert.created_at, cutoff_time) == :gt do
           {Map.put(acc_alerts, alert_id, alert), acc_count}
         else
           {acc_alerts, acc_count + 1}
@@ -496,16 +531,16 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
 
     cutoff_time =
       case time_range do
-        :last_hour -> DateTime.add(current_time, -3600, :second)
-        :last_24h -> DateTime.add(current_time, -24 * 3600, :second)
-        :last_7d -> DateTime.add(current_time, -7 * 24 * 3600, :second)
-        :last_30d -> DateTime.add(current_time, -30 * 24 * 3600, :second)
+        :last_hour -> DateTimeUtils.add(current_time, -3600, :second)
+        :last_24h -> DateTimeUtils.add(current_time, -24 * 3600, :second)
+        :last_7d -> DateTimeUtils.add(current_time, -7 * 24 * 3600, :second)
+        :last_30d -> DateTimeUtils.add(current_time, -30 * 24 * 3600, :second)
       end
 
     recent_alerts =
       state.alerts
       |> Map.values()
-      |> Enum.filter(&(DateTime.compare(&1.created_at, cutoff_time) == :gt))
+      |> Enum.filter(&(DateTimeUtils.compare(&1.created_at, cutoff_time) == :gt))
 
     priority_distribution =
       recent_alerts
@@ -529,12 +564,83 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
       state_distribution: state_distribution,
       type_distribution: type_distribution,
       average_confidence:
-        if(length(recent_alerts) > 0,
-          do: Enum.sum(Enum.map(recent_alerts, & &1.confidence_score)) / length(recent_alerts),
-          else: 0
+        if(Enum.empty?(recent_alerts),
+          do: 0,
+          else: Enum.sum(Enum.map(recent_alerts, & &1.confidence_score)) / length(recent_alerts)
         ),
       current_counters: state.alert_counters
     }
+  end
+
+  # Helper functions for alert generation
+
+  defp calculate_alert_priority(match) do
+    confidence = match.match_confidence || 0.0
+    killmail_value = match.killmail_value || 0
+
+    cond do
+      confidence >= 0.9 and killmail_value > 1_000_000_000 -> @priority_critical
+      confidence >= 0.8 or killmail_value > 500_000_000 -> @priority_high
+      confidence >= 0.6 or killmail_value > 100_000_000 -> @priority_medium
+      true -> @priority_low
+    end
+  end
+
+  defp generate_alert_title(match) do
+    case determine_alert_type(match) do
+      :target_killed -> "Target Killed"
+      :target_active -> "Target Active"
+      :location_activity -> "Location Activity Alert"
+      :general_match -> "Surveillance Match"
+    end
+  end
+
+  defp generate_alert_description(match) do
+    criteria_count = length(match.matched_criteria || [])
+    confidence = match.match_confidence || 0.0
+    value = match.killmail_value || 0
+
+    value_text =
+      if value > 0 do
+        " (#{format_isk_value(value)} ISK)"
+      else
+        ""
+      end
+
+    "Surveillance match detected with #{criteria_count} matching criteria. " <>
+      "Confidence: #{Float.round(confidence * 100, 1)}%#{value_text}"
+  end
+
+  defp calculate_expiry_time(priority) do
+    hours_to_expire =
+      case priority do
+        # 2 days
+        @priority_critical -> 48
+        # 1 day
+        @priority_high -> 24
+        # 12 hours
+        @priority_medium -> 12
+        # 6 hours
+        @priority_low -> 6
+      end
+
+    DateTimeUtils.add(DateTime.utc_now(), hours_to_expire * 3600, :second)
+  end
+
+  defp format_isk_value(value) when value >= 1_000_000_000 do
+    "#{Float.round(value / 1_000_000_000, 1)}B"
+  end
+
+  defp format_isk_value(value) when value >= 1_000_000 do
+    "#{Float.round(value / 1_000_000, 1)}M"
+  end
+
+  defp format_isk_value(value) when value >= 1_000 do
+    "#{Float.round(value / 1_000, 1)}K"
+  end
+
+  defp format_isk_value(value) do
+    "#{value}"
   end
 
   defp generate_alert_id do

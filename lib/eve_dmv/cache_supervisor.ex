@@ -13,6 +13,8 @@ defmodule EveDmv.CacheSupervisor do
   alias EveDmv.Config.Cache, as: CacheConfig
   alias EveDmv.Utils.Cache
 
+  @type cache_stats :: %{size: non_neg_integer(), memory_bytes: non_neg_integer()}
+
   @doc """
   Start the cache supervisor.
   """
@@ -60,7 +62,8 @@ defmodule EveDmv.CacheSupervisor do
   @doc """
   Get the cache name for a given cache type.
   """
-  @spec cache_name(cache_type :: atom()) :: atom()
+  @spec cache_name(cache_type :: :hot_data | :api_responses | :analysis) ::
+          :hot_data_cache | :api_responses_cache | :analysis_cache
   def cache_name(:hot_data), do: :hot_data_cache
   def cache_name(:api_responses), do: :api_responses_cache
   def cache_name(:analysis), do: :analysis_cache
@@ -68,7 +71,11 @@ defmodule EveDmv.CacheSupervisor do
   @doc """
   Get cache statistics for all cache types.
   """
-  @spec all_cache_stats() :: map()
+  @spec all_cache_stats() :: %{
+          hot_data: cache_stats(),
+          api_responses: cache_stats(),
+          analysis: cache_stats()
+        }
   def all_cache_stats do
     %{
       hot_data: Cache.stats(:hot_data_cache),

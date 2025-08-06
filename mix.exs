@@ -4,7 +4,7 @@ defmodule EveDmv.MixProject do
   def project do
     [
       app: :eve_dmv,
-      version: "0.1.0",
+      version: "0.1.1",
       elixir: "~> 1.17",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -20,7 +20,7 @@ defmodule EveDmv.MixProject do
         "coveralls.html": :test
       ],
       excoveralls: [
-        minimum_coverage: 4.0,
+        minimum_coverage: 40.0,
         output_dir: "cover",
         skip_files: [
           # Test files
@@ -41,17 +41,17 @@ defmodule EveDmv.MixProject do
         stop_on_missing_beam_file: false,
         treat_no_relevant_lines_as_covered: true
       ],
-      # Dialyzer configuration - optimized for speed
+      # Dialyzer configuration - exclude unused_fun warnings per Zero Error Plan
       dialyzer: [
         plt_file: {:no_warn, "priv/plts/dialyzer.plt"},
         plt_add_apps: [:mix, :ex_unit],
         plt_core_path: "priv/plts/core.plt",
         list_unused_filters: true,
-        # Reduced flags for faster analysis while keeping essential checks
-        flags: [:error_handling, :underspecs],
+        # Exclude unused_fun warnings as per DIALYZER_ZERO_ERROR_PLAN_FINAL.md
+        flags: [:error_handling, :underspecs, :no_unused],
         # Skip analysis of test files to speed up CI
         paths: ["_build/#{Mix.env()}/lib/eve_dmv/ebin"],
-        # Use incremental analysis
+        # Skip PLT checking to improve speed
         check_plt: false,
         # Ignore warnings from dependencies
         ignore_warnings: ".dialyzer_ignore.exs"
@@ -150,7 +150,7 @@ defmodule EveDmv.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
-      {:phoenix, "~> 1.7.21"},
+      {:phoenix, "~> 1.8"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.10"},
       {:postgrex, ">= 0.0.0"},
@@ -212,6 +212,7 @@ defmodule EveDmv.MixProject do
       # Additional test dependencies for comprehensive testing
       {:bypass, "~> 2.1", only: :test},
       {:mox, "~> 1.0", only: :test},
+      {:lazy_html, ">= 0.1.0", only: :test},
       # SAT solver for Ash framework (fast C-based solver)
       {:picosat_elixir, "~> 0.2"}
     ]

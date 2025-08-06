@@ -4,6 +4,7 @@ defmodule EveDmvWeb.CharacterIntelComponents do
   Provides loading states, error handling, and data visualization components.
   """
   use Phoenix.Component
+  alias EveDmvWeb.Utils.FormattingUtils
 
   @doc """
   Renders a skeleton loading state for character intel data.
@@ -18,7 +19,7 @@ defmodule EveDmvWeb.CharacterIntelComponents do
         <div class="h-8 w-64 bg-gray-700 rounded mb-2"></div>
         <div class="h-4 w-48 bg-gray-700 rounded"></div>
       </div>
-      
+
       <!-- Stats grid skeleton -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div :for={_ <- 1..4} class="bg-gray-800 rounded-lg p-6">
@@ -26,14 +27,14 @@ defmodule EveDmvWeb.CharacterIntelComponents do
           <div class="h-8 w-32 bg-gray-700 rounded"></div>
         </div>
       </div>
-      
+
       <!-- Tab skeleton -->
       <div class="border-b border-gray-700 mb-6">
         <div class="flex space-x-8">
           <div :for={_ <- 1..5} class="h-4 w-20 bg-gray-700 rounded mb-3"></div>
         </div>
       </div>
-      
+
       <!-- Content skeleton -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div :for={_ <- 1..2} class="bg-gray-800 rounded-lg p-6">
@@ -67,7 +68,7 @@ defmodule EveDmvWeb.CharacterIntelComponents do
         <span class="text-sm font-medium">{@percentage}%</span>
       </div>
       <div class="w-full bg-gray-700 rounded-full h-2">
-        <div 
+        <div
           class={"#{@color} h-2 rounded-full transition-all duration-300 ease-out"}
           style={"width: #{@percentage}%"}
         ></div>
@@ -152,7 +153,7 @@ defmodule EveDmvWeb.CharacterIntelComponents do
       <h3 class="text-lg font-semibold mb-4">Activity Heatmap (EVE Time)</h3>
       <div class="grid grid-cols-24 gap-0.5">
         <div :for={hour <- 0..23} class="text-center">
-          <div 
+          <div
             class={"h-8 rounded-sm transition-colors duration-200 " <> activity_color(Map.get(@data, hour, 0))}
             title={"#{hour}:00 - #{Map.get(@data, hour, 0)} kills"}
           >
@@ -202,7 +203,7 @@ defmodule EveDmvWeb.CharacterIntelComponents do
             <span class="text-sm text-gray-400">{ship.usage_count} kills</span>
           </div>
           <div class="w-full bg-gray-700 rounded-full h-2">
-            <div 
+            <div
               class="bg-gradient-to-r from-blue-500 to-blue-400 h-2 rounded-full transition-all duration-500"
               style={"width: #{round(ship.usage_count / @max_count * 100)}%"}
             ></div>
@@ -216,19 +217,11 @@ defmodule EveDmvWeb.CharacterIntelComponents do
   # Private helper functions
 
   defp format_stat_value(value, "number") when is_number(value) do
-    value
-    |> round()
-    |> Integer.to_string()
-    |> String.replace(~r/(\d)(?=(\d{3})+(?!\d))/, "\\1,")
+    FormattingUtils.format_number_with_commas(value)
   end
 
   defp format_stat_value(value, "isk") when is_number(value) do
-    cond do
-      value >= 1_000_000_000 -> "#{Float.round(value / 1_000_000_000, 1)}B"
-      value >= 1_000_000 -> "#{Float.round(value / 1_000_000, 1)}M"
-      value >= 1_000 -> "#{Float.round(value / 1_000, 1)}K"
-      true -> "#{round(value)}"
-    end
+    FormattingUtils.format_isk_short(value)
   end
 
   defp format_stat_value(value, _), do: to_string(value)

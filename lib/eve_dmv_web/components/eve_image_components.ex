@@ -122,8 +122,8 @@ defmodule EveDmvWeb.EveImageComponents do
 
     ~H"""
     <div class={["flex items-center gap-3", @class]}>
-      <.character_portrait 
-        character_id={@character_id} 
+      <.character_portrait
+        character_id={@character_id}
         name={@character_name}
         size={@sizes.portrait}
       />
@@ -131,7 +131,7 @@ defmodule EveDmvWeb.EveImageComponents do
         <div class="font-medium text-white">{@character_name}</div>
         <div class="flex items-center gap-2 text-sm text-gray-400">
           <%= if @corporation_id do %>
-            <.corporation_logo 
+            <.corporation_logo
               corporation_id={@corporation_id}
               name={@corporation_name}
               size={@sizes.logo}
@@ -140,7 +140,7 @@ defmodule EveDmvWeb.EveImageComponents do
           <% end %>
           <%= if @alliance_id do %>
             <span class="text-gray-600">|</span>
-            <.alliance_logo 
+            <.alliance_logo
               alliance_id={@alliance_id}
               name={@alliance_name}
               size={@sizes.logo}
@@ -177,7 +177,7 @@ defmodule EveDmvWeb.EveImageComponents do
           <div class="font-medium">{@pilot["times_together"]}x</div>
         </div>
       </div>
-      
+
       <div class="grid grid-cols-3 gap-2 text-sm">
         <div class="text-center">
           <div class="text-gray-400">Kills</div>
@@ -192,10 +192,10 @@ defmodule EveDmvWeb.EveImageComponents do
           <div class="font-medium">{format_kd_ratio(@pilot)}</div>
         </div>
       </div>
-      
+
       <%= if @pilot["preferred_ship_name"] do %>
         <div class="mt-3 flex items-center gap-2 text-sm">
-          <.ship_image 
+          <.ship_image
             type_id={@pilot["preferred_ship_id"]}
             name={@pilot["preferred_ship_name"]}
             size={24}

@@ -8,6 +8,7 @@ defmodule EveDmv.TestMocks do
     @moduledoc """
     Mock implementation of ESI client for testing.
     """
+    @spec get_character(integer()) :: {:ok, map()}
     def get_character(character_id) do
       {:ok,
        %{
@@ -20,6 +21,7 @@ defmodule EveDmv.TestMocks do
        }}
     end
 
+    @spec get_corporation(integer()) :: {:ok, map()}
     def get_corporation(corp_id) do
       {:ok,
        %{
@@ -30,6 +32,7 @@ defmodule EveDmv.TestMocks do
        }}
     end
 
+    @spec get_alliance(integer()) :: {:ok, map()}
     def get_alliance(alliance_id) do
       {:ok,
        %{
@@ -45,6 +48,7 @@ defmodule EveDmv.TestMocks do
     @moduledoc """
     Mock implementation of Wanderer client for testing.
     """
+    @spec get_chain_topology(any()) :: {:ok, map()}
     def get_chain_topology(_map_id) do
       {:ok,
        %{
@@ -56,6 +60,7 @@ defmodule EveDmv.TestMocks do
        }}
     end
 
+    @spec get_system_inhabitants(any()) :: {:ok, list()}
     def get_system_inhabitants(_map_id) do
       {:ok,
        [
@@ -69,10 +74,12 @@ defmodule EveDmv.TestMocks do
        ]}
     end
 
+    @spec monitor_map(any()) :: :ok
     def monitor_map(_map_id) do
       :ok
     end
 
+    @spec stop_monitoring(any()) :: :ok
     def stop_monitoring(_map_id) do
       :ok
     end

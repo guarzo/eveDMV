@@ -136,7 +136,7 @@ defmodule EveDmv.Quality.MetricsCollector.DocumentationMetrics do
   end
 
   defp calculate_readme_completeness(content) do
-    scores = [
+    [
       if(check_setup_instructions(content), do: 20, else: 0),
       if(check_usage_examples(content), do: 20, else: 0),
       if(check_badges(content), do: 10, else: 0),
@@ -144,8 +144,7 @@ defmodule EveDmv.Quality.MetricsCollector.DocumentationMetrics do
       if(count_markdown_sections(content) >= 5, do: 20, else: 10),
       if(String.length(content) > 1000, do: 20, else: 10)
     ]
-
-    Enum.sum(scores)
+    |> Enum.sum()
   end
 
   # Code documentation analysis
@@ -212,6 +211,7 @@ defmodule EveDmv.Quality.MetricsCollector.DocumentationMetrics do
           true
       end
     end)
+
     # Limit to first 10 for performance
     |> Enum.take(10)
   end

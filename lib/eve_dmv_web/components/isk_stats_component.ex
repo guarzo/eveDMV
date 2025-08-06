@@ -9,7 +9,7 @@ defmodule EveDmvWeb.Components.IskStatsComponent do
 
   ## Examples
 
-      <.isk_stats 
+      <.isk_stats
         destroyed={2_500_000_000}
         lost={500_000_000}
         time_period="90 days"
@@ -28,7 +28,7 @@ defmodule EveDmvWeb.Components.IskStatsComponent do
     <div class={"isk-stats-card bg-gray-800 rounded-lg border border-gray-700 #{@class}"}>
       <div class="p-4">
         <h3 class="text-sm font-medium text-gray-400 mb-3">ISK Statistics</h3>
-        
+
         <div class="space-y-3">
           <!-- ISK Values -->
           <div class="flex justify-between items-center">
@@ -44,7 +44,7 @@ defmodule EveDmvWeb.Components.IskStatsComponent do
               <p class="text-lg font-bold text-red-400"><%= format_isk(@lost) %></p>
             </div>
           </div>
-          
+
           <!-- Efficiency Bar -->
           <div>
             <div class="flex justify-between items-center mb-1">
@@ -54,13 +54,13 @@ defmodule EveDmvWeb.Components.IskStatsComponent do
               </span>
             </div>
             <div class="w-full bg-gray-700 rounded-full h-2">
-              <div 
+              <div
                 class={"h-2 rounded-full transition-all duration-300 #{efficiency_bg(@efficiency)}"}
                 style={"width: #{@efficiency}%"}
               />
             </div>
           </div>
-          
+
           <%= if @time_period do %>
             <p class="text-xs text-gray-500 text-center mt-2"><%= @time_period %></p>
           <% end %>

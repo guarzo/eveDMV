@@ -4,7 +4,7 @@ defmodule EveDmv.Repo.Migrations.UpdateCorporationMemberSummaryForSprint15a do
   def up do
     # First drop the existing view if it exists
     execute "DROP MATERIALIZED VIEW IF EXISTS corporation_member_summary CASCADE"
-    
+
     # Create the optimized Sprint 15A version that includes per-member statistics
     execute """
     CREATE MATERIALIZED VIEW corporation_member_summary AS
@@ -32,12 +32,12 @@ defmodule EveDmv.Repo.Migrations.UpdateCorporationMemberSummaryForSprint15a do
     HAVING COUNT(*) >= 5
     WITH DATA
     """
-    
+
     # Create indexes for the new view
     execute "CREATE INDEX IF NOT EXISTS idx_corp_member_corp_char ON corporation_member_summary (corporation_id, character_id)"
     execute "CREATE INDEX IF NOT EXISTS idx_corp_member_last_seen ON corporation_member_summary (corporation_id, last_seen DESC)"
     execute "CREATE INDEX IF NOT EXISTS idx_corp_member_activity ON corporation_member_summary (corporation_id, activity_rank)"
-    
+
     # Create refresh functions for the views
     execute """
     CREATE OR REPLACE FUNCTION refresh_character_activity_summary()
@@ -47,7 +47,7 @@ defmodule EveDmv.Repo.Migrations.UpdateCorporationMemberSummaryForSprint15a do
     END;
     $$ LANGUAGE plpgsql;
     """
-    
+
     execute """
     CREATE OR REPLACE FUNCTION refresh_corporation_member_summary()
     RETURNS void AS $$
@@ -56,7 +56,7 @@ defmodule EveDmv.Repo.Migrations.UpdateCorporationMemberSummaryForSprint15a do
     END;
     $$ LANGUAGE plpgsql;
     """
-    
+
     execute """
     CREATE OR REPLACE FUNCTION refresh_all_performance_views()
     RETURNS void AS $$
@@ -75,14 +75,14 @@ defmodule EveDmv.Repo.Migrations.UpdateCorporationMemberSummaryForSprint15a do
     execute "DROP FUNCTION IF EXISTS refresh_all_performance_views()"
     execute "DROP FUNCTION IF EXISTS refresh_corporation_member_summary()"
     execute "DROP FUNCTION IF EXISTS refresh_character_activity_summary()"
-    
+
     # Drop the Sprint 15A version
     execute "DROP MATERIALIZED VIEW IF EXISTS corporation_member_summary CASCADE"
-    
+
     # Recreate the original simpler version if needed
     execute """
     CREATE MATERIALIZED VIEW IF NOT EXISTS corporation_member_summary AS
-    SELECT 
+    SELECT
       cas.corporation_id,
       cas.corporation_name,
       cas.alliance_id,
@@ -99,27 +99,27 @@ defmodule EveDmv.Repo.Migrations.UpdateCorporationMemberSummaryForSprint15a do
       AVG(cas.isk_destroyed) as avg_member_isk_destroyed,
       AVG(cas.isk_efficiency_percent) as avg_isk_efficiency,
       MAX(cas.last_activity_date) as last_member_activity,
-      CASE 
+      CASE
         WHEN SUM(cas.losses) = 0 THEN 100.0
         ELSE ROUND((SUM(cas.kills)::decimal / SUM(cas.losses)::decimal), 2)
       END as corp_kill_death_ratio,
-      CASE 
+      CASE
         WHEN (SUM(cas.isk_destroyed) + SUM(cas.isk_lost)) = 0 THEN 50.0
         ELSE ROUND(
-          (SUM(cas.isk_destroyed)::decimal / 
+          (SUM(cas.isk_destroyed)::decimal /
            (SUM(cas.isk_destroyed) + SUM(cas.isk_lost))::decimal) * 100, 2
         )
       END as corp_isk_efficiency_percent,
       ROUND(
-        (COUNT(CASE WHEN cas.last_activity_date >= NOW() - INTERVAL '30 days' THEN 1 END)::decimal / 
+        (COUNT(CASE WHEN cas.last_activity_date >= NOW() - INTERVAL '30 days' THEN 1 END)::decimal /
          COUNT(DISTINCT cas.character_id)::decimal) * 100, 2
       ) as active_member_percent,
       ROUND(AVG(cas.kills + cas.losses), 2) as avg_member_activity,
       NOW() as refreshed_at
     FROM character_activity_summary cas
     WHERE cas.corporation_id IS NOT NULL
-    GROUP BY 
-      cas.corporation_id, cas.corporation_name, 
+    GROUP BY
+      cas.corporation_id, cas.corporation_name,
       cas.alliance_id, cas.alliance_name
     WITH DATA
     """

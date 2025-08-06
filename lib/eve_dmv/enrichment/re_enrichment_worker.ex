@@ -19,6 +19,7 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
 
   use GenServer
   alias EveDmv.Api
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Enrichment.RealTimePriceUpdater
   alias EveDmv.Eve.NameResolver
   alias EveDmv.Killmails.KillmailEnriched
@@ -204,7 +205,7 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
     Logger.info("Starting price update for recent killmails")
 
     # Get killmails that need price updates
-    cutoff_date = DateTime.add(DateTime.utc_now(), -config.max_age_days, :day)
+    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -config.max_age_days, :day)
 
     case get_killmails_for_price_update(cutoff_date, config.batch_size * 5) do
       {:ok, killmails} ->
@@ -236,7 +237,7 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
     Logger.info("Starting name resolution update for recent killmails")
 
     # Get killmails that need name updates
-    cutoff_date = DateTime.add(DateTime.utc_now(), -config.max_age_days, :day)
+    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -config.max_age_days, :day)
 
     case get_killmails_for_name_update(cutoff_date, config.batch_size * 3) do
       {:ok, killmails} ->
@@ -268,8 +269,7 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
     # Get recent enriched killmails for price updates
     # Simplified query - get most recent killmails
     query =
-      KillmailEnriched
-      |> Ash.Query.new()
+      Ash.Query.new(KillmailEnriched)
       |> Ash.Query.sort(killmail_time: :desc)
       |> Ash.Query.limit(limit)
 
@@ -280,8 +280,7 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
     # Get recent enriched killmails for name updates
     # Simplified query - get most recent killmails
     query =
-      KillmailEnriched
-      |> Ash.Query.new()
+      Ash.Query.new(KillmailEnriched)
       |> Ash.Query.sort(killmail_time: :desc)
       |> Ash.Query.limit(limit)
 
@@ -312,6 +311,7 @@ defmodule EveDmv.Enrichment.ReEnrichmentWorker do
 
     # Update each killmail with resolved names
     result = %{processed: 0, updated: 0, errors: 0}
+
     Enum.reduce(killmails, result, &update_killmail_names(&1, &2, resolved_names))
   end
 

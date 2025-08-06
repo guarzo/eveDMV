@@ -9,7 +9,7 @@ defmodule EveDmvWeb.Components.ActivityOverviewComponent do
 
   ## Examples
 
-      <.activity_overview 
+      <.activity_overview
         peak_time="18:00 EVE"
         peak_activity_count={42}
         top_location="Jita"
@@ -45,7 +45,7 @@ defmodule EveDmvWeb.Components.ActivityOverviewComponent do
               <p class="text-sm font-bold text-gray-500">Unknown</p>
             <% end %>
           </div>
-          
+
           <!-- Top Location -->
           <div>
             <div class="text-2xl mb-1">🌍</div>
@@ -61,7 +61,7 @@ defmodule EveDmvWeb.Components.ActivityOverviewComponent do
               <p class="text-sm font-bold text-gray-500">Unknown</p>
             <% end %>
           </div>
-          
+
           <!-- Primary Timezone -->
           <div>
             <div class="text-2xl mb-1">⏰</div>

@@ -9,9 +9,9 @@ defmodule EveDmvWeb.Components.ThreatLevelComponent do
 
   ## Examples
 
-      <.threat_level 
-        score={85} 
-        level="High" 
+      <.threat_level
+        score={85}
+        level="High"
         summary="Experienced PvP pilot"
         type="character"
       />

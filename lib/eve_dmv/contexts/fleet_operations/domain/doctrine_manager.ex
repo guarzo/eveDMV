@@ -4,9 +4,10 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
 
   Handles creation, validation, and management of fleet doctrines,
   including compliance checking and doctrine optimization.
+
+  Converted from GenServer to simple module for stateless operations.
   """
 
-  use GenServer
   use EveDmv.ErrorHandler
 
   alias EveDmv.StaticData
@@ -15,285 +16,359 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
 
   # Note: Doctrine types and mass categories are defined inline where needed
 
-  def start_link(opts \\ []) do
-    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
-  end
-
   # Public API
 
   @doc """
   Create a new fleet doctrine.
+
+  Persists the doctrine to the database using the Ash resource.
   """
   def create_doctrine(doctrine_data) do
-    GenServer.call(__MODULE__, {:create_doctrine, doctrine_data})
+    # Prepare attributes for Ash resource
+    attributes = %{
+      name: doctrine_data.name,
+      description: doctrine_data[:description],
+      doctrine_type: doctrine_data[:doctrine_type] || :roam,
+      ship_requirements: normalize_requirements(doctrine_data.ship_requirements),
+      role_requirements: normalize_requirements(doctrine_data.role_requirements),
+      optional_ships: doctrine_data[:optional_ships] || [],
+      mass_limits: doctrine_data[:mass_limits] || %{},
+      minimum_pilots: doctrine_data[:minimum_pilots] || calculate_minimum_pilots(doctrine_data),
+      optimal_pilots: doctrine_data[:optimal_pilots],
+      corporation_id: doctrine_data[:corporation_id],
+      is_active: Map.get(doctrine_data, :is_active, true),
+      is_public: Map.get(doctrine_data, :is_public, false),
+      created_by: doctrine_data[:created_by] || doctrine_data[:creator_id],
+      tags: doctrine_data[:tags] || [],
+      fitting_notes: doctrine_data[:fitting_notes]
+    }
+
+    case Ash.create(
+           EveDmv.Contexts.FleetOperations.Resources.FleetDoctrine,
+           attributes,
+           domain: EveDmv.Contexts.FleetOperations.Domain
+         ) do
+      {:ok, doctrine} ->
+        Logger.info("Created doctrine: #{doctrine.name} (#{doctrine.id})")
+        {:ok, doctrine}
+
+      {:error, changeset} ->
+        Logger.error("Failed to create doctrine: #{inspect(changeset.errors)}")
+        {:error, changeset}
+    end
   end
 
   @doc """
   Update an existing fleet doctrine.
+
+  Updates the doctrine in the database using the Ash resource.
   """
   def update_doctrine(doctrine_id, updates) do
-    GenServer.call(__MODULE__, {:update_doctrine, doctrine_id, updates})
+    case Ash.get(EveDmv.Contexts.FleetOperations.Resources.FleetDoctrine, doctrine_id,
+           domain: EveDmv.Contexts.FleetOperations.Domain
+         ) do
+      {:ok, doctrine} ->
+        # Normalize requirement maps if being updated
+        normalized_updates =
+          updates
+          |> Map.update(:ship_requirements, nil, &normalize_requirements/1)
+          |> Map.update(:role_requirements, nil, &normalize_requirements/1)
+          |> Enum.filter(fn {_, v} -> v != nil end)
+          |> Map.new()
+
+        case Ash.update(doctrine, normalized_updates,
+               domain: EveDmv.Contexts.FleetOperations.Domain
+             ) do
+          {:ok, updated_doctrine} ->
+            Logger.info("Updated doctrine: #{updated_doctrine.name}")
+            {:ok, updated_doctrine}
+
+          {:error, changeset} ->
+            Logger.error("Failed to update doctrine: #{inspect(changeset.errors)}")
+            {:error, changeset}
+        end
+
+      {:error, _} ->
+        {:error, :not_found}
+    end
   end
 
   @doc """
   Get a doctrine by ID.
+
+  Queries the database for the specific doctrine.
   """
   def get_doctrine(doctrine_id) do
-    GenServer.call(__MODULE__, {:get_doctrine, doctrine_id})
+    case Ash.get(EveDmv.Contexts.FleetOperations.Resources.FleetDoctrine, doctrine_id,
+           domain: EveDmv.Contexts.FleetOperations.Domain
+         ) do
+      {:ok, doctrine} -> {:ok, doctrine}
+      {:error, _} -> {:error, :not_found}
+    end
   end
 
   @doc """
   Get a doctrine by name.
+
+  Queries the database for a doctrine with the given name.
   """
-  def get_doctrine_by_name(doctrine_name) do
-    GenServer.call(__MODULE__, {:get_doctrine_by_name, doctrine_name})
+  def get_doctrine_by_name(name, corporation_id \\ nil) do
+    import Ash.Query
+
+    query =
+      EveDmv.Contexts.FleetOperations.Resources.FleetDoctrine
+      |> filter(name == ^name)
+
+    final_query =
+      if corporation_id do
+        filter(query, corporation_id == ^corporation_id or is_public == true)
+      else
+        query
+      end
+
+    case Ash.read_one(final_query, domain: EveDmv.Contexts.FleetOperations.Domain) do
+      {:ok, doctrine} -> {:ok, doctrine}
+      {:error, _} -> {:error, :not_found}
+    end
   end
 
   @doc """
   List doctrines with filtering options.
+
+  Options:
+  - corporation_id: Filter by corporation (includes public doctrines)
+  - doctrine_type: Filter by doctrine type
+  - is_active: Filter by active status (default: true)
+  - search: Search in name, description, and tags
   """
   def list_doctrines(opts \\ []) do
-    GenServer.call(__MODULE__, {:list_doctrines, opts})
+    import Ash.Query
+
+    query = EveDmv.Contexts.FleetOperations.Resources.FleetDoctrine
+
+    # Apply filters
+    base_query =
+      if corporation_id = opts[:corporation_id] do
+        # Use the custom action
+        args = %{corporation_id: corporation_id}
+
+        EveDmv.Contexts.FleetOperations.Resources.FleetDoctrine
+        |> Ash.Query.for_read(:by_corporation, args)
+      else
+        query
+      end
+
+    type_filtered_query =
+      if type = opts[:doctrine_type] do
+        filter(base_query, doctrine_type == ^type)
+      else
+        base_query
+      end
+
+    active_filtered_query =
+      if Keyword.get(opts, :is_active, true) do
+        filter(type_filtered_query, is_active == true)
+      else
+        type_filtered_query
+      end
+
+    search_filtered_query =
+      if search_term = opts[:search] do
+        # Use the custom search action
+        args = %{query: search_term}
+
+        EveDmv.Contexts.FleetOperations.Resources.FleetDoctrine
+        |> Ash.Query.for_read(:search, args)
+      else
+        active_filtered_query
+      end
+
+    # Sort by usage and name
+    final_query =
+      search_filtered_query
+      |> sort(usage_count: :desc, name: :asc)
+      |> load([:total_minimum_pilots, :completeness_score])
+
+    case Ash.read(final_query, domain: EveDmv.Contexts.FleetOperations.Domain) do
+      {:ok, doctrines} ->
+        {:ok, doctrines}
+
+      {:error, error} ->
+        Logger.error("Failed to list doctrines: #{inspect(error)}")
+        {:error, error}
+    end
   end
 
   @doc """
   Check fleet compliance against a doctrine.
   """
   def check_compliance(fleet_data, doctrine) do
-    GenServer.call(__MODULE__, {:check_compliance, fleet_data, doctrine})
+    calculate_doctrine_compliance(fleet_data, doctrine)
   end
 
   @doc """
   Validate a fleet composition against a doctrine.
   """
   def validate_fleet_composition(fleet_data, doctrine) do
-    GenServer.call(__MODULE__, {:validate_fleet_composition, fleet_data, doctrine})
+    perform_fleet_validation(fleet_data, doctrine)
   end
 
   @doc """
   Get doctrine statistics and usage metrics.
+
+  Returns usage statistics and performance metrics for a doctrine.
   """
   def get_doctrine_statistics(doctrine_id) do
-    GenServer.call(__MODULE__, {:get_doctrine_statistics, doctrine_id})
-  end
-
-  # GenServer implementation
-
-  @impl GenServer
-  def init(_opts) do
-    state = %{
-      doctrines: %{},
-      next_id: 1,
-      usage_statistics: %{},
-      compliance_cache: %{}
-    }
-
-    Logger.info("DoctrineManager started")
-    {:ok, state}
-  end
-
-  @impl GenServer
-  def handle_call({:create_doctrine, doctrine_data}, _from, state) do
-    doctrine_id = generate_doctrine_id(state.next_id)
-
-    doctrine = %{
-      id: doctrine_id,
-      name: doctrine_data.name,
-      description: doctrine_data[:description] || "",
-      doctrine_type: doctrine_data[:doctrine_type] || :roam,
-      ship_requirements: doctrine_data.ship_requirements,
-      role_requirements: doctrine_data.role_requirements,
-      optional_ships: doctrine_data[:optional_ships] || [],
-      mass_limits: doctrine_data[:mass_limits] || %{},
-      mass_category: determine_mass_category(doctrine_data),
-      corporation_id: doctrine_data[:corporation_id],
-      is_active: doctrine_data[:is_active] || true,
-      created_at: DateTime.utc_now(),
-      updated_at: DateTime.utc_now(),
-      created_by: doctrine_data[:created_by],
-      usage_count: 0,
-      last_used_at: nil
-    }
-
-    new_doctrines = Map.put(state.doctrines, doctrine_id, doctrine)
-
-    # Initialize usage statistics
-    new_usage_statistics =
-      Map.put(state.usage_statistics, doctrine_id, %{
-        total_uses: 0,
-        compliance_scores: [],
-        last_used: nil,
-        average_compliance: 0.0
-      })
-
-    new_state = %{
-      state
-      | doctrines: new_doctrines,
-        usage_statistics: new_usage_statistics,
-        next_id: state.next_id + 1
-    }
-
-    Logger.info("Created doctrine: #{doctrine.name} (#{doctrine_id})")
-
-    {:reply, {:ok, doctrine}, new_state}
-  end
-
-  @impl GenServer
-  def handle_call({:update_doctrine, doctrine_id, updates}, _from, state) do
-    case Map.get(state.doctrines, doctrine_id) do
-      nil ->
-        {:reply, {:error, :doctrine_not_found}, state}
-
-      existing_doctrine ->
-        # Update mass category if ship requirements changed
-        updated_doctrine =
-          if Map.has_key?(updates, :ship_requirements) do
-            new_mass_category =
-              determine_mass_category(%{ship_requirements: updates.ship_requirements})
-
-            Map.merge(existing_doctrine, Map.put(updates, :mass_category, new_mass_category))
-          else
-            Map.merge(existing_doctrine, updates)
-          end
-
-        updated_doctrine = Map.put(updated_doctrine, :updated_at, DateTime.utc_now())
-        new_doctrines = Map.put(state.doctrines, doctrine_id, updated_doctrine)
-
-        # Clear compliance cache for this doctrine
-        new_compliance_cache =
-          Map.reject(state.compliance_cache, fn {key, _} ->
-            case key do
-              {^doctrine_id, _} -> true
-              _ -> false
-            end
-          end)
-
-        new_state = %{
-          state
-          | doctrines: new_doctrines,
-            compliance_cache: new_compliance_cache
+    case get_doctrine(doctrine_id) do
+      {:ok, doctrine} ->
+        # In a full implementation, we'd query fleet history
+        # For now, return basic statistics from the doctrine itself
+        stats = %{
+          doctrine_id: doctrine.id,
+          doctrine_name: doctrine.name,
+          usage_count: doctrine.usage_count,
+          last_used_at: doctrine.last_used_at,
+          effectiveness_rating: doctrine.effectiveness_rating || 0.0,
+          completeness_score: calculate_completeness_score(doctrine),
+          total_minimum_pilots: calculate_total_minimum_pilots(doctrine),
+          created_at: doctrine.created_at,
+          updated_at: doctrine.updated_at
         }
 
-        Logger.info("Updated doctrine: #{doctrine_id}")
-
-        {:reply, {:ok, updated_doctrine}, new_state}
-    end
-  end
-
-  @impl GenServer
-  def handle_call({:get_doctrine, doctrine_id}, _from, state) do
-    case Map.get(state.doctrines, doctrine_id) do
-      nil -> {:reply, {:error, :doctrine_not_found}, state}
-      doctrine -> {:reply, {:ok, doctrine}, state}
-    end
-  end
-
-  @impl GenServer
-  def handle_call({:get_doctrine_by_name, doctrine_name}, _from, state) do
-    matching_doctrine =
-      state.doctrines
-      |> Map.values()
-      |> Enum.find(fn doctrine ->
-        doctrine.name == doctrine_name and doctrine.is_active
-      end)
-
-    case matching_doctrine do
-      nil -> {:reply, {:error, :doctrine_not_found}, state}
-      doctrine -> {:reply, {:ok, doctrine}, state}
-    end
-  end
-
-  @impl GenServer
-  def handle_call({:list_doctrines, opts}, _from, state) do
-    corporation_id = Keyword.get(opts, :corporation_id)
-    doctrine_type = Keyword.get(opts, :doctrine_type)
-    active_only = Keyword.get(opts, :active_only, true)
-    mass_category = Keyword.get(opts, :mass_category)
-
-    filtered_doctrines =
-      state.doctrines
-      |> Map.values()
-      |> Enum.filter(fn doctrine ->
-        corporation_match = is_nil(corporation_id) or doctrine.corporation_id == corporation_id
-        type_match = is_nil(doctrine_type) or doctrine.doctrine_type == doctrine_type
-        active_match = not active_only or doctrine.is_active
-        mass_match = is_nil(mass_category) or doctrine.mass_category == mass_category
-
-        corporation_match and type_match and active_match and mass_match
-      end)
-      |> Enum.sort_by(& &1.updated_at, {:desc, DateTime})
-
-    {:reply, {:ok, filtered_doctrines}, state}
-  end
-
-  @impl GenServer
-  def handle_call({:check_compliance, fleet_data, doctrine}, _from, state) do
-    case calculate_doctrine_compliance(fleet_data, doctrine) do
-      {:ok, compliance_result} ->
-        # Update usage statistics
-        new_usage_statistics =
-          update_doctrine_usage_statistics(
-            state.usage_statistics,
-            doctrine.id,
-            compliance_result.compliance_score
-          )
-
-        new_state = %{state | usage_statistics: new_usage_statistics}
-
-        {:reply, {:ok, compliance_result}, new_state}
+        {:ok, stats}
 
       {:error, reason} ->
-        {:reply, {:error, reason}, state}
+        {:error, reason}
     end
   end
 
-  @impl GenServer
-  def handle_call({:validate_fleet_composition, fleet_data, doctrine}, _from, state) do
-    case perform_fleet_validation(fleet_data, doctrine) do
-      {:ok, validation_result} ->
-        {:reply, {:ok, validation_result}, state}
+  @doc """
+  Delete a doctrine.
+  """
+  def delete_doctrine(doctrine_id) do
+    case get_doctrine(doctrine_id) do
+      {:ok, doctrine} ->
+        case Ash.destroy(doctrine, domain: EveDmv.Contexts.FleetOperations.Domain) do
+          :ok ->
+            Logger.info("Deleted doctrine: #{doctrine.name}")
+            :ok
+
+          {:error, error} ->
+            Logger.error("Failed to delete doctrine: #{inspect(error)}")
+            {:error, error}
+        end
 
       {:error, reason} ->
-        {:reply, {:error, reason}, state}
+        {:error, reason}
     end
   end
 
-  @impl GenServer
-  def handle_call({:get_doctrine_statistics, doctrine_id}, _from, state) do
-    case Map.get(state.usage_statistics, doctrine_id) do
-      nil -> {:reply, {:error, :doctrine_not_found}, state}
-      stats -> {:reply, {:ok, stats}, state}
+  @doc """
+  Record doctrine usage in a fleet.
+  """
+  def record_doctrine_usage(doctrine_id) do
+    case get_doctrine(doctrine_id) do
+      {:ok, doctrine} ->
+        Ash.update(doctrine, %{},
+          domain: EveDmv.Contexts.FleetOperations.Domain,
+          action: :increment_usage
+        )
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Update doctrine effectiveness rating based on fleet performance.
+  """
+  def update_doctrine_effectiveness(doctrine_id, rating) when rating >= 0.0 and rating <= 1.0 do
+    case get_doctrine(doctrine_id) do
+      {:ok, doctrine} ->
+        Ash.update(doctrine, %{},
+          domain: EveDmv.Contexts.FleetOperations.Domain,
+          action: :update_effectiveness,
+          arguments: %{rating: rating}
+        )
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
   # Private functions
 
-  defp generate_doctrine_id(next_id) do
-    "doctrine_#{next_id}_#{System.unique_integer()}"
+  defp normalize_requirements(requirements) when is_map(requirements) do
+    # Ensure all values are properly formatted maps with string keys
+    requirements
+    |> Enum.map(fn {k, v} ->
+      key = to_string(k)
+
+      value =
+        case v do
+          %{} = map ->
+            map
+            |> Enum.map(fn {mk, mv} -> {to_string(mk), mv} end)
+            |> Map.new()
+
+          _ ->
+            %{"min_count" => 1}
+        end
+
+      {key, value}
+    end)
+    |> Map.new()
   end
 
-  defp determine_mass_category(doctrine_data) do
-    ship_requirements = doctrine_data[:ship_requirements] || %{}
+  defp normalize_requirements(_), do: %{}
 
-    # Calculate estimated mass for typical doctrine composition
-    estimated_mass =
-      Enum.sum(
-        Enum.map(ship_requirements, fn {ship_type_id, requirement} ->
-          ship_mass = get_ship_mass(ship_type_id)
-          ship_mass * requirement[:min_count]
-        end)
-      )
+  defp calculate_minimum_pilots(doctrine_data) do
+    ship_mins =
+      doctrine_data[:ship_requirements]
+      |> normalize_requirements()
+      |> Map.values()
+      |> Enum.map(&Map.get(&1, "min_count", 0))
+      |> Enum.sum()
 
-    cond do
-      # < 100M kg
-      estimated_mass < 100_000_000 -> :light
-      # < 500M kg
-      estimated_mass < 500_000_000 -> :medium
-      # < 1.5B kg
-      estimated_mass < 1_500_000_000 -> :heavy
-      # >= 1.5B kg
-      true -> :capital
-    end
+    role_mins =
+      doctrine_data[:role_requirements]
+      |> normalize_requirements()
+      |> Map.values()
+      |> Enum.map(&Map.get(&1, "min_count", 0))
+      |> Enum.sum()
+
+    max(ship_mins, role_mins)
+  end
+
+  defp calculate_total_minimum_pilots(doctrine) do
+    ship_mins =
+      doctrine.ship_requirements
+      |> Map.values()
+      |> Enum.map(&Map.get(&1, "min_count", 0))
+      |> Enum.sum()
+
+    role_mins =
+      doctrine.role_requirements
+      |> Map.values()
+      |> Enum.map(&Map.get(&1, "min_count", 0))
+      |> Enum.sum()
+
+    max(ship_mins, role_mins)
+  end
+
+  defp calculate_completeness_score(doctrine) do
+    ship_score = if map_size(doctrine.ship_requirements) > 0, do: 0.25, else: 0
+    role_score = if map_size(doctrine.role_requirements) > 0, do: 0.25, else: 0
+
+    desc_score =
+      if doctrine.description && String.length(doctrine.description) > 50, do: 0.2, else: 0
+
+    fitting_score =
+      if doctrine.fitting_notes && String.length(doctrine.fitting_notes) > 100, do: 0.2, else: 0
+
+    effectiveness_score = if doctrine.effectiveness_rating, do: 0.1, else: 0
+
+    ship_score + role_score + desc_score + fitting_score + effectiveness_score
   end
 
   defp get_ship_class_for_type(ship_type_id) do
@@ -337,7 +412,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
     case ship_class do
       # Average T1/T2 frigate mass
       :frigate -> 1_500_000
-      # Average destroyer mass  
+      # Average destroyer mass
       :destroyer -> 2_000_000
       # Average cruiser mass
       :cruiser -> 12_000_000
@@ -437,10 +512,10 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
 
     # Calculate average ship compliance
     ship_score =
-      if length(compliance_scores) > 0 do
-        Enum.sum(compliance_scores) / length(compliance_scores)
-      else
+      if Enum.empty?(compliance_scores) do
         1.0
+      else
+        Enum.sum(compliance_scores) / length(compliance_scores)
       end
 
     %{
@@ -486,10 +561,10 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
 
     # Calculate average role compliance
     role_score =
-      if length(compliance_scores) > 0 do
-        Enum.sum(compliance_scores) / length(compliance_scores)
-      else
+      if Enum.empty?(compliance_scores) do
         1.0
+      else
+        Enum.sum(compliance_scores) / length(compliance_scores)
       end
 
     %{
@@ -735,13 +810,15 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
 
   defp calculate_minimum_fleet_size(doctrine) do
     ship_minimums =
-      doctrine.ship_requirements
+      doctrine
+      |> Map.get(:ship_requirements, %{})
       |> Map.values()
       |> Enum.map(fn req -> req[:min_count] || 0 end)
       |> Enum.sum()
 
     role_minimums =
-      doctrine.role_requirements
+      doctrine
+      |> Map.get(:role_requirements, %{})
       |> Map.values()
       |> Enum.map(fn req -> req[:min_count] || 0 end)
       |> Enum.sum()
@@ -762,27 +839,5 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
         get_ship_mass(participant.ship_type_id)
       end)
     )
-  end
-
-  defp update_doctrine_usage_statistics(usage_statistics, doctrine_id, compliance_score) do
-    current_stats =
-      Map.get(usage_statistics, doctrine_id, %{
-        total_uses: 0,
-        compliance_scores: [],
-        last_used: nil,
-        average_compliance: 0.0
-      })
-
-    new_compliance_scores = [compliance_score | Enum.take(current_stats.compliance_scores, 99)]
-    new_average_compliance = Enum.sum(new_compliance_scores) / length(new_compliance_scores)
-
-    updated_stats = %{
-      total_uses: current_stats.total_uses + 1,
-      compliance_scores: new_compliance_scores,
-      last_used: DateTime.utc_now(),
-      average_compliance: Float.round(new_average_compliance, 3)
-    }
-
-    Map.put(usage_statistics, doctrine_id, updated_stats)
   end
 end

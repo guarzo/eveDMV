@@ -7,11 +7,8 @@ defmodule EveDmv.Pagination.CursorPaginator do
   with proper ordering and memory bounds.
   """
 
-  alias EveDmv.Repo
   import Ecto.Query
-
-  @default_page_size 50
-  @max_page_size 1000
+  alias EveDmv.Repo
 
   defstruct [
     :query,
@@ -24,6 +21,9 @@ defmodule EveDmv.Pagination.CursorPaginator do
     :edges,
     :total_count
   ]
+
+  @default_page_size 50
+  @max_page_size 1000
 
   @doc """
   Create a new cursor paginator.
@@ -96,7 +96,8 @@ defmodule EveDmv.Pagination.CursorPaginator do
   """
   def next_page(%__MODULE__{} = paginator) do
     if paginator.has_next_page and paginator.after_cursor do
-      new(paginator.query,
+      paginator.query
+      |> new(
         cursor_fields: paginator.cursor_fields,
         page_size: paginator.page_size,
         after: paginator.after_cursor
@@ -112,7 +113,8 @@ defmodule EveDmv.Pagination.CursorPaginator do
   """
   def previous_page(%__MODULE__{} = paginator) do
     if paginator.has_previous_page and paginator.before_cursor do
-      new(paginator.query,
+      paginator.query
+      |> new(
         cursor_fields: paginator.cursor_fields,
         page_size: paginator.page_size,
         before: paginator.before_cursor
@@ -143,26 +145,26 @@ defmodule EveDmv.Pagination.CursorPaginator do
   # Private functions
 
   defp build_paginated_query(%__MODULE__{} = paginator) do
-    query = paginator.query
+    base_query = paginator.query
 
     # Add cursor conditions
     query =
       case {paginator.after_cursor, paginator.before_cursor} do
         {nil, nil} ->
           # First page
-          query
+          base_query
 
         {after_cursor, nil} ->
           # Forward pagination
-          add_after_condition(query, paginator.cursor_fields, after_cursor)
+          add_after_condition(base_query, paginator.cursor_fields, after_cursor)
 
         {nil, before_cursor} ->
           # Backward pagination
-          add_before_condition(query, paginator.cursor_fields, before_cursor)
+          add_before_condition(base_query, paginator.cursor_fields, before_cursor)
 
         {after_cursor, before_cursor} ->
           # Range query (between cursors)
-          query
+          base_query
           |> add_after_condition(paginator.cursor_fields, after_cursor)
           |> add_before_condition(paginator.cursor_fields, before_cursor)
       end
@@ -238,16 +240,14 @@ defmodule EveDmv.Pagination.CursorPaginator do
   end
 
   defp decode_cursor(cursor) when is_binary(cursor) do
-    try do
-      values =
-        cursor
-        |> Base.url_decode64!(padding: false)
-        |> :erlang.binary_to_term([:safe])
+    values =
+      cursor
+      |> Base.url_decode64!(padding: false)
+      |> :erlang.binary_to_term([:safe])
 
-      {:ok, values}
-    rescue
-      _ -> {:error, :invalid_cursor}
-    end
+    {:ok, values}
+  rescue
+    _ -> {:error, :invalid_cursor}
   end
 
   defp decode_cursor(_), do: {:error, :invalid_cursor}

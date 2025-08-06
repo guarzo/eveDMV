@@ -10,6 +10,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ProfileManager do
 
   alias EveDmv.Contexts.Surveillance.Domain.MatchingEngine
   alias EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
@@ -137,7 +138,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ProfileManager do
   """
   def archive_inactive_profiles(inactive_days \\ 90) do
     current_time = DateTime.utc_now()
-    cutoff_date = DateTime.add(current_time, -inactive_days * 24 * 3600, :second)
+    cutoff_date = DateTimeUtils.add(current_time, -inactive_days * 24 * 3600, :second)
 
     with {:ok, inactive_profiles} <- ProfileRepository.get_inactive_profiles_before(cutoff_date),
          {:ok, archived_count} <-
@@ -201,10 +202,10 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ProfileManager do
     # Validate that criteria are not too complex (performance consideration)
     complexity_score = calculate_criteria_complexity(criteria)
 
-    cond do
-      complexity_score > 100 -> {:error, :criteria_too_complex}
-      complexity_score == 0 -> {:error, :criteria_too_simple}
-      true -> :ok
+    if complexity_score > 100 do
+      {:error, :criteria_too_complex}
+    else
+      :ok
     end
   end
 

@@ -113,24 +113,11 @@ defmodule EveDmv.Quality.MetricsCollector.PerformanceMetrics do
   end
 
   defp analyze_test_parallelization do
-    # Check if tests are running in parallel
-    case System.cmd("mix", ["test", "--help"], stderr_to_stdout: true, env: clean_env()) do
-      {output, 0} ->
-        max_cases =
-          if String.contains?(output, "--max-cases") do
-            System.schedulers_online()
-          else
-            1
-          end
-
-        %{
-          parallel_tests: max_cases,
-          available_cores: System.schedulers_online()
-        }
-
-      _ ->
-        %{parallel_tests: 1, available_cores: System.schedulers_online()}
-    end
+    # Return static data without running external commands
+    %{
+      parallel_tests: System.schedulers_online(),
+      available_cores: System.schedulers_online()
+    }
   rescue
     _ -> %{parallel_tests: 1, available_cores: 1}
   end
@@ -226,13 +213,5 @@ defmodule EveDmv.Quality.MetricsCollector.PerformanceMetrics do
     else
       %{processes: 0, atom: 0, binary: 0, code: 0, ets: 0}
     end
-  end
-
-  defp clean_env do
-    %{
-      "PATH" => System.get_env("PATH", ""),
-      "HOME" => System.get_env("HOME", ""),
-      "MIX_ENV" => System.get_env("MIX_ENV", "dev")
-    }
   end
 end

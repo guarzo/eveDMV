@@ -2,9 +2,9 @@ defmodule EveDmv.Repo.Migrations.AddMemberActivityIntelligence do
   @moduledoc """
   Add member_activity_intelligence table for wormhole operations analysis.
   """
-  
+
   use Ecto.Migration
-  
+
   def up do
     create table(:member_activity_intelligence, primary_key: false) do
       add(:id, :uuid, null: false, default: fragment("gen_random_uuid()"), primary_key: true)
@@ -33,18 +33,18 @@ defmodule EveDmv.Repo.Migrations.AddMemberActivityIntelligence do
       add(:timezone_analysis, :map, default: %{})
       add(:corp_percentile_ranking, :bigint, default: 50)
       add(:peer_comparison_score, :float, default: 0.0)
-      
+
       add(:inserted_at, :utc_datetime_usec,
         null: false,
         default: fragment("(now() AT TIME ZONE 'utc')")
       )
-      
+
       add(:updated_at, :utc_datetime_usec,
         null: false,
         default: fragment("(now() AT TIME ZONE 'utc')")
       )
     end
-    
+
     # Indexes for common queries
     create index(:member_activity_intelligence, [:character_id])
     create index(:member_activity_intelligence, [:corporation_id])
@@ -52,7 +52,7 @@ defmodule EveDmv.Repo.Migrations.AddMemberActivityIntelligence do
     create index(:member_activity_intelligence, [:activity_period_end])
     create index(:member_activity_intelligence, [:engagement_score])
   end
-  
+
   def down do
     drop table(:member_activity_intelligence)
   end

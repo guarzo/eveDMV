@@ -33,16 +33,24 @@ defmodule EveDmv.Quality.MetricsCollector.TestMetrics do
   # Test counting functions
 
   defp count_total_tests do
-    case System.cmd("mix", ["test", "--dry-run"], stderr_to_stdout: true, env: %{}) do
-      {output, 0} ->
-        output
-        |> String.split("\n")
-        |> Enum.filter(&String.contains?(&1, "test"))
-        |> length()
+    # Use file system traversal instead of System.cmd for security
+    "test/**/*_test.exs"
+    |> Path.wildcard()
+    |> Enum.reduce(0, fn file, acc ->
+      case File.read(file) do
+        {:ok, content} ->
+          # Count test definitions
+          test_count =
+            content
+            |> String.split("\n")
+            |> Enum.count(&(String.contains?(&1, "test ") or String.contains?(&1, "describe ")))
 
-      _ ->
-        0
-    end
+          acc + test_count
+
+        _ ->
+          acc
+      end
+    end)
   rescue
     _ -> 0
   end
@@ -52,13 +60,21 @@ defmodule EveDmv.Quality.MetricsCollector.TestMetrics do
   end
 
   defp count_skipped_tests do
-    case System.cmd("grep", ["-r", "@tag :skip", "test/"], stderr_to_stdout: true, env: %{}) do
-      {output, 0} ->
-        output |> String.split("\n") |> Enum.reject(&(&1 == "")) |> length()
+    # Use file system traversal instead of grep
+    "test/**/*.exs"
+    |> Path.wildcard()
+    |> Enum.reduce(0, fn file, acc ->
+      case File.read(file) do
+        {:ok, content} ->
+          skip_count =
+            content |> String.split("\n") |> Enum.count(&String.contains?(&1, "@tag :skip"))
 
-      _ ->
-        0
-    end
+          acc + skip_count
+
+        _ ->
+          acc
+      end
+    end)
   rescue
     _ -> 0
   end
@@ -113,11 +129,11 @@ defmodule EveDmv.Quality.MetricsCollector.TestMetrics do
       modules_count: length(critical_modules),
       covered_modules: length(critical_coverage),
       average_coverage:
-        if(length(critical_coverage) > 0,
-          do: Enum.sum(critical_coverage) / length(critical_coverage),
-          else: 0
+        if(Enum.empty?(critical_coverage),
+          do: 0,
+          else: Enum.sum(critical_coverage) / length(critical_coverage)
         ),
-      min_coverage: if(length(critical_coverage) > 0, do: Enum.min(critical_coverage), else: 0)
+      min_coverage: if(Enum.empty?(critical_coverage), do: 0, else: Enum.min(critical_coverage))
     }
   end
 
@@ -144,18 +160,9 @@ defmodule EveDmv.Quality.MetricsCollector.TestMetrics do
   # Performance measurement
 
   defp measure_test_execution_time do
-    start_time = System.monotonic_time(:millisecond)
-
-    case System.cmd("mix", ["test", "--trace"], stderr_to_stdout: true, env: %{}) do
-      {_output, 0} ->
-        end_time = System.monotonic_time(:millisecond)
-        end_time - start_time
-
-      _ ->
-        nil
-    end
-  rescue
-    _ -> nil
+    # Return nil since we can't safely measure test execution time
+    # without running actual tests, which could be expensive
+    nil
   end
 
   defp identify_flaky_tests do

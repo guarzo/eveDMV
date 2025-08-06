@@ -1,37 +1,45 @@
 defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
-  import Ash.Expr
-  alias EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache
-  require Logger
-  require Ash.Query
-
   @moduledoc """
   Calculates various intelligence scores for characters.
 
   This module computes specialized scores including danger ratings,
   hunter effectiveness, fleet command ability, solo pilot skill,
   and awox (betrayal) risk.
+
+  Simplified intelligence scoring module that provides direct scoring operations
+  without GenServer overhead.
   """
 
-  use GenServer
-
-  def start_link(opts \\ []) do
-    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
-  end
+  import Ash.Expr
+  import Ash.Query
+  alias EveDmv.Api
+  alias EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache
+  alias EveDmv.Core.Utils.DateTimeUtils
+  require Logger
 
   @doc """
   Calculate intelligence score for a character using specific scoring algorithm.
   """
-  @spec calculate_score(integer(), atom()) :: {:ok, map()} | {:error, term()}
+  @type intelligence_score_result :: %{
+          required(:score) => float(),
+          required(:rating) => atom(),
+          required(:confidence) => :low | :medium | :high,
+          optional(atom()) => term()
+        }
+
+  @spec calculate_score(integer(), atom()) ::
+          {:ok, intelligence_score_result()} | {:error, term()}
   def calculate_score(character_id, scoring_type) do
-    GenServer.call(__MODULE__, {:calculate_score, character_id, scoring_type})
+    perform_score_calculation(character_id, scoring_type)
   end
 
   @doc """
   Get recommendations for dealing with a specific character.
   """
-  @spec get_recommendations(integer()) :: {:ok, [map()]} | {:error, term()}
+  @spec get_recommendations(integer()) :: {:ok, [map()]}
   def get_recommendations(character_id) do
-    GenServer.call(__MODULE__, {:get_recommendations, character_id})
+    recommendations = generate_recommendations(character_id)
+    {:ok, recommendations}
   end
 
   @doc """
@@ -69,36 +77,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
       end)
 
     {:ok, scores}
-  end
-
-  # GenServer callbacks
-  @impl GenServer
-  def init(_opts) do
-    {:ok,
-     %{
-       calculation_count: 0,
-       cache_hits: 0,
-       cache_misses: 0
-     }}
-  end
-
-  @impl GenServer
-  def handle_call({:calculate_score, character_id, scoring_type}, _from, state) do
-    result = perform_score_calculation(character_id, scoring_type)
-
-    new_state =
-      case result do
-        {:ok, _} -> %{state | calculation_count: state.calculation_count + 1}
-        _ -> state
-      end
-
-    {:reply, result, new_state}
-  end
-
-  @impl GenServer
-  def handle_call({:get_recommendations, character_id}, _from, state) do
-    recommendations = generate_recommendations(character_id)
-    {:reply, {:ok, recommendations}, state}
   end
 
   # Private functions
@@ -170,15 +148,15 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
   defp calculate_danger_rating(character_id) do
     # Calculate danger rating based on recent kills, kill frequency, and ship values destroyed
     # Get recent activity (last 30 days)
-    thirty_days_ago = DateTime.utc_now() |> DateTime.add(-30 * 24 * 60 * 60, :second)
+    thirty_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-30 * 24 * 60 * 60, :second)
 
     query =
       EveDmv.Killmails.KillmailRaw
-      |> Ash.Query.new()
-      |> Ash.Query.filter(expr(killmail_time >= ^thirty_days_ago))
-      |> Ash.Query.load([:participants])
+      |> new()
+      |> filter(expr(killmail_time >= ^thirty_days_ago))
+      |> load([:participants])
 
-    case Ash.read(query, domain: EveDmv.Api) do
+    case Api.read(query) do
       {:ok, killmails} ->
         # Filter killmails where character is an attacker
         character_kills =
@@ -266,25 +244,25 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
       |> Enum.map(fn k -> k.victim_ship_type_id || 0 end)
       |> Enum.filter(fn id -> id > 0 end)
 
-    if length(values) > 0 do
+    if Enum.empty?(values) do
+      0
+    else
       # Rough conversion
       Enum.sum(values) / length(values) * 10_000
-    else
-      0
     end
   end
 
   defp calculate_hunter_score(character_id) do
     # Analyze hunting patterns: solo kills, tackle usage, target selection
-    ninety_days_ago = DateTime.utc_now() |> DateTime.add(-90 * 24 * 60 * 60, :second)
+    ninety_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
 
     query =
       EveDmv.Killmails.KillmailRaw
-      |> Ash.Query.new()
-      |> Ash.Query.filter(expr(killmail_time >= ^ninety_days_ago))
-      |> Ash.Query.load([:participants])
+      |> new()
+      |> filter(expr(killmail_time >= ^ninety_days_ago))
+      |> load([:participants])
 
-    case Ash.read(query, domain: EveDmv.Api) do
+    case Api.read(query) do
       {:ok, killmails} ->
         # Get kills where character participated
         character_participations =
@@ -315,7 +293,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
 
           # Check for tackle ship usage (simplified - check common tackle ships)
           # Interceptors
-          tackle_ships = [11969, 11971, 11963, 11965]
+          tackle_ships = [11_969, 11_971, 11_963, 11_965]
 
           tackle_usage =
             character_participations
@@ -374,25 +352,26 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
 
   defp calculate_fleet_commander_score(character_id) do
     # Analyze fleet leadership: large gang participation, consistent fleet members
-    ninety_days_ago = DateTime.utc_now() |> DateTime.add(-90 * 24 * 60 * 60, :second)
+    ninety_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
 
     query =
       EveDmv.Killmails.KillmailRaw
-      |> Ash.Query.new()
-      |> Ash.Query.filter(expr(killmail_time >= ^ninety_days_ago))
-      |> Ash.Query.load([:participants])
+      |> new()
+      |> filter(expr(killmail_time >= ^ninety_days_ago))
+      |> load([:participants])
 
-    case Ash.read(query, domain: EveDmv.Api) do
+    case Api.read(query) do
       {:ok, killmails} ->
         # Get fleet kills where character participated
         fleet_participations =
           killmails
+
           # Fleet = 5+ members
-          |> Enum.filter(fn k -> k.attacker_count >= 5 end)
           |> Enum.filter(fn killmail ->
-            Enum.any?(killmail.participants || [], fn p ->
-              p.character_id == character_id && !p.is_victim
-            end)
+            killmail.attacker_count >= 5 &&
+              Enum.any?(killmail.participants || [], fn p ->
+                p.character_id == character_id && !p.is_victim
+              end)
           end)
 
         fleet_count = length(fleet_participations)
@@ -475,10 +454,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
     else
       # Count frequency of fleet mates
       mate_frequency =
-        all_fleet_mates
-        |> Enum.frequencies()
-        |> Map.values()
-        # Flown together 3+ times
+        Enum.frequencies(all_fleet_mates) |> Map.values()
+
+      # Flown together 3+ times
+      mate_frequency =
+        mate_frequency
         |> Enum.filter(&(&1 >= 3))
         |> length()
 
@@ -489,24 +469,23 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
 
   defp calculate_solo_pilot_score(character_id) do
     # Analyze solo combat effectiveness and survival
-    ninety_days_ago = DateTime.utc_now() |> DateTime.add(-90 * 24 * 60 * 60, :second)
+    ninety_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
 
     query =
       EveDmv.Killmails.KillmailRaw
-      |> Ash.Query.new()
-      |> Ash.Query.filter(expr(killmail_time >= ^ninety_days_ago))
-      |> Ash.Query.load([:participants])
+      |> new()
+      |> filter(expr(killmail_time >= ^ninety_days_ago))
+      |> load([:participants])
 
-    case Ash.read(query, domain: EveDmv.Api) do
+    case Api.read(query) do
       {:ok, killmails} ->
         # Get solo kills (attacker_count = 1)
         solo_kills =
-          killmails
-          |> Enum.filter(fn k -> k.attacker_count == 1 end)
-          |> Enum.filter(fn killmail ->
-            Enum.any?(killmail.participants || [], fn p ->
-              p.character_id == character_id && !p.is_victim
-            end)
+          Enum.filter(killmails, fn killmail ->
+            killmail.attacker_count == 1 &&
+              Enum.any?(killmail.participants || [], fn p ->
+                p.character_id == character_id && !p.is_victim
+              end)
           end)
 
         # Get solo losses
@@ -615,10 +594,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
     # Get all killmails involving this character
     query =
       EveDmv.Killmails.KillmailRaw
-      |> Ash.Query.new()
-      |> Ash.Query.load([:participants])
+      |> new()
+      |> load([:participants])
 
-    case Ash.read(query, domain: EveDmv.Api) do
+    case Api.read(query) do
       {:ok, killmails} ->
         # Find potential friendly fire incidents
         # Where character killed someone from same corp/alliance

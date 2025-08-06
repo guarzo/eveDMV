@@ -3,6 +3,15 @@ defmodule EveDmvWeb.Helpers.TimeFormatter do
   Shared time formatting functions for LiveView modules.
   """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
+
+  # Time constants in seconds
+  @seconds_per_minute 60
+  @seconds_per_hour 3_600
+  @seconds_per_day 86_400
+  @days_per_week 7
+  @days_per_month 30
+
   @doc """
   Formats a DateTime to a standard string format.
   """
@@ -18,13 +27,13 @@ defmodule EveDmvWeb.Helpers.TimeFormatter do
   """
   @spec format_relative_time(DateTime.t() | nil) :: String.t()
   def format_relative_time(%DateTime{} = datetime) do
-    diff = DateTime.diff(DateTime.utc_now(), datetime)
+    diff = DateTimeUtils.diff(DateTime.utc_now(), datetime, :second)
 
     cond do
-      diff < 60 -> "#{diff}s ago"
-      diff < 3_600 -> "#{div(diff, 60)}m ago"
-      diff < 86_400 -> "#{div(diff, 3_600)}h ago"
-      true -> "#{div(diff, 86_400)}d ago"
+      diff < @seconds_per_minute -> "#{diff}s ago"
+      diff < @seconds_per_hour -> "#{div(diff, @seconds_per_minute)}m ago"
+      diff < @seconds_per_day -> "#{div(diff, @seconds_per_hour)}h ago"
+      true -> "#{div(diff, @seconds_per_day)}d ago"
     end
   end
 
@@ -35,9 +44,9 @@ defmodule EveDmvWeb.Helpers.TimeFormatter do
   """
   @spec format_duration(integer()) :: String.t()
   def format_duration(seconds) when is_integer(seconds) do
-    hours = div(seconds, 3_600)
-    minutes = div(rem(seconds, 3_600), 60)
-    seconds = rem(seconds, 60)
+    hours = div(seconds, @seconds_per_hour)
+    minutes = div(rem(seconds, @seconds_per_hour), @seconds_per_minute)
+    seconds = rem(seconds, @seconds_per_minute)
 
     "#{hours}h #{minutes}m #{seconds}s"
   end
@@ -55,21 +64,21 @@ defmodule EveDmvWeb.Helpers.TimeFormatter do
 
   def format_friendly_time(%DateTime{} = datetime) do
     now = DateTime.utc_now()
-    diff_days = DateTime.diff(now, datetime, :day)
+    diff_days = DateTimeUtils.diff(now, datetime, :day)
 
     cond do
       diff_days == 0 -> "Today"
       diff_days == 1 -> "Yesterday"
       diff_days < 7 -> "#{diff_days} days ago"
-      diff_days < 30 -> "#{div(diff_days, 7)} weeks ago"
-      true -> "#{div(diff_days, 30)} months ago"
+      diff_days < @days_per_month -> "#{div(diff_days, @days_per_week)} weeks ago"
+      true -> "#{div(diff_days, @days_per_month)} months ago"
     end
   end
 
   def format_friendly_time(%NaiveDateTime{} = datetime) do
     # Convert NaiveDateTime to DateTime (assuming UTC)
     datetime
-    |> DateTime.from_naive!("Etc/UTC")
+    |> DateTimeUtils.to_datetime()
     |> format_friendly_time()
   end
 
@@ -87,9 +96,9 @@ defmodule EveDmvWeb.Helpers.TimeFormatter do
   end
 
   def format_time_ago(%NaiveDateTime{} = datetime) do
-    case DateTime.from_naive(datetime, "Etc/UTC") do
-      {:ok, dt} -> format_relative_time(dt)
-      _ -> "Unknown"
+    case DateTimeUtils.to_datetime(datetime) do
+      nil -> "Unknown"
+      dt -> format_relative_time(dt)
     end
   rescue
     _ -> "Unknown"

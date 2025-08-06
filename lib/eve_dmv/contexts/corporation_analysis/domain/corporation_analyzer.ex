@@ -10,6 +10,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer do
   use EveDmv.ErrorHandler
   alias EveDmv.Contexts.CorporationAnalysis.Analyzers.MemberActivityAnalyzer
   alias EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationRepository
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Result
   alias EveDmv.Shared.MetricsCalculator
   # Import analyzers
@@ -203,7 +204,8 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer do
         new_state =
           %{state | analysis_cache: new_cache}
           |> update_metrics(:cache_miss, analysis_time)
-          |> update_health_distribution(analysis.activity_summary.health_rating)
+
+        new_state = update_health_distribution(new_state, analysis.activity_summary.health_rating)
 
         {:reply, {:ok, analysis}, new_state}
 
@@ -364,7 +366,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer do
 
   defp cache_valid?(timestamp, opts) do
     ttl = Keyword.get(opts, :cache_ttl_seconds, 600)
-    age = DateTime.diff(DateTime.utc_now(), timestamp, :second)
+    age = DateTimeUtils.diff(DateTime.utc_now(), timestamp, :second)
     age < ttl
   end
 

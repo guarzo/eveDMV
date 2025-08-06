@@ -5,30 +5,27 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ThreatAssessor do
   This module evaluates threat levels based on context-specific factors
   such as general threat assessment, recruitment vetting, wormhole operations,
   and fleet reliability.
-  """
 
-  use GenServer
+  Simplified threat assessment module that provides direct assessment operations
+  without GenServer overhead.
+  """
 
   alias EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache
 
   require Logger
 
-  def start_link(opts \\ []) do
-    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
-  end
-
   @doc """
   Assess threat level for a character in a specific context.
   """
-  @spec assess_threat(integer(), atom()) :: {:ok, map()} | {:error, term()}
+  @spec assess_threat(integer(), atom()) :: {:ok, map()}
   def assess_threat(character_id, context) do
-    GenServer.call(__MODULE__, {:assess_threat, character_id, context})
+    perform_threat_assessment(character_id, context)
   end
 
   @doc """
   Get cached threat assessment for a character.
   """
-  @spec get_assessment(integer()) :: {:ok, map()} | {:error, term()}
+  @spec get_assessment(integer()) :: {:ok, map()}
   def get_assessment(character_id) do
     case AnalysisCache.get_threat_assessment(character_id) do
       {:ok, assessment} -> {:ok, assessment}
@@ -39,7 +36,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ThreatAssessor do
   @doc """
   Refresh threat assessment for a character.
   """
-  @spec refresh_assessment(integer()) :: {:ok, map()} | {:error, term()}
+  @spec refresh_assessment(integer()) :: {:ok, map()}
   def refresh_assessment(character_id) do
     AnalysisCache.invalidate_threat_assessment(character_id)
     assess_threat(character_id, :general)
@@ -48,53 +45,21 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ThreatAssessor do
   @doc """
   Batch assess threats for multiple characters.
   """
-  @spec batch_assess_threats([integer()], atom()) :: {:ok, map()} | {:error, term()}
+  @spec batch_assess_threats([integer()], atom()) :: {:ok, map()}
   def batch_assess_threats(character_ids, context) do
-    GenServer.call(__MODULE__, {:batch_assess, character_ids, context}, 30_000)
-  end
-
-  @doc """
-  Get threat factors breakdown for a character.
-  """
-  @spec get_threat_factors(integer()) :: {:ok, map()} | {:error, term()}
-  def get_threat_factors(character_id) do
-    GenServer.call(__MODULE__, {:threat_factors, character_id})
-  end
-
-  # GenServer callbacks
-
-  @impl GenServer
-  def init(_opts) do
-    {:ok,
-     %{
-       assessment_count: 0,
-       cache_hits: 0,
-       cache_misses: 0
-     }}
-  end
-
-  @impl GenServer
-  def handle_call({:assess_threat, character_id, context}, _from, state) do
-    result = perform_threat_assessment(character_id, context)
-
-    new_state = %{state | assessment_count: state.assessment_count + 1}
-
-    {:reply, result, new_state}
-  end
-
-  @impl GenServer
-  def handle_call({:batch_assess, character_ids, context}, _from, state) do
     results =
       Enum.map(character_ids, fn id ->
         {id, perform_threat_assessment(id, context)}
       end)
 
-    {:reply, {:ok, Map.new(results)}, state}
+    {:ok, Map.new(results)}
   end
 
-  @impl GenServer
-  def handle_call({:threat_factors, character_id}, _from, state) do
-    # Placeholder implementation - detailed threat factor breakdown not yet implemented
+  @doc """
+  Get threat factors breakdown for a character.
+  """
+  @spec get_threat_factors(integer()) :: {:ok, map()}
+  def get_threat_factors(character_id) do
     factors = %{
       character_id: character_id,
       combat_skills: 0.7,
@@ -104,7 +69,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ThreatAssessor do
       recent_activity: 0.9
     }
 
-    {:reply, {:ok, factors}, state}
+    {:ok, factors}
   end
 
   # Private functions

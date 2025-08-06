@@ -10,11 +10,11 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
   use GenServer
   use EveDmv.ErrorHandler
-  alias EveDmv.Contexts.Surveillance.Infrastructure.MatchCache
   alias EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository
   alias EveDmv.DomainEvents.SurveillanceMatch
   alias EveDmv.Infrastructure.EventBus
   alias EveDmv.Intelligence.WandererClient
+  alias EveDmv.Shared.Infrastructure.UnifiedCache
 
   require Logger
 
@@ -41,14 +41,51 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
   end
 
   @doc """
+  Match a killmail against a specific surveillance profile.
+
+  Returns match result with details about what criteria matched.
+  """
+  def match_killmail_against_profile(killmail_event, profile) do
+    # Extract killmail data from event
+    killmail_data = extract_killmail_data(killmail_event)
+
+    # Evaluate against profile criteria
+    match_result = evaluate_killmail_against_profile(killmail_data, profile)
+
+    if match_result.matches do
+      {:ok,
+       %{
+         profile_id: profile.id,
+         killmail_id: killmail_data.killmail_id,
+         matched: true,
+         matched_criteria: match_result.matched_criteria,
+         match_confidence: match_result.confidence,
+         timestamp: DateTime.utc_now()
+       }}
+    else
+      {:ok,
+       %{
+         profile_id: profile.id,
+         killmail_id: killmail_data.killmail_id,
+         matched: false,
+         reason: match_result.reason
+       }}
+    end
+  rescue
+    error ->
+      Logger.error("Error matching killmail against profile", error: inspect(error))
+      {:error, :match_error}
+  end
+
+  @doc """
   Get recent matches across all profiles.
   """
   def get_recent_matches(opts \\ []) do
-    limit = Keyword.get(opts, :limit, 50)
-    since = Keyword.get(opts, :since)
+    _limit = Keyword.get(opts, :limit, 50)
+    _since = Keyword.get(opts, :since)
     profile_id = Keyword.get(opts, :profile_id)
 
-    MatchCache.get_recent_matches(limit, since, profile_id)
+    UnifiedCache.get_surveillance_matches(profile_id)
   end
 
   @doc """
@@ -56,23 +93,26 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
   """
   def get_matches_for_profile(profile_id, opts \\ []) do
     limit = Keyword.get(opts, :limit, 50)
-    since = Keyword.get(opts, :since)
+    _since = Keyword.get(opts, :since)
 
-    MatchCache.get_profile_matches(profile_id, limit, since)
+    case UnifiedCache.get_surveillance_matches(profile_id) do
+      {:ok, matches} -> {:ok, Enum.take(matches, limit)}
+      error -> error
+    end
   end
 
   @doc """
   Get detailed information about a specific match.
   """
   def get_match_details(match_id) do
-    MatchCache.get_match_details(match_id)
+    UnifiedCache.get(:surveillance, {:match_details, match_id})
   end
 
   @doc """
   Get statistics for a profile's matches.
   """
   def get_match_statistics(profile_id, time_range \\ :last_30d) do
-    MatchCache.get_match_statistics(profile_id, time_range)
+    UnifiedCache.get(:surveillance, {:match_statistics, profile_id, time_range})
   end
 
   @doc """
@@ -153,7 +193,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
     # Store matches and trigger alerts
     Enum.each(matches, fn match ->
-      MatchCache.store_match(match)
+      UnifiedCache.cache_surveillance_match(match.killmail_id, [match])
 
       EventBus.publish(%SurveillanceMatch{
         profile_id: match.profile_id,
@@ -296,7 +336,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
         character_id && MapSet.member?(target_characters, character_id)
       end)
 
-    matches = victim_match or length(attacker_matches) > 0
+    matches = victim_match or not Enum.empty?(attacker_matches)
 
     victim_criteria =
       if victim_match do
@@ -322,7 +362,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
     confidence_score =
       cond do
         victim_match -> 1.0
-        length(attacker_matches) > 0 -> 0.8
+        not Enum.empty?(attacker_matches) -> 0.8
         true -> 0.0
       end
 
@@ -345,7 +385,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
         MapSet.member?(target_corporations, attacker.corporation_id)
       end)
 
-    matches = victim_match or length(attacker_matches) > 0
+    matches = victim_match or not Enum.empty?(attacker_matches)
 
     base_criteria = []
 
@@ -365,7 +405,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
     confidence_score =
       cond do
         victim_match -> 1.0
-        length(attacker_matches) > 0 -> 0.8
+        not Enum.empty?(attacker_matches) -> 0.8
         true -> 0.0
       end
 
@@ -403,7 +443,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
         MapSet.member?(target_ship_types, attacker.ship_type_id)
       end)
 
-    matches = victim_match or length(attacker_matches) > 0
+    matches = victim_match or not Enum.empty?(attacker_matches)
 
     base_criteria = []
 
@@ -423,7 +463,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
     confidence_score =
       cond do
         victim_match -> 1.0
-        length(attacker_matches) > 0 -> 0.8
+        not Enum.empty?(attacker_matches) -> 0.8
         true -> 0.0
       end
 
@@ -448,7 +488,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
         attacker.alliance_id && MapSet.member?(target_alliances, attacker.alliance_id)
       end)
 
-    matches = victim_match or length(attacker_matches) > 0
+    matches = victim_match or not Enum.empty?(attacker_matches)
 
     base_criteria = []
 
@@ -468,7 +508,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
     confidence_score =
       cond do
         victim_match -> 1.0
-        length(attacker_matches) > 0 -> 0.8
+        not Enum.empty?(attacker_matches) -> 0.8
         true -> 0.0
       end
 
@@ -718,7 +758,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
     case WandererClient.get_chain_inhabitants(map_id) do
       {:ok, inhabitants} ->
         inhabitant_character_ids =
-          Enum.map(inhabitants, &Map.get(&1, "character_id"))
+          inhabitants
+          |> Enum.map(&Map.get(&1, "character_id"))
           |> Enum.filter(&(&1 != nil))
           |> MapSet.new()
 
@@ -731,29 +772,10 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
             MapSet.member?(inhabitant_character_ids, attacker.character_id)
           end)
 
-        matches = victim_match or length(attacker_matches) > 0
+        matches = victim_match or not Enum.empty?(attacker_matches)
 
         if matches do
-          matched_criteria =
-            []
-            |> then(fn acc ->
-              if victim_match do
-                [
-                  %{
-                    type: :chain_inhabitant_victim,
-                    character_id: killmail_data.victim.character_id
-                  }
-                  | acc
-                ]
-              else
-                acc
-              end
-            end)
-            |> then(fn acc ->
-              Enum.reduce(attacker_matches, acc, fn attacker, acc ->
-                [%{type: :chain_inhabitant_attacker, character_id: attacker.character_id} | acc]
-              end)
-            end)
+          matched_criteria = build_matched_criteria(victim_match, attacker_matches, killmail_data)
 
           %{
             matches: true,
@@ -767,6 +789,30 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
       {:error, _reason} ->
         %{matches: false, matched_criteria: [], confidence_score: 0.0}
     end
+  end
+
+  defp build_matched_criteria(victim_match, attacker_matches, killmail_data) do
+    []
+    |> add_victim_criteria(victim_match, killmail_data)
+    |> add_attacker_criteria(attacker_matches)
+  end
+
+  defp add_victim_criteria(acc, true, killmail_data) do
+    [
+      %{
+        type: :chain_inhabitant_victim,
+        character_id: killmail_data.victim.character_id
+      }
+      | acc
+    ]
+  end
+
+  defp add_victim_criteria(acc, false, _killmail_data), do: acc
+
+  defp add_attacker_criteria(acc, attacker_matches) do
+    Enum.reduce(attacker_matches, acc, fn attacker, acc ->
+      [%{type: :chain_inhabitant_attacker, character_id: attacker.character_id} | acc]
+    end)
   end
 
   defp check_hostile_entering_chain(killmail_data, map_id) do
@@ -830,6 +876,45 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
     end
   end
 
+  # Helper functions for killmail matching
+
+  defp extract_killmail_data(killmail_event) do
+    # Extract relevant data from killmail event
+    %{
+      killmail_id: killmail_event[:killmail_id] || killmail_event["killmail_id"],
+      solar_system_id: killmail_event[:solar_system_id] || killmail_event["solar_system_id"],
+      killmail_time: killmail_event[:killmail_time] || killmail_event["killmail_time"],
+      victim: extract_victim_data(killmail_event),
+      attackers: extract_attackers_data(killmail_event),
+      total_value: killmail_event[:zkb_total_value] || killmail_event["zkb_total_value"] || 0
+    }
+  end
+
+  defp extract_victim_data(killmail_event) do
+    victim = killmail_event[:victim] || killmail_event["victim"] || %{}
+
+    %{
+      character_id: victim[:character_id] || victim["character_id"],
+      corporation_id: victim[:corporation_id] || victim["corporation_id"],
+      alliance_id: victim[:alliance_id] || victim["alliance_id"],
+      ship_type_id: victim[:ship_type_id] || victim["ship_type_id"]
+    }
+  end
+
+  defp extract_attackers_data(killmail_event) do
+    attackers = killmail_event[:attackers] || killmail_event["attackers"] || []
+
+    Enum.map(attackers, fn attacker ->
+      %{
+        character_id: attacker[:character_id] || attacker["character_id"],
+        corporation_id: attacker[:corporation_id] || attacker["corporation_id"],
+        alliance_id: attacker[:alliance_id] || attacker["alliance_id"],
+        ship_type_id: attacker[:ship_type_id] || attacker["ship_type_id"],
+        final_blow: attacker[:final_blow] || attacker["final_blow"] || false
+      }
+    end)
+  end
+
   # Validation functions
 
   defp validate_criteria_structure(criteria) when is_map(criteria) do
@@ -849,7 +934,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
   defp validate_character_criteria(criteria) do
     case criteria.character_ids do
-      ids when is_list(ids) and length(ids) > 0 ->
+      ids when is_list(ids) and ids != [] ->
         if Enum.all?(ids, &is_integer/1), do: :ok, else: {:error, :invalid_character_ids}
 
       _ ->
@@ -859,7 +944,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
   defp validate_corporation_criteria(criteria) do
     case criteria.corporation_ids do
-      ids when is_list(ids) and length(ids) > 0 ->
+      ids when is_list(ids) and ids != [] ->
         if Enum.all?(ids, &is_integer/1), do: :ok, else: {:error, :invalid_corporation_ids}
 
       _ ->
@@ -869,7 +954,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
   defp validate_system_criteria(criteria) do
     case criteria.system_ids do
-      ids when is_list(ids) and length(ids) > 0 ->
+      ids when is_list(ids) and ids != [] ->
         if Enum.all?(ids, &is_integer/1), do: :ok, else: {:error, :invalid_system_ids}
 
       _ ->
@@ -879,7 +964,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
   defp validate_ship_type_criteria(criteria) do
     case criteria.ship_type_ids do
-      ids when is_list(ids) and length(ids) > 0 ->
+      ids when is_list(ids) and ids != [] ->
         if Enum.all?(ids, &is_integer/1), do: :ok, else: {:error, :invalid_ship_type_ids}
 
       _ ->
@@ -889,7 +974,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
   defp validate_alliance_criteria(criteria) do
     case criteria.alliance_ids do
-      ids when is_list(ids) and length(ids) > 0 ->
+      ids when is_list(ids) and ids != [] ->
         if Enum.all?(ids, &is_integer/1), do: :ok, else: {:error, :invalid_alliance_ids}
 
       _ ->
@@ -924,7 +1009,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
   defp validate_custom_criteria(criteria) do
     case criteria.conditions do
-      conditions when is_list(conditions) and length(conditions) > 0 ->
+      conditions when is_list(conditions) and conditions != [] ->
         if Enum.all?(conditions, &is_map/1), do: :ok, else: {:error, :invalid_custom_conditions}
 
       _ ->

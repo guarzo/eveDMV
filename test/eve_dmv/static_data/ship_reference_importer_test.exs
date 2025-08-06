@@ -1,9 +1,10 @@
 defmodule EveDmv.StaticData.ShipReferenceImporterTest do
   use EveDmv.DataCase, async: false
 
-  alias EveDmv.StaticData.ShipReferenceImporter
-  alias EveDmv.Repo
   import Ecto.Query
+
+  alias EveDmv.Repo
+  alias EveDmv.StaticData.ShipReferenceImporter
 
   describe "parse_ship_data/1" do
     test "parses ship data correctly" do
@@ -117,18 +118,17 @@ defmodule EveDmv.StaticData.ShipReferenceImporterTest do
 
       # Verify data was inserted
       imported =
-        Repo.one(
-          from(s in "ship_role_patterns",
-            where: s.ship_type_id == 999_001,
-            select: %{
-              ship_type_id: s.ship_type_id,
-              ship_name: s.ship_name,
-              primary_role: s.primary_role,
-              reference_role: s.reference_role,
-              tactical_notes: s.tactical_notes
-            }
-          )
+        from(s in "ship_role_patterns",
+          where: s.ship_type_id == 999_001,
+          select: %{
+            ship_type_id: s.ship_type_id,
+            ship_name: s.ship_name,
+            primary_role: s.primary_role,
+            reference_role: s.reference_role,
+            tactical_notes: s.tactical_notes
+          }
         )
+        |> Repo.one()
 
       assert imported != nil
       assert imported.ship_name == "Test Ship Alpha"
@@ -157,18 +157,17 @@ defmodule EveDmv.StaticData.ShipReferenceImporterTest do
 
       # Verify data was inserted
       imported =
-        Repo.one(
-          from(d in "doctrine_patterns",
-            where: d.doctrine_name == "test_doctrine",
-            select: %{
-              doctrine_name: d.doctrine_name,
-              ship_composition: d.ship_composition,
-              tank_type: d.tank_type,
-              engagement_range: d.engagement_range,
-              tactical_role: d.tactical_role
-            }
-          )
+        from(d in "doctrine_patterns",
+          where: d.doctrine_name == "test_doctrine",
+          select: %{
+            doctrine_name: d.doctrine_name,
+            ship_composition: d.ship_composition,
+            tank_type: d.tank_type,
+            engagement_range: d.engagement_range,
+            tactical_role: d.tactical_role
+          }
         )
+        |> Repo.one()
 
       assert imported != nil
       assert imported.tank_type == "armor"
@@ -213,18 +212,17 @@ defmodule EveDmv.StaticData.ShipReferenceImporterTest do
 
       # Verify update
       updated =
-        Repo.one(
-          from(s in "ship_role_patterns",
-            where: s.ship_type_id == 999_003,
-            select: %{
-              ship_type_id: s.ship_type_id,
-              ship_name: s.ship_name,
-              primary_role: s.primary_role,
-              reference_role: s.reference_role,
-              tactical_notes: s.tactical_notes
-            }
-          )
+        from(s in "ship_role_patterns",
+          where: s.ship_type_id == 999_003,
+          select: %{
+            ship_type_id: s.ship_type_id,
+            ship_name: s.ship_name,
+            primary_role: s.primary_role,
+            reference_role: s.reference_role,
+            tactical_notes: s.tactical_notes
+          }
         )
+        |> Repo.one()
 
       assert updated.ship_name == "Test Ship Beta Updated"
       assert updated.reference_role == "updated_role"
@@ -245,22 +243,24 @@ defmodule EveDmv.StaticData.ShipReferenceImporterTest do
 
           # Verify some key ships were imported
           megathron =
-            Repo.one(
-              from(s in "ship_role_patterns",
-                where: s.ship_type_id == 641,
-                select: %{
-                  ship_type_id: s.ship_type_id,
-                  ship_name: s.ship_name,
-                  primary_role: s.primary_role
-                }
-              )
+            from(s in "ship_role_patterns",
+              where: s.ship_type_id == 641,
+              select: %{
+                ship_type_id: s.ship_type_id,
+                ship_name: s.ship_name,
+                primary_role: s.primary_role
+              }
             )
+            |> Repo.one()
 
           assert megathron != nil
           assert megathron.ship_name == "Megathron"
 
           # Verify some doctrines were imported
-          doctrine_count = Repo.one(from(d in "doctrine_patterns", select: count(d.id)))
+          doctrine_count =
+            from(d in "doctrine_patterns", select: count(d.id))
+            |> Repo.one()
+
           assert doctrine_count > 0
 
         false ->

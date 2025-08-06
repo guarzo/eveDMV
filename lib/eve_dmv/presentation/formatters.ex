@@ -36,8 +36,7 @@ defmodule EveDmv.Presentation.Formatters do
   def format_percentage(_), do: "0.0%"
 
   def format_number(value) when is_integer(value) do
-    value
-    |> Integer.to_string()
+    Integer.to_string(value)
     |> String.split("", trim: true)
     |> Enum.reverse()
     |> Enum.chunk_every(3)

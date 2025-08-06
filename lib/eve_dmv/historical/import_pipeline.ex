@@ -7,17 +7,14 @@ defmodule EveDmv.Historical.ImportPipeline do
   """
 
   use GenServer
-  require Logger
-  require Ash.Query
 
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
-  alias Phoenix.PubSub
   alias EveDmv.PubSub, as: AppPubSub
+  alias Phoenix.PubSub
 
-  @batch_size 1000
-  @max_concurrent_batches 4
-  # Report every 10k killmails
-  @progress_report_interval 10_000
+  require Ash.Query
+  require Logger
 
   defstruct [
     :import_id,
@@ -36,6 +33,11 @@ defmodule EveDmv.Historical.ImportPipeline do
     :errors,
     :batch_queue
   ]
+
+  @batch_size 1000
+  @max_concurrent_batches 4
+  # Report every 10k killmails
+  @progress_report_interval 10_000
 
   # Client API
 
@@ -86,6 +88,7 @@ defmodule EveDmv.Historical.ImportPipeline do
 
   # Server callbacks
 
+  @impl GenServer
   def init(_opts) do
     state = %__MODULE__{
       status: :idle,
@@ -96,6 +99,7 @@ defmodule EveDmv.Historical.ImportPipeline do
     {:ok, state}
   end
 
+  @impl GenServer
   def handle_call({:start_import, source, opts}, _from, %{status: :idle} = state) do
     import_id = generate_import_id()
 
@@ -124,10 +128,12 @@ defmodule EveDmv.Historical.ImportPipeline do
     {:reply, {:ok, import_id}, new_state}
   end
 
+  @impl GenServer
   def handle_call({:start_import, _source, _opts}, _from, state) do
     {:reply, {:error, "Import already in progress: #{state.import_id}"}, state}
   end
 
+  @impl GenServer
   def handle_call(:get_status, _from, state) do
     status = %{
       import_id: state.import_id,
@@ -153,32 +159,38 @@ defmodule EveDmv.Historical.ImportPipeline do
     {:reply, {:ok, status}, state}
   end
 
+  @impl GenServer
   def handle_call(:pause_import, _from, %{status: status} = state)
       when status in [:running, :processing] do
     Logger.info("⏸️  Pausing import #{state.import_id}")
     {:reply, :ok, %{state | status: :paused}}
   end
 
+  @impl GenServer
   def handle_call(:pause_import, _from, state) do
     {:reply, {:error, "Cannot pause import in status: #{state.status}"}, state}
   end
 
+  @impl GenServer
   def handle_call(:resume_import, _from, %{status: :paused} = state) do
     Logger.info("▶️  Resuming import #{state.import_id}")
     send(self(), :process_next_batch)
     {:reply, :ok, %{state | status: :running}}
   end
 
+  @impl GenServer
   def handle_call(:resume_import, _from, state) do
     {:reply, {:error, "Cannot resume import in status: #{state.status}"}, state}
   end
 
+  @impl GenServer
   def handle_call(:cancel_import, _from, state) do
     Logger.info("🛑 Cancelling import #{state.import_id}")
     {:reply, :ok, %{state | status: :cancelled, end_time: DateTime.utc_now()}}
   end
 
   # Import initialization
+  @impl GenServer
   def handle_info({:initialize_import, opts}, state) do
     case initialize_source(state.source_path, state.source_type, opts) do
       {:ok, total_count, batch_queue} ->
@@ -206,6 +218,7 @@ defmodule EveDmv.Historical.ImportPipeline do
   end
 
   # Batch processing
+  @impl GenServer
   def handle_info(:process_next_batch, %{status: :running} = state) do
     case :queue.out(state.batch_queue) do
       {{:value, batch}, remaining_queue} ->
@@ -231,12 +244,14 @@ defmodule EveDmv.Historical.ImportPipeline do
     end
   end
 
+  @impl GenServer
   def handle_info(:process_next_batch, state) do
     # Not running, ignore
     {:noreply, state}
   end
 
   # Batch result handling
+  @impl GenServer
   def handle_info({:batch_processed, batch_result}, state) do
     progress_state = update_progress(state, batch_result)
 
@@ -255,6 +270,7 @@ defmodule EveDmv.Historical.ImportPipeline do
   end
 
   # Progress reporting
+  @impl GenServer
   def handle_info(:report_progress, %{status: status} = state)
       when status in [:running, :processing] do
     report_import_progress(state)
@@ -266,12 +282,14 @@ defmodule EveDmv.Historical.ImportPipeline do
     {:noreply, state}
   end
 
+  @impl GenServer
   def handle_info(:report_progress, state) do
     # Not running, don't schedule next report
     {:noreply, state}
   end
 
   # Completion check
+  @impl GenServer
   def handle_info(:check_completion, state) do
     if state.processed_count >= state.total_count do
       complete_import(state)
@@ -282,6 +300,7 @@ defmodule EveDmv.Historical.ImportPipeline do
     end
   end
 
+  @impl GenServer
   def handle_info(:reset_to_idle, _state) do
     {:noreply, %__MODULE__{status: :idle, errors: [], batch_queue: :queue.new()}}
   end
@@ -303,41 +322,37 @@ defmodule EveDmv.Historical.ImportPipeline do
   end
 
   defp initialize_source(path, :jsonl_file, opts) do
-    try do
-      # Count total lines for progress tracking
-      line_count = count_file_lines(path)
+    # Count total lines for progress tracking
+    line_count = count_file_lines(path)
 
-      # Create batch queue
-      resume_from = Keyword.get(opts, :resume_from, 0)
-      batch_queue = create_file_batch_queue(path, resume_from, @batch_size)
+    # Create batch queue
+    resume_from = Keyword.get(opts, :resume_from, 0)
+    batch_queue = create_file_batch_queue(path, resume_from, @batch_size)
 
-      {:ok, line_count - resume_from, batch_queue}
-    catch
-      _, error ->
-        {:error, error}
-    end
+    {:ok, line_count - resume_from, batch_queue}
+  catch
+    _, error ->
+      {:error, error}
   end
 
   defp initialize_source(path, :json_file, _opts) do
-    try do
-      # Load and parse JSON file
-      data = path |> File.read!() |> Jason.decode!()
+    # Load and parse JSON file
+    data = path |> File.read!() |> Jason.decode!()
 
-      killmails =
-        case data do
-          %{"killmails" => km} when is_list(km) -> km
-          list when is_list(list) -> list
-          _ -> []
-        end
+    killmails =
+      case data do
+        %{"killmails" => km} when is_list(km) -> km
+        list when is_list(list) -> list
+        _ -> []
+      end
 
-      # Create batches
-      batch_queue = create_memory_batch_queue(killmails, @batch_size)
+    # Create batches
+    batch_queue = create_memory_batch_queue(killmails, @batch_size)
 
-      {:ok, length(killmails), batch_queue}
-    catch
-      _, error ->
-        {:error, error}
-    end
+    {:ok, length(killmails), batch_queue}
+  catch
+    _, error ->
+      {:error, error}
   end
 
   defp initialize_source(_path, type, _opts) do
@@ -544,7 +559,7 @@ defmodule EveDmv.Historical.ImportPipeline do
   defp calculate_elapsed(nil), do: 0
 
   defp calculate_elapsed(start_time) do
-    DateTime.diff(DateTime.utc_now(), start_time, :second)
+    DateTimeUtils.diff(DateTime.utc_now(), start_time, :second)
   end
 
   defp calculate_current_rate(%{start_time: nil}), do: 0
@@ -593,7 +608,7 @@ defmodule EveDmv.Historical.ImportPipeline do
 
   defp complete_import(state) do
     end_time = DateTime.utc_now()
-    duration = DateTime.diff(end_time, state.start_time, :second)
+    duration = DateTimeUtils.diff(end_time, state.start_time, :second)
 
     Logger.info("""
     ✅ Import Complete: #{state.import_id}

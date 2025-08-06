@@ -53,7 +53,7 @@ defmodule EveDmvWeb.Components.StyleGuide do
     ~H"""
     <section class="mb-12">
       <h2 class="text-2xl font-semibold text-white mb-6">Buttons</h2>
-      
+
       <.button_variants />
       <.button_sizes />
       <.button_states />
@@ -120,7 +120,7 @@ defmodule EveDmvWeb.Components.StyleGuide do
     ~H"""
     <section class="mb-12">
       <h2 class="text-2xl font-semibold text-white mb-6">Form Components</h2>
-      
+
       <.input_field_examples />
       <.complete_form_field_example />
     </section>
@@ -157,7 +157,7 @@ defmodule EveDmvWeb.Components.StyleGuide do
         type="text"
         label="Example Field"
         placeholder="Enter some text"
-        required
+    required
       />
     </div>
     """
@@ -170,7 +170,7 @@ defmodule EveDmvWeb.Components.StyleGuide do
     ~H"""
     <section class="mb-12">
       <h2 class="text-2xl font-semibold text-white mb-6">Color System</h2>
-      
+
       <.security_level_colors />
       <.threat_level_colors />
       <.status_pills />
@@ -270,7 +270,7 @@ defmodule EveDmvWeb.Components.StyleGuide do
     ~H"""
     <section class="mb-12">
       <h2 class="text-2xl font-semibold text-white mb-6">Loading States</h2>
-      
+
       <div class="bg-gray-800 rounded-lg p-6">
         <h3 class="text-lg font-medium text-white mb-4">Loading Components</h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -299,7 +299,7 @@ defmodule EveDmvWeb.Components.StyleGuide do
     ~H"""
     <section class="mb-12">
       <h2 class="text-2xl font-semibold text-white mb-6">Implementation Guide</h2>
-      
+
       <div class="bg-gray-800 rounded-lg p-6">
         <h3 class="text-lg font-medium text-white mb-4">Best Practices</h3>
         <div class="space-y-4 text-gray-300">

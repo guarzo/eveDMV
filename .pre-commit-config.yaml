@@ -1,0 +1,39 @@
+# Pre-commit configuration for EVE DMV
+# See https://pre-commit.com for more information
+repos:
+  - repo: local
+    hooks:
+      - id: mix-format
+        name: Mix Format
+        entry: mix format --check-formatted
+        language: system
+        files: \.exs?$
+        pass_filenames: false
+      
+      - id: mix-credo
+        name: Mix Credo
+        entry: mix credo --strict
+        language: system
+        files: \.exs?$
+        pass_filenames: false
+      
+      - id: mix-compile
+        name: Mix Compile
+        entry: mix compile --warnings-as-errors
+        language: system
+        files: \.exs?$
+        pass_filenames: false
+      
+      - id: mix-deps-unlock
+        name: Check for unused dependencies
+        entry: mix deps.unlock --check-unused
+        language: system
+        pass_filenames: false
+        always_run: true
+      
+      - id: mix-deps-audit
+        name: Security audit
+        entry: mix deps.audit
+        language: system
+        pass_filenames: false
+        always_run: true

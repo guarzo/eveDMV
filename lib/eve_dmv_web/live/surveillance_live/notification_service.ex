@@ -17,7 +17,7 @@ defmodule EveDmvWeb.SurveillanceLive.NotificationService do
   @doc """
   Load recent notifications for a user.
   """
-  @spec load_user_notifications(binary()) :: [Notification.t()]
+  @spec load_user_notifications(String.t()) :: [Notification.t()]
   def load_user_notifications(user_id) do
     NotificationService.get_recent_notifications(user_id, 24)
   end
@@ -25,7 +25,7 @@ defmodule EveDmvWeb.SurveillanceLive.NotificationService do
   @doc """
   Get the count of unread notifications for a user.
   """
-  @spec get_unread_count(binary()) :: non_neg_integer()
+  @spec get_unread_count(String.t()) :: non_neg_integer()
   def get_unread_count(user_id) do
     NotificationService.get_unread_count(user_id)
   end

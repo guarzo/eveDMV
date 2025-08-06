@@ -12,6 +12,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
   alias EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer
   alias EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer
   alias EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Shared.MetricsCalculator
 
   require Logger
@@ -249,21 +250,28 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
       }
 
       {:ok, analysis}
+    else
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
   defp gather_base_data(character_id) do
-    {:ok, player_data} = PlayerRepository.get_player_data(character_id)
+    case PlayerRepository.get_player_data(character_id) do
+      {:ok, player_data} ->
+        # Gather all necessary base data
+        base_data = %{
+          character_stats: player_data,
+          killmail_stats: PlayerRepository.get_killmail_stats(character_id),
+          activity_data: PlayerRepository.get_activity_data(character_id),
+          corporation_history: PlayerRepository.get_corporation_history(character_id)
+        }
 
-    # Gather all necessary base data
-    base_data = %{
-      character_stats: player_data,
-      killmail_stats: PlayerRepository.get_killmail_stats(character_id),
-      activity_data: PlayerRepository.get_activity_data(character_id),
-      corporation_history: PlayerRepository.get_corporation_history(character_id)
-    }
+        {:ok, base_data}
 
-    {:ok, base_data}
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   defp analyze_combat_stats(character_id, base_data, _opts) do
@@ -335,7 +343,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
 
   defp cache_valid?(timestamp, opts) do
     ttl = Keyword.get(opts, :cache_ttl_seconds, 600)
-    age = DateTime.diff(DateTime.utc_now(), timestamp, :second)
+    age = DateTimeUtils.diff(DateTime.utc_now(), timestamp, :second)
     age < ttl
   end
 
@@ -358,6 +366,8 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
 
   defp component_key(:combat), do: :combat_statistics
   defp component_key(:ships), do: :ship_preferences
+  defp component_key(:batch_analysis), do: :batch_analysis
+  defp component_key(_), do: :unknown
 
   defp update_metrics(state, event_type, duration) do
     new_metrics =
@@ -398,54 +408,52 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
     avg_loss_value = get_in(combat_stats, [:performance_metrics, :average_loss_value]) || 0
     flies_expensive = get_in(ship_prefs, [:value_patterns, :flies_expensive_ships]) || false
 
-    base_risk = 0.5
-
-    # Lower risk for better pilots
-    base_risk = if kd_ratio > 2.0, do: base_risk - 0.2, else: base_risk
-
-    # Higher risk for expensive losses
-    base_risk = if avg_loss_value > 500_000_000, do: base_risk + 0.2, else: base_risk
-
-    # Higher risk for expensive ships
-    base_risk = if flies_expensive, do: base_risk + 0.1, else: base_risk
-
-    max(0.0, min(1.0, base_risk))
+    0.5
+    |> then(fn base_risk ->
+      # Lower risk for better pilots
+      if kd_ratio > 2.0, do: base_risk - 0.2, else: base_risk
+    end)
+    |> then(fn base_risk ->
+      # Higher risk for expensive losses
+      if avg_loss_value > 500_000_000, do: base_risk + 0.2, else: base_risk
+    end)
+    |> then(fn base_risk ->
+      # Higher risk for expensive ships
+      if flies_expensive, do: base_risk + 0.1, else: base_risk
+    end)
+    |> then(fn base_risk -> max(0.0, min(1.0, base_risk)) end)
   end
 
   defp identify_risk_factors(combat_stats, ship_prefs) do
-    factors = []
-
-    factors =
+    []
+    |> then(fn factors ->
       if get_in(combat_stats, [:performance_metrics, :average_loss_value]) &&
            combat_stats.performance_metrics.average_loss_value > 1_000_000_000 do
         [{:high_value_losses, "Frequently loses expensive ships"} | factors]
       else
         factors
       end
-
-    factors =
+    end)
+    |> then(fn factors ->
       if get_in(ship_prefs, [:value_patterns, :flies_expensive_ships]) &&
            ship_prefs.value_patterns.flies_expensive_ships do
         [{:expensive_ships, "Regularly flies high-value ships"} | factors]
       else
         factors
       end
-
-    factors
+    end)
   end
 
   defp generate_risk_mitigation(combat_stats, _ship_prefs) do
-    mitigations = []
-
-    mitigations =
+    []
+    |> then(fn mitigations ->
       if get_in(combat_stats, [:performance_metrics, :kill_death_ratio]) &&
            combat_stats.performance_metrics.kill_death_ratio < 1.0 do
         ["Consider flying in larger groups for better survival" | mitigations]
       else
         mitigations
       end
-
-    mitigations
+    end)
   end
 
   defp classify_archetype(analysis) do

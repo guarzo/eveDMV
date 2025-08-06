@@ -9,10 +9,44 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
   use GenServer
 
   alias EveDmv.Contexts.MarketIntelligence.Infrastructure
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.DomainEvents
   alias EveDmv.Infrastructure.EventBus
+  alias EveDmv.Shared.Infrastructure.UnifiedCache
 
   require Logger
+
+  # Type definitions
+  @type price_result :: %{
+          sell_price: float() | nil,
+          buy_price: float() | nil,
+          volume: non_neg_integer() | nil,
+          spread: float() | nil,
+          updated_at: DateTime.t()
+        }
+
+  @type price_results :: %{
+          prices: %{integer() => price_result()},
+          failed_items: [integer()],
+          cache_hits: non_neg_integer(),
+          cache_misses: non_neg_integer(),
+          source: atom(),
+          fetched_at: DateTime.t()
+        }
+
+  @type cache_statistics :: %{
+          cache_size: non_neg_integer(),
+          hit_rate: float(),
+          miss_rate: float()
+        }
+
+  @type price_error ::
+          :invalid_type_id
+          | :api_unavailable
+          | :rate_limited
+          | :timeout
+          | :no_price_data
+          | :service_unavailable
 
   # Client API
 
@@ -23,6 +57,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
   @doc """
   Get price for a single item type.
   """
+  @spec get_price(integer(), keyword()) :: {:ok, price_result()} | {:error, price_error()}
   def get_price(type_id, options \\ []) do
     GenServer.call(__MODULE__, {:get_price, type_id, options})
   end
@@ -30,6 +65,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
   @doc """
   Get prices for multiple item types.
   """
+  @spec get_prices([integer()], keyword()) :: {:ok, price_results()} | {:error, price_error()}
   def get_prices(type_ids, options \\ []) do
     GenServer.call(__MODULE__, {:get_prices, type_ids, options})
   end
@@ -37,6 +73,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
   @doc """
   Refresh prices bypassing cache.
   """
+  @spec refresh_prices([integer()], keyword()) :: {:ok, price_results()} | {:error, price_error()}
   def refresh_prices(type_ids, options \\ []) do
     GenServer.call(__MODULE__, {:refresh_prices, type_ids, options})
   end
@@ -44,13 +81,21 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
   @doc """
   Get cache statistics.
   """
+  @spec get_cache_stats() :: cache_statistics()
   def get_cache_stats do
-    Infrastructure.PriceCache.stats()
+    stats = UnifiedCache.get_domain_stats(:market)
+
+    %{
+      cache_size: Map.get(stats, :cache_size, 0),
+      hit_rate: Map.get(stats, :hit_rate, 0.0),
+      miss_rate: Map.get(stats, :miss_rate, 0.0)
+    }
   end
 
   @doc """
   Refresh commonly used items (called during static data updates).
   """
+  @spec refresh_common_items() :: :ok
   def refresh_common_items do
     GenServer.cast(__MODULE__, :refresh_common_items)
   end
@@ -78,7 +123,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
     new_state =
       state
       |> Map.update!(:request_count, &(&1 + 1))
-      |> update_cache_stats(result)
+      |> then(fn s -> update_cache_stats(result, s) end)
 
     {:reply, result, new_state}
   end
@@ -115,9 +160,14 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
   @impl GenServer
   def handle_info(:refresh_hot_items, state) do
     # Refresh hot items that are frequently requested
-    hot_items = Infrastructure.PriceCache.get_hot_items(100)
+    hot_items =
+      UnifiedCache.get(:market, :hot_items)
+      |> case do
+        {:ok, items} -> Enum.take(items, 100)
+        {:error, :not_found} -> []
+      end
 
-    if length(hot_items) > 0 do
+    if not Enum.empty?(hot_items) do
       Task.start(fn ->
         do_refresh_prices(hot_items, source: :best)
       end)
@@ -135,7 +185,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
     # 1 hour default
     cache_ttl = Keyword.get(options, :cache_ttl, 3600)
 
-    case Infrastructure.PriceCache.get(type_id) do
+    case UnifiedCache.get_price(type_id) do
       {:ok, cached_price} ->
         if price_fresh?(cached_price, cache_ttl) do
           {:ok, cached_price}
@@ -143,7 +193,10 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
           fetch_and_cache_price(type_id, source)
         end
 
-      :miss ->
+      {:error, :not_found} ->
+        fetch_and_cache_price(type_id, source)
+
+      _ ->
         fetch_and_cache_price(type_id, source)
     end
   end
@@ -153,9 +206,10 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
     {cached, missing} =
       type_ids
       |> Enum.map(fn type_id ->
-        case Infrastructure.PriceCache.get(type_id) do
+        case UnifiedCache.get_price(type_id) do
           {:ok, price} -> {:cached, type_id, price}
-          :miss -> {:missing, type_id}
+          {:error, :not_found} -> {:missing, type_id}
+          _ -> {:missing, type_id}
         end
       end)
       |> Enum.split_with(fn
@@ -167,10 +221,10 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
     missing_type_ids = Enum.map(missing, fn {:missing, type_id} -> type_id end)
 
     fetched_result =
-      if length(missing_type_ids) > 0 do
-        fetch_and_cache_prices(missing_type_ids, Keyword.get(options, :source, :best))
-      else
+      if Enum.empty?(missing_type_ids) do
         {:ok, %{}}
+      else
+        fetch_and_cache_prices(missing_type_ids, Keyword.get(options, :source, :best))
       end
 
     case fetched_result do
@@ -186,10 +240,6 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
 
       {:error, reason} ->
         {:error, reason}
-
-      other ->
-        Logger.warning("Unexpected result from fetch_and_cache_prices: #{inspect(other)}")
-        {:error, :unexpected_result}
     end
   end
 
@@ -199,7 +249,6 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
     case fetch_and_cache_prices(type_ids, source, force_refresh: true) do
       {:ok, _prices} -> :ok
       {:error, reason} -> {:error, reason}
-      other -> {:error, {:unexpected_result, other}}
     end
   end
 
@@ -207,7 +256,7 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
     case Infrastructure.ExternalPriceClient.get_price(type_id, source) do
       {:ok, price_data} ->
         # Cache the result
-        Infrastructure.PriceCache.put(type_id, price_data)
+        UnifiedCache.cache_price(type_id, price_data)
 
         # Publish price update event
         event =
@@ -222,37 +271,21 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
         {:ok, price_data}
 
       {:error, reason} ->
-        Logger.warning("Failed to fetch price for type #{type_id}", %{
-          type_id: type_id,
-          source: source,
-          error: inspect(reason)
-        })
-
+        Logger.warning("Failed to fetch price for type #{type_id}: #{inspect(reason)}")
         {:error, reason}
-
-      other ->
-        Logger.warning("Unexpected result from get_price for type #{type_id}", %{
-          type_id: type_id,
-          source: source,
-          result: inspect(other)
-        })
-
-        {:error, :unexpected_result}
     end
   end
 
   defp fetch_and_cache_prices(type_ids, source, opts \\ []) do
-    force_refresh = Keyword.get(opts, :force_refresh, false)
+    _force_refresh = Keyword.get(opts, :force_refresh, false)
 
-    case Infrastructure.ExternalPriceClient.get_prices(type_ids, source) do
+    result = Infrastructure.ExternalPriceClient.get_prices(type_ids, source)
+
+    case result do
       {:ok, prices} ->
         # Cache all results
         Enum.each(prices, fn {type_id, price_data} ->
-          if force_refresh do
-            Infrastructure.PriceCache.put(type_id, price_data, force: true)
-          else
-            Infrastructure.PriceCache.put(type_id, price_data)
-          end
+          UnifiedCache.cache_price(type_id, price_data)
         end)
 
         # Publish batch price update event
@@ -271,41 +304,28 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
         {:ok, prices}
 
       {:error, reason} ->
-        Logger.error("Failed to fetch batch prices", %{
-          type_ids: type_ids,
-          source: source,
-          error: inspect(reason)
-        })
+        Logger.error(
+          "Failed to fetch batch prices for #{length(type_ids)} items: #{inspect(reason)}"
+        )
 
         {:error, reason}
-
-      other ->
-        Logger.error("Unexpected result from get_prices", %{
-          type_ids: type_ids,
-          source: source,
-          result: inspect(other)
-        })
-
-        {:error, :unexpected_result}
     end
   end
 
   defp price_fresh?(price_data, cache_ttl) do
     updated_at = Map.get(price_data, :updated_at, DateTime.utc_now())
-    age_seconds = DateTime.diff(DateTime.utc_now(), updated_at, :second)
+    age_seconds = DateTimeUtils.diff(DateTime.utc_now(), updated_at, :second)
     age_seconds < cache_ttl
   end
 
-  defp update_cache_stats(state, {:ok, _}) do
-    Map.update!(state, :cache_hits, &(&1 + 1))
-  end
+  defp update_cache_stats(result, state) do
+    case result do
+      {:ok, _} ->
+        Map.update!(state, :cache_hits, &(&1 + 1))
 
-  defp update_cache_stats(state, {:error, _}) do
-    Map.update!(state, :cache_misses, &(&1 + 1))
-  end
-
-  defp update_cache_stats(state, _other) do
-    Map.update!(state, :cache_misses, &(&1 + 1))
+      {:error, _} ->
+        Map.update!(state, :cache_misses, &(&1 + 1))
+    end
   end
 
   defp get_common_item_types do

@@ -6,9 +6,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.CombatLogService do
   reducing dependencies in the resource module.
   """
 
-  alias EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser
   alias EveDmv.Contexts.BattleAnalysis.Domain.CombatLogParser
+  alias EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser
   alias EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
@@ -25,7 +26,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.CombatLogService do
          content_hash: content_hash,
          file_name: file_upload.filename,
          file_size: byte_size(content),
-         uploaded_at: DateTime.utc_now(),
+         uploaded_at: DateTimeUtils.utc_now(),
          pilot_name: pilot_name,
          battle_id: battle_id
        }}
@@ -43,17 +44,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.CombatLogService do
               {:ok, data} -> {:ok, data}
               :error -> {:error, :invalid_base64}
             end),
-         content <- :zlib.uncompress(compressed) do
+         content <- :zlib.uncompress(compressed),
+         {:ok,
+          %{
+            events: events,
+            summary: summary,
+            metadata: metadata,
+            tactical_analysis: tactical_analysis,
+            recommendations: recommendations
+          }} <- EnhancedCombatLogParser.parse_combat_log(content, pilot_name: pilot_name) do
       Logger.info("🔍 USING ENHANCED PARSER for combat log")
-
-      {:ok,
-       %{
-         events: events,
-         summary: summary,
-         metadata: metadata,
-         tactical_analysis: tactical_analysis,
-         recommendations: recommendations
-       }} = EnhancedCombatLogParser.parse_combat_log(content, pilot_name: pilot_name)
 
       {:ok,
        %{
@@ -121,7 +121,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.CombatLogService do
 
   defp calculate_match_quality(correlations) do
     # Calculate how well the combat log matches the battle
-    matched_kills = Enum.count(correlations, fn c -> length(c.combat_events) > 0 end)
+    matched_kills = Enum.count(correlations, fn c -> not Enum.empty?(c.combat_events) end)
     total_kills = length(correlations)
 
     if total_kills > 0 do

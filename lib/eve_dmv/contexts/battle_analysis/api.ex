@@ -13,14 +13,50 @@ defmodule EveDmv.Contexts.BattleAnalysis.Api do
     # Core battle analysis resources
     resource(EveDmv.Contexts.BattleAnalysis.Resources.Battle)
     resource(EveDmv.Contexts.BattleAnalysis.Resources.BattleKillmail)
+    resource(EveDmv.Contexts.BattleAnalysis.Resources.BattleReport)
+    resource(EveDmv.Contexts.BattleAnalysis.Resources.BattleReportRating)
+    resource(EveDmv.Contexts.BattleAnalysis.Resources.BattleReportComment)
 
     # Combat log and fitting analysis
     resource(EveDmv.Contexts.BattleAnalysis.Resources.CombatLog)
     resource(EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting)
+    # Combat context resources that use this domain
+    resource(EveDmv.Contexts.Combat.Resources.Battle)
+    resource(EveDmv.Contexts.Combat.Resources.BattleKillmail)
+    resource(EveDmv.Contexts.Combat.Resources.CombatLog)
+    resource(EveDmv.Contexts.Combat.Resources.ShipFitting)
   end
 
   # Authorization configuration
   authorization do
     authorize(:when_requested)
+  end
+
+  @doc """
+  Executes a read query against this domain.
+  """
+  def read(query) do
+    Ash.read(query, domain: __MODULE__)
+  end
+
+  @doc """
+  Creates a resource in this domain.
+  """
+  def create(changeset) do
+    Ash.create(changeset, domain: __MODULE__)
+  end
+
+  @doc """
+  Updates a resource in this domain.
+  """
+  def update(changeset) do
+    Ash.update(changeset, domain: __MODULE__)
+  end
+
+  @doc """
+  Destroys a resource in this domain.
+  """
+  def destroy(changeset_or_record) do
+    Ash.destroy(changeset_or_record, domain: __MODULE__)
   end
 end

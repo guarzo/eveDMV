@@ -6,19 +6,155 @@
     current_user={assigns[:current_user]}
   >
     <:action>
-      <button
-        phx-click="refresh_feed"
-        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors"
-      >
-        Refresh Feed
-      </button>
+      <div class="flex items-center gap-2">
+        <button
+          phx-click="toggle_filters"
+          class={"px-4 py-2 rounded-lg text-sm font-medium transition-colors #{if @show_filters, do: "bg-purple-600 hover:bg-purple-700", else: "bg-gray-700 hover:bg-gray-600"}"}
+        >
+          <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+          </svg>
+          Filters
+          <%= if map_size(@filters) > 0 do %>
+            <span class="ml-1 px-2 py-0.5 bg-purple-800 rounded-full text-xs"><%= map_size(@filters) %></span>
+          <% end %>
+        </button>
+        <button
+          phx-click="refresh_feed"
+          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors"
+        >
+          Refresh Feed
+        </button>
+      </div>
     </:action>
     <:info>
       <div class="text-sm text-gray-400">
-        <span class="text-green-400"><%= @total_kills_today %></span> kills today
+        <span class="text-green-400"><%= @total_kills_today %></span> kills
+        <%= if map_size(@filters) > 0 do %>
+          <span class="text-purple-400">(filtered)</span>
+        <% end %>
       </div>
     </:info>
   </.page_header>
+
+  <!-- Filter Panel -->
+  <%= if @show_filters do %>
+    <div class="bg-gray-800 border-b border-gray-700 p-4">
+      <form phx-submit="apply_filters" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- Alliance Filter -->
+          <div>
+            <label class="block text-sm font-medium text-gray-400 mb-1">Alliance</label>
+            <select 
+              name="alliance_name" 
+              class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="">All Alliances</option>
+              <%= for alliance <- @available_alliances do %>
+                <option value={alliance.name} selected={@filters[:alliance_name] == alliance.name}>
+                  <%= alliance.name %> (<%= alliance.count %>)
+                </option>
+              <% end %>
+            </select>
+          </div>
+
+          <!-- Ship Type Filter -->
+          <div>
+            <label class="block text-sm font-medium text-gray-400 mb-1">Ship Type</label>
+            <select 
+              name="ship_class" 
+              class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="">All Ships</option>
+              <%= for ship <- @available_ship_types do %>
+                <option value={ship.name} selected={@filters[:ship_class] == ship.name}>
+                  <%= ship.name %> (<%= ship.count %>)
+                </option>
+              <% end %>
+            </select>
+          </div>
+
+          <!-- Value Range Filters -->
+          <div>
+            <label class="block text-sm font-medium text-gray-400 mb-1">Min Value (ISK)</label>
+            <input 
+              type="text" 
+              name="min_value" 
+              value={@filters[:min_value]}
+              placeholder="0"
+              class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-400 mb-1">Max Value (ISK)</label>
+            <input 
+              type="text" 
+              name="max_value" 
+              value={@filters[:max_value]}
+              placeholder="∞"
+              class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+
+          <!-- Character Name Filter -->
+          <div>
+            <label class="block text-sm font-medium text-gray-400 mb-1">Character Name</label>
+            <input 
+              type="text" 
+              name="character_name" 
+              value={@filters[:character_name]}
+              placeholder="Any character"
+              class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+
+          <!-- Corporation Filter -->
+          <div>
+            <label class="block text-sm font-medium text-gray-400 mb-1">Corporation</label>
+            <input 
+              type="text" 
+              name="corporation_name" 
+              value={@filters[:corporation_name]}
+              placeholder="Any corporation"
+              class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+
+        <!-- Filter Actions -->
+        <div class="flex items-center justify-between pt-2">
+          <div class="flex items-center gap-2">
+            <button 
+              type="submit"
+              class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm font-medium transition-colors"
+            >
+              Apply Filters
+            </button>
+            <button 
+              type="button"
+              phx-click="clear_filters"
+              class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm font-medium transition-colors"
+            >
+              Clear All
+            </button>
+          </div>
+          
+          <!-- Active Filters Display -->
+          <%= if map_size(@filters) > 0 do %>
+            <div class="text-sm text-gray-400">
+              Active filters: 
+              <%= for {key, value} <- @filters do %>
+                <span class="inline-flex items-center px-2 py-1 bg-purple-900/50 rounded-md text-purple-300 mr-2">
+                  <%= humanize_filter_key(key) %>: <%= truncate_filter_value(value) %>
+                </span>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </form>
+    </div>
+  <% end %>
 
   <div class="flex">
     <!-- Sidebar -->
@@ -37,6 +173,27 @@
           />
         </.stats_grid>
       </div>
+      
+      <!-- Quick Filters -->
+      <%= if length(@available_alliances) > 0 do %>
+        <div class="p-6 border-b border-gray-700">
+          <h2 class="text-lg font-semibold text-gray-200 mb-4">Top Alliances</h2>
+          <div class="space-y-2">
+            <%= for alliance <- Enum.take(@available_alliances, 5) do %>
+              <button
+                phx-click="filter_by_alliance"
+                phx-value-alliance={alliance.name}
+                class={"w-full text-left p-2 rounded-lg hover:bg-gray-700 transition-colors group text-sm #{if @filters[:alliance_name] == alliance.name, do: "bg-purple-900/30 border border-purple-600", else: ""}"}
+              >
+                <div class="flex items-center justify-between">
+                  <span class="text-gray-300 group-hover:text-white truncate"><%= alliance.name %></span>
+                  <span class="text-xs text-gray-500"><%= alliance.count %></span>
+                </div>
+              </button>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
       
       <!-- Hot Systems -->
       <div class="p-6">
@@ -71,7 +228,13 @@
     </div>
     
     <!-- Main Feed -->
-    <div class="flex-1 h-screen overflow-y-auto">
+    <div 
+      id="main-feed-container"
+      class="flex-1 h-screen overflow-y-auto"
+      phx-hook="InfiniteScroll"
+      data-loading={@loading_more}
+      data-has-more={@has_more}
+    >
       <div class="p-6">
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-xl font-semibold text-gray-200">Live Kill Feed</h2>
@@ -238,6 +401,23 @@
             title="No kills yet"
             message="Kill data will appear here as it's processed"
           />
+        <% end %>
+        
+        <!-- Loading More Indicator -->
+        <%= if @loading_more do %>
+          <div class="flex justify-center py-8">
+            <div class="flex items-center space-x-2 text-gray-400">
+              <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+              <span>Loading more kills...</span>
+            </div>
+          </div>
+        <% end %>
+        
+        <!-- End of Feed Indicator -->
+        <%= if not @has_more and length(@killmails) > 0 do %>
+          <div class="text-center py-8 text-gray-500">
+            <div class="text-sm">End of kill feed</div>
+          </div>
         <% end %>
       </div>
     </div>

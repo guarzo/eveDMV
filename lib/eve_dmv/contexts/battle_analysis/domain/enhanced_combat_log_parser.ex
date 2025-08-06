@@ -1,5 +1,6 @@
 defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
   @moduledoc """
+
   Enhanced parser for EVE Online combat logs with comprehensive tactical analysis.
 
   Extracts detailed combat information including:
@@ -10,19 +11,46 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
   - Module usage effectiveness
   """
 
+  alias EveDmv.Core.Utils.DateTimeUtils
+
   require Logger
 
   @doc """
   Parses a combat log file and extracts comprehensive combat events.
 
+  ## Examples
+
+      iex> log_content = "04:27:08\\tCombat\\t278 to Darin Raltin[GI.N](Porpoise) - Scourge Rage Rocket - Hits"
+      iex> {:ok, result} = parse_combat_log(log_content)
+      iex> length(result.events)
+      1
+      iex> result.events |> List.first() |> Map.get(:type)
+      :damage_dealt
+
+  ## Options
+  - `:start_time` - Filter events after this time
+  - `:end_time` - Filter events before this time
+  - `:pilot_name` - Filter events involving this pilot
+
   ## Returns
   {:ok, %{
     events: [combat_event],
-    tactical_analysis: %{...},
-    summary: %{...},
-    recommendations: [...]
+    tactical_analysis: %{damage_application: ..., tackle_effectiveness: ...},
+    summary: %{total_damage_dealt: integer, total_damage_received: integer},
+    recommendations: [string],
+    metadata: %{start_time: datetime, end_time: datetime}
   }}
   """
+  @spec parse_combat_log(String.t(), keyword()) :: {
+          :ok,
+          %{
+            events: list(),
+            tactical_analysis: map(),
+            summary: map(),
+            recommendations: list(),
+            metadata: map()
+          }
+        }
   def parse_combat_log(content, options \\ []) do
     lines = String.split(content, "\n", trim: true)
 
@@ -49,14 +77,35 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
 
   @doc """
   Correlates combat log with fitting data to analyze module usage effectiveness.
+
+  ## Examples
+
+      iex> events = [%{type: :damage_dealt, weapon: "Scourge Rage Rocket"}]
+      iex> fitting_data = %{modules: [%{type_name: "Rocket Launcher"}]}
+      iex> result = analyze_fitting_vs_usage(events, fitting_data)
+      iex> Map.has_key?(result, :module_usage_analysis)
+      true
+
+      iex> result = analyze_fitting_vs_usage([], nil)
+      iex> result.error
+      "No fitting data available for analysis"
+
+  ## Parameters
+  - `events` - List of parsed combat events from parse_combat_log/2
+  - `fitting_data` - Ship fitting data structure (map) or nil
+
+  ## Returns
+  Map containing:
+  - `:module_usage_analysis` - Usage stats for fitted modules
+  - `:unused_modules` - Modules that were fitted but not used
+  - `:error` - Error message if no fitting data provided
   """
+  @spec analyze_fitting_vs_usage(list(), map() | nil) :: map()
   def analyze_fitting_vs_usage(events, fitting_data) do
     if fitting_data do
       %{
         module_usage_analysis: analyze_fitted_module_usage(events, fitting_data),
-        unused_modules: identify_unused_modules(events, fitting_data),
-        optimization_suggestions: suggest_fitting_improvements(events, fitting_data),
-        tactical_effectiveness: rate_fitting_effectiveness(events, fitting_data)
+        unused_modules: identify_unused_modules(events, fitting_data)
       }
     else
       %{error: "No fitting data available for analysis"}
@@ -276,8 +325,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
     %{
       type: :range_failure,
       timestamp: timestamp,
-      reason: "Target too far away",
-      action: extract_failed_action(line)
+      reason: "Target too far away"
     }
   end
 
@@ -370,16 +418,16 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
       tackle_effectiveness: analyze_tackle_effectiveness(events),
       defensive_reactions: analyze_defensive_reactions(events),
       range_management: analyze_range_management(events),
-      target_selection: analyze_target_selection(events),
-      module_usage: analyze_module_usage_patterns(events),
-      survivability: analyze_survivability_patterns(events)
+      target_selection: analyze_target_selection(events)
     }
   end
 
   defp analyze_damage_application(events) do
     damage_events = Enum.filter(events, &(&1.type == :damage_dealt))
 
-    if length(damage_events) > 0 do
+    if Enum.empty?(damage_events) do
+      %{total_shots: 0, average_application: 0}
+    else
       quality_breakdown =
         damage_events
         |> Enum.group_by(& &1.hit_quality)
@@ -388,8 +436,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
            %{
              count: length(events),
              percentage: length(events) / length(damage_events) * 100,
-             total_damage: Enum.sum(Enum.map(events, & &1.damage)),
-             avg_damage: Float.round(Enum.sum(Enum.map(events, & &1.damage)) / length(events), 1)
+             total_damage: events |> Enum.map(& &1.damage) |> Enum.sum(),
+             avg_damage:
+               Float.round((events |> Enum.map(& &1.damage) |> Enum.sum()) / length(events), 1)
            }}
         end)
         |> Enum.into(%{})
@@ -404,12 +453,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
       %{
         total_shots: length(damage_events),
         average_application: avg_application,
-        quality_breakdown: quality_breakdown,
-        weapon_performance: analyze_weapon_performance(damage_events),
-        target_analysis: analyze_target_difficulty(damage_events)
+        quality_breakdown: quality_breakdown
       }
-    else
-      %{total_shots: 0, average_application: 0}
     end
   end
 
@@ -420,23 +465,19 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
     %{
       tackle_attempts: length(tackle_attempts),
       tackle_received: length(tackle_received),
-      tackle_modules_used: tackle_attempts |> Enum.map(& &1.module) |> Enum.uniq(),
-      tackle_timing: analyze_tackle_timing(tackle_attempts, events)
+      tackle_modules_used: tackle_attempts |> Enum.map(& &1.module) |> Enum.uniq()
     }
   end
 
   defp analyze_defensive_reactions(events) do
     defensive_activations = Enum.filter(events, &(&1.type == :defensive_module))
-    damage_received = Enum.filter(events, &(&1.type == :damage_received))
-
-    reaction_times = calculate_defensive_reaction_times(defensive_activations, damage_received)
+    _damage_received = Enum.filter(events, &(&1.type == :damage_received))
 
     %{
       defensive_activations: length(defensive_activations),
       modules_used: defensive_activations |> Enum.map(& &1.module) |> Enum.uniq(),
-      average_reaction_time: Enum.sum(reaction_times) / max(length(reaction_times), 1),
-      damage_before_defense:
-        calculate_damage_before_defense(defensive_activations, damage_received)
+      average_reaction_time: 0.0,
+      damage_before_defense: 0
     }
   end
 
@@ -445,7 +486,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
 
     %{
       range_failures: length(range_failures),
-      range_discipline_score: calculate_range_discipline_score(events),
       failed_actions: range_failures |> Enum.map(& &1.action) |> Enum.frequencies()
     }
   end
@@ -471,46 +511,20 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
 
     %{
       targets_engaged: length(Map.keys(target_stats)),
-      target_statistics: target_stats,
-      target_prioritization: rate_target_prioritization(target_stats)
+      target_statistics: target_stats
     }
   end
 
   # Fitting Correlation Analysis
 
-  defp analyze_fitted_module_usage(events, fitting_data) do
-    fitted_modules = extract_modules_from_fitting(fitting_data)
-    used_modules = extract_used_modules_from_events(events)
-
-    Enum.map(fitted_modules, fn module ->
-      usage_stats = used_modules[module[:type_name]] || %{activations: 0, effectiveness: 0}
-
-      %{
-        module: module,
-        fitted: true,
-        used: usage_stats.activations > 0,
-        activations: usage_stats.activations,
-        effectiveness: usage_stats.effectiveness,
-        recommendation: recommend_module_usage(module, usage_stats)
-      }
-    end)
+  defp analyze_fitted_module_usage(_events, _fitting_data) do
+    # Fitting analysis not implemented - would require detailed fitting data structure
+    []
   end
 
-  defp identify_unused_modules(events, fitting_data) do
-    fitted_modules = extract_modules_from_fitting(fitting_data)
-    used_module_types = events |> extract_used_modules_from_events() |> Map.keys()
-
-    fitted_modules
-    |> Enum.filter(fn module ->
-      not Enum.member?(used_module_types, module[:type_name])
-    end)
-    |> Enum.map(fn module ->
-      %{
-        module: module,
-        reason: determine_unused_reason(module, events),
-        suggestion: suggest_usage_improvement(module, events)
-      }
-    end)
+  defp identify_unused_modules(_events, _fitting_data) do
+    # Unused module identification not implemented - would require fitting data integration
+    []
   end
 
   # Helper Functions
@@ -559,33 +573,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
     end
   end
 
-  # Placeholder implementations for complex analysis functions
-  defp analyze_weapon_performance(_damage_events), do: %{}
-  defp analyze_target_difficulty(_damage_events), do: %{}
-  defp analyze_tackle_timing(_tackle_attempts, _events), do: %{}
-  defp calculate_defensive_reaction_times(_defensive, _damage), do: [0]
-  defp calculate_damage_before_defense(_defensive, _damage), do: 0
-  defp calculate_range_discipline_score(_events), do: 50.0
-  defp rate_target_prioritization(_target_stats), do: :average
-  defp extract_modules_from_fitting(_fitting_data), do: []
-  defp extract_used_modules_from_events(_events), do: %{}
-  defp recommend_module_usage(_module, _stats), do: "Monitor usage"
-  defp determine_unused_reason(_module, _events), do: "Unknown"
-  defp suggest_usage_improvement(_module, _events), do: "Review tactical situation"
-  defp extract_failed_action(_line), do: "Unknown action"
-  defp analyze_module_usage_patterns(_events), do: %{}
-  defp analyze_survivability_patterns(_events), do: %{}
-  defp suggest_fitting_improvements(_events, _fitting_data), do: []
-  defp rate_fitting_effectiveness(_events, _fitting_data), do: 50.0
-
   # Filter and summary functions (simplified versions of existing functions)
-  defp filter_by_time(events, nil, nil), do: events
-  # Implement time filtering
-  defp filter_by_time(events, _start_time, _end_time), do: events
-
-  defp filter_by_pilot(events, nil), do: events
-  # Implement pilot filtering
-  defp filter_by_pilot(events, _pilot_name), do: events
 
   defp generate_enhanced_summary(events, _pilot_name) do
     damage_dealt =
@@ -654,8 +642,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
     timestamps = events |> Enum.map(& &1.timestamp) |> Enum.filter(& &1)
 
     %{
-      start_time: if(length(timestamps) > 0, do: Enum.min(timestamps), else: nil),
-      end_time: if(length(timestamps) > 0, do: Enum.max(timestamps), else: nil),
+      start_time: if(Enum.empty?(timestamps), do: nil, else: Enum.min(timestamps)),
+      end_time: if(Enum.empty?(timestamps), do: nil, else: Enum.max(timestamps)),
       event_types: events |> Enum.map(& &1.type) |> Enum.uniq(),
       total_events: length(events)
     }
@@ -674,12 +662,68 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.EnhancedCombatLogParser do
       _ ->
         start_time = Enum.min(timestamps)
         end_time = Enum.max(timestamps)
-        NaiveDateTime.diff(end_time, start_time, :second) / 60
+        DateTimeUtils.diff(end_time, start_time, :second) / 60
     end
   end
 
-  defp calculate_tactical_score(_events) do
-    # Simplified tactical scoring
-    75.0
+  defp calculate_tactical_score(events) do
+    damage_dealt_events = Enum.filter(events, &(&1.type == :damage_dealt))
+    damage_received_events = Enum.filter(events, &(&1.type == :damage_received))
+
+    if Enum.empty?(damage_dealt_events) and Enum.empty?(damage_received_events) do
+      0.0
+    else
+      total_damage_dealt = Enum.sum(Enum.map(damage_dealt_events, & &1.damage))
+      total_damage_received = Enum.sum(Enum.map(damage_received_events, & &1.damage))
+
+      # Calculate efficiency ratio (0-100 scale)
+      if total_damage_received == 0 do
+        100.0
+      else
+        efficiency = total_damage_dealt / total_damage_received
+        Float.round(min(efficiency * 50, 100.0), 1)
+      end
+    end
+  end
+
+  defp filter_by_time(events, nil, nil), do: events
+
+  defp filter_by_time(events, start_time, end_time) do
+    Enum.filter(events, fn event ->
+      cond do
+        start_time && end_time ->
+          event.timestamp >= start_time && event.timestamp <= end_time
+
+        start_time ->
+          event.timestamp >= start_time
+
+        end_time ->
+          event.timestamp <= end_time
+
+        true ->
+          true
+      end
+    end)
+  end
+
+  defp filter_by_pilot(events, nil), do: events
+
+  defp filter_by_pilot(events, pilot_name) do
+    Enum.filter(events, fn event ->
+      # Check for pilot name in relevant fields based on event type
+      case event.type do
+        :damage_dealt ->
+          Map.get(event, :target) == pilot_name
+
+        :damage_received ->
+          Map.get(event, :attacker) == pilot_name
+
+        :miss_received ->
+          Map.get(event, :attacker) == pilot_name
+
+        _ ->
+          false
+      end
+    end)
   end
 end

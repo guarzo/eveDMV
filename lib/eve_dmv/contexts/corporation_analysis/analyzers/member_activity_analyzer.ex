@@ -8,6 +8,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.MemberActivityAnalyzer d
   """
 
   use EveDmv.ErrorHandler
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Result
   require Logger
 
@@ -332,7 +333,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.MemberActivityAnalyzer d
   defp days_since_last_active(last_active) when is_binary(last_active) do
     case DateTime.from_iso8601(last_active) do
       {:ok, datetime, _} ->
-        DateTime.diff(DateTime.utc_now(), datetime, :day)
+        DateTimeUtils.diff(DateTime.utc_now(), datetime, :day)
 
       _ ->
         999

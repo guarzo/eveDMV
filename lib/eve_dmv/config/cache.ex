@@ -4,9 +4,6 @@ defmodule EveDmv.Config.Cache do
 
   Centralizes all cache-related configuration including TTL values,
   size limits, and cleanup intervals across the application.
-
-  This module now uses the unified configuration system for consistent
-  cache configuration access and environment variable handling.
   """
 
   alias EveDmv.Config.UnifiedConfig
@@ -114,7 +111,7 @@ defmodule EveDmv.Config.Cache do
   @doc """
   Get analysis cache max size.
 
-  Environment: EVE_DMV_CACHE_ANALYSIS_MAX_SIZE (default: 50000)
+  Environment: EVE_DMV_CACHE_ANALYSIS_MAX_SIZE (default: 50_000)
   """
   @spec analysis_cache_size() :: pos_integer()
   def analysis_cache_size do
@@ -204,7 +201,7 @@ defmodule EveDmv.Config.Cache do
   @doc """
   Get hot data cache max size.
 
-  Environment: EVE_DMV_CACHE_HOT_DATA_MAX_SIZE (default: 50000)
+  Environment: EVE_DMV_CACHE_HOT_DATA_MAX_SIZE (default: 50_000)
   """
   @spec hot_data_max_size() :: pos_integer()
   def hot_data_max_size do
@@ -214,7 +211,7 @@ defmodule EveDmv.Config.Cache do
   @doc """
   Get API responses cache max size.
 
-  Environment: EVE_DMV_CACHE_API_RESPONSES_MAX_SIZE (default: 25000)
+  Environment: EVE_DMV_CACHE_API_RESPONSES_MAX_SIZE (default: 25_000)
   """
   @spec api_responses_max_size() :: pos_integer()
   def api_responses_max_size do

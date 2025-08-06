@@ -81,7 +81,7 @@ defmodule EveDmvWeb.Components.ColorUtils do
 
       iex> security_color(:highsec)
       "text-green-400"
-      
+
       iex> security_color(:nullsec)
       "text-red-400"
   """
@@ -103,7 +103,7 @@ defmodule EveDmvWeb.Components.ColorUtils do
 
       iex> threat_color(:extreme)
       "text-red-500"
-      
+
       iex> threat_color(:low)
       "text-green-400"
   """
@@ -125,7 +125,7 @@ defmodule EveDmvWeb.Components.ColorUtils do
 
       iex> status_color(:success)
       "text-green-400"
-      
+
       iex> status_color(:error)
       "text-red-400"
   """
@@ -147,7 +147,7 @@ defmodule EveDmvWeb.Components.ColorUtils do
 
       iex> isk_color(1_000_000_000)
       "text-green-400"
-      
+
       iex> isk_color(100_000)
       "text-gray-400"
   """
@@ -183,7 +183,7 @@ defmodule EveDmvWeb.Components.ColorUtils do
 
       iex> efficiency_color(95)
       "text-green-400"
-      
+
       iex> efficiency_color(30)
       "text-red-400"
   """
@@ -213,7 +213,7 @@ defmodule EveDmvWeb.Components.ColorUtils do
 
       iex> connection_color(:connected)
       "text-green-400"
-      
+
       iex> connection_color(:disconnected)
       "text-red-400"
   """

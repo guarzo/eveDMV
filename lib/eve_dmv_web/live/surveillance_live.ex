@@ -1,13 +1,4 @@
 defmodule EveDmvWeb.SurveillanceLive do
-  import EveDmvWeb.LiveHelpers.ApiErrorHelper
-  alias EveDmv.Surveillance.MatchingEngine
-  alias EveDmvWeb.SurveillanceLive.BatchOperationService
-  alias EveDmvWeb.SurveillanceLive.Components
-  alias EveDmvWeb.SurveillanceLive.ExportImportService
-  alias EveDmvWeb.SurveillanceLive.NotificationService
-  alias EveDmvWeb.SurveillanceLive.ProfileService
-  require Logger
-
   @moduledoc """
   LiveView for managing surveillance profiles.
 
@@ -16,6 +7,13 @@ defmodule EveDmvWeb.SurveillanceLive do
   """
 
   use EveDmvWeb, :live_view
+  import EveDmvWeb.LiveHelpers.ApiErrorHelper
+  alias EveDmvWeb.SurveillanceLive.BatchOperationService
+  alias EveDmvWeb.SurveillanceLive.Components
+  alias EveDmvWeb.SurveillanceLive.ExportImportService
+  alias EveDmvWeb.SurveillanceLive.NotificationService
+  alias EveDmvWeb.SurveillanceLive.ProfileService
+  require Logger
 
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
@@ -263,17 +261,17 @@ defmodule EveDmvWeb.SurveillanceLive do
           |> assign(:profiles, profiles)
           |> assign(:show_create_modal, false)
           |> put_flash(:info, "Surveillance profile '#{profile.name}' created successfully!")
-          |> then(fn socket ->
-            if has_json_error do
-              put_flash(
-                socket,
-                :warning,
-                "Note: Invalid JSON in filter tree was replaced with default template."
-              )
-            else
-              socket
-            end
-          end)
+
+        socket =
+          if has_json_error do
+            put_flash(
+              socket,
+              :warning,
+              "Note: Invalid JSON in filter tree was replaced with default template."
+            )
+          else
+            socket
+          end
 
         {:noreply, socket}
 
@@ -466,7 +464,7 @@ defmodule EveDmvWeb.SurveillanceLive do
       if MapSet.size(socket.assigns.selected_profiles) > 0 do
         MapSet.to_list(socket.assigns.selected_profiles)
       else
-        Enum.map(socket.assigns.profiles, & &1.id)
+        socket.assigns.profiles |> Enum.map(& &1.id)
       end
 
     export_data =
@@ -490,8 +488,7 @@ defmodule EveDmvWeb.SurveillanceLive do
            socket.assigns.current_user
          ) do
       {:ok, count} ->
-        # Reload matching engine profiles
-        MatchingEngine.reload_profiles()
+        # Reload matching engine MatchingEngine.reload_profiles(profiles)
         # Reload user profiles
         profiles =
           ProfileService.load_user_profiles(socket.assigns.user_id, socket.assigns.current_user)

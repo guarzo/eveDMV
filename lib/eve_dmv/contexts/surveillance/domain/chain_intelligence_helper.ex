@@ -6,11 +6,14 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
   direct access to the GenServer state.
   """
 
+  alias Ecto.Adapters.SQL
   alias EveDmv.Contexts.Surveillance.Domain.AlertService
   alias EveDmv.Contexts.Surveillance.Domain.ChainActivityTracker
   alias EveDmv.Contexts.Surveillance.Domain.ChainThreatAnalyzer
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.DomainEvents.ChainThreatDetected
   alias EveDmv.Intelligence.WandererClient
+  alias EveDmv.Repo
   alias Phoenix.PubSub
 
   require Logger
@@ -140,59 +143,55 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
   end
 
   defp sync_single_chain_topology(map_id) do
-    try do
-      # Fetch current topology from Wanderer API
-      case WandererClient.get_chain_topology(map_id) do
-        {:ok, topology} ->
-          # Update local topology cache/database
-          case update_topology_cache(map_id, topology) do
-            {:ok, _} ->
-              Logger.debug("Synced topology for chain #{map_id}")
-              {:ok, map_id}
+    # Fetch current topology from Wanderer API
+    case WandererClient.get_chain_topology(map_id) do
+      {:ok, topology} ->
+        # Update local topology cache/database
+        case update_topology_cache(map_id, topology) do
+          {:ok, _} ->
+            Logger.debug("Synced topology for chain #{map_id}")
+            {:ok, map_id}
 
-            {:error, reason} ->
-              Logger.error(
-                "Failed to update topology cache for chain #{map_id}: #{inspect(reason)}"
-              )
+          {:error, reason} ->
+            Logger.error(
+              "Failed to update topology cache for chain #{map_id}: #{inspect(reason)}"
+            )
 
-              {:error, {map_id, reason}}
-          end
+            {:error, {map_id, reason}}
+        end
 
-        {:error, reason} ->
-          Logger.error("Failed to fetch topology for chain #{map_id}: #{inspect(reason)}")
-          {:error, {map_id, reason}}
-      end
-    rescue
-      exception ->
-        Logger.error("Exception syncing chain #{map_id}: #{inspect(exception)}")
-        {:error, {map_id, exception}}
+      {:error, reason} ->
+        Logger.error("Failed to fetch topology for chain #{map_id}: #{inspect(reason)}")
+        {:error, {map_id, reason}}
     end
+  rescue
+    exception ->
+      Logger.error("Exception syncing chain #{map_id}: #{inspect(exception)}")
+      {:error, {map_id, exception}}
   end
 
   defp update_topology_cache(map_id, topology) do
     # Store topology data in the database or cache
     # This could use Ash resources or direct database operations
-    try do
-      # For now, we'll use a simple approach - store in ETS or database
-      topology_data = %{
-        map_id: map_id,
-        topology: topology,
-        last_updated: DateTime.utc_now(),
-        system_count: count_systems(topology),
-        connection_count: count_connections(topology)
-      }
+    # For now, we'll use a simple approach - store in ETS or database
+    topology_data = %{
+      map_id: map_id,
+      topology: topology,
+      last_updated: DateTime.utc_now(),
+      system_count: count_systems(topology),
+      connection_count: count_connections(topology)
+    }
 
-      # Could store in database table or ETS for fast access
-      # For now, just log the update
-      Logger.debug(
-        "Updated topology cache for chain #{map_id} with #{topology_data.system_count} systems"
-      )
+    # Could store in database table or ETS for fast access
+    # For now, just log the update
+    Logger.debug(
+      "Updated topology cache for chain #{map_id} with #{topology_data.system_count} systems"
+    )
 
-      {:ok, topology_data}
-    rescue
-      exception ->
-        {:error, exception}
-    end
+    {:ok, topology_data}
+  rescue
+    exception ->
+      {:error, exception}
   end
 
   defp count_systems(topology) when is_map(topology) do
@@ -262,8 +261,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
   defp fetch_chain_analysis_data(map_id) do
     # Fetch all relevant data for threat analysis
     %{
-      topology: WandererClient.get_chain_topology(map_id) |> elem(1),
-      inhabitants: WandererClient.get_chain_inhabitants(map_id) |> elem(1),
+      topology: elem(WandererClient.get_chain_topology(map_id), 1),
+      inhabitants: elem(WandererClient.get_chain_inhabitants(map_id), 1),
       recent_activity: get_recent_chain_activity(map_id, hours: 24),
       system_info: get_chain_system_info(map_id)
     }
@@ -271,7 +270,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
 
   defp get_recent_chain_activity(map_id, opts) do
     hours = Keyword.get(opts, :hours, 24)
-    since = DateTime.add(DateTime.utc_now(), -hours * 3600, :second)
+    since = DateTimeUtils.add(DateTime.utc_now(), -hours * 3600, :second)
 
     # Query killmails in all systems of this chain
     query = """
@@ -283,7 +282,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
     LIMIT 100
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [map_id, since]) do
+    case SQL.query(Repo, query, [map_id, since]) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [id, time, system_id, ship_type, attackers] ->
           %{
@@ -364,11 +363,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
   defp analyze_killmail_patterns(_map_id, chain_data) do
     recent_kills = Map.get(chain_data, :recent_activity, [])
 
-    # Look for concerning patterns in killmails
-    patterns = []
-
     # Pattern 1: High frequency of kills (possible camp)
-    patterns =
+    high_frequency_patterns =
       if length(recent_kills) >= 5 do
         [
           %{
@@ -376,16 +372,15 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
             threat_level: :high,
             details: %{kill_count: length(recent_kills), timeframe: "24h"}
           }
-          | patterns
         ]
       else
-        patterns
+        []
       end
 
     # Pattern 2: Kills in multiple systems (roaming gang)
     system_kills = Enum.group_by(recent_kills, fn kill -> kill.system_id end)
 
-    patterns =
+    roaming_patterns =
       if map_size(system_kills) >= 3 do
         [
           %{
@@ -393,41 +388,33 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
             threat_level: :medium,
             details: %{systems_affected: Map.keys(system_kills)}
           }
-          | patterns
         ]
       else
-        patterns
+        []
       end
 
-    patterns
+    high_frequency_patterns ++ roaming_patterns
   end
 
   defp analyze_system_vulnerabilities(_map_id, chain_data) do
     topology = Map.get(chain_data, :topology, %{})
-
-    # Analyze topology for vulnerabilities
-    vulnerabilities = []
 
     # Check for single-connection systems (easily cut off)
     systems = Map.get(topology, "systems", [])
     connections = Map.get(topology, "connections", [])
 
     # This is a simplified analysis - in reality would need proper graph analysis
-    vulnerabilities =
-      if length(systems) > 0 and length(connections) < length(systems) do
-        [
-          %{
-            type: :topology_vulnerability,
-            threat_level: :low,
-            details: %{reason: "Potential bottleneck systems detected"}
-          }
-          | vulnerabilities
-        ]
-      else
-        vulnerabilities
-      end
-
-    vulnerabilities
+    if not Enum.empty?(systems) and length(connections) < length(systems) do
+      [
+        %{
+          type: :topology_vulnerability,
+          threat_level: :low,
+          details: %{reason: "Potential bottleneck systems detected"}
+        }
+      ]
+    else
+      []
+    end
   end
 
   defp calculate_activity_threat_level(kills) do
@@ -472,7 +459,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
       if(Map.get(chain_data, :recent_activity, []) != [], do: 0.3, else: 0.0),
       if(Map.get(chain_data, :inhabitants, []) != [], do: 0.2, else: 0.0),
       if(Map.get(chain_data, :topology, %{}) != %{}, do: 0.2, else: 0.0),
-      if(length(threats) > 0, do: 0.3, else: 0.1)
+      if(Enum.empty?(threats), do: 0.1, else: 0.3)
     ]
 
     min(Enum.sum(data_factors), 1.0)
@@ -665,10 +652,10 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
   end
 
   defp generate_threat_alerts(threat_result) do
-    alerts = []
+    base_alerts = []
 
     # Generate escalation alert for high-level threats
-    alerts =
+    escalation_alerts =
       if threat_result.threat_level in [:high, :critical] do
         escalation_alert = %{
           action: :escalation_alert,
@@ -684,9 +671,9 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
           threat_result.threat_level
         })
 
-        [escalation_alert | alerts]
+        [escalation_alert | base_alerts]
       else
-        alerts
+        base_alerts
       end
 
     # Generate summary alert
@@ -698,7 +685,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
       threats_detected: length(threat_result.threats_detected)
     }
 
-    [summary_alert | alerts]
+    [summary_alert | escalation_alerts]
   end
 
   defp update_threat_tracking(threat_result) do
@@ -722,7 +709,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
 
   defp notify_threat_systems(threat_result, actions) do
     # Notify relevant systems about threat detection
-    notifications = []
+    base_notifications = []
 
     # Notify chain members via PubSub
     PubSub.broadcast(EveDmv.PubSub, "chain_intelligence:#{threat_result.map_id}", {
@@ -732,18 +719,18 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
       actions
     })
 
-    notifications = [{:pubsub_broadcast, :chain_members} | notifications]
+    pubsub_notifications = [{:pubsub_broadcast, :chain_members} | base_notifications]
 
     # Notify external systems if threat level is high
-    notifications =
+    final_notifications =
       if threat_result.threat_level in [:high, :critical] do
         # Could notify Discord, Slack, etc.
-        [{:external_notification, :high_threat} | notifications]
+        [{:external_notification, :high_threat} | pubsub_notifications]
       else
-        notifications
+        pubsub_notifications
       end
 
-    notifications
+    final_notifications
   end
 
   defp log_threat_handling(threat_result, threat_actions, alert_actions) do
@@ -752,7 +739,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
         "Level=#{threat_result.threat_level}, " <>
         "Confidence=#{Float.round(threat_result.confidence, 2)}, " <>
         "Threats=#{length(threat_result.threats_detected)}, " <>
-        "Actions=#{length(threat_actions + alert_actions)}"
+        "Actions=#{length(threat_actions ++ alert_actions)}"
     )
   end
 
@@ -803,7 +790,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
 
   defp get_recent_system_activity(system_id, opts) do
     hours = Keyword.get(opts, :hours, 2)
-    since = DateTime.add(DateTime.utc_now(), -hours * 3600, :second)
+    since = DateTimeUtils.add(DateTime.utc_now(), -hours * 3600, :second)
 
     query = """
     SELECT k.killmail_id, k.killmail_time, k.victim_ship_type_id, k.attacker_count
@@ -813,7 +800,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
     LIMIT 50
     """
 
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [system_id, since]) do
+    case SQL.query(Repo, query, [system_id, since]) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [id, time, ship_type, attackers] ->
           %{killmail_id: id, killmail_time: time, ship_type: ship_type, attackers: attackers}

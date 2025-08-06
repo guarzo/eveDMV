@@ -175,7 +175,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridgeTest do
     killmail_data = [
       %{
         killmail_id: 1_000_001,
-        killmail_time: DateTime.utc_now() |> DateTime.add(-1, :day),
+        killmail_time: DateTime.add(DateTime.utc_now(), -1, :day),
         killmail_hash: "test_hash_1",
         solar_system_id: 30_000_142,
         victim_ship_type_id: 641,
@@ -194,7 +194,7 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridgeTest do
       },
       %{
         killmail_id: 1_000_002,
-        killmail_time: DateTime.utc_now() |> DateTime.add(-2, :day),
+        killmail_time: DateTime.add(DateTime.utc_now(), -2, :day),
         killmail_hash: "test_hash_2",
         solar_system_id: 30_000_142,
         victim_ship_type_id: 641,

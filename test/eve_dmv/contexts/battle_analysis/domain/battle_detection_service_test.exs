@@ -1,7 +1,14 @@
 defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
   use EveDmv.DataCase, async: true
+  import EveDmv.Test.PartitionHelpers
 
   alias EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService
+
+  setup do
+    # Create partitions for the test dates (January 2024)
+    ensure_test_partitions()
+    :ok
+  end
 
   describe "detect_battles/3" do
     test "clusters killmails by time and space into battles" do
@@ -11,10 +18,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
           killmail_id: 1,
           killmail_time: ~U[2024-01-01 10:00:00Z],
           solar_system_id: 30_002_765,
-          victim_character_id: 12345,
+          victim_character_id: 12_345,
           raw_data: %{
-            "victim" => %{"character_id" => 12345},
-            "attackers" => [%{"character_id" => 67890}]
+            "victim" => %{"character_id" => 12_345},
+            "attackers" => [%{"character_id" => 67_890}]
           }
         })
 
@@ -23,10 +30,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
           killmail_id: 2,
           killmail_time: ~U[2024-01-01 10:05:00Z],
           solar_system_id: 30_002_765,
-          victim_character_id: 11111,
+          victim_character_id: 11_111,
           raw_data: %{
-            "victim" => %{"character_id" => 11111},
-            "attackers" => [%{"character_id" => 67890}]
+            "victim" => %{"character_id" => 11_111},
+            "attackers" => [%{"character_id" => 67_890}]
           }
         })
 
@@ -36,10 +43,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
           killmail_id: 3,
           killmail_time: ~U[2024-01-01 10:10:00Z],
           solar_system_id: 30_002_766,
-          victim_character_id: 22222,
+          victim_character_id: 22_222,
           raw_data: %{
-            "victim" => %{"character_id" => 22222},
-            "attackers" => [%{"character_id" => 33333}]
+            "victim" => %{"character_id" => 22_222},
+            "attackers" => [%{"character_id" => 33_333}]
           }
         })
 
@@ -73,9 +80,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
           killmail_id: 1,
           killmail_time: ~U[2024-01-01 10:00:00Z],
           solar_system_id: 30_002_765,
-          victim_character_id: 12345,
+          victim_character_id: 12_345,
           raw_data: %{
-            "victim" => %{"character_id" => 12345}
+            "victim" => %{"character_id" => 12_345}
             # No attackers - should be filtered out
           }
         })
@@ -96,10 +103,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
           killmail_id: 1,
           killmail_time: ~U[2024-01-01 10:00:00Z],
           solar_system_id: 30_002_765,
-          victim_character_id: 12345,
+          victim_character_id: 12_345,
           raw_data: %{
-            "victim" => %{"character_id" => 12345},
-            "attackers" => [%{"character_id" => 67890}]
+            "victim" => %{"character_id" => 12_345},
+            "attackers" => [%{"character_id" => 67_890}]
           }
         })
 
@@ -109,10 +116,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
           # 40 minutes later
           killmail_time: ~U[2024-01-01 10:40:00Z],
           solar_system_id: 30_002_765,
-          victim_character_id: 11111,
+          victim_character_id: 11_111,
           raw_data: %{
-            "victim" => %{"character_id" => 11111},
-            "attackers" => [%{"character_id" => 67890}]
+            "victim" => %{"character_id" => 11_111},
+            "attackers" => [%{"character_id" => 99_999}]
           }
         })
 
@@ -138,10 +145,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
           killmail_id: 1,
           killmail_time: ~U[2024-01-01 10:00:00Z],
           solar_system_id: 30_002_765,
-          victim_character_id: 12345,
+          victim_character_id: 12_345,
           raw_data: %{
-            "victim" => %{"character_id" => 12345},
-            "attackers" => [%{"character_id" => 67890}, %{"character_id" => 11111}]
+            "victim" => %{"character_id" => 12_345},
+            "attackers" => [%{"character_id" => 67_890}, %{"character_id" => 11_111}]
           }
         })
 
@@ -151,11 +158,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
           # 45 minutes later
           killmail_time: ~U[2024-01-01 10:45:00Z],
           solar_system_id: 30_002_765,
-          victim_character_id: 22222,
+          victim_character_id: 22_222,
           raw_data: %{
-            "victim" => %{"character_id" => 22222},
+            "victim" => %{"character_id" => 22_222},
             # Same attacker
-            "attackers" => [%{"character_id" => 67890}]
+            "attackers" => [%{"character_id" => 67_890}]
           }
         })
 
@@ -183,10 +190,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
           killmail_id: 1,
           killmail_time: ~U[2024-01-01 10:00:00Z],
           solar_system_id: 30_002_765,
-          victim_character_id: 12345,
+          victim_character_id: 12_345,
           raw_data: %{
-            "victim" => %{"character_id" => 12345},
-            "attackers" => [%{"character_id" => 67890}]
+            "victim" => %{"character_id" => 12_345},
+            "attackers" => [%{"character_id" => 67_890}]
           }
         })
 
@@ -196,10 +203,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
           killmail_time: ~U[2024-01-01 10:05:00Z],
           # Different system
           solar_system_id: 30_002_766,
-          victim_character_id: 11111,
+          victim_character_id: 11_111,
           raw_data: %{
-            "victim" => %{"character_id" => 11111},
-            "attackers" => [%{"character_id" => 67890}]
+            "victim" => %{"character_id" => 11_111},
+            "attackers" => [%{"character_id" => 67_890}]
           }
         })
 
@@ -226,10 +233,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
           killmail_id: 1,
           killmail_time: ~U[2024-01-01 10:00:00Z],
           solar_system_id: 30_002_765,
-          victim_character_id: 12345,
+          victim_character_id: 12_345,
           raw_data: %{
-            "victim" => %{"character_id" => 12345},
-            "attackers" => [%{"character_id" => 67890}]
+            "victim" => %{"character_id" => 12_345},
+            "attackers" => [%{"character_id" => 67_890}]
           }
         })
 
@@ -238,10 +245,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
           killmail_id: 2,
           killmail_time: ~U[2024-01-01 10:05:00Z],
           solar_system_id: 30_002_765,
-          victim_character_id: 11111,
+          victim_character_id: 11_111,
           raw_data: %{
-            "victim" => %{"character_id" => 11111},
-            "attackers" => [%{"character_id" => 67890}]
+            "victim" => %{"character_id" => 11_111},
+            "attackers" => [%{"character_id" => 67_890}]
           }
         })
 
@@ -259,10 +266,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
           killmail_id: 1,
           killmail_time: ~U[2024-01-01 10:00:00Z],
           solar_system_id: 30_002_765,
-          victim_character_id: 12345,
+          victim_character_id: 12_345,
           raw_data: %{
-            "victim" => %{"character_id" => 12345},
-            "attackers" => [%{"character_id" => 67890}]
+            "victim" => %{"character_id" => 12_345},
+            "attackers" => [%{"character_id" => 67_890}]
           }
         })
 

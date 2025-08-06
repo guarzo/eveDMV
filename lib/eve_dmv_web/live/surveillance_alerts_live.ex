@@ -13,6 +13,7 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
 
   alias EveDmv.Contexts.Surveillance.Domain.AlertService
   alias EveDmv.Contexts.Surveillance.Domain.NotificationService
+  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmvWeb.Helpers.TimeFormatter
 
   require Logger
@@ -180,12 +181,12 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
     # New real-time alert received
     Logger.info("Received real-time surveillance alert: #{alert_data.alert_id}")
 
-    # Trigger visual and audio notifications
+    # Trigger visual and audio notifications and update state
     socket =
       socket
+      |> trigger_alert_notification(alert_data)
       |> update(:new_alert_count, &(&1 + 1))
       |> load_alerts()
-      |> trigger_alert_notification(alert_data)
 
     {:noreply, socket}
   end
@@ -196,17 +197,7 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
     socket =
       socket
       |> load_alerts()
-      |> then(fn socket ->
-        # Update details if this alert is currently shown
-        if socket.assigns.selected_alert && socket.assigns.selected_alert.id == alert_id do
-          case safe_call(fn -> AlertService.get_alert(alert_id) end) do
-            {:ok, updated_alert} -> assign(socket, :selected_alert, updated_alert)
-            _ -> assign(socket, :selected_alert, nil)
-          end
-        else
-          socket
-        end
-      end)
+      |> update_selected_alert_if_needed(alert_id)
 
     {:noreply, socket}
   end
@@ -223,6 +214,18 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
   end
 
   # Private functions
+
+  defp update_selected_alert_if_needed(socket, alert_id) do
+    # Update details if this alert is currently shown
+    if socket.assigns.selected_alert && socket.assigns.selected_alert.id == alert_id do
+      case safe_call(fn -> AlertService.get_alert(alert_id) end) do
+        {:ok, updated_alert} -> assign(socket, :selected_alert, updated_alert)
+        _ -> assign(socket, :selected_alert, nil)
+      end
+    else
+      socket
+    end
+  end
 
   defp load_alerts(socket) do
     filters = socket.assigns.alert_filters
@@ -368,9 +371,9 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
   def format_timestamp(_), do: "Unknown"
 
   defp format_naive_datetime(ndt) do
-    case DateTime.from_naive(ndt, "Etc/UTC") do
-      {:ok, dt} -> TimeFormatter.format_relative_time(dt)
-      _ -> "Unknown"
+    case DateTimeUtils.to_datetime(ndt) do
+      nil -> "Unknown"
+      dt -> TimeFormatter.format_relative_time(dt)
     end
   end
 
@@ -382,17 +385,15 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
 
   # Safe call helper for surveillance services
   defp safe_call(fun) when is_function(fun, 0) do
-    try do
-      fun.()
-    rescue
-      error ->
-        Logger.error("Surveillance service call failed: #{inspect(error)}")
-        {:error, :service_unavailable}
-    catch
-      :exit, reason ->
-        Logger.error("Surveillance service process not available: #{inspect(reason)}")
-        {:error, :service_unavailable}
-    end
+    fun.()
+  rescue
+    error ->
+      Logger.error("Surveillance service call failed: #{inspect(error)}")
+      {:error, :service_unavailable}
+  catch
+    :exit, reason ->
+      Logger.error("Surveillance service process not available: #{inspect(reason)}")
+      {:error, :service_unavailable}
   end
 
   # Helper function to get user ID from socket

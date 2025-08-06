@@ -7,10 +7,13 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
   """
 
   use EveDmv.ErrorHandler
-  alias EveDmv.Result
-  alias EveDmv.Shared.{KillmailQueries, ActivityMetrics}
-  alias EveDmv.Repo
+
   alias Ecto.Adapters.SQL
+  alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Repo
+  alias EveDmv.Result
+  alias EveDmv.Shared.ActivityMetrics
+  alias EveDmv.Shared.KillmailQueries
   require Logger
 
   @doc """
@@ -73,7 +76,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
     # Get real member activity data
     case KillmailQueries.execute(
            KillmailQueries.corporation_members_activity_query(corporation_id, 90),
-           [corporation_id, DateTime.add(DateTime.utc_now(), -90 * 24 * 60 * 60, :second)]
+           [corporation_id, DateTimeUtils.add(DateTime.utc_now(), -90 * 24 * 60 * 60, :second)]
          ) do
       {:ok, members} ->
         # Get timezone data for each member
@@ -122,7 +125,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
   """
   def get_killmail_statistics(corporation_id) do
     query = """
-    SELECT 
+    SELECT
       COUNT(DISTINCT CASE WHEN p.is_victim = false THEN k.killmail_id END) as total_kills,
       COUNT(DISTINCT CASE WHEN p.is_victim = true THEN k.killmail_id END) as total_losses,
       COALESCE(SUM(CASE WHEN p.is_victim = false THEN k.zkb_total_value END), 0) as isk_destroyed,
@@ -176,7 +179,10 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
   def get_activity_timeline(corporation_id, days_back \\ 30) do
     case KillmailQueries.execute(
            KillmailQueries.daily_activity_query(:corporation, corporation_id, days_back),
-           [corporation_id, DateTime.add(DateTime.utc_now(), -days_back * 24 * 60 * 60, :second)]
+           [
+             corporation_id,
+             DateTimeUtils.add(DateTime.utc_now(), -days_back * 24 * 60 * 60, :second)
+           ]
          ) do
       {:ok, timeline_data} ->
         timeline =
@@ -206,7 +212,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
   def get_timezone_distribution(corporation_id) do
     case KillmailQueries.execute(
            KillmailQueries.timezone_activity_query(:corporation, corporation_id, 30),
-           [corporation_id, DateTime.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)]
+           [corporation_id, DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)]
          ) do
       {:ok, hourly_data} ->
         # Convert to hourly activity map
@@ -236,12 +242,11 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
   defp get_member_hourly_activity(character_id, days) do
     case KillmailQueries.execute(
            KillmailQueries.timezone_activity_query(:character, character_id, days),
-           [character_id, DateTime.add(DateTime.utc_now(), -days * 24 * 60 * 60, :second)]
+           [character_id, DateTimeUtils.add(DateTime.utc_now(), -days * 24 * 60 * 60, :second)]
          ) do
       {:ok, data} ->
         hourly_activity =
-          data
-          |> Enum.map(fn row ->
+          Enum.map(data, fn row ->
             {trunc(Map.get(row, "hour", 0)), Map.get(row, "kills", 0) + Map.get(row, "losses", 0)}
           end)
 
@@ -255,14 +260,14 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
   defp calculate_group_activity_ratio(character_id, corporation_id) do
     # Calculate ratio of fleet vs solo activity
     query = """
-    SELECT 
-      COUNT(DISTINCT CASE WHEN 
-        (SELECT COUNT(DISTINCT p2.character_id) 
-         FROM participants p2 
-         WHERE p2.killmail_id = k.killmail_id 
+    SELECT
+      COUNT(DISTINCT CASE WHEN
+        (SELECT COUNT(DISTINCT p2.character_id)
+         FROM participants p2
+         WHERE p2.killmail_id = k.killmail_id
            AND p2.corporation_id = $2
-           AND p2.is_victim = false) > 1 
-        THEN k.killmail_id END)::float / 
+           AND p2.is_victim = false) > 1
+        THEN k.killmail_id END)::float /
       NULLIF(COUNT(DISTINCT k.killmail_id)::float, 0) as group_ratio
     FROM participants p
     JOIN killmails_raw k ON p.killmail_id = k.killmail_id
@@ -306,7 +311,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
   defp get_activity_trend(corporation_id, days) do
     case KillmailQueries.execute(
            KillmailQueries.daily_activity_query(:corporation, corporation_id, days),
-           [corporation_id, DateTime.add(DateTime.utc_now(), -days * 24 * 60 * 60, :second)]
+           [corporation_id, DateTimeUtils.add(DateTime.utc_now(), -days * 24 * 60 * 60, :second)]
          ) do
       {:ok, data} ->
         trend_data =

@@ -2,34 +2,26 @@ defmodule EveDmvWeb.SurveillanceDashboardLiveTest do
   use EveDmvWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
+  import EveDmvWeb.LiveViewTestHelpers
   import EveDmv.Factories
 
   describe "surveillance dashboard live" do
-    setup do
-      user = create(:user)
-
-      conn =
-        Phoenix.ConnTest.build_conn()
-        |> Phoenix.ConnTest.init_test_session(%{})
-        |> Plug.Conn.put_session(:current_user_id, user.id)
-
-      %{conn: conn, user: user}
-    end
+    setup :setup_authenticated_conn
 
     test "displays dashboard page", %{conn: conn} do
-      # The dashboard will call Surveillance.list_profiles but it should handle errors gracefully
       {:ok, _index_live, html} = live(conn, ~p"/surveillance-dashboard")
-
-      assert html =~ "Surveillance Performance Dashboard"
+      assert_page_loaded(html, "Surveillance Performance Dashboard")
     end
 
     test "displays system metrics", %{conn: conn} do
       {:ok, _index_live, html} = live(conn, ~p"/surveillance-dashboard")
 
-      assert html =~ "Total Profiles"
-      assert html =~ "Total Alerts"
-      assert html =~ "Avg Response"
-      assert html =~ "System Health"
+      assert_metrics_displayed(html, [
+        "Total Profiles",
+        "Total Alerts",
+        "Avg Response",
+        "System Health"
+      ])
     end
 
     test "shows time range selector", %{conn: conn} do
@@ -73,7 +65,7 @@ defmodule EveDmvWeb.SurveillanceDashboardLiveTest do
       # Headers may not be present if no profiles are available in test env
       # assert html =~ "Profile"
       # assert html =~ "Alerts"
-      # assert html =~ "Match Rate"  
+      # assert html =~ "Match Rate"
       # assert html =~ "Performance"
     end
   end

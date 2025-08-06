@@ -8,6 +8,8 @@ defmodule EveDmv.Logging.StructuredFormatter do
 
   @behaviour :logger_formatter
 
+  alias EveDmv.Core.Utils.DateTimeUtils
+
   @impl :logger_formatter
   def format(log_event, _opts) do
     # Handle both old and new logger formats
@@ -45,7 +47,7 @@ defmodule EveDmv.Logging.StructuredFormatter do
           case message do
             {:string, binary} when is_binary(binary) -> binary
             {:string, list} when is_list(list) -> IO.iodata_to_binary(list)
-            {format, args} -> :io_lib.format(format, args) |> IO.iodata_to_binary()
+            {format, args} -> format |> :io_lib.format(args) |> IO.iodata_to_binary()
             other -> format_message(other)
           end
 
@@ -63,38 +65,38 @@ defmodule EveDmv.Logging.StructuredFormatter do
 
   defp format_timestamp(timestamp) do
     # Convert erlang timestamp to ISO8601 format
-    try do
-      case timestamp do
-        {mega, sec, micro} ->
-          # Legacy erlang timestamp format
-          unix_timestamp = mega * 1_000_000 + sec
+    case timestamp do
+      {mega, sec, micro} ->
+        # Legacy erlang timestamp format
+        unix_timestamp = mega * 1_000_000 + sec
 
-          DateTime.from_unix!(unix_timestamp, :second)
-          |> DateTime.add(micro, :microsecond)
-          |> DateTime.to_iso8601()
+        unix_timestamp
+        |> DateTime.from_unix!(:second)
+        |> DateTimeUtils.add(micro, :microsecond)
+        |> DateTime.to_iso8601()
 
-        timestamp when is_integer(timestamp) ->
-          # Modern system timestamp
-          System.convert_time_unit(timestamp, :native, :microsecond)
-          |> DateTime.from_unix!(:microsecond)
-          |> DateTime.to_iso8601()
+      timestamp when is_integer(timestamp) ->
+        # Modern system timestamp
+        timestamp
+        |> System.convert_time_unit(:native, :microsecond)
+        |> DateTime.from_unix!(:microsecond)
+        |> DateTime.to_iso8601()
 
-        _ ->
-          # Fallback to current time
-          DateTime.utc_now() |> DateTime.to_iso8601()
-      end
-    rescue
       _ ->
-        # If all else fails, use current time
+        # Fallback to current time
         DateTime.utc_now() |> DateTime.to_iso8601()
     end
+  rescue
+    _ ->
+      # If all else fails, use current time
+      DateTime.utc_now() |> DateTime.to_iso8601()
   end
 
   defp format_message({:string, message}) when is_binary(message), do: message
   defp format_message({:string, message}) when is_list(message), do: IO.iodata_to_binary(message)
 
   defp format_message({format, args}) when is_list(format) and is_list(args) do
-    :io_lib.format(format, args) |> IO.iodata_to_binary()
+    format |> :io_lib.format(args) |> IO.iodata_to_binary()
   rescue
     _ -> "#{inspect(format)} #{inspect(args)}"
   end

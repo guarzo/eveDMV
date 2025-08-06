@@ -44,8 +44,8 @@ defmodule EveDmv.IntelligenceEngine.PluginRegistry do
         threat_assessment: EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer
       },
       corporation: %{
-        member_activity: EveDmv.Contexts.CorporationAnalysis.Analyzers.MemberActivityAnalyzer,
-        participation: EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer
+        member_activity: EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer,
+        participation: EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer
       },
       fleet: %{
         composition: EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer,

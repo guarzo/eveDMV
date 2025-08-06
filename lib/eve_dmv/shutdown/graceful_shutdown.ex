@@ -9,10 +9,20 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
   use GenServer
   alias EveDmv.Logging.StructuredLogger
   alias EveDmv.Workers.BackgroundTaskSupervisor
-  alias EveDmv.Workers.UITaskSupervisor
   alias EveDmv.Workers.RealtimeTaskSupervisor
+  alias EveDmv.Workers.UITaskSupervisor
 
   require Logger
+
+  defstruct [
+    :shutdown_reason,
+    :shutdown_started_at,
+    :current_phase,
+    :completed_phases,
+    :shutdown_timeout,
+    :shutdown_timer
+  ]
+
   # Shutdown phases with timeouts (in milliseconds)
   @shutdown_phases [
     {:stop_accepting_work, 2_000},
@@ -25,15 +35,6 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
   @total_shutdown_timeout Enum.reduce(@shutdown_phases, 0, fn {_phase, timeout}, acc ->
                             acc + timeout
                           end)
-
-  defstruct [
-    :shutdown_reason,
-    :shutdown_started_at,
-    :current_phase,
-    :completed_phases,
-    :shutdown_timeout,
-    :shutdown_timer
-  ]
 
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
@@ -233,14 +234,12 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
 
   defp setup_signal_handlers do
     # Register for SIGTERM and SIGINT signals
-    try do
-      :os.set_signal(:sigterm, :handle)
-      :os.set_signal(:sigint, :handle)
-      Process.flag(:trap_exit, true)
-    rescue
-      _ ->
-        Logger.warning("Unable to set up signal handlers (not supported on this platform)")
-    end
+    :os.set_signal(:sigterm, :handle)
+    :os.set_signal(:sigint, :handle)
+    Process.flag(:trap_exit, true)
+  rescue
+    _ ->
+      Logger.warning("Unable to set up signal handlers (not supported on this platform)")
   end
 
   defp get_phase_info(phase) do
@@ -324,64 +323,54 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
   defp stop_accepting_work(supervisor) do
     # Implementation depends on supervisor - this is a placeholder
     # Real implementation would set a flag to reject new work
-    try do
-      if Process.whereis(supervisor) do
-        GenServer.call(supervisor, :stop_accepting_work, 5000)
-      else
-        :ok
-      end
-    rescue
-      _ -> :ok
+    if Process.whereis(supervisor) do
+      GenServer.call(supervisor, :stop_accepting_work, 5000)
+    else
+      :ok
     end
+  rescue
+    _ -> :ok
   end
 
   defp drain_supervisor_tasks(supervisor, timeout) do
     # Wait for all tasks under supervisor to complete
-    try do
-      if Process.whereis(supervisor) do
-        GenServer.call(supervisor, :drain_tasks, timeout)
-      else
-        :ok
-      end
-    rescue
-      _ -> :ok
+    if Process.whereis(supervisor) do
+      GenServer.call(supervisor, :drain_tasks, timeout)
+    else
+      :ok
     end
+  rescue
+    _ -> :ok
   end
 
   defp stop_broadway_pipeline(pipeline, timeout) do
-    try do
-      if Process.whereis(pipeline) do
-        # Broadway.stop with graceful shutdown
-        GenServer.call(pipeline, :graceful_shutdown, timeout)
-      else
-        :ok
-      end
-    rescue
-      _ -> :ok
+    if Process.whereis(pipeline) do
+      # Broadway.stop with graceful shutdown
+      GenServer.call(pipeline, :graceful_shutdown, timeout)
+    else
+      :ok
     end
+  rescue
+    _ -> :ok
   end
 
   defp cleanup_sse_connections(timeout) do
     # Close SSE connections gracefully
-    try do
-      if Process.whereis(EveDmv.Intelligence.WandererSSE) do
-        GenServer.call(EveDmv.Intelligence.WandererSSE, :close_connections, timeout)
-      else
-        :ok
-      end
-    rescue
-      _ -> :ok
+    if Process.whereis(EveDmv.Intelligence.WandererSSE) do
+      GenServer.call(EveDmv.Intelligence.WandererSSE, :close_connections, timeout)
+    else
+      :ok
     end
+  rescue
+    _ -> :ok
   end
 
   defp cleanup_database_connections(_timeout) do
     # Ensure database connections are properly closed
-    try do
-      Ecto.Adapters.SQL.Sandbox.checkin(EveDmv.Repo)
-      :ok
-    rescue
-      _ -> :ok
-    end
+    Ecto.Adapters.SQL.Sandbox.checkin(EveDmv.Repo)
+    :ok
+  rescue
+    _ -> :ok
   end
 
   defp cleanup_cache_operations(_timeout) do
@@ -391,12 +380,10 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
 
   defp stop_remaining_processes(_timeout) do
     # Stop any remaining processes that weren't handled in previous phases
-    try do
-      # This would typically involve supervisor shutdown
-      :ok
-    rescue
-      _ -> {:error, :failed_to_stop_processes}
-    end
+    # This would typically involve supervisor shutdown
+    :ok
+  rescue
+    _ -> {:error, :failed_to_stop_processes}
   end
 
   defp complete_shutdown(state) do

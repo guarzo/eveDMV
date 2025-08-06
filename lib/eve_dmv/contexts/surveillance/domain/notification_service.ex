@@ -9,6 +9,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
   use GenServer
   use EveDmv.ErrorHandler
   alias EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
@@ -27,6 +28,15 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
 
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
+  end
+
+  @doc """
+  Dispatch alert notification immediately and return result.
+
+  This is a synchronous version that returns the dispatch result.
+  """
+  def dispatch_alert_notification(alert) do
+    GenServer.call(__MODULE__, {:dispatch_alert_notification, alert})
   end
 
   @doc """
@@ -100,6 +110,117 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
 
     Logger.info("NotificationService started")
     {:ok, state}
+  end
+
+  @impl GenServer
+  def handle_call({:dispatch_alert_notification, alert}, _from, state) do
+    # Dispatch notification immediately and return result
+    case ProfileRepository.get_profile(alert.profile_id) do
+      {:ok, profile} ->
+        notifications = prepare_notifications(alert, profile)
+
+        # Attempt to deliver notifications immediately
+        delivery_results =
+          Enum.map(notifications, fn notification ->
+            case deliver_notification_immediate(notification) do
+              {:ok, result} ->
+                {:ok, %{notification_id: notification.id, status: :delivered, result: result}}
+
+              {:error, reason} ->
+                {:error, %{notification_id: notification.id, status: :failed, reason: reason}}
+            end
+          end)
+
+        # Update notification history
+        new_history =
+          add_to_history(state.notification_history, alert.profile_id, delivery_results)
+
+        new_state = %{state | notification_history: new_history}
+
+        dispatch_result = %{
+          profile_id: alert.profile_id,
+          alert_id: alert.id,
+          notifications_sent: length(notifications),
+          delivery_results: delivery_results,
+          timestamp: DateTime.utc_now()
+        }
+
+        {:reply, {:ok, dispatch_result}, new_state}
+
+      {:error, reason} ->
+        Logger.error(
+          "Failed to get profile #{alert.profile_id} for notification dispatch: #{inspect(reason)}"
+        )
+
+        {:reply, {:error, :profile_not_found}, state}
+    end
+  end
+
+  def handle_call({:configure_notifications, profile_id, notification_config}, _from, state) do
+    # Validate configuration
+    case validate_notification_config(notification_config) do
+      {:ok, validated_config} ->
+        # Update profile with new notification configuration
+        case ProfileRepository.update_profile(profile_id, %{notification_config: validated_config}) do
+          {:ok, _updated_profile} ->
+            Logger.info("Updated notification config for profile #{profile_id}")
+            {:reply, {:ok, validated_config}, state}
+
+          {:error, reason} ->
+            {:reply, {:error, reason}, state}
+        end
+
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
+
+  def handle_call({:get_notification_history, profile_id, opts}, _from, state) do
+    limit = Keyword.get(opts, :limit, 50)
+    since = Keyword.get(opts, :since)
+
+    profile_history = Map.get(state.notification_history, profile_id, [])
+
+    filtered_history =
+      if since do
+        profile_history
+        |> Enum.filter(fn notification ->
+          DateTimeUtils.compare(notification.created_at, since) == :gt
+        end)
+      else
+        profile_history
+      end
+
+    limited_history = Enum.take(filtered_history, limit)
+
+    {:reply, {:ok, limited_history}, state}
+  end
+
+  def handle_call({:test_notification_delivery, profile_id}, _from, state) do
+    case ProfileRepository.get_profile(profile_id) do
+      {:ok, profile} ->
+        test_alert = create_test_alert(profile_id)
+        test_notifications = prepare_notifications(test_alert, profile)
+
+        # Send test notifications immediately (bypass rate limiting)
+        test_results =
+          Enum.map(test_notifications, fn notification ->
+            case deliver_notification(notification) do
+              {:ok, result} -> {:ok, notification.channel, result}
+              {:error, reason} -> {:error, notification.channel, reason}
+            end
+          end)
+
+        {:reply, {:ok, test_results}, state}
+
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
+
+  def handle_call({:get_notification_metrics, time_range}, _from, state) do
+    metrics = calculate_notification_metrics(state, time_range)
+    {:reply, {:ok, metrics}, state}
   end
 
   @impl GenServer
@@ -182,76 +303,6 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
   end
 
   @impl GenServer
-  def handle_call({:configure_notifications, profile_id, notification_config}, _from, state) do
-    # Validate configuration
-    case validate_notification_config(notification_config) do
-      {:ok, validated_config} ->
-        # Update profile with new notification configuration
-        case ProfileRepository.update_profile(profile_id, %{notification_config: validated_config}) do
-          {:ok, _updated_profile} ->
-            Logger.info("Updated notification config for profile #{profile_id}")
-            {:reply, {:ok, validated_config}, state}
-
-          {:error, reason} ->
-            {:reply, {:error, reason}, state}
-        end
-
-      {:error, reason} ->
-        {:reply, {:error, reason}, state}
-    end
-  end
-
-  @impl GenServer
-  def handle_call({:get_notification_history, profile_id, opts}, _from, state) do
-    limit = Keyword.get(opts, :limit, 50)
-    since = Keyword.get(opts, :since)
-
-    profile_history = Map.get(state.notification_history, profile_id, [])
-
-    filtered_history =
-      if since do
-        Enum.filter(profile_history, fn notification ->
-          DateTime.compare(notification.created_at, since) == :gt
-        end)
-      else
-        profile_history
-      end
-
-    limited_history = Enum.take(filtered_history, limit)
-
-    {:reply, {:ok, limited_history}, state}
-  end
-
-  @impl GenServer
-  def handle_call({:test_notification_delivery, profile_id}, _from, state) do
-    case ProfileRepository.get_profile(profile_id) do
-      {:ok, profile} ->
-        test_alert = create_test_alert(profile_id)
-        test_notifications = prepare_notifications(test_alert, profile)
-
-        # Send test notifications immediately (bypass rate limiting)
-        test_results =
-          Enum.map(test_notifications, fn notification ->
-            case deliver_notification(notification) do
-              {:ok, result} -> {:ok, notification.channel, result}
-              {:error, reason} -> {:error, notification.channel, reason}
-            end
-          end)
-
-        {:reply, {:ok, test_results}, state}
-
-      {:error, reason} ->
-        {:reply, {:error, reason}, state}
-    end
-  end
-
-  @impl GenServer
-  def handle_call({:get_notification_metrics, time_range}, _from, state) do
-    metrics = calculate_notification_metrics(state, time_range)
-    {:reply, {:ok, metrics}, state}
-  end
-
-  @impl GenServer
   def handle_info(:process_delivery_queue, state) do
     # Process pending notifications in delivery queue
     {processed_notifications, remaining_queue} = process_delivery_queue(state.delivery_queue)
@@ -287,7 +338,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
     new_rate_limits =
       Map.new(state.rate_limits, fn {profile_id, limits} ->
         current_time = DateTime.utc_now()
-        reset_time = DateTime.add(current_time, 3600, :second)
+        reset_time = DateTimeUtils.add(current_time, 3600, :second)
         {profile_id, %{limits | current_count: 0, reset_at: reset_time}}
       end)
 
@@ -305,9 +356,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
   defp prepare_notifications(alert, profile) do
     notification_config = profile.notification_config || %{}
 
-    enabled_channels = get_enabled_channels(notification_config)
-
-    Enum.map(enabled_channels, fn channel ->
+    get_enabled_channels(notification_config)
+    |> Enum.map(fn channel ->
       %{
         id: generate_notification_id(),
         alert_id: alert.id,
@@ -450,15 +500,15 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
       Map.get(rate_limits, profile_id, %{
         current_count: 0,
         max_per_hour: 10,
-        reset_at: DateTime.add(current_time, 3600, :second)
+        reset_at: DateTimeUtils.add(current_time, 3600, :second)
       })
 
-    if DateTime.compare(current_time, profile_limits.reset_at) == :gt do
+    if DateTimeUtils.compare(current_time, profile_limits.reset_at) == :gt do
       # Reset period has passed
       new_limits = %{
         profile_limits
         | current_count: 1,
-          reset_at: DateTime.add(current_time, 3600, :second)
+          reset_at: DateTimeUtils.add(current_time, 3600, :second)
       }
 
       {:ok, Map.put(rate_limits, profile_id, new_limits)}
@@ -646,16 +696,16 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
 
     cutoff_time =
       case time_range do
-        :last_hour -> DateTime.add(current_time, -3600, :second)
-        :last_24h -> DateTime.add(current_time, -24 * 3600, :second)
-        :last_7d -> DateTime.add(current_time, -7 * 24 * 3600, :second)
-        :last_30d -> DateTime.add(current_time, -30 * 24 * 3600, :second)
+        :last_hour -> DateTimeUtils.add(current_time, -3600, :second)
+        :last_24h -> DateTimeUtils.add(current_time, -24 * 3600, :second)
+        :last_7d -> DateTimeUtils.add(current_time, -7 * 24 * 3600, :second)
+        :last_30d -> DateTimeUtils.add(current_time, -30 * 24 * 3600, :second)
       end
 
     recent_notifications =
       state.notifications
       |> Map.values()
-      |> Enum.filter(&(DateTime.compare(&1.created_at, cutoff_time) == :gt))
+      |> Enum.filter(&(DateTimeUtils.compare(&1.created_at, cutoff_time) == :gt))
 
     channel_distribution =
       recent_notifications
@@ -665,7 +715,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
     status_distribution =
       recent_notifications
       |> Enum.group_by(& &1.status)
-      |> Map.new(fn {status, notifications} -> {status, length(notifications)} end)
+
+    Map.new(fn {status, notifications} -> {status, length(notifications)} end)
 
     %{
       time_range: time_range,
@@ -694,6 +745,43 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
   defp schedule_rate_limit_reset do
     # Reset rate limits every hour
     Process.send_after(self(), :reset_rate_limits, 60 * 60 * 1000)
+  end
+
+  # Helper functions for immediate dispatch
+
+  defp deliver_notification_immediate(notification) do
+    case notification.channel do
+      @channel_email ->
+        deliver_email_notification(notification)
+
+      @channel_webhook ->
+        deliver_webhook_notification(notification)
+
+      @channel_in_app ->
+        deliver_in_app_notification(notification)
+
+      _ ->
+        {:error, :unsupported_channel}
+    end
+  end
+
+  defp add_to_history(history, profile_id, delivery_results) do
+    existing_history = Map.get(history, profile_id, [])
+
+    history_entries =
+      Enum.map(delivery_results, fn result ->
+        %{
+          timestamp: DateTime.utc_now(),
+          result: result,
+          id: generate_notification_id()
+        }
+      end)
+
+    updated_history = history_entries ++ existing_history
+    # Keep only last 100 entries per profile
+    trimmed_history = Enum.take(updated_history, 100)
+
+    Map.put(history, profile_id, trimmed_history)
   end
 
   defp generate_notification_id do

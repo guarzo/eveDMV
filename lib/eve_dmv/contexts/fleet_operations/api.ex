@@ -14,8 +14,6 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
   alias EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator
   alias EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer
 
-  alias EveDmv.Contexts.FleetOperations.Infrastructure.EngagementCache
-
   require Logger
 
   # Fleet Analysis API
@@ -67,9 +65,11 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
 
   @doc """
   Get comprehensive fleet statistics over a time range.
+
+  Currently returns minimal statistics as fleet engagement tracking is not fully implemented.
   """
-  def get_fleet_statistics(fleet_id, time_range \\ :last_30d) do
-    EngagementCache.get_fleet_statistics(fleet_id, time_range)
+  def get_fleet_statistics(_fleet_id, _time_range \\ :last_30d) do
+    {:ok, %{total_engagements: 0, avg_effectiveness: 0.0}}
   end
 
   @doc """
@@ -170,6 +170,8 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
   @doc """
   Get fleet engagements with filtering and pagination.
 
+  Currently returns empty list as fleet engagement tracking is not fully implemented.
+
   ## Options
   - corporation_id: Filter by corporation
   - since: Return engagements since this timestamp
@@ -177,15 +179,17 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
   - min_participants: Minimum fleet size
   - limit: Maximum results to return
   """
-  def get_fleet_engagements(opts \\ []) do
-    EngagementCache.get_fleet_engagements(opts)
+  def get_fleet_engagements(_opts \\ []) do
+    {:ok, []}
   end
 
   @doc """
   Get detailed information about a specific fleet engagement.
+
+  Currently returns empty data as fleet engagement tracking is not fully implemented.
   """
-  def get_engagement_details(engagement_id) do
-    EngagementCache.get_engagement_details(engagement_id)
+  def get_engagement_details(_engagement_id) do
+    {:ok, %{}}
   end
 
   @doc """
@@ -293,13 +297,13 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
   end
 
   defp validate_participants(participants) when is_list(participants) do
-    if length(participants) > 0 do
+    if Enum.empty?(participants) do
+      {:error, :no_participants}
+    else
       case validate_participant_structure(participants) do
         :ok -> :ok
         {:error, reason} -> {:error, {:invalid_participants, reason}}
       end
-    else
-      {:error, :no_participants}
     end
   end
 
@@ -317,13 +321,13 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
   end
 
   defp validate_killmails(killmails) when is_list(killmails) do
-    if length(killmails) > 0 do
+    if Enum.empty?(killmails) do
+      {:error, :no_killmails}
+    else
       case validate_killmail_structure(killmails) do
         :ok -> :ok
         {:error, reason} -> {:error, {:invalid_killmails, reason}}
       end
-    else
-      {:error, :no_killmails}
     end
   end
 

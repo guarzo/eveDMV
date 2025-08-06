@@ -1,12 +1,16 @@
 defmodule EveDmv.Performance.RegressionDetector do
   @moduledoc """
+
   Automated performance regression detection system.
 
-  Monitors key performance metrics and alerts when performance 
+  Monitors key performance metrics and alerts when performance
   degrades beyond acceptable thresholds.
   """
 
   use GenServer
+
+  alias EveDmv.Core.Utils.DateTimeUtils
+
   require Logger
 
   # Performance thresholds
@@ -53,6 +57,7 @@ defmodule EveDmv.Performance.RegressionDetector do
 
   # Server callbacks
 
+  @impl GenServer
   def init(_opts) do
     # Create ETS tables for storing metrics
     :ets.new(@baseline_table, [:named_table, :public, :set])
@@ -76,6 +81,7 @@ defmodule EveDmv.Performance.RegressionDetector do
     {:ok, state}
   end
 
+  @impl GenServer
   def handle_cast({:record_metric, metric_name, value, metadata}, state) do
     timestamp = DateTime.utc_now()
 
@@ -91,38 +97,45 @@ defmodule EveDmv.Performance.RegressionDetector do
     {:noreply, state}
   end
 
+  @impl GenServer
   def handle_cast(:force_regression_check, state) do
     new_state = perform_regression_analysis(state)
     {:noreply, new_state}
   end
 
+  @impl GenServer
   def handle_cast(:update_baselines, state) do
     update_performance_baselines()
     {:noreply, state}
   end
 
+  @impl GenServer
   def handle_call(:get_current_metrics, _from, state) do
     metrics = get_recent_metrics()
     {:reply, metrics, state}
   end
 
+  @impl GenServer
   def handle_call(:get_baselines, _from, state) do
     baselines = Enum.into(:ets.tab2list(@baseline_table), %{})
     {:reply, baselines, state}
   end
 
+  @impl GenServer
   def handle_info(:perform_measurement, state) do
     new_state = perform_system_measurement(state)
     schedule_measurement()
     {:noreply, new_state}
   end
 
+  @impl GenServer
   def handle_info(:update_baselines, state) do
     update_performance_baselines()
     schedule_baseline_update()
     {:noreply, state}
   end
 
+  @impl GenServer
   def handle_info(_, state), do: {:noreply, state}
 
   # Private functions
@@ -349,13 +362,13 @@ defmodule EveDmv.Performance.RegressionDetector do
 
       _ ->
         # No baseline yet, store as baseline if this looks like a good value
-        if is_reasonable_baseline?(metric_name, value) do
+        if reasonable_baseline?(metric_name, value) do
           :ets.insert(@baseline_table, {metric_name, value})
         end
     end
   end
 
-  defp is_reasonable_baseline?(metric_name, value) do
+  defp reasonable_baseline?(metric_name, value) do
     cond do
       # Reasonable query time
       String.contains?(metric_name, "time") -> value > 0 and value < 30_000
@@ -417,7 +430,7 @@ defmodule EveDmv.Performance.RegressionDetector do
 
   defp get_recent_metrics do
     # Get metrics from the last hour
-    one_hour_ago = DateTime.add(DateTime.utc_now(), -3600, :second)
+    one_hour_ago = DateTimeUtils.add(DateTime.utc_now(), -3600, :second)
 
     @metrics_table
     |> :ets.tab2list()

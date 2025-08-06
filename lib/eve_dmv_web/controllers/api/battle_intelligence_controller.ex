@@ -27,15 +27,25 @@ defmodule EveDmvWeb.Api.BattleIntelligenceController do
           }
         })
 
-      {:error, :battle_not_found} ->
-        conn
-        |> put_status(:not_found)
-        |> json(%{error: %{message: "Battle not found", code: "BATTLE_NOT_FOUND"}})
+      {:error, reason} ->
+        {status, message, code} =
+          case reason do
+            :battle_not_found ->
+              {:not_found, "Battle not found", "BATTLE_NOT_FOUND"}
 
-      {:error, _} ->
+            :database_error ->
+              {:internal_server_error, "Database error occurred", "DATABASE_ERROR"}
+
+            :max_iterations_reached ->
+              {:internal_server_error, "Battle analysis timed out", "ANALYSIS_TIMEOUT"}
+
+            _ ->
+              {:internal_server_error, "Failed to load battle intelligence", "INTERNAL_ERROR"}
+          end
+
         conn
-        |> put_status(:internal_server_error)
-        |> json(%{error: %{message: "Failed to load battle intelligence", code: "INTERNAL_ERROR"}})
+        |> put_status(status)
+        |> json(%{error: %{message: message, code: code}})
     end
   end
 end

@@ -68,7 +68,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ShipStatsCalculator do
     },
     # Battleships
     battleship: %{
-      shield_hp: 10000,
+      shield_hp: 10_000,
       armor_hp: 9000,
       hull_hp: 8000,
       base_dps: 800,
@@ -140,11 +140,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ShipStatsCalculator do
 
   ## Parameters
   - ship_type_id: EVE ship type ID
-  - options: 
+  - options:
     - fitting_type: :pvp (default), :fleet, :solo, :kiting, :brawling
     - tank_type: :shield, :armor, :hull, :auto (default: auto-detect)
     - skills: :all_v (default), :average
-    
+
   ## Returns
   {:ok, %{dps: dps_stats, ehp: ehp_stats, application: application_stats}}
   """
@@ -179,7 +179,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ShipStatsCalculator do
       {:ok, comprehensive_stats}
     else
       {:error, reason} -> {:error, reason}
-      _ -> {:error, :calculation_failed}
     end
   end
 
@@ -307,11 +306,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ShipStatsCalculator do
     drone_dps = calculate_drone_dps(base_stats, ship_info, fitting_type, skills)
 
     # Total DPS
-    total_dps = turret_dps + missile_dps + drone_dps
+    base_dps = turret_dps + missile_dps + drone_dps
 
     # Apply skill modifiers
     skill_modifier = if skills == :all_v, do: 1.25, else: 1.15
-    total_dps = total_dps * skill_modifier
 
     # Apply fitting type modifiers
     fitting_modifier =
@@ -327,7 +325,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ShipStatsCalculator do
         _ -> 1.0
       end
 
-    final_dps = total_dps * fitting_modifier
+    final_dps = base_dps * skill_modifier * fitting_modifier
 
     dps_stats = %{
       total: round(final_dps),
@@ -454,7 +452,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ShipStatsCalculator do
     hull_hp = Map.get(base_stats, :hull_hp, 0)
 
     # Apply fitting bonuses based on tank type
-    {shield_hp, armor_hp} = apply_tank_modules(shield_hp, armor_hp, tank_type, fitting_type)
+    {fitted_shield_hp, fitted_armor_hp} =
+      apply_tank_modules(shield_hp, armor_hp, tank_type, fitting_type)
 
     # Calculate resistances
     shield_resists = calculate_resistances(:shield, tank_type, fitting_type)
@@ -463,14 +462,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ShipStatsCalculator do
 
     # Apply skill bonuses
     skill_bonus = if skills == :all_v, do: 1.25, else: 1.10
-    shield_hp = shield_hp * skill_bonus
-    armor_hp = armor_hp * skill_bonus
-    hull_hp = hull_hp * skill_bonus
+    skilled_shield_hp = fitted_shield_hp * skill_bonus
+    skilled_armor_hp = fitted_armor_hp * skill_bonus
+    skilled_hull_hp = hull_hp * skill_bonus
 
     # Calculate effective HP for each layer
-    shield_ehp = calculate_layer_ehp(shield_hp, shield_resists)
-    armor_ehp = calculate_layer_ehp(armor_hp, armor_resists)
-    hull_ehp = calculate_layer_ehp(hull_hp, hull_resists)
+    shield_ehp = calculate_layer_ehp(skilled_shield_hp, shield_resists)
+    armor_ehp = calculate_layer_ehp(skilled_armor_hp, armor_resists)
+    hull_ehp = calculate_layer_ehp(skilled_hull_hp, hull_resists)
 
     total_ehp = shield_ehp + armor_ehp + hull_ehp
 
@@ -813,54 +812,33 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ShipStatsCalculator do
   defp determine_common_roles(ship_info, ship_class) do
     ship_name = String.downcase(ship_info.type_name || "")
 
-    roles = []
-
-    # DPS roles
-    roles =
-      if ship_class in [:cruiser, :battlecruiser, :battleship] do
-        ["DPS" | roles]
-      else
-        roles
-      end
-
-    # Tackle roles
-    roles =
-      if ship_class == :frigate or
-           String.contains?(ship_name, ["sabre", "flycatcher", "eris", "heretic"]) do
-        ["Tackle" | roles]
-      else
-        roles
-      end
-
-    # Logistics roles
-    roles =
-      if String.contains?(ship_name, ["guardian", "basilisk", "oneiros", "scimitar"]) do
-        ["Logistics" | roles]
-      else
-        roles
-      end
-
-    # EWAR roles
-    roles =
-      if String.contains?(ship_name, ["blackbird", "falcon", "rook", "griffin", "kitsune"]) do
-        ["EWAR" | roles]
-      else
-        roles
-      end
-
-    # Command roles
-    roles =
-      if String.contains?(ship_name, ["claymore", "vulture", "damnation", "eos"]) do
-        ["Command" | roles]
-      else
-        roles
-      end
-
-    if Enum.empty?(roles) do
-      ["General Combat"]
-    else
-      roles
+    []
+    |> add_role_if(ship_class in [:cruiser, :battlecruiser, :battleship], "DPS")
+    |> add_role_if(
+      ship_class == :frigate or
+        String.contains?(ship_name, ["sabre", "flycatcher", "eris", "heretic"]),
+      "Tackle"
+    )
+    |> add_role_if(
+      String.contains?(ship_name, ["guardian", "basilisk", "oneiros", "scimitar"]),
+      "Logistics"
+    )
+    |> add_role_if(
+      String.contains?(ship_name, ["blackbird", "falcon", "rook", "griffin", "kitsune"]),
+      "EWAR"
+    )
+    |> add_role_if(
+      String.contains?(ship_name, ["claymore", "vulture", "damnation", "eos"]),
+      "Command"
+    )
+    |> case do
+      [] -> ["General Combat"]
+      roles -> roles
     end
+  end
+
+  defp add_role_if(roles, condition, role) do
+    if condition, do: [role | roles], else: roles
   end
 
   @doc """

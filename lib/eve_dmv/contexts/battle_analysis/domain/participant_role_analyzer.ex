@@ -220,7 +220,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
     ship_frequency = Enum.frequencies(activities.ship_types)
 
     primary_ship =
-      ship_frequency |> Enum.max_by(fn {_ship, count} -> count end, fn -> {nil, 0} end) |> elem(0)
+      ship_frequency
+      |> Enum.max_by(fn {_ship, count} -> count end, fn -> {nil, 0} end)
+      |> elem(0)
 
     # Categorize ships by role
     ship_roles = %{
@@ -355,48 +357,19 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
   end
 
   defp identify_characteristics(activities, ship_analysis, damage_analysis) do
-    characteristics = []
+    []
+    |> maybe_add_characteristic(:high_activity, activities.kills > 5)
+    |> maybe_add_characteristic(:survivor, activities.losses == 0 and activities.kills > 0)
+    |> maybe_add_characteristic(:heavy_damage, damage_analysis.total_damage_dealt > 10_000)
+    |> maybe_add_characteristic(:versatile, ship_analysis.ship_diversity > 2)
+    |> maybe_add_characteristic(:finisher, damage_analysis.final_blow_ratio > 0.5)
+  end
 
-    # High activity
-    characteristics =
-      if activities.kills > 5 do
-        [:high_activity | characteristics]
-      else
-        characteristics
-      end
+  defp maybe_add_characteristic(characteristics, characteristic, true) do
+    [characteristic | characteristics]
+  end
 
-    # Survivability
-    characteristics =
-      if activities.losses == 0 and activities.kills > 0 do
-        [:survivor | characteristics]
-      else
-        characteristics
-      end
-
-    # Damage dealer
-    characteristics =
-      if damage_analysis.total_damage_dealt > 10000 do
-        [:heavy_damage | characteristics]
-      else
-        characteristics
-      end
-
-    # Versatile (multiple ship types)
-    characteristics =
-      if ship_analysis.ship_diversity > 2 do
-        [:versatile | characteristics]
-      else
-        characteristics
-      end
-
-    # Final blow specialist
-    characteristics =
-      if damage_analysis.final_blow_ratio > 0.5 do
-        [:finisher | characteristics]
-      else
-        characteristics
-      end
-
+  defp maybe_add_characteristic(characteristics, _characteristic, false) do
     characteristics
   end
 
@@ -427,8 +400,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
       end)
       |> Enum.take(3)
 
-    potential_commanders
-    |> Enum.map(fn participant ->
+    Enum.map(potential_commanders, fn participant ->
       %{
         character_id: participant.character_id,
         character_name: participant.character_name,
@@ -465,34 +437,60 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
   # Ship role classification helpers
 
   defp count_ships_by_role(ship_types, role) do
-    ship_types
-    |> Enum.count(&(classify_ship_role(&1) == role))
+    Enum.count(ship_types, &(classify_ship_role(&1) == role))
   end
 
   defp classify_ship_role(ship_type_id) do
     case ship_type_id do
       # Logistics ships
+      # Scimitar
+      11_978 -> :logistics
       # Scythe
-      11978 -> :logistics
-      # Scythe
-      11129 -> :logistics
-      # Osprey
-      11985 -> :logistics
+      11_129 -> :logistics
+      # Basilisk
+      11_985 -> :logistics
+      # Guardian
+      11_987 -> :logistics
+      # Oneiros
+      11_989 -> :logistics
+      # EWAR ships
+      # Blackbird
+      632 -> :ewar
+      # Crucifier
+      2161 -> :ewar
+      # Griffin
+      584 -> :ewar
+      # Maulus
+      609 -> :ewar
+      # Kitsune
+      11_174 -> :ewar
+      # Rook
+      11_957 -> :ewar
+      # Falcon
+      11_959 -> :ewar
+      # Arazu
+      11_969 -> :ewar
+      # Lachesis
+      11_971 -> :ewar
+      # Curse
+      11_965 -> :ewar
+      # Pilgrim
+      11_963 -> :ewar
       # DPS ships
       # Rifter
       587 -> :dps
       # Punisher
       588 -> :dps
       # Cyclone
-      17918 -> :dps
+      17_918 -> :dps
       # Tackle ships
       # Tormentor (often used for tackle)
       15 -> :tackle
       # Command ships
       # Sleipnir
-      22474 -> :command
+      22_474 -> :command
       # Damnation
-      22546 -> :command
+      22_546 -> :command
       # Scout ships
       # Capsule
       670 -> :scout
@@ -630,32 +628,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer do
   end
 
   defp analyze_command_indicators(participant, _killmails) do
-    indicators = []
+    []
+    |> maybe_add_indicator(:command_ship, participant.primary_role == :command)
+    |> maybe_add_indicator(:high_activity, participant.activity_summary.total_kills > 5)
+    |> maybe_add_indicator(:survived_battle, participant.activity_summary.total_losses == 0)
+  end
 
-    # Command ship usage
-    indicators =
-      if participant.primary_role == :command do
-        [:command_ship | indicators]
-      else
-        indicators
-      end
+  defp maybe_add_indicator(indicators, indicator, true) do
+    [indicator | indicators]
+  end
 
-    # High activity
-    indicators =
-      if participant.activity_summary.total_kills > 5 do
-        [:high_activity | indicators]
-      else
-        indicators
-      end
-
-    # Survivability
-    indicators =
-      if participant.activity_summary.total_losses == 0 do
-        [:survived_battle | indicators]
-      else
-        indicators
-      end
-
+  defp maybe_add_indicator(indicators, _indicator, false) do
     indicators
   end
 end

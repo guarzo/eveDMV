@@ -281,15 +281,15 @@ defmodule EveDmv.Surveillance.Matching.IndexManager do
 
   defp find_candidates_by_system(systems) do
     Enum.flat_map(systems, fn system_id ->
-      system_lookup = :ets.lookup(@index_by_system, system_id)
-      Enum.map(system_lookup, fn {_system, profile_id} -> profile_id end)
+      :ets.lookup(@index_by_system, system_id)
+      |> Enum.map(fn {_system, profile_id} -> profile_id end)
     end)
   end
 
   defp find_candidates_by_ship(ships) do
     Enum.flat_map(ships, fn ship_id ->
-      ship_lookup = :ets.lookup(@index_by_ship, ship_id)
-      Enum.map(ship_lookup, fn {_ship, profile_id} -> profile_id end)
+      :ets.lookup(@index_by_ship, ship_id)
+      |> Enum.map(fn {_ship, profile_id} -> profile_id end)
     end)
   end
 
@@ -310,8 +310,8 @@ defmodule EveDmv.Surveillance.Matching.IndexManager do
 
   defp find_candidates_by_tag(tags) do
     Enum.flat_map(tags, fn tag ->
-      lookup_results = :ets.lookup(@index_by_tag, tag)
-      Enum.map(lookup_results, fn {_tag, profile_id} -> profile_id end)
+      :ets.lookup(@index_by_tag, tag)
+      |> Enum.map(fn {_tag, profile_id} -> profile_id end)
     end)
   end
 end

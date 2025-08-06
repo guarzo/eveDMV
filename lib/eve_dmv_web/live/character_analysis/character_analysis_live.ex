@@ -8,17 +8,16 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
 
   use EveDmvWeb, :live_view
 
-  alias EveDmv.Cache.AnalysisCache
   alias EveDmv.Analytics.BattleDetector
+  alias EveDmv.Cache.AnalysisCache
   alias EveDmv.Integrations.ShipIntelligenceBridge
-  alias EveDmvWeb.CharacterAnalysis.Helpers.{CharacterDataLoader, DisplayFormatters}
+  alias EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader
+  alias EveDmvWeb.CharacterAnalysis.Helpers.DisplayFormatters
 
-  alias EveDmvWeb.CharacterAnalysis.Components.{
-    CharacterHeaderComponent,
-    IntelligenceSummaryComponent,
-    StatisticsPanelComponent,
-    ActivityFeedComponent
-  }
+  alias EveDmvWeb.CharacterAnalysis.Components.ActivityFeedComponent
+  alias EveDmvWeb.CharacterAnalysis.Components.CharacterHeaderComponent
+  alias EveDmvWeb.CharacterAnalysis.Components.IntelligenceSummaryComponent
+  alias EveDmvWeb.CharacterAnalysis.Components.StatisticsPanelComponent
 
   @impl Phoenix.LiveView
   def mount(%{"character_id" => character_id}, _session, socket) do
@@ -186,7 +185,7 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
         </button>
       </div>
     </div>
-      
+
       <%= if @loading do %>
         <div class="bg-gray-800 rounded-lg p-6">
           <div class="flex items-center space-x-3">
@@ -195,14 +194,14 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
           </div>
         </div>
       <% end %>
-      
+
       <%= if @error do %>
         <div class="bg-red-900 border border-red-600 rounded-lg p-6">
           <h3 class="text-red-300 font-semibold mb-2">Analysis Error</h3>
           <p class="text-red-400">Error: <%= @error %></p>
         </div>
       <% end %>
-      
+
       <%= if @analysis do %>
         <.live_component
           module={CharacterHeaderComponent}
@@ -211,26 +210,26 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
           analysis={@analysis}
           intelligence={@intelligence}
         />
-        
+
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <.live_component
             module={IntelligenceSummaryComponent}
             id="intelligence-summary"
             analysis={@analysis}
           />
-          
+
           <.live_component
             module={StatisticsPanelComponent}
             id="statistics-panel"
             analysis={@analysis}
           />
-          
+
           <.live_component
             module={ActivityFeedComponent}
             id="activity-feed"
             analysis={@analysis}
           />
-          
+
           <!-- Additional components would go here -->
         </div>
       <% end %>
@@ -279,60 +278,58 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
   end
 
   defp generate_character_csv_export(assigns) do
-    try do
-      headers = [
-        "character_id",
-        "analysis_date",
-        "total_kills",
-        "total_losses",
-        "efficiency_ratio",
-        "isk_destroyed",
-        "isk_lost",
-        "avg_ship_value",
-        "favorite_ship",
-        "primary_role",
-        "threat_score",
-        "activity_level",
-        "preferred_engagement_range"
-      ]
+    headers = [
+      "character_id",
+      "analysis_date",
+      "total_kills",
+      "total_losses",
+      "efficiency_ratio",
+      "isk_destroyed",
+      "isk_lost",
+      "avg_ship_value",
+      "favorite_ship",
+      "primary_role",
+      "threat_score",
+      "activity_level",
+      "preferred_engagement_range"
+    ]
 
-      analysis = assigns.analysis
-      intelligence = Map.get(assigns, :intelligence, %{})
-      ship_specialization = Map.get(assigns, :ship_specialization, %{})
+    analysis = assigns.analysis
+    intelligence = Map.get(assigns, :intelligence, %{})
+    ship_specialization = Map.get(assigns, :ship_specialization, %{})
 
-      row = [
-        assigns.character_id,
-        Date.utc_today(),
-        Map.get(analysis, :total_kills, 0),
-        Map.get(analysis, :total_losses, 0),
-        Map.get(analysis, :efficiency_ratio, 0.0),
-        Map.get(analysis, :isk_destroyed, 0),
-        Map.get(analysis, :isk_lost, 0),
-        Map.get(analysis, :average_ship_value, 0),
-        ship_specialization
-        |> get_in([:preferred_ships])
-        |> List.first()
-        |> format_ship_name(),
-        Map.get(intelligence, :primary_role, "Unknown"),
-        Map.get(intelligence, :threat_score, 0),
-        Map.get(intelligence, :activity_level, "Unknown"),
-        Map.get(intelligence, :engagement_range, "Unknown")
-      ]
+    row = [
+      assigns.character_id,
+      Date.utc_today(),
+      Map.get(analysis, :total_kills, 0),
+      Map.get(analysis, :total_losses, 0),
+      Map.get(analysis, :efficiency_ratio, 0.0),
+      Map.get(analysis, :isk_destroyed, 0),
+      Map.get(analysis, :isk_lost, 0),
+      Map.get(analysis, :average_ship_value, 0),
+      ship_specialization
+      |> get_in([:preferred_ships])
+      |> List.first()
+      |> format_ship_name(),
+      Map.get(intelligence, :primary_role, "Unknown"),
+      Map.get(intelligence, :threat_score, 0),
+      Map.get(intelligence, :activity_level, "Unknown"),
+      Map.get(intelligence, :engagement_range, "Unknown")
+    ]
 
-      content =
-        Enum.map_join([headers, row], "\n", fn row ->
-          row
-          |> Enum.map(&to_string/1)
-          |> Enum.map_join(",", &escape_csv_field/1)
-        end)
+    content =
+      Enum.map_join([headers, row], "\n", fn row ->
+        row
+        |> Enum.map(&to_string/1)
+        |> Enum.map_join(",", &escape_csv_field/1)
+      end)
 
-      {:ok, content}
-    rescue
-      error ->
-        require Logger
-        Logger.error("Character CSV export failed: #{inspect(error)}")
-        {:error, "CSV generation failed"}
-    end
+    {:ok, content}
+  rescue
+    error ->
+      require Logger
+      Logger.error("Character CSV export failed: #{inspect(error)}")
+      {:error, "CSV generation failed"}
   end
 
   defp format_ship_name(nil), do: "Unknown"
