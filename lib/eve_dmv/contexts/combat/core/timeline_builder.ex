@@ -47,8 +47,8 @@ defmodule EveDmv.Contexts.Combat.Core.TimelineBuilder do
   Get battle phases from a timeline.
   """
   def get_battle_phases(battle_id) do
-    with {:ok, timeline} <- build_battle_timeline(battle_id) do
-      {:ok, timeline.phases}
+    case build_battle_timeline(battle_id) do
+      error -> error
     end
   end
 

@@ -386,6 +386,17 @@ defmodule EveDmv.StaticData.ShipAttributes do
     end
   end
 
+  # Custom functions for test compatibility
+  def get_by_type_id(type_id) when is_integer(type_id) do
+    case __MODULE__
+         |> Ash.Query.for_read(:get_by_type_id, %{type_id: type_id})
+         |> EveDmv.Api.read() do
+      {:ok, [attributes]} -> {:ok, attributes}
+      {:ok, []} -> {:error, :not_found}
+      {:error, error} -> {:error, error}
+    end
+  end
+
   # Authorization policies
   policies do
     # Public read access for ship attribute data

@@ -378,6 +378,17 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient do
     }
   end
 
+  defp parse_price_response(_body) do
+    # Fallback for unexpected response format (e.g., HTML error pages)
+    %{
+      sell_price: 0.0,
+      buy_price: 0.0,
+      sell_volume: 0,
+      buy_volume: 0,
+      updated_at: DateTime.utc_now()
+    }
+  end
+
   defp parse_bulk_price_response(body) when is_map(body) do
     body
     |> Enum.map(fn {type_id_str, price_data} ->

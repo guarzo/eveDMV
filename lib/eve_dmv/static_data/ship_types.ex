@@ -439,7 +439,9 @@ defmodule EveDmv.StaticData.ShipTypes do
   Returns real calculated values from ship_attributes table.
   """
   def get_ship_attributes(type_id) when is_integer(type_id) do
-    case Api.read(ShipAttributes, action: :get_by_type_id, type_id: type_id) do
+    case ShipAttributes
+         |> Ash.Query.for_read(:get_by_type_id, %{type_id: type_id})
+         |> Api.read() do
       {:ok, [attributes]} -> {:ok, attributes}
       {:ok, []} -> {:error, :not_found}
       {:error, error} -> {:error, error}
@@ -454,8 +456,10 @@ defmodule EveDmv.StaticData.ShipTypes do
   def get_ship_dps(type_id) when is_integer(type_id) do
     case get_ship_attributes(type_id) do
       {:ok, attributes} ->
-        dps = attributes.calculated_dps || 0.0
-        {:ok, dps}
+        dps = attributes.calculated_dps || Decimal.new("0.0")
+        # Convert Decimal to Float for compatibility
+        dps_float = if is_struct(dps, Decimal), do: Decimal.to_float(dps), else: dps
+        {:ok, dps_float}
 
       {:error, :not_found} ->
         # Fallback: estimate DPS from ship classification
@@ -474,8 +478,10 @@ defmodule EveDmv.StaticData.ShipTypes do
   def get_ship_ehp(type_id) when is_integer(type_id) do
     case get_ship_attributes(type_id) do
       {:ok, attributes} ->
-        ehp = attributes.calculated_ehp || 0.0
-        {:ok, ehp}
+        ehp = attributes.calculated_ehp || Decimal.new("0.0")
+        # Convert Decimal to Float for compatibility
+        ehp_float = if is_struct(ehp, Decimal), do: Decimal.to_float(ehp), else: ehp
+        {:ok, ehp_float}
 
       {:error, :not_found} ->
         # Fallback: estimate EHP from ship classification
@@ -541,7 +547,9 @@ defmodule EveDmv.StaticData.ShipTypes do
   Get ships by role classification.
   """
   def get_ships_by_role(role) when is_binary(role) do
-    case Api.read(ShipAttributes, action: :list_by_role, role_classification: role) do
+    case ShipAttributes
+         |> Ash.Query.for_read(:list_by_role, %{role_classification: role})
+         |> Api.read() do
       {:ok, ships} -> {:ok, ships}
       {:error, error} -> {:error, error}
     end
@@ -551,7 +559,9 @@ defmodule EveDmv.StaticData.ShipTypes do
   Get top DPS ships for fleet composition optimization.
   """
   def get_high_dps_ships(min_dps \\ 500.0) do
-    case Api.read(ShipAttributes, action: :high_dps_ships, min_dps: min_dps) do
+    case ShipAttributes
+         |> Ash.Query.for_read(:high_dps_ships, %{min_dps: min_dps})
+         |> Api.read() do
       {:ok, ships} -> {:ok, ships}
       {:error, error} -> {:error, error}
     end
@@ -561,7 +571,9 @@ defmodule EveDmv.StaticData.ShipTypes do
   Get tank-focused ships for fleet composition optimization.
   """
   def get_tank_ships(min_ehp \\ 50_000.0) do
-    case Api.read(ShipAttributes, action: :tank_ships, min_ehp: min_ehp) do
+    case ShipAttributes
+         |> Ash.Query.for_read(:tank_ships, %{min_ehp: min_ehp})
+         |> Api.read() do
       {:ok, ships} -> {:ok, ships}
       {:error, error} -> {:error, error}
     end
@@ -571,26 +583,28 @@ defmodule EveDmv.StaticData.ShipTypes do
 
   defp estimate_dps_from_classification(type_id) do
     case classify_ship_type(type_id) do
-      :frigate -> {:ok, 150.0}
+      :frigate -> {:ok, 200.0}
       :destroyer -> {:ok, 250.0}
-      :cruiser -> {:ok, 400.0}
+      :cruiser -> {:ok, 600.0}
       :battlecruiser -> {:ok, 600.0}
       :battleship -> {:ok, 800.0}
       :capital -> {:ok, 2000.0}
       :supercapital -> {:ok, 5000.0}
+      :unknown -> {:error, :not_found}
       _ -> {:ok, 200.0}
     end
   end
 
   defp estimate_ehp_from_classification(type_id) do
     case classify_ship_type(type_id) do
-      :frigate -> {:ok, 3000.0}
+      :frigate -> {:ok, 15_000.0}
       :destroyer -> {:ok, 5000.0}
       :cruiser -> {:ok, 12_000.0}
       :battlecruiser -> {:ok, 20_000.0}
       :battleship -> {:ok, 35_000.0}
       :capital -> {:ok, 200_000.0}
       :supercapital -> {:ok, 500_000.0}
+      :unknown -> {:error, :not_found}
       _ -> {:ok, 10_000.0}
     end
   end

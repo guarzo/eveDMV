@@ -106,7 +106,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   @impl GenServer
   def init(_opts) do
     # Subscribe to killmail events for real-time analysis
-    Phoenix.PubSub.subscribe(EveDmv.PubSub, "killmails:enriched")
+    # Handle case where PubSub isn't available (e.g., in tests)
+    try do
+      Phoenix.PubSub.subscribe(EveDmv.PubSub, "killmails:enriched")
+    rescue
+      ArgumentError ->
+        # PubSub not available, continue without subscription
+        :ok
+    end
 
     state = %{
       # system_id -> engagement_data
@@ -139,12 +146,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
 
           {:ok, killmails} ->
             with {:ok, timeline} <- BattleTimelineBuilder.construct_battle_timeline(killmails),
-                 {:ok, participants} <-
-                   {:ok, ParticipantExtractor.extract_battle_participants(killmails)},
+                 participants = ParticipantExtractor.extract_battle_participants(killmails),
                  {:ok, enhanced_participants} <- enhance_participant_analysis(participants),
                  {:ok, fleet_analysis} <-
                    FleetCompositionAnalyzer.analyze_composition(killmails),
-                 {:ok, tactical_analysis} <-
+                 tactical_analysis =
                    TacticalAnalysisEngine.perform_tactical_analysis(
                      timeline,
                      enhanced_participants
@@ -215,7 +221,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
               {:reply, {:ok, analysis}, new_state}
             else
               {:error, _reason} = error -> {:reply, error, state}
-              other -> {:reply, {:error, {:analysis_failed, other}}, state}
             end
         end
 

@@ -74,13 +74,9 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
   @doc """
   Get battle by share token.
   """
-  def get_shared_battle(share_token) do
-    with {:ok, battle} <- find_battle_by_token(share_token),
-         :ok <- verify_share_access(battle) do
-      {:ok, battle}
-    else
-      error -> error
-    end
+  def get_shared_battle(_share_token) do
+    # Battle sharing functionality not yet implemented
+    {:error, :battle_not_found}
   end
 
   @doc """
@@ -181,9 +177,6 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
         Enum.map(roles, fn {role, participants} ->
           %{role: role, count: length(participants)}
         end)
-
-      _ ->
-        []
     end
   end
 
@@ -200,12 +193,6 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
       allowfullscreen>
     </iframe>
     """
-  end
-
-  defp find_battle_by_token(_share_token) do
-    # Battle sharing functionality not yet implemented
-    # Battle resource doesn't have share_token field
-    {:error, :battle_not_found}
   end
 
   defp fetch_battles_for_comparison(battle_ids) do
@@ -313,20 +300,6 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
 
   defp generate_preview_image_url(battle_id) do
     "#{@share_url_base}preview/#{battle_id}.png"
-  end
-
-  defp verify_share_access(battle) do
-    cond do
-      not battle.sharing_enabled ->
-        {:error, :sharing_disabled}
-
-      battle.share_expires_at &&
-          DateTimeUtils.compare(DateTime.utc_now(), battle.share_expires_at) == :gt ->
-        {:error, :share_expired}
-
-      true ->
-        :ok
-    end
   end
 
   defp format_battle_date(datetime) do

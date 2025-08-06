@@ -45,8 +45,29 @@ defmodule EveDmv.DataCase do
   Sets up the sandbox based on the test tags.
   """
   def setup_sandbox(tags) do
+    # Wait for repo to be fully registered before starting sandbox owner
+    wait_for_repo_registration()
+
     pid = Sandbox.start_owner!(EveDmv.Repo, shared: not tags[:async])
     on_exit(fn -> Sandbox.stop_owner(pid) end)
+  end
+
+  # Wait for repo to be properly registered in the Ecto registry
+  defp wait_for_repo_registration(attempts \\ 0, max_attempts \\ 30) do
+    if attempts >= max_attempts do
+      raise "Repo registration timeout after #{max_attempts} attempts"
+    end
+
+    case GenServer.whereis(EveDmv.Repo) do
+      nil ->
+        Process.sleep(100)
+        wait_for_repo_registration(attempts + 1, max_attempts)
+
+      _pid ->
+        # Repo is running, give it a moment to be fully registered
+        Process.sleep(25)
+        :ok
+    end
   end
 
   @doc """

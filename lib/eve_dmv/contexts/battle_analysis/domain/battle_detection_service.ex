@@ -11,6 +11,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
 
   alias EveDmv.Api
   alias EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor
+  alias EveDmv.Contexts.MarketIntelligence.Domain.ValuationService
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Market.PriceService
 
@@ -501,9 +502,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
   defp calculate_total_isk_destroyed_fallback(killmails) do
     killmails
     |> Enum.map(fn killmail ->
-      case PriceService.calculate_killmail_value(killmail) do
-        %{total_value: value} when is_number(value) -> value
-        %{} -> 0.0
+      case ValuationService.calculate_killmail_value(killmail) do
+        {:ok, %{total_value: value}} when is_number(value) and value > 0 -> value
         _ -> 0.0
       end
     end)

@@ -4,28 +4,28 @@
 defmodule UnusedFunctionRemover do
   def run do
     IO.puts("🧹 Removing unused functions from Elixir codebase...")
-    
+
     # Parse dialyzer output
     unused_functions = parse_dialyzer_output()
     IO.puts("Found #{Enum.count(unused_functions)} unused functions")
-    
+
     # Group by file
     by_file = Enum.group_by(unused_functions, fn {file, _, _, _} -> file end)
-    
+
     # Create backup directory
     backup_dir = "/tmp/unused_backup_#{:os.system_time(:second)}"
     File.mkdir_p!(backup_dir)
     IO.puts("Backup directory: #{backup_dir}")
-    
+
     # Process each file
     Enum.each(by_file, fn {file, functions} ->
       process_file(file, functions, backup_dir)
     end)
-    
+
     IO.puts("\n✅ Removal complete!")
     IO.puts("Run 'mix compile --warnings-as-errors' to verify")
   end
-  
+
   defp parse_dialyzer_output do
     File.read!("/workspace/dialyzer.txt")
     |> String.split("\n")
@@ -39,7 +39,7 @@ defmodule UnusedFunctionRemover do
     end)
     |> Enum.reject(&is_nil/1)
   end
-  
+
   defp parse_unused_line(location_line, message_line) do
     # Parse location line: "file.ex:123:unused_fun"
     case String.split(location_line, ":") do
@@ -55,47 +55,47 @@ defmodule UnusedFunctionRemover do
         nil
     end
   end
-  
+
   defp process_file(file, functions, backup_dir) do
     unless File.exists?(file) do
       IO.puts("Skipping non-existent file: #{file}")
       :ok
     else
-    
+
     IO.puts("\nProcessing: #{file}")
     IO.puts("  Functions to remove: #{length(functions)}")
-    
+
     # Backup file
     File.cp!(file, Path.join(backup_dir, Path.basename(file)))
-    
+
     # Read file content
     content = File.read!(file)
     lines = String.split(content, "\n")
-    
+
     # Build a set of functions to remove
-    functions_to_remove = MapSet.new(functions, fn {_, _, name, arity} -> 
+    functions_to_remove = MapSet.new(functions, fn {_, _, name, arity} ->
       {name, arity}
     end)
-    
+
     # Process lines
     {new_lines, _} = remove_functions(lines, functions_to_remove)
-    
+
     # Write back
     new_content = Enum.join(new_lines, "\n")
     File.write!(file, new_content)
-    
+
     IO.puts("  ✓ Processed #{file}")
     end
   end
-  
+
   defp remove_functions(lines, functions_to_remove) do
     remove_functions(lines, functions_to_remove, [], :normal)
   end
-  
+
   defp remove_functions([], _functions, acc, state) do
     {Enum.reverse(acc), state}
   end
-  
+
   defp remove_functions([line | rest], functions, acc, :normal) do
     cond do
       # Check for function definition
@@ -119,16 +119,16 @@ defmodule UnusedFunctionRemover do
             # Couldn't determine arity, keep it
             remove_functions(rest, functions, [line | acc], :normal)
         end
-      
+
       # Skip empty lines after removals to avoid excessive whitespace
       String.trim(line) == "" && match?(["" | _], acc) ->
         remove_functions(rest, functions, acc, :normal)
-      
+
       true ->
         remove_functions(rest, functions, [line | acc], :normal)
     end
   end
-  
+
   defp detect_function_arity(first_line, _rest_lines) do
     # Simple detection - count parameters
     if String.contains?(first_line, "()") do
@@ -149,39 +149,39 @@ defmodule UnusedFunctionRemover do
       end
     end
   end
-  
+
   defp skip_function_body(lines, already_consumed) do
     # Skip lines that were part of the function signature
     lines = Enum.drop(lines, already_consumed)
-    
+
     # Find the end of the function
     case find_function_end(lines, 0) do
       {:ok, n} -> Enum.drop(lines, n + 1)
       :error -> lines
     end
   end
-  
+
   defp find_function_end(lines, count) do
     find_function_end(lines, count, nil)
   end
-  
+
   defp find_function_end([], count, _indent) do
     {:ok, count}
   end
-  
+
   defp find_function_end([line | rest], count, base_indent) do
     trimmed = String.trim_leading(line)
     current_indent = String.length(line) - String.length(trimmed)
-    
+
     cond do
       # Empty line
       trimmed == "" ->
         find_function_end(rest, count + 1, base_indent)
-      
+
       # First non-empty line sets the base indent
       base_indent == nil ->
         find_function_end(rest, count + 1, current_indent)
-      
+
       # Found end at same or lower indentation
       current_indent <= base_indent && Regex.match?(~r/^(defp?|end)\s/, trimmed) ->
         if trimmed == "end" && current_indent == base_indent do
@@ -189,12 +189,12 @@ defmodule UnusedFunctionRemover do
         else
           {:ok, count - 1}
         end
-      
+
       true ->
         find_function_end(rest, count + 1, base_indent)
     end
   end
-  
+
   defp remove_trailing_docs(acc) do
     acc
     |> Enum.reverse()

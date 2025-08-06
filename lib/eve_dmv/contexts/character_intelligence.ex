@@ -50,6 +50,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
           | :api_error
           | :timeout
           | :invalid_character_id
+          | :feature_not_implemented
 
   @doc """
   Analyzes a character's threat level based on their combat history.
@@ -89,12 +90,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   - Specialist
   - Opportunist
   """
-  @spec detect_behavioral_patterns(integer()) :: {:error, intelligence_error()}
-  def detect_behavioral_patterns(character_id) do
+  @spec detect_behavioral_patterns(integer()) :: {:error, :feature_not_implemented}
+  def detect_behavioral_patterns(_character_id) do
     # Since ThreatScoringEngine includes behavioral analysis in the threat score,
-    # we'll extract it from there
-    {:error, reason} = analyze_character_threat(character_id)
-    {:error, reason}
+    # we'll extract it from there in the future
+    {:error, :feature_not_implemented}
   end
 
   @doc """
@@ -148,13 +148,22 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Gets a comprehensive intelligence report for a character.
   Combines threat scoring, behavioral analysis, and performance metrics.
   """
-  @spec get_character_intelligence_report(integer()) :: {:error, intelligence_error()}
+  @spec get_character_intelligence_report(integer()) :: {:ok, map()} | {:error, atom()}
   def get_character_intelligence_report(character_id) do
-    # Since analyze_character_threat and detect_behavioral_patterns always fail,
-    # this function always returns an error
-    {:error, reason} = analyze_character_threat(character_id)
-    Logger.error("Failed to get character intelligence report: #{inspect(reason)}")
-    {:error, reason}
+    case analyze_character_threat(character_id) do
+      {:ok, threat_data} ->
+        {:ok,
+         %{
+           character_id: character_id,
+           threat_analysis: threat_data,
+           # Not yet implemented
+           behavioral_patterns: nil,
+           report_generated_at: DateTime.utc_now()
+         }}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   ## Ship Intelligence Integration
@@ -162,8 +171,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Get comprehensive ship intelligence for a character.
   Returns ship specialization, role preferences, and tactical insights.
   """
-  @spec get_character_ship_intelligence(integer()) ::
-          {:ok, map()}
+  @spec get_character_ship_intelligence(integer()) :: {:ok, map()}
   def get_character_ship_intelligence(character_id) do
     ShipIntelligenceBridge.calculate_ship_specialization(character_id)
   end

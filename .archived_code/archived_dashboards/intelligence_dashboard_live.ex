@@ -164,7 +164,7 @@ defmodule EveDmvWeb.IntelligenceDashboardLive do
         # Start comprehensive analysis asynchronously
         Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
           {:ok, analysis} = IntelligenceCoordinator.analyze_character_comprehensive(character_id)
-          
+
           # Broadcast update to dashboard
           Phoenix.PubSub.broadcast(
             EveDmv.PubSub,

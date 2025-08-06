@@ -82,9 +82,6 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
 
       {:error, reason} ->
         {:error, reason}
-
-      _ ->
-        {:error, :member_data_unavailable}
     end
   end
 
@@ -107,9 +104,6 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
 
       {:error, reason} ->
         {:error, reason}
-
-      _ ->
-        {:error, :members_unavailable}
     end
   end
 
@@ -131,9 +125,6 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
 
       {:error, reason} ->
         {:error, reason}
-
-      _ ->
-        {:error, :analysis_failed}
     end
   end
 

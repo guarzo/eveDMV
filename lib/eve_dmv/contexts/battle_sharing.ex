@@ -248,9 +248,6 @@ defmodule EveDmv.Contexts.BattleSharing do
   defp get_battle_report_from_curator(report_id) do
     # Try to fetch actual battle report from the curator service
     case fetch_battle_report_from_service(report_id) do
-      {:ok, report} ->
-        {:ok, report}
-
       {:error, :not_found} ->
         {:error, :report_not_found}
 

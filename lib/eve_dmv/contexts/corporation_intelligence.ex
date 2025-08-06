@@ -131,7 +131,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
     member_threats =
       case analyze_top_member_threats(corporation_id) do
         {:ok, threats} -> threats
-        _ -> %{top_threats: [], average_threat_score: 0, threat_distribution: %{}}
+        {:error, _reason} -> %{top_threats: [], average_threat_score: 0, threat_distribution: %{}}
       end
 
     activity_metrics =
@@ -139,7 +139,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
         {:ok, metrics} ->
           metrics
 
-        _ ->
+        {:error, _reason} ->
           %{
             active_members: 0,
             kills_per_day: 0,

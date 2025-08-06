@@ -125,7 +125,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.AdvancedFleetAnalyzer do
       {:ok, matchup}
     else
       {:error, reason} -> {:error, reason}
-      _ -> {:error, :analysis_failed}
     end
   end
 

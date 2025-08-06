@@ -99,10 +99,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.ProfileService do
           {:error, :expired}
         end
 
-      {:error, :not_found} ->
-        {:error, :not_found}
-
-      _ ->
+      :miss ->
         {:error, :not_found}
     end
   end

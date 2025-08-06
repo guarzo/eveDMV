@@ -1161,6 +1161,4 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
       _ -> :unpredictable
     end
   end
-
-  defp determine_timezone_pattern(_), do: :unknown
 end

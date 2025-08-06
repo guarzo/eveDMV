@@ -132,8 +132,8 @@ defmodule EveDmv.Contexts.Combat.Services.ZkillboardImporter do
       ["related", system_id, timestamp] ->
         {:ok, :related, %{system_id: system_id, timestamp: timestamp}}
 
-      ["br", _battle_id | _] ->
-        {:ok, :battle_report, %{url: url}}
+      ["br", battle_id | _] ->
+        {:ok, :battle_report, %{battle_report_id: battle_id}}
 
       _ ->
         {:error, :invalid_zkillboard_url}
@@ -383,11 +383,12 @@ defmodule EveDmv.Contexts.Combat.Services.ZkillboardImporter do
   end
 
   defp enrich_battle_data(_battle, zkb_data) do
-    %{
-      zkillboard_metadata: zkb_data,
-      enriched_at: DateTime.utc_now(),
-      tags: extract_battle_tags(zkb_data)
-    }
+    {:ok,
+     %{
+       zkillboard_metadata: zkb_data,
+       enriched_at: DateTime.utc_now(),
+       tags: extract_battle_tags(zkb_data)
+     }}
   end
 
   defp extract_battle_tags(zkb_data) do

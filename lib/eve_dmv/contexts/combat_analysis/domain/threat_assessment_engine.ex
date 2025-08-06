@@ -81,10 +81,6 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
       {:error, :not_found} ->
         Logger.debug("No cached assessment found, performing new assessment")
         assess_threat(entity_id, entity_type, options)
-
-      error ->
-        Logger.warning("Cache error, falling back to new assessment: #{inspect(error)}")
-        assess_threat(entity_id, entity_type, options)
     end
   end
 
@@ -190,6 +186,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
              evictions: non_neg_integer(),
              uptime_hours: non_neg_integer()
            }}
+          | {:error, atom()}
   def get_cache_statistics do
     # Placeholder for cache statistics
     stats = %{
@@ -363,23 +360,19 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine do
     end
   end
 
-  defp generate_recommendations(entity_type, threat_level) do
-    # Dialyzer knows threat_level is always :moderate in current implementation
+  defp generate_recommendations(entity_type, _threat_level) do
     # Simplified recommendations - currently only :moderate threat level is returned
-    base_recommendations =
-      case threat_level do
-        :moderate ->
-          ["Active threat", "Maintain situational awareness", "Consider backup options"]
-
-        _ ->
-          ["Active threat", "Maintain situational awareness", "Consider backup options"]
-      end
+    # in current implementation, so we use fixed recommendations
+    base_recommendations = [
+      "Active threat",
+      "Maintain situational awareness",
+      "Consider backup options"
+    ]
 
     entity_specific =
       case entity_type do
         :character -> ["Track pilot activity patterns", "Monitor ship usage"]
         :corporation -> ["Assess member capabilities", "Monitor corporate fleet movements"]
-        _ -> []
       end
 
     base_recommendations ++ entity_specific

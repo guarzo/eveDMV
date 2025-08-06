@@ -212,18 +212,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
   def get_stats do
     # Get cache stats from the Cache module if available
     # Cache.stats returns a plain map, not a tuple
-    case Cache.stats(@cache_type) do
-      %{} = stats ->
-        {:ok, stats}
-
-      _ ->
-        {:ok,
-         %{
-           cache_size: 0,
-           hit_rate: 0.0,
-           miss_rate: 0.0,
-           evictions: 0
-         }}
-    end
+    # Cache.stats always returns a map
+    stats = Cache.stats(@cache_type)
+    {:ok, stats}
   end
 end

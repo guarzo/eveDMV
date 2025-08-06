@@ -84,17 +84,21 @@ defmodule EveDmv.Contexts.Combat.Core.BattleAnalyzer do
   Generate a battle summary suitable for display.
   """
   def get_battle_summary(battle_id) do
-    with {:ok, analysis} <- analyze_battle(battle_id) do
-      summary = %{
-        headline: generate_headline(analysis),
-        key_stats: extract_key_stats(analysis),
-        winning_side: determine_winner(analysis),
-        mvp_pilot: find_mvp(analysis),
-        turning_point: identify_turning_point(analysis),
-        notable_kills: find_notable_kills(analysis)
-      }
+    case analyze_battle(battle_id) do
+      {:ok, analysis} ->
+        summary = %{
+          headline: generate_headline(analysis),
+          key_stats: extract_key_stats(analysis),
+          winning_side: determine_winner(analysis),
+          mvp_pilot: find_mvp(analysis),
+          turning_point: identify_turning_point(analysis),
+          notable_kills: find_notable_kills(analysis)
+        }
 
-      {:ok, summary}
+        {:ok, summary}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -144,9 +148,9 @@ defmodule EveDmv.Contexts.Combat.Core.BattleAnalyzer do
         pods_killed: count_pod_kills(killmails)
       },
       participation: %{
-        unique_pilots: MapSet.size(participants.all_participants),
-        unique_corporations: length(participants.by_corporation),
-        unique_alliances: length(participants.by_alliance)
+        unique_pilots: length(participants.all_participants),
+        unique_corporations: map_size(participants.by_corporation),
+        unique_alliances: map_size(participants.by_alliance)
       },
       efficiency: %{
         isk_efficiency: calculate_isk_efficiency(killmails, participants),
@@ -332,7 +336,7 @@ defmodule EveDmv.Contexts.Combat.Core.BattleAnalyzer do
   defp calculate_isk_efficiency(killmails, participants) do
     # Calculate basic ISK efficiency
     total_isk = calculate_total_isk(killmails)
-    participant_count = MapSet.size(participants.all_participants || MapSet.new())
+    participant_count = length(participants.all_participants)
 
     if participant_count > 0 do
       total_isk / participant_count
@@ -343,9 +347,9 @@ defmodule EveDmv.Contexts.Combat.Core.BattleAnalyzer do
 
   defp calculate_kd_ratio(participants) do
     # Simple K/D ratio calculation
-    all_participants = participants.all_participants || MapSet.new()
+    all_participants = participants.all_participants
 
-    if MapSet.size(all_participants) > 0 do
+    if length(all_participants) > 0 do
       # Placeholder - would need actual kill/death data
       1.0
     else

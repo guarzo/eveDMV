@@ -29,7 +29,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleMetricsCalculator do
   """
   def calculate_battle_metrics(battle, _options \\ []) do
     # Preload all names before doing calculations to avoid N+1 queries
-    BatchNameResolver.preload_battle_names(battle)
+    _ = BatchNameResolver.preload_battle_names(battle)
 
     # Pre-calculate common data to avoid multiple passes
     killmails = battle.killmails || []

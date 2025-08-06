@@ -17,7 +17,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.CharacterService do
   @doc """
   Create a new character profile from raw character data.
   """
-  @spec create_character_profile(map()) :: {:ok, any()} | {:error, atom()}
+  @spec create_character_profile(map()) :: {:ok, any()}
   def create_character_profile(character_data) do
     with {:ok, profile} <- Api.create(CharacterProfile, character_data) do
       # Broadcast creation event
@@ -76,7 +76,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.CharacterService do
   @doc """
   Search characters by various parameters.
   """
-  @spec search_characters(map() | keyword()) :: {:ok, [any()]} | {:error, atom()}
+  @spec search_characters(map() | keyword()) :: {:ok, [any()]}
   def search_characters(search_params) do
     query =
       CharacterProfile

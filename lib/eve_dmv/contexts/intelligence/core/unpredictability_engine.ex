@@ -33,7 +33,6 @@ defmodule EveDmv.Contexts.Intelligence.Core.UnpredictabilityEngine do
       {:ok, analysis}
     else
       {:error, reason} -> {:error, reason}
-      _ -> {:error, :analysis_failed}
     end
   end
 
@@ -95,11 +94,12 @@ defmodule EveDmv.Contexts.Intelligence.Core.UnpredictabilityEngine do
       0.0
     else
       sum_of_differences =
-        for i <- sorted_values,
-            j <- sorted_values,
-            do:
-              abs(i - j)
-              |> Enum.sum()
+        for(
+          i <- sorted_values,
+          j <- sorted_values,
+          do: abs(i - j)
+        )
+        |> Enum.sum()
 
       mean_value = Enum.sum(sorted_values) / n
 

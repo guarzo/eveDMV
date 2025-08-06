@@ -626,7 +626,6 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
   end
 
   defp capital_ship?(ship_type) when is_integer(ship_type), do: ship_type >= 20_000
-  defp capital_ship?(_), do: false
 
   defp calculate_hvt_priority(target_values) do
     # Check if high-value targets were killed early
@@ -690,7 +689,6 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
     cond do
       starts_with_small_ships?(ship_class_order) -> :bottom_up
       starts_with_large_ships?(ship_class_order) -> :top_down
-      alternating_pattern?(ship_class_order) -> :mixed
       true -> :opportunistic
     end
   end
@@ -703,11 +701,6 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
   defp starts_with_large_ships?(ship_classes) do
     first_third = Enum.take(ship_classes, div(length(ship_classes), 3))
     Enum.count(first_third, &(&1 in [:battleship, :capital])) > length(first_third) / 2
-  end
-
-  defp alternating_pattern?(_ship_classes) do
-    # Would implement pattern detection
-    false
   end
 
   defp calculate_force_application_efficiency(killmails) do

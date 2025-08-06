@@ -640,14 +640,6 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
     end
   end
 
-  defp analyze_fleet_compositions(_),
-    do: %{
-      average_fleet_size: 0,
-      common_compositions: [],
-      preferred_roles: [],
-      coordination_level: :none
-    }
-
   defp analyze_single_fleet(killmail) when is_map(killmail) do
     attackers = Map.get(killmail, :attackers, [])
     attackers_list = if is_list(attackers), do: attackers, else: []
@@ -733,8 +725,6 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
     |> Enum.frequencies()
   end
 
-  defp classify_ship_types(_), do: %{}
-
   defp classify_single_ship(ship_type_id) when is_integer(ship_type_id) do
     # Use proper EVE static data classification
     cond do
@@ -759,23 +749,17 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
     end
   end
 
-  defp classify_single_ship(_), do: :unknown
-
   defp detect_logistics_presence(ship_type_ids) when is_list(ship_type_ids) do
     ship_type_ids
     |> Enum.filter(&is_integer/1)
     |> Enum.any?(&ShipTypes.logistics?/1)
   end
 
-  defp detect_logistics_presence(_), do: false
-
   defp detect_ewar_presence(ship_type_ids) when is_list(ship_type_ids) do
     ship_type_ids
     |> Enum.filter(&is_integer/1)
     |> Enum.any?(&ShipTypes.ewar?/1)
   end
-
-  defp detect_ewar_presence(_), do: false
 
   defp analyze_relationship_strengths(network_data) do
     # Analyze distribution of relationship strengths

@@ -28,6 +28,7 @@ defmodule EveDmv.Admin do
   def promote_user_to_admin(character_id) when is_integer(character_id) do
     case User |> Ash.Query.filter(eve_character_id: character_id) |> Api.read_one() do
       {:ok, %User{} = user} -> update_user_admin_status(user, true)
+      {:ok, nil} -> {:error, :user_not_found}
       {:error, _} -> {:error, :user_not_found}
     end
   end
@@ -35,6 +36,7 @@ defmodule EveDmv.Admin do
   def promote_user_to_admin(character_name) when is_binary(character_name) do
     case User |> Ash.Query.filter(eve_character_name: character_name) |> Api.read_one() do
       {:ok, %User{} = user} -> update_user_admin_status(user, true)
+      {:ok, nil} -> {:error, :user_not_found}
       {:error, _} -> {:error, :user_not_found}
     end
   end

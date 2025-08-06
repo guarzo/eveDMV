@@ -41,9 +41,6 @@ defmodule EveDmv.Contexts.Intelligence.Core.ThreatScoringCoordinator do
         }
 
         {:ok, coordination}
-
-      error ->
-        error
     end
   end
 

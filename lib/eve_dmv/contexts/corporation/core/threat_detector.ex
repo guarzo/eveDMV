@@ -992,16 +992,10 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
           ["Standard monitoring procedures sufficient" | recommendations]
       end
 
-    # Based on trends
+    # Based on trends - currently always :stable
     trend_recommendations =
       case threat_trends.threat_frequency do
-        :increasing ->
-          ["Prepare for escalation", "Review defensive measures" | threat_level_recommendations]
-
-        :decreasing ->
-          ["Maintain vigilance during de-escalation" | threat_level_recommendations]
-
-        _ ->
+        :stable ->
           threat_level_recommendations
       end
 

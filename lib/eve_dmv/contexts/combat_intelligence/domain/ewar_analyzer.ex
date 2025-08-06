@@ -144,9 +144,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.EwarAnalyzer do
 
       {:error, reason} ->
         {:error, reason}
-
-      _ ->
-        {:error, :ship_info_unavailable}
     end
   end
 

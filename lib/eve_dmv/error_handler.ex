@@ -143,12 +143,6 @@ defmodule EveDmv.ErrorHandler do
 
           {:propagate, new_error} ->
             {:error, new_error}
-
-          {:fallback, value} ->
-            {:ok, value}
-
-          :ignore ->
-            {:ok, nil}
         end
       end
 
@@ -211,7 +205,6 @@ defmodule EveDmv.ErrorHandler do
           :info -> Logger.info(log_message, log_metadata)
           :warning -> Logger.warning(log_message, log_metadata)
           :critical -> Logger.critical(log_message, log_metadata)
-          _ -> Logger.warning(log_message, log_metadata)
         end
       end
 

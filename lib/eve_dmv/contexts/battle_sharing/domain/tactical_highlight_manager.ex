@@ -16,9 +16,6 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
   """
 
   require Logger
-  # Highlight management parameters
-  # Minimum confidence for auto-detection
-  @highlight_confidence_threshold 0.7
 
   # Highlight types and their characteristics
   # Note: Highlight type validation is deferred
@@ -183,54 +180,11 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
   ## Returns
   {:ok, detected_highlights} with automatically detected highlights
   """
-  def auto_detect_tactical_highlights(battle_report_id, options \\ []) do
-    min_confidence = Keyword.get(options, :min_confidence, @highlight_confidence_threshold)
-    max_highlights = Keyword.get(options, :max_highlights, 10)
-    focus_types = Keyword.get(options, :focus_types, [])
-    include_phase_transitions = Keyword.get(options, :include_phase_transitions, true)
-
+  def auto_detect_tactical_highlights(battle_report_id, _options \\ []) do
     Logger.info("Auto-detecting tactical highlights for battle #{battle_report_id}")
 
-    start_time = System.monotonic_time(:millisecond)
-
-    with {:ok, battle_data} <- fetch_battle_report_data(battle_report_id),
-         {:ok, phase_analysis} <- analyze_battle_phases(battle_data),
-         {:ok, tactical_patterns} <- detect_tactical_patterns(battle_data),
-         {:ok, candidate_highlights} <-
-           generate_candidate_highlights(
-             battle_data,
-             phase_analysis,
-             tactical_patterns,
-             include_phase_transitions
-           ),
-         {:ok, filtered_highlights} <-
-           filter_highlights_by_confidence(
-             candidate_highlights,
-             min_confidence
-           ),
-         {:ok, prioritized_highlights} <-
-           prioritize_highlights(
-             filtered_highlights,
-             focus_types,
-             max_highlights
-           ),
-         {:ok, final_highlights} <-
-           finalize_auto_detected_highlights(
-             battle_report_id,
-             prioritized_highlights
-           ) do
-      end_time = System.monotonic_time(:millisecond)
-      duration_ms = end_time - start_time
-
-      Logger.info("""
-      Auto-detection completed in #{duration_ms}ms:
-      - Candidates analyzed: #{length(candidate_highlights)}
-      - Highlights detected: #{length(final_highlights)}
-      - Average confidence: #{calculate_average_confidence(final_highlights)}
-      """)
-
-      {:ok, final_highlights}
-    end
+    # Since fetch_battle_report_data always returns an error, return the error directly
+    fetch_battle_report_data(battle_report_id)
   end
 
   @doc """
@@ -357,27 +311,6 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
   end
 
   # Private helper functions - core implementations
-
-  defp analyze_battle_phases(_battle_data), do: {:ok, %{phases: []}}
-  defp detect_tactical_patterns(_battle_data), do: {:ok, %{patterns: []}}
-
-  defp generate_candidate_highlights(
-         _battle_data,
-         _phase_analysis,
-         _tactical_patterns,
-         _include_transitions
-       ),
-       do: {:ok, []}
-
-  defp filter_highlights_by_confidence(candidates, _min_confidence), do: {:ok, candidates}
-
-  defp prioritize_highlights(highlights, _focus_types, max_highlights) do
-    {:ok, Enum.take(highlights, max_highlights)}
-  end
-
-  defp finalize_auto_detected_highlights(_battle_report_id, highlights), do: {:ok, highlights}
-  defp calculate_average_confidence([]), do: 0.0
-  defp calculate_average_confidence(highlights) when is_list(highlights), do: 0.75
 
   defp fetch_battle_highlights(_battle_report_id), do: {:ok, []}
   defp maybe_fetch_engagement_data(_highlights, _time_window, false), do: {:ok, %{}}

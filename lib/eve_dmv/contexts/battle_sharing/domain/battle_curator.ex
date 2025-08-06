@@ -136,9 +136,6 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
 
   defp fetch_battle_data(battle_id) do
     case BattleAnalysis.get_battle_with_timeline(battle_id) do
-      {:ok, battle_data} ->
-        {:ok, Map.get(battle_data, :battle, battle_data)}
-
       {:error, reason} ->
         {:error, reason}
     end

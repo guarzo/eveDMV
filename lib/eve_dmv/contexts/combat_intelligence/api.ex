@@ -277,7 +277,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
 
   Returns temporal activity patterns, timezone preferences, and behavioral trends.
   """
-  @spec get_activity_patterns(integer(), keyword()) :: {:error, term()}
+  @spec get_activity_patterns(integer(), keyword()) :: {:error, :analysis_failed}
   def get_activity_patterns(character_id, opts \\ []) do
     CharacterAnalyzer.get_activity_patterns(character_id, opts)
   end
@@ -303,15 +303,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   @doc """
   Get cache statistics for monitoring and debugging.
   """
-  @spec get_intelligence_cache_stats() ::
-          {:ok,
-           %{
-             cache_size: non_neg_integer()
-           }}
+  @spec get_intelligence_cache_stats() :: map()
   def get_intelligence_cache_stats do
     # CharacterAnalyzer.get_cache_stats() returns a plain map, not a tuple
-    stats = CharacterAnalyzer.get_cache_stats()
-    {:ok, stats}
+    CharacterAnalyzer.get_cache_stats()
   end
 
   @doc """
@@ -320,7 +315,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   Returns corporations and alliances the character has flown with but are not part of their own.
   Useful for understanding social connections and potential allies.
   """
-  @spec get_external_groups(integer(), DateTime.t()) :: {:ok, [any()]}
+  @spec get_external_groups(integer(), DateTime.t()) :: {:ok, list()}
   def get_external_groups(character_id, since_date) do
     Domain.ExternalGroupAnalyzer.analyze(character_id, since_date)
   end

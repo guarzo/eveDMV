@@ -7,8 +7,8 @@ defmodule EveDmv.Repo.Migrations.AddParticipantsJsonbToKillmailsRaw do
     end
 
     # Add GIN index for JSONB containment queries
-    create index(:killmails_raw, [:participants], 
-      name: :killmails_raw_participants_gin_idx, 
+    create index(:killmails_raw, [:participants],
+      name: :killmails_raw_participants_gin_idx,
       using: "GIN"
     )
   end

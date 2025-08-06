@@ -374,9 +374,6 @@ defmodule EveDmv.Contexts.Intelligence.Services.InsightGenerator do
         :placeholder ->
           # Disabled for now - would need behavioral pattern detection
           []
-
-        _ ->
-          ship_recommendations
       end
 
     Enum.reverse(final_tactical_recommendations)

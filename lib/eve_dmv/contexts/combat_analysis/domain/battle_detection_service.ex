@@ -175,17 +175,13 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService do
 
   @impl GenServer
   def handle_call({:create_battle_from_data, battle_data}, _from, state) do
-    case create_battle_from_validated_data(battle_data) do
-      {:ok, battle} ->
-        # Add to active battles
-        updated_state =
-          Map.put(state, :active_battles, Map.put(state.active_battles, battle.id, battle))
+    {:ok, battle} = create_battle_from_validated_data(battle_data)
 
-        {:reply, {:ok, battle}, updated_state}
+    # Add to active battles
+    updated_state =
+      Map.put(state, :active_battles, Map.put(state.active_battles, battle.id, battle))
 
-      error ->
-        {:reply, error, state}
-    end
+    {:reply, {:ok, battle}, updated_state}
   end
 
   # Private functions

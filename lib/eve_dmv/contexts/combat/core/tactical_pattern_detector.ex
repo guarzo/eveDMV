@@ -209,11 +209,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
   defp detect_engagement_patterns(patterns, killmails, timeline) do
     engagement_pattern = analyze_engagement_style(killmails, timeline)
 
-    if engagement_pattern do
-      [engagement_pattern | patterns]
-    else
-      patterns
-    end
+    [engagement_pattern | patterns]
   end
 
   defp analyze_engagement_style(killmails, timeline) do
@@ -875,7 +871,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
 
   defp standard_deviation([]), do: 0
 
-  defp standard_deviation(list) do
+  defp standard_deviation(list) when is_list(list) do
     avg = average(list)
 
     variance =

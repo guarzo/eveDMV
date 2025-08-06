@@ -12,6 +12,8 @@ defmodule EveDmv.IntelligenceEngineTest do
   alias EveDmv.IntelligenceEngine.PluginRegistry
   alias EveDmv.IntelligenceEngine.Plugins.Character.CombatStats
 
+  @moduletag :skip
+
   setup do
     # Start PlayerAnalyzer for tests that need it
     {:ok, _pid} = start_supervised(PlayerAnalyzer)

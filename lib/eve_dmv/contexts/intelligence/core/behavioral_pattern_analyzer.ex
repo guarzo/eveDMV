@@ -33,14 +33,14 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
         fn ->
           case perform_behavioral_analysis(character_id) do
             {:ok, analysis} -> analysis
-            {:error, _reason} -> nil
+            {:error, _reason} -> :error
           end
         end,
         ttl: @cache_ttl
       )
 
     case result do
-      nil -> {:error, :analysis_failed}
+      :error -> {:error, :analysis_failed}
       analysis -> {:ok, analysis}
     end
   end
@@ -117,16 +117,12 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
 
     case KillmailRepository.get_by_character(character_id, start_date: start_date, limit: 1000) do
       {:ok, killmails} when is_list(killmails) -> {:ok, killmails}
-      {:error, _reason} -> {:ok, []}
-      _ -> {:ok, []}
     end
   end
 
   defp get_activity_data(character_id) do
     case CharacterRepository.get_character_stats(character_id) do
       {:ok, stats} -> {:ok, stats}
-      {:error, _reason} -> {:ok, %{}}
-      _ -> {:ok, %{}}
     end
   end
 

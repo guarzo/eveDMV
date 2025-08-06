@@ -14,20 +14,20 @@ defmodule EveDmv.Repo.Migrations.AddComprehensiveIntelligenceIndexesSprint16 do
   def up do
     # Use regular indexes for test environment, concurrent for others
     concurrently = if Mix.env() == :test, do: "", else: "CONCURRENTLY"
-    
+
     # Calculate dynamic thresholds
     isk_threshold = @min_isk_threshold_millions * 1_000_000  # Convert to actual ISK value
-    
+
     # ====================================================================
     # INTELLIGENCE QUERY PATTERN INDEXES
     # ====================================================================
     # These indexes are optimized for Sprint 16 intelligence system queries.
     # Threshold values are configurable at the top of this file and should be
     # reviewed quarterly for optimal performance.
-    
+
     # 1. BATTLE ANALYSIS INTEGRATION INDEXES
     # -------------------------------------
-    
+
     # Index for battle detection time range queries with system filtering
     # Optimizes: battle detection service queries for specific systems and time ranges
     execute """
@@ -36,7 +36,7 @@ defmodule EveDmv.Repo.Migrations.AddComprehensiveIntelligenceIndexesSprint16 do
     WHERE killmail_time >= '#{@intelligence_data_cutoff}'::timestamp
     """
 
-    # Index for ISK destruction analysis in battle intelligence 
+    # Index for ISK destruction analysis in battle intelligence
     # Supports battle threat detection based on ISK values and participant counts
     execute """
     CREATE INDEX #{concurrently} IF NOT EXISTS idx_killmails_isk_participants_threat
@@ -44,9 +44,9 @@ defmodule EveDmv.Repo.Migrations.AddComprehensiveIntelligenceIndexesSprint16 do
     WHERE raw_data ? 'zkb' AND (raw_data->'zkb'->>'totalValue')::bigint > #{isk_threshold}
     """
 
-    # 2. VETTING ANALYSIS PERFORMANCE INDEXES  
+    # 2. VETTING ANALYSIS PERFORMANCE INDEXES
     # ----------------------------------------
-    
+
     # Index for vetting analysis timestamp queries
     # Optimizes: get_recent_vetting_analyses() timeframe filtering
     execute """
@@ -64,9 +64,9 @@ defmodule EveDmv.Repo.Migrations.AddComprehensiveIntelligenceIndexesSprint16 do
 
     # 3. THREAT SCORING OPTIMIZATION INDEXES
     # --------------------------------------
-    
+
     # Composite index for character threat analysis with time filtering
-    # Optimizes: character intelligence dashboard threat assessment queries  
+    # Optimizes: character intelligence dashboard threat assessment queries
     execute """
     CREATE INDEX #{concurrently} IF NOT EXISTS idx_killmails_char_threat_analysis
     ON killmails_raw (victim_character_id, killmail_time DESC, solar_system_id)
@@ -82,7 +82,7 @@ defmodule EveDmv.Repo.Migrations.AddComprehensiveIntelligenceIndexesSprint16 do
 
     # 4. SYSTEM ACTIVITY MONITORING INDEXES
     # -------------------------------------
-    
+
     # Index for system activity volume analysis
     # Supports: check_killmail_volume_anomaly() and system threat detection
     execute """
@@ -96,13 +96,13 @@ defmodule EveDmv.Repo.Migrations.AddComprehensiveIntelligenceIndexesSprint16 do
     execute """
     CREATE INDEX #{concurrently} IF NOT EXISTS idx_killmails_large_battles
     ON killmails_raw (killmail_time DESC, solar_system_id)
-    WHERE (raw_data->'attackers') IS NOT NULL 
+    WHERE (raw_data->'attackers') IS NOT NULL
     AND killmail_time >= '#{@intelligence_data_cutoff}'::timestamp
     """
 
     # 5. MULTI-SYSTEM BATTLE CORRELATION INDEXES
     # ------------------------------------------
-    
+
     # Index for temporal clustering in multi-system battle correlation
     # Optimizes: MultiSystemBattleCorrelator temporal analysis
     execute """
@@ -122,19 +122,19 @@ defmodule EveDmv.Repo.Migrations.AddComprehensiveIntelligenceIndexesSprint16 do
 
     # 6. CACHE OPTIMIZATION INDEXES
     # -----------------------------
-    
+
     # Index for intelligence cache warming queries
     # Supports: warm_intelligence_cache() character data preloading
     execute """
     CREATE INDEX #{concurrently} IF NOT EXISTS idx_killmails_cache_warming
     ON killmails_raw (victim_character_id, killmail_time DESC)
-    WHERE victim_character_id IS NOT NULL 
+    WHERE victim_character_id IS NOT NULL
     AND killmail_time >= '#{@intelligence_data_cutoff}'::timestamp
     """
 
     # 7. DASHBOARD QUERY OPTIMIZATION INDEXES
     # ---------------------------------------
-    
+
     # Index for recent activity analysis in intelligence dashboard
     # Using fixed timestamp instead of NOW() since NOW() is not immutable
     execute """
@@ -154,9 +154,9 @@ defmodule EveDmv.Repo.Migrations.AddComprehensiveIntelligenceIndexesSprint16 do
   end
 
   def down do
-    # Use regular drop for test environment, concurrent for others  
+    # Use regular drop for test environment, concurrent for others
     concurrently = if Mix.env() == :test, do: "", else: "CONCURRENTLY"
-    
+
     # Drop all the intelligence indexes
     execute "DROP INDEX #{concurrently} IF EXISTS idx_killmails_system_time_battle_analysis"
     execute "DROP INDEX #{concurrently} IF EXISTS idx_killmails_isk_participants_threat"

@@ -614,12 +614,12 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
 
   defp assess_logistics_sustainability(analysis) do
     logistics_ratio = analysis.role_balance["logistics"] || 0.0
-    logistics_assessment = analysis.tactical_strengths.logistics.assessment
+    logistics_score = analysis.tactical_assessment.logistics.score || 0.0
 
-    case {logistics_ratio, logistics_assessment} do
-      {ratio, "optimal"} when ratio >= 0.15 -> :excellent
-      {ratio, "adequate"} when ratio >= 0.10 -> :good
-      {ratio, _} when ratio >= 0.05 -> :marginal
+    case {logistics_ratio, logistics_score} do
+      {ratio, score} when ratio >= 0.15 and score >= 0.8 -> :excellent
+      {ratio, score} when ratio >= 0.10 and score >= 0.6 -> :good
+      {ratio, score} when ratio >= 0.05 and score >= 0.4 -> :marginal
       _ -> :insufficient
     end
   end

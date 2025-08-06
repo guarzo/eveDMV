@@ -179,7 +179,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ShipStatsCalculator do
       {:ok, comprehensive_stats}
     else
       {:error, reason} -> {:error, reason}
-      _ -> {:error, :calculation_failed}
     end
   end
 

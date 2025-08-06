@@ -81,6 +81,12 @@ defmodule EveDmv.Killmails.KillmailRaw do
       description("Number of attackers on the killmail")
     end
 
+    # Kill value (ISK)
+    attribute :total_value, :decimal do
+      allow_nil?(true)
+      description("Total ISK value of the kill (ship + cargo)")
+    end
+
     # Raw data storage
     attribute :raw_data, :map do
       allow_nil?(false)
@@ -142,6 +148,7 @@ defmodule EveDmv.Killmails.KillmailRaw do
         :victim_alliance_id,
         :victim_ship_type_id,
         :attacker_count,
+        :total_value,
         :raw_data,
         :source
       ])
@@ -161,6 +168,7 @@ defmodule EveDmv.Killmails.KillmailRaw do
         :victim_alliance_id,
         :victim_ship_type_id,
         :attacker_count,
+        :total_value,
         :raw_data,
         :source
       ])

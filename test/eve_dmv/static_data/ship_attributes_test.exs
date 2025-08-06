@@ -1,8 +1,10 @@
 defmodule EveDmv.StaticData.ShipAttributesTest do
   use EveDmv.DataCase, async: true
+  alias EveDmv.Api
   alias EveDmv.Eve.ItemType
   alias EveDmv.StaticData.ShipAttributes
   alias EveDmv.StaticData.ShipTypes
+  require Ash.Query
 
   describe "ship attributes creation and queries" do
     setup do
@@ -39,7 +41,7 @@ defmodule EveDmv.StaticData.ShipAttributesTest do
 
       # Create test ship attributes
       {:ok, _rifter_attrs} =
-        ShipAttributes.create(%{
+        Api.create(ShipAttributes, %{
           type_id: 587,
           shield_hp: 400,
           armor_hp: 350,
@@ -67,7 +69,7 @@ defmodule EveDmv.StaticData.ShipAttributesTest do
         })
 
       {:ok, _caracal_attrs} =
-        ShipAttributes.create(%{
+        Api.create(ShipAttributes, %{
           type_id: 621,
           shield_hp: 1250,
           armor_hp: 1100,
@@ -98,6 +100,21 @@ defmodule EveDmv.StaticData.ShipAttributesTest do
     end
 
     test "can create ship attributes" do
+      # First create the required ItemType
+      {:ok, _item_type} =
+        Api.create(ItemType, %{
+          type_id: 999,
+          type_name: "Test Ship",
+          group_name: "Frigate",
+          category_name: "Ship",
+          published: true,
+          is_ship: true,
+          is_module: false,
+          is_charge: false,
+          is_blueprint: false,
+          is_deployable: false
+        })
+
       attrs = %{
         type_id: 999,
         shield_hp: 500,
@@ -111,16 +128,16 @@ defmodule EveDmv.StaticData.ShipAttributesTest do
         data_source: "test"
       }
 
-      assert {:ok, ship_attrs} = ShipAttributes.create(attrs)
+      assert {:ok, ship_attrs} = Api.create(ShipAttributes, attrs)
       assert ship_attrs.type_id == 999
-      assert ship_attrs.calculated_dps == 200.0
+      assert Decimal.equal?(ship_attrs.calculated_dps, Decimal.new("200.0"))
       assert ship_attrs.role_classification == "dps"
     end
 
     test "can query ship attributes by type_id" do
       assert {:ok, attrs} = ShipAttributes.get_by_type_id(587)
       assert attrs.type_id == 587
-      assert attrs.calculated_dps == 180.5
+      assert Decimal.equal?(attrs.calculated_dps, Decimal.new("180.50"))
       assert attrs.size_class == "frigate"
     end
 
@@ -137,11 +154,11 @@ defmodule EveDmv.StaticData.ShipAttributesTest do
       }
 
       assert {:ok, _} =
-               ShipAttributes.create(updated_attrs, upsert?: true, upsert_identity: :type_id)
+               Api.create(ShipAttributes, updated_attrs)
 
       {:ok, attrs} = ShipAttributes.get_by_type_id(587)
-      assert attrs.calculated_dps == 195.5
-      assert attrs.confidence_score == 0.8
+      assert Decimal.equal?(attrs.calculated_dps, Decimal.new("195.5"))
+      assert Decimal.equal?(attrs.confidence_score, Decimal.new("0.8"))
       assert attrs.data_source == "updated_estimate"
     end
   end
@@ -169,7 +186,7 @@ defmodule EveDmv.StaticData.ShipAttributesTest do
 
       # Create corresponding ship attributes
       {:ok, _rifter_attrs} =
-        ShipAttributes.create(%{
+        Api.create(ShipAttributes, %{
           type_id: 587,
           calculated_dps: 180.5,
           calculated_ehp: 1250.0,
@@ -179,7 +196,7 @@ defmodule EveDmv.StaticData.ShipAttributesTest do
         })
 
       {:ok, _caracal_attrs} =
-        ShipAttributes.create(%{
+        Api.create(ShipAttributes, %{
           type_id: 621,
           calculated_dps: 420.8,
           calculated_ehp: 4850.0,
@@ -204,8 +221,8 @@ defmodule EveDmv.StaticData.ShipAttributesTest do
     test "get_ship_attributes returns complete attribute data" do
       assert {:ok, attrs} = ShipTypes.get_ship_attributes(587)
       assert attrs.type_id == 587
-      assert attrs.calculated_dps == 180.5
-      assert attrs.calculated_ehp == 1250.0
+      assert Decimal.equal?(attrs.calculated_dps, Decimal.new("180.5"))
+      assert Decimal.equal?(attrs.calculated_ehp, Decimal.new("1250.0"))
       assert attrs.size_class == "frigate"
       assert attrs.role_classification == "dps"
     end
@@ -224,11 +241,11 @@ defmodule EveDmv.StaticData.ShipAttributesTest do
       # Should fall back to estimation
       assert {:ok, dps} = ShipTypes.get_ship_dps(999)
       # Frigate fallback value
-      assert dps == 200
+      assert dps == 200.0
 
       assert {:ok, ehp} = ShipTypes.get_ship_ehp(999)
       # Frigate fallback value
-      assert ehp == 15_000
+      assert ehp == 15_000.0
     end
 
     test "returns error for non-existent ships" do
@@ -260,7 +277,7 @@ defmodule EveDmv.StaticData.ShipAttributesTest do
           })
 
         {:ok, _} =
-          ShipAttributes.create(%{
+          Api.create(ShipAttributes, %{
             type_id: type_id,
             calculated_dps: dps,
             calculated_ehp: ehp,
@@ -328,7 +345,7 @@ defmodule EveDmv.StaticData.ShipAttributesTest do
         calculated_ehp: 1500.0
       }
 
-      assert {:error, _} = ShipAttributes.create(invalid_attrs)
+      assert {:error, _} = Api.create(ShipAttributes, invalid_attrs)
     end
 
     test "validates data constraints" do
@@ -341,12 +358,27 @@ defmodule EveDmv.StaticData.ShipAttributesTest do
 
       # Note: This test depends on the actual constraints in the resource
       # If no constraints are enforced, this test may need adjustment
-      result = ShipAttributes.create(attrs_with_negative_dps)
+      result = Api.create(ShipAttributes, attrs_with_negative_dps)
       # Should either succeed (if no constraints) or fail gracefully
       assert match?({:ok, _}, result) or match?({:error, _}, result)
     end
 
     test "handles decimal precision correctly" do
+      # First create the required ItemType
+      {:ok, _item_type} =
+        Api.create(ItemType, %{
+          type_id: 999,
+          type_name: "Precision Test Ship",
+          group_name: "Frigate",
+          category_name: "Ship",
+          published: true,
+          is_ship: true,
+          is_module: false,
+          is_charge: false,
+          is_blueprint: false,
+          is_deployable: false
+        })
+
       precise_attrs = %{
         type_id: 999,
         calculated_dps: 123.456789,
@@ -355,10 +387,12 @@ defmodule EveDmv.StaticData.ShipAttributesTest do
         confidence_score: 0.999
       }
 
-      assert {:ok, attrs} = ShipAttributes.create(precise_attrs)
+      assert {:ok, attrs} = Api.create(ShipAttributes, precise_attrs)
       # Values should be stored and retrieved with appropriate precision
-      assert attrs.calculated_dps == 123.456789
-      assert is_float(attrs.calculated_ehp)
+      # Database may truncate to 2 decimal places for calculated_dps
+      assert Decimal.equal?(attrs.calculated_dps, Decimal.new("123.46"))
+      # EHP should be a Decimal - may also be truncated to 2 decimal places
+      assert Decimal.equal?(attrs.calculated_ehp, Decimal.new("9876.54"))
     end
   end
 

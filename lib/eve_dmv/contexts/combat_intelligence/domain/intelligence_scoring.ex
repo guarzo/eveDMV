@@ -36,7 +36,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceScoring do
   @doc """
   Get recommendations for dealing with a specific character.
   """
-  @spec get_recommendations(integer()) :: {:ok, [map()]} | {:error, term()}
+  @spec get_recommendations(integer()) :: {:ok, [map()]}
   def get_recommendations(character_id) do
     recommendations = generate_recommendations(character_id)
     {:ok, recommendations}

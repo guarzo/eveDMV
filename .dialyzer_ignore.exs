@@ -4,7 +4,7 @@
   # ===========================================
   # This file contains patterns for false positives that should be ignored by dialyzer.
   # All filters have been removed as of the latest cleanup since dialyzer reports 0 errors.
-  # 
+  #
   # When adding new filters:
   # 1. Only add filters for confirmed false positives
   # 2. Document why the filter is needed

@@ -336,16 +336,16 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
       armor_thermal_resist: sde_data.armor_resists.thermal,
       armor_kinetic_resist: sde_data.armor_resists.kinetic,
       armor_explosive_resist: sde_data.armor_resists.explosive,
-      calculated_dps: Float.round(estimated_dps, 1),
-      calculated_ehp: Float.round(ehp, 0),
-      calculated_ehp_uniform: Float.round(ehp_uniform, 0),
+      calculated_dps: convert_to_float(estimated_dps) |> Float.round(1),
+      calculated_ehp: convert_to_float(ehp) |> Float.round(0),
+      calculated_ehp_uniform: convert_to_float(ehp_uniform) |> Float.round(0),
       role_classification: role_classification,
       size_class: size_class,
       tactical_category: tactical_category,
       damage_rating: calculate_damage_rating(estimated_dps, size_class),
       tank_rating: calculate_tank_rating(ehp, size_class),
       speed_rating: estimate_speed_rating(size_class, ship.mass),
-      utility_rating: get_role_multipliers(role_classification).utility,
+      utility_rating: min(get_role_multipliers(role_classification).utility, 1.0),
       data_source: "sde_with_estimates",
       # High confidence since HP data is real
       confidence_score: 0.9,
@@ -373,16 +373,16 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
       armor_thermal_resist: estimated_stats.armor_resists.thermal,
       armor_kinetic_resist: estimated_stats.armor_resists.kinetic,
       armor_explosive_resist: estimated_stats.armor_resists.explosive,
-      calculated_dps: Float.round(estimated_stats.dps, 1),
-      calculated_ehp: Float.round(estimated_stats.ehp, 0),
-      calculated_ehp_uniform: Float.round(estimated_stats.ehp_uniform, 0),
+      calculated_dps: convert_to_float(estimated_stats.dps) |> Float.round(1),
+      calculated_ehp: convert_to_float(estimated_stats.ehp) |> Float.round(0),
+      calculated_ehp_uniform: convert_to_float(estimated_stats.ehp_uniform) |> Float.round(0),
       role_classification: role_classification,
       size_class: size_class,
       tactical_category: tactical_category,
       damage_rating: estimated_stats.damage_rating,
       tank_rating: estimated_stats.tank_rating,
       speed_rating: estimated_stats.speed_rating,
-      utility_rating: estimated_stats.utility_rating,
+      utility_rating: min(estimated_stats.utility_rating, 1.0),
       data_source: "phase1_estimate",
       confidence_score: estimated_stats.confidence,
       last_updated: DateTime.utc_now()
@@ -504,7 +504,10 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
       group_name in ["Interceptor", "Interdictor", "Heavy Interdiction Cruiser"] ->
         "tackle"
 
-      group_name in ["Assault Frigate", "Heavy Assault Cruiser", "Attack Battlecruiser"] ->
+      group_name in ["Assault Frigate", "Heavy Assault Cruiser"] ->
+        "assault"
+
+      group_name in ["Attack Battlecruiser"] ->
         "dps"
 
       group_name in ["Command Ship", "Command Destroyer"] ->
@@ -585,13 +588,13 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
       structure_hp: structure_hp,
       shield_resists: resistances.shield,
       armor_resists: resistances.armor,
-      dps: Float.round(dps, 1),
-      ehp: Float.round(ehp, 0),
-      ehp_uniform: Float.round(ehp_uniform, 0),
+      dps: convert_to_float(dps) |> Float.round(1),
+      ehp: convert_to_float(ehp) |> Float.round(0),
+      ehp_uniform: convert_to_float(ehp_uniform) |> Float.round(0),
       damage_rating: calculate_damage_rating(dps, size_class),
       tank_rating: calculate_tank_rating(ehp, size_class),
       speed_rating: estimate_speed_rating(size_class, ship.mass),
-      utility_rating: role_multipliers.utility,
+      utility_rating: min(role_multipliers.utility, 1.0),
       # Phase 1 estimates are moderate confidence
       confidence: 0.6
     }
@@ -632,10 +635,10 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
       {:ok, %{rows: [[shield_hp, armor_hp, structure_hp, dps]]}} when not is_nil(shield_hp) ->
         {:ok,
          %{
-           shield_hp: Float.round(shield_hp, 0) |> trunc(),
-           armor_hp: Float.round(armor_hp, 0) |> trunc(),
-           structure_hp: Float.round(structure_hp, 0) |> trunc(),
-           dps: Float.round(dps || 0, 0) |> trunc()
+           shield_hp: convert_to_float(shield_hp) |> Float.round(0) |> trunc(),
+           armor_hp: convert_to_float(armor_hp) |> Float.round(0) |> trunc(),
+           structure_hp: convert_to_float(structure_hp) |> Float.round(0) |> trunc(),
+           dps: convert_to_float(dps || 0) |> Float.round(0) |> trunc()
          }}
 
       _ ->
@@ -708,7 +711,7 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
         _ -> 10_000_000
       end
 
-    ratio = mass / avg_mass
+    ratio = if avg_mass > 0, do: mass / avg_mass, else: 1.0
     # Clamp multiplier to reasonable bounds
     min(max(ratio, 0.5), 2.0)
   end
@@ -743,10 +746,12 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
 
   defp calculate_ehp(shield_hp, armor_hp, structure_hp, resistances) do
     # Calculate EHP against worst-case damage type
-    # Explosive usually worst for shield
-    shield_ehp = shield_hp / (1 - resistances.shield.explosive)
-    # EM usually worst for armor
-    armor_ehp = armor_hp / (1 - resistances.armor.em)
+    # Explosive usually worst for shield - cap at 0.99 to avoid divide by zero
+    shield_resist = min(resistances.shield.explosive, 0.99)
+    shield_ehp = shield_hp / (1 - shield_resist)
+    # EM usually worst for armor - cap at 0.99 to avoid divide by zero
+    armor_resist = min(resistances.armor.em, 0.99)
+    armor_ehp = armor_hp / (1 - armor_resist)
     # No base resistances on structure
     structure_ehp = structure_hp
 
@@ -763,8 +768,9 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
       (resistances.armor.em + resistances.armor.thermal +
          resistances.armor.kinetic + resistances.armor.explosive) / 4
 
-    # Simplified uniform EHP calculation
-    total_hp / (1 - (avg_shield_resist + avg_armor_resist) / 2)
+    # Simplified uniform EHP calculation - cap average resist to avoid divide by zero
+    avg_resist = min((avg_shield_resist + avg_armor_resist) / 2, 0.99)
+    total_hp / (1 - avg_resist)
   end
 
   defp calculate_damage_rating(dps, size_class) do
@@ -781,7 +787,7 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
         _ -> 1000
       end
 
-    min(dps / max_dps, 1.0)
+    if max_dps > 0, do: min(dps / max_dps, 1.0), else: 0.0
   end
 
   defp calculate_tank_rating(ehp, size_class) do
@@ -798,7 +804,7 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
         _ -> 20_000
       end
 
-    min(ehp / max_ehp, 1.0)
+    if max_ehp > 0, do: min(ehp / max_ehp, 1.0), else: 0.0
   end
 
   defp estimate_speed_rating(size_class, mass) do
@@ -816,7 +822,7 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
       end
 
     # Adjust for mass if available
-    if mass do
+    if is_number(mass) && mass > 0 do
       mass_factor = min(max(50_000_000 / mass, 0.1), 2.0)
       min(base_rating * mass_factor, 1.0)
     else
@@ -870,13 +876,19 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
   end
 
   defp recalculate_ratings_for_size_class(ships, _size_class) do
-    # Find max values in this size class
-    max_dps = ships |> Enum.map(&(&1.calculated_dps || 0)) |> Enum.max(fn -> 1 end)
-    max_ehp = ships |> Enum.map(&(&1.calculated_ehp || 0)) |> Enum.max(fn -> 1 end)
+    # Find max values in this size class, converting to float
+    max_dps =
+      ships |> Enum.map(&convert_to_float(&1.calculated_dps || 0)) |> Enum.max(fn -> 1.0 end)
+
+    max_ehp =
+      ships |> Enum.map(&convert_to_float(&1.calculated_ehp || 0)) |> Enum.max(fn -> 1.0 end)
 
     Enum.map(ships, fn ship ->
-      damage_rating = if max_dps > 0, do: (ship.calculated_dps || 0) / max_dps, else: 0.0
-      tank_rating = if max_ehp > 0, do: (ship.calculated_ehp || 0) / max_ehp, else: 0.0
+      ship_dps = convert_to_float(ship.calculated_dps || 0)
+      ship_ehp = convert_to_float(ship.calculated_ehp || 0)
+
+      damage_rating = if max_dps > 0, do: ship_dps / max_dps, else: 0.0
+      tank_rating = if max_ehp > 0, do: ship_ehp / max_ehp, else: 0.0
 
       %{
         type_id: ship.type_id,
@@ -890,16 +902,32 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
     # Apply rating updates in batches
     updates
     |> Enum.chunk_every(50)
-    |> Enum.reduce(0, fn batch, acc ->
-      batch_count =
-        Enum.reduce(batch, 0, fn update, count ->
-          case Ash.update(ShipAttributes, update, domain: EveDmv.Api, action: :update) do
-            {:ok, _} -> count + 1
-            {:error, _} -> count
-          end
-        end)
+    |> Enum.map(&process_batch/1)
+    |> Enum.sum()
+  end
 
-      acc + batch_count
+  defp process_batch(batch) do
+    Enum.reduce(batch, 0, fn update, count ->
+      count + apply_single_update(update)
     end)
   end
+
+  defp apply_single_update(update) do
+    case Ash.get(ShipAttributes, update.type_id, domain: EveDmv.Api) do
+      {:ok, ship_attrs} ->
+        case Ash.update(ship_attrs, update, domain: EveDmv.Api) do
+          {:ok, _} -> 1
+          {:error, _} -> 0
+        end
+
+      {:error, _} ->
+        0
+    end
+  end
+
+  # Helper function to safely convert Decimal or other numeric types to float
+  defp convert_to_float(value) when is_number(value), do: value * 1.0
+  defp convert_to_float(%Decimal{} = decimal), do: Decimal.to_float(decimal)
+  defp convert_to_float(nil), do: 0.0
+  defp convert_to_float(_), do: 0.0
 end

@@ -157,31 +157,28 @@ defmodule EveDmv.Users.AccountManager do
 
     # Move each character to target account
     Enum.each(source_characters, fn character ->
-      changeset = Ash.Changeset.for_update(character, :update, %{account_id: target_account_id})
+      attrs = %{account_id: target_account_id}
 
-      case Api.update(character, changeset) do
-        {:ok, updated} -> updated
+      case Api.update(character, attrs) do
+        {:ok, _updated} -> :ok
         {:error, reason} -> raise "Failed to update character: #{inspect(reason)}"
       end
     end)
 
     # If source account's primary character isn't set in target, use it
     if is_nil(target_account.primary_character_id) && source_account.primary_character_id do
-      changeset =
-        Ash.Changeset.for_update(target_account, :update, %{
-          primary_character_id: source_account.primary_character_id
-        })
+      attrs = %{primary_character_id: source_account.primary_character_id}
 
-      case Api.update(target_account, changeset) do
-        {:ok, updated} -> updated
+      case Api.update(target_account, attrs) do
+        {:ok, _updated} -> :ok
         {:error, reason} -> raise "Failed to update target account: #{inspect(reason)}"
       end
     end
 
     # Delete the source account
     case Api.destroy(source_account) do
-      {:ok, _} -> :ok
-      error -> raise "Destroy failed: #{inspect(error)}"
+      :ok -> :ok
+      {:error, reason} -> raise "Destroy failed: #{inspect(reason)}"
     end
 
     {:ok, target_account}
@@ -195,9 +192,7 @@ defmodule EveDmv.Users.AccountManager do
   def update_account_activity(account_id) do
     account = get_account!(account_id)
 
-    account
-    |> Ash.Changeset.for_update(:update_last_login, %{})
-    |> then(fn changeset -> Api.update(changeset.data, changeset) end)
+    Api.update(account, %{}, action: :update_last_login)
   end
 
   # Private functions

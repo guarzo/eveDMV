@@ -713,9 +713,6 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
     case report do
       %{engagement_metrics: %{total_active_members: active, inactive_members: inactive}} ->
         active + inactive
-
-      _ ->
-        0
     end
   end
 
@@ -723,9 +720,6 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
     case report do
       %{engagement_metrics: %{total_active_members: active}} ->
         active
-
-      _ ->
-        0
     end
   end
 
@@ -733,9 +727,6 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
     case report do
       %{engagement_metrics: %{activity_trend: trend}} ->
         %{direction: trend, growth_rate: 0.0}
-
-      _ ->
-        %{direction: :stable, growth_rate: 0.0}
     end
   end
 
@@ -743,13 +734,6 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
     case report do
       %{engagement_metrics: metrics} ->
         metrics
-
-      _ ->
-        %{
-          average_engagement: 0.5,
-          participation_rate: 0.0,
-          retention_rate: 0.0
-        }
     end
   end
 

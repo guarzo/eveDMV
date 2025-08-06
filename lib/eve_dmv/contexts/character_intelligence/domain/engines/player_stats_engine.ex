@@ -31,7 +31,7 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
     now = DateTime.utc_now()
     start_date = DateTimeUtils.add(now, -days * 86_400, :second)
 
-    Logger.info("Starting player statistics for last #{days} days")
+    _ = Logger.info("Starting player statistics for last #{days} days")
 
     case participants_ids(:character_id, min_activity) do
       {:error, reason} ->

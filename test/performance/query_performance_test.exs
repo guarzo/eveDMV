@@ -159,6 +159,9 @@ defmodule EveDmv.Performance.QueryPerformanceTest do
 
   describe "concurrent query performance" do
     test "handles concurrent character queries efficiently" do
+      # Allow async processes to use the sandbox connection
+      Ecto.Adapters.SQL.Sandbox.mode(EveDmv.Repo, {:shared, self()})
+
       character_ids = Enum.map(1..10, fn _ -> Factory.character_id() end)
       since_date = DateTime.add(DateTime.utc_now(), -30, :day)
 

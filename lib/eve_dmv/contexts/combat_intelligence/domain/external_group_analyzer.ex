@@ -257,7 +257,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ExternalGroupAnalyzer do
 
       {trust, days} when days != nil and days > 90 ->
         case trust do
-          :very_high -> :high
           :high -> :moderate
           :moderate -> :developing
           :developing -> :low

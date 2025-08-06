@@ -239,7 +239,7 @@ defmodule EveDmv.Database.Repository do
       @spec bulk_create([map()]) :: {:ok, [struct()]} | {:error, term()}
       def bulk_create(records_attrs) when is_list(records_attrs) do
         TelemetryHelper.measure_query(@resource_name, :bulk_create, fn ->
-          result = Api.bulk_create(@resource, records_attrs)
+          result = Ash.bulk_create(@resource, records_attrs, domain: Api)
 
           case result do
             %{records: records, errors: []} ->

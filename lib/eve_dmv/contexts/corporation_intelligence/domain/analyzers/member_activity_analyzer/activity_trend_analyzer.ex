@@ -337,7 +337,6 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivit
         :increasing -> 30
         :decreasing -> 30
         :volatile -> 10
-        _ -> 20
       end
 
     min(100, data_confidence + trend_confidence)
@@ -351,7 +350,6 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivit
       :moderate_decrease -> "Declining activity - schedule check-in with member"
       :unpredictable -> "Inconsistent patterns - monitor closely"
       :stable_activity -> "Consistent engagement - no action required"
-      _ -> "Continue monitoring"
     end
   end
 end

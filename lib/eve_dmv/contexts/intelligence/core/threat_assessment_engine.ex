@@ -242,9 +242,6 @@ defmodule EveDmv.Contexts.Intelligence.Core.ThreatAssessmentEngine do
       {:error, _reason} ->
         # Log error but return default score
         {:ok, 0}
-
-      _ ->
-        {:ok, 0}
     end
   end
 
@@ -427,7 +424,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.ThreatAssessmentEngine do
       {:ok, trends} ->
         trends
 
-      _ ->
+      {:error, _reason} ->
         # Fallback if trend analysis fails
         %{
           direction: :stable,

@@ -98,7 +98,9 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   @spec detect_recent_battles(integer(), keyword()) :: {:ok, [battle()]} | {:error, atom()}
   def detect_recent_battles(hours_back \\ 24, options \\ []) do
     end_time = DateTime.utc_now()
-    start_time = DateTimeUtils.add(end_time, -hours_back * 3600, :second)
+    # Ensure the amount is an integer for DateTime.add
+    seconds_back = trunc(hours_back * 3600)
+    start_time = DateTimeUtils.add(end_time, -seconds_back, :second)
 
     detect_battles(start_time, end_time, options)
   end
@@ -550,6 +552,8 @@ defmodule EveDmv.Contexts.BattleAnalysis do
     }
   end
 
+  defp extract_key_timeline_events(nil), do: []
+
   defp extract_key_timeline_events(timeline) when is_map(timeline) do
     if Map.has_key?(timeline, :key_moments) do
       Map.get(timeline, :key_moments, [])
@@ -562,9 +566,7 @@ defmodule EveDmv.Contexts.BattleAnalysis do
     end
   end
 
-  defp extract_key_timeline_events(_timeline) do
-    []
-  end
+  defp extract_key_timeline_events(_), do: []
 
   defp calculate_battle_significance(battle, intelligence) do
     base_score = length(battle.killmails) * 0.1

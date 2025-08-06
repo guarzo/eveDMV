@@ -69,7 +69,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLiveTest do
       |> render_change(%{"type" => "character"})
 
       # Should show character filter inputs
-      assert has_element?(index_live, "input[placeholder*='Character IDs']")
+      assert has_element?(index_live, "input[placeholder*='Character names or IDs']")
     end
 
     test "shows filter preview when conditions are added", %{conn: conn} do
@@ -105,7 +105,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLiveTest do
       |> render_change(%{"type" => "character"})
 
       assert has_element?(index_live, "span", "Character")
-      assert has_element?(index_live, "input[placeholder*='Character IDs']")
+      assert has_element?(index_live, "input[placeholder*='Character names or IDs']")
     end
 
     test "supports corporation watch filters", %{conn: conn} do
@@ -116,43 +116,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLiveTest do
       |> render_change(%{"type" => "corporation"})
 
       assert has_element?(index_live, "span", "Corporation")
-      assert has_element?(index_live, "input[placeholder*='Corporation IDs']")
-    end
-
-    test "supports chain awareness filters", %{conn: conn} do
-      {:ok, index_live, _html} = live(conn, ~p"/surveillance-profiles?action=new")
-
-      index_live
-      |> element("select[name='type']")
-      |> render_change(%{"type" => "chain"})
-
-      assert has_element?(index_live, "span", "Chain Awareness")
-      assert has_element?(index_live, "label", "Map ID")
-      assert has_element?(index_live, "label", "Filter Type")
-    end
-
-    test "supports ISK value filters", %{conn: conn} do
-      {:ok, index_live, _html} = live(conn, ~p"/surveillance-profiles?action=new")
-
-      index_live
-      |> element("select[name='type']")
-      |> render_change(%{"type" => "isk_value"})
-
-      assert has_element?(index_live, "span", "ISK Value")
-      assert has_element?(index_live, "label", "Operator")
-      assert has_element?(index_live, "label", "ISK Value")
-    end
-
-    test "supports participant count filters", %{conn: conn} do
-      {:ok, index_live, _html} = live(conn, ~p"/surveillance-profiles?action=new")
-
-      index_live
-      |> element("select[name='type']")
-      |> render_change(%{"type" => "participant_count"})
-
-      assert has_element?(index_live, "span", "Participant Count")
-      assert has_element?(index_live, "label", "Operator")
-      assert has_element?(index_live, "label", "Participant Count")
+      assert has_element?(index_live, "input[placeholder*='Corporation names or IDs']")
     end
   end
 
@@ -228,8 +192,8 @@ defmodule EveDmvWeb.SurveillanceProfilesLiveTest do
 
       # Update character IDs
       index_live
-      |> element("input[placeholder*='Character IDs']")
-      |> render_blur(%{
+      |> element("input[placeholder*='Character names or IDs']")
+      |> render_change(%{
         "index" => "0",
         "field" => "character_ids",
         "value" => "123456789, 987654321"

@@ -532,19 +532,19 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   defp create_default_filter(filter_type) do
     case filter_type do
       "character" ->
-        %{type: :simple, field: "character_ids", operator: :in, value: []}
+        %{type: :character, field: "character_ids", operator: :in, value: []}
 
       "corporation" ->
-        %{type: :simple, field: "corporation_ids", operator: :in, value: []}
+        %{type: :corporation, field: "corporation_ids", operator: :in, value: []}
 
       "system" ->
-        %{type: :simple, field: "system_ids", operator: :in, value: []}
+        %{type: :system, field: "system_ids", operator: :in, value: []}
 
       "ship_type" ->
-        %{type: :simple, field: "ship_type_ids", operator: :in, value: []}
+        %{type: :ship_type, field: "ship_type_ids", operator: :in, value: []}
 
       "alliance" ->
-        %{type: :simple, field: "alliance_ids", operator: :in, value: []}
+        %{type: :alliance, field: "alliance_ids", operator: :in, value: []}
 
       "chain" ->
         %{
@@ -1077,7 +1077,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   def render_filter_inputs(assigns) do
     ~H"""
     <%= case @condition.type do %>
-      <% :simple when @condition.field in ["character_ids", "corporation_ids", "alliance_ids", "system_ids", "ship_type_ids"] -> %>
+      <% type when type in [:character, :corporation, :alliance, :system, :ship_type] -> %>
         <div class="space-y-2">
           <input type="text"
                  phx-change="update_filter_field"
