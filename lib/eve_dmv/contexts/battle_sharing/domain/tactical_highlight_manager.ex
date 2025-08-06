@@ -21,7 +21,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.TacticalHighlightManager do
   @highlight_confidence_threshold 0.7
 
   # Highlight types and their characteristics
-  # TODO: Re-enable when highlight type validation is implemented
+  # Note: Highlight type validation is deferred
   # @highlight_types %{
   #   first_engagement: %{
   #     name: "First Engagement",

@@ -1,0 +1,144 @@
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+  <div class="mb-8">
+    <h1 class="text-3xl font-bold text-white">User Management</h1>
+    <p class="mt-2 text-gray-400">Manage user access and permissions</p>
+  </div>
+
+  <!-- Filters -->
+  <div class="mb-6 flex gap-2">
+    <button
+      phx-click="filter"
+      phx-value-status="all"
+      class={"px-4 py-2 rounded-md text-sm font-medium #{if @filter == :all, do: "bg-blue-600 text-white", else: "bg-gray-700 text-gray-300 hover:bg-gray-600"}"}
+    >
+      All Users
+    </button>
+    <button
+      phx-click="filter"
+      phx-value-status="active"
+      class={"px-4 py-2 rounded-md text-sm font-medium #{if @filter == :active, do: "bg-blue-600 text-white", else: "bg-gray-700 text-gray-300 hover:bg-gray-600"}"}
+    >
+      Active
+    </button>
+    <button
+      phx-click="filter"
+      phx-value-status="admin"
+      class={"px-4 py-2 rounded-md text-sm font-medium #{if @filter == :admin, do: "bg-blue-600 text-white", else: "bg-gray-700 text-gray-300 hover:bg-gray-600"}"}
+    >
+      Admins
+    </button>
+    <button
+      phx-click="filter"
+      phx-value-status="inactive"
+      class={"px-4 py-2 rounded-md text-sm font-medium #{if @filter == :inactive, do: "bg-blue-600 text-white", else: "bg-gray-700 text-gray-300 hover:bg-gray-600"}"}
+    >
+      Inactive
+    </button>
+  </div>
+
+  <!-- Users Table -->
+  <div class="bg-gray-800 rounded-lg overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-700">
+      <thead class="bg-gray-900">
+        <tr>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white"
+              phx-click="sort" phx-value-field="character_name">
+            Character
+            <%= if @sort_by == :character_name do %>
+              <span class="ml-1"><%= if @sort_order == :asc, do: "↑", else: "↓" %></span>
+            <% end %>
+          </th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white"
+              phx-click="sort" phx-value-field="corporation_name">
+            Corporation
+            <%= if @sort_by == :corporation_name do %>
+              <span class="ml-1"><%= if @sort_order == :asc, do: "↑", else: "↓" %></span>
+            <% end %>
+          </th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white"
+              phx-click="sort" phx-value-field="last_active">
+            Last Active
+            <%= if @sort_by == :last_active do %>
+              <span class="ml-1"><%= if @sort_order == :asc, do: "↑", else: "↓" %></span>
+            <% end %>
+          </th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+            Status
+          </th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+            Role
+          </th>
+          <th class="relative px-6 py-3">
+            <span class="sr-only">Actions</span>
+          </th>
+        </tr>
+      </thead>
+      <tbody class="bg-gray-800 divide-y divide-gray-700">
+        <%= for user <- @users do %>
+          <tr class="hover:bg-gray-750">
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-white">
+              <.link navigate={~p"/character/#{user.character_id}"} class="hover:text-blue-400">
+                <%= user.character_name %>
+              </.link>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+              <%= user.corporation_name || "—" %>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+              <%= format_last_active(user.last_active) %>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <%= if user.active do %>
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-900 text-green-200">
+                  Active
+                </span>
+              <% else %>
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-900 text-red-200">
+                  Inactive
+                </span>
+              <% end %>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <%= if user.is_admin do %>
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-900 text-purple-200">
+                  Admin
+                </span>
+              <% else %>
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-700 text-gray-300">
+                  User
+                </span>
+              <% end %>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+              <div class="flex gap-2 justify-end">
+                <button
+                  phx-click="toggle_admin"
+                  phx-value-user-id={user.id}
+                  class="text-blue-400 hover:text-blue-300"
+                >
+                  <%= if user.is_admin, do: "Remove Admin", else: "Make Admin" %>
+                </button>
+                <%= if user.active do %>
+                  <button
+                    phx-click="revoke_access"
+                    phx-value-user-id={user.id}
+                    class="text-red-400 hover:text-red-300"
+                    data-confirm="Are you sure you want to revoke access for this user?"
+                  >
+                    Revoke Access
+                  </button>
+                <% end %>
+              </div>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+
+    <%= if @users == [] do %>
+      <div class="text-center py-12 text-gray-400">
+        No users found
+      </div>
+    <% end %>
+  </div>
+</div>

@@ -1,0 +1,150 @@
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+  <div class="mb-8">
+    <h1 class="text-3xl font-bold text-white">System Administration</h1>
+    <p class="mt-2 text-gray-400">Monitor and manage system resources</p>
+  </div>
+
+  <!-- System Stats Grid -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <!-- Memory Usage -->
+    <div class="bg-gray-800 rounded-lg p-6">
+      <h3 class="text-sm font-medium text-gray-400 mb-2">Memory Usage</h3>
+      <p class="text-2xl font-bold text-white"><%= @system_stats.memory.total %></p>
+      <div class="mt-2 text-xs text-gray-500">
+        Processes: <%= @system_stats.memory.processes %><br>
+        Binary: <%= @system_stats.memory.binary %>
+      </div>
+    </div>
+
+    <!-- Database Size -->
+    <div class="bg-gray-800 rounded-lg p-6">
+      <h3 class="text-sm font-medium text-gray-400 mb-2">Database</h3>
+      <p class="text-2xl font-bold text-white"><%= @database_stats.size %></p>
+      <div class="mt-2 text-xs text-gray-500">
+        Killmails: <%= @database_stats.killmails %><br>
+        Participants: <%= @database_stats.participants %>
+      </div>
+    </div>
+
+    <!-- Connection Pool -->
+    <div class="bg-gray-800 rounded-lg p-6">
+      <h3 class="text-sm font-medium text-gray-400 mb-2">DB Connections</h3>
+      <p class="text-2xl font-bold text-white">
+        <%= @system_stats.database.active %>/<%= @system_stats.database.max_size %>
+      </p>
+      <div class="mt-2 text-xs text-gray-500">
+        Overflow: <%= @system_stats.database.overflow %><br>
+        Waiting: <%= @system_stats.database.waiting %>
+      </div>
+    </div>
+
+    <!-- Uptime -->
+    <div class="bg-gray-800 rounded-lg p-6">
+      <h3 class="text-sm font-medium text-gray-400 mb-2">Uptime</h3>
+      <p class="text-2xl font-bold text-white"><%= @system_stats.uptime %></p>
+      <div class="mt-2 text-xs text-gray-500">
+        Schedulers: <%= @system_stats.processes %><br>
+        Users: <%= @database_stats.users %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pipeline Control -->
+  <div class="bg-gray-800 rounded-lg p-6 mb-8">
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-xl font-semibold text-white mb-2">Killmail Pipeline</h2>
+        <p class="text-gray-400">Control the real-time killmail ingestion pipeline</p>
+      </div>
+      <button
+        phx-click="toggle_pipeline"
+        class={"px-6 py-3 rounded-md font-medium #{if @pipeline_enabled, do: "bg-red-600 hover:bg-red-700 text-white", else: "bg-green-600 hover:bg-green-700 text-white"}"}
+      >
+        <%= if @pipeline_enabled, do: "Disable Pipeline", else: "Enable Pipeline" %>
+      </button>
+    </div>
+    
+    <div class="mt-4 flex items-center gap-2">
+      <div class={"h-3 w-3 rounded-full #{if @pipeline_enabled, do: "bg-green-400 animate-pulse", else: "bg-red-400"}"}></div>
+      <span class="text-sm text-gray-400">
+        Pipeline is <%= if @pipeline_enabled, do: "running", else: "stopped" %>
+      </span>
+    </div>
+  </div>
+
+  <!-- Cache Management -->
+  <div class="bg-gray-800 rounded-lg p-6 mb-8">
+    <h2 class="text-xl font-semibold text-white mb-4">Cache Management</h2>
+    
+    <div class="space-y-4">
+      <%= for cache <- @system_stats.cache do %>
+        <div class="flex items-center justify-between py-3 border-b border-gray-700 last:border-0">
+          <div>
+            <p class="text-white font-medium"><%= cache.name %></p>
+            <p class="text-sm text-gray-400">
+              <%= cache.size %> entries • <%= cache.memory %>
+            </p>
+          </div>
+          <button
+            phx-click="clear_cache"
+            phx-value-cache={String.downcase(String.replace(cache.name, " ", "_"))}
+            class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md text-sm"
+          >
+            Clear
+          </button>
+        </div>
+      <% end %>
+      
+      <div class="pt-4">
+        <button
+          phx-click="clear_cache"
+          phx-value-cache="all"
+          class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm"
+          data-confirm="Are you sure you want to clear all caches?"
+        >
+          Clear All Caches
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Maintenance Tasks -->
+  <div class="bg-gray-800 rounded-lg p-6">
+    <h2 class="text-xl font-semibold text-white mb-4">Maintenance Tasks</h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <button
+        phx-click="run_maintenance"
+        phx-value-task="vacuum"
+        class="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium"
+        data-confirm="Run VACUUM ANALYZE? This may take several minutes."
+      >
+        VACUUM Database
+      </button>
+      
+      <button
+        phx-click="run_maintenance"
+        phx-value-task="reindex"
+        class="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium"
+        data-confirm="Rebuild database indexes? This may impact performance temporarily."
+      >
+        Rebuild Indexes
+      </button>
+      
+      <button
+        phx-click="run_maintenance"
+        phx-value-task="refresh_views"
+        class="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium"
+      >
+        Refresh Materialized Views
+      </button>
+    </div>
+    
+    <div class="mt-4 p-4 bg-gray-900 rounded-md">
+      <p class="text-sm text-gray-400">
+        <strong class="text-yellow-400">⚠ Warning:</strong> 
+        Maintenance tasks may temporarily impact system performance. Run during low-traffic periods.
+      </p>
+    </div>
+  </div>
+</div>
