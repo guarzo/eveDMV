@@ -40,7 +40,7 @@ defmodule EveDmv.Smoke.DatabaseSmokeTest do
         "users",
         "tokens",
         "eve_item_types",
-        "solar_systems",
+        "eve_solar_systems",
         "character_stats"
       ]
 

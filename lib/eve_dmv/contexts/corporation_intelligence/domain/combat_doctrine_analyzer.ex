@@ -257,7 +257,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
 
   defp fetch_corporation_combat_data(corporation_id, analysis_window_days) do
     cutoff_date =
-      DateTimeUtils.add(NaiveDateTime.utc_now(), -analysis_window_days * 24 * 60 * 60, :second)
+      DateTimeUtils.add(DateTime.utc_now(), -analysis_window_days * 24 * 60 * 60, :second)
 
     # Fetch killmails where corporation members were involved
     victim_query =
@@ -980,7 +980,11 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
     |> Map.put(:ewar_heavy, %{
       ewar_percentage: Map.get(role_analysis.role_percentages, :ewar, 0.0),
       support_ratio: role_analysis.support_ratio,
-      coordination_quality: tactical_analysis.coordination_indicators.score,
+      coordination_quality:
+        case tactical_analysis.coordination_indicators do
+          %{score: score} -> score
+          _ -> 0.0
+        end,
       specialized_ships: ship_analysis.specialized_ships.percentage
     })
     |> Map.put(:capital_escalation, %{
@@ -994,7 +998,11 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
     })
     |> Map.put(:alpha_strike, %{
       alpha_ships_percentage: calculate_alpha_ship_percentage(ship_analysis),
-      coordination_quality: tactical_analysis.coordination_indicators.score,
+      coordination_quality:
+        case tactical_analysis.coordination_indicators do
+          %{score: score} -> score
+          _ -> 0.0
+        end,
       target_focus: tactical_analysis.target_focus.focus,
       killmail_density: tactical_analysis.killmail_density
     })
@@ -1502,7 +1510,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
       evolution_analysis: evolution_analysis,
       threat_assessment: generate_doctrine_threat_assessment(doctrine_classification),
       analysis_metadata: %{
-        analysis_timestamp: NaiveDateTime.utc_now(),
+        analysis_timestamp: DateTime.utc_now(),
         fleet_engagements: length(fleet_compositions),
         confidence_level: doctrine_classification.doctrine_certainty
       }

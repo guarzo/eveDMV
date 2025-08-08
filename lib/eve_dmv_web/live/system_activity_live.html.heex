@@ -235,7 +235,7 @@
                     <div class="text-sm text-gray-300 mt-2">
                       <div><%= system.kill_count %> kills</div>
                       <div class="text-green-400"><%= format_isk(system.isk_destroyed) %> destroyed</div>
-                      <div class="text-yellow-400">Score: <%= Float.round(system.activity_score, 1) %></div>
+                      <div class="text-yellow-400">Score: <%= if is_float(system.activity_score), do: Float.round(system.activity_score, 1), else: system.activity_score %></div>
                     </div>
                   </div>
                 <% end %>

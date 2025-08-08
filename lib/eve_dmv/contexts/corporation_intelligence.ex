@@ -232,7 +232,12 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
         {:ok,
          %{
            top_threats: threat_results,
-           average_threat_score: Float.round(average_threat, 1),
+           average_threat_score:
+             if is_float(average_threat) do
+               Float.round(average_threat, 1)
+             else
+               average_threat / 1
+             end,
            threat_distribution: threat_distribution
          }}
 

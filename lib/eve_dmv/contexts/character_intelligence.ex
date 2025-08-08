@@ -11,7 +11,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   alias EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.CrossCharacterAnalyzer
   alias EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnalyzer
   alias EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrendAnalyzer
-  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.GangEffectivenessEngine
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine
   alias EveDmv.Integrations.ShipIntelligenceBridge
 
@@ -391,7 +390,39 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   """
   @spec analyze_gang_effectiveness([integer()]) :: {:ok, map()} | {:error, atom()}
   def analyze_gang_effectiveness(character_ids) when is_list(character_ids) do
-    GangEffectivenessEngine.analyze_synergy(character_ids)
+    # GangEffectivenessEngine only works on single characters
+    # For multiple characters, use GangSynergyAnalyzer instead
+    case GangSynergyAnalyzer.analyze_synergy(character_ids) do
+      {:ok, synergy} ->
+        # Convert synergy format to effectiveness format
+        # Calculate synergy rating from coordination and role compatibility
+        synergy_rating = (synergy.coordination_score + synergy.role_compatibility) / 2
+
+        {:ok,
+         %{
+           coordination_score: synergy.coordination_score,
+           synergy_score: synergy_rating,
+           effectiveness_rating: calculate_effectiveness_rating(synergy, synergy_rating),
+           shared_victories: synergy.shared_victories,
+           role_compatibility: synergy.role_compatibility,
+           temporal_patterns: Map.get(synergy, :temporal_coordination, %{}),
+           geographic_patterns: Map.get(synergy, :engagement_patterns, %{}),
+           effectiveness_metrics: Map.get(synergy, :success_metrics, %{})
+         }}
+
+      error ->
+        error
+    end
+  end
+
+  defp calculate_effectiveness_rating(synergy, synergy_rating) do
+    # Simple effectiveness calculation based on coordination and synergy
+    base_rating = synergy_rating
+
+    # Bonus for shared victories
+    victory_bonus = min(0.2, synergy.shared_victories * 0.01)
+
+    Float.round(min(1.0, base_rating + victory_bonus), 2)
   end
 
   # Private helper functions

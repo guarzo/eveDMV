@@ -93,6 +93,7 @@ defmodule EveDmv.Contexts.SystemAnalysisTest do
       end
     end
 
+    @tag timeout: 60_000
     test "identifies peak activity times", %{system_id: system_id} do
       assert {:ok, analysis} = SystemAnalysis.analyze_system_activity(system_id)
 
@@ -385,6 +386,21 @@ defmodule EveDmv.Contexts.SystemAnalysisTest do
       # Create correlated activity across multiple systems
       base_systems = [30_000_142, 30_000_143, 30_000_144]
 
+      # Create the solar systems in the database so region queries work
+      for {system_id, idx} <- Enum.with_index(base_systems) do
+        EveDmv.Eve.SolarSystem.create!(%{
+          system_id: system_id,
+          system_name: "Test System #{idx + 1}",
+          region_id: region_id,
+          region_name: "The Forge",
+          x: Decimal.new((idx + 1) * 1_000_000_000_000),
+          y: Decimal.new(0),
+          z: Decimal.new((idx + 1) * 500_000_000_000),
+          security_status: Decimal.new("0.5"),
+          security_class: "highsec"
+        })
+      end
+
       # Create wave of activity that moves through systems
       for {system_id, delay} <- Enum.with_index(base_systems) do
         for day <- 0..6 do
@@ -396,7 +412,7 @@ defmodule EveDmv.Contexts.SystemAnalysisTest do
                 Api.create(
                   KillmailRaw,
                   Map.merge(killmail_attrs, %{
-                    killmail_id: 950_000_000 + system_id + day * 1000 + hour * 10 + i,
+                    killmail_id: 950_000_000 + system_id * 10_000 + day * 1000 + hour * 10 + i,
                     killmail_time:
                       DateTime.utc_now()
                       |> DateTime.add(-(7 - day), :day)

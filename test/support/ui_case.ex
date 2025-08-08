@@ -84,12 +84,13 @@ defmodule EveDmv.UICase do
   Logs in a user and returns an authenticated connection.
   """
   def log_in_user(conn, user) do
-    token = create(:token, user_id: user.id, character_id: user.character_id)
+    token = create(:token, user_id: user.id, character_id: user.eve_character_id)
 
     conn
     |> Phoenix.ConnTest.init_test_session(%{})
     |> Plug.Conn.put_session(:user_token, token.access_token)
     |> Plug.Conn.put_session(:current_user, user)
+    |> Plug.Conn.put_session(:current_user_id, user.id)
   end
 
   @doc """

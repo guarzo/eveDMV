@@ -25,6 +25,8 @@ defmodule EveDmv.Intelligence.Core.CorrelationEngine do
   - {:ok, correlation_analysis} on success
   - {:error, reason} on failure or insufficient data
   """
+  def analyze_cross_module_correlations(nil), do: {:error, :invalid_character_id}
+
   def analyze_cross_module_correlations(character_id) when is_integer(character_id) do
     Logger.debug("Starting cross-module correlation analysis for character #{character_id}")
 
@@ -64,26 +66,37 @@ defmodule EveDmv.Intelligence.Core.CorrelationEngine do
   - {:error, reason} on failure
   """
   def analyze_multi_character_correlations(character_ids) when is_list(character_ids) do
-    Logger.debug(
-      "Starting multi-character correlation analysis for #{length(character_ids)} characters"
-    )
+    cond do
+      Enum.empty?(character_ids) ->
+        {:error, :no_character_data_available}
 
-    with {:ok, character_analyses} <- get_multiple_character_analyses(character_ids),
-         {:ok, correlations} <- compute_multi_character_correlations(character_analyses) do
-      analysis = %{
-        character_ids: character_ids,
-        correlations: correlations,
-        network_graph: build_network_graph(correlations),
-        clusters: identify_clusters(correlations),
-        analysis_timestamp: DateTime.utc_now()
-      }
+      length(character_ids) == 1 ->
+        {:error, "Insufficient character data for correlation analysis"}
 
-      Logger.info("Completed multi-character correlation analysis")
-      {:ok, analysis}
-    else
-      {:error, reason} = error ->
-        Logger.error("Multi-character correlation failed: #{inspect(reason)}")
-        error
+      true ->
+        Logger.debug(
+          "Starting multi-character correlation analysis for #{length(character_ids)} characters"
+        )
+
+        with {:ok, character_analyses} <- get_multiple_character_analyses(character_ids),
+             {:ok, correlations} <- compute_multi_character_correlations(character_analyses) do
+          analysis = %{
+            character_ids: character_ids,
+            correlations: correlations,
+            network_graph: build_network_graph(correlations),
+            clusters: identify_clusters(correlations),
+            temporal_correlations: correlations[:temporal_correlations] || %{},
+            geographic_correlations: correlations[:location_correlations] || %{},
+            analysis_timestamp: DateTime.utc_now()
+          }
+
+          Logger.info("Completed multi-character correlation analysis")
+          {:ok, analysis}
+        else
+          {:error, reason} = error ->
+            Logger.error("Multi-character correlation failed: #{inspect(reason)}")
+            error
+        end
     end
   end
 
@@ -106,6 +119,11 @@ defmodule EveDmv.Intelligence.Core.CorrelationEngine do
         "Character analysis error for #{character_id}: #{inspect(error)}, using basic data"
       )
 
+      {:ok, get_basic_character_data(character_id)}
+  catch
+    :exit, {:noproc, _} ->
+      # Handle GenServer not running (common in test environment)
+      Logger.debug("Analysis service not available for #{character_id}, using basic data")
       {:ok, get_basic_character_data(character_id)}
   end
 

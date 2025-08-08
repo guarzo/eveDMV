@@ -179,7 +179,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
 
   defp fetch_character_combat_data(character_id, analysis_window_days) do
     cutoff_date =
-      DateTimeUtils.add(NaiveDateTime.utc_now(), -analysis_window_days * 24 * 60 * 60, :second)
+      DateTimeUtils.add(DateTime.utc_now(), -analysis_window_days * 24 * 60 * 60, :second)
 
     # Fetch killmails where character was victim
     victim_query =
@@ -423,7 +423,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
 
   defp calculate_recent_activity_score(combat_data, weight_recent) do
     if weight_recent do
-      recent_cutoff = DateTimeUtils.add(NaiveDateTime.utc_now(), -30 * 24 * 60 * 60, :second)
+      recent_cutoff = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
 
       recent_killmails =
         Enum.filter(combat_data.killmails, fn km ->
@@ -498,7 +498,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
       tactical_recommendations:
         generate_tactical_recommendations(dimensional_scores, threat_level),
       metadata: %{
-        analysis_timestamp: NaiveDateTime.utc_now(),
+        analysis_timestamp: DateTime.utc_now(),
         scoring_version: "2.0",
         killmails_analyzed: count_total_killmails(dimensional_scores)
       }
@@ -1360,7 +1360,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   defp generate_combat_skill_insights(raw_score, kd_ratio, isk_efficiency, survival_rate) do
     []
     |> maybe_add_insight(
-      "Excellent kill/death ratio (#{Float.round(kd_ratio, 1)}:1)",
+      "Excellent kill/death ratio (#{Float.round(kd_ratio * 1.0, 1)}:1)",
       kd_ratio > 3.0
     )
     |> maybe_add_insight(
@@ -1496,7 +1496,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
       insights =
         if max_score - min_score > 5.0 do
           [
-            "Wide threat level variation - from #{Float.round(min_score, 1)} to #{Float.round(max_score, 1)}"
+            "Wide threat level variation - from #{Float.round(min_score * 1.0, 1)} to #{Float.round(max_score * 1.0, 1)}"
             | insights
           ]
         else
@@ -1505,7 +1505,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
 
       insights =
         if avg_score > 6.0 do
-          ["Generally high threat group - average score #{Float.round(avg_score, 1)}" | insights]
+          [
+            "Generally high threat group - average score #{Float.round(avg_score * 1.0, 1)}"
+            | insights
+          ]
         else
           insights
         end
@@ -1623,7 +1626,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
         predicted_level = determine_threat_level(predicted_score)
 
         [
-          "Predicted next period: #{Float.round(predicted_score, 1)} (#{predicted_level})"
+          "Predicted next period: #{Float.round(predicted_score * 1.0, 1)} (#{predicted_level})"
           | predictions
         ]
       else

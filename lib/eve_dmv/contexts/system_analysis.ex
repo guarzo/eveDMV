@@ -153,10 +153,58 @@ defmodule EveDmv.Contexts.SystemAnalysis do
 
   @doc """
   Analyzes regional correlation patterns between systems.
+  Can accept either a single region_id or a list of system_ids.
   """
-  @spec analyze_regional_correlation(list(integer()), keyword()) ::
+  @spec analyze_regional_correlation(integer() | list(integer()), keyword()) ::
           {:ok, map()} | {:error, atom()}
-  def analyze_regional_correlation(system_ids, opts \\ []) do
+
+  # Define the default once
+  def analyze_regional_correlation(region_or_systems, opts \\ [])
+
+  # Handle single region_id
+  def analyze_regional_correlation(region_id, opts) when is_integer(region_id) do
+    # Query all systems in the region from the solar system table
+    system_query =
+      EveDmv.Eve.SolarSystem
+      |> Ash.Query.new()
+      |> Ash.Query.filter(region_id == ^region_id)
+      |> Ash.Query.select([:system_id])
+
+    system_ids =
+      case Api.read(system_query) do
+        {:ok, systems} -> Enum.map(systems, & &1.system_id)
+        {:error, _} -> []
+      end
+
+    # If no systems found in region, return error
+    if Enum.empty?(system_ids) do
+      {:error, :no_systems_in_region}
+    else
+      # Default 7 days
+      hours = Keyword.get(opts, :hours, 168)
+      cutoff_date = DateTime.utc_now() |> DateTime.add(-hours, :hour)
+
+      # Get killmails for the timeframe
+      query =
+        KillmailRaw
+        |> Ash.Query.new()
+        |> Ash.Query.filter(killmail_time >= ^cutoff_date)
+        |> Ash.Query.filter(solar_system_id in ^system_ids)
+
+      case Api.read(query) do
+        {:ok, killmails} ->
+          correlation_data = calculate_system_correlations(system_ids, killmails)
+          # Add region_id to response for tests
+          {:ok, Map.put(correlation_data, :region_id, region_id)}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    end
+  end
+
+  # Handle list of system_ids
+  def analyze_regional_correlation(system_ids, opts) when is_list(system_ids) do
     # Default 7 days
     hours = Keyword.get(opts, :hours, 168)
     cutoff_date = DateTime.utc_now() |> DateTime.add(-hours, :hour)
@@ -397,7 +445,8 @@ defmodule EveDmv.Contexts.SystemAnalysis do
     |> Map.new(fn {system_id, kms} ->
       total_value =
         Enum.reduce(kms, Decimal.new(0), fn km, acc ->
-          Decimal.add(acc, km.total_value)
+          value = km.total_value || Decimal.new(0)
+          Decimal.add(acc, value)
         end)
 
       {system_id,
@@ -429,23 +478,34 @@ defmodule EveDmv.Contexts.SystemAnalysis do
     # Group killmails by system and calculate threat levels
     system_activity = group_by_system(killmails)
 
-    # Convert to heatmap format with coordinates
+    # Get all unique system IDs
+    system_ids = Map.keys(system_activity)
+
+    # Fetch system information from static data
+    system_info_map = fetch_system_info(system_ids)
+
+    # Convert to heatmap format with real coordinates and names
     systems =
       system_activity
       |> Map.values()
       |> Enum.map(fn system_data ->
         threat_level = calculate_threat_level(system_data)
 
+        # Get system info from our fetched data
+        sys_info = Map.get(system_info_map, system_data.system_id, %{})
+
         %{
           id: system_data.system_id,
-          # Would be resolved from static data
-          name: "System #{system_data.system_id}",
+          # Use real system name, fallback to ID if not found
+          name: Map.get(sys_info, :system_name, "Unknown System #{system_data.system_id}"),
           threatLevel: threat_level,
           recentKills: system_data.kill_count,
           iskDestroyed: Decimal.to_float(system_data.isk_destroyed),
-          # Mock coordinates - would come from static data
-          mapX: :rand.uniform(),
-          mapY: :rand.uniform()
+          # Use real coordinates, converting from Decimal to float
+          # EVE uses very large coordinate values, normalize them for display
+          mapX: normalize_coordinate(Map.get(sys_info, :x)),
+          # Use Z for 2D map (Y is vertical in EVE)
+          mapY: normalize_coordinate(Map.get(sys_info, :z))
         }
       end)
       |> Enum.take(Keyword.get(opts, :limit, 100))
@@ -459,6 +519,8 @@ defmodule EveDmv.Contexts.SystemAnalysis do
 
     %{
       systems: systems,
+      # Add for test compatibility
+      heatmap_data: systems,
       maxThreat: max_threat,
       generatedAt: DateTime.utc_now(),
       totalSystems: length(systems)
@@ -490,14 +552,16 @@ defmodule EveDmv.Contexts.SystemAnalysis do
       Enum.map(system_ids, fn system_id ->
         %{
           id: system_id,
-          # Would be resolved from static data
-          name: "System #{system_id}"
+          # Fetch real system name from static data
+          name: get_system_name(system_id)
         }
       end)
 
     %{
       systems: systems,
       matrix: correlation_matrix,
+      # Add for test compatibility
+      correlation_matrix: correlation_matrix,
       generated_at: DateTime.utc_now(),
       sample_size: length(killmails)
     }
@@ -510,7 +574,9 @@ defmodule EveDmv.Contexts.SystemAnalysis do
     hours =
       for h <- 0..23 do
         DateTime.add(now, -h * 3600, :second)
-        |> DateTime.truncate(:hour)
+        |> Map.put(:minute, 0)
+        |> Map.put(:second, 0)
+        |> Map.put(:microsecond, {0, 0})
       end
 
     # Initialize time series for each system
@@ -521,11 +587,19 @@ defmodule EveDmv.Contexts.SystemAnalysis do
 
     # Fill in actual killmail counts by hour
     Enum.reduce(killmails, time_series, fn killmail, acc ->
-      hour_bucket = DateTime.truncate(killmail.killmail_time, :hour)
+      hour_bucket =
+        killmail.killmail_time
+        |> Map.put(:minute, 0)
+        |> Map.put(:second, 0)
+        |> Map.put(:microsecond, {0, 0})
+
       system_id = killmail.solar_system_id
 
       if Map.has_key?(acc, system_id) do
-        update_in(acc, [system_id, hour_bucket], fn count -> count + 1 end)
+        update_in(acc, [system_id, hour_bucket], fn
+          nil -> 1
+          count -> count + 1
+        end)
       else
         acc
       end
@@ -610,8 +684,8 @@ defmodule EveDmv.Contexts.SystemAnalysis do
 
       %{
         system_id: system_id,
-        # Would be resolved from static data
-        system_name: "System #{system_id}",
+        # Fetch real system name from static data
+        system_name: get_system_name(system_id),
         severity: severity,
         escalation_type: escalation_type,
         escalation_score: Float.round(escalation_score, 2),
@@ -686,5 +760,67 @@ defmodule EveDmv.Contexts.SystemAnalysis do
       isk_value >= 1_000_000 -> "#{Float.round(isk_value / 1_000_000, 1)}M ISK"
       true -> "#{Float.round(isk_value / 1_000, 1)}K ISK"
     end
+  end
+
+  # Helper functions for fetching real system data
+  defp fetch_system_info([]), do: %{}
+
+  defp fetch_system_info(system_ids) do
+    query =
+      EveDmv.Eve.SolarSystem
+      |> Ash.Query.new()
+      |> Ash.Query.filter(system_id: [in: system_ids])
+      |> Ash.Query.select([:system_id, :system_name, :x, :y, :z])
+
+    case Api.read(query) do
+      {:ok, systems} ->
+        Map.new(systems, fn sys ->
+          {sys.system_id,
+           %{
+             system_name: sys.system_name,
+             x: sys.x,
+             y: sys.y,
+             z: sys.z
+           }}
+        end)
+
+      {:error, _} ->
+        %{}
+    end
+  end
+
+  defp get_system_name(system_id) do
+    query =
+      EveDmv.Eve.SolarSystem
+      |> Ash.Query.new()
+      |> Ash.Query.filter(system_id == ^system_id)
+      |> Ash.Query.select([:system_name])
+      |> Ash.Query.limit(1)
+
+    case Api.read_one(query) do
+      {:ok, %{system_name: name}} when not is_nil(name) -> name
+      _ -> "System #{system_id}"
+    end
+  end
+
+  defp normalize_coordinate(nil), do: 0.0
+
+  defp normalize_coordinate(coord) when is_binary(coord) do
+    # Handle string coordinates (shouldn't happen but safe fallback)
+    normalize_coordinate(Decimal.new(coord))
+  end
+
+  defp normalize_coordinate(%Decimal{} = coord) do
+    # EVE coordinates are in meters and very large
+    # Normalize to a 0-1 range for display purposes
+    # EVE universe is roughly -5e17 to 5e17 meters
+    float_val = Decimal.to_float(coord)
+    # Scale down and center around 0.5
+    (float_val / 1.0e18 + 0.5) |> max(0.0) |> min(1.0)
+  end
+
+  defp normalize_coordinate(coord) when is_number(coord) do
+    # Already a number, normalize it
+    (coord / 1.0e18 + 0.5) |> max(0.0) |> min(1.0)
   end
 end
