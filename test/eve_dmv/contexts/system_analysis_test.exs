@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.SystemAnalysisTest do
 
   alias EveDmv.Api
   alias EveDmv.Contexts.SystemAnalysis
-  alias EveDmv.Eve.SolarSystem
   alias EveDmv.Killmails.KillmailRaw
   require Ash.Query
 
@@ -19,7 +18,7 @@ defmodule EveDmv.Contexts.SystemAnalysisTest do
         {30_000_145, "Dodixie", Decimal.new("0.9"), "highsec"}
       ]
 
-      for {id, name, sec, class} <- systems do
+      for {_id, _name, _sec, _class} <- systems do
         # Skip system creation - SolarSystem doesn't have proper create action configured
         # Just use the system IDs directly in killmails
       end
@@ -173,7 +172,7 @@ defmodule EveDmv.Contexts.SystemAnalysisTest do
       %{systems: Enum.map(systems, &elem(&1, 0))}
     end
 
-    test "generates regional heatmap", %{systems: systems} do
+    test "generates regional heatmap", %{systems: _systems} do
       # The Forge
       region_id = 10_000_002
 

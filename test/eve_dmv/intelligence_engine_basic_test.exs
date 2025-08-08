@@ -214,7 +214,7 @@ defmodule EveDmv.IntelligenceEngineBasicTest do
       assert key1 == key2
       assert is_binary(key1)
       assert String.contains?(key1, "character")
-      assert String.contains?(key1, "12_345")
+      assert String.contains?(key1, "12345")
       assert String.contains?(key1, "basic")
     end
 

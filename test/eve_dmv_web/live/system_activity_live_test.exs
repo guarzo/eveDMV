@@ -1,10 +1,12 @@
 defmodule EveDmvWeb.SystemActivityLiveTest do
   use EveDmvWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
+  import EveDmv.Factories
+  import EveDmv.UICase, only: [log_in_user: 2]
 
   describe "System Activity LiveView" do
     setup do
-      user = insert(:user)
+      user = create(:user)
       conn = log_in_user(build_conn(), user)
       {:ok, conn: conn}
     end
@@ -76,14 +78,14 @@ defmodule EveDmvWeb.SystemActivityLiveTest do
   describe "System Analysis context" do
     test "generates heatmap data with real killmails" do
       # Create some test killmails
-      insert(:killmail_raw,
+      create(:killmail_raw,
         solar_system_id: 30_000_142,
         zkb_total_value: Decimal.new(100_000_000)
       )
 
-      insert(:killmail_raw, solar_system_id: 30_000_142, zkb_total_value: Decimal.new(50_000_000))
+      create(:killmail_raw, solar_system_id: 30_000_142, zkb_total_value: Decimal.new(50_000_000))
 
-      insert(:killmail_raw,
+      create(:killmail_raw,
         solar_system_id: 30_000_143,
         zkb_total_value: Decimal.new(200_000_000)
       )
@@ -103,8 +105,8 @@ defmodule EveDmvWeb.SystemActivityLiveTest do
     test "gets overview metrics from real data" do
       # Create test killmails in the last 24 hours
       recent_time = DateTime.utc_now() |> DateTime.add(-12, :hour)
-      insert(:killmail_raw, killmail_time: recent_time, solar_system_id: 30_000_142)
-      insert(:killmail_raw, killmail_time: recent_time, solar_system_id: 30_000_143)
+      create(:killmail_raw, killmail_time: recent_time, solar_system_id: 30_000_142)
+      create(:killmail_raw, killmail_time: recent_time, solar_system_id: 30_000_143)
 
       {:ok, metrics} = EveDmv.Contexts.SystemAnalysis.get_overview_metrics()
 
@@ -126,7 +128,7 @@ defmodule EveDmvWeb.SystemActivityLiveTest do
       hot_system = 30_000_142
       # Above the threshold of 20
       for _ <- 1..25 do
-        insert(:killmail_raw,
+        create(:killmail_raw,
           solar_system_id: hot_system,
           zkb_total_value: Decimal.new(Enum.random(10_000_000..100_000_000))
         )
@@ -149,7 +151,7 @@ defmodule EveDmvWeb.SystemActivityLiveTest do
 
       # High activity in recent period
       for _ <- 1..15 do
-        insert(:killmail_raw,
+        create(:killmail_raw,
           solar_system_id: escalation_system,
           killmail_time: current_time,
           zkb_total_value: Decimal.new(Enum.random(100_000_000..300_000_000))
@@ -170,14 +172,14 @@ defmodule EveDmvWeb.SystemActivityLiveTest do
 
   describe "Escalation Alert UI" do
     setup do
-      user = insert(:user)
+      user = create(:user)
       conn = log_in_user(build_conn(), user)
 
       # Create escalation scenario
       current_time = DateTime.utc_now() |> DateTime.add(-1, :hour)
 
       for _ <- 1..20 do
-        insert(:killmail_raw,
+        create(:killmail_raw,
           solar_system_id: 30_000_145,
           killmail_time: current_time,
           zkb_total_value: Decimal.new(200_000_000)

@@ -167,6 +167,55 @@ defmodule EveDmv.Users.User do
     # Default actions
     defaults([:read, :update, :destroy])
 
+    # Primary create action for testing and direct creation
+    create :create do
+      primary?(true)
+
+      accept([
+        :eve_character_id,
+        :eve_character_name,
+        :eve_corporation_id,
+        :eve_corporation_name,
+        :eve_alliance_id,
+        :eve_alliance_name
+      ])
+
+      # Support legacy attribute names from tests
+      argument :character_id, :integer do
+        allow_nil?(true)
+      end
+
+      argument :character_name, :string do
+        allow_nil?(true)
+      end
+
+      argument :owner_hash, :string do
+        allow_nil?(true)
+      end
+
+      # Map legacy names to actual attributes
+      change(fn changeset, _context ->
+        character_id = Changeset.get_argument(changeset, :character_id)
+        character_name = Changeset.get_argument(changeset, :character_name)
+
+        changeset
+        |> then(fn cs ->
+          if character_id do
+            Changeset.change_attribute(cs, :eve_character_id, character_id)
+          else
+            cs
+          end
+        end)
+        |> then(fn cs ->
+          if character_name do
+            Changeset.change_attribute(cs, :eve_character_name, character_name)
+          else
+            cs
+          end
+        end)
+      end)
+    end
+
     # Custom create action for EVE SSO registration
     create :register_with_eve_sso do
       description("Register a new user from EVE SSO authentication")

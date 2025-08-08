@@ -97,7 +97,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
           character_name: user.character_name
         })
 
-      {:ok, view, html} = live(conn, "/character/#{user.character_id}")
+      {:ok, _view, html} = live(conn, "/character/#{user.character_id}")
 
       # Check that the page loads
       assert html =~ "Character Intelligence"
@@ -187,7 +187,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
           character_name: user.character_name
         })
 
-      {:ok, view, html} = live(conn, "/character/99999999")
+      {:ok, _view, html} = live(conn, "/character/99999999")
 
       # Should show error or redirect
       assert html =~ "not found" or html =~ "error" or html =~ "Character Intelligence"
@@ -202,7 +202,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
           character_name: user.character_name
         })
 
-      {:ok, view, initial_html} = live(conn, "/character/#{user.character_id}")
+      {:ok, view, _initial_html} = live(conn, "/character/#{user.character_id}")
 
       # Create a new killmail
       killmail_attrs = killmail_raw_factory()
@@ -252,7 +252,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
   end
 
   describe "character comparison" do
-    setup %{user: user} do
+    setup %{user: _user} do
       # Create another character to compare with
       {:ok, other_user} =
         Api.create(User, %{
@@ -390,7 +390,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLiveTest do
       character_ids = [user.character_id | Enum.map(gang_members, & &1.character_id)]
       ids_param = Enum.join(character_ids, ",")
 
-      {:ok, view, html} = live(conn, "/gang/analysis?ids=#{ids_param}")
+      {:ok, _view, html} = live(conn, "/gang/analysis?ids=#{ids_param}")
 
       # Should show gang analysis
       assert html =~ "Gang" or html =~ "Synergy" or html =~ "Group"

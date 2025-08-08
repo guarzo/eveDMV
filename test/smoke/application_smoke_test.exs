@@ -29,9 +29,10 @@ defmodule EveDmv.Smoke.ApplicationSmokeTest do
     test "cache supervisor is running" do
       # Cache might be in different locations after reorganization
       cache_processes = [
-        Process.whereis(EveDmv.Platform.Cache.CacheSupervisor),
-        Process.whereis(EveDmv.Platform.Cache.CacheSupervisor),
-        Process.whereis(EveDmv.Cache)
+        Process.whereis(EveDmv.Shared.Infrastructure.UnifiedCache),
+        Process.whereis(EveDmv.Eve.EsiCache),
+        Process.whereis(EveDmv.Platform.Cache.StaticDataCache),
+        Process.whereis(EveDmv.Platform.Cache.QueryCache)
       ]
 
       assert Enum.any?(cache_processes, &(&1 != nil)), "No cache process found"

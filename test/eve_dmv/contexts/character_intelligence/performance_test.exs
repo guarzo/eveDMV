@@ -9,7 +9,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.PerformanceTest do
   import EveDmv.Factories
   alias EveDmv.Api
   alias EveDmv.Contexts.CharacterIntelligence
-  alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
 
   require Logger

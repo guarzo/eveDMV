@@ -207,7 +207,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.CrossCharacterA
         end
 
       character_ids = Enum.map(characters, & &1.character_id)
-      [char1, char2, char3] = character_ids
+      [_char1, _char2, _char3] = character_ids
 
       # Create pattern: Weekend warriors (Friday-Sunday operations)
       # Friday, Saturday, Sunday

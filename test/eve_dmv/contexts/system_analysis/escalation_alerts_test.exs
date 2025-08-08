@@ -1,6 +1,6 @@
 defmodule EveDmv.Contexts.SystemAnalysis.EscalationAlertsTest do
   use EveDmvWeb.ConnCase, async: true
-  import EveDmv.Factory
+  import EveDmv.Factories
 
   alias EveDmv.Contexts.SystemAnalysis
 
@@ -9,7 +9,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.EscalationAlertsTest do
       # Create baseline killmails (low activity)
       baseline_time = DateTime.utc_now() |> DateTime.add(-12, :hour)
 
-      insert(:killmail_raw,
+      create(:killmail_raw,
         solar_system_id: 30_000_142,
         killmail_time: baseline_time,
         zkb_total_value: Decimal.new(50_000_000)
@@ -19,7 +19,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.EscalationAlertsTest do
       current_time = DateTime.utc_now() |> DateTime.add(-2, :hour)
 
       for _ <- 1..10 do
-        insert(:killmail_raw,
+        create(:killmail_raw,
           solar_system_id: 30_000_142,
           killmail_time: current_time,
           zkb_total_value: Decimal.new(Enum.random(100_000_000..500_000_000))
@@ -42,7 +42,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.EscalationAlertsTest do
       current_time = DateTime.utc_now() |> DateTime.add(-1, :hour)
 
       for _ <- 1..20 do
-        insert(:killmail_raw,
+        create(:killmail_raw,
           solar_system_id: 30_000_143,
           killmail_time: current_time,
           zkb_total_value: Decimal.new(200_000_000)
@@ -69,7 +69,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.EscalationAlertsTest do
       current_time = DateTime.utc_now() |> DateTime.add(-1, :hour)
       # Above massive_engagement threshold
       for _ <- 1..35 do
-        insert(:killmail_raw,
+        create(:killmail_raw,
           solar_system_id: 30_000_144,
           killmail_time: current_time,
           zkb_total_value: Decimal.new(100_000_000)
@@ -92,7 +92,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.EscalationAlertsTest do
       current_time = DateTime.utc_now() |> DateTime.add(-1, :hour)
 
       for _ <- 1..5 do
-        insert(:killmail_raw,
+        create(:killmail_raw,
           solar_system_id: 30_000_145,
           killmail_time: current_time,
           # 2B ISK each
@@ -119,7 +119,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.EscalationAlertsTest do
       # Test with known activity levels
       baseline_time = DateTime.utc_now() |> DateTime.add(-18, :hour)
 
-      insert(:killmail_raw,
+      create(:killmail_raw,
         solar_system_id: 30_000_146,
         killmail_time: baseline_time,
         zkb_total_value: Decimal.new(50_000_000)
@@ -129,7 +129,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.EscalationAlertsTest do
       current_time = DateTime.utc_now() |> DateTime.add(-2, :hour)
 
       for _ <- 1..5 do
-        insert(:killmail_raw,
+        create(:killmail_raw,
           solar_system_id: 30_000_146,
           killmail_time: current_time,
           zkb_total_value: Decimal.new(100_000_000)
