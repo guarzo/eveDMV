@@ -125,6 +125,10 @@ config :phoenix, :json_library, Jason
 # Disable Tesla deprecated builder warning
 config :tesla, disable_deprecated_builder_warning: true
 
+# Configure Hammer rate limiting
+config :hammer,
+  backend: {Hammer.Backend.ETS, [expiry_ms: 60_000, cleanup_interval_ms: 60_000]}
+
 # Ash Framework configuration
 config :ash, :include_embedded_source_by_default?, false
 config :ash, :policies, show_policy_breakdowns?: true
@@ -140,8 +144,7 @@ config :eve_dmv,
     EveDmv.Domains.Intelligence,
     EveDmv.Domains.Surveillance,
     EveDmv.Contexts.BattleAnalysis.Api,
-    EveDmv.Contexts.FleetOperations.Domain,
-    EveDmv.Api.WormholeOperationsApi
+    EveDmv.Contexts.FleetOperations.Domain
   ]
 
 # AshPostgres configuration

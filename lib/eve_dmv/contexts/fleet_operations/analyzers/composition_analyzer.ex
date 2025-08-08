@@ -7,7 +7,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
   into fleet strengths, weaknesses, and optimization opportunities.
   """
 
-  use EveDmv.ErrorHandler
+  use EveDmv.Core.Errors.ErrorHandler
   alias Ecto.Adapters.SQL
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Eve.ItemType

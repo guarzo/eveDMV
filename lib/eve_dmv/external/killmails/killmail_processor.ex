@@ -25,7 +25,7 @@ defmodule EveDmv.Killmails.KillmailProcessor do
       price_data = KillmailProcessor.calculate_price_values(killmail, source: "janice")
   """
 
-  alias EveDmv.Utils.ParsingUtils
+  alias EveDmv.Core.Utils.ParsingUtils
 
   require Logger
 

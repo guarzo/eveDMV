@@ -7,7 +7,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
   """
 
   use GenServer
-  use EveDmv.ErrorHandler
+  use EveDmv.Core.Errors.ErrorHandler
 
   # Analyzer aliases removed as they're not currently used
   # Will be re-added when the analyzers are fully implemented

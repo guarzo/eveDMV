@@ -1,10 +1,7 @@
 defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
-  use ExUnit.Case, async: true
   use EveDmv.DataCase, async: true
 
   alias EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineService
-
-  @moduletag :skip
 
   describe "reconstruct_timeline/1" do
     test "creates detailed timeline from battle data" do

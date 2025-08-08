@@ -15,8 +15,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
   intelligence data about character combat patterns and behaviors.
   """
 
-  alias EveDmv.Cache.QueryCache
   alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Platform.Cache.QueryCache
   alias EveDmv.Shared.KillmailQueries
   alias EveDmv.StaticData
   require Logger

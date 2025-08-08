@@ -6,11 +6,10 @@ defmodule EveDmv.Intelligence.Cache.IntelligenceCache do
   while using the new unified cache system with the :analysis cache type.
   """
 
-  alias EveDmv.Cache
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator
   alias EveDmv.Intelligence.Analyzers.CharacterAnalyzer
-  alias EveDmv.Intelligence.Analyzers.WHVettingAnalyzer
   alias EveDmv.Intelligence.Core.CorrelationEngine
+  alias EveDmv.Platform.Cache.Cache
   require Logger
 
   @doc """
@@ -227,8 +226,9 @@ defmodule EveDmv.Intelligence.Cache.IntelligenceCache do
     CharacterAnalyzer.analyze_character(character_id)
   end
 
-  defp generate_vetting_analysis(character_id) do
-    WHVettingAnalyzer.analyze_character(character_id)
+  defp generate_vetting_analysis(_character_id) do
+    # Vetting analysis removed with wormhole operations
+    {:error, :not_implemented}
   end
 
   defp generate_correlation_analysis(character_id) do

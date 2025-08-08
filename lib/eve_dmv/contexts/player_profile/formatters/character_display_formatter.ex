@@ -7,7 +7,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Formatters.CharacterDisplayFormatter do
   """
 
   # alias EveDmv.Presentation.Formatters
-  alias EveDmv.Utils.MathUtils
+  alias EveDmv.Core.Utils.MathUtils
 
   @doc """
   Format complete character analysis for display.

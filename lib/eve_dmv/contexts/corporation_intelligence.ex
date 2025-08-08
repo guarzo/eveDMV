@@ -9,9 +9,9 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
   alias EveDmv.Api
   alias EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer
   alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Core.Utils.TimezoneAnalyzer
   alias EveDmv.Eve.NameResolver
   alias EveDmv.Killmails.Participant
-  alias EveDmv.Utils.TimezoneAnalyzer
 
   require Ash.Query
 

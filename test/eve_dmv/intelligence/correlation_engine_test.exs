@@ -1,9 +1,9 @@
 defmodule EveDmv.Intelligence.CorrelationEngineTest do
   use EveDmv.DataCase, async: false
 
-  alias EveDmv.Cache.QueryCache
   alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Intelligence.Core.CorrelationEngine
+  alias EveDmv.Platform.Cache.Cache.QueryCache
 
   setup do
     # Start QueryCache for this test since it's not started in test environment

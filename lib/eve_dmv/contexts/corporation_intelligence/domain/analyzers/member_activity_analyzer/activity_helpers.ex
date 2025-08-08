@@ -7,10 +7,10 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivit
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Core.Utils.TimeUtils
   alias EveDmv.Intelligence.Analyzers.CommunicationPatternAnalyzer
   alias EveDmv.Intelligence.Calculators.FleetParticipationCalculator
   alias EveDmv.Intelligence.MemberActivityIntelligence
-  alias EveDmv.Utils.TimeUtils
   require Logger
 
   # Helper functions to safely create field atoms

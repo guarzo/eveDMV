@@ -16,7 +16,7 @@ defmodule EveDmv.Workers.AnalysisWorkerPool do
 
   use GenServer
 
-  alias EveDmv.Cache
+  alias EveDmv.Platform.Cache.Cache
 
   require Logger
 

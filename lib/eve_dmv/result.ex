@@ -9,7 +9,7 @@ defmodule EveDmv.Result do
 
       # Create results
       Result.ok("success")                    # {:ok, "success"}
-      Result.error(:timeout, "Request timed out")  # {:error, %EveDmv.Error{}}
+      Result.error(:timeout, "Request timed out")  # {:error, %EveDmv.Core.Errors.Error{}}
 
       # Chain operations
       {:ok, 5}
@@ -23,7 +23,7 @@ defmodule EveDmv.Result do
     Result.unwrap_or("default")         # "default"
   """
 
-  alias EveDmv.Error
+  alias EveDmv.Core.Errors.Error
 
   @type ok(value) :: {:ok, value}
   @type error :: {:error, Error.t()}
@@ -74,7 +74,7 @@ defmodule EveDmv.Result do
     Result.flat_map(fn x ->
            if x == 0, do: Result.error(:division_by_zero, "Cannot divide by zero"),
                      else: Result.ok(10 / x)
-         end)  # {:error, %EveDmv.Error{code: :division_by_zero}}
+         end)  # {:error, %EveDmv.Core.Errors.Error{code: :division_by_zero}}
   """
   @spec flat_map(t(a), (a -> t(b))) :: t(b) when a: term(), b: term()
   def flat_map({:ok, value}, fun), do: fun.(value)
@@ -170,7 +170,7 @@ defmodule EveDmv.Result do
 
   ## Examples
 
-      Result.safely(fn -> 10 / 0 end)  # {:error, %EveDmv.Error{}}
+      Result.safely(fn -> 10 / 0 end)  # {:error, %EveDmv.Core.Errors.Error{}}
       Result.safely(fn -> 10 / 2 end)  # {:ok, 5.0}
   """
   @spec safely((-> a)) :: t(a) when a: term()

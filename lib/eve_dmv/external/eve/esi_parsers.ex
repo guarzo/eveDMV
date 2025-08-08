@@ -6,7 +6,7 @@ defmodule EveDmv.Eve.EsiParsers do
   into normalized data structures used by the application.
   """
 
-  alias EveDmv.Utils.ParsingUtils
+  alias EveDmv.Core.Utils.ParsingUtils
 
   require Logger
 

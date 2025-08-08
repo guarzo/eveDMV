@@ -1,4 +1,4 @@
-defmodule EveDmv.Cache.AnalysisCache do
+defmodule EveDmv.Platform.Cache.AnalysisCache do
   @moduledoc """
   Simple ETS-based cache for character and corporation analysis data.
 

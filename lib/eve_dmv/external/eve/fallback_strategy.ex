@@ -9,12 +9,12 @@ defmodule EveDmv.Eve.FallbackStrategy do
   - Service degradation modes
   """
 
-  alias EveDmv.Cache
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Eve.CircuitBreaker
   alias EveDmv.Eve.ErrorClassifier
   alias EveDmv.Eve.EsiCache
   alias EveDmv.Eve.ReliabilityConfig
+  alias EveDmv.Platform.Cache.Cache
 
   require Logger
 

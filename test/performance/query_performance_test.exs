@@ -8,10 +8,10 @@ defmodule EveDmv.Performance.QueryPerformanceTest do
 
   use EveDmv.DataCase, async: false
 
-  alias EveDmv.Cache.QueryCache
   alias EveDmv.Database.CharacterQueries
   alias EveDmv.Database.CorporationQueries
   alias EveDmv.Factories, as: Factory
+  alias EveDmv.Platform.Cache.QueryCache
 
   @moduletag :skip
 

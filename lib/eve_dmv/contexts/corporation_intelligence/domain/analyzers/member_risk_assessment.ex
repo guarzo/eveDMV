@@ -12,8 +12,8 @@ defmodule EveDmv.Intelligence.Analyzers.MemberRiskAssessment do
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Core.Utils.TimeUtils
   alias EveDmv.Intelligence.Metrics.MemberActivityMetrics
-  alias EveDmv.Utils.TimeUtils
 
   require Logger
 

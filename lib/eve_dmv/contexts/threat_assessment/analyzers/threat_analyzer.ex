@@ -14,7 +14,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
   - Bulk threat assessment capabilities
   """
 
-  use EveDmv.ErrorHandler
+  use EveDmv.Core.Errors.ErrorHandler
 
   alias EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatDataProvider
   alias EveDmv.Result

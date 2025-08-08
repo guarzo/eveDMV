@@ -46,6 +46,8 @@ defmodule EveDmv.Application do
       EveDmv.Repo,
       {DNSCluster, query: Application.get_env(:eve_dmv, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: EveDmv.PubSub},
+      # Core event bus for decoupled communication
+      EveDmv.Core.Events.EventBus,
       # Domain event infrastructure
       EveDmv.Infrastructure.EventBusSupervisor,
       # Start the Finch HTTP client for sending emails
@@ -57,11 +59,13 @@ defmodule EveDmv.Application do
       # Start the ESI cache
       EveDmv.Eve.EsiCache,
       # Start the static data cache for system/ship names
-      EveDmv.Cache.StaticDataCache,
+      EveDmv.Platform.Cache.StaticDataCache,
       # Start the query cache for expensive database queries
-      EveDmv.Cache.QueryCache,
+      EveDmv.Platform.Cache.QueryCache,
       # Start the performance tracker
       EveDmv.Monitoring.PerformanceTracker,
+      # Start the simple memory monitor
+      EveDmv.MemoryMonitor,
       # Start the corporation analyzer service
       EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer,
       # Start the battle analysis service for combat intelligence
@@ -152,7 +156,7 @@ defmodule EveDmv.Application do
         end)
 
         # Attach global error telemetry
-        # EveDmv.ErrorHandler.attach_telemetry_handlers()
+        # EveDmv.Core.Errors.ErrorHandler.attach_telemetry_handlers()
 
         # Attach query performance
         # EveDmv.Performance.QueryMonitor.attach_telemetry_handlers()
@@ -174,16 +178,17 @@ defmodule EveDmv.Application do
     if Application.get_env(:eve_dmv, :environment, :prod) != :test do
       [
         EveDmv.Telemetry.QueryMonitor,
-        # EveDmv.Database.QueryCache, # Removed - duplicate of EveDmv.Cache.QueryCache
-        EveDmv.Database.CacheWarmer,
-        EveDmv.Database.ConnectionPoolMonitor,
-        EveDmv.Database.PartitionManager,
-        EveDmv.Database.IncrementalViewRefresher,
-        EveDmv.Database.CacheInvalidator,
-        EveDmv.Database.CacheHashManager,
-        EveDmv.Database.QueryPlanAnalyzer,
-        EveDmv.Database.MaterializedViewManager,
-        EveDmv.Database.ArchiveManager,
+        # EveDmv.Database.QueryCache, # Removed - duplicate of EveDmv.Platform.Cache.QueryCache
+        EveDmv.Platform.Database.CacheWarmer,
+        EveDmv.Platform.Database.ConnectionPoolMonitor,
+        EveDmv.Platform.Database.PartitionManager,
+        EveDmv.Platform.Database.MaterializedViewOptimizer,
+        EveDmv.Platform.Database.IncrementalViewRefresher,
+        EveDmv.Platform.Database.CacheInvalidator,
+        EveDmv.Platform.Database.CacheHashManager,
+        EveDmv.Platform.Database.QueryPlanAnalyzer,
+        EveDmv.Platform.Database.MaterializedViewManager,
+        EveDmv.Platform.Database.ArchiveManager,
         EveDmv.Enrichment.ReEnrichmentWorker,
         EveDmv.Enrichment.RealTimePriceUpdater,
         # Ship role analysis worker for continuous fleet intelligence

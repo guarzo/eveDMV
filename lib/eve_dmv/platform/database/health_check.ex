@@ -295,19 +295,17 @@ defmodule EveDmv.Database.HealthCheck do
         :warning
 
       pid ->
-        try do
-          stats = GenServer.call(pid, :get_query_stats, 5000)
-          slow_queries = Map.get(stats, :total_slow_queries, 0)
+        stats = GenServer.call(pid, :get_query_stats, 5000)
+        slow_queries = Map.get(stats, :total_slow_queries, 0)
 
-          cond do
-            slow_queries == 0 -> :healthy
-            slow_queries <= 10 -> :warning
-            true -> :critical
-          end
-        rescue
-          _ -> :warning
+        cond do
+          slow_queries == 0 -> :healthy
+          slow_queries <= 10 -> :warning
+          true -> :critical
         end
     end
+  rescue
+    _ -> :warning
   end
 
   @doc """

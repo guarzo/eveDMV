@@ -8,7 +8,6 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
 
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.Analyzers.CharacterAnalyzer
-  alias EveDmv.Intelligence.Analyzers.WHVettingAnalyzer
   alias EveDmv.Intelligence.Core.CacheHelper
 
   require Logger
@@ -44,17 +43,14 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
     Logger.info("Starting comprehensive analysis for character #{character_id}")
 
     with {:ok, basic_analysis} <- analyze_character_basic(character_id),
-         {:ok, vetting_analysis} <- analyze_character_vetting(character_id),
          {:ok, threat_analysis} <- analyze_character_threats(character_id) do
       comprehensive_analysis = %{
         character_id: character_id,
         analysis_timestamp: DateTime.utc_now(),
         basic_analysis: basic_analysis,
-        vetting_analysis: vetting_analysis,
         threat_analysis: threat_analysis,
-        confidence_score:
-          calculate_overall_confidence(basic_analysis, vetting_analysis, threat_analysis),
-        summary: generate_analysis_summary(basic_analysis, vetting_analysis, threat_analysis)
+        confidence_score: calculate_overall_confidence(basic_analysis, threat_analysis),
+        summary: generate_analysis_summary(basic_analysis, threat_analysis)
       }
 
       {:ok, comprehensive_analysis}
@@ -130,21 +126,6 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
       {:ok, get_placeholder_basic_analysis(character_id)}
   end
 
-  defp analyze_character_vetting(character_id) do
-    case WHVettingAnalyzer.analyze_character(character_id) do
-      {:ok, analysis} ->
-        {:ok, analysis}
-
-      {:error, reason} ->
-        Logger.warning("Vetting analysis failed, using placeholder: #{inspect(reason)}")
-        {:ok, get_placeholder_vetting_analysis(character_id)}
-    end
-  rescue
-    error ->
-      Logger.error("Error in vetting analysis: #{inspect(error)}")
-      {:ok, get_placeholder_vetting_analysis(character_id)}
-  end
-
   defp analyze_character_threats(character_id) do
     # Placeholder threat analysis - would integrate with threat analyzer
     {:ok,
@@ -157,23 +138,22 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
      }}
   end
 
-  defp calculate_overall_confidence(basic_analysis, vetting_analysis, threat_analysis) do
+  defp calculate_overall_confidence(basic_analysis, threat_analysis) do
     # Calculate weighted confidence score
     basic_confidence = Map.get(basic_analysis, :confidence_score, 0.5)
-    vetting_confidence = Map.get(vetting_analysis, :confidence_score, 0.5)
     threat_confidence = Map.get(threat_analysis, :confidence_score, 0.8)
 
-    # Weighted average
-    overall = basic_confidence * 0.3 + vetting_confidence * 0.5 + threat_confidence * 0.2
+    # Weighted average (adjusted after removing vetting)
+    overall = basic_confidence * 0.6 + threat_confidence * 0.4
     Float.round(overall, 2)
   end
 
-  defp generate_analysis_summary(basic_analysis, vetting_analysis, _threat_analysis) do
+  defp generate_analysis_summary(basic_analysis, threat_analysis) do
     character_name = Map.get(basic_analysis, :character_name, "Unknown Character")
-    recommendation = get_in(vetting_analysis, [:recommendation, :recommendation]) || "unknown"
-    risk_score = Map.get(vetting_analysis, :risk_score, 0)
+    threat_level = Map.get(threat_analysis, :threat_level, "unknown")
+    threat_score = Map.get(threat_analysis, :threat_score, 0)
 
-    "#{character_name}: #{String.upcase(recommendation)} (Risk: #{risk_score}/100)"
+    "#{character_name}: Threat Level #{String.upcase(threat_level)} (Score: #{threat_score}/100)"
   end
 
   defp get_active_threat_alerts(timeframe) do
@@ -314,26 +294,6 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
       total_sp: 50_000_000,
       confidence_score: 0.3,
       last_updated: DateTime.utc_now()
-    }
-  end
-
-  defp get_placeholder_vetting_analysis(character_id) do
-    %{
-      character_id: character_id,
-      character_name: "Character #{character_id}",
-      risk_score: 50,
-      recommendation: %{
-        recommendation: "investigate",
-        confidence: 0.4,
-        reasoning: "Insufficient data for comprehensive analysis"
-      },
-      confidence_score: 0.4,
-      j_space_experience: %{
-        total_j_kills: 0,
-        j_space_time_percent: 0.0,
-        experience_level: :unknown
-      },
-      analysis_timestamp: DateTime.utc_now()
     }
   end
 

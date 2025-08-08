@@ -3,11 +3,11 @@ defmodule EveDmvWeb.CorporationLive.DataLoader do
   Optimized data loading for corporation analysis using new query modules.
   """
 
-  alias EveDmv.Cache.AnalysisCache
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.CorporationQueries
   alias EveDmv.Database.QueryPerformance
   alias EveDmv.Eve.EsiCorporationClient
+  alias EveDmv.Platform.Cache.AnalysisCache
 
   require Logger
 

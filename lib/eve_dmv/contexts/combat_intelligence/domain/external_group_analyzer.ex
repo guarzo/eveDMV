@@ -3,7 +3,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ExternalGroupAnalyzer do
   Analyzes external groups (corporations/alliances) that a character has collaborated with.
   """
 
-  alias EveDmv.Cache.QueryCache
+  alias EveDmv.Platform.Cache.QueryCache
   require Logger
 
   @external_groups_ttl :timer.hours(8)

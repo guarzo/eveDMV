@@ -5,7 +5,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache do
   Simplified cache module that provides direct cache operations without GenServer overhead.
   """
 
-  alias EveDmv.Cache
+  alias EveDmv.Platform.Cache.Cache
 
   require Logger
 

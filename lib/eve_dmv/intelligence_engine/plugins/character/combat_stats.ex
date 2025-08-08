@@ -42,7 +42,7 @@ defmodule EveDmv.IntelligenceEngine.Plugins.Character.CombatStats do
            analyzed_at: DateTime.utc_now()
          })}
 
-      {:error, %EveDmv.Error{} = error} ->
+      {:error, %EveDmv.Core.Errors.Error{} = error} ->
         {:error, error}
 
       {:error, reason} ->

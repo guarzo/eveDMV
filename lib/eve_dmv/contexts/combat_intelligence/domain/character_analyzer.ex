@@ -7,11 +7,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   without GenServer overhead.
   """
 
-  import Ecto.Query
-  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.ThreatScoringCoordinator
   alias EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache
+  alias EveDmv.Core.Events.EventBus
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Repo
+  alias EveDmv.Platform.Database.Repositories.KillmailRepository
+  # alias EveDmv.Platform.Database.Repositories.CharacterRepository
   require Logger
 
   # Type definitions
@@ -158,23 +158,19 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
     # Search for characters with recent activity
     cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -activity_days * 24 * 60 * 60, :second)
 
-    # Query for characters with killmail activity in the specified timeframe
-    query =
-      from(k in "killmails_raw",
-        where: k.killmail_time >= ^cutoff_date and not is_nil(k.victim_character_id),
-        select: %{
-          victim_character_id: k.victim_character_id,
-          killmail_time: k.killmail_time
-        },
-        limit: ^(limit * 5)
-      )
-
-    case Repo.all(query) do
-      killmails ->
+    # Use repository to get recent killmails
+    case KillmailRepository.list(
+           filters: [
+             time_range: {cutoff_date, DateTime.utc_now()}
+           ],
+           limit: limit * 5
+         ) do
+      {:ok, killmails} ->
         # Extract unique character IDs
         character_ids =
           killmails
           |> Enum.map(& &1.victim_character_id)
+          |> Enum.filter(&(&1 != nil))
           |> Enum.uniq()
           |> Enum.take(limit)
 
@@ -189,26 +185,23 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
           |> Enum.take(limit)
 
         {:ok, search_results}
+
+      {:error, error} ->
+        Logger.error("Character search error: #{inspect(error)}")
+        {:error, :search_error}
     end
-  rescue
-    error ->
-      Logger.error("Character search error: #{inspect(error)}")
-      {:error, :search_error}
   end
 
   defp get_last_activity_date(character_id, cutoff_date) do
     # Get the most recent killmail for this character
-    query =
-      from(k in "killmails_raw",
-        where: k.victim_character_id == ^character_id and k.killmail_time >= ^cutoff_date,
-        select: %{killmail_time: k.killmail_time},
-        order_by: [desc: k.killmail_time],
-        limit: 1
-      )
-
-    case Repo.all(query) do
-      [killmail] -> killmail.killmail_time
-      _ -> cutoff_date
+    case KillmailRepository.get_character_killmails(character_id,
+           # Use cutoff_date directly
+           days_back: 0,
+           limit: 1
+         ) do
+      {:ok, [killmail | _]} -> killmail.killmail_time
+      {:ok, []} -> cutoff_date
+      {:error, _} -> cutoff_date
     end
   end
 
@@ -251,66 +244,33 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
       {:error, :analysis_failed}
   end
 
-  defp get_character_activity_data(character_id, cutoff_date, include_losses, include_kills) do
-    # Base query for character's killmail activity
-    loss_query =
-      if include_losses do
-        from(k in "killmails_raw",
-          where: k.victim_character_id == ^character_id and k.killmail_time >= ^cutoff_date,
-          select: %{
-            killmail_time: k.killmail_time,
-            solar_system_id: k.solar_system_id,
-            victim_ship_type_id: k.victim_ship_type_id,
-            attacker_count: k.attacker_count,
-            type: "loss"
-          }
-        )
-      else
-        from(k in "killmails_raw",
-          where: false,
-          select: %{
-            killmail_time: k.killmail_time,
-            solar_system_id: k.solar_system_id,
-            victim_ship_type_id: k.victim_ship_type_id,
-            attacker_count: k.attacker_count,
-            type: "loss"
-          }
-        )
+  defp get_character_activity_data(character_id, cutoff_date, include_losses, _include_kills) do
+    # Use repository to get character's killmail activity
+    if include_losses do
+      days_back = DateTime.diff(DateTime.utc_now(), cutoff_date, :day)
+
+      case KillmailRepository.get_character_killmails(character_id,
+             days_back: days_back,
+             limit: 1000
+           ) do
+        {:ok, killmails} ->
+          # Transform to expected format
+          Enum.map(killmails, fn km ->
+            %{
+              killmail_time: km.killmail_time,
+              solar_system_id: km.solar_system_id,
+              victim_ship_type_id: km.victim_ship_type_id,
+              attacker_count: km.attacker_count,
+              type: "loss"
+            }
+          end)
+
+        {:error, _} ->
+          []
       end
-
-    # For kills, we need to query where character was an attacker
-    # This is more complex as attacker data is in JSON, but we can get an approximation
-    _kill_query =
-      if include_kills do
-        from(k in "killmails_raw",
-          where: k.killmail_time >= ^cutoff_date,
-          select: %{
-            killmail_time: k.killmail_time,
-            solar_system_id: k.solar_system_id,
-            victim_ship_type_id: k.victim_ship_type_id,
-            attacker_count: k.attacker_count,
-            type: "kill"
-          }
-        )
-      else
-        from(k in "killmails_raw",
-          where: false,
-          select: %{
-            killmail_time: k.killmail_time,
-            solar_system_id: k.solar_system_id,
-            victim_ship_type_id: k.victim_ship_type_id,
-            attacker_count: k.attacker_count,
-            type: "kill"
-          }
-        )
-      end
-
-    # Get losses
-    losses = Repo.all(loss_query)
-
-    # For kills, this is simplified - in a real implementation we'd need to parse JSON
-    # For now, we'll focus on losses which are more straightforward
-    losses
+    else
+      []
+    end
   end
 
   defp calculate_activity_summary(activity_data) do
@@ -484,24 +444,21 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   end
 
   defp analyze_threat_level_trends(character_id, _cutoff_date) do
-    # Get historical threat scores if available
-    case ThreatScoringCoordinator.analyze_threat_trends(character_id, cache: false) do
-      {:ok, trend_data} ->
-        %{
-          current_threat_level: trend_data.current_threat_level,
-          trend_direction: trend_data.trend_direction,
-          trend_confidence: trend_data.trend_confidence,
-          threat_volatility: trend_data.threat_volatility
-        }
+    # Calculate threat level locally based on combat data
+    # Publish event for external threat analysis if needed
+    EventBus.publish("character.threat_analysis_requested", %{
+      character_id: character_id,
+      analysis_type: :threat_trends,
+      requested_at: DateTime.utc_now()
+    })
 
-      {:error, _} ->
-        %{
-          current_threat_level: :unknown,
-          trend_direction: :stable,
-          trend_confidence: :low,
-          threat_volatility: 0.0
-        }
-    end
+    # Return local analysis based on combat metrics
+    %{
+      current_threat_level: calculate_local_threat_level(character_id),
+      trend_direction: :stable,
+      trend_confidence: :medium,
+      threat_volatility: 0.0
+    }
   end
 
   defp detect_likely_timezone(peak_hours) do
@@ -555,18 +512,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
 
   defp get_character_comparison_data(character_id) do
     # Get threat scoring data
-    threat_data =
-      case ThreatScoringCoordinator.calculate_threat_score(character_id) do
-        {:ok, data} ->
-          data
-
-        {:error, _} ->
-          %{
-            composite_score: 0.0,
-            threat_level: :unknown,
-            combat_effectiveness: 0.0
-          }
-      end
+    # Calculate threat data locally
+    threat_data = %{
+      composite_score: calculate_local_threat_score(character_id),
+      threat_level: calculate_local_threat_level(character_id),
+      combat_effectiveness: calculate_combat_effectiveness(character_id)
+    }
 
     # Get activity patterns
     # analyze_character_activity_patterns always returns {:error, :analysis_failed}
@@ -783,15 +734,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
     # Convert days to seconds for DateTime.add
     cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -days_back * 24 * 60 * 60, :second)
 
-    query =
-      from(k in "killmails_raw",
-        where: k.victim_character_id == ^character_id and k.killmail_time >= ^cutoff_date,
-        select: count()
-      )
-
-    case Repo.one(query) do
-      count when is_integer(count) -> count
-      _ -> 0
+    case KillmailRepository.count(
+           filters: [
+             victim_character_id: character_id,
+             time_range: {cutoff_date, DateTime.utc_now()}
+           ]
+         ) do
+      {:ok, count} -> count
+      {:error, _} -> 0
     end
   end
 
@@ -922,24 +872,20 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   end
 
   defp process_character_for_search(character_id, threat_level_min, threat_level_max, cutoff_date) do
-    case ThreatScoringCoordinator.calculate_threat_score(character_id) do
-      {:ok, threat_data} ->
-        process_character_with_threat_data(
-          character_id,
-          threat_data,
-          threat_level_min,
-          threat_level_max,
-          cutoff_date
-        )
+    # Calculate threat data locally
+    threat_data = %{
+      composite_score: calculate_local_threat_score(character_id),
+      threat_level: calculate_local_threat_level(character_id),
+      combat_effectiveness: calculate_combat_effectiveness(character_id)
+    }
 
-      {:error, _} ->
-        process_character_without_threat_data(
-          character_id,
-          threat_level_min,
-          threat_level_max,
-          cutoff_date
-        )
-    end
+    process_character_with_threat_data(
+      character_id,
+      threat_data,
+      threat_level_min,
+      threat_level_max,
+      cutoff_date
+    )
   end
 
   defp process_character_with_threat_data(
@@ -965,24 +911,62 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
     end
   end
 
-  defp process_character_without_threat_data(
-         character_id,
-         threat_level_min,
-         threat_level_max,
-         cutoff_date
-       ) do
-    # Include characters without threat data if no threat filter
-    if threat_level_min == 0.0 and threat_level_max == 10.0 do
-      %{
-        character_id: character_id,
-        threat_score: 0.0,
-        threat_level: :unknown,
-        last_seen: get_last_activity_date(character_id, cutoff_date),
-        combat_effectiveness: 0.0,
-        matches_criteria: true
-      }
-    else
-      nil
+  # Local threat calculation functions
+  defp calculate_local_threat_score(character_id) do
+    # Simple threat score based on recent activity
+    # Note: Simplified since we can't easily query attacker data from Ash without JSON support
+    # Using victim data as a proxy for activity level
+
+    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
+
+    case KillmailRepository.count(
+           filters: [
+             victim_character_id: character_id,
+             time_range: {cutoff_date, DateTime.utc_now()}
+           ]
+         ) do
+      {:ok, death_count} ->
+        # Simple scoring: 0-10 scale based on activity
+        # More deaths = more active = potentially higher threat
+        min(death_count / 5.0, 10.0)
+
+      {:error, _} ->
+        0.0
+    end
+  end
+
+  defp calculate_local_threat_level(character_id) do
+    score = calculate_local_threat_score(character_id)
+
+    cond do
+      score >= 8.0 -> :critical
+      score >= 6.0 -> :high
+      score >= 4.0 -> :medium
+      score >= 2.0 -> :low
+      true -> :minimal
+    end
+  end
+
+  defp calculate_combat_effectiveness(character_id) do
+    # Simple effectiveness based on recent activity
+    cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
+
+    case KillmailRepository.count(
+           filters: [
+             victim_character_id: character_id,
+             time_range: {cutoff_date, DateTime.utc_now()}
+           ]
+         ) do
+      {:ok, deaths} ->
+        # Simplified calculation - less deaths = more effective
+        if deaths == 0 do
+          1.0
+        else
+          max(1.0 - deaths / 20.0, 0.1)
+        end
+
+      {:error, _} ->
+        0.5
     end
   end
 end

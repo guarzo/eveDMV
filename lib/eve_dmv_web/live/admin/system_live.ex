@@ -182,12 +182,12 @@ defmodule EveDmvWeb.Admin.SystemLive do
     end
   end
 
-  defp clear_cache("analysis"), do: EveDmv.Cache.AnalysisCache.clear_all()
-  defp clear_cache("static_data"), do: EveDmv.Cache.StaticDataCache.clear_cache()
+  defp clear_cache("analysis"), do: EveDmv.Platform.Cache.AnalysisCache.clear_all()
+  defp clear_cache("static_data"), do: EveDmv.Platform.Cache.StaticDataCache.clear_cache()
 
   defp clear_cache("all") do
-    EveDmv.Cache.AnalysisCache.clear_all()
-    EveDmv.Cache.StaticDataCache.clear_cache()
+    EveDmv.Platform.Cache.AnalysisCache.clear_all()
+    EveDmv.Platform.Cache.StaticDataCache.clear_cache()
     :ok
   end
 

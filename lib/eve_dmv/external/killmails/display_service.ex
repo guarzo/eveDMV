@@ -6,9 +6,9 @@ defmodule EveDmv.Killmails.DisplayService do
   alias EveDmv.Api
   alias EveDmv.Constants.Isk
   alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Core.Utils.ParsingUtils
   alias EveDmv.Eve.NameResolver
   alias EveDmv.Killmails.KillmailRaw
-  alias EveDmv.Utils.ParsingUtils
 
   require Ash.Query
 

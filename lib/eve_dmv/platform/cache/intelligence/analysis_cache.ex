@@ -6,8 +6,8 @@ defmodule EveDmv.Intelligence.Cache.AnalysisCache do
   for better consistency and reduced complexity.
   """
 
-  alias EveDmv.Cache
   alias EveDmv.Config.Cache, as: CacheConfig
+  alias EveDmv.Platform.Cache.Cache
 
   require Logger
 

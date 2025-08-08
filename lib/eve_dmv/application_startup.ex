@@ -6,7 +6,7 @@ defmodule EveDmv.ApplicationStartup do
   including DNS resolution, connectivity checks, and environment setup.
   """
 
-  alias EveDmv.Utils.DnsResolver
+  alias EveDmv.Core.Utils.DnsResolver
   alias EveDmvWeb.Telemetry.PerformanceTelemetry
 
   require Logger

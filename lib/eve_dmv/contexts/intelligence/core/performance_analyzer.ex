@@ -9,11 +9,11 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
   - Player Profile performance analysis
   """
 
-  alias EveDmv.Cache
   alias EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer
   alias EveDmv.Contexts.Intelligence.Core.CombatStatsAnalyzer
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.KillmailRepository
+  alias EveDmv.Platform.Cache.Cache
 
   require Logger
 

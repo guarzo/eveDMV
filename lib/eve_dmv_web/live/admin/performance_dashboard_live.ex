@@ -6,8 +6,8 @@ defmodule EveDmvWeb.Admin.PerformanceDashboardLive do
 
   use EveDmvWeb, :live_view
 
-  alias EveDmv.Cache.QueryCache
   alias EveDmv.Monitoring.PerformanceTracker
+  alias EveDmv.Platform.Cache.QueryCache
   require Logger
 
   # 5 seconds

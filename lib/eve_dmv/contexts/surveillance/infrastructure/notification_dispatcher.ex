@@ -7,7 +7,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.NotificationDispatcher do
   """
 
   use GenServer
-  use EveDmv.ErrorHandler
+  use EveDmv.Core.Errors.ErrorHandler
 
   alias EveDmv.Core.Utils.DateTimeUtils
 

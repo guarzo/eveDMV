@@ -5,7 +5,7 @@ defmodule EveDmvWeb.Helpers.PriceHelper do
   Provides on-demand price lookups and formatting functions for killmail values.
   """
 
-  alias EveDmv.Market.PriceService
+  alias EveDmv.Contexts.MarketIntelligence.Domain.ValuationService, as: PriceService
   require Logger
 
   @doc """
@@ -71,7 +71,7 @@ defmodule EveDmvWeb.Helpers.PriceHelper do
     # Return immediately with 0, but trigger async calculation
     Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
       case PriceService.calculate_killmail_value(raw_data) do
-        %{total_value: value} when value > 0 ->
+        {:ok, %{total_value: value}} when value > 0 ->
           Logger.debug("Calculated killmail value: #{value}")
 
         # Could update the database here if needed

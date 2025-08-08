@@ -3,10 +3,10 @@ defmodule EveDmv.Contexts.Intelligence.Services.ComparisonService do
   Service for comparing characters across various metrics and finding similar pilots.
   """
 
-  alias EveDmv.Cache
   alias EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer
   alias EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer
   alias EveDmv.Contexts.Intelligence.Core.ThreatAssessmentEngine
+  alias EveDmv.Platform.Cache.Cache
 
   require Logger
 

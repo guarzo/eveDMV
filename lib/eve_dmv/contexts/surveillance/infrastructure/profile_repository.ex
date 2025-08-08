@@ -7,7 +7,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository do
   """
 
   use GenServer
-  use EveDmv.ErrorHandler
+  use EveDmv.Core.Errors.ErrorHandler
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Core.Utils.DateTimeUtils

@@ -7,7 +7,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
   """
 
   use GenServer
-  use EveDmv.ErrorHandler
+  use EveDmv.Core.Errors.ErrorHandler
   alias EveDmv.Contexts.Surveillance.Domain.NotificationService
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.DomainEvents.SurveillanceAlert

@@ -7,7 +7,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.MemberActivityAnalyzer d
   engagement, timezone coverage, and activity trends.
   """
 
-  use EveDmv.ErrorHandler
+  use EveDmv.Core.Errors.ErrorHandler
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Result
   require Logger

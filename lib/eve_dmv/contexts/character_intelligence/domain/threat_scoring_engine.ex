@@ -185,8 +185,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     victim_query =
       KillmailRaw
       |> Ash.Query.new()
-      |> Ash.Query.filter(victim_character_id: character_id)
-      |> Ash.Query.filter(killmail_time: [gte: cutoff_date])
+      |> Ash.Query.filter(victim_character_id == ^character_id)
+      |> Ash.Query.filter(killmail_time >= ^cutoff_date)
       |> Ash.Query.sort(killmail_time: :desc)
       # Reasonable limit for analysis
       |> Ash.Query.limit(500)
@@ -195,12 +195,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     attacker_query =
       KillmailRaw
       |> Ash.Query.new()
-      |> Ash.Query.filter(killmail_time: [gte: cutoff_date])
+      |> Ash.Query.filter(killmail_time >= ^cutoff_date)
       # Larger limit to search for attacker involvement
       |> Ash.Query.limit(1000)
 
-    with {:ok, victim_killmails} <- Ash.read(victim_query, domain: Api),
-         {:ok, potential_attacker_killmails} <- Ash.read(attacker_query, domain: Api) do
+    with {:ok, victim_killmails} <- Api.read(victim_query),
+         {:ok, potential_attacker_killmails} <- Api.read(attacker_query) do
       # Filter attacker killmails for this character
       attacker_killmails =
         Enum.filter(potential_attacker_killmails, fn km ->

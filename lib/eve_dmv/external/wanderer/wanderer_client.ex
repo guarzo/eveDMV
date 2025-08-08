@@ -8,7 +8,7 @@ defmodule EveDmv.Intelligence.WandererClient do
 
   use GenServer
 
-  alias EveDmv.Utils.DnsResolver
+  alias EveDmv.Core.Utils.DnsResolver
   alias HTTPoison
   alias Jason
 

@@ -6,7 +6,7 @@ defmodule EveDmv.Market.PriceCache do
   while using the new unified cache system with the :api_responses cache type.
   """
 
-  alias EveDmv.Cache
+  alias EveDmv.Platform.Cache.Cache
 
   @default_ttl_hours 24
 

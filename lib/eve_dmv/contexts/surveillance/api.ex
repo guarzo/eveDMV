@@ -7,8 +7,8 @@ defmodule EveDmv.Contexts.Surveillance.Api do
   and logged through this interface.
   """
 
-  use EveDmv.ErrorHandler
-  alias EveDmv.Utils.ValidationUtils
+  use EveDmv.Core.Errors.ErrorHandler
+  alias EveDmv.Core.Utils.ValidationUtils
 
   alias EveDmv.Contexts.Surveillance.Domain.MatchingEngine
   alias EveDmv.Contexts.Surveillance.Domain.NotificationService

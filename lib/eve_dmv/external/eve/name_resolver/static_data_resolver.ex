@@ -6,11 +6,11 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
   static EVE database data. These entities have stable names that rarely change.
   """
 
-  alias EveDmv.Cache
-  alias EveDmv.Cache.StaticDataCache
   alias EveDmv.Eve.ItemType
   alias EveDmv.Eve.NameResolver.CacheManager
   alias EveDmv.Eve.SolarSystem
+  alias EveDmv.Platform.Cache.Cache
+  alias EveDmv.Platform.Cache.StaticDataCache
 
   require Ash.Query
   require Logger

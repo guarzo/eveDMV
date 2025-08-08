@@ -1,9 +1,7 @@
 defmodule EveDmv.Intelligence.IntelligenceScoringTest do
-  use EveDmv.IntelligenceCase, async: false
+  use EveDmv.IntelligenceCase, async: true
 
   alias EveDmv.Intelligence.IntelligenceScoring
-
-  @moduletag :skip
 
   describe "calculate_comprehensive_score/1" do
     test "calculates comprehensive score for character with complete data" do

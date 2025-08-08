@@ -9,8 +9,10 @@ defmodule EveDmv.Core.Domain.Analytics.PatternAnalysis do
   scattered across multiple contexts during the namespace consolidation.
   """
 
+  alias EveDmv.Contexts.BattleAnalysis.Domain.KillmailExtractor
+  alias EveDmv.Core.Domain.Analytics.TimelineHelpers
+  alias EveDmv.Core.Utils.DateHelper
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Utils.DateHelper
 
   require Logger
 

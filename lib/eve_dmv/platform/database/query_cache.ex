@@ -6,7 +6,7 @@ defmodule EveDmv.Database.QueryCache do
   to the unified cache implementation.
   """
 
-  alias EveDmv.Utils.Cache
+  alias EveDmv.Core.Utils.Cache
 
   @cache_name :query_cache
   # 5 minutes

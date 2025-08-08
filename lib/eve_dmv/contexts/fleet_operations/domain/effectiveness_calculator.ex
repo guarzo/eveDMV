@@ -6,7 +6,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
   including damage efficiency, survival rates, and tactical effectiveness.
   """
 
-  use EveDmv.ErrorHandler
+  use EveDmv.Core.Errors.ErrorHandler
 
   alias EveDmv.Core.Utils.DateTimeUtils
 

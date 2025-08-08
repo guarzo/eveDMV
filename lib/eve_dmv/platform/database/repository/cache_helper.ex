@@ -6,7 +6,7 @@ defmodule EveDmv.Database.Repository.CacheHelper do
   specifically designed for database repository caching needs.
   """
 
-  alias EveDmv.Cache
+  alias EveDmv.Platform.Cache.Cache
 
   @doc """
   Build a cache key for repository operations.

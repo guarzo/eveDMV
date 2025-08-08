@@ -5,7 +5,7 @@ defmodule EveDmv.Database.CorporationQueries do
   Uses efficient SQL queries to avoid expensive JSONB operations and N+1 query issues.
   """
 
-  alias EveDmv.Cache.QueryCache
+  alias EveDmv.Platform.Cache.QueryCache
   alias EveDmv.Repo
   require Logger
 

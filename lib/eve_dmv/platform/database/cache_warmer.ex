@@ -10,12 +10,12 @@ defmodule EveDmv.Database.CacheWarmer do
   use GenServer
 
   alias EveDmv.Api
-  alias EveDmv.Cache.QueryCache
   alias EveDmv.Eve.ItemType
   alias EveDmv.Eve.SolarSystem
   alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.IntelligenceMigrationAdapter
   alias EveDmv.Killmails.KillmailEnriched
+  alias EveDmv.Platform.Cache.QueryCache
 
   require Ash.Query
   require Logger

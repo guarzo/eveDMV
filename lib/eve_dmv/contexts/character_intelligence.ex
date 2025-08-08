@@ -8,10 +8,15 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   """
 
   alias EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceAnalyzer
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.CrossCharacterAnalyzer
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnalyzer
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrendAnalyzer
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.GangEffectivenessEngine
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine
   alias EveDmv.Integrations.ShipIntelligenceBridge
-  require Logger
+
   require Ash.Query
+  require Logger
 
   # Type definitions
   @type character_threat_analysis :: %{
@@ -74,7 +79,14 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
     case ThreatScoringEngine.calculate_threat_score(character_id) do
       {:ok, threat_data} ->
         # Enhance with ship specialization analysis
-        enhanced_threat_data = enhance_with_ship_intelligence(threat_data, character_id)
+        enhanced_threat_data =
+          if Map.has_key?(threat_data, :dimensions) do
+            enhance_with_ship_intelligence(threat_data, character_id)
+          else
+            # If threat_data doesn't have expected structure, return as-is
+            threat_data
+          end
+
         {:ok, enhanced_threat_data}
 
       {:error, reason} ->
@@ -90,11 +102,60 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   - Specialist
   - Opportunist
   """
-  @spec detect_behavioral_patterns(integer()) :: {:error, :feature_not_implemented}
-  def detect_behavioral_patterns(_character_id) do
-    # Since ThreatScoringEngine includes behavioral analysis in the threat score,
-    # we'll extract it from there in the future
-    {:error, :feature_not_implemented}
+  @spec detect_behavioral_patterns(integer()) :: {:ok, map()} | {:error, atom()}
+  def detect_behavioral_patterns(character_id) do
+    # Use the threat scoring engine's behavioral analysis
+    case ThreatScoringEngine.calculate_threat_score(character_id) do
+      {:ok, threat_data} ->
+        {:ok,
+         %{
+           character_id: character_id,
+           primary_pattern: threat_data[:behavioral_pattern] || :unknown,
+           patterns: extract_patterns(threat_data),
+           characteristics: threat_data[:insights] || [],
+           confidence: calculate_pattern_confidence(threat_data),
+           analysis_timestamp: DateTime.utc_now()
+         }}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp extract_patterns(threat_data) do
+    base_patterns = []
+
+    # Extract patterns from different scoring dimensions
+    patterns_with_combat =
+      if threat_data[:dimensions][:combat_skill] > 70,
+        do: base_patterns ++ [:skilled_combatant],
+        else: base_patterns
+
+    patterns_with_ship =
+      if threat_data[:dimensions][:ship_mastery] > 70,
+        do: patterns_with_combat ++ [:ship_specialist],
+        else: patterns_with_combat
+
+    patterns_with_fleet =
+      if threat_data[:dimensions][:fleet_effectiveness] > 70,
+        do: patterns_with_ship ++ [:fleet_oriented],
+        else: patterns_with_ship
+
+    final_patterns =
+      if threat_data[:dimensions][:gang_effectiveness] > 70,
+        do: patterns_with_fleet ++ [:gang_leader],
+        else: patterns_with_fleet
+
+    final_patterns
+  end
+
+  defp calculate_pattern_confidence(threat_data) do
+    # Confidence based on data quality and volume
+    if threat_data[:metadata][:data_quality] == :high do
+      0.9
+    else
+      0.7
+    end
   end
 
   @doc """
@@ -139,7 +200,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
         end
       end)
       |> Enum.reject(&is_nil/1)
-      |> Enum.sort_by(fn {_id, analysis} -> analysis.threat_score end, :desc)
+      |> Enum.sort_by(
+        fn {_id, analysis} ->
+          # Handle both threat_score and overall_score keys
+          Map.get(analysis, :threat_score) || Map.get(analysis, :overall_score, 0)
+        end,
+        :desc
+      )
 
     {:ok, threat_analyses}
   end
@@ -260,6 +327,71 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
       character_id,
       since_date
     )
+  end
+
+  ## Gang and Cross-Character Analysis Functions
+
+  @doc """
+  Analyzes synergy between multiple characters based on shared killmails.
+  Returns coordination score, shared victories, role compatibility, and more.
+  """
+  @spec analyze_gang_synergy([integer()]) :: {:ok, map()} | {:error, atom()}
+  def analyze_gang_synergy(character_ids) when is_list(character_ids) do
+    GangSynergyAnalyzer.analyze_synergy(character_ids)
+  end
+
+  @doc """
+  Analyzes relationships between multiple characters.
+  Returns relationship matrix, strongest pairs, network cohesion, and subgroups.
+  """
+  @spec analyze_character_relationships([integer()]) :: {:ok, map()} | {:error, atom()}
+  def analyze_character_relationships(character_ids) when is_list(character_ids) do
+    CrossCharacterAnalyzer.analyze_relationships(character_ids)
+  end
+
+  @doc """
+  Identifies patterns in group operations.
+  Returns operation types, temporal patterns, geographic patterns, and coordination level.
+  """
+  @spec analyze_group_patterns([integer()]) :: {:ok, map()} | {:error, atom()}
+  def analyze_group_patterns(character_ids) when is_list(character_ids) do
+    CrossCharacterAnalyzer.analyze_group_patterns(character_ids)
+  end
+
+  @doc """
+  Predicts group behavior based on historical patterns.
+  Returns likely operation times, target systems, fleet composition, and success probability.
+  """
+  @spec predict_group_behavior([integer()]) :: {:ok, map()} | {:error, atom()}
+  def predict_group_behavior(character_ids) when is_list(character_ids) do
+    CrossCharacterAnalyzer.predict_group_behavior(character_ids)
+  end
+
+  @doc """
+  Analyzes historical trends for a character.
+  Returns activity trends, performance trends, ship usage evolution, and skill progression.
+  """
+  @spec analyze_historical_trends(integer(), keyword()) :: {:ok, map()} | {:error, atom()}
+  def analyze_historical_trends(character_id, options \\ []) do
+    HistoricalTrendAnalyzer.analyze_trends(character_id, options)
+  end
+
+  @doc """
+  Gets a quick trend summary for a character.
+  Returns activity direction, performance improvement, skill velocity, and fleet preference.
+  """
+  @spec get_trend_summary(integer()) :: {:ok, map()} | {:error, atom()}
+  def get_trend_summary(character_id) do
+    HistoricalTrendAnalyzer.get_trend_summary(character_id)
+  end
+
+  @doc """
+  Analyzes gang effectiveness using the Gang Effectiveness Engine.
+  Returns coordination score, leadership patterns, and team synergy metrics.
+  """
+  @spec analyze_gang_effectiveness([integer()]) :: {:ok, map()} | {:error, atom()}
+  def analyze_gang_effectiveness(character_ids) when is_list(character_ids) do
+    GangEffectivenessEngine.analyze_synergy(character_ids)
   end
 
   # Private helper functions

@@ -7,8 +7,8 @@ defmodule EveDmv.Monitoring.ErrorTracker do
   """
 
   use GenServer
+  alias EveDmv.Core.Errors.Error
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Error
   alias EveDmv.ErrorCodes
 
   require Logger

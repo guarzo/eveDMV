@@ -6,11 +6,11 @@ defmodule EveDmv.Intelligence.Metrics.CharacterMetrics do
   and metric derivations for character intelligence analysis.
   """
 
+  alias EveDmv.Core.Utils.MathUtils
   alias EveDmv.Intelligence.Metrics.CombatMetricsCalculator
   alias EveDmv.Intelligence.Metrics.GeographicAnalysisCalculator
   alias EveDmv.Intelligence.Metrics.ShipAnalysisCalculator
   alias EveDmv.Intelligence.Metrics.TemporalAnalysisCalculator
-  alias EveDmv.Utils.MathUtils
 
   require Logger
 

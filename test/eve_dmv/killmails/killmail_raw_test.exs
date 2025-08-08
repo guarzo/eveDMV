@@ -163,7 +163,7 @@ defmodule EveDmv.Killmails.KillmailRawTest do
     setup do
       # Create test data with unique system IDs to avoid collision with other tests
       # Using process pid to ensure uniqueness
-      test_system_id = rem(32_000_000 + System.unique_integer([:positive]), 100_000)
+      test_system_id = (32_000_000 + System.unique_integer([:positive])) |> rem(100_000)
       other_system_id = test_system_id + 1
 
       killmails = [
