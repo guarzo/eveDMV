@@ -6,7 +6,6 @@ defmodule EveDmv.Contexts.SystemAnalysis do
   detection, and regional correlation analysis.
   """
   alias EveDmv.Api
-  alias EveDmv.Eve.SolarSystem
   alias EveDmv.Killmails.KillmailRaw
   require Ash.Query
 

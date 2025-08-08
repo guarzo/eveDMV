@@ -20,6 +20,13 @@ defmodule EveDmv.Core.Contracts.RepositoryBehaviour do
   defmacro __using__(opts) do
     resource = Keyword.fetch!(opts, :resource)
 
+    # Pre-expand the macro calls outside the quote block
+    get_fns = __MODULE__.define_get_functions()
+    list_fns = __MODULE__.define_list_functions()
+    write_fns = __MODULE__.define_write_functions()
+    query_fns = __MODULE__.define_query_functions()
+    helper_fns = __MODULE__.define_helper_functions()
+
     quote do
       @behaviour EveDmv.Core.Contracts.RepositoryBehaviour
       @resource unquote(resource)
@@ -28,11 +35,11 @@ defmodule EveDmv.Core.Contracts.RepositoryBehaviour do
       alias EveDmv.Core.Contracts.RepositoryBehaviour
       import Ash.Query
 
-      unquote(RepositoryBehaviour.define_get_functions())
-      unquote(RepositoryBehaviour.define_list_functions())
-      unquote(RepositoryBehaviour.define_write_functions())
-      unquote(RepositoryBehaviour.define_query_functions())
-      unquote(RepositoryBehaviour.define_helper_functions())
+      unquote(get_fns)
+      unquote(list_fns)
+      unquote(write_fns)
+      unquote(query_fns)
+      unquote(helper_fns)
     end
   end
 
