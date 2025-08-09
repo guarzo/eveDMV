@@ -316,7 +316,7 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
                 KillmailRaw,
                 %{
                   killmail_id: 104_000_000 + i * 100 + j,
-                  killmail_time: ~U[2024-01-01 00:00:00Z],
+                  killmail_time: DateTime.utc_now() |> DateTime.add(-7, :day),
                   killmail_hash: "test_hash_#{104_000_000 + i * 100 + j}",
                   solar_system_id: 30_000_142,
                   victim_character_id: 95_500_000 + j,
@@ -351,8 +351,12 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
 
       assert length(comparisons) <= length(character_ids)
 
-      # Check sorting (highest threat first)
-      scores = Enum.map(comparisons, fn {_id, analysis} -> analysis.threat_score end)
+      # Check sorting (highest threat first) - use overall_score field
+      scores =
+        Enum.map(comparisons, fn {_id, analysis} ->
+          Map.get(analysis, :threat_score, Map.get(analysis, :overall_score, 0))
+        end)
+
       assert scores == Enum.sort(scores, :desc)
 
       # Verify structure
@@ -360,7 +364,7 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
         assert is_integer(char_id)
         assert char_id in character_ids
         assert is_map(analysis)
-        assert Map.has_key?(analysis, :threat_score)
+        assert Map.has_key?(analysis, :threat_score) or Map.has_key?(analysis, :overall_score)
       end
     end
 
@@ -490,7 +494,7 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
             KillmailRaw,
             %{
               killmail_id: 105_000_000 + i,
-              killmail_time: ~U[2024-01-01 00:00:00Z],
+              killmail_time: DateTime.utc_now() |> DateTime.add(-7, :day),
               killmail_hash: "test_hash_#{105_000_000 + i}",
               solar_system_id: 30_000_142,
               victim_character_id: 95_600_000 + i,

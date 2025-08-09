@@ -43,6 +43,12 @@ TestHelper.wait_for_repo_ready()
 # Initialize StaticData ETS tables for testing
 EveDmv.StaticData.start_link()
 
+# Ensure partitions exist for test data
+require Logger
+Logger.info("Creating test partitions...")
+EveDmv.Test.PartitionHelper.ensure_test_partitions()
+Logger.info("Test partitions ready")
+
 # Ensure we're using the correct pool for testing
 # Force the pool to be Sandbox if it's not already set correctly
 repo_config = Application.get_env(:eve_dmv, EveDmv.Repo) || []
