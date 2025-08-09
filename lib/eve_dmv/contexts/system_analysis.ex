@@ -6,8 +6,46 @@ defmodule EveDmv.Contexts.SystemAnalysis do
   detection, and regional correlation analysis.
   """
   alias EveDmv.Api
+  alias EveDmv.Eve.SolarSystem
   alias EveDmv.Killmails.KillmailRaw
   require Ash.Query
+
+  # Normalization constants
+  @coordinate_scale 1.0e18
+  @coordinate_offset 0.5
+
+  # Activity level thresholds
+  @activity_weight_multiplier 10
+  @activity_high_threshold 50
+  @activity_medium_threshold 20
+  @activity_low_threshold 10
+  @activity_minimal_threshold 3
+  @hot_zone_threshold 20
+
+  # Threat calculation weights
+  @threat_weight_activity 3.0
+  @threat_weight_value 12.0
+  @threat_ratio_activity 0.6
+  @threat_ratio_value 0.4
+
+  # Escalation thresholds
+  @escalation_kill_threshold 5
+  @escalation_activity_threshold 10.0
+  @escalation_value_threshold 50_000_000
+  @escalation_weight_activity 0.6
+  @escalation_weight_value 0.4
+
+  # Spillover and correlation thresholds
+  @spillover_filter_threshold 1.5
+  @severity_high_threshold 10.0
+  @severity_medium_threshold 5.0
+  @severity_low_threshold 2.5
+  @severity_minimal_threshold 1.5
+  @activity_spike_threshold 30
+  @activity_increase_threshold 15
+  @activity_decrease_threshold 5
+  @isk_high_threshold 1_000_000_000
+  @isk_medium_threshold 500_000_000
 
   @doc """
   Analyzes activity level in a specific solar system.
@@ -107,14 +145,21 @@ defmodule EveDmv.Contexts.SystemAnalysis do
           |> Enum.uniq()
           |> length()
 
+        # Query actual system count from database
+        total_systems =
+          case Api.count(SolarSystem) do
+            {:ok, count} -> count
+            # Fallback to prevent division by zero
+            _ -> 1
+          end
+
         metrics = %{
           total_kills: current_count,
           kills_change: kills_change,
           active_systems: active_systems,
-          # Total systems
-          active_percentage: Float.round(active_systems / max(1, 8436) * 100, 1),
-          # Mock for now
-          avg_response_time: 45
+          active_percentage: Float.round(active_systems / max(1, total_systems) * 100, 1),
+          total_systems: total_systems
+          # Removed avg_response_time mock value - not implementable with real data
         }
 
         {:ok, metrics}
@@ -144,7 +189,7 @@ defmodule EveDmv.Contexts.SystemAnalysis do
     spillover = %{
       spillover_detected: abs(correlation) > 0.3,
       correlation_score: correlation,
-      time_delay: calculate_time_delay(activity_a, activity_b),
+      # time_delay removed - cannot be implemented with current data structure
       pattern: determine_spillover_pattern(correlation)
     }
 
@@ -320,10 +365,10 @@ defmodule EveDmv.Contexts.SystemAnalysis do
     daily_average = kill_count / days
 
     cond do
-      daily_average >= 50 -> :very_high
-      daily_average >= 20 -> :high
-      daily_average >= 10 -> :medium
-      daily_average >= 3 -> :low
+      daily_average >= @activity_high_threshold -> :very_high
+      daily_average >= @activity_medium_threshold -> :high
+      daily_average >= @activity_low_threshold -> :medium
+      daily_average >= @activity_minimal_threshold -> :low
       true -> :very_low
     end
   end
@@ -429,10 +474,8 @@ defmodule EveDmv.Contexts.SystemAnalysis do
     end
   end
 
-  defp calculate_time_delay(_activity_a, _activity_b) do
-    # Mock implementation - would analyze time shifts in activity patterns
-    0
-  end
+  # Function removed per CLAUDE.md: No stub implementations allowed
+  # calculate_time_delay/2 removed - always returned 0
 
   defp determine_spillover_pattern(correlation) when correlation > 0.5, do: :immediate
   defp determine_spillover_pattern(correlation) when correlation > 0.3, do: :delayed
@@ -454,8 +497,8 @@ defmodule EveDmv.Contexts.SystemAnalysis do
          system_id: system_id,
          kill_count: length(kms),
          isk_destroyed: total_value,
-         # Simple scoring
-         activity_score: length(kms) * 10
+         # Activity scoring using configured multiplier
+         activity_score: length(kms) * @activity_weight_multiplier
        }}
     end)
   end
@@ -463,8 +506,8 @@ defmodule EveDmv.Contexts.SystemAnalysis do
   defp identify_high_activity_systems(system_activity) do
     system_activity
     |> Map.values()
-    # Threshold for "hot"
-    |> Enum.filter(fn system -> system.kill_count >= 20 end)
+    # Filter for hot zones using configured threshold
+    |> Enum.filter(fn system -> system.kill_count >= @hot_zone_threshold end)
     |> Enum.sort_by(& &1.activity_score, :desc)
   end
 
@@ -529,14 +572,15 @@ defmodule EveDmv.Contexts.SystemAnalysis do
 
   defp calculate_threat_level(system_data) do
     # Normalize activity to 0-1 scale based on kill count and ISK value
-    # Log scale
-    kill_factor = :math.log10(max(1, system_data.kill_count)) / 3.0
+    # Log scale using configured weights
+    kill_factor = :math.log10(max(1, system_data.kill_count)) / @threat_weight_activity
 
     isk_factor =
-      :math.log10(max(1, Decimal.to_float(system_data.isk_destroyed) / 1_000_000)) / 12.0
+      :math.log10(max(1, Decimal.to_float(system_data.isk_destroyed) / 1_000_000)) /
+        @threat_weight_value
 
-    # Combine factors and clamp to 0-1
-    threat = kill_factor * 0.6 + isk_factor * 0.4
+    # Combine factors using configured ratios and clamp to 0-1
+    threat = kill_factor * @threat_ratio_activity + isk_factor * @threat_ratio_value
     max(0.0, min(1.0, threat))
   end
 
@@ -656,7 +700,9 @@ defmodule EveDmv.Contexts.SystemAnalysis do
           current_rate / baseline_rate
         else
           # High activity from zero baseline
-          if current_rate > 5, do: 10.0, else: 1.0
+          if current_rate > @escalation_kill_threshold,
+            do: @escalation_activity_threshold,
+            else: 1.0
         end
 
       # Calculate ISK escalation factor
@@ -672,11 +718,13 @@ defmodule EveDmv.Contexts.SystemAnalysis do
           current_isk_rate / baseline_isk_rate
         else
           # 50M+ ISK/hour threshold
-          if current_isk_rate > 50_000_000, do: 5.0, else: 1.0
+          if current_isk_rate > @escalation_value_threshold, do: 5.0, else: 1.0
         end
 
-      # Combined escalation score
-      escalation_score = escalation_factor * 0.6 + isk_escalation_factor * 0.4
+      # Combined escalation score using configured weights
+      escalation_score =
+        escalation_factor * @escalation_weight_activity +
+          isk_escalation_factor * @escalation_weight_value
 
       # Determine severity and type
       {severity, escalation_type} =
@@ -704,29 +752,40 @@ defmodule EveDmv.Contexts.SystemAnalysis do
       }
     end)
     # Filter for significant escalations
-    |> Enum.filter(fn escalation -> escalation.escalation_score >= 1.5 end)
+    |> Enum.filter(fn escalation -> escalation.escalation_score >= @spillover_filter_threshold end)
     |> Enum.sort_by(& &1.escalation_score, :desc)
   end
 
   defp classify_escalation(score, current_activity, _baseline_activity) do
     severity =
       cond do
-        score >= 10.0 -> :critical
-        score >= 5.0 -> :high
-        score >= 2.5 -> :medium
-        score >= 1.5 -> :low
+        score >= @severity_high_threshold -> :critical
+        score >= @severity_medium_threshold -> :high
+        score >= @severity_low_threshold -> :medium
+        score >= @severity_minimal_threshold -> :low
         true -> :none
       end
 
     # Determine escalation type based on activity patterns
     escalation_type =
       cond do
-        current_activity.kill_count >= 30 -> :massive_engagement
-        current_activity.kill_count >= 15 -> :fleet_battle
-        current_activity.kill_count >= 5 -> :skirmish
-        Decimal.to_float(current_activity.isk_destroyed) >= 1_000_000_000 -> :capital_engagement
-        Decimal.to_float(current_activity.isk_destroyed) >= 500_000_000 -> :expensive_battle
-        true -> :activity_spike
+        current_activity.kill_count >= @activity_spike_threshold ->
+          :massive_engagement
+
+        current_activity.kill_count >= @activity_increase_threshold ->
+          :fleet_battle
+
+        current_activity.kill_count >= @activity_decrease_threshold ->
+          :skirmish
+
+        Decimal.to_float(current_activity.isk_destroyed) >= @isk_high_threshold ->
+          :capital_engagement
+
+        Decimal.to_float(current_activity.isk_destroyed) >= @isk_medium_threshold ->
+          :expensive_battle
+
+        true ->
+          :activity_spike
       end
 
     {severity, escalation_type}
@@ -815,12 +874,12 @@ defmodule EveDmv.Contexts.SystemAnalysis do
     # Normalize to a 0-1 range for display purposes
     # EVE universe is roughly -5e17 to 5e17 meters
     float_val = Decimal.to_float(coord)
-    # Scale down and center around 0.5
-    (float_val / 1.0e18 + 0.5) |> max(0.0) |> min(1.0)
+    # Scale down and center using configured constants
+    (float_val / @coordinate_scale + @coordinate_offset) |> max(0.0) |> min(1.0)
   end
 
   defp normalize_coordinate(coord) when is_number(coord) do
-    # Already a number, normalize it
-    (coord / 1.0e18 + 0.5) |> max(0.0) |> min(1.0)
+    # Already a number, normalize it using configured constants
+    (coord / @coordinate_scale + @coordinate_offset) |> max(0.0) |> min(1.0)
   end
 end

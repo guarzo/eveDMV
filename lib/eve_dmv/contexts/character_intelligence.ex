@@ -201,8 +201,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
       |> Enum.reject(&is_nil/1)
       |> Enum.sort_by(
         fn {_id, analysis} ->
-          # Handle both threat_score and overall_score keys
-          Map.get(analysis, :threat_score) || Map.get(analysis, :overall_score, 0)
+          # Use single Map.get with nested default for cleaner code
+          Map.get(analysis, :threat_score, Map.get(analysis, :overall_score, 0))
         end,
         :desc
       )
@@ -395,16 +395,18 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
     case GangSynergyAnalyzer.analyze_synergy(character_ids) do
       {:ok, synergy} ->
         # Convert synergy format to effectiveness format
-        # Calculate synergy rating from coordination and role compatibility
-        synergy_rating = (synergy.coordination_score + synergy.role_compatibility) / 2
+        # Calculate synergy rating from coordination and role compatibility using safe access
+        coordination_score = Map.get(synergy, :coordination_score, 0)
+        role_compatibility = Map.get(synergy, :role_compatibility, 0)
+        synergy_rating = (coordination_score + role_compatibility) / 2
 
         {:ok,
          %{
-           coordination_score: synergy.coordination_score,
+           coordination_score: coordination_score,
            synergy_score: synergy_rating,
            effectiveness_rating: calculate_effectiveness_rating(synergy, synergy_rating),
-           shared_victories: synergy.shared_victories,
-           role_compatibility: synergy.role_compatibility,
+           shared_victories: Map.get(synergy, :shared_victories, 0),
+           role_compatibility: role_compatibility,
            temporal_patterns: Map.get(synergy, :temporal_coordination, %{}),
            geographic_patterns: Map.get(synergy, :engagement_patterns, %{}),
            effectiveness_metrics: Map.get(synergy, :success_metrics, %{})

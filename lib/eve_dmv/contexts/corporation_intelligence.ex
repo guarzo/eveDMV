@@ -130,8 +130,22 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
 
     member_threats =
       case analyze_top_member_threats(corporation_id) do
-        {:ok, threats} -> threats
-        {:error, _reason} -> %{top_threats: [], average_threat_score: 0, threat_distribution: %{}}
+        {:ok, threats} ->
+          threats
+
+        {:error, reason} ->
+          %{
+            top_threats: [],
+            average_threat_score: 0.0,
+            threat_distribution: %{
+              extreme: 0,
+              high: 0,
+              moderate: 0,
+              low: 0,
+              minimal: 0
+            },
+            error: reason
+          }
       end
 
     activity_metrics =
@@ -232,12 +246,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
         {:ok,
          %{
            top_threats: threat_results,
-           average_threat_score:
-             if is_float(average_threat) do
-               Float.round(average_threat, 1)
-             else
-               average_threat / 1
-             end,
+           average_threat_score: Float.round(average_threat * 1.0, 1),
            threat_distribution: threat_distribution
          }}
 
@@ -306,9 +315,16 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
   Clears cached intelligence data for a corporation.
   """
   @spec clear_corporation_cache(integer()) :: :ok
-  def clear_corporation_cache(_corporation_id) do
-    # This is a placeholder - in a production system you might have specific
-    # intelligence caches to clear. For now, the AnalysisCache handles this.
+  def clear_corporation_cache(corporation_id) do
+    # Invalidate cached corporation intelligence data
+    alias EveDmv.Platform.Cache.AnalysisCache
+
+    # Clear corporation-specific cache entries
+    AnalysisCache.invalidate_corporation(corporation_id)
+
+    # Note: Member cache invalidation would require querying member list
+    # from killmail participants, which is handled by AnalysisCache.invalidate_corporation
+
     :ok
   end
 
@@ -857,13 +873,13 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
         start_date =
           today
           |> Date.beginning_of_month()
-          |> Date.shift(month: -i)
+          |> shift_to_month_start(-i)
           |> DateTime.new!(~T[00:00:00])
 
         end_date =
           today
           |> Date.beginning_of_month()
-          |> Date.shift(month: -(i - 1))
+          |> shift_to_month_start(-(i - 1))
           |> DateTime.new!(~T[00:00:00])
 
         query =
@@ -904,5 +920,14 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
       end
 
     %{time_periods: months}
+  end
+
+  # Helper function to shift dates by months since Date.shift/2 doesn't exist in Elixir
+  defp shift_to_month_start(%Date{} = date, months_delta) do
+    {y, m, _} = Date.to_erl(date)
+    total = y * 12 + (m - 1) + months_delta
+    new_year = div(total, 12)
+    new_month = rem(total, 12) + 1
+    Date.new!(new_year, new_month, 1)
   end
 end
