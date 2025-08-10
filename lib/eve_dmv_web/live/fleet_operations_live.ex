@@ -10,7 +10,6 @@ defmodule EveDmvWeb.FleetOperationsLive do
 
   alias EveDmv.Contexts.BattleAnalysis
   alias EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer
-  alias EveDmv.Contexts.WormholeOperations.Domain.Analyzers.WhFleetAnalyzer
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Eve.NameResolver
 
@@ -183,7 +182,7 @@ defmodule EveDmvWeb.FleetOperationsLive do
           summary: generate_composition_summary(analysis)
         }
 
-      {:error, %EveDmv.Error{} = error} ->
+      {:error, %EveDmv.Core.Errors.Error{} = error} ->
         %{type: "composition", success: false, error: error.message}
 
       {:error, reason} ->
@@ -198,15 +197,11 @@ defmodule EveDmvWeb.FleetOperationsLive do
     participant_data = Map.get(fleet_data, :fleet_participants, %{})
     participants = Map.get(participant_data, fleet_data.fleet_id, [])
 
-    fleet_analysis = WhFleetAnalyzer.analyze_fleet_composition_from_members(participants)
-    effectiveness = WhFleetAnalyzer.calculate_fleet_effectiveness(fleet_analysis)
+    # Use CompositionAnalyzer instead of removed WhFleetAnalyzer
+    fleet_analysis = CompositionAnalyzer.analyze(participants)
+    effectiveness = calculate_fleet_effectiveness_metrics(fleet_analysis)
 
-    improvements =
-      WhFleetAnalyzer.recommend_fleet_improvements(%{
-        effectiveness_metrics: effectiveness,
-        role_distribution: fleet_analysis.role_distribution,
-        doctrine_compliance: fleet_analysis.doctrine_compliance
-      })
+    improvements = generate_fleet_improvements(fleet_analysis, effectiveness)
 
     %{
       type: "effectiveness",
@@ -221,6 +216,112 @@ defmodule EveDmvWeb.FleetOperationsLive do
   rescue
     error ->
       %{type: "effectiveness", success: false, error: "Analysis failed: #{inspect(error)}"}
+  end
+
+  defp calculate_fleet_effectiveness_metrics(fleet_analysis) do
+    # Calculate effectiveness based on composition analysis
+    %{
+      overall_score: calculate_overall_effectiveness_score(fleet_analysis),
+      role_balance: evaluate_role_balance(fleet_analysis),
+      synergy_score: calculate_synergy_score(fleet_analysis),
+      weaknesses: identify_fleet_weaknesses(fleet_analysis)
+    }
+  end
+
+  defp generate_fleet_improvements(fleet_analysis, effectiveness) do
+    # Check for role imbalances
+    base_improvements =
+      if effectiveness.role_balance < 0.7 do
+        ["Consider adding more support ships"]
+      else
+        []
+      end
+
+    # Check for DPS issues
+    improvements_with_dps =
+      if Map.get(fleet_analysis, :total_dps, 0) < 5000 do
+        ["Fleet lacks sufficient DPS output" | base_improvements]
+      else
+        base_improvements
+      end
+
+    # Check for logistics
+    final_improvements =
+      if Map.get(fleet_analysis, :logistics_count, 0) == 0 do
+        ["No logistics ships detected - consider adding healers" | improvements_with_dps]
+      else
+        improvements_with_dps
+      end
+
+    final_improvements
+  end
+
+  defp calculate_overall_effectiveness_score(fleet_analysis) do
+    # Simple effectiveness scoring based on composition
+    base_score = 50
+
+    # Add points for balanced composition
+    role_bonus =
+      if Map.get(fleet_analysis, :role_distribution, %{}) |> map_size() > 2, do: 20, else: 0
+
+    # Add points for sufficient fleet size
+    size_bonus = if Map.get(fleet_analysis, :total_pilots, 0) > 10, do: 15, else: 0
+
+    # Add points for logistics presence
+    logi_bonus = if Map.get(fleet_analysis, :logistics_count, 0) > 0, do: 15, else: 0
+
+    min(100, base_score + role_bonus + size_bonus + logi_bonus)
+  end
+
+  defp evaluate_role_balance(fleet_analysis) do
+    role_dist = Map.get(fleet_analysis, :role_distribution, %{})
+
+    # Check if we have a good mix of roles
+    has_dps = Map.get(role_dist, "dps", 0) > 0
+    has_support = Map.get(role_dist, "support", 0) > 0 or Map.get(role_dist, "logistics", 0) > 0
+    has_tackle = Map.get(role_dist, "tackle", 0) > 0
+
+    case {has_dps, has_support, has_tackle} do
+      {true, true, true} -> 1.0
+      {true, true, false} -> 0.8
+      {true, false, _} -> 0.6
+      _ -> 0.4
+    end
+  end
+
+  defp calculate_synergy_score(fleet_analysis) do
+    # Basic synergy calculation
+    doctrine_compliance = Map.get(fleet_analysis, :doctrine_compliance, 0.5)
+    role_balance = evaluate_role_balance(fleet_analysis)
+
+    (doctrine_compliance + role_balance) / 2
+  end
+
+  defp identify_fleet_weaknesses(fleet_analysis) do
+    role_dist = Map.get(fleet_analysis, :role_distribution, %{})
+
+    logistics_weakness =
+      if Map.get(role_dist, "logistics", 0) == 0 do
+        ["No logistics support"]
+      else
+        []
+      end
+
+    tackle_weakness =
+      if Map.get(role_dist, "tackle", 0) == 0 do
+        ["No tackle ships"]
+      else
+        []
+      end
+
+    size_weakness =
+      if Map.get(fleet_analysis, :total_pilots, 0) < 5 do
+        ["Fleet size too small"]
+      else
+        []
+      end
+
+    logistics_weakness ++ tackle_weakness ++ size_weakness
   end
 
   defp analyze_pilot_performance(fleet_data) do

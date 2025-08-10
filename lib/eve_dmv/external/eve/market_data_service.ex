@@ -12,8 +12,8 @@ defmodule EveDmv.External.Eve.MarketDataService do
   """
 
   use GenServer
-  alias EveDmv.Cache
   alias EveDmv.Http.UnifiedClient
+  alias EveDmv.Platform.Cache.Cache
   alias EveDmv.StaticData.ShipTypes
 
   require Logger

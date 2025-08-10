@@ -17,7 +17,7 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.PilotAnalyzer do
   optimize fleet effectiveness and readiness.
   """
 
-  use EveDmv.ErrorHandler
+  use EveDmv.Core.Errors.ErrorHandler
   alias EveDmv.Contexts.FleetOperations.Infrastructure.PilotDataProvider
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Result

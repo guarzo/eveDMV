@@ -12,9 +12,9 @@ defmodule EveDmv.Database.CacheHashManager do
   import Ash.Query
 
   alias EveDmv.Api
-  alias EveDmv.Cache.QueryCache
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.CacheInvalidator
+  alias EveDmv.Platform.Cache.QueryCache
   require Logger
 
   # Hash storage - maps cache keys to content hashes

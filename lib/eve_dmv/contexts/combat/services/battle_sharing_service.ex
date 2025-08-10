@@ -14,7 +14,7 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
   alias EveDmv.Contexts.Combat.Core.ParticipantAnalyzer
   alias EveDmv.Contexts.Combat.Services.BattleService
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Utils.NumberFormatter
+  alias EveDmv.Core.Utils.NumberFormatter
   require Ash.Query
 
   require Logger

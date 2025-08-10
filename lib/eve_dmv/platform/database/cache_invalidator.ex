@@ -8,8 +8,8 @@ defmodule EveDmv.Database.CacheInvalidator do
 
   use GenServer
 
-  alias EveDmv.Cache.QueryCache
   alias EveDmv.Database.CacheWarmer
+  alias EveDmv.Platform.Cache.QueryCache
   alias Phoenix.PubSub
 
   require Logger

@@ -22,7 +22,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Analyzers.ParticipationAnalyzer do
   - **Solo Activities**: Individual activities without fleet participation
   """
 
-  use EveDmv.ErrorHandler
+  use EveDmv.Core.Errors.ErrorHandler
   alias EveDmv.Contexts.CorporationAnalysis.Infrastructure.ParticipationDataProvider
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Result

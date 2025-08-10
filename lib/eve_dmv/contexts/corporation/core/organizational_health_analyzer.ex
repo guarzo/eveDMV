@@ -13,10 +13,10 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   alias EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer
   alias EveDmv.Contexts.Corporation.Core.MemberRiskAssessment
   alias EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer
+  alias EveDmv.Core.Utils.DateHelper
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
   alias EveDmv.Platform.Database.CorporationRepository
-  alias EveDmv.Utils.DateHelper
 
   require Logger
 

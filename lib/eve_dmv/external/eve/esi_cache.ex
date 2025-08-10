@@ -6,7 +6,7 @@ defmodule EveDmv.Eve.EsiCache do
   while using the new unified cache system with appropriate cache types.
   """
 
-  alias EveDmv.Cache
+  alias EveDmv.Platform.Cache.Cache
 
   @doc """
   Child specification for supervised processes.

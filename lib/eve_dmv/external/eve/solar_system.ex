@@ -155,6 +155,7 @@ defmodule EveDmv.Eve.SolarSystem do
 
     # Custom create/upsert for SDE imports
     create :create do
+      primary?(true)
       description("Create or update solar system from SDE")
 
       accept([

@@ -1,4 +1,4 @@
-defmodule EveDmv.Cache.StaticDataCache do
+defmodule EveDmv.Platform.Cache.StaticDataCache do
   @moduledoc """
   High-performance caching for static EVE data that rarely changes.
 

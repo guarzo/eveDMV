@@ -8,7 +8,7 @@ defmodule EveDmv.Contexts.ThreatAssessment.Domain.ThreatAnalyzer do
   """
 
   use GenServer
-  use EveDmv.ErrorHandler
+  use EveDmv.Core.Errors.ErrorHandler
 
   alias EveDmv.Contexts.ThreatAssessment.Analyzers.VulnerabilityScanner
   alias EveDmv.Core.Utils.DateTimeUtils

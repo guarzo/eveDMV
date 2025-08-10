@@ -7,12 +7,12 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.CorporationAnalyz
   """
 
   alias EveDmv.Api
+  alias EveDmv.Core.Utils.TimeUtils
   alias EveDmv.Intelligence.Analyzers.MemberActivityDataCollector
   alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Intelligence.Formatters.MemberActivityFormatter
   alias EveDmv.Intelligence.MemberActivityIntelligence
   alias EveDmv.Intelligence.Metrics.MemberActivityMetrics
-  alias EveDmv.Utils.TimeUtils
 
   require Ash.Query
   require Logger

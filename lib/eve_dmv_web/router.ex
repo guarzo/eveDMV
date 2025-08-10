@@ -9,6 +9,10 @@ defmodule EveDmvWeb.Router do
 
   pipeline :browser do
     plug(:accepts, ["html"])
+    # Add request timing
+    plug(EveDmvWeb.Plugs.RequestTimer)
+    # 300 req/min for browsers
+    plug(EveDmvWeb.Plugs.SimpleRateLimit, limit: 300, window: 60_000)
     plug(:fetch_session)
     plug(:fetch_live_flash)
     plug(:put_root_layout, html: {EveDmvWeb.Layouts, :root})
@@ -21,6 +25,10 @@ defmodule EveDmvWeb.Router do
 
   pipeline :api do
     plug(:accepts, ["json"])
+    # Add request timing
+    plug(EveDmvWeb.Plugs.RequestTimer)
+    # 100 req/min for APIs
+    plug(EveDmvWeb.Plugs.SimpleRateLimit, limit: 100, window: 60_000)
     plug(:load_from_bearer)
   end
 
@@ -80,9 +88,6 @@ defmodule EveDmvWeb.Router do
     live("/surveillance", SurveillanceLive)
     live("/surveillance-profiles", SurveillanceProfilesLive)
     live("/surveillance-alerts", SurveillanceAlertsLive)
-    live("/chain-intelligence", ChainIntelligenceLive)
-    live("/chain-intelligence/:map_id", ChainIntelligenceLive)
-    live("/wh-vetting", WHVettingLive)
     # Redirect old dashboard routes to unified dashboard with appropriate tab
     live("/intelligence-dashboard", UnifiedDashboardLive, as: :intelligence_dashboard)
     live("/monitoring", UnifiedDashboardLive, as: :monitoring_dashboard)
@@ -93,6 +98,7 @@ defmodule EveDmvWeb.Router do
 
     # System activity analytics
     live("/system-activity", SystemActivityLive)
+    live("/system-analytics", SystemActivityLive, as: :system_analytics)
 
     # Character comparison tools
     live("/character-comparison", CharacterComparisonLive)

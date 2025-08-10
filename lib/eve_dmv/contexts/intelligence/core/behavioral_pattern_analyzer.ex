@@ -9,10 +9,10 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
   - Player Profile behavioral analysis
   """
 
-  alias EveDmv.Cache
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.CharacterRepository
   alias EveDmv.Database.KillmailRepository
+  alias EveDmv.Platform.Cache.Cache
   alias EveDmv.StaticData.SystemData
 
   require Logger

@@ -6,10 +6,10 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   ship preferences, activity patterns, and affiliations.
   """
 
-  alias EveDmv.Cache.QueryCache
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.CharacterQueries
   alias EveDmv.Database.QueryPerformance
+  alias EveDmv.Platform.Cache.QueryCache
   alias EveDmv.Shared.KillmailQueries
   alias EveDmv.StaticData
   require Logger

@@ -10,8 +10,8 @@ defmodule EveDmvWeb.UniversalSearchLive do
 
   use EveDmvWeb, :live_view
 
-  alias EveDmv.Cache.AnalysisCache
   alias EveDmv.Eve.SolarSystem
+  alias EveDmv.Platform.Cache.AnalysisCache
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do

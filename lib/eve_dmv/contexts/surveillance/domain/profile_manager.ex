@@ -6,7 +6,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ProfileManager do
   validation, activation/deactivation, and profile lifecycle management.
   """
 
-  use EveDmv.ErrorHandler
+  use EveDmv.Core.Errors.ErrorHandler
 
   alias EveDmv.Contexts.Surveillance.Domain.MatchingEngine
   alias EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository

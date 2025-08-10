@@ -9,7 +9,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
   """
 
   use GenServer
-  use EveDmv.ErrorHandler
+  use EveDmv.Core.Errors.ErrorHandler
   alias EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository
   alias EveDmv.DomainEvents.SurveillanceMatch
   alias EveDmv.Infrastructure.EventBus

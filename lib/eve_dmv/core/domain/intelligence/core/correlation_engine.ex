@@ -3,12 +3,11 @@ defmodule EveDmv.Intelligence.Core.CorrelationEngine do
   Intelligence correlation engine for cross-module analysis.
 
   This module analyzes correlations between different intelligence modules
-  to provide comprehensive insights that span character analysis, vetting,
+  to provide comprehensive insights that span character analysis
   and threat assessment systems.
   """
 
   alias EveDmv.Intelligence.Analyzers.CharacterAnalyzer
-  alias EveDmv.Intelligence.Analyzers.WHVettingAnalyzer
 
   require Logger
 
@@ -17,22 +16,22 @@ defmodule EveDmv.Intelligence.Core.CorrelationEngine do
 
   Returns comprehensive correlation analysis combining data from:
   - Character analysis
-  - Vetting analysis
   - Threat assessment
 
   ## Parameters
-  - character_id: EVE character ID to analyze
+  - character_id: Integer ID of the character to analyze
 
   ## Returns
   - {:ok, correlation_analysis} on success
   - {:error, reason} on failure or insufficient data
   """
+  def analyze_cross_module_correlations(nil), do: {:error, :invalid_character_id}
+
   def analyze_cross_module_correlations(character_id) when is_integer(character_id) do
     Logger.debug("Starting cross-module correlation analysis for character #{character_id}")
 
     with {:ok, character_data} <- get_character_analysis_data(character_id),
-         {:ok, vetting_data} <- get_vetting_analysis_data(character_id),
-         {:ok, correlations} <- compute_correlations(character_data, vetting_data) do
+         {:ok, correlations} <- compute_correlations(character_data) do
       analysis = %{
         character_id: character_id,
         correlations: correlations,
@@ -44,391 +43,253 @@ defmodule EveDmv.Intelligence.Core.CorrelationEngine do
       Logger.info("Completed cross-module correlation analysis for character #{character_id}")
       {:ok, analysis}
     else
-      {:error, reason} ->
-        Logger.warning(
-          "Cross-module correlation analysis failed for character #{character_id}: #{inspect(reason)}"
+      {:error, reason} = error ->
+        Logger.error(
+          "Cross-module correlation failed for character #{character_id}: #{inspect(reason)}"
         )
 
-        {:error, reason}
+        error
     end
   end
 
-  def analyze_cross_module_correlations(nil) do
-    {:error, "Invalid character ID: nil"}
-  end
-
-  def analyze_cross_module_correlations(_invalid) do
-    {:error, "Invalid character ID format"}
-  end
-
   @doc """
-  Analyze correlations between multiple characters.
+  Analyze correlation patterns across multiple characters.
 
-  Identifies patterns and relationships between characters based on:
-  - Temporal activity correlations
-  - Geographic activity overlaps
-  - Combat engagement patterns
+  This function finds patterns and relationships between multiple characters,
+  identifying shared behaviors, associations, and threat patterns.
 
   ## Parameters
-  - character_ids: List of character IDs to correlate
+  - character_ids: List of character IDs to analyze
 
   ## Returns
-  - {:ok, correlation_analysis} with temporal and geographic correlations
-  - {:error, reason} if insufficient data or invalid input
+  - {:ok, multi_character_correlations} on success
+  - {:error, reason} on failure
   """
-  def analyze_character_correlations(character_ids) when is_list(character_ids) do
-    case length(character_ids) do
-      count when count < 2 ->
+  def analyze_multi_character_correlations(character_ids) when is_list(character_ids) do
+    cond do
+      Enum.empty?(character_ids) ->
+        {:error, :no_character_data_available}
+
+      length(character_ids) == 1 ->
         {:error, "Insufficient character data for correlation analysis"}
 
-      _count ->
+      true ->
         Logger.debug(
-          "Starting character correlation analysis for #{length(character_ids)} characters"
+          "Starting multi-character correlation analysis for #{length(character_ids)} characters"
         )
 
-        with {:ok, character_data_list} <- gather_character_data(character_ids),
-             {:ok, correlations} <- compute_character_correlations(character_data_list) do
+        with {:ok, character_analyses} <- get_multiple_character_analyses(character_ids),
+             {:ok, correlations} <- compute_multi_character_correlations(character_analyses) do
           analysis = %{
-            characters: character_ids,
-            temporal_correlations: correlations.temporal,
-            geographic_correlations: correlations.geographic,
+            character_ids: character_ids,
+            correlations: correlations,
+            network_graph: build_network_graph(correlations),
+            clusters: identify_clusters(correlations),
+            temporal_correlations: correlations[:temporal_correlations] || %{},
+            geographic_correlations: correlations[:location_correlations] || %{},
             analysis_timestamp: DateTime.utc_now()
           }
 
-          Logger.info(
-            "Completed character correlation analysis for #{length(character_ids)} characters"
-          )
-
+          Logger.info("Completed multi-character correlation analysis")
           {:ok, analysis}
         else
-          {:error, reason} ->
-            Logger.warning("Character correlation analysis failed: #{inspect(reason)}")
-            {:error, reason}
+          {:error, reason} = error ->
+            Logger.error("Multi-character correlation failed: #{inspect(reason)}")
+            error
         end
     end
   end
 
-  @doc """
-  Analyze corporation-wide intelligence patterns.
-
-  Examines intelligence patterns across corporation members including:
-  - Recruitment patterns and vetting consistency
-  - Activity coordination and fleet participation
-  - Security risk distribution
-
-  ## Parameters
-  - corporation_id: EVE corporation ID to analyze
-
-  ## Returns
-  - {:ok, corporation_analysis} with recruitment and activity patterns
-  - {:error, reason} if insufficient data or invalid input
-  """
-  def analyze_corporation_intelligence_patterns(corporation_id) when is_integer(corporation_id) do
-    Logger.debug("Starting corporation intelligence pattern analysis for corp #{corporation_id}")
-
-    with {:ok, member_data} <- get_corporation_member_data(corporation_id),
-         {:ok, patterns} <- analyze_corporation_patterns(member_data) do
-      analysis = %{
-        corporation_id: corporation_id,
-        recruitment_patterns: patterns.recruitment,
-        activity_coordination: patterns.activity,
-        member_count: length(member_data),
-        analysis_timestamp: DateTime.utc_now()
-      }
-
-      Logger.info(
-        "Completed corporation intelligence pattern analysis for corp #{corporation_id}"
-      )
-
-      {:ok, analysis}
-    else
-      {:error, reason} ->
-        Logger.warning(
-          "Corporation intelligence pattern analysis failed for corp #{corporation_id}: #{inspect(reason)}"
-        )
-
-        {:error, reason}
-    end
-  end
-
-  def analyze_corporation_intelligence_patterns(nil) do
-    {:error, "Invalid corporation ID: nil"}
-  end
-
-  def analyze_corporation_intelligence_patterns(_invalid) do
-    {:error, "Invalid corporation ID format"}
-  end
-
-  # Private helper functions
+  # Private functions
 
   defp get_character_analysis_data(character_id) do
-    analysis = CharacterAnalyzer.analyze_character(character_id)
-    {:ok, analysis}
-  rescue
-    error ->
-      # Handle GenServer not started or other runtime errors
-      Logger.debug(
-        "Character analysis error for #{character_id}: #{inspect(error)}, using placeholder"
-      )
-
-      {:ok, get_placeholder_character_data(character_id)}
-  catch
-    :exit, _reason ->
-      # Handle GenServer exit errors
-      Logger.debug(
-        "Character analysis service unavailable for #{character_id}, using placeholder"
-      )
-
-      {:ok, get_placeholder_character_data(character_id)}
-  end
-
-  defp get_vetting_analysis_data(character_id) do
-    case WHVettingAnalyzer.analyze_character(character_id) do
+    case CharacterAnalyzer.analyze_character(character_id) do
       {:ok, analysis} ->
         {:ok, analysis}
 
       {:error, _reason} ->
-        # Return placeholder data for missing vetting
-        Logger.debug("Vetting analysis unavailable for #{character_id}, using placeholder")
-        {:ok, get_placeholder_vetting_data(character_id)}
+        # Return basic character data if full analysis fails
+        Logger.debug("Character analysis unavailable for #{character_id}, using basic data")
+        {:ok, get_basic_character_data(character_id)}
     end
   rescue
     error ->
       # Handle any runtime errors
       Logger.debug(
-        "Vetting analysis error for #{character_id}: #{inspect(error)}, using placeholder"
+        "Character analysis error for #{character_id}: #{inspect(error)}, using basic data"
       )
 
-      {:ok, get_placeholder_vetting_data(character_id)}
+      {:ok, get_basic_character_data(character_id)}
   catch
-    :exit, _reason ->
-      # Handle GenServer exit errors
-      Logger.debug("Vetting analysis service unavailable for #{character_id}, using placeholder")
-
-      {:ok, get_placeholder_vetting_data(character_id)}
+    :exit, {:noproc, _} ->
+      # Handle GenServer not running (common in test environment)
+      Logger.debug("Analysis service not available for #{character_id}, using basic data")
+      {:ok, get_basic_character_data(character_id)}
   end
 
-  defp compute_correlations(character_data, vetting_data) do
+  defp get_multiple_character_analyses(character_ids) do
+    analyses =
+      character_ids
+      |> Task.async_stream(
+        fn character_id ->
+          {character_id, get_character_analysis_data(character_id)}
+        end,
+        timeout: 30_000,
+        on_timeout: :kill_task
+      )
+      |> Enum.reduce(%{}, fn
+        {:ok, {character_id, {:ok, analysis}}}, acc ->
+          Map.put(acc, character_id, analysis)
+
+        _, acc ->
+          acc
+      end)
+
+    if map_size(analyses) == 0 do
+      {:error, :no_character_data_available}
+    else
+      {:ok, analyses}
+    end
+  end
+
+  defp get_basic_character_data(character_id) do
+    %{
+      character_id: character_id,
+      character_name: "Character #{character_id}",
+      threat_level: :unknown,
+      activity_level: :unknown,
+      analysis_timestamp: DateTime.utc_now()
+    }
+  end
+
+  defp compute_correlations(character_data) do
     correlations = %{
-      threat_assessment: correlate_threat_indicators(character_data, vetting_data),
-      risk_alignment: correlate_risk_factors(character_data, vetting_data),
-      behavioral_consistency: correlate_behavioral_patterns(character_data, vetting_data)
+      threat_assessment: analyze_threat_patterns(character_data),
+      activity_patterns: analyze_activity_patterns(character_data),
+      behavioral_indicators: analyze_behavioral_indicators(character_data),
+      temporal_patterns: analyze_temporal_patterns(character_data)
     }
 
     {:ok, correlations}
   end
 
-  defp correlate_threat_indicators(character_data, vetting_data) do
-    dangerous_rating = Map.get(character_data, :dangerous_rating, 0)
-    risk_score = Map.get(vetting_data, :risk_score, 50)
+  defp compute_multi_character_correlations(character_analyses) do
+    correlations = %{
+      shared_killmails: find_shared_killmails(character_analyses),
+      temporal_correlations: find_temporal_correlations(character_analyses),
+      location_correlations: find_location_correlations(character_analyses),
+      ship_preferences: compare_ship_preferences(character_analyses),
+      activity_overlaps: find_activity_overlaps(character_analyses)
+    }
 
-    # Simple correlation: higher dangerous rating should correlate with higher risk score
-    correlation_strength =
-      if dangerous_rating > 7 and risk_score > 70 do
-        :high
-      else
-        :low
-      end
+    {:ok, correlations}
+  end
 
+  defp analyze_threat_patterns(character_data) do
     %{
-      correlation_strength: correlation_strength,
-      dangerous_rating: dangerous_rating,
-      risk_score: risk_score,
-      alignment: calculate_alignment(dangerous_rating, risk_score)
+      threat_level: Map.get(character_data, :threat_level, :unknown),
+      threat_score: Map.get(character_data, :threat_score, 0),
+      threat_indicators: Map.get(character_data, :threat_indicators, [])
     }
   end
 
-  defp correlate_risk_factors(character_data, vetting_data) do
-    awox_probability = Map.get(character_data, :awox_probability, 0.0)
-    risk_factors = Map.get(vetting_data, :risk_factors, %{})
-
-    # Check if high awox probability aligns with risk factors
-    has_security_flags = Map.has_key?(risk_factors, "security_flags")
-
+  defp analyze_activity_patterns(character_data) do
     %{
-      awox_probability: awox_probability,
-      security_flags_present: has_security_flags,
-      risk_factor_count: map_size(risk_factors),
-      consistency_score: calculate_risk_consistency(awox_probability, has_security_flags)
+      activity_level: Map.get(character_data, :activity_level, :low),
+      peak_hours: Map.get(character_data, :peak_activity_hours, []),
+      recent_systems: Map.get(character_data, :recent_systems, [])
     }
   end
 
-  defp correlate_behavioral_patterns(character_data, vetting_data) do
-    ship_usage = Map.get(character_data, :ship_usage, %{})
-    recommendation = get_in(vetting_data, [:recommendation, :recommendation])
-
+  defp analyze_behavioral_indicators(character_data) do
     %{
-      ship_diversity: map_size(ship_usage),
-      vetting_recommendation: recommendation,
-      activity_level: calculate_activity_level(ship_usage),
-      behavioral_score: calculate_behavioral_score(ship_usage, recommendation)
+      aggression_level: Map.get(character_data, :aggression_level, :unknown),
+      target_preferences: Map.get(character_data, :target_preferences, []),
+      engagement_patterns: Map.get(character_data, :engagement_patterns, [])
     }
   end
 
-  defp calculate_alignment(dangerous_rating, risk_score) do
-    # Normalize both scores to 0-1 range and calculate alignment
-    normalized_danger = dangerous_rating / 10.0
-    normalized_risk = risk_score / 100.0
-
-    abs(normalized_danger - normalized_risk)
+  defp analyze_temporal_patterns(character_data) do
+    %{
+      active_days: Map.get(character_data, :active_days, []),
+      active_hours: Map.get(character_data, :active_hours, []),
+      timezone_estimate: Map.get(character_data, :timezone_estimate, "Unknown")
+    }
   end
 
-  defp calculate_risk_consistency(awox_probability, has_security_flags) do
-    case {awox_probability > 0.5, has_security_flags} do
-      # High consistency
-      {true, true} -> 0.9
-      # Good consistency
-      {false, false} -> 0.8
-      # Low consistency
-      _ -> 0.3
-    end
+  defp find_shared_killmails(_character_analyses) do
+    # This would query actual shared killmails from the database
+    # For now, return empty list
+    []
   end
 
-  defp calculate_activity_level(ship_usage) when map_size(ship_usage) == 0, do: :inactive
-  defp calculate_activity_level(ship_usage) when map_size(ship_usage) < 3, do: :low
-  defp calculate_activity_level(ship_usage) when map_size(ship_usage) < 8, do: :moderate
-  defp calculate_activity_level(_ship_usage), do: :high
+  defp find_temporal_correlations(_character_analyses) do
+    # Analyze when characters are active together
+    %{
+      simultaneous_activity: [],
+      correlated_timezones: false
+    }
+  end
 
-  defp calculate_behavioral_score(ship_usage, recommendation) do
-    activity_level = calculate_activity_level(ship_usage)
+  defp find_location_correlations(_character_analyses) do
+    # Analyze shared locations and systems
+    %{
+      shared_systems: [],
+      common_regions: []
+    }
+  end
 
-    case {activity_level, recommendation} do
-      {:high, "approve"} -> 0.8
-      {:moderate, "conditional"} -> 0.6
-      {:low, "investigate"} -> 0.4
-      {:inactive, "reject"} -> 0.2
-      # Neutral score for other combinations
-      _ -> 0.5
-    end
+  defp compare_ship_preferences(_character_analyses) do
+    # Compare ship usage patterns
+    %{
+      similarity_score: 0.0,
+      shared_ships: []
+    }
+  end
+
+  defp find_activity_overlaps(_character_analyses) do
+    # Find overlapping activity periods
+    %{
+      overlap_percentage: 0.0,
+      overlap_periods: []
+    }
+  end
+
+  defp build_network_graph(_correlations) do
+    # Build a network graph representation of character relationships
+    %{
+      nodes: [],
+      edges: [],
+      clusters: []
+    }
+  end
+
+  defp identify_clusters(_correlations) do
+    # Identify clusters of related characters
+    []
   end
 
   defp generate_correlation_summary(correlations) do
-    threat = correlations.threat_assessment
-    risk = correlations.risk_alignment
-    behavioral = correlations.behavioral_consistency
+    threat = get_in(correlations, [:threat_assessment, :threat_level]) || :unknown
+    activity = get_in(correlations, [:activity_patterns, :activity_level]) || :low
 
-    initial_points = []
-
-    threat_points =
-      if threat.correlation_strength == :high do
-        ["High threat correlation detected" | initial_points]
-      else
-        initial_points
-      end
-
-    risk_points =
-      if risk.consistency_score > 0.7 do
-        ["Risk factors show good consistency" | threat_points]
-      else
-        ["Risk factor inconsistencies found" | threat_points]
-      end
-
-    final_summary_points =
-      if behavioral.activity_level == :high do
-        ["High activity level observed" | risk_points]
-      else
-        risk_points
-      end
-
-    # final_summary_points is guaranteed to be non-empty due to the logic above
-    Enum.join(final_summary_points, "; ")
+    "Threat: #{threat}, Activity: #{activity}"
   end
 
   defp calculate_confidence_score(correlations) do
-    threat_score =
-      if correlations.threat_assessment.correlation_strength == :high, do: 0.4, else: 0.2
+    # Calculate confidence based on available data
+    base_score = 0.5
 
-    risk_score = correlations.risk_alignment.consistency_score * 0.3
-    behavioral_score = correlations.behavioral_consistency.behavioral_score * 0.3
-
-    total_score = threat_score + risk_score + behavioral_score
-    Float.round(total_score, 2)
-  end
-
-  defp gather_character_data(character_ids) do
-    # For now, return minimal character data structure
-    # In a real implementation, this would fetch actual character data
-    character_data =
-      Enum.map(character_ids, fn id ->
-        %{
-          character_id: id,
-          last_activity: DateTime.utc_now(),
-          primary_systems: [],
-          activity_level: :unknown
-        }
+    # Add confidence for each populated correlation type
+    score =
+      Enum.reduce(correlations, base_score, fn {_key, value}, acc ->
+        if value != nil && value != %{} do
+          acc + 0.1
+        else
+          acc
+        end
       end)
 
-    {:ok, character_data}
-  end
-
-  defp compute_character_correlations(_character_data_list) do
-    # Placeholder correlation computation
-    correlations = %{
-      temporal: %{
-        overlapping_activity_windows: 0,
-        synchronized_logins: 0,
-        activity_correlation_score: 0.0
-      },
-      geographic: %{
-        shared_systems: [],
-        proximity_score: 0.0,
-        common_regions: []
-      }
-    }
-
-    {:ok, correlations}
-  end
-
-  defp get_corporation_member_data(corporation_id) do
-    # Placeholder for corporation member data
-    # In a real implementation, this would query the database for corporation members
-    Logger.debug("Fetching corporation member data for corp #{corporation_id}")
-
-    member_data = [
-      %{character_id: 1001, join_date: ~D[2024-01-01], activity_level: :high},
-      %{character_id: 1002, join_date: ~D[2024-02-01], activity_level: :moderate},
-      %{character_id: 1003, join_date: ~D[2024-03-01], activity_level: :low}
-    ]
-
-    {:ok, member_data}
-  end
-
-  defp analyze_corporation_patterns(member_data) do
-    patterns = %{
-      recruitment: %{
-        # members per month
-        recruitment_rate: length(member_data) / 30.0,
-        # days
-        average_tenure: 120,
-        retention_score: 0.75
-      },
-      activity: %{
-        coordination_level: :moderate,
-        fleet_participation_rate: 0.6,
-        timezone_distribution: %{"US" => 0.4, "EU" => 0.4, "AU" => 0.2}
-      }
-    }
-
-    {:ok, patterns}
-  end
-
-  defp get_placeholder_character_data(character_id) do
-    %{
-      character_id: character_id,
-      dangerous_rating: 0,
-      awox_probability: 0.0,
-      ship_usage: %{},
-      confidence_score: 0.1
-    }
-  end
-
-  defp get_placeholder_vetting_data(character_id) do
-    %{
-      character_id: character_id,
-      risk_score: 50,
-      risk_factors: %{},
-      recommendation: %{recommendation: "investigate"},
-      confidence_score: 0.1
-    }
+    Float.round(min(score, 1.0), 2)
   end
 end

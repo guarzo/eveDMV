@@ -1,4 +1,4 @@
-defmodule EveDmv.Cache.QueryCache do
+defmodule EveDmv.Platform.Cache.QueryCache do
   @moduledoc """
   Caching layer for expensive database queries.
 

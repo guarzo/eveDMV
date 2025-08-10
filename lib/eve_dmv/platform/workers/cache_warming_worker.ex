@@ -16,8 +16,8 @@ defmodule EveDmv.Workers.CacheWarmingWorker do
 
   use GenServer
 
-  alias EveDmv.Cache
   alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Platform.Cache.Cache
 
   require Logger
 

@@ -213,10 +213,13 @@ defmodule EveDmv.Factories do
     |> Map.merge(attrs)
   end
 
-  @spec create(atom(), map()) :: map()
+  @spec create(atom(), map() | keyword()) :: map()
   def create(factory_name, attrs \\ %{}) do
+    # Convert keyword list to map if needed
+    attrs_map = if is_list(attrs), do: Enum.into(attrs, %{}), else: attrs
+
     factory_name
-    |> build(attrs)
+    |> build(attrs_map)
     |> insert_into_database()
   end
 

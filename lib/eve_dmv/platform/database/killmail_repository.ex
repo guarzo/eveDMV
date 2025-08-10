@@ -13,12 +13,12 @@ defmodule EveDmv.Database.KillmailRepository do
     cache_type: :hot_data
 
   alias EveDmv.Api
-  alias EveDmv.Cache
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.Repository.CacheHelper
   alias EveDmv.Database.Repository.QueryBuilder
   alias EveDmv.Database.Repository.TelemetryHelper
   alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.Platform.Cache.Cache
 
   require Ash.Query
 

@@ -6,7 +6,8 @@ require Logger
 required_secrets = [
   "EVE_SSO_CLIENT_ID",
   "EVE_SSO_CLIENT_SECRET",
-  "SECRET_KEY_BASE"
+  "SECRET_KEY_BASE",
+  "DATABASE_URL"
 ]
 
 # Only validate in production environment
@@ -18,9 +19,20 @@ if config_env() == :prod do
 
       Please ensure all required secrets are configured before starting the application.
       See .env.example for the complete list of required environment variables.
+
+      Generate SECRET_KEY_BASE with: mix phx.gen.secret
       """
     end
   end
+
+  # Additional validation for specific variables
+  secret_key_base = System.get_env("SECRET_KEY_BASE")
+
+  if String.length(secret_key_base) < 64 do
+    raise "SECRET_KEY_BASE must be at least 64 characters long"
+  end
+
+  Logger.info("✅ All required environment variables validated successfully")
 end
 
 # Helper function for safe environment variable handling
@@ -185,9 +197,27 @@ if config_env() == :prod do
       For example: ecto://USER:PASS@HOST/DATABASE
       """
 
+  # Optimized database configuration for production
   config :eve_dmv, EveDmv.Repo,
     url: database_url,
-    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10")
+    # Increased pool size for production workloads
+    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "20"),
+    # Queue configuration for connection management
+    queue_target: String.to_integer(System.get_env("DB_QUEUE_TARGET") || "50"),
+    queue_interval: String.to_integer(System.get_env("DB_QUEUE_INTERVAL") || "1000"),
+    # Connection timeout settings
+    timeout: String.to_integer(System.get_env("DB_TIMEOUT") || "15000"),
+    connect_timeout: String.to_integer(System.get_env("DB_CONNECT_TIMEOUT") || "5000"),
+    # Prepared statement caching for better performance
+    prepare: :unnamed,
+    # SSL configuration
+    ssl: System.get_env("DATABASE_SSL", "false") == "true",
+    # Socket options for keepalive
+    socket_options: [:inet6],
+    # Statement timeout to prevent long-running queries
+    parameters: [
+      statement_timeout: System.get_env("DB_STATEMENT_TIMEOUT", "30000")
+    ]
 
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you

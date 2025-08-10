@@ -1,5 +1,4 @@
 defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
-  use ExUnit.Case, async: true
   use EveDmv.DataCase, async: true
 
   alias EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzer

@@ -11,8 +11,8 @@ defmodule EveDmv.Contexts.Combat.Services.DoctrineEffectivenessService do
   alias EveDmv.Database.KillmailRepository
   alias EveDmv.StaticData.ShipTypes
   # alias EveDmv.Contexts.Combat.Core.BattleAnalyzer
-  alias EveDmv.Cache
   alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Platform.Cache.Cache
 
   require Logger
 

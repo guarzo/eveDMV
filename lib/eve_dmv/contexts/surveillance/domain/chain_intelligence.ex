@@ -14,7 +14,7 @@ defmodule EveDmv.Shared.ChainIntelligence do
   - WormholeOperations.Domain.ChainIntelligenceService
   """
 
-  use EveDmv.ErrorHandler
+  use EveDmv.Core.Errors.ErrorHandler
 
   alias EveDmv.Core.Utils.DateTimeUtils
 

@@ -1,20 +1,18 @@
 defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer do
   @moduledoc """
-  Advanced cross-system intelligence analysis engine for wormhole-focused PvP intelligence.
+  Advanced cross-system intelligence analysis engine for PvP intelligence.
 
   Provides sophisticated analysis capabilities that span multiple solar systems:
 
-  - Wormhole Chain Analysis: Maps and analyzes wormhole connections and traffic patterns
   - Cross-System Battle Correlation: Links related battles across different systems
   - Intelligence Fusion: Combines data from multiple sources for comprehensive analysis
   - Activity Pattern Recognition: Identifies patterns in cross-system pilot and corp activity
-  - Strategic Intelligence: Provides strategic insights for wormhole operations
+  - Strategic Intelligence: Provides strategic insights for operations
 
   Uses advanced graph algorithms, pattern recognition, and strategic analysis
-  to provide deep intelligence on wormhole space operations and PvP activities.
+  to provide deep intelligence on space operations and PvP activities.
 
   This module serves as the main API interface and delegates to specialized submodules:
-  - WormholeChainAnalyzer: Wormhole chain mapping and analysis
   - ActivityCorrelator: Cross-system activity correlation
   - IntelligenceFusion: Multi-source intelligence fusion
   - StrategicPatternAnalyzer: Strategic pattern analysis
@@ -24,8 +22,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
   alias EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.ActivityCorrelator
   alias EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.MonitoringEngine
 
-  alias EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer.WormholeChainAnalyzer
-
   # Use new modular intelligence system
   alias EveDmv.Shared.Intelligence.Facade, as: IntelligenceFusion
 
@@ -33,47 +29,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
   alias EveDmv.Shared.Strategic.Facade, as: StrategicPatternAnalyzer
 
   require Logger
-
-  @doc """
-  Analyzes wormhole chain connections and activity patterns.
-
-  Maps wormhole connections and analyzes traffic patterns, activity levels,
-  and strategic significance of wormhole chains.
-
-  ## Parameters
-  - starting_system_id: Solar system ID to start chain analysis from
-  - options: Analysis options
-    - :max_depth - Maximum jumps to analyze in chain (default: 10)
-    - :include_activity_analysis - Include activity pattern analysis (default: true)
-    - :include_threat_assessment - Include threat assessment for each system (default: true)
-    - :time_window_hours - Hours of data to analyze (default: 24)
-
-  ## Returns
-  {:ok, wormhole_chain_analysis} with comprehensive chain intelligence
-  """
-  def analyze_wormhole_chain(starting_system_id, options \\ []) do
-    max_depth = Keyword.get(options, :max_depth, 10)
-    time_window_hours = Keyword.get(options, :time_window_hours, 24)
-
-    Logger.info("Analyzing wormhole chain from system #{starting_system_id}")
-
-    with {:ok, chain_map} <-
-           WormholeChainAnalyzer.map_wormhole_chain(starting_system_id, max_depth),
-         {:ok, connection_data} <-
-           WormholeChainAnalyzer.analyze_wormhole_connections(chain_map, time_window_hours) do
-      Logger.info("Wormhole chain analysis completed for system #{starting_system_id}")
-
-      {:ok,
-       %{
-         starting_system_id: starting_system_id,
-         chain_map: chain_map,
-         connection_data: connection_data,
-         analysis_timestamp: DateTime.utc_now()
-       }}
-    else
-      error -> error
-    end
-  end
 
   @doc """
   Correlates activity patterns across multiple systems.
@@ -245,16 +200,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzer 
       error -> error
     end
   end
-
-  @doc """
-  Estimates traffic volume through a wormhole connection.
-  """
-  defdelegate estimate_traffic_volume(connection, time_window_hours), to: WormholeChainAnalyzer
-
-  @doc """
-  Estimates time until wormhole collapse based on mass usage.
-  """
-  defdelegate estimate_collapse_time(connection_data), to: WormholeChainAnalyzer
 
   @doc """
   Identifies activity bursts across systems.

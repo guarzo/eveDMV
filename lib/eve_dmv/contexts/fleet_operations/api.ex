@@ -7,8 +7,8 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
   are validated and provide comprehensive fleet insights.
   """
 
-  use EveDmv.ErrorHandler
-  alias EveDmv.Utils.ValidationUtils
+  use EveDmv.Core.Errors.ErrorHandler
+  alias EveDmv.Core.Utils.ValidationUtils
 
   alias EveDmv.Contexts.FleetOperations.Domain.DoctrineManager
   alias EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator

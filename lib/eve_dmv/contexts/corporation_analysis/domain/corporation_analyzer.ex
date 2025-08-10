@@ -7,7 +7,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer do
   """
 
   use GenServer
-  use EveDmv.ErrorHandler
+  use EveDmv.Core.Errors.ErrorHandler
   alias EveDmv.Contexts.CorporationAnalysis.Analyzers.MemberActivityAnalyzer
   alias EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationRepository
   alias EveDmv.Core.Utils.DateTimeUtils

@@ -9,8 +9,8 @@ defmodule EveDmvWeb.SystemActivityLive do
   use EveDmvWeb, :live_view
 
   import EveDmvWeb.Components.PageHeaderComponent
-  import EveDmvWeb.Components.StatsGridComponent
 
+  alias EveDmv.Contexts.SystemAnalysis
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Presentation.Formatters
 
@@ -26,12 +26,16 @@ defmodule EveDmvWeb.SystemActivityLive do
 
     socket =
       socket
-      |> assign(:selected_timeframe, :last_7_days)
+      |> assign(:selected_timeframe, :last_24_hours)
       |> assign(:selected_system_id, nil)
       |> assign(:system_metrics, nil)
       |> assign(:regional_metrics, nil)
       |> assign(:activity_heatmap, nil)
       |> assign(:activity_trends, nil)
+      |> assign(:overview_metrics, %{})
+      |> assign(:escalation_alerts, [])
+      |> assign(:top_systems, [])
+      |> assign(:auto_refresh, true)
       |> assign(:loading, false)
       |> assign(:view_mode, :overview)
       |> load_overview_data()
@@ -89,6 +93,38 @@ defmodule EveDmvWeb.SystemActivityLive do
     {:noreply, socket}
   end
 
+  def handle_event("dismiss_alert", %{"alert_id" => alert_id}, socket) do
+    # Remove alert from the list (in production, this might mark it as dismissed in DB)
+    updated_alerts =
+      Enum.reject(socket.assigns.escalation_alerts, fn alert ->
+        to_string(alert.system_id) == alert_id
+      end)
+
+    socket =
+      socket
+      |> assign(:escalation_alerts, updated_alerts)
+      |> put_flash(:info, "Alert dismissed")
+
+    {:noreply, socket}
+  end
+
+  def handle_event("view_alert_system", %{"system_id" => system_id_str}, socket) do
+    case Integer.parse(system_id_str) do
+      {system_id, ""} ->
+        socket =
+          socket
+          |> assign(:selected_system_id, system_id)
+          |> assign(:view_mode, :system_detail)
+          |> assign(:loading, true)
+          |> load_system_detail(system_id)
+
+        {:noreply, socket}
+
+      _ ->
+        {:noreply, put_flash(socket, :error, "Invalid system ID")}
+    end
+  end
+
   def handle_info(%Phoenix.Socket.Broadcast{topic: "system_activity", event: "update"}, socket) do
     # Refresh data when new killmails arrive
     socket = load_data_for_current_view(socket)
@@ -112,21 +148,37 @@ defmodule EveDmvWeb.SystemActivityLive do
   end
 
   defp load_overview_data(socket) do
-    timeframe = socket.assigns.selected_timeframe
+    # Load overview metrics using SystemAnalysis
+    case SystemAnalysis.get_overview_metrics() do
+      {:ok, metrics} ->
+        # Load escalation alerts
+        escalation_alerts = SystemAnalysis.get_escalation_alerts()
 
-    # Load activity trends from actual killmail data
-    trends = calculate_activity_trends_from_killmails(timeframe)
+        # Load hot zones
+        case SystemAnalysis.identify_hot_zones(hours: 24) do
+          {:ok, zones} ->
+            socket
+            |> assign(:overview_metrics, metrics)
+            |> assign(:escalation_alerts, escalation_alerts)
+            |> assign(:top_systems, zones.hot_zones |> Enum.take(10))
+            |> assign(:loading, false)
 
-    # Load sample regional data for top systems
-    # Get top 10 active systems
-    top_systems = get_top_active_system_ids(10)
+          {:error, _reason} ->
+            socket
+            |> assign(:overview_metrics, metrics)
+            |> assign(:escalation_alerts, escalation_alerts)
+            |> assign(:top_systems, [])
+            |> assign(:loading, false)
+        end
 
-    regional_metrics = calculate_regional_metrics_from_killmails(top_systems, timeframe)
-
-    socket
-    |> assign(:activity_trends, trends)
-    |> assign(:regional_metrics, regional_metrics)
-    |> assign(:loading, false)
+      {:error, _reason} ->
+        socket
+        |> put_flash(:error, "Failed to load system analytics")
+        |> assign(:overview_metrics, %{})
+        |> assign(:escalation_alerts, [])
+        |> assign(:top_systems, [])
+        |> assign(:loading, false)
+    end
   end
 
   defp load_system_detail(socket, system_id) do
@@ -164,31 +216,28 @@ defmodule EveDmvWeb.SystemActivityLive do
   end
 
   defp load_heatmap_data(socket) do
-    timeframe = socket.assigns.selected_timeframe
-    heatmap = calculate_activity_heatmap_from_killmails(timeframe, 100)
+    hours =
+      case socket.assigns.selected_timeframe do
+        :last_24_hours -> 24
+        :last_7_days -> 168
+        :last_30_days -> 720
+        :last_90_days -> 2160
+        _ -> 24
+      end
 
-    socket
-    |> assign(:activity_heatmap, heatmap)
-    |> assign(:loading, false)
-  end
+    case SystemAnalysis.generate_heatmap(hours: hours, limit: 100) do
+      {:ok, heatmap_data} ->
+        socket
+        |> assign(:activity_heatmap, heatmap_data)
+        |> push_event("update-heatmap", %{data: heatmap_data})
+        |> assign(:loading, false)
 
-  # Helper functions for getting system IDs
-  defp get_top_active_system_ids(limit) do
-    # This would query for the most active systems
-    # For now, return some sample system IDs
-    [
-      30_000_142,
-      30_000_144,
-      30_000_145,
-      30_000_146,
-      30_000_147,
-      30_000_148,
-      30_000_149,
-      30_000_150,
-      30_000_151,
-      30_000_152
-    ]
-    |> Enum.take(limit)
+      {:error, _reason} ->
+        socket
+        |> put_flash(:error, "Failed to generate heatmap")
+        |> assign(:activity_heatmap, %{})
+        |> assign(:loading, false)
+    end
   end
 
   defp get_active_system_ids_for_timeframe(_timeframe, limit) do
@@ -250,6 +299,28 @@ defmodule EveDmvWeb.SystemActivityLive do
       diff_seconds < 3600 -> "#{div(diff_seconds, 60)}m ago"
       diff_seconds < 86_400 -> "#{div(diff_seconds, 3600)}h ago"
       true -> "#{div(diff_seconds, 86_400)}d ago"
+    end
+  end
+
+  def format_escalation_severity(severity) do
+    case severity do
+      :critical -> {"Critical", "bg-red-600 text-red-100"}
+      :high -> {"High", "bg-orange-600 text-orange-100"}
+      :medium -> {"Medium", "bg-yellow-600 text-yellow-100"}
+      :low -> {"Low", "bg-blue-600 text-blue-100"}
+      _ -> {"Unknown", "bg-gray-600 text-gray-100"}
+    end
+  end
+
+  def format_escalation_type(escalation_type) do
+    case escalation_type do
+      :massive_engagement -> "Massive Fleet Battle"
+      :fleet_battle -> "Fleet Battle"
+      :capital_engagement -> "Capital Ships Engaged"
+      :expensive_battle -> "High-Value Engagement"
+      :skirmish -> "Skirmish"
+      :activity_spike -> "Activity Spike"
+      _ -> "Unknown"
     end
   end
 
@@ -344,33 +415,6 @@ defmodule EveDmvWeb.SystemActivityLive do
         peak_hours: peak_hours
       }
     end
-  end
-
-  defp calculate_activity_heatmap_from_killmails(timeframe, limit) do
-    {:ok, killmails} = get_killmails_for_timeframe(timeframe)
-
-    # Group by system and calculate activity intensity
-    system_activity =
-      killmails
-      |> Enum.group_by(& &1.solar_system_id)
-      |> Enum.map(fn {system_id, kms} ->
-        intensity = length(kms) + Enum.sum(Enum.map(kms, &(&1.zkb_total_value || 0))) / 10_000_000
-        %{system_id: system_id, intensity: Float.round(intensity, 2)}
-      end)
-      |> Enum.sort_by(& &1.intensity, :desc)
-      |> Enum.take(limit)
-
-    max_value =
-      if Enum.empty?(system_activity) do
-        0
-      else
-        Enum.max_by(system_activity, & &1.intensity).intensity
-      end
-
-    %{
-      data: system_activity,
-      max_value: max_value
-    }
   end
 
   defp classify_system_activity(killmails) do

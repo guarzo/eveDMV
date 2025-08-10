@@ -9,8 +9,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.KillmailEventProcess
 
   use GenServer
 
-  alias EveDmv.Contexts.BattleAnalysis.Core.BattleDetector
-  alias EveDmv.Infrastructure.EventBus
+  alias EveDmv.Core.Events.EventBus
 
   require Logger
 
@@ -280,26 +279,33 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.KillmailEventProcess
   end
 
   defp analyze_battle_context(killmail_data) do
-    # Use battle detector if available
-    case BattleDetector.detect_battle_from_killmail(killmail_data) do
-      {:ok, battle_info} ->
-        %{
-          status: :battle_detected,
-          battle_id: battle_info.battle_id,
-          participants: battle_info.participant_count,
-          estimated_duration: battle_info.duration_estimate
-        }
+    # Instead of calling BattleDetector directly, analyze locally
+    # and publish event for battle detection to handle separately
+    participant_count = length(killmail_data.attackers) + 1
 
-      {:error, :no_battle} ->
+    # Simple battle detection heuristic
+    _battle_context =
+      if participant_count > 5 do
+        # Likely a battle - publish event for battle detection
+        EventBus.publish("killmail.potential_battle", %{
+          killmail_id: killmail_data.killmail_id,
+          solar_system_id: killmail_data.solar_system_id,
+          killmail_time: killmail_data.killmail_time,
+          participant_count: participant_count
+        })
+
+        %{
+          status: :potential_battle,
+          participants: participant_count,
+          requires_correlation: true
+        }
+      else
         %{
           status: :isolated_kill,
-          participants: length(killmail_data.attackers) + 1
+          participants: participant_count,
+          requires_correlation: false
         }
-
-      {:error, reason} ->
-        Logger.warning("Battle detection failed", reason: reason)
-        %{status: :analysis_failed, reason: reason}
-    end
+      end
   rescue
     _error ->
       %{status: :analysis_error, participants: length(killmail_data.attackers) + 1}

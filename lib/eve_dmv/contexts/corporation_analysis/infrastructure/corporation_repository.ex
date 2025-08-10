@@ -6,7 +6,7 @@ defmodule EveDmv.Contexts.CorporationAnalysis.Infrastructure.CorporationReposito
   real killmail data from the database.
   """
 
-  use EveDmv.ErrorHandler
+  use EveDmv.Core.Errors.ErrorHandler
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Core.Utils.DateTimeUtils

@@ -10,12 +10,10 @@ defmodule EveDmv.Intelligence.AnalysisScheduler do
   """
 
   use GenServer
-  alias EveDmv.Contexts.WormholeOperations.Domain.Analyzers.WhFleetAnalyzer
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.Analyzers.CorporationAnalyzer
   alias EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer
   alias EveDmv.Intelligence.Analyzers.ThreatAnalyzer
-  alias EveDmv.Intelligence.Analyzers.WHVettingAnalyzer
   alias EveDmv.Intelligence.Core.Config
   require Logger
 
@@ -272,9 +270,7 @@ defmodule EveDmv.Intelligence.AnalysisScheduler do
     case analyzer_type do
       :threat -> ThreatAnalyzer
       :corporation -> CorporationAnalyzer
-      :vetting -> WHVettingAnalyzer
       :member_activity -> MemberActivityAnalyzer
-      :wh_fleet -> WhFleetAnalyzer
       _ -> raise "Unknown analyzer type: #{analyzer_type}"
     end
   end

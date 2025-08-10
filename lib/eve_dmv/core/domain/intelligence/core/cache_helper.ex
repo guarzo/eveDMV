@@ -7,7 +7,7 @@ defmodule EveDmv.Intelligence.Core.CacheHelper do
   cache invalidation strategies.
   """
 
-  alias EveDmv.Cache
+  alias EveDmv.Platform.Cache.Cache
 
   require Logger
 

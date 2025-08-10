@@ -8,8 +8,8 @@ defmodule EveDmv.Monitoring.PipelineMonitor do
 
   use GenServer
 
+  alias EveDmv.Core.Errors.Error
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Error
   alias EveDmv.Monitoring.ErrorTracker
 
   require Logger

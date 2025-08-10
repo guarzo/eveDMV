@@ -8,7 +8,6 @@ defmodule EveDmvWeb.KillmailLive do
   import Ash.Query
   alias EveDmv.Api
   alias EveDmv.Killmails.KillmailRaw
-  alias EveDmv.Market.PriceService
   require Logger
 
   @impl Phoenix.LiveView
@@ -158,7 +157,10 @@ defmodule EveDmvWeb.KillmailLive do
   defp enrich_killmail_data(killmail) do
     # Calculate killmail value
     killmail_value =
-      case PriceService.calculate_killmail_value(killmail) do
+      case EveDmv.Contexts.MarketIntelligence.Domain.ValuationService.calculate_killmail_value(
+             killmail
+           ) do
+        {:ok, %{total_value: value}} when is_number(value) -> value
         %{total_value: value} when is_number(value) -> value
         _ -> 0
       end

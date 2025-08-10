@@ -11,12 +11,12 @@ defmodule EveDmv.Database.CharacterRepository do
     cache_type: :analysis
 
   alias EveDmv.Api
-  alias EveDmv.Cache
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Database.Repository.CacheHelper
   alias EveDmv.Database.Repository.QueryBuilder
   alias EveDmv.Database.Repository.TelemetryHelper
   alias EveDmv.Intelligence.CharacterStats
+  alias EveDmv.Platform.Cache.Cache
   require Ash.Query
 
   @doc """

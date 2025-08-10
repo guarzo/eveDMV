@@ -7,7 +7,7 @@ defmodule EveDmv.Database.SurveillanceRepository do
   """
 
   alias EveDmv.Api
-  alias EveDmv.Cache
+  alias EveDmv.Platform.Cache.Cache
   alias EveDmv.Surveillance.Profile
 
   require Logger

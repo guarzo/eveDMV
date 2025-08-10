@@ -12,9 +12,9 @@ defmodule EveDmvWeb.SystemLive do
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Analytics.BattleDetector
-  alias EveDmv.Cache.AnalysisCache
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Eve.SolarSystem
+  alias EveDmv.Platform.Cache.AnalysisCache
   alias EveDmv.Repo
 
   @impl Phoenix.LiveView

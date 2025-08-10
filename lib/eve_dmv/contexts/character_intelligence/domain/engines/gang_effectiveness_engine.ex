@@ -6,8 +6,16 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
   to determine gang effectiveness threat level.
   """
 
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnalyzer
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   require Logger
+
+  @doc """
+  Analyze synergy between multiple characters using real killmail data.
+  """
+  def analyze_synergy(character_ids) when is_list(character_ids) do
+    GangSynergyAnalyzer.analyze_synergy(character_ids)
+  end
 
   @doc """
   Calculate gang effectiveness score based on combat data.
@@ -467,11 +475,82 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
     end
   end
 
-  defp analyze_synchronized_targeting(_killmails) do
-    # Look for patterns where character attacks same targets as gang
-    # This is complex to implement without full gang data, so simplified
-    # Placeholder - would need cross-character analysis
-    0.6
+  defp analyze_synchronized_targeting(killmails) do
+    # Analyze patterns where multiple attackers engage same targets
+    if Enum.empty?(killmails) do
+      0.5
+    else
+      # Group killmails by time windows (within 5 minutes)
+      time_windows = group_by_time_window(killmails, 300)
+
+      # Calculate synchronization score for each window
+      sync_scores = Enum.map(time_windows, &calculate_window_sync_score/1)
+
+      calculate_average_sync_score(sync_scores)
+    end
+  end
+
+  defp calculate_window_sync_score(window_kills) do
+    if length(window_kills) < 2 do
+      0.5
+    else
+      # Check how many kills have multiple attackers (synchronized)
+      calculate_multi_attacker_ratio(window_kills)
+    end
+  end
+
+  defp calculate_average_sync_score(sync_scores) do
+    if Enum.empty?(sync_scores) do
+      0.5
+    else
+      Enum.sum(sync_scores) / length(sync_scores)
+    end
+  end
+
+  defp calculate_multi_attacker_ratio(window_kills) do
+    multi_attacker_kills =
+      Enum.count(window_kills, fn km ->
+        case km.raw_data do
+          %{"attackers" => attackers} when is_list(attackers) ->
+            length(attackers) > 2
+
+          _ ->
+            false
+        end
+      end)
+
+    multi_attacker_kills / length(window_kills)
+  end
+
+  defp group_by_time_window(killmails, window_seconds) do
+    killmails
+    |> Enum.sort_by(& &1.killmail_time)
+    |> Enum.chunk_while(
+      [],
+      &chunk_by_window(&1, &2, window_seconds),
+      &finalize_chunk/1
+    )
+    |> Enum.filter(&(!Enum.empty?(&1)))
+  end
+
+  defp chunk_by_window(km, [], _window_seconds) do
+    {:cont, [km]}
+  end
+
+  defp chunk_by_window(km, [first | _] = acc, window_seconds) do
+    if DateTime.diff(km.killmail_time, first.killmail_time) <= window_seconds do
+      {:cont, [km | acc]}
+    else
+      {:cont, Enum.reverse(acc), [km]}
+    end
+  end
+
+  defp finalize_chunk([]) do
+    {:cont, []}
+  end
+
+  defp finalize_chunk(acc) do
+    {:cont, Enum.reverse(acc), []}
   end
 
   defp analyze_target_focus_patterns(killmails) do

@@ -9,8 +9,8 @@ defmodule EveDmv.Core.Domain.Analytics.PatternAnalysis do
   scattered across multiple contexts during the namespace consolidation.
   """
 
+  alias EveDmv.Core.Utils.DateHelper
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Utils.DateHelper
 
   require Logger
 

@@ -8,10 +8,10 @@ defmodule EveDmv.Killmails.KillmailPipeline do
   """
 
   use Broadway
-  use EveDmv.ErrorHandler
+  use EveDmv.Core.Errors.ErrorHandler
 
   alias Broadway.Message
-  alias EveDmv.Error
+  alias EveDmv.Core.Errors.Error
   alias EveDmv.Intelligence.RealTimeCoordinator
   alias EveDmv.Killmails.DatabaseInserter
   alias EveDmv.Killmails.DataProcessor

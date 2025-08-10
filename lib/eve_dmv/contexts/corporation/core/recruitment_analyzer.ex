@@ -7,10 +7,10 @@ defmodule EveDmv.Contexts.Corporation.Core.RecruitmentAnalyzer do
   - Corporation Analysis recruitment metrics
   """
 
+  alias EveDmv.Core.Utils.DateHelper
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
   alias EveDmv.Platform.Database.CorporationRepository
-  alias EveDmv.Utils.DateHelper
 
   require Logger
 

@@ -6,7 +6,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
   including ship roles, fitting patterns, and tactical deployment preferences.
   """
 
-  use EveDmv.ErrorHandler
+  use EveDmv.Core.Errors.ErrorHandler
 
   alias EveDmv.Result
   alias EveDmv.Shared.ShipAnalysis

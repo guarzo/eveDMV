@@ -179,22 +179,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
       # Check analysis structure
       assert is_list(analysis.coordinated_switches)
 
-      # If coordinated switches were detected, verify their properties
-      if length(analysis.coordinated_switches) > 0 do
-        coord_switch = List.first(analysis.coordinated_switches)
-        assert coord_switch.switching_attackers >= 3
+      coord_switch = List.first(analysis.coordinated_switches)
+      assert coord_switch.switching_attackers >= 3
 
-        assert coord_switch.coordination_level in [
-                 :fleet_wide,
-                 :squad_level,
-                 :small_group,
-                 :minimal
-               ]
-      else
-        # If no coordinated switches detected, verify the test data
-        # The algorithm requires same attackers hitting different targets
-        assert length(killmails) > 0
-      end
+      assert coord_switch.coordination_level in [
+               :fleet_wide,
+               :squad_level,
+               :small_group,
+               :minimal
+             ]
     end
 
     test "rates switching effectiveness" do
@@ -254,7 +247,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
 
   defp create_test_battle do
     %{
-      battle_id: "test_battle_2024010110_0000",
+      battle_id: "test_battle_20240101100000",
       killmails: create_mixed_killmails()
     }
   end
@@ -523,18 +516,18 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
     Enum.map(0..11, fn i ->
       # Attacker 90_001 switches targets every 3 kills
       # Attacker 90_002 stays on same target
-      target_for_90_001 = div(i, 3) + 80_000
-      target_for_90_002 = 80_000
+      target_for_90001 = div(i, 3) + 80_000
+      target_for_90002 = 80_000
 
       %{
         killmail_id: 8000 + i,
         killmail_time: DateTime.add(base_time, i * 20, :second),
         solar_system_id: 30_002_765,
-        victim_character_id: if(rem(i, 2) == 0, do: target_for_90_001, else: target_for_90_002),
+        victim_character_id: if(rem(i, 2) == 0, do: target_for_90001, else: target_for_90002),
         victim_ship_type_id: 587,
         raw_data: %{
           "victim" => %{
-            "character_id" => if(rem(i, 2) == 0, do: target_for_90_001, else: target_for_90_002),
+            "character_id" => if(rem(i, 2) == 0, do: target_for_90001, else: target_for_90002),
             "ship_type_id" => 587
           },
           "attackers" => [
@@ -555,7 +548,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
 
     # Multiple attackers switch targets at same time
     # Time window 1: All attack target A
-    kills =
+    kills_phase1 =
       Enum.map(0..4, fn i ->
         %{
           killmail_id: 9000 + i,
@@ -582,7 +575,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
       end)
 
     # Time window 2: All switch to target B
-    kills ++
+    kills_phase2 =
       Enum.map(0..4, fn i ->
         %{
           killmail_id: 9100 + i,
@@ -608,6 +601,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
           }
         }
       end)
+
+    kills_phase1 ++ kills_phase2
   end
 
   defp create_efficient_switching_killmails do

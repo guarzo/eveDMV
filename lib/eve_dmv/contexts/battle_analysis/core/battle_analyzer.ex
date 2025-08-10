@@ -124,9 +124,14 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
   end
 
   defp get_battle_killmails(battle) do
+    # Optimized query with preloading to avoid N+1
     killmails =
       from(k in KillmailRaw,
         where: k.killmail_id in ^battle.killmail_ids,
+        left_join: s in assoc(k, :solar_system),
+        left_join: vc in assoc(k, :victim_character),
+        left_join: vco in assoc(k, :victim_corporation),
+        preload: [solar_system: s, victim_character: vc, victim_corporation: vco],
         order_by: [asc: k.killmail_time]
       )
       |> Repo.all()

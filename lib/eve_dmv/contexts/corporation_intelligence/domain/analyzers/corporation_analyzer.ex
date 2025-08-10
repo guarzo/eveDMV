@@ -148,8 +148,14 @@ defmodule EveDmv.Intelligence.Analyzers.CorporationAnalyzer do
            ) do
       perform_corporation_analysis(members, corporation_id)
     else
+      {:timeout, _} ->
+        # Return minimal analysis on timeout
+        perform_minimal_analysis(corporation_id)
+
       {:error, reason} ->
-        {:error, "Failed to gather corporation analysis data: #{inspect(reason)}"}
+        Logger.error("Corporation analysis failed: #{inspect(reason)}")
+        # Return minimal analysis on error
+        perform_minimal_analysis(corporation_id)
     end
   end
 
@@ -254,19 +260,181 @@ defmodule EveDmv.Intelligence.Analyzers.CorporationAnalyzer do
     }
   end
 
-  defp identify_primary_timezones(_members) do
-    # Placeholder - would need timezone analysis of killmail times
-    %{primary_tz: "UTC", coverage: "24/7"}
+  defp identify_primary_timezones(members) do
+    # Analyze killmail times to identify primary timezone activity
+    # Group activity by hour to find peak times
+    activity_by_hour = analyze_hourly_activity_distribution(members)
+
+    # Identify timezone peaks based on activity patterns
+    # EU Prime: 19:00-23:00 UTC
+    # US East Prime: 00:00-04:00 UTC (19:00-23:00 EST)
+    # US West Prime: 03:00-07:00 UTC (19:00-23:00 PST)
+    # AU Prime: 09:00-13:00 UTC (19:00-23:00 AEST)
+
+    timezone_activity = %{
+      eu: calculate_timezone_activity(activity_by_hour, 19..23),
+      us_east: calculate_timezone_activity(activity_by_hour, 0..4),
+      us_west: calculate_timezone_activity(activity_by_hour, 3..7),
+      au: calculate_timezone_activity(activity_by_hour, 9..13)
+    }
+
+    total_activity = Enum.sum(Map.values(timezone_activity))
+
+    if total_activity == 0 do
+      %{primary_tz: "Unknown", coverage: "Insufficient data", distribution: %{}}
+    else
+      primary_tz =
+        timezone_activity
+        |> Enum.max_by(fn {_tz, activity} -> activity end)
+        |> elem(0)
+        |> format_timezone_name()
+
+      coverage = calculate_coverage(activity_by_hour)
+
+      distribution =
+        Map.new(timezone_activity, fn {tz, activity} ->
+          {format_timezone_name(tz), Float.round(activity / total_activity * 100, 1)}
+        end)
+
+      %{
+        primary_tz: primary_tz,
+        coverage: coverage,
+        distribution: distribution,
+        hourly_activity: activity_by_hour
+      }
+    end
   end
 
-  defp categorize_engagement_types(_members) do
-    # Placeholder - would categorize based on killmail types
-    %{primary_type: "mixed", secondary_type: "pvp"}
+  defp analyze_hourly_activity_distribution(members) do
+    # Analyze when members were active based on their participation times
+    members
+    |> Enum.flat_map(fn member ->
+      # Get hour from first and last seen times
+      hours = []
+      hours = if member.first_seen, do: [member.first_seen.hour | hours], else: hours
+      hours = if member.last_seen, do: [member.last_seen.hour | hours], else: hours
+      hours
+    end)
+    |> Enum.frequencies()
+    |> Map.new(fn {hour, count} -> {hour, count} end)
   end
 
-  defp determine_operational_focus(_members) do
-    # Placeholder - would analyze operational patterns
-    %{focus: "null_sec", secondary_focus: "low_sec"}
+  defp calculate_timezone_activity(activity_by_hour, hour_range) do
+    hour_range
+    |> Enum.map(fn hour -> Map.get(activity_by_hour, rem(hour, 24), 0) end)
+    |> Enum.sum()
+  end
+
+  defp format_timezone_name(tz) do
+    case tz do
+      :eu -> "EU"
+      :us_east -> "US-East"
+      :us_west -> "US-West"
+      :au -> "AU"
+      _ -> "Unknown"
+    end
+  end
+
+  defp calculate_coverage(activity_by_hour) do
+    active_hours = Enum.count(activity_by_hour, fn {_hour, count} -> count > 0 end)
+
+    cond do
+      active_hours >= 20 -> "24/7 coverage"
+      active_hours >= 16 -> "Good coverage (#{active_hours}h)"
+      active_hours >= 12 -> "Moderate coverage (#{active_hours}h)"
+      active_hours >= 8 -> "Limited coverage (#{active_hours}h)"
+      true -> "Minimal coverage (#{active_hours}h)"
+    end
+  end
+
+  defp categorize_engagement_types(members) do
+    # Analyze engagement types based on member participation patterns
+    total_participations = Enum.sum(Enum.map(members, & &1.participation_count))
+
+    if total_participations == 0 do
+      %{primary_type: "no_activity", secondary_type: "none"}
+    else
+      # Analyze ship types to determine engagement preferences
+      ship_type_frequencies =
+        members
+        |> Enum.flat_map(& &1.ship_types)
+        |> Enum.frequencies()
+
+      # Categorize based on ship usage patterns
+      engagement_categories = categorize_by_ship_types(ship_type_frequencies)
+
+      sorted_categories =
+        engagement_categories
+        |> Enum.sort_by(fn {_type, count} -> count end, :desc)
+
+      primary = sorted_categories |> List.first() |> elem(0)
+      secondary = sorted_categories |> Enum.at(1, {:none, 0}) |> elem(0)
+
+      %{
+        primary_type: primary,
+        secondary_type: secondary,
+        breakdown:
+          Map.new(engagement_categories, fn {type, count} ->
+            {type, Float.round(count / total_participations * 100, 1)}
+          end)
+      }
+    end
+  end
+
+  defp categorize_by_ship_types(ship_frequencies) do
+    # Group ship types into engagement categories
+    # This is simplified - in production would use actual ship type data
+    pvp_ships = Map.get(ship_frequencies, :pvp_ships, 0)
+    pve_ships = Map.get(ship_frequencies, :pve_ships, 0)
+    logistics = Map.get(ship_frequencies, :logistics, 0)
+    ewar = Map.get(ship_frequencies, :ewar, 0)
+
+    %{
+      pvp: pvp_ships,
+      pve: pve_ships,
+      support: logistics + ewar,
+      mixed: Map.get(ship_frequencies, :mixed, length(Map.keys(ship_frequencies)))
+    }
+  end
+
+  defp determine_operational_focus(members) do
+    # Analyze operational focus based on activity patterns
+    total_damage = Enum.sum(Enum.map(members, & &1.total_damage))
+
+    avg_participation =
+      Enum.sum(Enum.map(members, & &1.participation_count)) / max(length(members), 1)
+
+    # Determine focus based on activity metrics
+    focus =
+      cond do
+        avg_participation > 20 -> "heavy_pvp"
+        avg_participation > 10 -> "active_pvp"
+        avg_participation > 5 -> "moderate_activity"
+        avg_participation > 2 -> "casual"
+        true -> "minimal_activity"
+      end
+
+    # Determine secondary focus based on damage patterns
+    damage_per_member = total_damage / max(length(members), 1)
+
+    secondary_focus =
+      cond do
+        damage_per_member > 1_000_000_000 -> "capital_warfare"
+        damage_per_member > 100_000_000 -> "fleet_operations"
+        damage_per_member > 10_000_000 -> "small_gang"
+        damage_per_member > 1_000_000 -> "solo_operations"
+        true -> "minimal_combat"
+      end
+
+    %{
+      focus: focus,
+      secondary_focus: secondary_focus,
+      metrics: %{
+        avg_participation: Float.round(avg_participation, 1),
+        damage_per_member: damage_per_member,
+        total_members: length(members)
+      }
+    }
   end
 
   defp calculate_member_risk(member) do
@@ -325,9 +493,125 @@ defmodule EveDmv.Intelligence.Analyzers.CorporationAnalyzer do
     }
   end
 
-  defp measure_operational_synergy(_members) do
-    # Placeholder for synergy measurement
-    %{synergy_score: 75, synergy_level: :moderate}
+  defp measure_operational_synergy(members) do
+    # Measure actual synergy based on member coordination patterns
+    if length(members) < 2 do
+      %{synergy_score: 0, synergy_level: :none}
+    else
+      # Calculate synergy metrics
+      participation_variance = calculate_participation_variance(members)
+      damage_distribution = calculate_damage_distribution(members)
+      temporal_coordination = calculate_temporal_coordination(members)
+
+      # Lower variance = better coordination
+      participation_score = max(0, 100 - participation_variance * 10)
+
+      # More even damage distribution = better teamwork
+      damage_score = calculate_damage_evenness_score(damage_distribution)
+
+      # Tighter temporal clustering = better coordination
+      temporal_score = temporal_coordination * 100
+
+      # Calculate overall synergy score
+      synergy_score =
+        (participation_score * 0.3 + damage_score * 0.4 + temporal_score * 0.3)
+        |> Float.round(1)
+        |> min(100)
+        |> max(0)
+
+      synergy_level =
+        cond do
+          synergy_score >= 80 -> :excellent
+          synergy_score >= 60 -> :good
+          synergy_score >= 40 -> :moderate
+          synergy_score >= 20 -> :poor
+          true -> :minimal
+        end
+
+      %{
+        synergy_score: synergy_score,
+        synergy_level: synergy_level,
+        components: %{
+          participation: Float.round(participation_score, 1),
+          damage_distribution: Float.round(damage_score, 1),
+          temporal_coordination: Float.round(temporal_score, 1)
+        }
+      }
+    end
+  end
+
+  defp calculate_participation_variance(members) do
+    participations = Enum.map(members, & &1.participation_count)
+    calculate_variance(participations)
+  end
+
+  defp calculate_damage_distribution(members) do
+    damages = Enum.map(members, & &1.total_damage)
+    total = Enum.sum(damages)
+
+    if total == 0 do
+      %{gini_coefficient: 0, evenness: 0}
+    else
+      # Calculate Gini coefficient for damage distribution
+      sorted = Enum.sort(damages)
+      n = length(sorted)
+
+      gini =
+        if n == 0 do
+          0
+        else
+          cumsum =
+            Enum.reduce(sorted, {0, []}, fn x, {sum, acc} ->
+              new_sum = sum + x
+              {new_sum, acc ++ [new_sum]}
+            end)
+            |> elem(1)
+
+          gini_sum = Enum.sum(cumsum)
+          2 * gini_sum / (n * total) - (n + 1) / n
+        end
+
+      %{gini_coefficient: gini, evenness: 1 - gini}
+    end
+  end
+
+  defp calculate_damage_evenness_score(distribution) do
+    # Convert evenness to a score (0-100)
+    (distribution.evenness * 100) |> Float.round(1)
+  end
+
+  defp calculate_temporal_coordination(members) do
+    # Analyze how closely members operate together in time
+    times =
+      members
+      |> Enum.flat_map(fn m ->
+        times = []
+        times = if m.first_seen, do: [DateTime.to_unix(m.first_seen) | times], else: times
+        times = if m.last_seen, do: [DateTime.to_unix(m.last_seen) | times], else: times
+        times
+      end)
+
+    if length(times) < 2 do
+      0.0
+    else
+      # Calculate temporal clustering coefficient
+      sorted_times = Enum.sort(times)
+
+      gaps =
+        sorted_times
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.map(fn [a, b] -> b - a end)
+
+      if Enum.empty?(gaps) do
+        1.0
+      else
+        avg_gap = Enum.sum(gaps) / length(gaps)
+        # Normalize: smaller gaps = better coordination
+        # 1 hour gap = perfect, 24 hour gap = poor
+        coordination = max(0, min(1, 1 - avg_gap / 86_400))
+        Float.round(coordination, 3)
+      end
+    end
   end
 
   defp calculate_analysis_confidence(members) do
@@ -339,5 +623,36 @@ defmodule EveDmv.Intelligence.Analyzers.CorporationAnalyzer do
     activity_bonus = min(10, total_participation)
 
     base_confidence + activity_bonus
+  end
+
+  defp perform_minimal_analysis(corporation_id) do
+    {:ok,
+     %{
+       corporation_id: corporation_id,
+       member_count: 0,
+       member_correlations: %{
+         shared_operations: %{average_shared_ops: 0, coordination_indicator: :unknown},
+         loss_distribution: %{high_activity_ratio: 0, distribution_pattern: :unknown},
+         activity_correlation: %{average_participation: 0, correlation_strength: :unknown}
+       },
+       activity_patterns: %{
+         primary_timezones: %{primary_tz: "Unknown", coverage: "No data", distribution: %{}},
+         engagement_types: %{primary_type: "no_activity", secondary_type: "none"},
+         operational_focus: %{focus: "no_data", secondary_focus: "no_data", metrics: %{}}
+       },
+       risk_distribution: %{
+         average_risk: 0,
+         risk_variance: 0,
+         high_risk_count: 0,
+         risk_distribution: %{low: 0, medium: 0, high: 0}
+       },
+       coordination_analysis: %{
+         coordination_score: 0,
+         fleet_participation: %{high_participation_ratio: 0, fleet_readiness: :unknown},
+         operational_synergy: %{synergy_score: 0, synergy_level: :none}
+       },
+       analysis_timestamp: DateTime.utc_now(),
+       confidence_score: 0.0
+     }}
   end
 end

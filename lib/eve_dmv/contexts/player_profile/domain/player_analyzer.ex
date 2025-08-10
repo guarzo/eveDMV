@@ -7,7 +7,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer do
   """
 
   use GenServer
-  use EveDmv.ErrorHandler
+  use EveDmv.Core.Errors.ErrorHandler
 
   alias EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer
   alias EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer

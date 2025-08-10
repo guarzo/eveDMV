@@ -9,8 +9,8 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
   use EveDmvWeb, :live_view
 
   alias EveDmv.Analytics.BattleDetector
-  alias EveDmv.Cache.AnalysisCache
   alias EveDmv.Integrations.ShipIntelligenceBridge
+  alias EveDmv.Platform.Cache.AnalysisCache
   alias EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader
   alias EveDmvWeb.CharacterAnalysis.Helpers.DisplayFormatters
 

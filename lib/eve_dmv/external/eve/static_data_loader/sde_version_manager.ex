@@ -8,8 +8,6 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManager do
 
   alias EveDmv.Api
   alias EveDmv.Eve.SolarSystem
-  alias EveDmv.Eve.StaticDataLoader.WormholeClassLoader
-  alias EveDmv.Eve.StaticDataLoader.WormholeEffectsLoader
 
   require Logger
   require Ash.Query
@@ -112,60 +110,12 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManager do
   defp update_sde_data(new_version) do
     Logger.info("Updating SDE data to version: #{new_version}")
 
-    results = %{
-      wormhole_classes: update_wormhole_classes(new_version),
-      wormhole_effects: update_wormhole_effects(new_version)
-    }
+    # Currently only tracking version updates
+    # Additional data loaders can be added here as needed
 
-    case results do
-      %{wormhole_classes: {:ok, classes_count}, wormhole_effects: {:ok, effects_count}} ->
-        Logger.info("SDE update completed successfully")
-
-        Logger.info(
-          "Updated #{classes_count} wormhole classes and #{effects_count} wormhole effects"
-        )
-
-        update_version_tracking(new_version)
-        {:ok, results}
-
-      _ ->
-        Logger.error("SDE update failed with results: #{inspect(results)}")
-        {:error, :update_failed}
-    end
-  end
-
-  defp update_wormhole_classes(_version) do
-    Logger.info("Updating wormhole classes data...")
-
-    case WormholeClassLoader.load_wormhole_classes() do
-      {:ok, count} ->
-        Logger.info("Successfully updated #{count} wormhole classes")
-        {:ok, count}
-
-      {:error, reason} ->
-        Logger.error("Failed to update wormhole classes: #{inspect(reason)}")
-        {:error, reason}
-    end
-  end
-
-  defp update_wormhole_effects(_version) do
-    Logger.info("Updating wormhole effects data...")
-
-    # Only update if reference files exist
-    if File.exists?("tmp/wormholeSystems.json") and File.exists?("tmp/effects.json") do
-      case WormholeEffectsLoader.load_wormhole_effects() do
-        {:ok, count} ->
-          Logger.info("Successfully updated #{count} wormhole effects")
-          {:ok, count}
-
-        {:error, reason} ->
-          Logger.error("Failed to update wormhole effects: #{inspect(reason)}")
-          {:error, reason}
-      end
-    else
-      Logger.info("Skipping wormhole effects update - reference files not found")
-      {:ok, 0}
-    end
+    Logger.info("SDE update completed successfully")
+    update_version_tracking(new_version)
+    {:ok, %{version: new_version}}
   end
 
   defp update_version_tracking(new_version) do

@@ -8,7 +8,7 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
   """
 
   alias EveDmv.Api
-  alias EveDmv.Contexts.WormholeOperations.Domain.Wormhole.WhVetting
+  # alias EveDmv.Contexts.WormholeOperations.Domain.Wormhole.WhVetting - REMOVED IN PHASE 1
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.Cache.IntelligenceCache
   alias EveDmv.Intelligence.CharacterStats
@@ -259,7 +259,8 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
     |> Enum.chunk_every(100)
     |> Enum.flat_map(fn batch ->
       Enum.map(batch, fn char_id ->
-        case WhVetting.get_by_character(char_id) do
+        # WhVetting removed in Phase 1
+        case {:error, :feature_removed} do
           {:ok, [vetting]} -> {char_id, vetting}
           _ -> {char_id, nil}
         end

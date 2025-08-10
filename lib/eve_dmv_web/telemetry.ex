@@ -14,6 +14,9 @@ defmodule EveDmvWeb.Telemetry do
 
   @impl Supervisor
   def init(_arg) do
+    # Set up simple telemetry handlers for basic monitoring
+    EveDmv.Telemetry.setup()
+
     children = [
       # Telemetry poller will execute the given period measurements
       # every 10_000ms. Learn more here: https://hexdocs.pm/telemetry_metrics
