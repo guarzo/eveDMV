@@ -1329,27 +1329,6 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
     {:ok, patterns}
   end
 
-  defp extract_corp_participants(killmail, corporation_id) do
-    # Extract participants from the killmail that belong to the corporation
-    attackers = Map.get(killmail, :attackers, [])
-
-    corp_attackers =
-      attackers
-      |> Enum.filter(&(&1.corporation_id == corporation_id))
-      |> Enum.map(&Map.put(&1, :role, :attacker))
-
-    victim = Map.get(killmail, :victim, %{})
-
-    corp_victims =
-      if Map.get(victim, :corporation_id) == corporation_id do
-        [Map.put(victim, :role, :victim)]
-      else
-        []
-      end
-
-    corp_attackers ++ corp_victims
-  end
-
   defp analyze_engagement_preferences(combat_data) do
     # Analyze engagement ranges and tactics from killmails
     killmails = Map.get(combat_data, :killmails, [])
@@ -1380,7 +1359,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
 
   defp analyze_formation_patterns(combat_data) do
     # Analyze fleet formation patterns from active members
-    active_members = Map.get(combat_data, :active_members, [])
+    _active_members = Map.get(combat_data, :active_members, [])
     killmails = Map.get(combat_data, :killmails, [])
 
     if Enum.empty?(killmails) do

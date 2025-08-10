@@ -16,12 +16,8 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
   require Ash.Query
 
   # Configuration constants for time windows
-  @member_activity_days 30
   @activity_days_default 60
   @member_count_days 90
-  @trend_analysis_days 90
-  @recent_activity_days 30
-  @trend_sigma 1.2
 
   # Activity scoring thresholds
   @activity_scores %{
