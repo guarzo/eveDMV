@@ -18,6 +18,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
   # Configuration constants for time windows
   @activity_days_default 60
   @member_count_days 90
+  @activity_metrics_days_default 30
 
   # Activity scoring thresholds
   @activity_scores %{
@@ -278,7 +279,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
   Calculates activity metrics for a corporation.
   """
   @spec calculate_activity_metrics(integer(), integer()) :: {:ok, map()} | {:error, atom()}
-  def calculate_activity_metrics(corporation_id, days_back \\ 30) do
+  def calculate_activity_metrics(corporation_id, days_back \\ @activity_metrics_days_default) do
     time_cutoff = DateTime.utc_now() |> DateTimeUtils.add(-days_back * 24 * 60 * 60, :second)
 
     query =
@@ -775,22 +776,31 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
       |> Enum.filter(& &1)
       |> Enum.frequencies()
 
-    # Determine doctrine based on ship class distribution
+    # Calculate total ship count for ratio calculations
+    total_ships = Enum.sum(Map.values(ship_classes))
+
+    # Determine doctrine based on ship class distribution ratios
     cond do
-      # Check for capital/supercapital dominance
-      Map.get(ship_classes, "Capital", 0) + Map.get(ship_classes, "Supercapital", 0) >= 2 ->
+      # Check for capital/supercapital dominance (40% or more)
+      total_ships > 0 and
+          (Map.get(ship_classes, "Capital", 0) + Map.get(ship_classes, "Supercapital", 0)) /
+            total_ships >= 0.4 ->
         :capital_fleet
 
-      # Check for battleship focus
-      Map.get(ship_classes, "Battleship", 0) >= 2 ->
+      # Check for battleship focus (40% or more)
+      total_ships > 0 and Map.get(ship_classes, "Battleship", 0) / total_ships >= 0.4 ->
         :battleship_doctrine
 
-      # Check for cruiser/HAC focus
-      Map.get(ship_classes, "Cruiser", 0) + Map.get(ship_classes, "Heavy Assault Cruiser", 0) >= 2 ->
+      # Check for cruiser/HAC focus (40% or more)
+      total_ships > 0 and
+          (Map.get(ship_classes, "Cruiser", 0) + Map.get(ship_classes, "Heavy Assault Cruiser", 0)) /
+            total_ships >= 0.4 ->
         :cruiser_doctrine
 
-      # Check for frigate/destroyer focus
-      Map.get(ship_classes, "Frigate", 0) + Map.get(ship_classes, "Destroyer", 0) >= 2 ->
+      # Check for frigate/destroyer focus (50% or more for small ships)
+      total_ships > 0 and
+          (Map.get(ship_classes, "Frigate", 0) + Map.get(ship_classes, "Destroyer", 0)) /
+            total_ships >= 0.5 ->
         :small_gang
 
       # If no clear pattern, check total ship count to determine fleet size
@@ -974,8 +984,23 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
   defp shift_to_month_start(%Date{} = date, months_delta) do
     {y, m, _} = Date.to_erl(date)
     total = y * 12 + (m - 1) + months_delta
+
+    # Guard against invalid dates (year 0 doesn't exist, negative years are BC)
+    if total < 12 do
+      raise ArgumentError,
+            "Cannot shift date #{date} by #{months_delta} months: would result in year #{div(total, 12)} which is before year 1"
+    end
+
+    # Safe calculation using integer division and modulo
     new_year = div(total, 12)
     new_month = rem(total, 12) + 1
+
+    # Additional validation before creating the date
+    if new_year < 1 do
+      raise ArgumentError,
+            "Invalid year #{new_year} computed from shifting #{date} by #{months_delta} months"
+    end
+
     Date.new!(new_year, new_month, 1)
   end
 end

@@ -28,6 +28,8 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
   @min_fleet_kills_for_doctrine 10
   # Default analysis period for doctrine recognition
   @analysis_window_days 60
+  # Engagement time window in seconds (10 minutes)
+  @engagement_window_seconds 600
 
   # Combat doctrine definitions
   @doctrine_patterns %{
@@ -460,9 +462,6 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
 
   defp find_matching_engagement(killmail, engagements, corporation_id) do
     # Find engagement within time window with participant overlap
-    # 10 minutes
-    time_window_seconds = 600
-
     corp_participants = extract_corp_participants(killmail, corporation_id)
     participant_ids = Enum.map(corp_participants, & &1.character_id)
 
@@ -470,7 +469,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
       Enum.find(engagements, fn engagement ->
         # Check time proximity
         time_diff = DateTimeUtils.diff(killmail.killmail_time, engagement.end_time, :second)
-        within_time_window = time_diff <= time_window_seconds and time_diff >= 0
+        within_time_window = time_diff <= @engagement_window_seconds and time_diff >= 0
 
         # Check participant overlap
         engagement_participant_ids = Enum.map(engagement.corp_participants, & &1.character_id)
@@ -558,87 +557,63 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
   end
 
   defp classify_ship_type(ship_type_id) do
-    cond do
-      ship_type_id in 580..700 -> :frigate
-      ship_type_id in 420..450 -> :destroyer
-      ship_type_id in 620..650 -> :cruiser
-      ship_type_id in 540..570 -> :battlecruiser
-      ship_type_id in 640..670 -> :battleship
-      ship_type_id in 19_720..19_740 -> :capital
-      ship_type_id in 28_650..28_710 -> :strategic_cruiser
-      true -> :other
+    alias EveDmv.Eve.ItemType
+
+    case Api.get(ItemType, ship_type_id) do
+      {:ok, ship} ->
+        # Use the actual group name from static data
+        name = String.downcase(ship.group_name || "")
+
+        cond do
+          String.contains?(name, "frigate") ->
+            :frigate
+
+          String.contains?(name, "destroyer") ->
+            :destroyer
+
+          String.contains?(name, "cruiser") and String.contains?(name, "heavy assault") ->
+            :cruiser
+
+          String.contains?(name, "cruiser") and String.contains?(name, "strategic") ->
+            :strategic_cruiser
+
+          String.contains?(name, "cruiser") ->
+            :cruiser
+
+          String.contains?(name, "battlecruiser") ->
+            :battlecruiser
+
+          String.contains?(name, "battleship") ->
+            :battleship
+
+          String.contains?(name, ["carrier", "dreadnought", "titan", "supercarrier"]) ->
+            :capital
+
+          true ->
+            :other
+        end
+
+      {:error, _} ->
+        :other
     end
   end
 
-  defp analyze_tank_distribution(participants) do
-    # Simplified tank type analysis based on ship types
-    # In production, this would analyze actual fits or damage patterns
-
-    tank_types =
-      participants
-      |> Enum.map(fn p ->
-        ship_class = classify_ship_type(p.ship_type_id)
-        infer_tank_type(ship_class, p.ship_type_id)
-      end)
-      |> Enum.frequencies()
-
-    total = length(participants)
-
-    tank_types
-    |> Enum.map(fn {tank_type, count} ->
-      {tank_type, Float.round(count / total, 2)}
-    end)
-    |> Map.new()
+  defp analyze_tank_distribution(_participants) do
+    # Tank distribution requires actual fitting data from killmails
+    # Without access to module fits, return unavailable
+    %{
+      status: :data_unavailable,
+      reason: "Tank analysis requires actual fitting data"
+    }
   end
 
-  defp infer_tank_type(ship_class, ship_type_id) do
-    # Simplified tank type inference
-    case ship_class do
-      # Some armor frigs
-      :frigate -> if ship_type_id in [588, 589, 590], do: :armor, else: :shield
-      :destroyer -> :shield
-      # Arbitrator, Augoror
-      :cruiser -> if ship_type_id in [622, 623], do: :armor, else: :shield
-      # Prophecy, Harbinger
-      :battlecruiser -> if ship_type_id in [544, 545], do: :armor, else: :shield
-      # Amarr/Gallente BS
-      :battleship -> if ship_type_id in [641, 642, 643], do: :armor, else: :shield
-      # Most capitals are armor
-      :capital -> :armor
-      _ -> :unknown
-    end
-  end
-
-  defp analyze_range_distribution(participants) do
-    # Simplified range analysis based on ship types
-    range_types =
-      participants
-      |> Enum.map(fn p ->
-        ship_class = classify_ship_type(p.ship_type_id)
-        infer_weapon_range(ship_class, p.ship_type_id)
-      end)
-      |> Enum.frequencies()
-
-    total = length(participants)
-
-    range_types
-    |> Enum.map(fn {range_type, count} ->
-      {range_type, Float.round(count / total, 2)}
-    end)
-    |> Map.new()
-  end
-
-  defp infer_weapon_range(ship_class, _ship_type_id) do
-    # Simplified weapon range inference
-    case ship_class do
-      :frigate -> :short_range
-      :destroyer -> :medium_range
-      :cruiser -> :medium_range
-      :battlecruiser -> :long_range
-      :battleship -> :long_range
-      :capital -> :very_long_range
-      _ -> :medium_range
-    end
+  defp analyze_range_distribution(_participants) do
+    # Range distribution requires actual weapon data from killmails
+    # Without access to weapon modules, return unavailable
+    %{
+      status: :data_unavailable,
+      reason: "Range analysis requires actual weapon data"
+    }
   end
 
   defp calculate_composition_diversity(ship_types) do
@@ -918,16 +893,11 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
   end
 
   defp estimate_ship_value(killmail) do
-    ship_type_id = killmail.victim_ship_type_id
-
-    cond do
-      ship_type_id in 580..700 -> 5_000_000
-      ship_type_id in 420..450 -> 15_000_000
-      ship_type_id in 620..650 -> 50_000_000
-      ship_type_id in 540..570 -> 150_000_000
-      ship_type_id in 640..670 -> 300_000_000
-      ship_type_id in 19_720..19_740 -> 2_000_000_000
-      true -> 25_000_000
+    # Use actual total_value from killmail if available
+    case Map.get(killmail, :total_value) do
+      nil -> 0
+      value when is_number(value) -> value
+      _ -> 0
     end
   end
 
@@ -1048,19 +1018,25 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
   end
 
   defp calculate_alpha_ship_percentage(ship_analysis) do
-    # Ships commonly used for alpha strikes (simplified)
-    alpha_ship_types = [
-      # Stealth bombers
-      12_032,
-      12_036,
-      12_040,
-      12_044
-      # Artillery battleships would need specific type ID checking
-    ]
+    alias EveDmv.Eve.ItemType
 
+    # Check each ship type to see if it's an alpha-strike ship
     alpha_count =
       ship_analysis.ship_types
-      |> Enum.filter(fn {ship_type, _count} -> ship_type in alpha_ship_types end)
+      |> Enum.filter(fn {ship_type_id, _count} ->
+        case Api.get(ItemType, ship_type_id) do
+          {:ok, item} ->
+            group = String.downcase(item.group_name || "")
+            # Stealth bombers and artillery ships are alpha-strike capable
+            String.contains?(group, "stealth bomber") or
+              String.contains?(group, "attack battlecruiser") or
+              (String.contains?(group, "battleship") and
+                 item.type_name =~ ~r/maelstrom|tempest|rokh|apocalypse|abaddon/i)
+
+          _ ->
+            false
+        end
+      end)
       |> Enum.map(&elem(&1, 1))
       |> Enum.sum()
 
@@ -1331,7 +1307,10 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
 
   defp analyze_engagement_preferences(combat_data) do
     # Analyze engagement ranges and tactics from killmails
-    killmails = Map.get(combat_data, :killmails, [])
+    killmails =
+      combat_data
+      |> Map.get(:killmails, [])
+      |> Enum.sort_by(&DateTime.to_unix(&1.killmail_time), :desc)
 
     if Enum.empty?(killmails) do
       %{pattern: :insufficient_data}
@@ -1374,8 +1353,9 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
         killmails
         # Analyze recent engagements
         |> Enum.take(50)
-        # 5-minute windows
-        |> Enum.chunk_by(&div(DateTime.to_unix(&1.killmail_time), 300))
+        # Group by 5-minute windows
+        |> Enum.group_by(&div(DateTime.to_unix(&1.killmail_time), 300))
+        |> Map.values()
         # Only consider groups with 3+ kills
         |> Enum.filter(&(length(&1) >= 3))
         |> Enum.map(&extract_fleet_composition/1)
@@ -1395,11 +1375,24 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
 
   defp determine_engagement_range_from_killmail(killmail) do
     # Determine engagement range based on weapon types used
-    attackers = Map.get(killmail, :attackers, [])
+    # Handle both raw_data JSON and materialized attackers
+    attackers =
+      case killmail do
+        %{attackers: list} when is_list(list) -> list
+        %{raw_data: %{"attackers" => list}} when is_list(list) -> list
+        _ -> []
+      end
 
     weapon_types =
       attackers
-      |> Enum.map(&Map.get(&1, :weapon_type_id))
+      |> Enum.map(fn attacker ->
+        # Handle both map string keys and atom keys
+        case attacker do
+          %{weapon_type_id: id} when not is_nil(id) -> id
+          %{"weapon_type_id" => id} when not is_nil(id) -> id
+          _ -> nil
+        end
+      end)
       |> Enum.filter(& &1)
 
     cond do
@@ -1410,39 +1403,112 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
   end
 
   defp long_range_weapon?(weapon_type_id) do
-    # Check if weapon is typically long-range (artillery, railguns, etc)
-    # This would ideally check against static data
-    # Example IDs for long-range weapons
-    weapon_type_id in [3520, 3519, 2961, 2969]
+    alias EveDmv.Eve.ItemType
+
+    case Api.get(ItemType, weapon_type_id) do
+      {:ok, weapon} ->
+        name = String.downcase(weapon.type_name || "")
+        group = String.downcase(weapon.group_name || "")
+
+        # Check for long-range weapon types by name patterns
+        String.contains?(name, ["artillery", "railgun", "beam laser", "pulse laser"]) or
+          String.contains?(group, ["artillery", "railgun", "beam", "pulse"]) or
+          String.contains?(name, ["1400mm", "1200mm", "800mm", "720mm", "650mm", "425mm"])
+
+      _ ->
+        false
+    end
   end
 
   defp short_range_weapon?(weapon_type_id) do
-    # Check if weapon is typically short-range (blasters, autocannons, etc)
-    # Example IDs for short-range weapons
-    weapon_type_id in [2456, 2457, 2881, 2929]
+    alias EveDmv.Eve.ItemType
+
+    case Api.get(ItemType, weapon_type_id) do
+      {:ok, weapon} ->
+        name = String.downcase(weapon.type_name || "")
+        group = String.downcase(weapon.group_name || "")
+
+        # Check for short-range weapon types by name patterns
+        String.contains?(name, ["blaster", "autocannon", "rocket", "torpedo"]) or
+          String.contains?(group, ["blaster", "autocannon", "rocket", "torpedo"]) or
+          String.contains?(name, ["neutron", "ion", "electron", "200mm", "220mm", "240mm"])
+
+      _ ->
+        false
+    end
   end
 
   defp extract_fleet_composition(killmails) do
     # Extract ship types from a group of related killmails
     killmails
     |> Enum.flat_map(fn km ->
-      victim_ship = [Map.get(km.victim, :ship_type_id)]
+      # Use victim_ship_type_id from KillmailRaw
+      victim_ship = [km.victim_ship_type_id]
 
+      # Handle both raw_data JSON and materialized attackers
       attacker_ships =
-        km.attackers
-        |> Enum.map(&Map.get(&1, :ship_type_id))
-        |> Enum.filter(& &1)
+        km
+        |> extract_attacker_list()
+        |> extract_ship_type_ids()
 
-      victim_ship ++ attacker_ships
+      (victim_ship ++ attacker_ships) |> Enum.reject(&is_nil/1)
     end)
     |> Enum.uniq()
   end
 
-  # Removed duplicate function - using determine_engagement_range_from_killmail instead
+  defp identify_formation_type(fleet_comp) do
+    # Analyze actual fleet composition to identify formation type
+    if Enum.empty?(fleet_comp) do
+      :unknown
+    else
+      # Count ship roles in the fleet
+      role_counts =
+        fleet_comp
+        |> Enum.reduce(%{}, fn ship_type_id, acc ->
+          role = classify_ship_role(ship_type_id)
+          Map.update(acc, role, 1, &(&1 + 1))
+        end)
 
-  defp identify_formation_type(_fleet_comp) do
-    # Identify formation based on ship role distribution
-    :standard_fleet
+      total_ships = Enum.sum(Map.values(role_counts))
+
+      # Calculate role percentages
+      logi_percent = Map.get(role_counts, :logistics, 0) / total_ships
+      ewar_percent = Map.get(role_counts, :ewar, 0) / total_ships
+      tackle_percent = Map.get(role_counts, :tackle, 0) / total_ships
+      capital_percent = Map.get(role_counts, :capital, 0) / total_ships
+      dps_percent = Map.get(role_counts, :dps, 0) / total_ships
+
+      # Identify formation based on composition patterns
+      cond do
+        # Capital heavy formation
+        capital_percent > 0.3 ->
+          :capital_fleet
+
+        # Balanced fleet with logistics
+        logi_percent >= 0.15 && logi_percent <= 0.25 ->
+          :mainline_doctrine
+
+        # EWAR heavy composition
+        ewar_percent > 0.25 ->
+          :ewar_doctrine
+
+        # Fast tackle/roaming gang
+        tackle_percent > 0.3 ->
+          :roaming_gang
+
+        # Heavy DPS focus
+        dps_percent > 0.7 ->
+          :dps_doctrine
+
+        # Small gang (less than 10 ships)
+        total_ships < 10 ->
+          :small_gang
+
+        # Default to mixed doctrine
+        true ->
+          :mixed_doctrine
+      end
+    end
   end
 
   defp calculate_preference_consistency(preferences) do
@@ -1450,8 +1516,27 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
     if total == 0, do: 0.0, else: Map.values(preferences) |> Enum.max() |> Kernel./(total)
   end
 
-  # Note: Removed unused functions calculate_fleet_coordination_score and analyze_coordination_factors
-  # These were placeholder implementations that are no longer needed
+  defp extract_attacker_list(km) do
+    case km do
+      %{attackers: list} when is_list(list) -> list
+      %{raw_data: %{"attackers" => list}} when is_list(list) -> list
+      _ -> []
+    end
+  end
+
+  defp extract_ship_type_ids(attackers) do
+    attackers
+    |> Enum.map(&extract_ship_type_id/1)
+    |> Enum.filter(& &1)
+  end
+
+  defp extract_ship_type_id(attacker) do
+    case attacker do
+      %{ship_type_id: id} when not is_nil(id) -> id
+      %{"ship_type_id" => id} when not is_nil(id) -> id
+      _ -> nil
+    end
+  end
 
   defp maybe_analyze_members(_combat_data, false), do: {:ok, nil}
 
@@ -1460,186 +1545,171 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
 
     member_analysis = %{
       active_members: length(active_members),
-      top_contributors: identify_top_contributors(active_members),
-      role_specialists: identify_role_specialists(active_members),
+      top_contributors: identify_top_contributors(combat_data),
+      role_specialists: identify_role_specialists(combat_data),
       participation_metrics: calculate_participation_metrics(active_members)
     }
 
     {:ok, member_analysis}
   end
 
-  defp identify_top_contributors(members) do
-    members
-    |> Enum.sort_by(&(&1[:total_damage] || 0), :desc)
-    |> Enum.take(5)
-    |> Enum.map(fn member ->
+  defp identify_top_contributors(combat_data) do
+    # Analyze actual killmail data to identify top contributors
+    corporation_id = combat_data.corporation_id
+    killmails = combat_data.killmails || []
+
+    # Count participation and damage for each member
+    member_stats =
+      killmails
+      |> Enum.reduce(%{}, fn km, acc ->
+        process_killmail_attackers(km, corporation_id, acc)
+      end)
+
+    # Calculate contribution scores and sort
+    member_stats
+    |> Enum.map(fn {char_id, stats} ->
+      # Weighted score: damage + kills * 10000 + final_blows * 5000
+      score = stats.damage + stats.kills * 10_000 + stats.final_blows * 5_000
+
       %{
-        character_id: member[:character_id],
-        contribution_score: member[:total_damage] || 0,
-        participation_count: member[:participation_count] || 0
+        character_id: char_id,
+        contribution_score: score,
+        participation_count: stats.kills,
+        total_damage: stats.damage,
+        final_blows: stats.final_blows
       }
+    end)
+    |> Enum.sort_by(& &1.contribution_score, :desc)
+    |> Enum.take(5)
+  end
+
+  defp identify_role_specialists(combat_data) do
+    # Analyze actual ship usage by corporation members
+    corporation_id = combat_data.corporation_id
+    killmails = combat_data.killmails || []
+
+    # Track ship roles used by each member
+    member_roles =
+      killmails
+      |> Enum.reduce(%{}, fn km, acc ->
+        acc
+        |> process_victim_role(km, corporation_id)
+        |> process_attacker_roles(km, corporation_id)
+      end)
+
+    # Group members by their most common role
+    role_groups =
+      member_roles
+      |> Enum.reduce(%{}, fn {char_id, role_counts}, acc ->
+        # Find the most used role for this character
+        {primary_role, count} = Enum.max_by(role_counts, fn {_role, cnt} -> cnt end)
+
+        Map.update(acc, primary_role, [{char_id, count}], fn specialists ->
+          [{char_id, count} | specialists]
+        end)
+      end)
+      |> Enum.map(fn {role, specialists} ->
+        # Sort specialists by their usage count and take top 3
+        top_specialists =
+          specialists
+          |> Enum.sort_by(fn {_char_id, count} -> count end, :desc)
+          |> Enum.take(3)
+          |> Enum.map(fn {char_id, _count} -> char_id end)
+
+        {role,
+         %{
+           count: length(specialists),
+           specialists: top_specialists
+         }}
+      end)
+      |> Map.new()
+
+    # Ensure we have at least basic categories
+    %{
+      dps: Map.get(role_groups, :dps, %{count: 0, specialists: []}),
+      logistics: Map.get(role_groups, :logistics, %{count: 0, specialists: []}),
+      ewar: Map.get(role_groups, :ewar, %{count: 0, specialists: []}),
+      tackle: Map.get(role_groups, :tackle, %{count: 0, specialists: []}),
+      capital: Map.get(role_groups, :capital, %{count: 0, specialists: []})
+    }
+  end
+
+  defp update_role_count(acc, char_id, role) do
+    Map.update(acc, char_id, %{role => 1}, fn role_counts ->
+      Map.update(role_counts, role, 1, &(&1 + 1))
     end)
   end
 
-  defp identify_role_specialists(members) do
-    # Group members by their primary ship roles
-    role_groups =
-      members
-      |> Enum.group_by(&determine_primary_role/1)
-      |> Map.new(fn {role, role_members} ->
-        {role,
-         %{
-           count: length(role_members),
-           specialists: Enum.take(role_members, 3)
-         }}
+  # Helper function to process attackers from killmail data
+  defp process_killmail_attackers(km, corporation_id, acc) do
+    case km.raw_data do
+      %{"attackers" => attackers} when is_list(attackers) ->
+        attackers
+        |> Enum.filter(&(&1["corporation_id"] == corporation_id))
+        |> Enum.reduce(acc, fn attacker, acc2 ->
+          update_attacker_stats(attacker, acc2)
+        end)
+
+      _ ->
+        acc
+    end
+  end
+
+  # Helper function to update stats for an attacker
+  defp update_attacker_stats(attacker, acc) do
+    char_id = attacker["character_id"]
+
+    if char_id do
+      damage = attacker["damage_done"] || 0
+      final_blow = if attacker["final_blow"], do: 1, else: 0
+
+      Map.update(acc, char_id, %{kills: 1, damage: damage, final_blows: final_blow}, fn stats ->
+        %{
+          kills: stats.kills + 1,
+          damage: stats.damage + damage,
+          final_blows: stats.final_blows + final_blow
+        }
       end)
-
-    role_groups
-  end
-
-  defp determine_primary_role(member) do
-    # Determine role based on ship types used
-    # Simplified implementation
-    ship_types = member[:ship_types] || []
-
-    cond do
-      Enum.any?(ship_types, &logistics_ship?/1) -> :logistics
-      Enum.any?(ship_types, &ewar_ship?/1) -> :ewar
-      Enum.any?(ship_types, &tackle_ship?/1) -> :tackle
-      true -> :dps
+    else
+      acc
     end
   end
 
-  # Check if ship is a logistics ship using real EVE static data
-  defp logistics_ship?(ship_type_id) do
-    alias EveDmv.Eve.ItemType
-
-    case Api.get(ItemType, ship_type_id) do
-      {:ok, ship} ->
-        # Check if it's a logistics ship by group name
-        # Check specific ship type IDs for known logistics ships
-        String.contains?(String.downcase(ship.group_name || ""), "logistics") ||
-          ship_type_id in [
-            # T2 Logistics Cruisers: Guardian, Oneiros, Basilisk
-            11_985,
-            11_987,
-            11_989,
-            # Scimitar
-            11_978,
-            # T1 Logistics Frigates: Inquisitor, Bantam
-            32_790,
-            32_788,
-            # T1 Logistics Frigates: Scalpel, Burst
-            37_460,
-            37_458,
-            # T2 Logistics Frigates: Deacon, Kirin
-            11_993,
-            11_995,
-            # T2 Logistics Frigates: Thalia, Scalpel
-            12_013,
-            12_017
-          ]
-
-      _ ->
-        false
+  # Helper function to process victim role from killmail
+  defp process_victim_role(acc, km, corporation_id) do
+    if km.victim_corporation_id == corporation_id && km.victim_character_id do
+      ship_role = classify_ship_role(km.victim_ship_type_id)
+      update_role_count(acc, km.victim_character_id, ship_role)
+    else
+      acc
     end
   end
 
-  # Check if ship is an EWAR ship using real EVE static data
-  defp ewar_ship?(ship_type_id) do
-    alias EveDmv.Eve.ItemType
-
-    case Api.get(ItemType, ship_type_id) do
-      {:ok, ship} ->
-        group_name = String.downcase(ship.group_name || "")
-        # Check for electronic attack ships and recon ships
-        # Check specific ship type IDs for known EWAR ships
-        String.contains?(group_name, "electronic attack") ||
-          String.contains?(group_name, "combat recon") ||
-          String.contains?(group_name, "force recon") ||
-          ship_type_id in [
-            # Combat Recons: Huginn, Rapier, Arazu, Lachesis
-            11_959,
-            11_961,
-            11_963,
-            11_965,
-            # Force Recons: Falcon, Rook, Pilgrim, Curse
-            11_969,
-            11_971,
-            11_957,
-            11_995,
-            # Electronic Attack Frigates: Sentinel, Keres, Kitsune, Griffin Navy
-            11_174,
-            11_176,
-            11_178,
-            11_182,
-            # T1 EWAR Frigates: Vigil, Crucifier, Griffin, Maulus
-            583,
-            584,
-            585,
-            586,
-            # T1 EWAR Cruisers: Blackbird, Celestis, Arbitrator, Bellicose
-            3766,
-            632,
-            633,
-            634
-          ]
+  # Helper function to process attacker roles from killmail
+  defp process_attacker_roles(acc, km, corporation_id) do
+    case km.raw_data do
+      %{"attackers" => attackers} when is_list(attackers) ->
+        attackers
+        |> Enum.filter(&(&1["corporation_id"] == corporation_id))
+        |> Enum.reduce(acc, fn attacker, acc2 ->
+          process_single_attacker_role(attacker, acc2)
+        end)
 
       _ ->
-        false
+        acc
     end
   end
 
-  # Check if ship is a tackle ship using real EVE static data
-  defp tackle_ship?(ship_type_id) do
-    alias EveDmv.Eve.ItemType
+  # Helper to process a single attacker's role
+  defp process_single_attacker_role(attacker, acc) do
+    char_id = attacker["character_id"]
+    ship_type_id = attacker["ship_type_id"]
 
-    case Api.get(ItemType, ship_type_id) do
-      {:ok, ship} ->
-        group_name = String.downcase(ship.group_name || "")
-        # Check for interceptors and interdictors
-        # Check specific ship type IDs for known tackle ships
-        String.contains?(group_name, "interceptor") ||
-          String.contains?(group_name, "interdictor") ||
-          ship_type_id in [
-            # Interceptors
-            # T2 Interceptors: Crow, Raptor, Ares, Taranis
-            11_379,
-            11_381,
-            11_383,
-            11_365,
-            # T2 Interceptors: Stiletto, Claw, Crusader, Malediction
-            11_393,
-            11_377,
-            11_373,
-            11_375,
-            # Interdictors
-            # Interdictors: Sabre, Eris, Heretic, Flycatcher
-            22_456,
-            22_452,
-            22_460,
-            22_464,
-            # Heavy Interdictors
-            # Heavy Interdictors: Onyx, Broadsword, Phobos, Devoter
-            11_995,
-            11_957,
-            11_959,
-            11_961,
-            # Fast tackle frigates
-            # T1 Fast Frigates: Breacher, Merlin, Atron, Executioner
-            598,
-            601,
-            602,
-            603,
-            # T1 Fast Frigates: Rifter, Incursus, Condor, Slasher
-            605,
-            607,
-            608,
-            609
-          ]
-
-      _ ->
-        false
+    if char_id && ship_type_id do
+      ship_role = classify_ship_role(ship_type_id)
+      update_role_count(acc, char_id, ship_role)
+    else
+      acc
     end
   end
 
@@ -2028,21 +2098,47 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
     end_date = DateTimeUtils.add(now, -end_days * 86_400, :second)
 
     # Query killmails for this corporation in the time period
-    query =
+    # First get victim killmails
+    victim_query =
       KillmailRaw
-      |> filter(
-        victim_corporation_id == ^corporation_id or
-          fragment(
-            "EXISTS (SELECT 1 FROM unnest(?) AS attacker WHERE attacker->>'corporation_id' = ?::text)",
-            attackers,
-            ^to_string(corporation_id)
-          )
-      )
+      |> filter(victim_corporation_id == ^corporation_id)
       |> filter(killmail_time >= ^start_date and killmail_time <= ^end_date)
-      |> select([:killmail_id, :killmail_time, :victim_ship_type_id, :attackers, :total_value])
+      |> limit(500)
 
-    case Api.read(query) do
-      {:ok, killmails} ->
+    # Then get a broader set for attacker search
+    attacker_query =
+      KillmailRaw
+      |> filter(killmail_time >= ^start_date and killmail_time <= ^end_date)
+      |> limit(2000)
+
+    with {:ok, victim_killmails} <- Api.read(victim_query),
+         {:ok, potential_attacker_killmails} <- Api.read(attacker_query) do
+      # Filter for corporation as attackers
+      attacker_killmails =
+        Enum.filter(potential_attacker_killmails, fn km ->
+          case km.raw_data do
+            %{"attackers" => attackers} when is_list(attackers) ->
+              Enum.any?(attackers, &(&1["corporation_id"] == corporation_id))
+
+            _ ->
+              false
+          end
+        end)
+
+      killmails = Enum.uniq_by(victim_killmails ++ attacker_killmails, & &1.killmail_id)
+
+      if Enum.empty?(killmails) do
+        {:ok,
+         %{
+           period_start: start_date,
+           period_end: end_date,
+           doctrine_breakdown: %{},
+           ship_preferences: %{},
+           tactical_patterns: [],
+           fleet_sizes: [],
+           primary_doctrine: %{name: "Unknown", confidence: 0.0}
+         }}
+      else
         # Extract ship types used by corporation
         ship_frequencies = extract_corporation_ship_types(killmails, corporation_id)
 
@@ -2068,24 +2164,11 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
            doctrine_shifts: doctrine_shifts,
            effectiveness_trends: effectiveness_trends
          }}
-
-      {:error, _reason} ->
-        # Return structure with no data if query fails
-        {:ok,
-         %{
-           corporation_id: corporation_id,
-           period: %{
-             start: start_date,
-             end: end_date
-           },
-           doctrines_observed: [],
-           doctrine_shifts: [],
-           effectiveness_trends: %{
-             kill_death_ratio: 0.0,
-             isk_efficiency: 0.0,
-             trend: :insufficient_data
-           }
-         }}
+      end
+    else
+      {:error, reason} ->
+        # Return error tuple with the actual failure reason
+        {:error, reason}
     end
   end
 
@@ -2154,7 +2237,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
 
   defp detect_doctrine_shifts_over_time(time_grouped, corporation_id) do
     time_grouped
-    |> Enum.sort_by(&elem(&1, 0), DateTime)
+    |> Enum.sort_by(fn {period_start, _} -> DateTime.to_unix(period_start) end)
     |> Enum.map(fn {period_start, kms} ->
       ship_types = extract_corporation_ship_types(kms, corporation_id)
       doctrines = analyze_doctrine_frequencies(ship_types)
@@ -2480,7 +2563,11 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
       %{
         assessment: assessment_level,
         diversity_score: doctrine_distribution.diversity_index,
-        dominant_strategies: Map.take(doctrine_distribution.distribution, 3),
+        dominant_strategies:
+          doctrine_distribution.distribution
+          |> Enum.sort_by(&elem(&1, 1), :desc)
+          |> Enum.take(3)
+          |> Map.new(),
         key_vulnerabilities: identify_key_vulnerabilities(counter_relationships),
         recommendations:
           generate_tactical_recommendations(assessment_level, doctrine_distribution)
@@ -2524,39 +2611,39 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
   end
 
   defp assess_alliance_synergies(_doctrine_analyses) do
-    %{synergies: "Requires implementation"}
+    {:error, :not_implemented}
   end
 
   defp identify_doctrine_weaknesses(_target_analysis) do
-    ["Weakness analysis requires implementation"]
+    {:error, :not_implemented}
   end
 
   defp generate_counter_recommendations(_target_analysis) do
-    ["Counter recommendations require implementation"]
+    {:error, :not_implemented}
   end
 
   defp generate_tactical_advice(_target_analysis) do
-    ["Tactical advice requires implementation"]
+    {:error, :not_implemented}
   end
 
   defp suggest_counter_compositions(_target_analysis) do
-    ["Composition suggestions require implementation"]
+    {:error, :not_implemented}
   end
 
   defp identify_doctrine_changes(_time_periods) do
-    ["Change detection requires implementation"]
+    {:error, :not_implemented}
   end
 
   defp analyze_adaptation_patterns(_time_periods) do
-    %{patterns: "Requires implementation"}
+    {:error, :not_implemented}
   end
 
   defp calculate_doctrine_stability(_time_periods) do
-    0.5
+    {:error, :not_implemented}
   end
 
   defp predict_doctrine_trends(_time_periods) do
-    ["Trend prediction requires implementation"]
+    {:error, :not_implemented}
   end
 
   # Utility functions
