@@ -37,6 +37,9 @@ defmodule EveDmv.Contexts.SystemAnalysis do
 
   # Spillover and correlation thresholds
   @spillover_filter_threshold 1.5
+  @spillover_pattern_threshold_high 0.5
+  @spillover_pattern_threshold_medium 0.3
+  @spillover_pattern_threshold_negative -0.3
   @severity_high_threshold 10.0
   @severity_medium_threshold 5.0
   @severity_low_threshold 2.5
@@ -46,6 +49,8 @@ defmodule EveDmv.Contexts.SystemAnalysis do
   @activity_decrease_threshold 5
   @isk_high_threshold 1_000_000_000
   @isk_medium_threshold 500_000_000
+  @isk_to_millions 1_000_000
+  @escalation_isk_high_factor 5.0
 
   @doc """
   Analyzes activity level in a specific solar system.
@@ -438,10 +443,15 @@ defmodule EveDmv.Contexts.SystemAnalysis do
   end
 
   defp group_by_hour(killmails) do
-    killmails
-    |> Enum.group_by(fn km -> km.killmail_time.hour end)
-    |> Map.values()
-    |> Enum.map(&length/1)
+    grouped =
+      killmails
+      |> Enum.group_by(fn km -> km.killmail_time.hour end)
+
+    # Ensure hours are sorted in ascending order for proper correlation
+    0..23
+    |> Enum.map(fn hour ->
+      Map.get(grouped, hour, []) |> length()
+    end)
   end
 
   defp calculate_correlation([], []), do: 0.0
@@ -477,9 +487,18 @@ defmodule EveDmv.Contexts.SystemAnalysis do
   # Function removed per CLAUDE.md: No stub implementations allowed
   # calculate_time_delay/2 removed - always returned 0
 
-  defp determine_spillover_pattern(correlation) when correlation > 0.5, do: :immediate
-  defp determine_spillover_pattern(correlation) when correlation > 0.3, do: :delayed
-  defp determine_spillover_pattern(correlation) when correlation < -0.3, do: :bidirectional
+  defp determine_spillover_pattern(correlation)
+       when correlation > @spillover_pattern_threshold_high,
+       do: :immediate
+
+  defp determine_spillover_pattern(correlation)
+       when correlation > @spillover_pattern_threshold_medium,
+       do: :delayed
+
+  defp determine_spillover_pattern(correlation)
+       when correlation < @spillover_pattern_threshold_negative,
+       do: :bidirectional
+
   defp determine_spillover_pattern(_), do: :none
 
   defp group_by_system(killmails) do
@@ -576,7 +595,7 @@ defmodule EveDmv.Contexts.SystemAnalysis do
     kill_factor = :math.log10(max(1, system_data.kill_count)) / @threat_weight_activity
 
     isk_factor =
-      :math.log10(max(1, Decimal.to_float(system_data.isk_destroyed) / 1_000_000)) /
+      :math.log10(max(1, Decimal.to_float(system_data.isk_destroyed) / @isk_to_millions)) /
         @threat_weight_value
 
     # Combine factors using configured ratios and clamp to 0-1
@@ -654,10 +673,17 @@ defmodule EveDmv.Contexts.SystemAnalysis do
     # Convert time series to value arrays
     system_arrays =
       Map.new(system_ids, fn system_id ->
+        # Extract values in chronological order by iterating over sorted time keys
+        time_data = Map.get(time_series_data, system_id, %{})
+
         values =
-          time_series_data[system_id]
-          |> Map.values()
-          |> Enum.sort()
+          if map_size(time_data) > 0 do
+            # Get all time keys and sort them to maintain chronological order
+            time_keys = Map.keys(time_data) |> Enum.sort()
+            Enum.map(time_keys, fn key -> Map.get(time_data, key, 0) end)
+          else
+            []
+          end
 
         {system_id, values}
       end)
@@ -718,7 +744,9 @@ defmodule EveDmv.Contexts.SystemAnalysis do
           current_isk_rate / baseline_isk_rate
         else
           # 50M+ ISK/hour threshold
-          if current_isk_rate > @escalation_value_threshold, do: 5.0, else: 1.0
+          if current_isk_rate > @escalation_value_threshold,
+            do: @escalation_isk_high_factor,
+            else: 1.0
         end
 
       # Combined escalation score using configured weights
@@ -793,16 +821,16 @@ defmodule EveDmv.Contexts.SystemAnalysis do
 
   defp generate_escalation_description(kill_factor, isk_factor, current_activity) do
     cond do
-      kill_factor >= 5.0 and isk_factor >= 3.0 ->
+      kill_factor >= @escalation_isk_high_factor and isk_factor >= @severity_medium_threshold ->
         "Major fleet engagement - #{current_activity.kill_count} kills, #{format_isk_simple(current_activity.isk_destroyed)} destroyed"
 
-      kill_factor >= 3.0 ->
+      kill_factor >= @severity_medium_threshold ->
         "Significant activity spike - #{current_activity.kill_count}x normal kill rate"
 
-      isk_factor >= 5.0 ->
+      isk_factor >= @escalation_isk_high_factor ->
         "High-value targets engaged - #{Float.round(isk_factor, 1)}x normal ISK destruction"
 
-      current_activity.kill_count >= 20 ->
+      current_activity.kill_count >= @activity_medium_threshold ->
         "Large battle detected - #{current_activity.kill_count} ships destroyed"
 
       true ->

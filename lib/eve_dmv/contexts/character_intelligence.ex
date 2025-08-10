@@ -17,6 +17,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   require Ash.Query
   require Logger
 
+  # Configuration constants
+  @pattern_threshold 70
+  @high_confidence 0.9
+  @low_confidence 0.7
+
   # Type definitions
   @type character_threat_analysis :: %{
           character_id: integer(),
@@ -123,25 +128,26 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
 
   defp extract_patterns(threat_data) do
     base_patterns = []
+    dimensions = Map.get(threat_data, :dimensions, %{})
 
-    # Extract patterns from different scoring dimensions
+    # Extract patterns from different scoring dimensions using safe access
     patterns_with_combat =
-      if threat_data[:dimensions][:combat_skill] > 70,
+      if Map.get(dimensions, :combat_skill, 0) > @pattern_threshold,
         do: base_patterns ++ [:skilled_combatant],
         else: base_patterns
 
     patterns_with_ship =
-      if threat_data[:dimensions][:ship_mastery] > 70,
+      if Map.get(dimensions, :ship_mastery, 0) > @pattern_threshold,
         do: patterns_with_combat ++ [:ship_specialist],
         else: patterns_with_combat
 
     patterns_with_fleet =
-      if threat_data[:dimensions][:fleet_effectiveness] > 70,
+      if Map.get(dimensions, :fleet_effectiveness, 0) > @pattern_threshold,
         do: patterns_with_ship ++ [:fleet_oriented],
         else: patterns_with_ship
 
     final_patterns =
-      if threat_data[:dimensions][:gang_effectiveness] > 70,
+      if Map.get(dimensions, :gang_effectiveness, 0) > @pattern_threshold,
         do: patterns_with_fleet ++ [:gang_leader],
         else: patterns_with_fleet
 
@@ -150,10 +156,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
 
   defp calculate_pattern_confidence(threat_data) do
     # Confidence based on data quality and volume
-    if threat_data[:metadata][:data_quality] == :high do
-      0.9
+    metadata = Map.get(threat_data, :metadata, %{})
+
+    if Map.get(metadata, :data_quality) == :high do
+      @high_confidence
     else
-      0.7
+      @low_confidence
     end
   end
 
@@ -421,8 +429,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
     # Simple effectiveness calculation based on coordination and synergy
     base_rating = synergy_rating
 
-    # Bonus for shared victories
-    victory_bonus = min(0.2, synergy.shared_victories * 0.01)
+    # Bonus for shared victories using safe access
+    shared_victories = Map.get(synergy, :shared_victories, 0)
+    victory_bonus = min(0.2, shared_victories * 0.01)
 
     Float.round(min(1.0, base_rating + victory_bonus), 2)
   end

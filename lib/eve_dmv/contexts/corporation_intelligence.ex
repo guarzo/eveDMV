@@ -15,6 +15,28 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
 
   require Ash.Query
 
+  # Configuration constants for time windows
+  @member_activity_days 30
+  @activity_days_default 60
+  @member_count_days 90
+  @trend_analysis_days 90
+  @recent_activity_days 30
+  @trend_sigma 1.2
+
+  # Activity scoring thresholds
+  @activity_scores %{
+    "High Activity" => 40,
+    "Moderate Activity" => 30,
+    "Low Activity" => 20,
+    "Minimal Activity" => 15,
+    "Very Low Activity" => 10
+  }
+
+  @efficiency_high_threshold 80
+  @efficiency_high_bonus 15
+  @efficiency_divisor 8
+  @doctrine_confidence_scale 10
+
   @type corporation_intelligence_report :: %{
           corporation: map(),
           doctrine_analysis: map(),
@@ -182,7 +204,8 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
     alias EveDmv.Contexts.CharacterIntelligence
 
     # Get active members from last 60 days
-    sixty_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-60 * 24 * 60 * 60, :second)
+    sixty_days_ago =
+      DateTime.utc_now() |> DateTimeUtils.add(-@activity_days_default * 24 * 60 * 60, :second)
 
     case Participant
          |> Ash.Query.for_read(:by_corporation, %{corporation_id: corporation_id})
@@ -380,20 +403,18 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
         combat_efficiency = Map.get(tactical_prefs, :combat_efficiency, 0)
         activity_level = Map.get(tactical_prefs, :activity_level, "Very Low Activity")
 
-        base_score =
-          case activity_level do
-            "High Activity" -> 40
-            "Moderate Activity" -> 30
-            "Low Activity" -> 20
-            "Minimal Activity" -> 15
-            _ -> 10
-          end
+        base_score = Map.get(@activity_scores, activity_level, 10)
 
         # Add efficiency bonus
-        efficiency_bonus = if combat_efficiency > 80, do: 15, else: round(combat_efficiency / 8)
+        efficiency_bonus =
+          if combat_efficiency > @efficiency_high_threshold do
+            @efficiency_high_bonus
+          else
+            round(combat_efficiency / @efficiency_divisor)
+          end
 
         # Add doctrine confidence bonus
-        confidence_bonus = round(doctrine_confidence * 10)
+        confidence_bonus = round(doctrine_confidence * @doctrine_confidence_scale)
 
         min(base_score + efficiency_bonus + confidence_bonus, 100)
       end
@@ -603,7 +624,8 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
 
   defp get_member_count(corporation_id) do
     # Count unique members from killmail data in last 90 days
-    ninety_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
+    ninety_days_ago =
+      DateTime.utc_now() |> DateTimeUtils.add(-@member_count_days * 24 * 60 * 60, :second)
 
     query =
       Participant
@@ -672,7 +694,8 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
   # Generate fallback intelligence analysis from participant data when fleet data is insufficient
   defp generate_fallback_analysis(corporation_id) do
     # Get recent participant data for analysis
-    ninety_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
+    ninety_days_ago =
+      DateTime.utc_now() |> DateTimeUtils.add(-@member_count_days * 24 * 60 * 60, :second)
 
     query =
       Participant
@@ -744,15 +767,44 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
     end
   end
 
-  # Infer basic doctrine from ship usage patterns
+  # Infer basic doctrine from ship usage patterns based on actual ship data
   defp infer_doctrine_from_ships(ship_usage) when ship_usage != [] do
-    # Get the most used ship types and try to infer doctrine
-    _top_ships = ship_usage |> Enum.take(3) |> Enum.map(&elem(&1, 0))
+    # Get the most used ship types
+    top_ships = ship_usage |> Enum.take(5) |> Enum.map(&elem(&1, 0))
 
-    # This is a simplified inference - in reality you'd want more sophisticated logic
-    # For now, just return a basic classification
-    # This could be expanded with actual ship type analysis
-    :small_gang
+    # Use ShipTypes module to analyze the composition
+    ship_classes =
+      top_ships
+      |> Enum.map(&EveDmv.StaticData.ShipTypes.get_ship_class/1)
+      |> Enum.filter(& &1)
+      |> Enum.frequencies()
+
+    # Determine doctrine based on ship class distribution
+    cond do
+      # Check for capital/supercapital dominance
+      Map.get(ship_classes, "Capital", 0) + Map.get(ship_classes, "Supercapital", 0) >= 2 ->
+        :capital_fleet
+
+      # Check for battleship focus
+      Map.get(ship_classes, "Battleship", 0) >= 2 ->
+        :battleship_doctrine
+
+      # Check for cruiser/HAC focus
+      Map.get(ship_classes, "Cruiser", 0) + Map.get(ship_classes, "Heavy Assault Cruiser", 0) >= 2 ->
+        :cruiser_doctrine
+
+      # Check for frigate/destroyer focus
+      Map.get(ship_classes, "Frigate", 0) + Map.get(ship_classes, "Destroyer", 0) >= 2 ->
+        :small_gang
+
+      # If no clear pattern, check total ship count to determine fleet size
+      length(top_ships) >= 3 ->
+        :mixed_doctrine
+
+      # Default to unknown if we can't determine
+      true ->
+        :unknown
+    end
   end
 
   defp infer_doctrine_from_ships(_), do: :unknown
@@ -783,7 +835,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
   defp generate_capabilities_from_data(tactical_prefs) do
     []
     |> then(fn capabilities ->
-      if Map.get(tactical_prefs, :combat_efficiency, 0) > 80 do
+      if Map.get(tactical_prefs, :combat_efficiency, 0) > @efficiency_high_threshold do
         ["High combat effectiveness" | capabilities]
       else
         capabilities
@@ -845,7 +897,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
       end
 
     efficiency_recommendations =
-      if Map.get(tactical_prefs, :combat_efficiency, 0) > 80 do
+      if Map.get(tactical_prefs, :combat_efficiency, 0) > @efficiency_high_threshold do
         ["Exercise caution - effective pilots" | activity_recommendations]
       else
         ["Exploit poor combat record" | activity_recommendations]

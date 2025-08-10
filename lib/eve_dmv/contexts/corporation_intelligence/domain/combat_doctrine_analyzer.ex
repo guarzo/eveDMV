@@ -1303,25 +1303,66 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
 
   defp analyze_tactical_patterns(combat_data) do
     # Analyze actual tactical patterns from combat data
+    # Extract killmails to analyze as engagements
+    killmails = Map.get(combat_data, :killmails, [])
+
+    # Create a simplified engagement structure for coordination analysis
+    sample_engagement =
+      if length(killmails) > 0 do
+        first_killmail = List.first(killmails)
+
+        %{
+          corp_participants:
+            extract_corp_participants(first_killmail, combat_data.corporation_id),
+          killmail: first_killmail
+        }
+      else
+        %{corp_participants: []}
+      end
+
     patterns = %{
       engagement_preferences: analyze_engagement_preferences(combat_data),
       formation_analysis: analyze_formation_patterns(combat_data),
-      coordination_quality: analyze_coordination_quality(combat_data)
+      coordination_quality: analyze_coordination_quality(sample_engagement)
     }
 
     {:ok, patterns}
   end
 
-  defp analyze_engagement_preferences(combat_data) do
-    # Analyze engagement ranges and tactics
-    engagements = combat_data.fleet_engagements || []
+  defp extract_corp_participants(killmail, corporation_id) do
+    # Extract participants from the killmail that belong to the corporation
+    attackers = Map.get(killmail, :attackers, [])
 
-    if Enum.empty?(engagements) do
+    corp_attackers =
+      attackers
+      |> Enum.filter(&(&1.corporation_id == corporation_id))
+      |> Enum.map(&Map.put(&1, :role, :attacker))
+
+    victim = Map.get(killmail, :victim, %{})
+
+    corp_victims =
+      if Map.get(victim, :corporation_id) == corporation_id do
+        [Map.put(victim, :role, :victim)]
+      else
+        []
+      end
+
+    corp_attackers ++ corp_victims
+  end
+
+  defp analyze_engagement_preferences(combat_data) do
+    # Analyze engagement ranges and tactics from killmails
+    killmails = Map.get(combat_data, :killmails, [])
+
+    if Enum.empty?(killmails) do
       %{pattern: :insufficient_data}
     else
+      # Analyze engagement patterns from killmail data
       range_preferences =
-        engagements
-        |> Enum.map(&determine_engagement_range/1)
+        killmails
+        # Analyze up to 100 recent killmails
+        |> Enum.take(100)
+        |> Enum.map(&determine_engagement_range_from_killmail/1)
         |> Enum.frequencies()
 
       primary_range =
@@ -1338,28 +1379,87 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
   end
 
   defp analyze_formation_patterns(combat_data) do
-    # Analyze fleet formation patterns
-    fleets = combat_data.fleet_compositions || []
+    # Analyze fleet formation patterns from active members
+    active_members = Map.get(combat_data, :active_members, [])
+    killmails = Map.get(combat_data, :killmails, [])
 
-    formations =
-      fleets
-      |> Enum.map(&identify_formation_type/1)
-      |> Enum.frequencies()
+    if Enum.empty?(killmails) do
+      %{
+        pattern: :unknown,
+        types_observed: [],
+        frequency: %{}
+      }
+    else
+      # Group killmails by time windows to identify fleet compositions
+      fleet_compositions =
+        killmails
+        # Analyze recent engagements
+        |> Enum.take(50)
+        # 5-minute windows
+        |> Enum.chunk_by(&div(DateTime.to_unix(&1.killmail_time), 300))
+        # Only consider groups with 3+ kills
+        |> Enum.filter(&(length(&1) >= 3))
+        |> Enum.map(&extract_fleet_composition/1)
 
-    %{
-      pattern: formations |> Map.keys() |> List.first() || :unknown,
-      types_observed: Map.keys(formations),
-      frequency: formations
-    }
+      formations =
+        fleet_compositions
+        |> Enum.map(&identify_formation_type/1)
+        |> Enum.frequencies()
+
+      %{
+        pattern: formations |> Map.keys() |> List.first() || :unknown,
+        types_observed: Map.keys(formations),
+        frequency: formations
+      }
+    end
   end
 
-  # This function was already defined earlier, removed duplicate
+  defp determine_engagement_range_from_killmail(killmail) do
+    # Determine engagement range based on weapon types used
+    attackers = Map.get(killmail, :attackers, [])
 
-  defp determine_engagement_range(_engagement) do
-    # Simplified range determination based on ship types
-    # In production, would analyze weapon systems
-    :medium_range
+    weapon_types =
+      attackers
+      |> Enum.map(&Map.get(&1, :weapon_type_id))
+      |> Enum.filter(& &1)
+
+    cond do
+      Enum.any?(weapon_types, &long_range_weapon?/1) -> :long_range
+      Enum.any?(weapon_types, &short_range_weapon?/1) -> :brawling
+      true -> :medium_range
+    end
   end
+
+  defp long_range_weapon?(weapon_type_id) do
+    # Check if weapon is typically long-range (artillery, railguns, etc)
+    # This would ideally check against static data
+    # Example IDs for long-range weapons
+    weapon_type_id in [3520, 3519, 2961, 2969]
+  end
+
+  defp short_range_weapon?(weapon_type_id) do
+    # Check if weapon is typically short-range (blasters, autocannons, etc)
+    # Example IDs for short-range weapons
+    weapon_type_id in [2456, 2457, 2881, 2929]
+  end
+
+  defp extract_fleet_composition(killmails) do
+    # Extract ship types from a group of related killmails
+    killmails
+    |> Enum.flat_map(fn km ->
+      victim_ship = [Map.get(km.victim, :ship_type_id)]
+
+      attacker_ships =
+        km.attackers
+        |> Enum.map(&Map.get(&1, :ship_type_id))
+        |> Enum.filter(& &1)
+
+      victim_ship ++ attacker_ships
+    end)
+    |> Enum.uniq()
+  end
+
+  # Removed duplicate function - using determine_engagement_range_from_killmail instead
 
   defp identify_formation_type(_fleet_comp) do
     # Identify formation based on ship role distribution
