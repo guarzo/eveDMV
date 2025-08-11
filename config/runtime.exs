@@ -212,8 +212,8 @@ if config_env() == :prod do
     prepare: :unnamed,
     # SSL configuration
     ssl: System.get_env("DATABASE_SSL", "false") == "true",
-    # Socket options for keepalive
-    socket_options: [:inet6],
+    # Socket options for keepalive - removed :inet6 as it breaks Docker DNS
+    socket_options: [],
     # Statement timeout to prevent long-running queries
     parameters: [
       statement_timeout: System.get_env("DB_STATEMENT_TIMEOUT", "30000")
