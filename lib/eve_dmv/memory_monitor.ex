@@ -12,13 +12,22 @@ defmodule EveDmv.MemoryMonitor do
   @memory_warning_threshold 1024 * 1024 * 1024
 
   def start_link(_opts) do
+    Logger.info("Starting MemoryMonitor...")
     GenServer.start_link(__MODULE__, nil, name: __MODULE__)
   end
 
   def init(_) do
-    # Schedule first check
-    Process.send_after(self(), :check_memory, @check_interval)
-    {:ok, nil}
+    Logger.info("MemoryMonitor init called")
+    try do
+      # Schedule first check
+      Process.send_after(self(), :check_memory, @check_interval)
+      Logger.info("MemoryMonitor initialized successfully")
+      {:ok, nil}
+    rescue
+      e ->
+        Logger.error("MemoryMonitor init failed: #{inspect(e)}")
+        {:stop, e}
+    end
   end
 
   def handle_info(:check_memory, state) do

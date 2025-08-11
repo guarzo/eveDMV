@@ -144,8 +144,6 @@ end
 # Never override database config in test environment
 if config_env() == :dev and System.get_env("MIX_ENV") != "test" and Mix.env() != :test do
   if database_url = System.get_env("DATABASE_URL") do
-    # Only apply DATABASE_URL if we're not in a test context
-    # Additional safety check to ensure we never override test pool config
     current_pool = Application.get_env(:eve_dmv, EveDmv.Repo)[:pool]
 
     if current_pool != Ecto.Adapters.SQL.Sandbox do
@@ -161,22 +159,6 @@ if config_env() == :test do
     mock_sse_server_enabled: false
 end
 
-# config/runtime.exs is executed for all environments, including
-# during releases. It is executed after compilation and before the
-# system starts, so it is typically used to load production configuration
-# and secrets from environment variables or elsewhere. Do not define
-# any compile-time configuration in here, as it won't be applied.
-# The block below contains prod specific runtime configuration.
-
-# ## Using releases
-#
-# If you use `mix release`, you need to explicitly enable the server
-# by passing the PHX_SERVER=true when you start it:
-#
-#     PHX_SERVER=true bin/eve_dmv start
-#
-# Alternatively, you can use `mix phx.gen.release` to generate a `bin/server`
-# script that automatically sets the env var above.
 if System.get_env("PHX_SERVER") do
   config :eve_dmv, EveDmvWeb.Endpoint, server: true
 end
@@ -212,7 +194,6 @@ if config_env() == :prod do
     prepare: :unnamed,
     # SSL configuration
     ssl: System.get_env("DATABASE_SSL", "false") == "true",
-    # Socket options for keepalive - removed :inet6 as it breaks Docker DNS
     socket_options: [],
     # Statement timeout to prevent long-running queries
     parameters: [

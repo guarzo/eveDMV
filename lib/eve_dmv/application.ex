@@ -109,14 +109,26 @@ defmodule EveDmv.Application do
     ]
 
     children = List.flatten(base_children)
+    
+    # Log each child that will be started
+    Logger.info("Starting EVE DMV with #{length(children)} children:")
+    Enum.each(children, fn child ->
+      case child do
+        {module, _opts} -> Logger.info("  Starting child: #{inspect(module)}")
+        module when is_atom(module) -> Logger.info("  Starting child: #{inspect(module)}")
+        _ -> Logger.info("  Starting child: #{inspect(child)}")
+      end
+    end)
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: EveDmv.Supervisor]
 
     # Start the supervisor
+    Logger.info("Starting supervisor with strategy: #{inspect(opts[:strategy])}")
     case Supervisor.start_link(children, opts) do
       {:ok, pid} ->
+        Logger.info("✅ Supervisor started successfully with PID: #{inspect(pid)}")
         # Initialize DNS resolution and connectivity checks
         Task.start(fn ->
           try do

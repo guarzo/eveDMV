@@ -15,14 +15,23 @@ defmodule EveDmv.Core.Events.EventBus do
   @surveillance_match "surveillance.match"
 
   def start_link(opts \\ []) do
+    Logger.info("Starting EventBus...")
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
   @impl GenServer
   def init(_opts) do
-    # Create ETS table for subscribers
-    :ets.new(:event_bus_subscribers, [:set, :public, :named_table])
-    {:ok, %{subscribers: %{}}}
+    Logger.info("EventBus init called")
+    try do
+      # Create ETS table for subscribers
+      :ets.new(:event_bus_subscribers, [:set, :public, :named_table])
+      Logger.info("EventBus ETS table created successfully")
+      {:ok, %{subscribers: %{}}}
+    rescue
+      e ->
+        Logger.error("EventBus init failed: #{inspect(e)}")
+        {:stop, e}
+    end
   end
 
   @doc """
