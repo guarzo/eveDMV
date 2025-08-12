@@ -13,8 +13,8 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
 
   alias EveDmv.Contexts.Intelligence.Core.LouvainCommunityDetection
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Platform.Database.KillmailRepository
   alias EveDmv.Intelligence.Cache.IntelligenceCache
+  alias EveDmv.Platform.Database.KillmailRepository
   alias EveDmv.StaticData.ShipTypes
 
   require Logger

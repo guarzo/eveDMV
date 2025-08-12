@@ -11,11 +11,11 @@ defmodule EveDmv.Intelligence.Analyzers.CorporationAnalyzer do
   use EveDmv.Intelligence.Analyzer
 
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Platform.Database.QueryUtils
   alias EveDmv.Intelligence.Core.CacheHelper
   alias EveDmv.Intelligence.Core.Config
   alias EveDmv.Intelligence.Core.TimeoutHelper
   alias EveDmv.Intelligence.Core.ValidationHelper
+  alias EveDmv.Platform.Database.QueryUtils
   require Logger
 
   @type member_correlations :: %{

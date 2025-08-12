@@ -18,6 +18,7 @@ defmodule EveDmv.MemoryMonitor do
 
   def init(_) do
     Logger.info("MemoryMonitor init called")
+
     try do
       # Schedule first check
       Process.send_after(self(), :check_memory, @check_interval)

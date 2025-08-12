@@ -6,8 +6,8 @@ defmodule EveDmv.Contexts.Corporation.Services.MemberService do
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Platform.Database.CharacterRepository
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
+  alias EveDmv.Platform.Database.CharacterRepository
   alias EveDmv.Platform.Database.CorporationRepository
   alias EveDmv.Platform.PubSub.CorporationUpdates
 

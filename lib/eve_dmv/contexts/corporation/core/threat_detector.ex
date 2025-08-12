@@ -9,9 +9,9 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
 
   alias EveDmv.Contexts.Corporation.Core.SecurityAnalyzer
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Platform.Database.KillmailRepository
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
   alias EveDmv.Platform.Database.CorporationRepository
+  alias EveDmv.Platform.Database.KillmailRepository
   alias EveDmv.Platform.PubSub.EventBus
 
   require Logger

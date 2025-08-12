@@ -14,11 +14,11 @@ defmodule EveDmv.Platform.Database.KillmailRepository do
 
   alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.Platform.Cache.Cache
   alias EveDmv.Platform.Database.Repository.CacheHelper
   alias EveDmv.Platform.Database.Repository.QueryBuilder
   alias EveDmv.Platform.Database.Repository.TelemetryHelper
-  alias EveDmv.Killmails.KillmailRaw
-  alias EveDmv.Platform.Cache.Cache
 
   require Ash.Query
 

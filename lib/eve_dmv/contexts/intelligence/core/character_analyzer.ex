@@ -14,8 +14,8 @@ defmodule EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer do
   alias EveDmv.Contexts.Intelligence.Core.CombatStatsAnalyzer
   alias EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer
   alias EveDmv.Contexts.Intelligence.Core.ShipPreferenceAnalyzer
-  alias EveDmv.Platform.Database.CharacterRepository
   alias EveDmv.Platform.Cache.Cache
+  alias EveDmv.Platform.Database.CharacterRepository
 
   require Logger
 

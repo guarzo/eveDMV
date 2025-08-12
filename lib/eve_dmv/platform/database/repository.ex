@@ -34,10 +34,10 @@ defmodule EveDmv.Platform.Database.Repository do
 
     quote bind_quoted: [resource: resource, cache_type: cache_type] do
       alias EveDmv.Api
+      alias EveDmv.Platform.Cache.Cache
       alias EveDmv.Platform.Database.Repository.CacheHelper
       alias EveDmv.Platform.Database.Repository.QueryBuilder
       alias EveDmv.Platform.Database.Repository.TelemetryHelper
-      alias EveDmv.Platform.Cache.Cache
 
       require Logger
       require Ash.Query

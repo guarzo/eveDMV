@@ -9,11 +9,11 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityDataCollector do
 
   alias EveDmv.Api
   alias EveDmv.Core.Utils.TimeUtils
-  alias EveDmv.Platform.Database.CharacterRepository
-  alias EveDmv.Platform.Database.KillmailRepository
   alias EveDmv.Eve.EsiUtils
   alias EveDmv.Intelligence.MemberActivityIntelligence
   alias EveDmv.Killmails.Participant
+  alias EveDmv.Platform.Database.CharacterRepository
+  alias EveDmv.Platform.Database.KillmailRepository
 
   require Ash.Query
   require Logger

@@ -7,9 +7,9 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Platform.Cache.QueryCache
   alias EveDmv.Platform.Database.CharacterQueries
   alias EveDmv.Platform.Database.QueryPerformance
-  alias EveDmv.Platform.Cache.QueryCache
   alias EveDmv.Shared.KillmailQueries
   alias EveDmv.StaticData
   require Logger

@@ -22,6 +22,7 @@ defmodule EveDmv.Core.Events.EventBus do
   @impl GenServer
   def init(_opts) do
     Logger.info("EventBus init called")
+
     try do
       # Create ETS table for subscribers
       :ets.new(:event_bus_subscribers, [:set, :public, :named_table])

@@ -13,8 +13,8 @@ defmodule EveDmv.Contexts.ThreatAssessment.Domain.ThreatAnalyzer do
   alias EveDmv.Contexts.ThreatAssessment.Analyzers.VulnerabilityScanner
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Platform.Database.CharacterRepository
-  alias EveDmv.Platform.Database.KillmailRepository
   alias EveDmv.Platform.Database.CorporationRepository
+  alias EveDmv.Platform.Database.KillmailRepository
   alias EveDmv.Shared.MetricsCalculator
 
   require Logger

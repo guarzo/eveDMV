@@ -10,8 +10,8 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
   alias EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer
   alias EveDmv.Contexts.Corporation.Core.MemberRiskAssessment
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Platform.Database.CharacterRepository
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
+  alias EveDmv.Platform.Database.CharacterRepository
   alias EveDmv.Platform.Database.CorporationRepository
 
   require Logger

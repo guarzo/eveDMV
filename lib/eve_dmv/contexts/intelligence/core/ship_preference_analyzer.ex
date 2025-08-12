@@ -9,9 +9,9 @@ defmodule EveDmv.Contexts.Intelligence.Core.ShipPreferenceAnalyzer do
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Platform.Cache.Cache
   alias EveDmv.Platform.Database.CharacterRepository
   alias EveDmv.Platform.Database.KillmailRepository
-  alias EveDmv.Platform.Cache.Cache
   alias EveDmv.Shared.ShipAnalysis
   alias EveDmv.StaticData.ShipTypes
 

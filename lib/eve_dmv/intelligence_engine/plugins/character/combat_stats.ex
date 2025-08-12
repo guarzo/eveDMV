@@ -21,7 +21,10 @@ defmodule EveDmv.IntelligenceEngine.Plugins.Character.CombatStats do
       version: "2.0.0",
       author: "EVE DMV Team",
       tags: [:combat, :statistics, :character],
-      dependencies: [EveDmv.Platform.Database.CharacterRepository, EveDmv.Platform.Database.KillmailRepository]
+      dependencies: [
+        EveDmv.Platform.Database.CharacterRepository,
+        EveDmv.Platform.Database.KillmailRepository
+      ]
     }
   end
 

@@ -6,11 +6,12 @@ defmodule EveDmv.Application do
   @moduledoc false
 
   use Application
-  require Logger
 
   alias EveDmv.Config.RateLimit
   alias EveDmv.Eve.StaticDataLoader
   alias EveDmv.Performance.RegressionDetector
+
+  require Logger
 
   @impl Application
   def start(_type, _args) do
@@ -113,6 +114,7 @@ defmodule EveDmv.Application do
 
     # Log each child that will be started
     Logger.info("Starting EVE DMV with #{length(children)} children:")
+
     Enum.each(children, fn child ->
       case child do
         {module, _opts} -> Logger.info("  Starting child: #{inspect(module)}")
@@ -127,6 +129,7 @@ defmodule EveDmv.Application do
 
     # Start the supervisor
     Logger.info("Starting supervisor with strategy: #{inspect(opts[:strategy])}")
+
     case Supervisor.start_link(children, opts) do
       {:ok, pid} ->
         Logger.info("✅ Supervisor started successfully with PID: #{inspect(pid)}")

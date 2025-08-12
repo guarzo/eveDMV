@@ -12,11 +12,11 @@ defmodule EveDmv.Platform.Database.CharacterRepository do
 
   alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Intelligence.CharacterStats
+  alias EveDmv.Platform.Cache.Cache
   alias EveDmv.Platform.Database.Repository.CacheHelper
   alias EveDmv.Platform.Database.Repository.QueryBuilder
   alias EveDmv.Platform.Database.Repository.TelemetryHelper
-  alias EveDmv.Intelligence.CharacterStats
-  alias EveDmv.Platform.Cache.Cache
   require Ash.Query
 
   @doc """
