@@ -1,5 +1,5 @@
 # credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
-defmodule EveDmv.Database.QueryPlanAnalyzer do
+defmodule EveDmv.Platform.Database.QueryPlanAnalyzer do
   @moduledoc """
   Analyzes PostgreSQL query execution plans to identify performance bottlenecks
   and optimization opportunities.
@@ -11,11 +11,11 @@ defmodule EveDmv.Database.QueryPlanAnalyzer do
   use GenServer
 
   alias Ecto.Adapters.SQL
-  alias EveDmv.Database.QueryPlanAnalyzer.BufferAnalyzer
-  alias EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer
-  alias EveDmv.Database.QueryPlanAnalyzer.PlanAnalyzer
-  alias EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector
-  alias EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer
+  alias EveDmv.Platform.Database.QueryPlanAnalyzer.BufferAnalyzer
+  alias EveDmv.Platform.Database.QueryPlanAnalyzer.IndexAnalyzer
+  alias EveDmv.Platform.Database.QueryPlanAnalyzer.PlanAnalyzer
+  alias EveDmv.Platform.Database.QueryPlanAnalyzer.SlowQueryDetector
+  alias EveDmv.Platform.Database.QueryPlanAnalyzer.TableStatsAnalyzer
   alias EveDmv.Repo
 
   require Logger

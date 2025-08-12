@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.CacheHashManager do
+defmodule EveDmv.Platform.Database.CacheHashManager do
   @moduledoc """
   Sprint 15A: Hash-based cache invalidation manager.
 
@@ -13,7 +13,7 @@ defmodule EveDmv.Database.CacheHashManager do
 
   alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Database.CacheInvalidator
+  alias EveDmv.Platform.Database.CacheInvalidator
   alias EveDmv.Platform.Cache.QueryCache
   require Logger
 

@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.MaterializedViewManager do
+defmodule EveDmv.Platform.Database.MaterializedViewManager do
   @moduledoc """
   Manages materialized views for performance optimization.
 
@@ -8,10 +8,10 @@ defmodule EveDmv.Database.MaterializedViewManager do
 
   use GenServer
 
-  alias EveDmv.Database.MaterializedViewManager.ViewLifecycle
-  alias EveDmv.Database.MaterializedViewManager.ViewMetrics
-  alias EveDmv.Database.MaterializedViewManager.ViewQueryService
-  alias EveDmv.Database.MaterializedViewManager.ViewRefreshScheduler
+  alias EveDmv.Platform.Database.MaterializedViewManager.ViewLifecycle
+  alias EveDmv.Platform.Database.MaterializedViewManager.ViewMetrics
+  alias EveDmv.Platform.Database.MaterializedViewManager.ViewQueryService
+  alias EveDmv.Platform.Database.MaterializedViewManager.ViewRefreshScheduler
 
   require Logger
 

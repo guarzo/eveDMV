@@ -1,5 +1,5 @@
 # credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
-defmodule EveDmv.Database.CacheWarmer do
+defmodule EveDmv.Platform.Database.CacheWarmer do
   @moduledoc """
   Intelligent cache warming for frequently accessed data.
 

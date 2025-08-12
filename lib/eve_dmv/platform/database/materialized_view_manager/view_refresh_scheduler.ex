@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.MaterializedViewManager.ViewRefreshScheduler do
+defmodule EveDmv.Platform.Database.MaterializedViewManager.ViewRefreshScheduler do
   @moduledoc """
   Handles scheduling and execution of materialized view refreshes.
 
@@ -8,7 +8,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewRefreshScheduler do
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Database.MaterializedViewManager.ViewDefinitions
+  alias EveDmv.Platform.Database.MaterializedViewManager.ViewDefinitions
   alias EveDmv.Repo
   require Logger
 

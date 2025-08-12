@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.CorporationQueries do
+defmodule EveDmv.Platform.Database.CorporationQueries do
   @moduledoc """
   Optimized queries for corporation analysis.
 

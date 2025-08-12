@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.PartitionUtils do
+defmodule EveDmv.Platform.Database.PartitionUtils do
   @moduledoc """
   Utility functions for working with partitioned tables.
 

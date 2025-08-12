@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.PerformanceOptimizer do
+defmodule EveDmv.Platform.Database.PerformanceOptimizer do
   @moduledoc """
   Database performance optimization utilities for EVE DMV.
 

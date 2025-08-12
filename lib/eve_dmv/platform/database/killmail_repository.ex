@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.KillmailRepository do
+defmodule EveDmv.Platform.Database.KillmailRepository do
   @moduledoc """
   Repository for killmail data access with optimized queries and caching.
 
@@ -8,15 +8,15 @@ defmodule EveDmv.Database.KillmailRepository do
   """
 
   # Suppress unknown type warnings for generated functions
-  use EveDmv.Database.Repository,
+  use EveDmv.Platform.Database.Repository,
     resource: EveDmv.Killmails.KillmailRaw,
     cache_type: :hot_data
 
   alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Database.Repository.CacheHelper
-  alias EveDmv.Database.Repository.QueryBuilder
-  alias EveDmv.Database.Repository.TelemetryHelper
+  alias EveDmv.Platform.Database.Repository.CacheHelper
+  alias EveDmv.Platform.Database.Repository.QueryBuilder
+  alias EveDmv.Platform.Database.Repository.TelemetryHelper
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Platform.Cache.Cache
 

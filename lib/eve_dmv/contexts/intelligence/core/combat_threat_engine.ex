@@ -6,7 +6,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.CombatThreatEngine do
 
   alias EveDmv.Contexts.Intelligence.Core.CombatStatsAnalyzer
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Database.KillmailRepository
+  alias EveDmv.Platform.Database.KillmailRepository
 
   require Logger
 

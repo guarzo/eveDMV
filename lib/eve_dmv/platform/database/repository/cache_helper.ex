@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.Repository.CacheHelper do
+defmodule EveDmv.Platform.Database.Repository.CacheHelper do
   @moduledoc """
   Cache integration utilities for the repository pattern.
 

@@ -1,5 +1,5 @@
 # credo:disable-for-this-file Credo.Check.Refactor.LongQuoteBlocks
-defmodule EveDmv.Database.Repository do
+defmodule EveDmv.Platform.Database.Repository do
   @moduledoc """
   Base repository pattern for consistent database access across EVE DMV.
 
@@ -8,8 +8,8 @@ defmodule EveDmv.Database.Repository do
 
   ## Usage
 
-      defmodule EveDmv.Database.KillmailRepository do
-        use EveDmv.Database.Repository,
+      defmodule EveDmv.Platform.Database.KillmailRepository do
+        use EveDmv.Platform.Database.Repository,
           resource: EveDmv.Killmails.KillmailEnriched,
           cache_type: :hot_data
       end
@@ -34,9 +34,9 @@ defmodule EveDmv.Database.Repository do
 
     quote bind_quoted: [resource: resource, cache_type: cache_type] do
       alias EveDmv.Api
-      alias EveDmv.Database.Repository.CacheHelper
-      alias EveDmv.Database.Repository.QueryBuilder
-      alias EveDmv.Database.Repository.TelemetryHelper
+      alias EveDmv.Platform.Database.Repository.CacheHelper
+      alias EveDmv.Platform.Database.Repository.QueryBuilder
+      alias EveDmv.Platform.Database.Repository.TelemetryHelper
       alias EveDmv.Platform.Cache.Cache
 
       require Logger

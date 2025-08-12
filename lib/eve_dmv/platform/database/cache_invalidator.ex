@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.CacheInvalidator do
+defmodule EveDmv.Platform.Database.CacheInvalidator do
   @moduledoc """
   Comprehensive cache invalidation strategy for maintaining cache coherency.
 
@@ -8,7 +8,7 @@ defmodule EveDmv.Database.CacheInvalidator do
 
   use GenServer
 
-  alias EveDmv.Database.CacheWarmer
+  alias EveDmv.Platform.Database.CacheWarmer
   alias EveDmv.Platform.Cache.QueryCache
   alias Phoenix.PubSub
 

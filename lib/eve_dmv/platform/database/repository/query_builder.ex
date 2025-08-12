@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.Repository.QueryBuilder do
+defmodule EveDmv.Platform.Database.Repository.QueryBuilder do
   @moduledoc """
   Query building utilities for the repository pattern.
 

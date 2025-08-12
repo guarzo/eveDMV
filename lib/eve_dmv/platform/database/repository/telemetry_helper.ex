@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.Repository.TelemetryHelper do
+defmodule EveDmv.Platform.Database.Repository.TelemetryHelper do
   @moduledoc """
   Telemetry integration for repository pattern performance monitoring.
 

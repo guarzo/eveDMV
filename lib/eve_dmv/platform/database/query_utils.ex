@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.QueryUtils do
+defmodule EveDmv.Platform.Database.QueryUtils do
   @moduledoc """
   Common Ash query patterns and utilities used across intelligence modules.
 

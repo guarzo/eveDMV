@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.ArchiveManager.ArchiveMetrics do
+defmodule EveDmv.Platform.Database.ArchiveManager.ArchiveMetrics do
   @moduledoc """
   Provides metrics and monitoring for archive operations.
 
@@ -8,8 +8,8 @@ defmodule EveDmv.Database.ArchiveManager.ArchiveMetrics do
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Database.ArchiveManager.ArchiveOperations
-  alias EveDmv.Database.ArchiveManager.PartitionManager
+  alias EveDmv.Platform.Database.ArchiveManager.ArchiveOperations
+  alias EveDmv.Platform.Database.ArchiveManager.PartitionManager
   alias EveDmv.Repo
 
   require Logger

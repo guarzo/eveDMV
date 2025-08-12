@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.PartitionAutomation do
+defmodule EveDmv.Platform.Database.PartitionAutomation do
   @moduledoc """
   Automated partition management for killmail tables.
 

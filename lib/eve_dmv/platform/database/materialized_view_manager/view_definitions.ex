@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.MaterializedViewManager.ViewDefinitions do
+defmodule EveDmv.Platform.Database.MaterializedViewManager.ViewDefinitions do
   @moduledoc """
   Materialized view query definitions and configuration.
 

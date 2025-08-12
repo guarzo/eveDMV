@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.ArchiveManager.PartitionManager do
+defmodule EveDmv.Platform.Database.ArchiveManager.PartitionManager do
   @moduledoc """
   Handles partition creation and table management for archive operations.
 

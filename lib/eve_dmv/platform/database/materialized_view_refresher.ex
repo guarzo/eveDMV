@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.MaterializedViewRefresher do
+defmodule EveDmv.Platform.Database.MaterializedViewRefresher do
   @moduledoc """
   Sprint 15A: GenServer responsible for periodically refreshing materialized views.
 

@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.CharacterRepository do
+defmodule EveDmv.Platform.Database.CharacterRepository do
   @moduledoc """
   Repository for character statistics and intelligence data.
 
@@ -6,15 +6,15 @@ defmodule EveDmv.Database.CharacterRepository do
   and performance monitoring specifically designed for hunter analysis.
   """
 
-  use EveDmv.Database.Repository,
+  use EveDmv.Platform.Database.Repository,
     resource: EveDmv.Intelligence.CharacterStats,
     cache_type: :analysis
 
   alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Database.Repository.CacheHelper
-  alias EveDmv.Database.Repository.QueryBuilder
-  alias EveDmv.Database.Repository.TelemetryHelper
+  alias EveDmv.Platform.Database.Repository.CacheHelper
+  alias EveDmv.Platform.Database.Repository.QueryBuilder
+  alias EveDmv.Platform.Database.Repository.TelemetryHelper
   alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Platform.Cache.Cache
   require Ash.Query
@@ -206,7 +206,7 @@ defmodule EveDmv.Database.CharacterRepository do
   def get_character_killmails_since(character_id, since_date) do
     TelemetryHelper.measure_query("character_stats", :get_killmails_since, fn ->
       # Use the existing killmail repository functionality
-      EveDmv.Database.KillmailRepository.get_by_character(character_id,
+      EveDmv.Platform.Database.KillmailRepository.get_by_character(character_id,
         start_date: since_date,
         limit: 1000
       )

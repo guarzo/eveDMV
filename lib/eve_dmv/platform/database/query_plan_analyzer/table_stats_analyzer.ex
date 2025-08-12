@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
+defmodule EveDmv.Platform.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
   @moduledoc """
   Table statistics analysis module for database health monitoring.
 

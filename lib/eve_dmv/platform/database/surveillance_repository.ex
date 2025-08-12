@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.SurveillanceRepository do
+defmodule EveDmv.Platform.Database.SurveillanceRepository do
   @moduledoc """
   Repository for surveillance profile operations.
 

@@ -6,6 +6,7 @@ defmodule EveDmv.Application do
   @moduledoc false
 
   use Application
+  require Logger
 
   alias EveDmv.Config.RateLimit
   alias EveDmv.Eve.StaticDataLoader
@@ -109,7 +110,7 @@ defmodule EveDmv.Application do
     ]
 
     children = List.flatten(base_children)
-    
+
     # Log each child that will be started
     Logger.info("Starting EVE DMV with #{length(children)} children:")
     Enum.each(children, fn child ->
@@ -190,7 +191,7 @@ defmodule EveDmv.Application do
     if Application.get_env(:eve_dmv, :environment, :prod) != :test do
       [
         EveDmv.Telemetry.QueryMonitor,
-        # EveDmv.Database.QueryCache, # Removed - duplicate of EveDmv.Platform.Cache.QueryCache
+        # EveDmv.Platform.Database.QueryCache, # Removed - duplicate of EveDmv.Platform.Cache.QueryCache
         EveDmv.Platform.Database.CacheWarmer,
         EveDmv.Platform.Database.ConnectionPoolMonitor,
         EveDmv.Platform.Database.PartitionManager,

@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.QueryPerformance do
+defmodule EveDmv.Platform.Database.QueryPerformance do
   @moduledoc """
   Performance tracking wrapper for database queries.
 
@@ -50,7 +50,7 @@ defmodule EveDmv.Database.QueryPerformance do
 
   ## Examples
 
-      import EveDmv.Database.QueryPerformance
+      import EveDmv.Platform.Database.QueryPerformance
 
       track_query "get_character_kills" do
         Repo.query(sql, [character_id])

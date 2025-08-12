@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.MaterializedViewManager.ViewQueryService do
+defmodule EveDmv.Platform.Database.MaterializedViewManager.ViewQueryService do
   @moduledoc """
   Provides query services for materialized views.
 

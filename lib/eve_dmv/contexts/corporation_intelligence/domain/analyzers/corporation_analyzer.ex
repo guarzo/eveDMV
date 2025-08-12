@@ -11,7 +11,7 @@ defmodule EveDmv.Intelligence.Analyzers.CorporationAnalyzer do
   use EveDmv.Intelligence.Analyzer
 
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Database.QueryUtils
+  alias EveDmv.Platform.Database.QueryUtils
   alias EveDmv.Intelligence.Core.CacheHelper
   alias EveDmv.Intelligence.Core.Config
   alias EveDmv.Intelligence.Core.TimeoutHelper

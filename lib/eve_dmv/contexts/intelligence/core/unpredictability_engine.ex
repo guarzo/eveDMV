@@ -7,7 +7,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.UnpredictabilityEngine do
 
   alias EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Database.KillmailRepository
+  alias EveDmv.Platform.Database.KillmailRepository
 
   require Logger
 

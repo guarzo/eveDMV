@@ -1,5 +1,5 @@
 # credo:disable-for-this-file Credo.Check.Refactor.ModuleDependencies
-defmodule EveDmv.Database.HealthCheck do
+defmodule EveDmv.Platform.Database.HealthCheck do
   @moduledoc """
   Comprehensive database health monitoring and diagnostic tools.
 

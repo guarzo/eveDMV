@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.MaterializedViewManager.ViewLifecycle do
+defmodule EveDmv.Platform.Database.MaterializedViewManager.ViewLifecycle do
   @moduledoc """
   Manages the lifecycle of materialized views.
 
@@ -7,7 +7,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewLifecycle do
   """
 
   alias Ecto.Adapters.SQL
-  alias EveDmv.Database.MaterializedViewManager.ViewDefinitions
+  alias EveDmv.Platform.Database.MaterializedViewManager.ViewDefinitions
   alias EveDmv.Repo
   require Logger
 

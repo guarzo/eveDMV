@@ -6,7 +6,7 @@ defmodule EveDmv.Performance.QueryMonitor do
   performance metrics for database operations.
   """
 
-  alias EveDmv.Database.QueryPlanAnalyzer
+  alias EveDmv.Platform.Database.QueryPlanAnalyzer
 
   require Logger
 

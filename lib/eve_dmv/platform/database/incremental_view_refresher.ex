@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.IncrementalViewRefresher do
+defmodule EveDmv.Platform.Database.IncrementalViewRefresher do
   @moduledoc """
   Incremental materialized view refresh strategy for improved performance.
 

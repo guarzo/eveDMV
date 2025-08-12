@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.ArchiveManager.ArchiveOperations do
+defmodule EveDmv.Platform.Database.ArchiveManager.ArchiveOperations do
   @moduledoc """
   Handles archive operations including data movement from active tables to archive tables.
 

@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.ArchiveManager do
+defmodule EveDmv.Platform.Database.ArchiveManager do
   @moduledoc """
   Manages data archiving and lifecycle for the EVE DMV application.
 
@@ -8,11 +8,11 @@ defmodule EveDmv.Database.ArchiveManager do
 
   use GenServer
 
-  alias EveDmv.Database.ArchiveManager.ArchiveMetrics
-  alias EveDmv.Database.ArchiveManager.ArchiveOperations
-  alias EveDmv.Database.ArchiveManager.MaintenanceScheduler
-  alias EveDmv.Database.ArchiveManager.PartitionManager
-  alias EveDmv.Database.ArchiveManager.RestoreOperations
+  alias EveDmv.Platform.Database.ArchiveManager.ArchiveMetrics
+  alias EveDmv.Platform.Database.ArchiveManager.ArchiveOperations
+  alias EveDmv.Platform.Database.ArchiveManager.MaintenanceScheduler
+  alias EveDmv.Platform.Database.ArchiveManager.PartitionManager
+  alias EveDmv.Platform.Database.ArchiveManager.RestoreOperations
 
   require Logger
 

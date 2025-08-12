@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.QueryHelpers do
+defmodule EveDmv.Platform.Database.QueryHelpers do
   @moduledoc """
   Query safety helpers and limits to prevent runaway queries and ensure
   optimal database performance.

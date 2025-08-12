@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.QueryOptimizations do
+defmodule EveDmv.Platform.Database.QueryOptimizations do
   @moduledoc """
   Specific query optimizations for common EVE DMV operations.
 

@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.QueryPlanAnalyzer.IndexAnalyzer do
+defmodule EveDmv.Platform.Database.QueryPlanAnalyzer.IndexAnalyzer do
   @moduledoc """
   Index usage analysis module for PostgreSQL query plans.
 

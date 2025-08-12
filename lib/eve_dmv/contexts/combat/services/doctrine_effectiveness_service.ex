@@ -8,7 +8,7 @@ defmodule EveDmv.Contexts.Combat.Services.DoctrineEffectivenessService do
   fleet compositions perform against each other.
   """
 
-  alias EveDmv.Database.KillmailRepository
+  alias EveDmv.Platform.Database.KillmailRepository
   alias EveDmv.StaticData.ShipTypes
   # alias EveDmv.Contexts.Combat.Core.BattleAnalyzer
   alias EveDmv.Core.Utils.DateTimeUtils

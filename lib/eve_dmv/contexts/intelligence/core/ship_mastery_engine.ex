@@ -5,7 +5,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.ShipMasteryEngine do
   """
 
   alias EveDmv.Contexts.Intelligence.Core.ShipPreferenceAnalyzer
-  alias EveDmv.Database.CharacterRepository
+  alias EveDmv.Platform.Database.CharacterRepository
 
   require Logger
 

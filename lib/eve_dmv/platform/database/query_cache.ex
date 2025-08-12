@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.QueryCache do
+defmodule EveDmv.Platform.Database.QueryCache do
   @moduledoc """
   Query cache adapter using the unified cache system.
 

@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.QueryOptimizer do
+defmodule EveDmv.Platform.Database.QueryOptimizer do
   @moduledoc """
   Query optimization utilities for identifying and resolving N+1 query patterns.
 

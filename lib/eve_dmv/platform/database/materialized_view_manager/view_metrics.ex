@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
+defmodule EveDmv.Platform.Database.MaterializedViewManager.ViewMetrics do
   @moduledoc """
   Provides performance metrics and analysis for materialized views.
 
@@ -7,7 +7,7 @@ defmodule EveDmv.Database.MaterializedViewManager.ViewMetrics do
   """
 
   alias Ecto.Adapters.SQL
-  alias EveDmv.Database.MaterializedViewManager.ViewDefinitions
+  alias EveDmv.Platform.Database.MaterializedViewManager.ViewDefinitions
   alias EveDmv.Repo
 
   require Logger

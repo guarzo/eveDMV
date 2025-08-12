@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
+defmodule EveDmv.Platform.Database.ArchiveManager.MaintenanceScheduler do
   @moduledoc """
   Handles scheduled maintenance tasks for archive management.
 
@@ -8,8 +8,8 @@ defmodule EveDmv.Database.ArchiveManager.MaintenanceScheduler do
 
   alias Ecto.Adapters.SQL
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Database.ArchiveManager.ArchiveOperations
-  alias EveDmv.Database.ArchiveManager.PartitionManager
+  alias EveDmv.Platform.Database.ArchiveManager.ArchiveOperations
+  alias EveDmv.Platform.Database.ArchiveManager.PartitionManager
   alias EveDmv.Repo
 
   require Logger

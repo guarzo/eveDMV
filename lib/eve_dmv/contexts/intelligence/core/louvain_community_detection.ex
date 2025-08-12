@@ -12,7 +12,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.LouvainCommunityDetection do
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Database.CharacterRepository
+  alias EveDmv.Platform.Database.CharacterRepository
 
   @doc """
   Detect communities in a network using the Louvain algorithm.

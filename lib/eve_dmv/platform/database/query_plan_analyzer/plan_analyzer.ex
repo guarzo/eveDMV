@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.QueryPlanAnalyzer.PlanAnalyzer do
+defmodule EveDmv.Platform.Database.QueryPlanAnalyzer.PlanAnalyzer do
   @moduledoc """
   Query execution plan parsing and analysis module.
 

@@ -10,7 +10,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.CombatStatsAnalyzer do
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Database.KillmailRepository
+  alias EveDmv.Platform.Database.KillmailRepository
   alias EveDmv.Platform.Cache.Cache
   alias EveDmv.StaticData.ShipTypes
 

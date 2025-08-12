@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.PartitionManager do
+defmodule EveDmv.Platform.Database.PartitionManager do
   @moduledoc """
   Manages automated partition creation, maintenance, and cleanup for time-partitioned tables.
 

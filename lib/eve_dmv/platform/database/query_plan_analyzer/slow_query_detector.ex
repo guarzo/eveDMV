@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.QueryPlanAnalyzer.SlowQueryDetector do
+defmodule EveDmv.Platform.Database.QueryPlanAnalyzer.SlowQueryDetector do
   @moduledoc """
   Slow query detection and monitoring module.
 

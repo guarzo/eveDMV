@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.ConnectionPoolMonitor do
+defmodule EveDmv.Platform.Database.ConnectionPoolMonitor do
   @moduledoc """
   Monitors database connection pool health and metrics.
 

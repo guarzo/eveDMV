@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.ArchiveManager.RestoreOperations do
+defmodule EveDmv.Platform.Database.ArchiveManager.RestoreOperations do
   @moduledoc """
   Handles restore operations for moving data from archive tables back to active tables.
 
@@ -7,8 +7,8 @@ defmodule EveDmv.Database.ArchiveManager.RestoreOperations do
   """
 
   alias Ecto.Adapters.SQL
-  alias EveDmv.Database.ArchiveManager.ArchiveOperations
-  alias EveDmv.Database.ArchiveManager.PartitionManager
+  alias EveDmv.Platform.Database.ArchiveManager.ArchiveOperations
+  alias EveDmv.Platform.Database.ArchiveManager.PartitionManager
   alias EveDmv.Repo
 
   require Logger

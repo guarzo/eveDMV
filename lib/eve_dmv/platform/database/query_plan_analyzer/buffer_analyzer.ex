@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.QueryPlanAnalyzer.BufferAnalyzer do
+defmodule EveDmv.Platform.Database.QueryPlanAnalyzer.BufferAnalyzer do
   @moduledoc """
   Buffer usage analysis module for PostgreSQL query plans.
 

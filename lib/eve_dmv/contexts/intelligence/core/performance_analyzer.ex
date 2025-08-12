@@ -12,7 +12,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.PerformanceAnalyzer do
   alias EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer
   alias EveDmv.Contexts.Intelligence.Core.CombatStatsAnalyzer
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Database.KillmailRepository
+  alias EveDmv.Platform.Database.KillmailRepository
   alias EveDmv.Platform.Cache.Cache
 
   require Logger

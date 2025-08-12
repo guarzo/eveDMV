@@ -9,7 +9,7 @@ defmodule EveDmv.Contexts.Corporation.Core.CombatDoctrineAnalyzer do
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Database.CharacterRepository
+  alias EveDmv.Platform.Database.CharacterRepository
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
   alias EveDmv.Platform.Database.CorporationRepository
   alias EveDmv.StaticData.ShipTypes

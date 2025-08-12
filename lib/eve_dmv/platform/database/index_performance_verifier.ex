@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.IndexPerformanceVerifier do
+defmodule EveDmv.Platform.Database.IndexPerformanceVerifier do
   @moduledoc """
   Verifies the effectiveness of database indexes using EXPLAIN queries.
 

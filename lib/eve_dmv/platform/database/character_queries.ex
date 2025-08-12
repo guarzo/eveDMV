@@ -1,11 +1,11 @@
-defmodule EveDmv.Database.CharacterQueries do
+defmodule EveDmv.Platform.Database.CharacterQueries do
   @moduledoc """
   Optimized queries for character analysis.
 
   Uses materialized views and efficient indexing to avoid expensive JSONB operations.
   """
 
-  alias EveDmv.Database.Pagination
+  alias EveDmv.Platform.Database.Pagination
   alias EveDmv.Platform.Cache.QueryCache
   alias EveDmv.Repo
   require Logger

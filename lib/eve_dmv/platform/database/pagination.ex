@@ -1,4 +1,4 @@
-defmodule EveDmv.Database.Pagination do
+defmodule EveDmv.Platform.Database.Pagination do
   @moduledoc """
   Pagination utilities for database queries.
 

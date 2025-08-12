@@ -14,7 +14,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.PlayerStatsEngine do
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Database.CharacterRepository
+  alias EveDmv.Platform.Database.CharacterRepository
   alias EveDmv.Intelligence.Cache.IntelligenceCache
 
   require Logger
