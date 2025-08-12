@@ -200,7 +200,7 @@ defmodule EveDmv.MixProject do
       {:hackney, "~> 1.20"},
       {:dotenvy, "~> 1.1"},
       {:nimble_csv, "~> 1.2"},
-      {:hammer, "~> 6.2"},
+      {:hammer, "~> 7.1"},
       # For native bzip2 decompression (requires libbz2-dev/bzip2-dev system package)
       {:bzip2, "~> 0.3.0"},
       {:cowboy, "~> 2.9", only: [:dev, :test]},
