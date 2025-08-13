@@ -12,7 +12,6 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ProfileManagementService do
   Works with real surveillance profile data stored in the database.
   """
 
-  alias EveDmv.Api
   alias EveDmv.Contexts.Surveillance.Domain.AdvancedFilterEngine
   alias EveDmv.Shared.Infrastructure.UnifiedCache
   alias EveDmv.Surveillance.Profile
@@ -47,7 +46,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ProfileManagementService do
          :ok <- validate_profile_data(profile_data),
          {:ok, optimized_criteria} <- optimize_criteria(profile_data[:criteria]),
          profile_attrs <- build_profile_attributes(user_id, profile_data, optimized_criteria),
-         {:ok, profile} <- Api.create(Profile, profile_attrs) do
+         {:ok, profile} <- Ash.create(Profile, profile_attrs, domain: EveDmv.Api) do
       # Clear user's profile cache
       UnifiedCache.delete(:surveillance, {:user_profiles, user_id})
 
@@ -86,7 +85,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ProfileManagementService do
          :ok <- validate_profile_ownership(profile, updates[:user_id]),
          :ok <- validate_profile_updates(updates),
          {:ok, processed_updates} <- process_profile_updates(profile, updates),
-         {:ok, updated_profile} <- Api.update(profile, processed_updates) do
+         {:ok, updated_profile} <- Ash.update(profile, processed_updates, domain: EveDmv.Api) do
       # Clear caches
       UnifiedCache.delete(:surveillance, {:profile, profile_id})
       UnifiedCache.delete(:surveillance, {:user_profiles, profile.user_id})
@@ -175,7 +174,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ProfileManagementService do
       |> Ash.Query.filter(user_id == ^user_id)
       |> Ash.Query.filter(deleted == false)
 
-    case Api.count(query) do
+    case Ash.count(query, domain: EveDmv.Api) do
       {:ok, count} -> {:ok, count}
       {:error, reason} -> {:error, reason}
     end
@@ -231,7 +230,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ProfileManagementService do
         {:ok, profile}
 
       {:error, :not_found} ->
-        case Api.get(Profile, profile_id) do
+        case Ash.get(Profile, profile_id, domain: EveDmv.Api) do
           {:ok, profile} ->
             UnifiedCache.put(:surveillance, cache_key, profile, @cache_ttl)
             {:ok, profile}
@@ -307,7 +306,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ProfileManagementService do
       |> Ash.Query.filter(active == true)
       |> Ash.Query.filter(deleted == false)
 
-    case Api.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, profiles} ->
         # Filter profiles that reference threat levels in criteria
         Enum.filter(profiles, fn profile ->
@@ -408,7 +407,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ProfileManagementService do
           |> Ash.Query.filter(deleted == false)
           |> Ash.Query.sort(created_at: :desc)
 
-        case Api.read(query) do
+        case Ash.read(query, domain: EveDmv.Api) do
           {:ok, profiles} ->
             UnifiedCache.put(:surveillance, cache_key, profiles, @cache_ttl)
             {:ok, profiles}

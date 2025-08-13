@@ -85,7 +85,7 @@ defmodule EveDmv.Users.AccountManager do
           update_params
         end
 
-      case Api.update(account, update_params) do
+      case Ash.update(account, update_params, domain: EveDmv.Api) do
         {:ok, updated_account} ->
           {:ok, updated_account, character}
 
@@ -103,7 +103,7 @@ defmodule EveDmv.Users.AccountManager do
     User
     |> Ash.Query.new()
     |> Ash.Query.filter(account_id: account_id)
-    |> Api.read!()
+    |> Ash.read!(domain: EveDmv.Api)
   end
 
   @doc """
@@ -159,7 +159,7 @@ defmodule EveDmv.Users.AccountManager do
     Enum.each(source_characters, fn character ->
       attrs = %{account_id: target_account_id}
 
-      case Api.update(character, attrs) do
+      case Ash.update(character, attrs, domain: EveDmv.Api) do
         {:ok, _updated} -> :ok
         {:error, reason} -> raise "Failed to update character: #{inspect(reason)}"
       end
@@ -169,14 +169,14 @@ defmodule EveDmv.Users.AccountManager do
     if is_nil(target_account.primary_character_id) && source_account.primary_character_id do
       attrs = %{primary_character_id: source_account.primary_character_id}
 
-      case Api.update(target_account, attrs) do
+      case Ash.update(target_account, attrs, domain: EveDmv.Api) do
         {:ok, _updated} -> :ok
         {:error, reason} -> raise "Failed to update target account: #{inspect(reason)}"
       end
     end
 
     # Delete the source account
-    case Api.destroy(source_account) do
+    case Ash.destroy(source_account, domain: EveDmv.Api) do
       :ok -> :ok
       {:error, reason} -> raise "Destroy failed: #{inspect(reason)}"
     end
@@ -192,7 +192,7 @@ defmodule EveDmv.Users.AccountManager do
   def update_account_activity(account_id) do
     account = get_account!(account_id)
 
-    Api.update(account, %{}, action: :update_last_login)
+    Ash.update(account, %{}, action: :update_last_login, domain: EveDmv.Api)
   end
 
   # Private functions
@@ -212,13 +212,13 @@ defmodule EveDmv.Users.AccountManager do
   defp link_user_to_account(user, account) do
     user
     |> Ash.Changeset.for_update(:update, %{account_id: account.id})
-    |> then(fn changeset -> Api.update(changeset.data, changeset) end)
+    |> then(fn changeset -> Ash.update(changeset.data, changeset, domain: EveDmv.Api) end)
   end
 
   @spec get_account!(account_id()) :: account() | no_return()
   defp get_account!(account_id) do
     Account
-    |> Api.get(account_id)
+    |> Ash.get(account_id, domain: Api)
     |> case do
       {:ok, account} -> account
       _ -> raise "Account not found"
@@ -228,7 +228,7 @@ defmodule EveDmv.Users.AccountManager do
   @spec get_user_by_id!(user_id()) :: user() | no_return()
   defp get_user_by_id!(user_id) do
     User
-    |> Api.get(user_id)
+    |> Ash.get(user_id, domain: Api)
     |> case do
       {:ok, user} -> user
       _ -> raise "User not found"

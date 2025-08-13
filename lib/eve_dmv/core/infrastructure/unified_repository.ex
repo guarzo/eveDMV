@@ -117,7 +117,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   """
   @spec create(domain(), resource(), map(), options()) :: {:ok, struct()} | {:error, term()}
   def create(domain, resource, attrs, opts \\ []) do
-    case Api.create(resource, attrs, opts) do
+    case Ash.create(resource, attrs, Keyword.put(opts, :domain, EveDmv.Api)) do
       {:ok, created_resource} ->
         invalidate_resource_cache(domain, resource)
         track_write_operation(domain, resource, :create)
@@ -134,7 +134,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   @spec update(domain(), resource(), struct(), map(), options()) ::
           {:ok, struct()} | {:error, term()}
   def update(domain, resource, record, attrs, opts \\ []) do
-    case Api.update(record, attrs, opts) do
+    case Ash.update(record, attrs, Keyword.put(opts, :domain, EveDmv.Api)) do
       {:ok, updated_resource} ->
         invalidate_resource_cache(domain, resource)
         track_write_operation(domain, resource, :update)
@@ -150,7 +150,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   """
   @spec delete(domain(), resource(), struct(), options()) :: :ok | {:error, term()}
   def delete(domain, resource, record, opts \\ []) do
-    case Api.destroy(record, opts) do
+    case Ash.destroy(record, Keyword.put(opts, :domain, EveDmv.Api)) do
       :ok ->
         invalidate_resource_cache(domain, resource)
         track_write_operation(domain, resource, :delete)
@@ -167,7 +167,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   @spec bulk_create(domain(), resource(), list(map()), options()) ::
           {:ok, list()} | {:error, list()}
   def bulk_create(domain, resource, attrs_list, opts \\ []) do
-    case Api.bulk_create(attrs_list, resource, :create, opts) do
+    case Ash.bulk_create(attrs_list, resource, :create, opts) do
       %Ash.BulkResult{records: created_resources, errors: []} ->
         invalidate_resource_cache(domain, resource)
         track_write_operation(domain, resource, :bulk_create, length(created_resources))
@@ -490,7 +490,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
 
     try do
       results =
-        Api.read!(EveDmv.PlayerProfile.PlayerProfile,
+        Ash.read!(EveDmv.PlayerProfile.PlayerProfile,
           filter: [character_id: [in: character_ids]],
           preload: preload
         )
@@ -619,7 +619,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   @spec get_character_alliance_info(integer()) :: {:ok, map()} | {:error, term()}
   def get_character_alliance_info(character_id) do
     # Query character stats for alliance information
-    case Api.get(EveDmv.Intelligence.CharacterStats, character_id) do
+    case Ash.get(EveDmv.Intelligence.CharacterStats, character_id, domain: EveDmv.Api) do
       {:ok, stats} ->
         {:ok,
          %{

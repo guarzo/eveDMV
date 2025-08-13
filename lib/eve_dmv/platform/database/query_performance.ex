@@ -35,7 +35,7 @@ defmodule EveDmv.Platform.Database.QueryPerformance do
         fn ->
           KillmailRaw
           |> Ash.Query.filter(killmail_time > ^since)
-          |> Api.read!()
+          |> Ash.read!(domain: EveDmv.Api)
         end
       )
   """

@@ -7,7 +7,7 @@ defmodule EveDmvWeb.HealthController do
 
   import Plug.Conn
 
-  alias EveDmv.Database.HealthCheck
+  alias EveDmv.Platform.Database.HealthCheck
 
   @doc """
   Health check endpoint for load balancers and monitoring systems.

@@ -11,7 +11,6 @@ defmodule EveDmv.Contexts.Combat.Services.BattleService do
 
   import Ecto.Query
 
-  alias EveDmv.Api
   alias EveDmv.Contexts.BattleAnalysis.Core.BattleDetector
   alias EveDmv.Contexts.BattleAnalysis.Resources.Battle
   alias EveDmv.Contexts.BattleAnalysis.Resources.BattleKillmail
@@ -308,9 +307,9 @@ defmodule EveDmv.Contexts.Combat.Services.BattleService do
 
   defp delete_battle_killmails(battle_id) do
     # Delete all BattleKillmail records for this battle
-    Api.read!(BattleKillmail, action: :read, filter: [battle_id: battle_id])
+    Ash.read!(BattleKillmail, action: :read, filter: [battle_id: battle_id], domain: EveDmv.Api)
     |> Enum.each(fn killmail ->
-      Api.destroy(killmail, action: :destroy)
+      Ash.destroy(killmail, action: :destroy, domain: EveDmv.Api)
     end)
 
     {:ok, :deleted}
@@ -342,7 +341,7 @@ defmodule EveDmv.Contexts.Combat.Services.BattleService do
   defp apply_search_filter(_, query), do: query
 
   defp fetch_battles(battle_ids) do
-    case Api.read(Battle, action: :read) do
+    case Ash.read(Battle, action: :read, domain: EveDmv.Api) do
       {:ok, all_battles} ->
         battles = Enum.filter(all_battles, fn battle -> battle.id in battle_ids end)
         {:ok, battles}

@@ -6,7 +6,6 @@ defmodule EveDmv.Contexts.FleetOperations.Core.MassCalculator do
   and wormhole mass limits for strategic planning.
   """
 
-  alias EveDmv.Api
   alias EveDmv.StaticData.ShipTypes
   require Logger
 
@@ -158,7 +157,7 @@ defmodule EveDmv.Contexts.FleetOperations.Core.MassCalculator do
   # Private functions
 
   defp get_ship_mass_data(ship_type_id) do
-    case Api.get(ShipTypes, ship_type_id) do
+    case Ash.get(ShipTypes, ship_type_id, domain: EveDmv.Api) do
       {:ok, ship_type} ->
         {:ok,
          %{

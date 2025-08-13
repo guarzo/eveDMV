@@ -287,7 +287,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
       |> Ash.Query.for_read(:by_corporation, %{corporation_id: corporation_id})
       |> Ash.Query.filter(killmail_time >= ^time_cutoff)
 
-    case Api.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, participants} ->
         # Calculate metrics
         total_activities = length(participants)
@@ -357,7 +357,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
       |> Ash.Query.for_read(:by_corporation, %{corporation_id: corporation_id})
       |> Ash.Query.limit(1)
 
-    case Api.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, [participant | _]} ->
         {:ok,
          %{
@@ -630,7 +630,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
       |> Ash.Query.filter(killmail_time >= ^ninety_days_ago)
       |> Ash.Query.select([:character_id])
 
-    case Api.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, participants} ->
         count =
           participants
@@ -700,7 +700,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
       |> Ash.Query.filter(killmail_time >= ^ninety_days_ago)
       |> Ash.Query.limit(1000)
 
-    case Api.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, participants} when participants != [] ->
         valid_participants = participants |> Enum.filter(& &1.character_id)
 
@@ -946,7 +946,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
           |> Ash.Query.filter(killmail_time >= ^start_date and killmail_time < ^end_date)
           |> Ash.Query.limit(500)
 
-        case Api.read(query) do
+        case Ash.read(query, domain: EveDmv.Api) do
           {:ok, participants} when participants != [] ->
             valid_participants = participants |> Enum.filter(& &1.character_id)
             activity_count = length(valid_participants)

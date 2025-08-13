@@ -405,9 +405,10 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CharacterAnalysisEngine do
     seconds_ago = Map.get(@time_ranges, time_range, @time_ranges.last_30_days)
     time_threshold = DateTimeUtils.add(DateTime.utc_now(), -seconds_ago, :second)
 
-    case EveDmv.Api.read(EveDmv.Killmails.Participant,
+    case Ash.read(EveDmv.Killmails.Participant,
            filter: [character_id: character_id, is_victim: false],
-           filters: [{:killmail_time, {:>, time_threshold}}]
+           filters: [{:killmail_time, {:>, time_threshold}}],
+           domain: EveDmv.Api
          ) do
       {:ok, participants} -> length(participants)
       _ -> 0
@@ -418,9 +419,10 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CharacterAnalysisEngine do
     seconds_ago = Map.get(@time_ranges, time_range, @time_ranges.last_30_days)
     time_threshold = DateTimeUtils.add(DateTime.utc_now(), -seconds_ago, :second)
 
-    case EveDmv.Api.read(EveDmv.Killmails.Participant,
+    case Ash.read(EveDmv.Killmails.Participant,
            filter: [character_id: character_id, is_victim: true],
-           filters: [{:killmail_time, {:>, time_threshold}}]
+           filters: [{:killmail_time, {:>, time_threshold}}],
+           domain: EveDmv.Api
          ) do
       {:ok, participants} -> length(participants)
       _ -> 0
@@ -470,16 +472,18 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CharacterAnalysisEngine do
     time_threshold = DateTimeUtils.add(DateTime.utc_now(), -seconds_ago, :second)
 
     # Get killmails where character participated as attacker
-    case EveDmv.Api.read(EveDmv.Killmails.Participant,
+    case Ash.read(EveDmv.Killmails.Participant,
            filter: [character_id: character_id, is_victim: false],
-           filters: [{:killmail_time, {:>, time_threshold}}]
+           filters: [{:killmail_time, {:>, time_threshold}}],
+           domain: EveDmv.Api
          ) do
       {:ok, participations} when participations != [] ->
         # For each killmail, count total attackers
         gang_sizes =
           Enum.map(participations, fn participation ->
-            case EveDmv.Api.read(EveDmv.Killmails.Participant,
-                   filter: [killmail_id: participation.killmail_id, is_victim: false]
+            case Ash.read(EveDmv.Killmails.Participant,
+                   filter: [killmail_id: participation.killmail_id, is_victim: false],
+                   domain: EveDmv.Api
                  ) do
               {:ok, attackers} -> length(attackers)
               _ -> 1
@@ -501,15 +505,17 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CharacterAnalysisEngine do
     seconds_ago = Map.get(@time_ranges, time_range, @time_ranges.last_30_days)
     time_threshold = DateTimeUtils.add(DateTime.utc_now(), -seconds_ago, :second)
 
-    case EveDmv.Api.read(EveDmv.Killmails.Participant,
+    case Ash.read(EveDmv.Killmails.Participant,
            filter: [character_id: character_id, is_victim: false],
-           filters: [{:killmail_time, {:>, time_threshold}}]
+           filters: [{:killmail_time, {:>, time_threshold}}],
+           domain: EveDmv.Api
          ) do
       {:ok, participations} when participations != [] ->
         solo_kills =
           Enum.count(participations, fn participation ->
-            case EveDmv.Api.read(EveDmv.Killmails.Participant,
-                   filter: [killmail_id: participation.killmail_id, is_victim: false]
+            case Ash.read(EveDmv.Killmails.Participant,
+                   filter: [killmail_id: participation.killmail_id, is_victim: false],
+                   domain: EveDmv.Api
                  ) do
               {:ok, attackers} -> length(attackers) == 1
               _ -> false
@@ -665,9 +671,10 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.CharacterAnalysisEngine do
     seconds_ago = Map.get(@time_ranges, time_range, @time_ranges.last_30_days)
     time_threshold = DateTimeUtils.add(DateTime.utc_now(), -seconds_ago, :second)
 
-    case EveDmv.Api.read(EveDmv.Killmails.Participant,
+    case Ash.read(EveDmv.Killmails.Participant,
            filter: [character_id: character_id],
-           filters: [{:killmail_time, {:>, time_threshold}}]
+           filters: [{:killmail_time, {:>, time_threshold}}],
+           domain: EveDmv.Api
          ) do
       {:ok, participations} when participations != [] ->
         ship_counts =

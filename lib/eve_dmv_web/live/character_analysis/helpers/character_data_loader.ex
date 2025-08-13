@@ -17,8 +17,8 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
   alias EveDmv.Contexts.CharacterIntelligence
   alias EveDmv.Contexts.CombatIntelligence
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Database.CharacterQueries
-  alias EveDmv.Database.QueryPerformance
+  alias EveDmv.Platform.Database.CharacterQueries
+  alias EveDmv.Platform.Database.QueryPerformance
   require Logger
 
   @doc """

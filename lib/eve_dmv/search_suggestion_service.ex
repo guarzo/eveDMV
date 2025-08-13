@@ -7,7 +7,6 @@ defmodule SearchSuggestionService do
   """
 
   import Ash.Query
-  alias EveDmv.Api
   alias EveDmv.Eve.ItemType
   alias EveDmv.Eve.SolarSystem
   alias EveDmv.Killmails.Participant
@@ -42,7 +41,7 @@ defmodule SearchSuggestionService do
         |> distinct([:character_id, :character_name])
         |> sort(:character_name)
         |> limit(limit)
-        |> Api.read!()
+        |> Ash.read!(domain: EveDmv.Api)
         |> Enum.map(fn participant ->
           %{id: participant.character_id, name: participant.character_name}
         end)
@@ -80,7 +79,7 @@ defmodule SearchSuggestionService do
         |> distinct([:corporation_id, :corporation_name])
         |> sort(:corporation_name)
         |> limit(limit)
-        |> Api.read!()
+        |> Ash.read!(domain: EveDmv.Api)
         |> Enum.map(fn participant ->
           %{id: participant.corporation_id, name: participant.corporation_name}
         end)
@@ -118,7 +117,7 @@ defmodule SearchSuggestionService do
         |> distinct([:alliance_id, :alliance_name])
         |> sort(:alliance_name)
         |> limit(limit)
-        |> Api.read!()
+        |> Ash.read!(domain: EveDmv.Api)
         |> Enum.map(fn participant ->
           %{id: participant.alliance_id, name: participant.alliance_name}
         end)
@@ -154,7 +153,7 @@ defmodule SearchSuggestionService do
         |> filter(ilike(system_name, ^"%#{query}%"))
         |> sort(:system_name)
         |> limit(limit)
-        |> Api.read!()
+        |> Ash.read!(domain: EveDmv.Api)
         |> Enum.map(fn system ->
           %{id: system.system_id, name: system.system_name}
         end)
@@ -195,7 +194,7 @@ defmodule SearchSuggestionService do
         |> filter(ilike(type_name, ^"%#{query}%"))
         |> sort(:type_name)
         |> limit(limit)
-        |> Api.read!()
+        |> Ash.read!(domain: EveDmv.Api)
         |> Enum.map(fn item_type ->
           %{id: item_type.type_id, name: item_type.type_name}
         end)

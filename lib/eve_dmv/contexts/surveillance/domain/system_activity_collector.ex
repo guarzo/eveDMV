@@ -194,12 +194,13 @@ defmodule EveDmv.Shared.Correlation.SystemActivityCollector do
 
   defp get_system_killmails(system_id, since) do
     killmails =
-      Api.read!(KillmailRaw,
+      Ash.read!(KillmailRaw,
         filter: [
           solar_system_id: system_id,
           timestamp: [greater_than: since]
         ],
-        limit: 1000
+        limit: 1000,
+        domain: Api
       )
 
     {:ok, killmails}

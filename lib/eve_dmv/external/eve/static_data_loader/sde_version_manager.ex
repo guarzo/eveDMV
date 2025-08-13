@@ -52,7 +52,7 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManager do
          |> Ash.Query.filter(not is_nil(sde_version))
          |> Ash.Query.sort([{:last_updated, :desc}])
          |> Ash.Query.limit(1)
-         |> Api.read() do
+         |> Ash.read(domain: EveDmv.Api) do
       {:ok, [%{sde_version: version}]} -> {:ok, version}
       {:ok, []} -> {:ok, nil}
       {:error, error} -> {:error, error}
@@ -124,7 +124,7 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManager do
     # Update a sample of systems to track the new version
     case Ash.Query.new(SolarSystem)
          |> Ash.Query.limit(10)
-         |> Api.read() do
+         |> Ash.read(domain: EveDmv.Api) do
       {:ok, systems} ->
         update_time = DateTime.utc_now()
 

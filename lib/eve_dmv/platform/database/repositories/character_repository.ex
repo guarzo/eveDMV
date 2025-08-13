@@ -37,7 +37,7 @@ defmodule EveDmv.Platform.Database.Repositories.CharacterRepository do
     |> filter(ilike(name, ^"%#{name_pattern}%"))
     |> sort(name: :asc)
     |> limit(limit_count)
-    |> Api.read()
+    |> Ash.read(domain: EveDmv.Api)
   end
 
   @doc """
@@ -51,7 +51,7 @@ defmodule EveDmv.Platform.Database.Repositories.CharacterRepository do
     |> filter(corporation_id == ^corp_id)
     |> sort(name: :asc)
     |> limit(limit_count)
-    |> Api.read()
+    |> Ash.read(domain: EveDmv.Api)
   end
 
   @doc """
@@ -65,7 +65,7 @@ defmodule EveDmv.Platform.Database.Repositories.CharacterRepository do
     |> filter(alliance_id == ^alliance_id)
     |> sort(name: :asc)
     |> limit(limit_count)
-    |> Api.read()
+    |> Ash.read(domain: EveDmv.Api)
   end
 
   @doc """
@@ -94,11 +94,12 @@ defmodule EveDmv.Platform.Database.Repositories.CharacterRepository do
       end)
 
     # Since bulk_update doesn't exist, we'll use bulk_create with upsert
-    case Api.bulk_create(changesets, Character, :create,
+    case Ash.bulk_create(changesets, Character, :create,
            upsert?: true,
            upsert_identity: :unique_character_id,
            return_errors?: true,
-           batch_size: 100
+           batch_size: 100,
+           domain: Api
          ) do
       %Ash.BulkResult{status: :success} = result ->
         {:ok, result}
@@ -125,7 +126,7 @@ defmodule EveDmv.Platform.Database.Repositories.CharacterRepository do
     |> filter(last_seen >= ^cutoff_date)
     |> sort(last_seen: :desc)
     |> limit(limit_count)
-    |> Api.read()
+    |> Ash.read(domain: EveDmv.Api)
   end
 
   @doc """

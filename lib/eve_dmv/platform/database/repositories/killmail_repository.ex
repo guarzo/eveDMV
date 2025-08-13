@@ -20,7 +20,7 @@ defmodule EveDmv.Platform.Database.Repositories.KillmailRepository do
     |> new()
     |> filter(killmail_id in ^killmail_ids)
     |> sort(killmail_time: :asc)
-    |> Api.read()
+    |> Ash.read(domain: EveDmv.Api)
   end
 
   @doc """
@@ -37,7 +37,7 @@ defmodule EveDmv.Platform.Database.Repositories.KillmailRepository do
     |> filter(victim_character_id == ^character_id and killmail_time >= ^cutoff_date)
     |> sort(killmail_time: :desc)
     |> limit(limit_count)
-    |> Api.read()
+    |> Ash.read(domain: EveDmv.Api)
   end
 
   @doc """
@@ -55,7 +55,7 @@ defmodule EveDmv.Platform.Database.Repositories.KillmailRepository do
     )
     |> sort(killmail_time: :asc)
     |> limit(limit_count)
-    |> Api.read()
+    |> Ash.read(domain: EveDmv.Api)
   end
 
   @doc """
@@ -72,7 +72,7 @@ defmodule EveDmv.Platform.Database.Repositories.KillmailRepository do
     |> filter(victim_corporation_id == ^corp_id and killmail_time >= ^cutoff_date)
     |> sort(killmail_time: :desc)
     |> limit(limit_count)
-    |> Api.read()
+    |> Ash.read(domain: EveDmv.Api)
   end
 
   @doc """
@@ -96,7 +96,7 @@ defmodule EveDmv.Platform.Database.Repositories.KillmailRepository do
         char_id -> filter(query_with_system, victim_character_id == ^char_id)
       end
 
-    Api.count(final_query)
+    Ash.count(final_query, domain: EveDmv.Api)
   end
 
   @doc """
@@ -113,7 +113,7 @@ defmodule EveDmv.Platform.Database.Repositories.KillmailRepository do
     |> filter(total_value >= ^min_value and killmail_time >= ^cutoff_date)
     |> sort(total_value: :desc, killmail_time: :desc)
     |> limit(limit_count)
-    |> Api.read()
+    |> Ash.read(domain: EveDmv.Api)
   end
 
   @doc """
@@ -138,7 +138,7 @@ defmodule EveDmv.Platform.Database.Repositories.KillmailRepository do
 
     # Since Api.stream! doesn't exist, we'll read and chunk manually
     final_query
-    |> Api.read!()
+    |> Ash.read!(domain: EveDmv.Api)
     |> Stream.chunk_every(batch_size)
   end
 
@@ -146,11 +146,12 @@ defmodule EveDmv.Platform.Database.Repositories.KillmailRepository do
   Bulk insert killmails using Ash bulk operations
   """
   def bulk_insert_killmails(killmail_data) when is_list(killmail_data) do
-    case Api.bulk_create(KillmailRaw, killmail_data,
+    case Ash.bulk_create(killmail_data, KillmailRaw, :create,
            upsert?: true,
            upsert_identity: :unique_killmail_id,
            return_errors?: true,
-           batch_size: 500
+           batch_size: 500,
+           domain: Api
          ) do
       %Ash.BulkResult{status: :success} = result ->
         # Use length of records if available, otherwise count errors to infer success count

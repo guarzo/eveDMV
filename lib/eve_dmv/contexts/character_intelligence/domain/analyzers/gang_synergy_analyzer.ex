@@ -6,7 +6,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnal
 
   import Ash.Query
 
-  alias EveDmv.Api
   alias EveDmv.Killmails.KillmailRaw
 
   require Logger
@@ -80,7 +79,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnal
       :victim_ship_type_id
     ])
     |> limit(1000)
-    |> Api.read!()
+    |> Ash.read!(domain: EveDmv.Api)
   rescue
     error ->
       Logger.error("Failed to get shared killmails: #{inspect(error)}")

@@ -390,7 +390,7 @@ defmodule EveDmv.StaticData.ShipAttributes do
   def get_by_type_id(type_id) when is_integer(type_id) do
     case __MODULE__
          |> Ash.Query.for_read(:get_by_type_id, %{type_id: type_id})
-         |> EveDmv.Api.read() do
+         |> Ash.read(domain: EveDmv.Api) do
       {:ok, [attributes]} -> {:ok, attributes}
       {:ok, []} -> {:error, :not_found}
       {:error, error} -> {:error, error}

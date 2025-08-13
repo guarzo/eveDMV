@@ -73,7 +73,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
   import Ecto.Query
 
-  alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
 
@@ -227,7 +226,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
       |> Ash.Query.select([:victim_alliance_id, :victim_corporation_id, :killmail_time])
       |> Ash.Query.limit(2_000)
 
-    {:ok, killmails} = Api.read(query)
+    {:ok, killmails} = Ash.read(query, domain: EveDmv.Api)
 
     # Count kills by alliance/corp to determine control
     alliance_kills =

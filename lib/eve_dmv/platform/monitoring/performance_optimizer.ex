@@ -7,7 +7,6 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
   and resource management for intelligence operations.
   """
 
-  alias EveDmv.Api
   # alias EveDmv.Contexts.WormholeOperations.Domain.Wormhole.WhVetting - REMOVED IN PHASE 1
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.Cache.IntelligenceCache
@@ -68,7 +67,7 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
       # Prevent runaway queries
       |> Ash.Query.limit(10_000)
 
-    case Api.read(participant_query) do
+    case Ash.read(participant_query, domain: EveDmv.Api) do
       {:ok, participants} ->
         end_time = System.monotonic_time(:millisecond)
         query_time = end_time - start_time
@@ -242,7 +241,7 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
         case Ash.Query.new(CharacterStats)
              |> Ash.Query.filter(character_id: char_id)
              |> Ash.Query.limit(1)
-             |> Api.read() do
+             |> Ash.read(domain: EveDmv.Api) do
           {:ok, [stats]} -> {char_id, stats}
           _ -> {char_id, nil}
         end
@@ -284,7 +283,7 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
         |> Ash.Query.filter(character_id in ^batch)
         |> Ash.Query.limit(5000)
 
-      case Api.read(participant_query) do
+      case Ash.read(participant_query, domain: EveDmv.Api) do
         {:ok, participants} ->
           participants
           |> Enum.group_by(& &1.character_id)

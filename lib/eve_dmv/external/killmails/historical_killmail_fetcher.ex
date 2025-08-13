@@ -374,7 +374,7 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
   # Database operations
 
   defp insert_raw_killmail(changeset) do
-    case Api.create(KillmailRaw, changeset, action: :ingest_from_source) do
+    case Ash.create(KillmailRaw, changeset, action: :ingest_from_source, domain: EveDmv.Api) do
       {:ok, _} -> :ok
       {:error, error} -> {:error, error}
     end

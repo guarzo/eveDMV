@@ -159,7 +159,7 @@ defmodule EveDmv.Platform.Database.CacheWarmer do
     case CharacterStats
          |> Ash.Query.sort(last_calculated_at: :desc)
          |> Ash.Query.limit(@batch_size)
-         |> Api.read() do
+         |> Ash.read(domain: EveDmv.Api) do
       {:ok, characters} ->
         # Warm character intelligence data
         characters
@@ -179,7 +179,7 @@ defmodule EveDmv.Platform.Database.CacheWarmer do
     case KillmailEnriched
          |> Ash.Query.sort(killmail_time: :desc)
          |> Ash.Query.limit(@batch_size * 10)
-         |> Api.read() do
+         |> Ash.read(domain: EveDmv.Api) do
       {:ok, killmails} ->
         system_ids = Enum.map(killmails, & &1.solar_system_id)
 
@@ -202,7 +202,7 @@ defmodule EveDmv.Platform.Database.CacheWarmer do
          |> Ash.Query.sort(total_value: :desc)
          |> Ash.Query.limit(@batch_size)
          |> Ash.Query.load(:participants)
-         |> Api.read() do
+         |> Ash.read(domain: EveDmv.Api) do
       {:ok, killmails} ->
         # Cache enriched killmail data
         Enum.each(killmails, fn killmail ->
@@ -285,7 +285,7 @@ defmodule EveDmv.Platform.Database.CacheWarmer do
          |> Ash.Query.filter(not is_nil(alliance_id))
          |> Ash.Query.sort(updated_at: :desc)
          |> Ash.Query.limit(@batch_size * 10)
-         |> Api.read() do
+         |> Ash.read(domain: EveDmv.Api) do
       {:ok, results} ->
         alliance_ids =
           results
@@ -406,7 +406,7 @@ defmodule EveDmv.Platform.Database.CacheWarmer do
       case QueryCache.get_or_compute(
              cache_key,
              fn ->
-               case Api.get(SolarSystem, system_id) do
+               case Ash.get(SolarSystem, system_id, domain: EveDmv.Api) do
                  {:ok, system} -> system
                  _ -> nil
                end
@@ -429,7 +429,7 @@ defmodule EveDmv.Platform.Database.CacheWarmer do
         case QueryCache.get_or_compute(
                cache_key,
                fn ->
-                 case Api.get(ItemType, type_id) do
+                 case Ash.get(ItemType, type_id, domain: EveDmv.Api) do
                    {:ok, item} -> item
                    _ -> nil
                  end
@@ -452,7 +452,7 @@ defmodule EveDmv.Platform.Database.CacheWarmer do
          |> Ash.Query.sort(updated_at: :desc)
          |> Ash.Query.limit(1000)
          |> Ash.Query.load(:killmail_enriched)
-         |> Api.read() do
+         |> Ash.read(domain: EveDmv.Api) do
       {:ok, participants} ->
         kills = Enum.filter(participants, &(not &1.is_victim))
         losses = Enum.filter(participants, & &1.is_victim)

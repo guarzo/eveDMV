@@ -101,7 +101,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.CombatLogHelper do
       |> Ash.Query.sort(updated_at: :desc)
       |> Ash.Query.limit(1)
 
-    case EveDmv.Api.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, [fitting | _]} -> fitting.parsed_fitting
       _ -> nil
     end

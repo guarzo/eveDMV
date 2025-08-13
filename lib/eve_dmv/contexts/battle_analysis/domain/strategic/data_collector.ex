@@ -71,12 +71,13 @@ defmodule EveDmv.Shared.Strategic.DataCollector do
     killmail_data =
       Enum.map(system_ids, fn system_id ->
         killmails =
-          Api.read!(KillmailRaw,
+          Ash.read!(KillmailRaw,
             filter: [
               solar_system_id: system_id,
               timestamp: [greater_than: since]
             ],
-            limit: 500
+            limit: 500,
+            domain: Api
           )
 
         %{
@@ -104,12 +105,13 @@ defmodule EveDmv.Shared.Strategic.DataCollector do
 
   defp collect_single_system_data(system_id, since) do
     killmails =
-      Api.read!(KillmailRaw,
+      Ash.read!(KillmailRaw,
         filter: [
           solar_system_id: system_id,
           timestamp: [greater_than: since]
         ],
-        limit: 1000
+        limit: 1000,
+        domain: Api
       )
 
     metrics = calculate_single_system_metrics(killmails)

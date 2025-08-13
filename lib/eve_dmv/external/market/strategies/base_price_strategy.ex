@@ -26,7 +26,7 @@ defmodule EveDmv.Market.Strategies.BasePriceStrategy do
   def get_price(type_id, _item_attributes) do
     Logger.debug("Attempting base price lookup for #{type_id}")
 
-    case EveDmv.Api.get(EveDmv.Eve.ItemType, type_id) do
+    case Ash.get(EveDmv.Eve.ItemType, type_id, domain: EveDmv.Api) do
       {:ok, item} ->
         handle_base_price_result(type_id, item)
 

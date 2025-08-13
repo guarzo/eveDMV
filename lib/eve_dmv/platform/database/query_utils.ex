@@ -6,7 +6,6 @@ defmodule EveDmv.Platform.Database.QueryUtils do
   consistent querying interfaces and reduce code duplication.
   """
 
-  alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Killmails.KillmailEnriched
@@ -48,7 +47,7 @@ defmodule EveDmv.Platform.Database.QueryUtils do
         base_query
       end
 
-    Api.read(final_query)
+    Ash.read(final_query, domain: EveDmv.Api)
   end
 
   @doc """
@@ -85,7 +84,7 @@ defmodule EveDmv.Platform.Database.QueryUtils do
         character_query
       end
 
-    Api.read(limited_query)
+    Ash.read(limited_query, domain: EveDmv.Api)
   end
 
   @doc """
@@ -122,7 +121,7 @@ defmodule EveDmv.Platform.Database.QueryUtils do
         participant_query
       end
 
-    Api.read(final_participant_query)
+    Ash.read(final_participant_query, domain: EveDmv.Api)
   end
 
   @doc """
@@ -157,7 +156,7 @@ defmodule EveDmv.Platform.Database.QueryUtils do
         base_query
       end
 
-    Api.read(query)
+    Ash.read(query, domain: EveDmv.Api)
   end
 
   @doc """
@@ -191,7 +190,7 @@ defmodule EveDmv.Platform.Database.QueryUtils do
         base_query
       end
 
-    Api.read(query)
+    Ash.read(query, domain: EveDmv.Api)
   end
 
   @doc """

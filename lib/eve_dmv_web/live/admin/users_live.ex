@@ -5,7 +5,6 @@ defmodule EveDmvWeb.Admin.UsersLive do
 
   use EveDmvWeb, :live_view
 
-  alias EveDmv.Api
   alias EveDmv.Users.User
 
   @impl Phoenix.LiveView
@@ -52,8 +51,8 @@ defmodule EveDmvWeb.Admin.UsersLive do
 
   @impl Phoenix.LiveView
   def handle_event("toggle_admin", %{"user-id" => user_id}, socket) do
-    with {:ok, user} <- Api.get(User, user_id),
-         {:ok, _updated} <- Api.update(user, %{is_admin: !user.is_admin}) do
+    with {:ok, user} <- Ash.get(User, user_id, domain: EveDmv.Api),
+         {:ok, _updated} <- Ash.update(user, %{is_admin: !user.is_admin}, domain: EveDmv.Api) do
       users = list_users() |> filter_users(socket.assigns.filter)
 
       {:noreply,
@@ -68,8 +67,8 @@ defmodule EveDmvWeb.Admin.UsersLive do
 
   @impl Phoenix.LiveView
   def handle_event("revoke_access", %{"user-id" => user_id}, socket) do
-    with {:ok, user} <- Api.get(User, user_id),
-         {:ok, _updated} <- Api.update(user, %{active: false}) do
+    with {:ok, user} <- Ash.get(User, user_id, domain: EveDmv.Api),
+         {:ok, _updated} <- Ash.update(user, %{active: false}, domain: EveDmv.Api) do
       users = list_users() |> filter_users(socket.assigns.filter)
 
       {:noreply,
@@ -83,7 +82,7 @@ defmodule EveDmvWeb.Admin.UsersLive do
   end
 
   defp list_users do
-    case Api.read(User) do
+    case Ash.read(User, domain: EveDmv.Api) do
       {:ok, users} -> users
       _ -> []
     end

@@ -152,7 +152,6 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.HistoricalService do
 
   defp process_historical_killmails(killmails, character_id) do
     # Process and store the fetched killmails
-    alias EveDmv.Api
     alias EveDmv.Killmails.KillmailRaw
     import Ash.Query
 
@@ -177,10 +176,10 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.HistoricalService do
           |> filter(killmail_id == ^killmail_data.killmail_id)
           |> Ash.Query.limit(1)
 
-        case Api.read(existing_query) do
+        case Ash.read(existing_query, domain: EveDmv.Api) do
           {:ok, []} ->
             # Create new killmail
-            case Api.create(KillmailRaw, killmail_data) do
+            case Ash.create(KillmailRaw, killmail_data, domain: EveDmv.Api) do
               {:ok, _} -> 1
               {:error, _} -> 0
             end

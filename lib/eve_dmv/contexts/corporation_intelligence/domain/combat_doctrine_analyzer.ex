@@ -14,7 +14,6 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
   to provide comprehensive intelligence on corporation combat capabilities and preferences.
   """
 
-  alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
 
@@ -279,8 +278,8 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
       # Larger sample for attacker search
       |> Ash.Query.limit(2000)
 
-    with {:ok, victim_killmails} <- Api.read(victim_query),
-         {:ok, potential_attacker_killmails} <- Api.read(attacker_query) do
+    with {:ok, victim_killmails} <- Ash.read(victim_query, domain: EveDmv.Api),
+         {:ok, potential_attacker_killmails} <- Ash.read(attacker_query, domain: EveDmv.Api) do
       # Filter for corporation as attackers
       attacker_killmails =
         Enum.filter(potential_attacker_killmails, fn km ->
@@ -559,7 +558,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
   defp classify_ship_type(ship_type_id) do
     alias EveDmv.Eve.ItemType
 
-    case Api.get(ItemType, ship_type_id) do
+    case Ash.get(ItemType, ship_type_id, domain: EveDmv.Api) do
       {:ok, ship} ->
         # Use the actual group name from static data
         name = String.downcase(ship.group_name || "")
@@ -1024,7 +1023,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
     alpha_count =
       ship_analysis.ship_types
       |> Enum.filter(fn {ship_type_id, _count} ->
-        case Api.get(ItemType, ship_type_id) do
+        case Ash.get(ItemType, ship_type_id, domain: EveDmv.Api) do
           {:ok, item} ->
             group = String.downcase(item.group_name || "")
             # Stealth bombers and artillery ships are alpha-strike capable
@@ -1405,7 +1404,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
   defp long_range_weapon?(weapon_type_id) do
     alias EveDmv.Eve.ItemType
 
-    case Api.get(ItemType, weapon_type_id) do
+    case Ash.get(ItemType, weapon_type_id, domain: EveDmv.Api) do
       {:ok, weapon} ->
         name = String.downcase(weapon.type_name || "")
         group = String.downcase(weapon.group_name || "")
@@ -1423,7 +1422,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
   defp short_range_weapon?(weapon_type_id) do
     alias EveDmv.Eve.ItemType
 
-    case Api.get(ItemType, weapon_type_id) do
+    case Ash.get(ItemType, weapon_type_id, domain: EveDmv.Api) do
       {:ok, weapon} ->
         name = String.downcase(weapon.type_name || "")
         group = String.downcase(weapon.group_name || "")
@@ -1717,7 +1716,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
   defp classify_ship_role(ship_type_id) do
     alias EveDmv.Eve.ItemType
 
-    case Api.get(ItemType, ship_type_id) do
+    case Ash.get(ItemType, ship_type_id, domain: EveDmv.Api) do
       {:ok, ship} ->
         group_name = String.downcase(ship.group_name || "")
 
@@ -1830,7 +1829,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
       |> filter(killmail_time >= ^start_date and killmail_time <= ^end_date)
       |> select([:killmail_id, :killmail_time, :victim_ship_type_id, :attackers])
 
-    case Api.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, killmails} ->
         # Group killmails by week
         weekly_groups = group_killmails_by_week(killmails, start_date)
@@ -2111,8 +2110,8 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
       |> filter(killmail_time >= ^start_date and killmail_time <= ^end_date)
       |> limit(2000)
 
-    with {:ok, victim_killmails} <- Api.read(victim_query),
-         {:ok, potential_attacker_killmails} <- Api.read(attacker_query) do
+    with {:ok, victim_killmails} <- Ash.read(victim_query, domain: EveDmv.Api),
+         {:ok, potential_attacker_killmails} <- Ash.read(attacker_query, domain: EveDmv.Api) do
       # Filter for corporation as attackers
       attacker_killmails =
         Enum.filter(potential_attacker_killmails, fn km ->

@@ -15,10 +15,11 @@ defmodule EveDmvWeb.Plugs.SimpleRateLimit do
     key = get_rate_limit_key(conn)
     # Default: 100 requests per minute
     limit = Keyword.get(opts, :limit, 100)
-    # Default: 1 minute window
+    # Default: 1 minute window (in milliseconds)
     window = Keyword.get(opts, :window, 60_000)
 
-    case Hammer.check_rate(key, window, limit) do
+    # Use our rate limiter module with the hit function
+    case EveDmvWeb.RateLimit.hit(key, window, limit) do
       {:allow, count} ->
         conn
         |> put_resp_header("x-ratelimit-limit", "#{limit}")

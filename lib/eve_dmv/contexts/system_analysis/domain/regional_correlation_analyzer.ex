@@ -6,7 +6,6 @@ defmodule EveDmv.Contexts.SystemAnalysis.Domain.RegionalCorrelationAnalyzer do
 
   import Ash.Query
 
-  alias EveDmv.Api
   alias EveDmv.Eve.SolarSystem
   alias EveDmv.Killmails.KillmailRaw
 
@@ -89,7 +88,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.Domain.RegionalCorrelationAnalyzer do
     systems =
       SolarSystem
       |> filter(region_id == ^region_id)
-      |> Api.read!()
+      |> Ash.read!(domain: EveDmv.Api)
 
     {:ok, systems}
   rescue
@@ -107,7 +106,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.Domain.RegionalCorrelationAnalyzer do
       |> filter(killmail_time >= ^timeframe.start_time)
       |> filter(killmail_time <= ^timeframe.end_time)
       |> select([:killmail_id, :solar_system_id, :killmail_time])
-      |> Api.read!()
+      |> Ash.read!(domain: EveDmv.Api)
 
     hourly_data = group_by_hour_and_system(killmails)
 
@@ -423,7 +422,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.Domain.RegionalCorrelationAnalyzer do
       |> filter(killmail_time >= ^timeframe.start_time)
       |> filter(killmail_time <= ^timeframe.end_time)
       |> select([:killmail_id, :killmail_time])
-      |> Api.read!()
+      |> Ash.read!(domain: EveDmv.Api)
 
     # Group by hour
     hourly_activity =
@@ -446,7 +445,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.Domain.RegionalCorrelationAnalyzer do
     system =
       SolarSystem
       |> filter(system_id == ^system_id)
-      |> Api.read_one!()
+      |> Ash.read_one!(domain: EveDmv.Api)
 
     neighbors =
       case system do
@@ -458,7 +457,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.Domain.RegionalCorrelationAnalyzer do
           |> filter(constellation_id == ^sys.constellation_id)
           |> filter(system_id != ^system_id)
           |> limit(10)
-          |> Api.read!()
+          |> Ash.read!(domain: EveDmv.Api)
           |> Enum.map(& &1.system_id)
       end
 

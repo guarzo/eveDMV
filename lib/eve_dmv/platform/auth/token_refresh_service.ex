@@ -9,7 +9,6 @@ defmodule EveDmv.Users.TokenRefreshService do
 
   use GenServer
   import Ash.Query
-  alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Users.User
   require Logger
@@ -133,7 +132,7 @@ defmodule EveDmv.Users.TokenRefreshService do
       # Process in batches to avoid overwhelming the system
       |> limit(50)
 
-    case Api.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, users} ->
         if Enum.empty?(users) do
           Logger.debug("✅ No tokens need refreshing at this time")
@@ -176,7 +175,7 @@ defmodule EveDmv.Users.TokenRefreshService do
           u
 
         user_id when is_binary(user_id) ->
-          case Api.get(User, user_id) do
+          case Ash.get(User, user_id, domain: EveDmv.Api) do
             {:ok, user} -> user
             {:error, _} -> nil
           end
@@ -282,7 +281,7 @@ defmodule EveDmv.Users.TokenRefreshService do
     # Use the refresh_token action to update the user
     user
     |> Ash.Changeset.for_update(:refresh_token, new_tokens)
-    |> then(fn changeset -> Api.update(changeset.data, changeset) end)
+    |> then(fn changeset -> Ash.update(changeset.data, changeset, domain: EveDmv.Api) end)
   end
 
   @doc """

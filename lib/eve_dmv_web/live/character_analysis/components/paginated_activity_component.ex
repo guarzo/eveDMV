@@ -6,7 +6,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.PaginatedActivityComponent do
   use EveDmvWeb, :live_component
   import EveDmvWeb.Helpers.TimeFormatter
 
-  alias EveDmv.Database.CharacterQueries
+  alias EveDmv.Platform.Database.CharacterQueries
   alias EveDmvWeb.CharacterAnalysis.Helpers.DisplayFormatters
 
   @impl Phoenix.LiveComponent

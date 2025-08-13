@@ -7,8 +7,8 @@ defmodule EveDmvWeb.SurveillanceLive.ProfileService do
   """
 
   alias EveDmv.Api.SurveillanceApi
-  alias EveDmv.Database.SurveillanceRepository
   alias EveDmv.Performance.BatchNameResolver
+  alias EveDmv.Platform.Database.SurveillanceRepository
   alias EveDmv.Surveillance.MatchingEngine
   alias EveDmv.Surveillance.Profile
   alias EveDmvWeb.SurveillanceLive.Components

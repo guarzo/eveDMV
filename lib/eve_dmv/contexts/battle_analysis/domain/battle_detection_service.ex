@@ -9,7 +9,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
   import Ash.Query, only: [filter: 2, sort: 2, limit: 2, new: 1]
   alias EveDmv.Core.Utils.DateTimeUtils
 
-  alias EveDmv.Api
   alias EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor
   alias EveDmv.Contexts.MarketIntelligence.Domain.ValuationService
   alias EveDmv.Killmails.KillmailRaw
@@ -128,7 +127,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
       # Reasonable limit for battle analysis
       |> limit(1000)
 
-    case Api.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, filtered_killmails} ->
         {:ok, filtered_killmails}
 
@@ -155,7 +154,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
       # Reasonable limit for single system
       |> limit(500)
 
-    case Api.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, filtered_killmails} ->
         {:ok, filtered_killmails}
 
@@ -179,7 +178,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionService do
       |> filter(killmail_id: [in: killmail_ids])
       |> sort(killmail_time: :asc)
 
-    case Api.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, killmails} ->
         {:ok, killmails}
 

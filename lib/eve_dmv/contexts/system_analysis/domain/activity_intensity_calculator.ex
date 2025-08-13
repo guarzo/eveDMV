@@ -6,7 +6,6 @@ defmodule EveDmv.Contexts.SystemAnalysis.Domain.ActivityIntensityCalculator do
 
   import Ash.Query
 
-  alias EveDmv.Api
   alias EveDmv.Killmails.KillmailRaw
 
   @doc """
@@ -93,7 +92,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.Domain.ActivityIntensityCalculator do
         :victim_ship_type_id,
         :data
       ])
-      |> Api.read!()
+      |> Ash.read!(domain: EveDmv.Api)
 
     metrics = %{
       total_kills: length(killmails),

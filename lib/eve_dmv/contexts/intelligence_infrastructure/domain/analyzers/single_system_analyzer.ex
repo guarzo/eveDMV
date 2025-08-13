@@ -3,7 +3,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   Analyzer for individual system analysis within cross-system context.
   """
 
-  alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Eve.SolarSystem
   alias EveDmv.Killmails.KillmailRaw
@@ -27,7 +26,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
       |> Ash.Query.filter(system_id == ^system_id)
       |> Ash.Query.limit(1)
 
-    case Api.read_one(system_query) do
+    case Ash.read_one(system_query, domain: EveDmv.Api) do
       {:ok, system} when system != nil ->
         %{
           system_id: system_id,
@@ -60,7 +59,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
       |> Ash.Query.filter(solar_system_id == ^system_id)
       |> Ash.Query.filter(killmail_time >= ^cutoff_time)
 
-    case Api.count(activity_query) do
+    case Ash.count(activity_query, domain: EveDmv.Api) do
       {:ok, count} when is_integer(count) ->
         Logger.debug("Activity count for system #{system_id}: #{count}")
         classify_activity_level(count)
@@ -91,7 +90,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
       |> Ash.Query.filter(killmail_time >= ^cutoff_time)
       |> Ash.Query.filter(total_value > 100_000_000)
 
-    case Api.count(threat_query) do
+    case Ash.count(threat_query, domain: EveDmv.Api) do
       {:ok, high_value_count} when is_integer(high_value_count) ->
         classify_threat_level(high_value_count)
 
@@ -150,7 +149,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
       |> Ash.Query.filter(system_id != ^system.system_id)
       |> Ash.Query.filter(security_class != ^system.security_class)
 
-    case Api.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, connections} ->
         Enum.map(connections, fn conn ->
           %{

@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrend
   """
 
   import Ash.Query
-  alias EveDmv.Api
   alias EveDmv.Killmails.KillmailRaw
   require Logger
 
@@ -100,7 +99,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrend
       :raw_data,
       :total_value
     ])
-    |> Api.read!()
+    |> Ash.read!(domain: EveDmv.Api)
   rescue
     error ->
       Logger.error("Failed to get historical killmails: #{inspect(error)}")

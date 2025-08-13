@@ -102,7 +102,7 @@ defmodule EveDmv.Security.ApiAuthentication do
     __MODULE__
     |> new()
     |> filter(character_id == ^character_id)
-    |> EveDmv.Api.read()
+    |> Ash.read(domain: EveDmv.Api)
   end
 
   @doc """
@@ -134,7 +134,7 @@ defmodule EveDmv.Security.ApiAuthentication do
       |> Ash.Query.filter(api_key == ^api_key)
 
     result =
-      case EveDmv.Api.read(Ash.Query.limit(query, 1)) do
+      case Ash.read(Ash.Query.limit(query, 1), domain: EveDmv.Api) do
         {:ok, [result]} -> {:ok, result}
         {:ok, []} -> {:error, :not_found}
         error -> error
@@ -175,7 +175,7 @@ defmodule EveDmv.Security.ApiAuthentication do
       |> filter(id == ^api_key_id and character_id == ^character_id)
 
     result =
-      case EveDmv.Api.read(Ash.Query.limit(query, 1)) do
+      case Ash.read(Ash.Query.limit(query, 1), domain: EveDmv.Api) do
         {:ok, [result]} -> {:ok, result}
         {:ok, []} -> {:error, :not_found}
         error -> error
@@ -185,7 +185,7 @@ defmodule EveDmv.Security.ApiAuthentication do
       {:ok, api_key} when api_key != nil ->
         api_key
         |> Ash.Changeset.for_update(:deactivate)
-        |> then(fn changeset -> EveDmv.Api.update(changeset.data, changeset) end)
+        |> then(fn changeset -> Ash.update(changeset, domain: EveDmv.Api) end)
 
       {:ok, nil} ->
         {:error, :not_found}
@@ -228,6 +228,6 @@ defmodule EveDmv.Security.ApiAuthentication do
       last_used_at: DateTime.utc_now(),
       last_used_ip: client_ip
     })
-    |> then(fn changeset -> EveDmv.Api.update(changeset.data, changeset) end)
+    |> then(fn changeset -> Ash.update(changeset, domain: EveDmv.Api) end)
   end
 end

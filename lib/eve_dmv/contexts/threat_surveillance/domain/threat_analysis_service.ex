@@ -16,7 +16,6 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
 
   import Ecto.Query
 
-  alias EveDmv.Api
   alias EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine
   alias EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer
   alias EveDmv.Core.Utils.DateTimeUtils
@@ -139,7 +138,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
     import Ash.Query, only: [new: 1, filter: 2]
     query = CharacterStats |> new() |> filter(character_id: character_id)
 
-    case Api.read_one(query) do
+    case Ash.read_one(query, domain: EveDmv.Api) do
       {:ok, stats} ->
         %{
           total_kills: Map.get(stats, :total_kills, 0),

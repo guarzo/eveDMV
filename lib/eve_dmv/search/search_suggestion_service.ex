@@ -6,7 +6,6 @@ defmodule EveDmv.Search.SearchSuggestionService do
   and systems based on database queries with optimized performance.
   """
 
-  alias EveDmv.Api
   alias EveDmv.Killmails.Participant
   alias EveDmv.Static.EveItemType
   alias EveDmv.Static.EveSolarSystem
@@ -64,7 +63,7 @@ defmodule EveDmv.Search.SearchSuggestionService do
           |> Ash.Query.distinct([:corporation_id])
           |> Ash.Query.limit(100)
 
-        case Api.read(corporation_query) do
+        case Ash.read(corporation_query, domain: EveDmv.Api) do
           {:ok, corporations} ->
             # Filter in Elixir
             filtered_corps =
@@ -117,7 +116,7 @@ defmodule EveDmv.Search.SearchSuggestionService do
           |> Ash.Query.distinct([:alliance_id])
           |> Ash.Query.limit(100)
 
-        case Api.read(alliance_query) do
+        case Ash.read(alliance_query, domain: EveDmv.Api) do
           {:ok, alliances} ->
             # Filter in Elixir
             filtered_alliances =
@@ -172,7 +171,7 @@ defmodule EveDmv.Search.SearchSuggestionService do
           |> Ash.Query.select([:system_id, :system_name, :region_name, :security_status])
           |> Ash.Query.limit(500)
 
-        case Api.read(system_query) do
+        case Ash.read(system_query, domain: EveDmv.Api) do
           {:ok, systems} ->
             # Filter in Elixir
             filtered_systems =
@@ -227,7 +226,7 @@ defmodule EveDmv.Search.SearchSuggestionService do
           |> Ash.Query.select([:type_id, :type_name, :group_name, :category_name])
           |> Ash.Query.limit(500)
 
-        case Api.read(ship_query) do
+        case Ash.read(ship_query, domain: EveDmv.Api) do
           {:ok, ships} ->
             # Filter in Elixir
             filtered_ships =

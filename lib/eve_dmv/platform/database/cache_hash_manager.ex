@@ -11,7 +11,6 @@ defmodule EveDmv.Platform.Database.CacheHashManager do
 
   import Ash.Query
 
-  alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Platform.Cache.QueryCache
   alias EveDmv.Platform.Database.CacheInvalidator
@@ -354,8 +353,8 @@ defmodule EveDmv.Platform.Database.CacheHashManager do
       |> filter(killmail_time: [gte: cutoff_date])
       |> limit(500)
 
-    with {:ok, victim_kills} <- Api.read(corp_query),
-         {:ok, recent_killmails} <- Api.read(recent_query) do
+    with {:ok, victim_kills} <- Ash.read(corp_query, domain: EveDmv.Api),
+         {:ok, recent_killmails} <- Ash.read(recent_query, domain: EveDmv.Api) do
       # Filter recent killmails for attacker involvement
       attacker_kills =
         Enum.filter(recent_killmails, fn km ->
@@ -478,7 +477,7 @@ defmodule EveDmv.Platform.Database.CacheHashManager do
       |> filter(killmail_id: killmail_id)
       |> limit(1)
 
-    case Api.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, [killmail]} ->
         hash = compute_killmail_content_hash(killmail)
         {:ok, hash}

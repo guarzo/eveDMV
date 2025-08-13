@@ -12,7 +12,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
 
   import Ecto.Query
 
-  alias EveDmv.Contexts.BattleAnalysis.Api, as: BattleApi
   alias EveDmv.Contexts.BattleAnalysis.Resources.Battle
   alias EveDmv.Contexts.Combat.Core.FleetCompositionAnalyzer
   alias EveDmv.Contexts.Combat.Core.ParticipantAnalyzer
@@ -115,7 +114,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
       |> filter(id == ^battle_id)
       |> Ash.Query.limit(1)
 
-    case BattleApi.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, [battle]} -> {:ok, battle}
       {:ok, []} -> {:error, :battle_not_found}
       {:error, %Ash.Error.Query.NotFound{}} -> {:error, :battle_not_found}

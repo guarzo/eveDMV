@@ -7,7 +7,6 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityDataCollector do
   It provides a clean separation between data collection and analysis logic.
   """
 
-  alias EveDmv.Api
   alias EveDmv.Core.Utils.TimeUtils
   alias EveDmv.Eve.EsiUtils
   alias EveDmv.Intelligence.MemberActivityIntelligence
@@ -118,7 +117,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityDataCollector do
       |> Ash.Query.new()
       |> Ash.Query.filter(killmail_id == ^killmail_id)
 
-    case Api.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, participants} -> {:ok, participants}
       {:error, reason} -> {:error, reason}
     end

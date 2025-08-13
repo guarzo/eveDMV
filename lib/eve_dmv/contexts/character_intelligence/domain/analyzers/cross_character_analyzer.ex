@@ -6,7 +6,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.CrossCharacterA
 
   import Ash.Query
 
-  alias EveDmv.Api
   alias EveDmv.Killmails.KillmailRaw
 
   require Logger
@@ -119,7 +118,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.CrossCharacterA
           ^char2_str
         )
       )
-      |> Api.count()
+      |> Ash.count(domain: EveDmv.Api)
 
     # Calculate strength based on frequency
     case shared_kills do
@@ -273,7 +272,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.CrossCharacterA
       :victim_ship_type_id
     ])
     |> limit(500)
-    |> Api.read!()
+    |> Ash.read!(domain: EveDmv.Api)
   rescue
     error ->
       Logger.error("Failed to get shared operations: #{inspect(error)}")
@@ -529,7 +528,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.CrossCharacterA
       )
     )
     |> select([:killmail_id, :killmail_time, :solar_system_id, :raw_data, :victim_ship_type_id])
-    |> Api.read!()
+    |> Ash.read!(domain: EveDmv.Api)
   rescue
     error ->
       Logger.error("Failed to get group history: #{inspect(error)}")

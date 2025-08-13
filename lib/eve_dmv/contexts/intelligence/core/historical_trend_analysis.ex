@@ -13,7 +13,6 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
 
   import Ash.Query, only: [filter: 2, sort: 2, limit: 2, new: 1]
 
-  alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Shared.Infrastructure.UnifiedCache
@@ -109,7 +108,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
       |> sort(killmail_time: :desc)
       |> limit(1000)
 
-    case Api.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, killmails} -> {:ok, killmails}
       {:error, _reason} -> {:error, :repository_error}
     end

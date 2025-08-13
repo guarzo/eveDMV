@@ -19,7 +19,7 @@ defmodule EveDmv.Core.Migration.AshMigrationHelper do
       KillmailRaw
       |> new()
       |> filter(victim_character_id == ^character_id)
-      |> Api.read()
+      |> Ash.read(domain: EveDmv.Api)
   """
   def migrate_query_pattern(ecto_example, ash_example) do
     %{
@@ -37,37 +37,39 @@ defmodule EveDmv.Core.Migration.AshMigrationHelper do
       # Simple where clause
       simple_where: %{
         ecto: "from(r in Resource, where: r.field == ^value)",
-        ash: "Resource |> new() |> filter(field == ^value) |> Api.read()"
+        ash: "Resource |> new() |> filter(field == ^value) |> Ash.read(domain: EveDmv.Api)"
       },
 
       # Multiple conditions
       multiple_conditions: %{
         ecto: "from(r in Resource, where: r.field1 == ^val1 and r.field2 == ^val2)",
-        ash: "Resource |> new() |> filter(field1 == ^val1 and field2 == ^val2) |> Api.read()"
+        ash:
+          "Resource |> new() |> filter(field1 == ^val1 and field2 == ^val2) |> Ash.read(domain: EveDmv.Api)"
       },
 
       # Ordering
       ordering: %{
         ecto: "from(r in Resource, order_by: [desc: r.created_at])",
-        ash: "Resource |> new() |> sort(created_at: :desc) |> Api.read()"
+        ash: "Resource |> new() |> sort(created_at: :desc) |> Ash.read(domain: EveDmv.Api)"
       },
 
       # Limit and offset
       pagination: %{
         ecto: "from(r in Resource, limit: ^limit, offset: ^offset)",
-        ash: "Resource |> new() |> limit(^limit) |> offset(^offset) |> Api.read()"
+        ash:
+          "Resource |> new() |> limit(^limit) |> offset(^offset) |> Ash.read(domain: EveDmv.Api)"
       },
 
       # Aggregations
       count: %{
         ecto: "from(r in Resource, select: count(r.id))",
-        ash: "Resource |> new() |> Api.count()"
+        ash: "Resource |> new() |> Ash.count(, domain: EveDmv.Api)"
       },
 
       # Joins (requires relationship)
       joins: %{
         ecto: "from(r in Resource, join: a in assoc(r, :association))",
-        ash: "Resource |> new() |> load(:association) |> Api.read()",
+        ash: "Resource |> new() |> load(:association) |> Ash.read(domain: EveDmv.Api)",
         note: "Requires relationship defined in Ash resource"
       },
 
@@ -86,7 +88,7 @@ defmodule EveDmv.Core.Migration.AshMigrationHelper do
       # Delete
       delete: %{
         ecto: "Repo.delete(record)",
-        ash: "Api.destroy(record)"
+        ash: "Ash.destroy(record, domain: EveDmv.Api)"
       },
 
       # Bulk insert

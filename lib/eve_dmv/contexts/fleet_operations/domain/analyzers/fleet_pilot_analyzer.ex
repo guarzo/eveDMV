@@ -6,7 +6,6 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.Analyzers.FleetPilotAnalyzer do
   pilot-to-ship assignments for maximum fleet effectiveness.
   """
 
-  alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.CharacterStats
 
@@ -107,7 +106,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.Analyzers.FleetPilotAnalyzer do
       |> Ash.Query.filter(corporation_id: corporation_id)
       # Reasonable limit for corporation size
       |> Ash.Query.limit(500)
-      |> Api.read!()
+      |> Ash.read!(domain: EveDmv.Api)
 
     {:ok, members}
   rescue

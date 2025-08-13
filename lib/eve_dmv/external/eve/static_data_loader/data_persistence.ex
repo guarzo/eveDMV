@@ -17,7 +17,7 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
   def bulk_create_item_types(item_data) do
     Logger.info("Bulk creating #{length(item_data)} item types")
 
-    case EveDmv.Api.bulk_create(item_data, ItemType, :create,
+    case Ash.bulk_create(item_data, ItemType, :create,
            domain: EveDmv.Api,
            return_records?: false,
            return_errors?: true,
@@ -81,7 +81,7 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
   def bulk_create_solar_systems(system_data) do
     Logger.info("Bulk creating #{length(system_data)} solar systems")
 
-    case EveDmv.Api.bulk_create(system_data, SolarSystem, :create,
+    case Ash.bulk_create(system_data, SolarSystem, :create,
            domain: EveDmv.Api,
            return_records?: false,
            return_errors?: true,
@@ -208,7 +208,7 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
   def upsert_item_types(item_data) do
     Logger.info("Upserting #{length(item_data)} item types")
 
-    case EveDmv.Api.bulk_create(item_data, ItemType, :upsert,
+    case Ash.bulk_create(item_data, ItemType, :upsert,
            domain: EveDmv.Api,
            return_records?: false,
            return_errors?: true,

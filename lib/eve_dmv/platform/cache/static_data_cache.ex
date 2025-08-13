@@ -256,7 +256,7 @@ defmodule EveDmv.Platform.Cache.StaticDataCache do
       |> new()
       |> filter(system_id in ^system_ids)
 
-    case EveDmv.Api.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, systems} ->
         # Cache all results
         result_map =
@@ -291,7 +291,7 @@ defmodule EveDmv.Platform.Cache.StaticDataCache do
       |> new()
       |> filter(type_id in ^type_ids)
 
-    case EveDmv.Api.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, items} ->
         # Cache all results
         result_map =
@@ -328,7 +328,7 @@ defmodule EveDmv.Platform.Cache.StaticDataCache do
       |> filter(system_id == ^system_id)
       |> limit(1)
 
-    case EveDmv.Api.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, [system]} ->
         :ets.insert(@table_name, {{:system, system_id}, system.system_name})
         {:ok, system.system_name}
@@ -345,7 +345,7 @@ defmodule EveDmv.Platform.Cache.StaticDataCache do
       |> filter(type_id == ^type_id)
       |> limit(1)
 
-    case EveDmv.Api.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, [item]} ->
         :ets.insert(@table_name, {{category, type_id}, item.type_name})
         {:ok, item.type_name}

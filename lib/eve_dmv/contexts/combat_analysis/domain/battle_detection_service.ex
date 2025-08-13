@@ -394,7 +394,6 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService do
 
   defp fetch_battle_from_db(battle_id) do
     # Try to fetch battle from database using Ash API
-    alias EveDmv.Contexts.BattleAnalysis.Api
     alias EveDmv.Contexts.Combat.Resources.Battle
     import Ash.Query, except: [limit: 2]
 
@@ -404,7 +403,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.BattleDetectionService do
       |> filter(battle_id == ^battle_id)
       |> Ash.Query.limit(1)
 
-    case Api.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, [battle]} -> {:ok, battle}
       {:ok, []} -> {:error, :not_found}
       {:error, _reason} -> {:error, :not_found}

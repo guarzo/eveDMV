@@ -6,7 +6,6 @@ defmodule EveDmv.Contexts.SystemAnalysis.Domain.HeatmapGenerator do
 
   import Ash.Query
 
-  alias EveDmv.Api
   alias EveDmv.Eve.SolarSystem
   alias EveDmv.Killmails.KillmailRaw
 
@@ -98,7 +97,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.Domain.HeatmapGenerator do
     systems =
       SolarSystem
       |> filter(region_id == ^region_id)
-      |> Api.read!()
+      |> Ash.read!(domain: EveDmv.Api)
 
     {:ok, systems}
   rescue
@@ -110,7 +109,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.Domain.HeatmapGenerator do
     systems =
       SolarSystem
       |> filter(constellation_id == ^constellation_id)
-      |> Api.read!()
+      |> Ash.read!(domain: EveDmv.Api)
 
     {:ok, systems}
   rescue
@@ -136,7 +135,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.Domain.HeatmapGenerator do
         :victim_ship_type_id,
         :data
       ])
-      |> Api.read!()
+      |> Ash.read!(domain: EveDmv.Api)
 
     # Aggregate by system
     activity_by_system =

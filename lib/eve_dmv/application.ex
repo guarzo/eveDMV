@@ -40,6 +40,8 @@ defmodule EveDmv.Application do
       EveDmvWeb.Telemetry,
       # Task supervisor for background tasks (start early)
       {Task.Supervisor, name: EveDmv.TaskSupervisor},
+      # Start rate limiter
+      {EveDmvWeb.RateLimit, [clean_period: 60_000]},
       # Auto-recompilation in dev environment (handled by exsync application)
       # ESI reliability supervisor (includes Registry and circuit breakers)
       EveDmv.Eve.ReliabilitySupervisor,

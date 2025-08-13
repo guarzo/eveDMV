@@ -44,7 +44,7 @@ defmodule EveDmv.Platform.Database.CharacterRepository do
             |> Ash.Query.new()
             |> Ash.Query.filter(character_id == ^character_id)
 
-          case Api.read(Ash.Query.limit(query, 1)) do
+          case Ash.read(Ash.Query.limit(query, 1), domain: EveDmv.Api) do
             {:ok, [stats]} -> {:ok, stats}
             {:ok, []} -> {:error, :not_found}
             {:error, reason} -> {:error, reason}
@@ -99,7 +99,7 @@ defmodule EveDmv.Platform.Database.CharacterRepository do
               query
             end
 
-          Api.read(query)
+          Ash.read(query, domain: EveDmv.Api)
         end)
       end,
       opts
@@ -126,7 +126,7 @@ defmodule EveDmv.Platform.Database.CharacterRepository do
         |> Ash.Query.filter(character_id in ^character_ids)
         |> Ash.Query.sort(:character_name)
 
-      Api.read(query)
+      Ash.read(query, domain: EveDmv.Api)
     end)
   end
 
@@ -173,7 +173,7 @@ defmodule EveDmv.Platform.Database.CharacterRepository do
               query
             end
 
-          Api.read(query)
+          Ash.read(query, domain: EveDmv.Api)
         end)
       end,
       opts
@@ -260,7 +260,7 @@ defmodule EveDmv.Platform.Database.CharacterRepository do
         |> Ash.Query.filter(character_id in ^character_ids)
         |> Ash.Query.sort(:character_name)
 
-      Api.read(query)
+      Ash.read(query, domain: EveDmv.Api)
     end)
   end
 

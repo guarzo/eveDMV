@@ -9,7 +9,6 @@ defmodule EveDmv.Contexts.Combat.Services.ZkillboardImporter do
   - Handling zkillboard API rate limits
   """
 
-  alias EveDmv.Api
   alias EveDmv.Contexts.BattleAnalysis.Core.BattleDetector
   alias EveDmv.Contexts.Combat.Services.BattleService
   alias EveDmv.Http.UnifiedClient
@@ -272,7 +271,7 @@ defmodule EveDmv.Contexts.Combat.Services.ZkillboardImporter do
 
   defp save_or_update_killmail(killmail_data) do
     # Use Ash API to create the killmail
-    case Api.create(KillmailRaw, killmail_data, action: :ingest_from_source) do
+    case Ash.create(KillmailRaw, killmail_data, action: :ingest_from_source, domain: EveDmv.Api) do
       {:ok, killmail} ->
         killmail
 

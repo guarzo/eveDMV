@@ -194,13 +194,14 @@ defmodule EveDmv.Shared.ChainIntelligence do
     try do
       # Query killmails in the system to analyze participant movement
       killmails =
-        EveDmv.Api.read!(
+        Ash.read!(
           EveDmv.Killmails.KillmailRaw,
           filter: [
             solar_system_id: system_id,
             occurred_at: [greater_than: since]
           ],
-          limit: 1000
+          limit: 1000,
+          domain: EveDmv.Api
         )
 
       # Extract unique characters from participants
@@ -259,13 +260,14 @@ defmodule EveDmv.Shared.ChainIntelligence do
     since = DateTimeUtils.add(DateTime.utc_now(), -24 * 3600, :second)
 
     killmails =
-      EveDmv.Api.read!(
+      Ash.read!(
         EveDmv.Killmails.KillmailRaw,
         filter: [
           solar_system_id: system_id,
           occurred_at: [greater_than: since]
         ],
-        limit: 500
+        limit: 500,
+        domain: EveDmv.Api
       )
 
     # Analyze participant movements to infer connections
@@ -524,12 +526,13 @@ defmodule EveDmv.Shared.ChainIntelligence do
     try do
       # Get recent killmails (using a default system for now)
       killmails =
-        EveDmv.Api.read!(
+        Ash.read!(
           EveDmv.Killmails.KillmailRaw,
           filter: [
             occurred_at: [greater_than: since]
           ],
-          limit: 2000
+          limit: 2000,
+          domain: EveDmv.Api
         )
 
       # Group activity by hour
@@ -681,12 +684,13 @@ defmodule EveDmv.Shared.ChainIntelligence do
 
     # Get killmails where our corporation was involved
     killmails =
-      EveDmv.Api.read!(
+      Ash.read!(
         EveDmv.Killmails.KillmailRaw,
         filter: [
           occurred_at: [greater_than: since]
         ],
-        limit: 1000
+        limit: 1000,
+        domain: EveDmv.Api
       )
 
     # Filter for kills involving our corporation
@@ -895,10 +899,11 @@ defmodule EveDmv.Shared.ChainIntelligence do
 
     try do
       killmails =
-        EveDmv.Api.read!(
+        Ash.read!(
           EveDmv.Killmails.KillmailRaw,
           filter: [occurred_at: [greater_than: since]],
-          limit: 1000
+          limit: 1000,
+          domain: EveDmv.Api
         )
 
       corp_killmails =
@@ -954,10 +959,11 @@ defmodule EveDmv.Shared.ChainIntelligence do
 
     try do
       killmails =
-        EveDmv.Api.read!(
+        Ash.read!(
           EveDmv.Killmails.KillmailRaw,
           filter: [occurred_at: [greater_than: since]],
-          limit: 500
+          limit: 500,
+          domain: EveDmv.Api
         )
 
       corp_killmails =

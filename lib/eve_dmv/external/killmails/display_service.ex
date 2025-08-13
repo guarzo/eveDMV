@@ -3,7 +3,6 @@ defmodule EveDmv.Killmails.DisplayService do
   Business logic for killmail display and formatting
   """
 
-  alias EveDmv.Api
   alias EveDmv.Constants.Isk
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Core.Utils.ParsingUtils
@@ -27,7 +26,7 @@ defmodule EveDmv.Killmails.DisplayService do
     # Apply filters if provided
     query = apply_filters(base_query, filters)
 
-    raw = Api.read!(query)
+    raw = Ash.read!(query, domain: EveDmv.Api)
 
     # Preload names for raw killmails
     preload_raw_killmail_names(raw)

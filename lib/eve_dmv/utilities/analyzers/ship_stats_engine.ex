@@ -300,7 +300,7 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
   defp update_ship_rankings do
     Logger.info("Updating ship rankings...")
 
-    case Api.read(ShipStats) do
+    case Ash.read(ShipStats, domain: EveDmv.Api) do
       {:ok, ships} ->
         # Calculate usage rank (by total activity)
         ships_by_usage = Enum.sort_by(ships, &(&1.total_kills + &1.total_losses), :desc)
@@ -324,7 +324,7 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
     ships
     |> Enum.with_index(1)
     |> Enum.each(fn {ship, rank} ->
-      case Api.update(ship, %{usage_rank: rank}) do
+      case Ash.update(ship, %{usage_rank: rank}, domain: EveDmv.Api) do
         {:ok, _} ->
           :ok
 
@@ -341,7 +341,7 @@ defmodule EveDmv.Analytics.ShipStatsEngine do
     ships
     |> Enum.with_index(1)
     |> Enum.each(fn {ship, rank} ->
-      case Api.update(ship, %{effectiveness_rank: rank}) do
+      case Ash.update(ship, %{effectiveness_rank: rank}, domain: EveDmv.Api) do
         {:ok, _} ->
           :ok
 

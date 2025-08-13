@@ -6,7 +6,6 @@ defmodule EveDmv.Contexts.SystemAnalysis.Domain.EscalationDetector do
 
   import Ash.Query
 
-  alias EveDmv.Api
   alias EveDmv.Killmails.KillmailRaw
 
   @doc """
@@ -113,7 +112,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.Domain.EscalationDetector do
             :victim_ship_type_id,
             :data
           ])
-          |> Api.read!()
+          |> Ash.read!(domain: EveDmv.Api)
 
         {:ok, killmails}
     end
@@ -135,7 +134,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.Domain.EscalationDetector do
         :victim_ship_type_id,
         :data
       ])
-      |> Api.read!()
+      |> Ash.read!(domain: EveDmv.Api)
 
     {:ok, killmails}
   rescue

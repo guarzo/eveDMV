@@ -5,7 +5,6 @@ defmodule EveDmv.Contexts.SystemAnalysis do
   Provides analysis of solar system activity patterns, heatmaps, activity spillover
   detection, and regional correlation analysis.
   """
-  alias EveDmv.Api
   alias EveDmv.Eve.SolarSystem
   alias EveDmv.Killmails.KillmailRaw
   require Ash.Query
@@ -68,7 +67,7 @@ defmodule EveDmv.Contexts.SystemAnalysis do
       |> Ash.Query.filter(solar_system_id == ^system_id)
       |> Ash.Query.filter(killmail_time >= ^cutoff_date)
 
-    case Api.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, killmails} ->
         analysis = %{
           system_id: system_id,
@@ -101,7 +100,7 @@ defmodule EveDmv.Contexts.SystemAnalysis do
       |> Ash.Query.new()
       |> Ash.Query.filter(killmail_time >= ^cutoff_date)
 
-    case Api.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, killmails} ->
         heatmap_data = generate_heatmap_from_killmails(killmails, opts)
         {:ok, heatmap_data}
@@ -132,7 +131,8 @@ defmodule EveDmv.Contexts.SystemAnalysis do
       |> Ash.Query.filter(killmail_time >= ^last_48h)
       |> Ash.Query.filter(killmail_time < ^last_24h)
 
-    case {Api.read(current_query), Api.read(previous_query)} do
+    case {Ash.read(current_query, domain: EveDmv.Api),
+          Ash.read(previous_query, domain: EveDmv.Api)} do
       {{:ok, current_kills}, {:ok, previous_kills}} ->
         current_count = length(current_kills)
         previous_count = length(previous_kills)
@@ -152,7 +152,7 @@ defmodule EveDmv.Contexts.SystemAnalysis do
 
         # Query actual system count from database
         total_systems =
-          case Api.count(SolarSystem) do
+          case Ash.count(SolarSystem, domain: EveDmv.Api) do
             {:ok, count} -> count
             # Fallback to prevent division by zero
             _ -> 1
@@ -221,7 +221,7 @@ defmodule EveDmv.Contexts.SystemAnalysis do
       |> Ash.Query.select([:system_id])
 
     system_ids =
-      case Api.read(system_query) do
+      case Ash.read(system_query, domain: EveDmv.Api) do
         {:ok, systems} -> Enum.map(systems, & &1.system_id)
         {:error, _} -> []
       end
@@ -241,7 +241,7 @@ defmodule EveDmv.Contexts.SystemAnalysis do
         |> Ash.Query.filter(killmail_time >= ^cutoff_date)
         |> Ash.Query.filter(solar_system_id in ^system_ids)
 
-      case Api.read(query) do
+      case Ash.read(query, domain: EveDmv.Api) do
         {:ok, killmails} ->
           correlation_data = calculate_system_correlations(system_ids, killmails)
           # Add region_id to response for tests
@@ -266,7 +266,7 @@ defmodule EveDmv.Contexts.SystemAnalysis do
       |> Ash.Query.filter(killmail_time >= ^cutoff_date)
       |> Ash.Query.filter(solar_system_id in ^system_ids)
 
-    case Api.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, killmails} ->
         correlation_data = calculate_system_correlations(system_ids, killmails)
         {:ok, correlation_data}
@@ -290,7 +290,7 @@ defmodule EveDmv.Contexts.SystemAnalysis do
       |> Ash.Query.new()
       |> Ash.Query.filter(killmail_time >= ^cutoff_date)
 
-    case Api.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, killmails} ->
         system_activity = group_by_system(killmails)
         hot_zones = identify_high_activity_systems(system_activity)
@@ -333,7 +333,8 @@ defmodule EveDmv.Contexts.SystemAnalysis do
       |> Ash.Query.filter(killmail_time >= ^baseline_cutoff)
       |> Ash.Query.filter(killmail_time < ^current_cutoff)
 
-    case {Api.read(current_query), Api.read(baseline_query)} do
+    case {Ash.read(current_query, domain: EveDmv.Api),
+          Ash.read(baseline_query, domain: EveDmv.Api)} do
       {{:ok, current_kills}, {:ok, baseline_kills}} ->
         escalations =
           analyze_escalation_patterns(current_kills, baseline_kills, hours, baseline_hours)
@@ -433,7 +434,7 @@ defmodule EveDmv.Contexts.SystemAnalysis do
       |> Ash.Query.filter(solar_system_id == ^system_b)
       |> Ash.Query.filter(killmail_time >= ^cutoff_date)
 
-    case {Api.read(query_a), Api.read(query_b)} do
+    case {Ash.read(query_a, domain: EveDmv.Api), Ash.read(query_b, domain: EveDmv.Api)} do
       {{:ok, kills_a}, {:ok, kills_b}} ->
         {group_by_hour(kills_a), group_by_hour(kills_b)}
 
@@ -859,7 +860,7 @@ defmodule EveDmv.Contexts.SystemAnalysis do
       |> Ash.Query.filter(system_id: [in: system_ids])
       |> Ash.Query.select([:system_id, :system_name, :x, :y, :z])
 
-    case Api.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, systems} ->
         Map.new(systems, fn sys ->
           {sys.system_id,
@@ -884,7 +885,7 @@ defmodule EveDmv.Contexts.SystemAnalysis do
       |> Ash.Query.select([:system_name])
       |> Ash.Query.limit(1)
 
-    case Api.read_one(query) do
+    case Ash.read_one(query, domain: EveDmv.Api) do
       {:ok, %{system_name: name}} when not is_nil(name) -> name
       _ -> "System #{system_id}"
     end

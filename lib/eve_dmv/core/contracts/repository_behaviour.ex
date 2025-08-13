@@ -48,7 +48,7 @@ defmodule EveDmv.Core.Contracts.RepositoryBehaviour do
     quote do
       @impl EveDmv.Core.Contracts.RepositoryBehaviour
       def get(id) do
-        case Api.get(@resource, id) do
+        case Ash.get(@resource, id, domain: EveDmv.Api) do
           {:ok, record} -> {:ok, record}
           {:error, error} -> {:error, error}
         end
@@ -75,7 +75,7 @@ defmodule EveDmv.Core.Contracts.RepositoryBehaviour do
         |> apply_sorting(Keyword.get(opts, :sort, []))
         |> apply_limit(Keyword.get(opts, :limit))
         |> apply_offset(Keyword.get(opts, :offset))
-        |> Api.read()
+        |> Ash.read(domain: EveDmv.Api)
       end
 
       @impl EveDmv.Core.Contracts.RepositoryBehaviour
@@ -84,7 +84,7 @@ defmodule EveDmv.Core.Contracts.RepositoryBehaviour do
         |> new()
         |> apply_filters(Keyword.get(opts, :filters, []))
         |> apply_sorting(Keyword.get(opts, :sort, []))
-        |> Api.read!()
+        |> Ash.read!(domain: EveDmv.Api)
         |> Stream.chunk_every(Keyword.get(opts, :batch_size, 1000))
       end
     end
@@ -96,18 +96,18 @@ defmodule EveDmv.Core.Contracts.RepositoryBehaviour do
       @impl EveDmv.Core.Contracts.RepositoryBehaviour
       def create(attrs) do
         changeset = Ash.Changeset.for_create(@resource, :create, attrs)
-        Api.create(changeset, [])
+        Ash.create(changeset, [], domain: EveDmv.Api)
       end
 
       @impl EveDmv.Core.Contracts.RepositoryBehaviour
       def update(record, attrs) do
         changeset = Ash.Changeset.for_update(record, :update, attrs)
-        Api.update(changeset, [])
+        Ash.update(changeset, [], domain: EveDmv.Api)
       end
 
       @impl EveDmv.Core.Contracts.RepositoryBehaviour
       def delete(record) do
-        Api.destroy(record)
+        Ash.destroy(record, domain: EveDmv.Api)
       end
     end
   end
@@ -122,7 +122,7 @@ defmodule EveDmv.Core.Contracts.RepositoryBehaviour do
           |> new()
           |> apply_filters(Keyword.get(opts, :filters, []))
 
-        case Api.count(filtered_query) do
+        case Ash.count(filtered_query, domain: EveDmv.Api) do
           {:ok, count} -> {:ok, count}
           {:error, error} -> {:error, error}
         end

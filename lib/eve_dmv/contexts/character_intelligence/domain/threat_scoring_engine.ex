@@ -14,7 +14,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   techniques to provide actionable intelligence for fleet commanders and solo pilots.
   """
 
-  alias EveDmv.Api
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Core.Utils.DateTimeUtils
@@ -199,8 +198,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
       # Larger limit to search for attacker involvement
       |> Ash.Query.limit(1000)
 
-    with {:ok, victim_killmails} <- Api.read(victim_query),
-         {:ok, potential_attacker_killmails} <- Api.read(attacker_query) do
+    with {:ok, victim_killmails} <- Ash.read(victim_query, domain: EveDmv.Api),
+         {:ok, potential_attacker_killmails} <- Ash.read(attacker_query, domain: EveDmv.Api) do
       # Filter attacker killmails for this character
       attacker_killmails =
         Enum.filter(potential_attacker_killmails, fn km ->

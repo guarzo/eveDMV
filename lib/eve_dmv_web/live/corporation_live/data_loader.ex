@@ -4,10 +4,10 @@ defmodule EveDmvWeb.CorporationLive.DataLoader do
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Database.CorporationQueries
-  alias EveDmv.Database.QueryPerformance
   alias EveDmv.Eve.EsiCorporationClient
   alias EveDmv.Platform.Cache.AnalysisCache
+  alias EveDmv.Platform.Database.CorporationQueries
+  alias EveDmv.Platform.Database.QueryPerformance
 
   require Logger
 

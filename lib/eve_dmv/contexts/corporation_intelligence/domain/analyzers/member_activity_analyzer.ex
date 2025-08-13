@@ -10,7 +10,6 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
   import Ash.Query
 
   alias Ecto.Adapters.SQL
-  alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Eve.EsiCorporationClient
   alias EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer.CorporationAnalyzer
@@ -514,7 +513,7 @@ defmodule EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer do
       |> select([:access_token])
       |> limit(1)
 
-    case Api.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, [user]} ->
         {:ok, user.access_token}
 

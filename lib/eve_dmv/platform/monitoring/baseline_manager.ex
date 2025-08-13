@@ -10,7 +10,6 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
   - Baseline validation and quality assessment
   """
 
-  alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
 
@@ -82,12 +81,13 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
       system_data =
         Enum.map(monitored_systems, fn system_id ->
           killmails =
-            Api.read!(KillmailRaw,
+            Ash.read!(KillmailRaw,
               filter: [
                 solar_system_id: system_id,
                 timestamp: [greater_than: since]
               ],
-              limit: 1000
+              limit: 1000,
+              domain: EveDmv.Api
             )
 
           {system_id,

@@ -11,7 +11,6 @@ defmodule EveDmv.StaticData.ShipTypes do
   """
 
   import Ecto.Query
-  alias EveDmv.Api
   alias EveDmv.Eve.ItemType
   alias EveDmv.Repo
   alias EveDmv.StaticData.ShipAttributes
@@ -441,7 +440,7 @@ defmodule EveDmv.StaticData.ShipTypes do
   def get_ship_attributes(type_id) when is_integer(type_id) do
     case ShipAttributes
          |> Ash.Query.for_read(:get_by_type_id, %{type_id: type_id})
-         |> Api.read() do
+         |> Ash.read(domain: EveDmv.Api) do
       {:ok, [attributes]} -> {:ok, attributes}
       {:ok, []} -> {:error, :not_found}
       {:error, error} -> {:error, error}
@@ -549,7 +548,7 @@ defmodule EveDmv.StaticData.ShipTypes do
   def get_ships_by_role(role) when is_binary(role) do
     case ShipAttributes
          |> Ash.Query.for_read(:list_by_role, %{role_classification: role})
-         |> Api.read() do
+         |> Ash.read(domain: EveDmv.Api) do
       {:ok, ships} -> {:ok, ships}
       {:error, error} -> {:error, error}
     end
@@ -561,7 +560,7 @@ defmodule EveDmv.StaticData.ShipTypes do
   def get_high_dps_ships(min_dps \\ 500.0) do
     case ShipAttributes
          |> Ash.Query.for_read(:high_dps_ships, %{min_dps: min_dps})
-         |> Api.read() do
+         |> Ash.read(domain: EveDmv.Api) do
       {:ok, ships} -> {:ok, ships}
       {:error, error} -> {:error, error}
     end
@@ -573,7 +572,7 @@ defmodule EveDmv.StaticData.ShipTypes do
   def get_tank_ships(min_ehp \\ 50_000.0) do
     case ShipAttributes
          |> Ash.Query.for_read(:tank_ships, %{min_ehp: min_ehp})
-         |> Api.read() do
+         |> Ash.read(domain: EveDmv.Api) do
       {:ok, ships} -> {:ok, ships}
       {:error, error} -> {:error, error}
     end

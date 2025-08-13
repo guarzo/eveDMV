@@ -19,7 +19,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.CharacterService do
   """
   @spec create_character_profile(map()) :: {:ok, any()}
   def create_character_profile(character_data) do
-    with {:ok, profile} <- Api.create(CharacterProfile, character_data) do
+    with {:ok, profile} <- Ash.create(CharacterProfile, character_data, domain: EveDmv.Api) do
       # Broadcast creation event
       Phoenix.PubSub.broadcast(
         EveDmv.PubSub,
@@ -38,7 +38,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.CharacterService do
   def update_character_stats(character_id, stats) do
     case get_character(character_id) do
       {:ok, character} ->
-        case Api.update(character, stats) do
+        case Ash.update(character, stats, domain: EveDmv.Api) do
           {:ok, updated} ->
             # Clear related caches
             clear_character_cache(character_id)
@@ -84,7 +84,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.CharacterService do
       |> Ash.Query.limit(search_params[:limit] || 50)
       |> Ash.Query.sort(search_params[:sort] || [character_name: :asc])
 
-    case Api.read(query) do
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, characters} -> {:ok, characters}
       error -> error
     end
