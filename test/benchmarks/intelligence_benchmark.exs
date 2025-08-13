@@ -4,8 +4,6 @@ defmodule EveDmv.IntelligenceBenchmark do
   Tests the performance of critical intelligence analysis functions.
   """
 
-  alias EveDmv.Api
-
   alias EveDmv.Intelligence.CharacterAnalyzer
   alias EveDmv.Intelligence.HomeDefenseAnalyzer
   alias EveDmv.Intelligence.WHFleetAnalyzer
@@ -156,7 +154,7 @@ defmodule EveDmv.IntelligenceBenchmark do
         ],
         KillmailRaw,
         :create,
-        domain: Api,
+        domain: EveDmv.Api,
         return_errors?: false
       )
     end
@@ -196,7 +194,7 @@ defmodule EveDmv.IntelligenceBenchmark do
         ],
         KillmailRaw,
         :create,
-        domain: Api,
+        domain: EveDmv.Api,
         return_errors?: false
       )
     end

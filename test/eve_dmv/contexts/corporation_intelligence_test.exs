@@ -3,7 +3,6 @@ defmodule EveDmv.Contexts.CorporationIntelligenceTest do
 
   import EveDmv.Factories
 
-  alias EveDmv.Api
   alias EveDmv.Contexts.CorporationIntelligence
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Users.User
@@ -16,7 +15,7 @@ defmodule EveDmv.Contexts.CorporationIntelligenceTest do
       members =
         for i <- 1..10 do
           {:ok, member} =
-            Api.create(User, %{
+            Ash.create(User, %{
               character_id: 94_000_000 + i,
               character_name: "Corp Member #{i}",
               owner_hash: "corp_hash_#{i}_#{System.unique_integer()}"
@@ -34,7 +33,7 @@ defmodule EveDmv.Contexts.CorporationIntelligenceTest do
           if rem(j, 3) == 0 do
             # Losses
             {:ok, _} =
-              Api.create(
+              Ash.create(
                 KillmailRaw,
                 Map.merge(killmail_attrs, %{
                   killmail_id: 800_000_000 + member.eve_character_id * 10 + j,
@@ -56,7 +55,7 @@ defmodule EveDmv.Contexts.CorporationIntelligenceTest do
           else
             # Kills
             {:ok, _} =
-              Api.create(
+              Ash.create(
                 KillmailRaw,
                 Map.merge(killmail_attrs, %{
                   killmail_id: 801_000_000 + member.eve_character_id * 10 + j,
@@ -107,7 +106,7 @@ defmodule EveDmv.Contexts.CorporationIntelligenceTest do
       # Create test data as before
       for i <- 1..5 do
         {:ok, member} =
-          Api.create(User, %{
+          Ash.create(User, %{
             character_id: 94_000_100 + i,
             character_name: "Metric Test #{i}",
             owner_hash: "metric_#{i}_#{System.unique_integer()}"
@@ -118,7 +117,7 @@ defmodule EveDmv.Contexts.CorporationIntelligenceTest do
           killmail_attrs = killmail_raw_factory()
 
           {:ok, _} =
-            Api.create(
+            Ash.create(
               KillmailRaw,
               Map.merge(killmail_attrs, %{
                 killmail_id: 805_000_000 + i * 10 + j,
@@ -167,7 +166,7 @@ defmodule EveDmv.Contexts.CorporationIntelligenceTest do
         killmail_attrs = killmail_raw_factory()
 
         {:ok, _} =
-          Api.create(
+          Ash.create(
             KillmailRaw,
             Map.merge(killmail_attrs, %{
               killmail_id: 806_000_000 + i,
@@ -235,7 +234,7 @@ defmodule EveDmv.Contexts.CorporationIntelligenceTest do
       # Create members with threat-worthy killmails
       for i <- 1..3 do
         {:ok, member} =
-          Api.create(User, %{
+          Ash.create(User, %{
             character_id: 95_100_000 + i,
             character_name: "Threat Member #{i}",
             owner_hash: "threat_#{i}_#{System.unique_integer()}"
@@ -246,7 +245,7 @@ defmodule EveDmv.Contexts.CorporationIntelligenceTest do
           killmail_attrs = killmail_raw_factory()
 
           {:ok, _} =
-            Api.create(
+            Ash.create(
               KillmailRaw,
               Map.merge(killmail_attrs, %{
                 killmail_id: 807_000_000 + i * 100 + j,
@@ -294,7 +293,7 @@ defmodule EveDmv.Contexts.CorporationIntelligenceTest do
           killmail_attrs = killmail_raw_factory()
 
           {:ok, _} =
-            Api.create(
+            Ash.create(
               KillmailRaw,
               Map.merge(killmail_attrs, %{
                 killmail_id: 808_000_000 + (corp_id - 98_000_000) * 1000 + i,
@@ -348,7 +347,7 @@ defmodule EveDmv.Contexts.CorporationIntelligenceTest do
         killmail_attrs = killmail_raw_factory()
 
         {:ok, _} =
-          Api.create(
+          Ash.create(
             KillmailRaw,
             Map.merge(killmail_attrs, %{
               killmail_id: 809_000_000 + i,
@@ -414,7 +413,7 @@ defmodule EveDmv.Contexts.CorporationIntelligenceTest do
         killmail_attrs = killmail_raw_factory()
 
         {:ok, _} =
-          Api.create(
+          Ash.create(
             KillmailRaw,
             Map.merge(killmail_attrs, %{
               killmail_id: 810_000_000 + i,
@@ -444,7 +443,7 @@ defmodule EveDmv.Contexts.CorporationIntelligenceTest do
         killmail_attrs = killmail_raw_factory()
 
         {:ok, _} =
-          Api.create(
+          Ash.create(
             KillmailRaw,
             Map.merge(killmail_attrs, %{
               killmail_id: 811_000_000 + i,
@@ -493,7 +492,7 @@ defmodule EveDmv.Contexts.CorporationIntelligenceTest do
 
       # Create a member for testing
       {:ok, member} =
-        Api.create(User, %{
+        Ash.create(User, %{
           character_id: 94_000_999,
           character_name: "Test Member",
           owner_hash: "test_hash_#{System.unique_integer()}"
@@ -504,7 +503,7 @@ defmodule EveDmv.Contexts.CorporationIntelligenceTest do
       recent_date = DateTime.utc_now() |> DateTime.add(-7, :day)
 
       {:ok, _} =
-        Api.create(
+        Ash.create(
           KillmailRaw,
           Map.merge(killmail_attrs, %{
             killmail_id: 900_000_001,
@@ -529,7 +528,7 @@ defmodule EveDmv.Contexts.CorporationIntelligenceTest do
 
       # Create a member
       {:ok, member} =
-        Api.create(User, %{
+        Ash.create(User, %{
           character_id: 94_001_000,
           character_name: "Year Boundary Member",
           owner_hash: "boundary_hash_#{System.unique_integer()}"
@@ -551,7 +550,7 @@ defmodule EveDmv.Contexts.CorporationIntelligenceTest do
         killmail_attrs = killmail_raw_factory()
 
         {:ok, _} =
-          Api.create(
+          Ash.create(
             KillmailRaw,
             Map.merge(killmail_attrs, %{
               killmail_id: 900_100_000 + idx,
@@ -577,7 +576,7 @@ defmodule EveDmv.Contexts.CorporationIntelligenceTest do
 
       # Create a member
       {:ok, member} =
-        Api.create(User, %{
+        Ash.create(User, %{
           character_id: 94_001_001,
           character_name: "Month Shift Member",
           owner_hash: "shift_hash_#{System.unique_integer()}"
@@ -592,7 +591,7 @@ defmodule EveDmv.Contexts.CorporationIntelligenceTest do
         killmail_attrs = killmail_raw_factory()
 
         {:ok, _} =
-          Api.create(
+          Ash.create(
             KillmailRaw,
             Map.merge(killmail_attrs, %{
               killmail_id: 900_200_000 + month_offset,

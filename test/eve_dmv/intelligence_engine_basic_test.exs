@@ -154,8 +154,8 @@ defmodule EveDmv.IntelligenceEngineBasicTest do
 
       # Should have database dependencies
       assert Enum.any?(dependencies, fn dep ->
-               dep == EveDmv.Database.CharacterRepository or
-                 dep == EveDmv.Database.KillmailRepository
+               dep == EveDmv.Platform.Database.CharacterRepository or
+                 dep == EveDmv.Platform.Database.KillmailRepository
              end)
     end
   end

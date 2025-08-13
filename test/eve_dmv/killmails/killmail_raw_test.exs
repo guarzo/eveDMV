@@ -8,7 +8,6 @@ defmodule EveDmv.Killmails.KillmailRawTest do
   import Ash.Expr
 
   alias Ecto.Adapters.SQL
-  alias EveDmv.Api
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Killmails.TestDataGenerator
 
@@ -84,7 +83,7 @@ defmodule EveDmv.Killmails.KillmailRawTest do
         source: "test"
       }
 
-      assert {:ok, killmail} = Ash.create(KillmailRaw, attrs, domain: Api)
+      assert {:ok, killmail} = Ash.create(KillmailRaw, attrs, domain: EveDmv.Api)
       assert killmail.killmail_id == attrs.killmail_id
       assert killmail.source == "test"
       assert is_map(killmail.raw_data)
@@ -102,7 +101,7 @@ defmodule EveDmv.Killmails.KillmailRawTest do
         source: "test"
       }
 
-      assert {:error, %Ash.Error.Invalid{}} = Ash.create(KillmailRaw, attrs, domain: Api)
+      assert {:error, %Ash.Error.Invalid{}} = Ash.create(KillmailRaw, attrs, domain: EveDmv.Api)
     end
   end
 
@@ -139,11 +138,11 @@ defmodule EveDmv.Killmails.KillmailRawTest do
 
       # First insert
       assert {:ok, killmail1} =
-               Ash.create(KillmailRaw, attrs, action: :ingest_from_source, domain: Api)
+               Ash.create(KillmailRaw, attrs, action: :ingest_from_source, domain: EveDmv.Api)
 
       # Second insert should not create duplicate
       assert {:ok, killmail2} =
-               Ash.create(KillmailRaw, attrs, action: :ingest_from_source, domain: Api)
+               Ash.create(KillmailRaw, attrs, action: :ingest_from_source, domain: EveDmv.Api)
 
       # Should be the same record
       assert killmail1.killmail_id == killmail2.killmail_id
@@ -153,7 +152,7 @@ defmodule EveDmv.Killmails.KillmailRawTest do
         KillmailRaw
         |> Ash.Query.new()
         |> Ash.Query.filter(killmail_id == ^attrs.killmail_id)
-        |> Ash.count!(domain: Api)
+        |> Ash.count!(domain: EveDmv.Api)
 
       assert count == 1
     end
@@ -202,7 +201,7 @@ defmodule EveDmv.Killmails.KillmailRawTest do
           source: "test"
         }
 
-        Ash.create!(KillmailRaw, attrs, domain: Api)
+        Ash.create!(KillmailRaw, attrs, domain: EveDmv.Api)
       end
 
       %{test_system_id: test_system_id, other_system_id: other_system_id}
@@ -213,7 +212,7 @@ defmodule EveDmv.Killmails.KillmailRawTest do
         KillmailRaw
         |> Ash.Query.new()
         |> Ash.Query.for_read(:recent_kills)
-        |> Ash.read!(domain: Api)
+        |> Ash.read!(domain: EveDmv.Api)
 
       assert length(killmails) >= 5
 
@@ -227,7 +226,7 @@ defmodule EveDmv.Killmails.KillmailRawTest do
         KillmailRaw
         |> Ash.Query.new()
         |> Ash.Query.for_read(:by_system, %{system_id: test_system_id})
-        |> Ash.read!(domain: Api)
+        |> Ash.read!(domain: EveDmv.Api)
 
       # We created exactly 3 killmails with the test_system_id
       assert length(killmails) == 3
@@ -253,7 +252,7 @@ defmodule EveDmv.Killmails.KillmailRawTest do
         source: "test"
       }
 
-      killmail = Ash.create!(EveDmv.Killmails.KillmailRaw, attrs, domain: Api)
+      killmail = Ash.create!(EveDmv.Killmails.KillmailRaw, attrs, domain: EveDmv.Api)
 
       # Load with calculation
       killmail_with_age =
@@ -261,7 +260,7 @@ defmodule EveDmv.Killmails.KillmailRawTest do
         |> Ash.Query.new()
         |> Ash.Query.load([:age_in_hours])
         |> Ash.Query.filter(expr(killmail_id == ^killmail.killmail_id))
-        |> Ash.read_one!(domain: Api)
+        |> Ash.read_one!(domain: EveDmv.Api)
 
       # Should be approximately 2 hours (allowing some test execution time)
       assert killmail_with_age.age_in_hours >= 1
@@ -309,15 +308,15 @@ defmodule EveDmv.Killmails.KillmailRawTest do
         source: "test"
       }
 
-      recent_killmail = Ash.create!(KillmailRaw, recent_attrs, domain: Api)
-      old_killmail = Ash.create!(KillmailRaw, old_attrs, domain: Api)
+      recent_killmail = Ash.create!(KillmailRaw, recent_attrs, domain: EveDmv.Api)
+      old_killmail = Ash.create!(KillmailRaw, old_attrs, domain: EveDmv.Api)
 
       # Load with calculation
       killmails =
         KillmailRaw
         |> Ash.Query.new()
         |> Ash.Query.load([:is_recent])
-        |> Ash.read!(domain: Api)
+        |> Ash.read!(domain: EveDmv.Api)
 
       recent_result = Enum.find(killmails, &(&1.killmail_id == recent_killmail.killmail_id))
       old_result = Enum.find(killmails, &(&1.killmail_id == old_killmail.killmail_id))

@@ -1,7 +1,6 @@
 defmodule EveDmv.Contexts.CharacterIntelligenceTest do
   use EveDmv.DataCase, async: true
 
-  alias EveDmv.Api
   alias EveDmv.Contexts.CharacterIntelligence
   alias EveDmv.Killmails.KillmailRaw
 
@@ -19,7 +18,7 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
       recent_time = DateTime.add(DateTime.utc_now(), -10, :day)
 
       {:ok, _killmail1} =
-        Api.create(
+        Ash.create(
           KillmailRaw,
           %{
             killmail_id: 101_000_001,
@@ -45,11 +44,11 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
             },
             source: "test"
           },
-          domain: Api
+          domain: EveDmv.Api
         )
 
       {:ok, _killmail2} =
-        Api.create(
+        Ash.create(
           KillmailRaw,
           %{
             killmail_id: 101_000_002,
@@ -75,13 +74,13 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
             },
             source: "test"
           },
-          domain: Api
+          domain: EveDmv.Api
         )
 
       # Add more killmails to meet minimum threshold (5 killmails)
       for i <- 3..6 do
         {:ok, _} =
-          Api.create(
+          Ash.create(
             KillmailRaw,
             %{
               killmail_id: 101_000_000 + i,
@@ -105,7 +104,7 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
               },
               source: "test"
             },
-            domain: Api
+            domain: EveDmv.Api
           )
       end
 
@@ -166,7 +165,7 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
 
       for i <- 1..5 do
         {:ok, _} =
-          Api.create(
+          Ash.create(
             KillmailRaw,
             %{
               killmail_id: 102_000_000 + i,
@@ -190,7 +189,7 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
               },
               source: "test"
             },
-            domain: Api
+            domain: EveDmv.Api
           )
       end
 
@@ -239,7 +238,7 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
 
       for i <- 1..10 do
         {:ok, _} =
-          Api.create(
+          Ash.create(
             KillmailRaw,
             %{
               killmail_id: 103_000_000 + i,
@@ -265,7 +264,7 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
               },
               source: "test"
             },
-            domain: Api
+            domain: EveDmv.Api
           )
       end
 
@@ -312,7 +311,7 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
           # Create different amounts of kills for each character
           for j <- 1..(i * 2) do
             {:ok, _} =
-              Api.create(
+              Ash.create(
                 KillmailRaw,
                 %{
                   killmail_id: 104_000_000 + i * 100 + j,
@@ -336,7 +335,7 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
                   },
                   source: "test"
                 },
-                domain: Api
+                domain: EveDmv.Api
               )
           end
 
@@ -380,7 +379,7 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
       # Create 5 killmails for valid_id to meet minimum threshold
       for i <- 1..5 do
         {:ok, _} =
-          Api.create(
+          Ash.create(
             KillmailRaw,
             %{
               killmail_id: 104_000_000 + i,
@@ -404,7 +403,7 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
               },
               source: "test"
             },
-            domain: Api
+            domain: EveDmv.Api
           )
       end
 
@@ -434,7 +433,7 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
 
       for i <- 1..5 do
         {:ok, _} =
-          Api.create(
+          Ash.create(
             KillmailRaw,
             %{
               killmail_id: 105_000_000 + i,
@@ -458,7 +457,7 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
               },
               source: "test"
             },
-            domain: Api
+            domain: EveDmv.Api
           )
       end
 
@@ -490,7 +489,7 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
 
       for {ship_id, i} <- Enum.with_index(ships, 1) do
         {:ok, _} =
-          Api.create(
+          Ash.create(
             KillmailRaw,
             %{
               killmail_id: 105_000_000 + i,
@@ -514,7 +513,7 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
               },
               source: "test"
             },
-            domain: Api
+            domain: EveDmv.Api
           )
       end
 

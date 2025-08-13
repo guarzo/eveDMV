@@ -32,15 +32,14 @@ defmodule EveDmv.Smoke.ApiSmokeTest do
   describe "static data availability" do
     setup do
       # Create minimal test data if none exists
-      alias EveDmv.Api
       alias EveDmv.Eve.ItemType
       alias EveDmv.Eve.SolarSystem
 
       # Create a test item type if none exist
-      case Api.read(ItemType |> Ash.Query.limit(1)) do
+      case Ash.read(ItemType |> Ash.Query.limit(1)) do
         {:ok, []} ->
           {:ok, _} =
-            Api.create(ItemType, %{
+            Ash.create(ItemType, %{
               type_id: 587,
               type_name: "Rifter",
               group_name: "Frigate",
@@ -55,10 +54,10 @@ defmodule EveDmv.Smoke.ApiSmokeTest do
       end
 
       # Create a test solar system if none exist
-      case Api.read(SolarSystem |> Ash.Query.limit(1)) do
+      case Ash.read(SolarSystem |> Ash.Query.limit(1)) do
         {:ok, []} ->
           {:ok, _} =
-            Api.create(SolarSystem, %{
+            Ash.create(SolarSystem, %{
               system_id: 30_000_142,
               system_name: "Jita",
               constellation_id: 20_000_020,
@@ -76,21 +75,19 @@ defmodule EveDmv.Smoke.ApiSmokeTest do
 
     test "EVE item types are loaded" do
       import Ash.Query
-      alias EveDmv.Api
       alias EveDmv.Eve.ItemType
 
       query = ItemType |> limit(1)
-      {:ok, items} = Api.read(query)
+      {:ok, items} = Ash.read(query, domain: EveDmv.Api)
       assert length(items) > 0, "No static data loaded"
     end
 
     test "solar systems are loaded" do
       import Ash.Query
-      alias EveDmv.Api
       alias EveDmv.Eve.SolarSystem
 
       query = SolarSystem |> limit(1)
-      {:ok, systems} = Api.read(query)
+      {:ok, systems} = Ash.read(query, domain: EveDmv.Api)
       assert length(systems) > 0, "No solar systems loaded"
     end
   end
@@ -101,12 +98,11 @@ defmodule EveDmv.Smoke.ApiSmokeTest do
     end
 
     test "can perform basic Ash queries" do
-      alias EveDmv.Api
       alias EveDmv.Eve.ItemType
       import Ash.Query
 
       query = ItemType |> filter(is_ship == true) |> limit(5)
-      result = Api.read(query)
+      result = Ash.read(query, domain: EveDmv.Api)
       assert {:ok, _} = result
     end
   end

@@ -6,7 +6,6 @@ defmodule EveDmvWeb.AuthControllerTest do
   import Phoenix.ConnTest
   import StreamData
 
-  alias EveDmv.Api
   alias EveDmv.Users.User
   alias EveDmvWeb.AuthController
 
@@ -34,7 +33,7 @@ defmodule EveDmvWeb.AuthControllerTest do
           oauth_tokens: oauth_tokens
         },
         action: :register_with_eve_sso,
-        domain: Api
+        domain: EveDmv.Api
       )
 
     # Create an account for the user
@@ -44,13 +43,13 @@ defmodule EveDmvWeb.AuthControllerTest do
         primary_character_id: user.id,
         is_admin: false
       })
-      |> Ash.create(domain: Api)
+      |> Ash.create(domain: EveDmv.Api)
 
     # Link user to account using the new link_to_account action
     {:ok, linked_user} =
       user
       |> Ash.Changeset.for_update(:link_to_account, %{account_id: account.id})
-      |> Ash.update(domain: Api)
+      |> Ash.update(domain: EveDmv.Api)
 
     {:ok, linked_user, account}
   end
@@ -90,7 +89,7 @@ defmodule EveDmvWeb.AuthControllerTest do
             token_expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
           },
           action: :refresh_token,
-          domain: Api
+          domain: EveDmv.Api
         )
 
       # Call success function with updated user

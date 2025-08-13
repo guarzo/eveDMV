@@ -3,7 +3,6 @@ defmodule EveDmv.Contexts.CharacterIntelligenceSimpleTest do
 
   import EveDmv.Factories
 
-  alias EveDmv.Api
   alias EveDmv.Contexts.CharacterIntelligence
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Users.User
@@ -16,7 +15,7 @@ defmodule EveDmv.Contexts.CharacterIntelligenceSimpleTest do
       killmail_attrs = killmail_raw_factory()
 
       {:ok, _killmail1} =
-        Api.create(
+        Ash.create(
           KillmailRaw,
           Map.merge(killmail_attrs, %{
             killmail_id: 101_000_001,
@@ -43,7 +42,7 @@ defmodule EveDmv.Contexts.CharacterIntelligenceSimpleTest do
         )
 
       {:ok, _killmail2} =
-        Api.create(
+        Ash.create(
           KillmailRaw,
           Map.merge(killmail_attrs, %{
             killmail_id: 101_000_002,
@@ -103,7 +102,7 @@ defmodule EveDmv.Contexts.CharacterIntelligenceSimpleTest do
         killmail_attrs = killmail_raw_factory()
 
         {:ok, _} =
-          Api.create(
+          Ash.create(
             KillmailRaw,
             Map.merge(killmail_attrs, %{
               killmail_id: 102_000_000 + i,
@@ -155,7 +154,7 @@ defmodule EveDmv.Contexts.CharacterIntelligenceSimpleTest do
         killmail_attrs = killmail_raw_factory()
 
         {:ok, _} =
-          Api.create(
+          Ash.create(
             KillmailRaw,
             Map.merge(killmail_attrs, %{
               killmail_id: 103_000_000 + i,
@@ -221,7 +220,7 @@ defmodule EveDmv.Contexts.CharacterIntelligenceSimpleTest do
             killmail_attrs = killmail_raw_factory()
 
             {:ok, _} =
-              Api.create(
+              Ash.create(
                 KillmailRaw,
                 Map.merge(killmail_attrs, %{
                   killmail_id: 104_000_000 + i * 100 + j,
@@ -282,21 +281,21 @@ defmodule EveDmv.Contexts.CharacterIntelligenceSimpleTest do
     setup do
       # Create actual User records for the characters
       {:ok, user1} =
-        Api.create(User, %{
+        Ash.create(User, %{
           character_id: 96_001_001,
           character_name: "Gang Member 1",
           owner_hash: "gang_test_1_#{System.unique_integer()}"
         })
 
       {:ok, user2} =
-        Api.create(User, %{
+        Ash.create(User, %{
           character_id: 96_001_002,
           character_name: "Gang Member 2",
           owner_hash: "gang_test_2_#{System.unique_integer()}"
         })
 
       {:ok, user3} =
-        Api.create(User, %{
+        Ash.create(User, %{
           character_id: 96_001_003,
           character_name: "Gang Member 3",
           owner_hash: "gang_test_3_#{System.unique_integer()}"
@@ -309,7 +308,7 @@ defmodule EveDmv.Contexts.CharacterIntelligenceSimpleTest do
         killmail_attrs = killmail_raw_factory()
 
         {:ok, _} =
-          Api.create(
+          Ash.create(
             KillmailRaw,
             Map.merge(killmail_attrs, %{
               killmail_id: 105_000_000 + i,

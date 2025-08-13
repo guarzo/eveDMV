@@ -3,7 +3,6 @@ defmodule EveDmv.Contexts.SystemAnalysisTest do
 
   import EveDmv.Factories
 
-  alias EveDmv.Api
   alias EveDmv.Contexts.SystemAnalysis
   alias EveDmv.Killmails.KillmailRaw
   require Ash.Query
@@ -35,7 +34,7 @@ defmodule EveDmv.Contexts.SystemAnalysisTest do
           killmail_attrs = killmail_raw_factory()
 
           {:ok, _} =
-            Api.create(
+            Ash.create(
               KillmailRaw,
               Map.merge(killmail_attrs, %{
                 killmail_id: 920_000_000 + day * 100 + kill,
@@ -144,7 +143,7 @@ defmodule EveDmv.Contexts.SystemAnalysisTest do
           killmail_attrs = killmail_raw_factory()
 
           {:ok, _} =
-            Api.create(
+            Ash.create(
               KillmailRaw,
               Map.merge(killmail_attrs, %{
                 killmail_id: 930_000_000 + system_id * 1000 + i,
@@ -244,7 +243,7 @@ defmodule EveDmv.Contexts.SystemAnalysisTest do
           killmail_attrs = killmail_raw_factory()
 
           {:ok, _} =
-            Api.create(
+            Ash.create(
               KillmailRaw,
               Map.merge(killmail_attrs, %{
                 killmail_id: 940_000_000 + hour * 100 + i,
@@ -280,7 +279,7 @@ defmodule EveDmv.Contexts.SystemAnalysisTest do
           killmail_attrs = killmail_raw_factory()
 
           {:ok, _} =
-            Api.create(
+            Ash.create(
               KillmailRaw,
               Map.merge(killmail_attrs, %{
                 killmail_id: 941_000_000 + hour * 100 + i,
@@ -315,7 +314,7 @@ defmodule EveDmv.Contexts.SystemAnalysisTest do
       killmail_attrs = killmail_raw_factory()
 
       {:ok, _} =
-        Api.create(
+        Ash.create(
           KillmailRaw,
           Map.merge(killmail_attrs, %{
             killmail_id: 942_000_000,
@@ -409,7 +408,7 @@ defmodule EveDmv.Contexts.SystemAnalysisTest do
               killmail_attrs = killmail_raw_factory()
 
               {:ok, _} =
-                Api.create(
+                Ash.create(
                   KillmailRaw,
                   Map.merge(killmail_attrs, %{
                     killmail_id: 950_000_000 + system_id * 10_000 + day * 1000 + hour * 10 + i,
@@ -521,7 +520,7 @@ defmodule EveDmv.Contexts.SystemAnalysisTest do
         killmail_attrs = killmail_raw_factory()
 
         {:ok, _} =
-          Api.create(
+          Ash.create(
             KillmailRaw,
             Map.merge(killmail_attrs, %{
               killmail_id: 960_000_000 + i,
@@ -551,7 +550,7 @@ defmodule EveDmv.Contexts.SystemAnalysisTest do
         killmail_attrs = killmail_raw_factory()
 
         {:ok, _} =
-          Api.create(
+          Ash.create(
             KillmailRaw,
             Map.merge(killmail_attrs, %{
               killmail_id: 961_000_000 + i,
@@ -581,7 +580,7 @@ defmodule EveDmv.Contexts.SystemAnalysisTest do
         killmail_attrs = killmail_raw_factory()
 
         {:ok, _} =
-          Api.create(
+          Ash.create(
             KillmailRaw,
             Map.merge(killmail_attrs, %{
               killmail_id: 962_000_000 + i,
