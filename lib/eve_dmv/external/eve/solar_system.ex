@@ -129,7 +129,12 @@ defmodule EveDmv.Eve.SolarSystem do
     attribute :sde_version, :string do
       allow_nil?(true)
       constraints(max_length: 50)
-      description("Version of the SDE this data came from")
+      description("Version of the SDE this data came from (legacy, prefer sde_build_number)")
+    end
+
+    attribute :sde_build_number, :integer do
+      allow_nil?(true)
+      description("CCP SDE build number (e.g., 3142455) - used for version tracking")
     end
 
     attribute :last_updated, :utc_datetime do
@@ -172,7 +177,8 @@ defmodule EveDmv.Eve.SolarSystem do
         :x,
         :y,
         :z,
-        :sde_version
+        :sde_version,
+        :sde_build_number
       ])
 
       # Upsert for SDE updates
@@ -195,7 +201,7 @@ defmodule EveDmv.Eve.SolarSystem do
     update :update_sde_version do
       description("Update solar system with SDE version information")
 
-      accept([:sde_version, :last_updated])
+      accept([:sde_version, :sde_build_number, :last_updated])
     end
 
     # Read actions for specific queries

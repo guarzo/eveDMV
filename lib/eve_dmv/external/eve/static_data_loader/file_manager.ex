@@ -2,45 +2,29 @@ defmodule EveDmv.Eve.StaticDataLoader.FileManager do
   @moduledoc """
   Manages EVE SDE file downloads and caching.
 
-  Handles downloading CSV files from fuzzwork.co.uk, decompressing bz2 archives,
-  and maintaining a local cache of SDE data files.
+  Downloads the official CCP Static Data Export in JSONL format from CCP's developer portal.
+  Uses ZIP compression and contains all static data files.
+
+  ## CCP SDE
+
+  Downloads the official JSONL format from CCP's developer portal.
+  Uses ZIP compression and contains all static data files.
   """
+
+  alias EveDmv.Eve.StaticDataLoader.CcpSdeClient
 
   require Logger
 
-  @required_files %{
-    item_types: "invTypes.csv",
-    item_groups: "invGroups.csv",
-    item_categories: "invCategories.csv",
-    solar_systems: "mapSolarSystems.csv",
-    regions: "mapRegions.csv",
-    constellations: "mapConstellations.csv"
+  # CCP JSONL file mappings
+  # These are the paths within the extracted SDE ZIP
+  @ccp_files %{
+    item_types: "types.jsonl",
+    item_groups: "groups.jsonl",
+    item_categories: "categories.jsonl",
+    solar_systems: "mapSolarSystems.jsonl",
+    regions: "mapRegions.jsonl",
+    constellations: "mapConstellations.jsonl"
   }
-
-  @doc """
-  Ensures all required CSV files exist, downloading if necessary.
-  """
-  @spec ensure_csv_files(list(atom())) :: {:ok, map()} | {:error, term()}
-  def ensure_csv_files(required_keys) do
-    data_dir = get_data_directory()
-    File.mkdir_p!(data_dir)
-
-    required_files = Map.take(@required_files, required_keys)
-    missing_files = get_missing_files(data_dir, required_files)
-
-    case missing_files do
-      [] ->
-        {:ok, get_file_paths(data_dir, required_files)}
-
-      missing ->
-        Logger.info("Missing CSV files: #{inspect(missing)}")
-
-        case download_files(missing, data_dir) do
-          :ok -> {:ok, get_file_paths(data_dir, required_files)}
-          error -> error
-        end
-    end
-  end
 
   @doc """
   Gets the path to the static data directory.
@@ -52,82 +36,108 @@ defmodule EveDmv.Eve.StaticDataLoader.FileManager do
   @doc """
   Gets the mapping of required file types to filenames.
   """
-  def get_required_files, do: @required_files
+  def get_required_files, do: @ccp_files
 
   @doc """
-  Checks which files are missing from the data directory.
+  Gets the file mapping for the CCP source.
   """
-  def get_missing_files(data_dir, required_files) do
-    required_files
-    |> Map.values()
-    |> Enum.reject(fn file_name ->
-      data_dir
-      |> Path.join(file_name)
-      |> File.exists?()
-    end)
+  @spec get_files_for_source() :: map()
+  def get_files_for_source, do: @ccp_files
+
+  @doc """
+  Ensures SDE files are available.
+
+  Downloads and extracts the CCP SDE ZIP archive if necessary.
+
+  ## Parameters
+
+  - `required_keys` - List of file types needed (e.g., `[:item_types, :item_groups]`)
+
+  ## Returns
+
+  - `{:ok, %{source: :ccp, file_paths: map()}}` on success
+  - `{:error, reason}` on failure
+  """
+  @spec ensure_sde_files(list(atom())) :: {:ok, map()} | {:error, term()}
+  def ensure_sde_files(required_keys) do
+    Logger.info("Ensuring SDE files from CCP")
+    ensure_ccp_files(required_keys)
   end
 
   @doc """
-  Gets full paths for all required files.
+  Ensures CCP SDE JSONL files are available.
+
+  Downloads and extracts the CCP SDE ZIP archive if necessary.
+
+  ## Returns
+
+  - `{:ok, %{source: :ccp, file_paths: map(), extracted_dir: String.t()}}` on success
+  - `{:error, reason}` on failure
   """
-  def get_file_paths(data_dir, required_files) do
-    Enum.into(required_files, %{}, fn {key, filename} ->
-      {key, Path.join(data_dir, filename)}
-    end)
-  end
+  @spec ensure_ccp_files(list(atom())) :: {:ok, map()} | {:error, term()}
+  def ensure_ccp_files(required_keys) do
+    data_dir = get_data_directory()
+    ccp_dir = Path.join(data_dir, "ccp_sde")
+    extracted_dir = Path.join(ccp_dir, "extracted")
 
-  @doc """
-  Downloads missing files from fuzzwork.co.uk.
-  """
-  def download_files(file_names, data_dir) do
-    Logger.info("Downloading missing CSV files from fuzzwork.co.uk")
+    # Check if we already have extracted files
+    required_files = Map.take(@ccp_files, required_keys)
 
-    results =
-      Enum.map(file_names, fn file_name ->
-        download_single_file(file_name, data_dir)
-      end)
+    case find_ccp_files(extracted_dir, required_files) do
+      {:ok, file_paths} ->
+        Logger.info("CCP SDE files already available")
+        {:ok, %{source: :ccp, file_paths: file_paths, extracted_dir: extracted_dir}}
 
-    case Enum.find(results, &match?({:error, _}, &1)) do
-      nil -> :ok
-      error -> error
+      {:error, :missing_files} ->
+        Logger.info("CCP SDE files not found, downloading...")
+        download_and_extract_ccp_sde(ccp_dir, required_keys)
     end
   end
 
   @doc """
-  Downloads a single file from fuzzwork.co.uk.
+  Downloads and extracts the CCP SDE archive.
+
+  ## Parameters
+
+  - `ccp_dir` - Directory to store the CCP SDE files
+  - `required_keys` - List of file types needed
+
+  ## Returns
+
+  - `{:ok, %{source: :ccp, file_paths: map(), extracted_dir: String.t()}}` on success
+  - `{:error, reason}` on failure
   """
-  def download_single_file(file_name, data_dir) do
-    url = "https://www.fuzzwork.co.uk/dump/latest/#{file_name}.bz2"
-    output_path = Path.join(data_dir, file_name)
+  @spec download_and_extract_ccp_sde(String.t(), list(atom())) :: {:ok, map()} | {:error, term()}
+  def download_and_extract_ccp_sde(ccp_dir, required_keys) do
+    File.mkdir_p!(ccp_dir)
 
-    Logger.info("Downloading #{file_name} from #{url}")
+    with {:ok, result} <- CcpSdeClient.download_and_extract(ccp_dir) do
+      Logger.info("CCP SDE downloaded and extracted to: #{result.extracted_dir}")
 
-    with {:ok, compressed_data} <- download_file(url),
-         {:ok, decompressed} <- decompress_bz2(compressed_data),
-         :ok <- File.write(output_path, decompressed) do
-      Logger.info("Successfully downloaded and saved #{file_name}")
-      :ok
-    else
-      {:error, reason} ->
-        Logger.error("Failed to download #{file_name}: #{inspect(reason)}")
-        {:error, "Failed to download #{file_name}: #{inspect(reason)}"}
+      # Find the required files in the extracted directory
+      required_files = Map.take(@ccp_files, required_keys)
 
-      error ->
-        Logger.error("Unexpected error downloading #{file_name}: #{inspect(error)}")
-        {:error, "Unexpected error downloading #{file_name}: #{inspect(error)}"}
+      case find_ccp_files(result.extracted_dir, required_files) do
+        {:ok, file_paths} ->
+          {:ok, %{source: :ccp, file_paths: file_paths, extracted_dir: result.extracted_dir}}
+
+        {:error, :missing_files} ->
+          {:error, "Required SDE files not found after extraction"}
+      end
     end
   end
 
   @doc """
-  Clears the static data cache by removing all CSV files.
+  Clears the static data cache by removing all SDE files.
   """
   def clear_cache do
     data_dir = get_data_directory()
+    ccp_dir = Path.join(data_dir, "ccp_sde")
 
-    if File.exists?(data_dir) do
-      case File.rm_rf(data_dir) do
+    if File.exists?(ccp_dir) do
+      case File.rm_rf(ccp_dir) do
         {:ok, _files} ->
-          Logger.info("Cleared static data cache")
+          Logger.info("Cleared SDE cache")
           :ok
 
         {:error, reason} ->
@@ -140,73 +150,72 @@ defmodule EveDmv.Eve.StaticDataLoader.FileManager do
   end
 
   @doc """
-  Gets information about cached files.
+  Gets information about CCP SDE cache.
   """
+  @spec get_cache_info() :: map()
   def get_cache_info do
     data_dir = get_data_directory()
+    ccp_dir = Path.join(data_dir, "ccp_sde")
+    extracted_dir = Path.join(ccp_dir, "extracted")
 
-    if File.exists?(data_dir) do
+    if File.exists?(extracted_dir) do
+      # Find all JSONL files recursively
       files =
-        data_dir
-        |> File.ls!()
-        |> Enum.filter(&String.ends_with?(&1, ".csv"))
-        |> Enum.map(fn file ->
-          path = Path.join(data_dir, file)
+        Path.wildcard(Path.join([extracted_dir, "**", "*.jsonl"]))
+        |> Enum.map(fn path ->
           stat = File.stat!(path)
 
           %{
-            name: file,
+            name: Path.basename(path),
+            path: path,
             size: stat.size,
             modified: stat.mtime
           }
         end)
 
       %{
-        directory: data_dir,
+        source: :ccp,
+        directory: ccp_dir,
+        extracted_dir: extracted_dir,
         files: files,
         total_size: Enum.sum(Enum.map(files, & &1.size))
       }
     else
       %{
-        directory: data_dir,
+        source: :ccp,
+        directory: ccp_dir,
+        extracted_dir: extracted_dir,
         files: [],
         total_size: 0
       }
     end
   end
 
-  # Private functions
+  # Private CCP functions
 
-  defp download_file(url) do
-    case Finch.build(:get, url)
-         |> Finch.request(EveDmv.Finch, receive_timeout: 30_000) do
-      {:ok, %{status: 200, body: body}} ->
-        {:ok, body}
+  defp find_ccp_files(extracted_dir, required_files) do
+    if File.exists?(extracted_dir) do
+      file_paths =
+        Enum.reduce_while(required_files, {:ok, %{}}, fn {key, filename}, {:ok, acc} ->
+          case Path.wildcard(Path.join([extracted_dir, "**", filename])) do
+            [path | _] ->
+              {:cont, {:ok, Map.put(acc, key, path)}}
 
-      {:ok, %{status: status}} ->
-        {:error, "HTTP #{status}"}
+            [] ->
+              Logger.debug("Missing CCP file: #{filename}")
+              {:halt, {:error, :missing_files}}
+          end
+        end)
 
-      {:error, reason} ->
-        {:error, reason}
+      case file_paths do
+        {:ok, paths} when map_size(paths) == map_size(required_files) ->
+          {:ok, paths}
+
+        _ ->
+          {:error, :missing_files}
+      end
+    else
+      {:error, :missing_files}
     end
-  rescue
-    error ->
-      Logger.error("Failed to download file: #{inspect(error)}")
-      {:error, "Download failed: #{inspect(error)}"}
-  end
-
-  @dialyzer {:nowarn_function, decompress_bz2: 1}
-  defp decompress_bz2(compressed_data) when is_binary(compressed_data) do
-    decompressed = Bzip2.decompress!(compressed_data)
-    {:ok, decompressed}
-  rescue
-    error ->
-      Logger.error("bzip2 decompression failed: #{inspect(error)}")
-      {:error, "bzip2 decompression failed: #{inspect(error)}"}
-  end
-
-  defp decompress_bz2(invalid_data) do
-    Logger.error("Invalid data for bzip2 decompression: #{inspect(invalid_data)}")
-    {:error, "Invalid data for bzip2 decompression"}
   end
 end

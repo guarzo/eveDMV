@@ -45,6 +45,8 @@ services:
       context: .
       dockerfile: .devcontainer/Dockerfile
     container_name: eve_tracker_app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - .:/workspace:cached
       - mix_deps:/workspace/deps

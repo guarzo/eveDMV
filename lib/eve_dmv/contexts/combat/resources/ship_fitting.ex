@@ -13,6 +13,8 @@ defmodule EveDmv.Contexts.Combat.Resources.ShipFitting do
     domain: EveDmv.Contexts.BattleAnalysis.Api,
     data_layer: AshPostgres.DataLayer
 
+  require Ash.Query
+
   postgres do
     table("ship_fittings")
     repo(EveDmv.Repo)
@@ -316,13 +318,22 @@ defmodule EveDmv.Contexts.Combat.Resources.ShipFitting do
 
   defp resolve_ship_type_id(ship_name) do
     # Query the item_types table for the ship
-    case Ash.read_one(EveDmv.Eve.ItemType, filter: [type_name: ship_name, is_ship: true]) do
-      {:ok, ship} ->
+    query =
+      EveDmv.Eve.ItemType
+      |> Ash.Query.filter(type_name: ship_name)
+      |> Ash.Query.filter(is_ship: true)
+
+    case Ash.read_one(query) do
+      {:ok, ship} when not is_nil(ship) ->
         ship.type_id
 
       _ ->
         # Try case-insensitive search
-        case Ash.read(EveDmv.Eve.ItemType, filter: [is_ship: true]) do
+        ships_query =
+          EveDmv.Eve.ItemType
+          |> Ash.Query.filter(is_ship: true)
+
+        case Ash.read(ships_query) do
           {:ok, ships} ->
             ship =
               Enum.find(ships, fn s ->

@@ -1,13 +1,48 @@
 defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessor do
   @moduledoc """
-  Processes EVE item type data from SDE CSV files.
+  Processes EVE item type data from CCP's official SDE JSONL files.
 
   Handles parsing and processing of item types, groups, and categories,
   including ship classification and other item type categorization.
+
+  ## Category Filtering
+
+  Only killmail-relevant items are imported:
+  - Ships (category 6)
+  - Modules (category 7)
+  - Charges (category 8)
+  - Drones (category 18)
+  - Implants (category 20)
+  - Deployables (category 22)
+  - Structures (category 65) - for structure killmails
+  - Fighters (category 87)
+
+  This reduces the import from ~49,906 items to ~5,000-8,000 items.
   """
 
-  alias EveDmv.Eve.StaticDataLoader.CsvParser
+  alias EveDmv.Eve.StaticDataLoader.JsonlParser
   require Logger
+
+  # Category IDs for killmail-relevant items
+  # These are the only categories we need to import from the SDE
+  @killmail_category_ids [
+    # Ship
+    6,
+    # Module
+    7,
+    # Charge
+    8,
+    # Drone
+    18,
+    # Implant
+    20,
+    # Deployable
+    22,
+    # Structure (citadels, etc.)
+    65,
+    # Fighter
+    87
+  ]
 
   @ship_group_ids [
     # Ship category group IDs from EVE SDE
@@ -108,36 +143,6 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessor do
   ]
 
   @doc """
-  Processes item type data from CSV files.
-  """
-  def process_item_data(file_paths) do
-    case file_paths do
-      %{item_types: types_path, item_groups: groups_path, item_categories: categories_path} ->
-        with {:ok, categories} <- parse_categories_file(categories_path),
-             {:ok, groups} <- parse_groups_file(groups_path),
-             {:ok, types} <- parse_types_file(types_path) do
-          item_types = build_item_types(types, groups, categories)
-          {:ok, item_types}
-        end
-
-      # Fallback for legacy ship-only processing
-      %{ship_types: types_path, ship_groups: groups_path} ->
-        process_ship_data(%{ship_types: types_path, ship_groups: groups_path})
-    end
-  end
-
-  @doc """
-  Processes ship-only data (legacy support).
-  """
-  def process_ship_data(%{ship_types: types_path, ship_groups: groups_path}) do
-    with {:ok, groups} <- parse_groups_file(groups_path),
-         {:ok, types} <- parse_types_file(types_path) do
-      ship_types = build_ship_types(types, groups)
-      {:ok, ship_types}
-    end
-  end
-
-  @doc """
   Gets the list of ship group IDs.
   """
   def get_ship_group_ids, do: @ship_group_ids
@@ -147,90 +152,105 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessor do
   """
   def ship_group?(group_id), do: group_id in @ship_group_ids
 
-  # Private functions
+  @doc """
+  Gets the list of killmail-relevant category IDs.
 
-  defp parse_categories_file(categories_path) do
-    CsvParser.read_and_parse_csv_to_map(
-      categories_path,
-      &CsvParser.parse_category_row/1,
-      :category_id
-    )
+  These are the categories that are imported:
+  - 6: Ship
+  - 7: Module
+  - 8: Charge
+  - 18: Drone
+  - 20: Implant
+  - 22: Deployable
+  - 65: Structure
+  - 87: Fighter
+  """
+  @spec get_killmail_category_ids() :: [integer()]
+  def get_killmail_category_ids, do: @killmail_category_ids
+
+  @doc """
+  Checks if a category ID is killmail-relevant.
+  """
+  @spec killmail_category?(integer()) :: boolean()
+  def killmail_category?(category_id), do: category_id in @killmail_category_ids
+
+  @doc """
+  Processes item type data from CCP SDE JSONL files.
+
+  This is the main method for importing SDE data. It:
+  - Reads from the official CCP JSONL format
+  - Filters to only killmail-relevant categories
+  - Uses streaming for memory efficiency
+
+  ## Parameters
+
+  - `file_paths` - Map with paths to JSONL files:
+    - `:item_types` - Path to types.jsonl
+    - `:item_groups` - Path to groups.jsonl
+    - `:item_categories` - Path to categories.jsonl
+
+  ## Options
+
+  - `:filter_categories` - Whether to filter by killmail categories (default: true)
+  - `:sde_version` - Version string to set on records (default: "latest")
+  - `:sde_build_number` - CCP SDE build number (integer) for version tracking
+
+  ## Returns
+
+  - `{:ok, item_types}` - List of processed item type maps
+  - `{:error, reason}` - If processing fails
+  """
+  @spec process_item_data_jsonl(map(), keyword()) :: {:ok, list(map())} | {:error, term()}
+  def process_item_data_jsonl(file_paths, opts \\ []) do
+    filter_categories = Keyword.get(opts, :filter_categories, true)
+    sde_version = Keyword.get(opts, :sde_version, "latest")
+    sde_build_number = Keyword.get(opts, :sde_build_number)
+
+    with {:ok, categories_map} <- load_categories_jsonl(file_paths.item_categories),
+         {:ok, groups_map} <- load_groups_jsonl(file_paths.item_groups, categories_map),
+         {:ok, types_stream} <- JsonlParser.parse_types(file_paths.item_types) do
+      # Build the group->category lookup for filtering
+      group_category_map = build_group_category_map(groups_map)
+
+      item_types =
+        types_stream
+        |> Stream.filter(fn type ->
+          category_id = group_category_map[type.group_id]
+          should_import_type?(type, category_id, filter_categories)
+        end)
+        |> Stream.map(fn type ->
+          build_item_type_from_jsonl(
+            type,
+            groups_map,
+            categories_map,
+            sde_version,
+            sde_build_number
+          )
+        end)
+        |> Stream.filter(&safe_for_bulk_insert?/1)
+        |> Enum.to_list()
+
+      Logger.info("Processed #{length(item_types)} item types from CCP JSONL")
+      {:ok, item_types}
+    end
   end
 
-  defp parse_groups_file(groups_path) do
-    CsvParser.read_and_parse_csv_to_map(
-      groups_path,
-      &CsvParser.parse_group_row/1,
-      :group_id
-    )
-  end
+  @doc """
+  Determines if an item type should be imported based on category filtering.
 
-  defp parse_types_file(types_path) do
-    CsvParser.read_and_parse_csv(types_path, &CsvParser.parse_type_row/1)
-  end
-
-  defp build_item_types(types, groups_map, categories_map) do
-    # Process all types, not just published ones
-    types
-    |> Enum.filter(&safe_for_bulk_insert?/1)
-    |> Enum.map(fn type ->
-      group = Map.get(groups_map, type.group_id, %{})
-      category = Map.get(categories_map, group[:category_id], %{})
-
-      # Determine item classifications
-      is_ship = type.group_id in @ship_group_ids
-      is_module = category[:name] in ["Module", "Subsystem"]
-      is_charge = category[:name] in ["Charge", "Ammunition & Charges"]
-      is_deployable = category[:name] in ["Deployable", "Structure"]
-      is_blueprint = category[:name] == "Blueprint"
-
-      # Build search keywords
-      search_keywords = build_search_keywords(type.name, group[:name], category[:name])
-
-      %{
-        type_id: type.type_id,
-        type_name: type.name,
-        group_id: type.group_id,
-        group_name: group[:name] || "Unknown",
-        category_id: group[:category_id],
-        category_name: category[:name] || "Unknown",
-        mass: type.mass,
-        volume: type.volume,
-        capacity: type.capacity,
-        base_price: type.base_price,
-        published: type.published,
-        is_ship: is_ship,
-        is_module: is_module,
-        is_charge: is_charge,
-        is_deployable: is_deployable,
-        is_blueprint: is_blueprint,
-        search_keywords: search_keywords,
-        sde_version: "latest"
-      }
-    end)
-  end
-
-  defp build_ship_types(types, groups_map) do
-    ship_types =
-      Enum.filter(types, fn type ->
-        type.group_id in @ship_group_ids and type.published
-      end)
-
-    Enum.map(ship_types, fn type ->
-      %{
-        type_id: type.type_id,
-        type_name: type.name,
-        group_id: type.group_id,
-        group_name: Map.get(groups_map, type.group_id, "Unknown"),
-        mass: type.mass,
-        volume: type.volume,
-        capacity: type.capacity,
-        base_price: type.base_price,
-        published: type.published,
-        is_ship: true,
-        sde_version: "latest"
-      }
-    end)
+  Items are imported if:
+  - They are published (or `filter_categories` is false)
+  - Their category is in the killmail-relevant list (or `filter_categories` is false)
+  """
+  @spec should_import_type?(map(), integer() | nil, boolean()) :: boolean()
+  def should_import_type?(type, category_id, filter_categories) do
+    if filter_categories do
+      # Must be published and in a killmail-relevant category
+      type.published == true and category_id in @killmail_category_ids
+    else
+      # Import all types when not filtering
+      true
+    end
   end
 
   @doc """
@@ -277,6 +297,106 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessor do
     }
   end
 
+  # ============================================================================
+  # Private JSONL Processing Functions
+  # ============================================================================
+
+  defp load_categories_jsonl(categories_path) do
+    # Use parse_categories which applies the transform_category function
+    case JsonlParser.parse_categories(categories_path) do
+      {:ok, stream} ->
+        # Convert stream to a map keyed by category_id
+        categories =
+          stream
+          |> Enum.reduce(%{}, fn cat, acc ->
+            Map.put(acc, cat.category_id, cat)
+          end)
+
+        Logger.debug("Loaded #{map_size(categories)} categories from JSONL")
+        {:ok, categories}
+
+      {:error, _} = error ->
+        error
+    end
+  end
+
+  defp load_groups_jsonl(groups_path, categories_map) do
+    # Use parse_groups which applies the transform_group function
+    case JsonlParser.parse_groups(groups_path) do
+      {:ok, stream} ->
+        # Convert stream to a map keyed by group_id and enrich with category names
+        groups =
+          stream
+          |> Enum.reduce(%{}, fn group, acc ->
+            category = Map.get(categories_map, group.category_id, %{})
+            enriched = Map.put(group, :category_name, category[:name])
+            Map.put(acc, group.group_id, enriched)
+          end)
+
+        Logger.debug("Loaded #{map_size(groups)} groups from JSONL")
+        {:ok, groups}
+
+      {:error, _} = error ->
+        error
+    end
+  end
+
+  defp build_group_category_map(groups_map) do
+    Map.new(groups_map, fn {group_id, group} ->
+      {group_id, group.category_id}
+    end)
+  end
+
+  defp build_item_type_from_jsonl(type, groups_map, categories_map, sde_version, sde_build_number) do
+    group = Map.get(groups_map, type.group_id, %{})
+    category_id = group[:category_id]
+    category = Map.get(categories_map, category_id, %{})
+
+    # Determine item classifications
+    is_ship = type.group_id in @ship_group_ids
+    is_module = category[:name] in ["Module", "Subsystem"]
+    is_charge = category[:name] in ["Charge"]
+    is_deployable = category[:name] in ["Deployable", "Structure"]
+    is_drone = category[:name] == "Drone"
+    is_implant = category[:name] == "Implant"
+    is_fighter = category[:name] == "Fighter"
+    is_blueprint = category[:name] == "Blueprint"
+
+    # Build search keywords
+    search_keywords = build_search_keywords(type.name, group[:name], category[:name])
+
+    base_map = %{
+      type_id: type.type_id,
+      type_name: type.name,
+      group_id: type.group_id,
+      group_name: group[:name] || "Unknown",
+      category_id: category_id,
+      category_name: category[:name] || "Unknown",
+      mass: type.mass || 0.0,
+      volume: type.volume || 0.0,
+      capacity: type.capacity || 0.0,
+      base_price: type.base_price || 0.0,
+      published: type.published,
+      is_ship: is_ship,
+      is_module: is_module,
+      is_charge: is_charge,
+      is_deployable: is_deployable,
+      is_drone: is_drone,
+      is_implant: is_implant,
+      is_fighter: is_fighter,
+      is_blueprint: is_blueprint,
+      search_keywords: search_keywords,
+      sde_version: sde_version
+    }
+
+    # Add build number if provided
+    if sde_build_number do
+      Map.put(base_map, :sde_build_number, sde_build_number)
+    else
+      base_map
+    end
+  end
+
   defp build_search_keywords(name, group_name, category_name) do
     # Extract words from the name
     name_words = String.split(String.downcase(name || ""), ~r/\s+/)
@@ -300,17 +420,15 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessor do
     # Maximum safe value for numeric(15,4) is 99,999,999,999.9999
     max_safe_value = 99_999_999_999.0
 
-    # Check if all numeric values are within safe bounds
     mass_safe = is_nil(type.mass) or type.mass <= max_safe_value
     volume_safe = is_nil(type.volume) or type.volume <= max_safe_value
     capacity_safe = is_nil(type.capacity) or type.capacity <= max_safe_value
     base_price_safe = is_nil(type.base_price) or type.base_price <= max_safe_value
 
-    # Skip items with astronomical values (typically celestial objects)
     if mass_safe and volume_safe and capacity_safe and base_price_safe do
       true
     else
-      Logger.debug("Skipping type_id #{type.type_id} (#{type.name}) due to numeric overflow")
+      Logger.debug("Skipping type_id #{type.type_id} (#{type.type_name}) due to numeric overflow")
       false
     end
   end

@@ -258,7 +258,12 @@ Better to have fewer features that work perfectly than many features that lie to
   - Removed WH vetting, chain intelligence, and fleet optimization
   - Decision: Better to have fewer working features than placeholders
 
-### ✅ Recently Completed (August 2025)
+### ✅ Recently Completed (December 2025)
+- **SDE Data Source Migration** - Migrated from Fuzzwork to CCP's official SDE
+  - Now uses CCP's official JSONL format from developers.eveonline.com
+  - Filters to killmail-relevant items only (~5,000 vs 49,906)
+  - Build number versioning for precise update tracking
+  - Removed all Fuzzwork CSV/BZ2 legacy code
 - **Module Reorganization** - Fixed import paths after Phase 5 reorganization
   - Updated all Utils references to Core.Utils
   - Fixed Cache and Error module references
@@ -279,6 +284,7 @@ Better to have fewer features that work perfectly than many features that lie to
 - **Phase 1 Complete**: `/workspace/docs/PHASE_1_WORMHOLE_REMOVAL_COMPLETE.md` - Wormhole ops removed
 - **Phase 2 Plan**: `/workspace/docs/PHASE_2_CHARACTER_INTELLIGENCE_IMPLEMENTATION.md` - Character intel completion
 - **Phase 7 Plan**: `/workspace/docs/PHASE_7_OPERATIONAL_EXCELLENCE_IMPLEMENTATION.md` - Production hardening
+- **SDE Migration**: `/workspace/docs/SDE_DATA_SOURCE_MIGRATION_PLAN.md` - CCP SDE migration (complete)
 - **Feature Gaps**: `/workspace/docs/FEATURE_GAPS_AND_TECHNICAL_DEBT.md` - Current state analysis
 
 ## Environment Configuration

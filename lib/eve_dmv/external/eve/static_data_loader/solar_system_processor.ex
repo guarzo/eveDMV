@@ -1,29 +1,13 @@
 defmodule EveDmv.Eve.StaticDataLoader.SolarSystemProcessor do
   @moduledoc """
-  Processes EVE solar system data from SDE CSV files.
+  Processes EVE solar system data from CCP's official SDE JSONL files.
 
   Handles parsing and processing of solar systems, regions, and constellations,
   including security classification and spatial coordinates.
   """
 
-  alias EveDmv.Eve.StaticDataLoader.CsvParser
+  alias EveDmv.Eve.StaticDataLoader.JsonlParser
   require Logger
-
-  @doc """
-  Processes solar system data from CSV files.
-  """
-  def process_system_data(%{
-        solar_systems: systems_path,
-        regions: regions_path,
-        constellations: constellations_path
-      }) do
-    with {:ok, regions} <- parse_regions_file(regions_path),
-         {:ok, constellations} <- parse_constellations_file(constellations_path),
-         {:ok, systems} <- parse_systems_file(systems_path) do
-      system_data = build_system_data(systems, regions, constellations)
-      {:ok, system_data}
-    end
-  end
 
   @doc """
   Classifies a system's security status.
@@ -105,52 +89,126 @@ defmodule EveDmv.Eve.StaticDataLoader.SolarSystemProcessor do
     }
   end
 
-  # Private functions
+  # ============================================================================
+  # JSONL Processing (CCP SDE)
+  # ============================================================================
 
-  defp parse_regions_file(regions_path) do
-    CsvParser.read_and_parse_csv_to_map(
-      regions_path,
-      &CsvParser.parse_region_row/1,
-      :region_id
-    )
+  @doc """
+  Processes solar system data from CCP SDE JSONL files.
+
+  This is the main method for importing SDE data. It:
+  - Reads from the official CCP JSONL format
+  - Uses streaming for memory efficiency
+
+  ## Parameters
+
+  - `file_paths` - Map with paths to JSONL files:
+    - `:solar_systems` - Path to mapSolarSystems.jsonl
+    - `:regions` - Path to mapRegions.jsonl
+    - `:constellations` - Path to mapConstellations.jsonl
+
+  ## Options
+
+  - `:sde_version` - Version string to set on records (default: "latest")
+  - `:sde_build_number` - CCP SDE build number (integer) for version tracking
+
+  ## Returns
+
+  - `{:ok, systems}` - List of processed solar system maps
+  - `{:error, reason}` - If processing fails
+  """
+  @spec process_system_data_jsonl(map(), keyword()) :: {:ok, list(map())} | {:error, term()}
+  def process_system_data_jsonl(file_paths, opts \\ []) do
+    sde_version = Keyword.get(opts, :sde_version, "latest")
+    sde_build_number = Keyword.get(opts, :sde_build_number)
+
+    with {:ok, regions_map} <- load_regions_jsonl(file_paths.regions),
+         {:ok, constellations_map} <- load_constellations_jsonl(file_paths.constellations),
+         {:ok, systems_stream} <- JsonlParser.parse_solar_systems(file_paths.solar_systems) do
+      systems =
+        systems_stream
+        |> Stream.map(fn system ->
+          build_system_from_jsonl(
+            system,
+            regions_map,
+            constellations_map,
+            sde_version,
+            sde_build_number
+          )
+        end)
+        |> Enum.to_list()
+
+      Logger.info("Processed #{length(systems)} solar systems from CCP JSONL")
+      {:ok, systems}
+    end
   end
 
-  defp parse_constellations_file(constellations_path) do
-    CsvParser.read_and_parse_csv_to_map(
-      constellations_path,
-      &CsvParser.parse_constellation_row/1,
-      :constellation_id
-    )
+  # Private JSONL processing functions
+
+  defp load_regions_jsonl(regions_path) do
+    case JsonlParser.parse_to_map(regions_path, :region_id) do
+      {:ok, regions} ->
+        Logger.debug("Loaded #{map_size(regions)} regions from JSONL")
+        {:ok, regions}
+
+      {:error, _} = error ->
+        error
+    end
   end
 
-  defp parse_systems_file(systems_path) do
-    CsvParser.read_and_parse_csv(systems_path, &CsvParser.parse_system_row/1)
+  defp load_constellations_jsonl(constellations_path) do
+    case JsonlParser.parse_to_map(constellations_path, :constellation_id) do
+      {:ok, constellations} ->
+        Logger.debug("Loaded #{map_size(constellations)} constellations from JSONL")
+        {:ok, constellations}
+
+      {:error, _} = error ->
+        error
+    end
   end
 
-  defp build_system_data(systems, regions_map, constellations_map) do
-    Enum.map(systems, fn system ->
-      constellation = Map.get(constellations_map, system.constellation_id, %{})
-      region_id = constellation[:region_id]
-      region_name = Map.get(regions_map, region_id, %{})[:name]
+  defp build_system_from_jsonl(
+         system,
+         regions_map,
+         constellations_map,
+         sde_version,
+         sde_build_number
+       ) do
+    constellation = Map.get(constellations_map, system.constellation_id, %{})
+    region_id = system.region_id || constellation[:region_id]
+    region = Map.get(regions_map, region_id, %{})
 
-      security_class = classify_security(system.security)
+    security_class = classify_security(system.security)
 
-      %{
-        system_id: system.system_id,
-        system_name: system.name,
-        region_id: region_id,
-        region_name: region_name,
-        constellation_id: system.constellation_id,
-        constellation_name: constellation[:name],
-        security_status: system.security,
-        security_class: security_class,
-        x: system.x,
-        y: system.y,
-        z: system.z,
-        sde_version: "latest"
-      }
-    end)
+    base_map = %{
+      system_id: system.system_id,
+      system_name: system.name,
+      region_id: region_id,
+      region_name: region[:name],
+      constellation_id: system.constellation_id,
+      constellation_name: constellation[:name],
+      security_status: system.security,
+      security_class: security_class,
+      x: system.x || 0.0,
+      y: system.y || 0.0,
+      z: system.z || 0.0,
+      sun_type_id: system.sun_type_id,
+      is_wormhole: region[:wormhole_class_id] != nil,
+      wormhole_class_id: region[:wormhole_class_id],
+      sde_version: sde_version
+    }
+
+    # Add build number if provided
+    if sde_build_number do
+      Map.put(base_map, :sde_build_number, sde_build_number)
+    else
+      base_map
+    end
   end
+
+  # ============================================================================
+  # Private Functions
+  # ============================================================================
 
   defp calculate_distance({x1, y1, z1}, {x2, y2, z2}) do
     dx = x2 - x1

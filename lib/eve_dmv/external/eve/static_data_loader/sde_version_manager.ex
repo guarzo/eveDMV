@@ -4,10 +4,13 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManager do
 
   This module checks for new SDE versions on startup and coordinates
   the download and processing of updated data if necessary.
+
+  Uses CCP's official Static Data Export with build number versioning.
   """
 
   alias EveDmv.Api
   alias EveDmv.Eve.SolarSystem
+  alias EveDmv.Eve.StaticDataLoader.CcpSdeClient
 
   require Logger
   require Ash.Query
@@ -19,17 +22,26 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManager do
     :needs_update
   ]
 
-  @fuzzwork_base_url "https://www.fuzzwork.co.uk"
-  @wormhole_classes_url "#{@fuzzwork_base_url}/dump/latest/mapLocationWormholeClasses.csv"
+  @type version_info :: %{
+          build_number: integer() | nil,
+          release_date: String.t() | nil,
+          version_string: String.t()
+        }
 
+  @doc """
+  Checks for SDE updates from CCP.
+  """
   def check_for_updates do
-    Logger.info("Checking for SDE updates...")
+    Logger.info("Checking for SDE updates from CCP...")
 
     with {:ok, current_version} <- get_current_sde_version(),
          {:ok, latest_version} <- get_latest_sde_version(),
          needs_update <- version_needs_update?(current_version, latest_version) do
-      Logger.info("Current SDE version: #{current_version || "none"}")
-      Logger.info("Latest SDE version: #{latest_version}")
+      current_str = format_version(current_version)
+      latest_str = format_version(latest_version)
+
+      Logger.info("Current SDE version: #{current_str}")
+      Logger.info("Latest SDE version: #{latest_str}")
       Logger.info("Update needed: #{needs_update}")
 
       if needs_update do
@@ -46,80 +58,105 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManager do
     end
   end
 
+  @doc """
+  Gets the latest version info from CCP's SDE endpoint.
+
+  Returns a map with build_number and release_date.
+  """
+  @spec get_ccp_version_info() :: {:ok, version_info()} | {:error, term()}
+  def get_ccp_version_info do
+    case CcpSdeClient.get_latest_build_number() do
+      {:ok, %{build_number: build, release_date: date}} ->
+        {:ok, %{build_number: build, release_date: date, version_string: "build-#{build}"}}
+
+      {:error, _reason} = error ->
+        error
+    end
+  end
+
+  # Get current SDE version from database
+
   defp get_current_sde_version do
-    # Get the most recent SDE version from any solar system record
+    # Look for sde_build_number (integer) first, then fall back to sde_version string
     case Ash.Query.new(SolarSystem)
-         |> Ash.Query.filter(not is_nil(sde_version))
+         |> Ash.Query.filter(not is_nil(sde_build_number) or not is_nil(sde_version))
          |> Ash.Query.sort([{:last_updated, :desc}])
          |> Ash.Query.limit(1)
          |> Ash.read(domain: EveDmv.Api) do
-      {:ok, [%{sde_version: version}]} -> {:ok, version}
-      {:ok, []} -> {:ok, nil}
-      {:error, error} -> {:error, error}
+      {:ok, [%{sde_build_number: build_number, sde_version: version}]}
+      when is_integer(build_number) ->
+        # Prefer the integer build number
+        {:ok, %{build_number: build_number, version_string: version || "build-#{build_number}"}}
+
+      {:ok, [%{sde_version: version}]} when is_binary(version) ->
+        # Fall back to parsing version string for legacy data
+        case parse_ccp_version(version) do
+          {:ok, build_number} -> {:ok, %{build_number: build_number, version_string: version}}
+          :error -> {:ok, nil}
+        end
+
+      {:ok, []} ->
+        {:ok, nil}
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 
   defp get_latest_sde_version do
-    Logger.info("Checking latest SDE version from Fuzzwork headers...")
+    Logger.info("Checking latest SDE version from CCP...")
 
-    case HTTPoison.head(@wormhole_classes_url, [], recv_timeout: 10_000) do
-      {:ok, %HTTPoison.Response{status_code: 200, headers: headers}} ->
-        # Extract last-modified date as version indicator
-        case extract_last_modified(headers) do
-          {:ok, last_modified} ->
-            {:ok, last_modified}
+    case CcpSdeClient.get_latest_build_number() do
+      {:ok, %{build_number: build, release_date: date}} ->
+        {:ok, %{build_number: build, release_date: date, version_string: "build-#{build}"}}
 
-          {:error, reason} ->
-            Logger.warning("Could not extract last-modified date: #{reason}")
-            # Fallback to current timestamp as version
-            {:ok, DateTime.utc_now() |> DateTime.to_iso8601()}
-        end
-
-      {:ok, %HTTPoison.Response{status_code: status}} ->
-        {:error, "HTTP error: #{status}"}
-
-      {:error, %HTTPoison.Error{reason: reason}} ->
-        {:error, "Request failed: #{inspect(reason)}"}
+      {:error, reason} ->
+        Logger.error("Failed to get CCP SDE version: #{inspect(reason)}")
+        {:error, reason}
     end
   end
 
-  defp extract_last_modified(headers) do
-    # Find the last-modified header
-    case Enum.find(headers, fn {name, _value} ->
-           String.downcase(name) == "last-modified"
-         end) do
-      {_name, value} ->
-        # Use the raw date string as version - this is fine for comparison
-        {:ok, value}
-
-      nil ->
-        # If no last-modified header, generate a timestamp-based version
-        {:ok, DateTime.utc_now() |> DateTime.to_iso8601()}
-    end
-  end
+  # Version comparison
 
   defp version_needs_update?(current, latest) do
     case {current, latest} do
       # No current version, always update
-      {nil, _} -> true
-      {current, latest} when current != latest -> true
-      _ -> false
+      {nil, _} ->
+        true
+
+      # Compare build numbers
+      {%{build_number: current_build}, %{build_number: latest_build}} ->
+        latest_build > current_build
+
+      # Current version is not in CCP format, update to migrate
+      {_, %{build_number: _}} ->
+        true
+
+      _ ->
+        false
     end
   end
 
+  # Update SDE data
+
   defp update_sde_data(new_version) do
-    Logger.info("Updating SDE data to version: #{new_version}")
+    version_string = new_version.version_string
+    build_number = new_version.build_number
+    Logger.info("Updating SDE data to CCP version: #{version_string} (build: #{build_number})")
 
     # Currently only tracking version updates
-    # Additional data loaders can be added here as needed
+    # The actual data loading is done separately via StaticDataLoader
 
     Logger.info("SDE update completed successfully")
-    update_version_tracking(new_version)
-    {:ok, %{version: new_version}}
+    update_version_tracking(version_string, build_number)
+    {:ok, %{version: version_string, build_number: build_number}}
   end
 
-  defp update_version_tracking(new_version) do
-    Logger.info("Updating version tracking to: #{new_version}")
+  defp update_version_tracking(new_version, build_number) do
+    Logger.info(
+      "Updating version tracking to: #{new_version}" <>
+        if(build_number, do: " (build: #{build_number})", else: "")
+    )
 
     # Update a sample of systems to track the new version
     case Ash.Query.new(SolarSystem)
@@ -128,14 +165,24 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManager do
       {:ok, systems} ->
         update_time = DateTime.utc_now()
 
+        update_attrs = %{
+          sde_version: new_version,
+          last_updated: update_time
+        }
+
+        # Add build number if provided
+        update_attrs =
+          if build_number do
+            Map.put(update_attrs, :sde_build_number, build_number)
+          else
+            update_attrs
+          end
+
         systems
         |> Enum.each(fn system ->
           Ash.update(
             system,
-            %{
-              sde_version: new_version,
-              last_updated: update_time
-            },
+            update_attrs,
             action: :update_sde_version,
             domain: Api
           )
@@ -149,4 +196,21 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManager do
         {:error, error}
     end
   end
+
+  # Helper functions
+
+  defp parse_ccp_version(version_string) when is_binary(version_string) do
+    # Parse "build-1234567" format
+    case Regex.run(~r/build-(\d+)/, version_string) do
+      [_, build_str] -> {:ok, String.to_integer(build_str)}
+      nil -> :error
+    end
+  end
+
+  defp parse_ccp_version(_), do: :error
+
+  defp format_version(nil), do: "none"
+  defp format_version(%{version_string: str}), do: str
+  defp format_version(version) when is_binary(version), do: version
+  defp format_version(version), do: inspect(version)
 end
