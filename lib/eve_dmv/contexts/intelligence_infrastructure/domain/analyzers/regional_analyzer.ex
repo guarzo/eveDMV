@@ -36,12 +36,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
     case Ash.read(systems_query, domain: Api) do
       {:ok, systems} ->
-        # Get all system IDs in the region (TODO: use for filtering)
-        _system_ids = Enum.map(systems, & &1.system_id)
+        system_ids = Enum.map(systems, & &1.system_id)
 
-        # Query killmails in these systems - simplified
+        # Query killmails filtered to region systems
         killmail_query =
           KillmailRaw
+          |> Ash.Query.filter(solar_system_id in ^system_ids)
           |> Ash.Query.limit(1000)
           |> Ash.Query.select([:solar_system_id, :killmail_time, :total_value])
 
@@ -131,12 +131,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
     case Ash.read(systems_query, domain: Api) do
       {:ok, systems} ->
-        # Get all system IDs in the region (TODO: use for filtering)
-        _system_ids = Enum.map(systems, & &1.system_id)
+        system_ids = Enum.map(systems, & &1.system_id)
 
-        # Get killmails with high-value losses - simplified
+        # Get high-value killmails filtered to region systems
         threat_query =
           KillmailRaw
+          |> Ash.Query.filter(solar_system_id in ^system_ids)
           |> Ash.Query.load([:participants])
           |> Ash.Query.limit(100)
           |> Ash.Query.sort(desc: :total_value)
@@ -203,12 +203,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
     case Ash.read(systems_query, domain: Api) do
       {:ok, systems} ->
-        # Get all system IDs in the region (TODO: use for filtering)
-        _system_ids = Enum.map(systems, & &1.system_id)
+        system_ids = Enum.map(systems, & &1.system_id)
 
-        # Get killmail data to assess control
+        # Get killmail data filtered to region systems
         control_query =
           KillmailRaw
+          |> Ash.Query.filter(solar_system_id in ^system_ids)
           |> Ash.Query.load([:participants])
           |> Ash.Query.select([:killmail_id, :solar_system_id, :participants])
           |> Ash.Query.limit(500)
@@ -290,18 +290,19 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
     case Ash.read(systems_query, domain: Api) do
       {:ok, systems} ->
-        # Get all system IDs in the region (TODO: use for filtering)
-        _system_ids = Enum.map(systems, & &1.system_id)
+        system_ids = Enum.map(systems, & &1.system_id)
 
-        # Get recent kills - simplified
+        # Get recent kills filtered to region systems
         recent_query =
           KillmailRaw
+          |> Ash.Query.filter(solar_system_id in ^system_ids)
           |> Ash.Query.select([:killmail_id])
           |> Ash.Query.limit(100)
 
-        # Get historical kills - simplified
+        # Get historical kills filtered to region systems
         historical_query =
           KillmailRaw
+          |> Ash.Query.filter(solar_system_id in ^system_ids)
           |> Ash.Query.select([:killmail_id])
           |> Ash.Query.limit(100)
 

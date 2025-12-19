@@ -181,7 +181,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
                 doctrine_effectiveness: evaluate_doctrine_effectiveness(fleet_analysis),
 
                 # Tactical analysis
-                tactical_patterns: tactical_analysis.patterns,
+                tactical_patterns: tactical_analysis.tactical_patterns,
                 key_moments: tactical_analysis.key_moments,
                 turning_points: tactical_analysis.turning_points,
 

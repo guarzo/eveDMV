@@ -135,7 +135,7 @@ defmodule EveDmvWeb.Router do
   scope "/", EveDmvWeb do
     pipe_through(:auth)
 
-    auth_routes_for(EveDmv.Users.User, to: AuthController)
+    auth_routes(AuthController, EveDmv.Users.User)
   end
 
   # Other scopes may use custom stacks.

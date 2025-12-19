@@ -781,7 +781,9 @@ defmodule EveDmv.Contexts.SystemAnalysis do
       }
     end)
     # Filter for significant escalations
-    |> Enum.filter(fn escalation -> escalation.escalation_score >= @spillover_filter_threshold end)
+    |> Enum.filter(fn escalation ->
+      escalation.escalation_score >= @spillover_filter_threshold
+    end)
     |> Enum.sort_by(& &1.escalation_score, :desc)
   end
 

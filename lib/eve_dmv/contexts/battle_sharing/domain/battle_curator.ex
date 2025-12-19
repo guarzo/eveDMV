@@ -36,12 +36,19 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
   @doc """
   Creates a shareable battle report with comprehensive analysis and media integration.
   """
-  def create_battle_report(battle_id, creator_character_id, _options \\ []) do
+  def create_battle_report(battle_id, creator_character_id, options \\ []) do
     Logger.info(
       "Creating battle report for battle #{battle_id} by character #{creator_character_id}"
     )
 
-    fetch_battle_data(battle_id)
+    case fetch_battle_data(battle_id) do
+      {:ok, battle_data} ->
+        # Create the battle report from the fetched data
+        create_battle_report_from_data(battle_data, creator_character_id, options)
+
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   @doc """
@@ -136,13 +143,107 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
 
   defp fetch_battle_data(battle_id) do
     case BattleAnalysis.get_battle_with_timeline(battle_id) do
+      {:ok, battle_with_timeline} ->
+        # Extract battle data and format for report creation
+        battle_data = %{
+          id: battle_id,
+          battle_id: battle_id,
+          killmails: Map.get(battle_with_timeline, :killmails, []),
+          timeline: Map.get(battle_with_timeline, :timeline),
+          metadata: Map.get(battle_with_timeline, :metadata, %{}),
+          participants: extract_participants(battle_with_timeline),
+          start_time: get_battle_start_time(battle_with_timeline),
+          end_time: get_battle_end_time(battle_with_timeline)
+        }
+
+        {:ok, battle_data}
+
+      {:error, :battle_not_found} ->
+        Logger.warning("Battle not found: #{battle_id}")
+        {:error, :battle_not_found}
+
+      {:error, :reconstruction_failed} ->
+        Logger.warning("Battle timeline reconstruction failed: #{battle_id}")
+        {:error, :reconstruction_failed}
+
       {:error, reason} ->
+        Logger.error("Failed to fetch battle data for #{battle_id}: #{inspect(reason)}")
         {:error, reason}
     end
   rescue
     error ->
       Logger.error("Failed to fetch battle data: #{inspect(error)}")
-      {:error, "Database error"}
+      {:error, :database_error}
+  end
+
+  # Extracts unique participants from battle killmails
+  defp extract_participants(battle_with_timeline) do
+    killmails = Map.get(battle_with_timeline, :killmails, [])
+
+    killmails
+    |> Enum.flat_map(fn km ->
+      victim =
+        if km.victim_character_id,
+          do: [
+            %{
+              character_id: km.victim_character_id,
+              corporation_id: km.victim_corporation_id,
+              alliance_id: km.victim_alliance_id,
+              ship_type_id: km.victim_ship_type_id,
+              role: :victim
+            }
+          ],
+          else: []
+
+      attackers =
+        case km.raw_data do
+          %{"attackers" => attackers} when is_list(attackers) ->
+            Enum.filter(attackers, & &1["character_id"])
+            |> Enum.map(fn att ->
+              %{
+                character_id: att["character_id"],
+                corporation_id: att["corporation_id"],
+                alliance_id: att["alliance_id"],
+                ship_type_id: att["ship_type_id"],
+                role: :attacker
+              }
+            end)
+
+          _ ->
+            []
+        end
+
+      victim ++ attackers
+    end)
+    |> Enum.uniq_by(& &1.character_id)
+  end
+
+  defp get_battle_start_time(battle_with_timeline) do
+    case get_in(battle_with_timeline, [:metadata, :start_time]) do
+      nil ->
+        # Fallback to first killmail time
+        case Map.get(battle_with_timeline, :killmails, []) do
+          [first | _] -> first.killmail_time
+          _ -> DateTime.utc_now()
+        end
+
+      time ->
+        time
+    end
+  end
+
+  defp get_battle_end_time(battle_with_timeline) do
+    case get_in(battle_with_timeline, [:metadata, :end_time]) do
+      nil ->
+        # Fallback to last killmail time
+        case Map.get(battle_with_timeline, :killmails, []) |> Enum.reverse() do
+          [last | _] -> last.killmail_time
+          _ -> DateTime.utc_now()
+        end
+
+      time ->
+        time
+    end
   end
 
   defp validate_videos(video_urls) when is_list(video_urls) do
@@ -250,19 +351,180 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
     {:ok, sample_report}
   end
 
-  # Simplified helper function implementations
+  # Analysis helper functions using real battle data
 
-  defp assess_highlight_significance(_highlight, _battle_data), do: :high
-  defp analyze_multi_system_correlation(_battle_data), do: %{correlation_strength: 0.7}
-  defp analyze_tactical_phases(_battle_data), do: []
-  defp classify_battle_type(_battle_data), do: :fleet_engagement
+  defp assess_highlight_significance(highlight, battle_data) do
+    # Assess based on ISK value if available
+    isk_value = Map.get(highlight, :isk_value, 0)
+    total_isk = get_in(battle_data, [:metadata, :total_isk_destroyed]) || 1
 
-  defp generate_tactical_summary(_battle_data),
-    do: "Tactical engagement with strategic objectives"
+    cond do
+      isk_value > total_isk * 0.3 -> :critical
+      isk_value > total_isk * 0.1 -> :high
+      isk_value > total_isk * 0.05 -> :medium
+      true -> :low
+    end
+  end
 
-  defp analyze_battle_outcome(_battle_data), do: %{winner: :inconclusive, margin: 0.1}
-  defp calculate_efficiency_rating(_battle_data), do: %{overall: 0.75, isk_efficiency: 0.8}
-  defp extract_key_statistics(_battle_data), do: %{participants: 50, isk_destroyed: 5_000_000_000}
+  defp analyze_multi_system_correlation(battle_data) do
+    systems = Map.get(battle_data, :systems, [])
+    system_count = length(systems)
+
+    %{
+      is_multi_system: system_count > 1,
+      system_count: system_count,
+      correlation_strength: if(system_count > 1, do: 0.8, else: 1.0)
+    }
+  end
+
+  defp analyze_tactical_phases(battle_data) do
+    timeline = Map.get(battle_data, :timeline, [])
+
+    if Enum.empty?(timeline) do
+      []
+    else
+      # Group by time windows to identify phases
+      timeline
+      |> Enum.chunk_every(5)
+      |> Enum.with_index()
+      |> Enum.map(fn {events, idx} ->
+        %{
+          phase: idx + 1,
+          event_count: length(events),
+          phase_type: classify_phase_type(events)
+        }
+      end)
+    end
+  end
+
+  defp classify_phase_type(events) do
+    kill_count = Enum.count(events, &Map.has_key?(&1, :killmail_id))
+
+    cond do
+      kill_count > 3 -> :heavy_engagement
+      kill_count > 0 -> :skirmish
+      true -> :positioning
+    end
+  end
+
+  defp classify_battle_type(battle_data) do
+    participant_count = get_in(battle_data, [:metadata, :participant_count]) || 0
+    killmail_count = length(Map.get(battle_data, :killmails, []))
+
+    cond do
+      participant_count > 100 -> :large_fleet_battle
+      participant_count > 30 -> :fleet_engagement
+      participant_count > 10 -> :medium_gang
+      participant_count > 3 -> :small_gang
+      killmail_count > 0 -> :skirmish
+      true -> :unknown
+    end
+  end
+
+  defp generate_tactical_summary(battle_data) do
+    battle_type = classify_battle_type(battle_data)
+    system_count = length(Map.get(battle_data, :systems, []))
+    participant_count = get_in(battle_data, [:metadata, :participant_count]) || 0
+
+    type_desc =
+      case battle_type do
+        :large_fleet_battle -> "Large-scale fleet engagement"
+        :fleet_engagement -> "Fleet engagement"
+        :medium_gang -> "Medium gang fight"
+        :small_gang -> "Small gang skirmish"
+        :skirmish -> "Tactical skirmish"
+        _ -> "Combat engagement"
+      end
+
+    system_desc = if system_count > 1, do: " spanning #{system_count} systems", else: ""
+
+    "#{type_desc} involving #{participant_count} participants#{system_desc}"
+  end
+
+  defp analyze_battle_outcome(battle_data) do
+    sides = Map.get(battle_data, :sides, %{})
+
+    if map_size(sides) < 2 do
+      %{winner: :inconclusive, margin: 0.0, reason: "Unable to determine sides"}
+    else
+      # Calculate ISK efficiency per side
+      side_stats =
+        Enum.map(sides, fn {side_name, side_data} ->
+          isk_destroyed = Map.get(side_data, :isk_destroyed, 0)
+          isk_lost = Map.get(side_data, :isk_lost, 0)
+          efficiency = if isk_lost > 0, do: isk_destroyed / isk_lost, else: isk_destroyed
+
+          {side_name, %{efficiency: efficiency, isk_destroyed: isk_destroyed, isk_lost: isk_lost}}
+        end)
+
+      [{winner, winner_stats}, {loser, loser_stats}] =
+        Enum.sort_by(side_stats, fn {_, stats} -> stats.efficiency end, :desc)
+        |> Enum.take(2)
+
+      margin =
+        if loser_stats.efficiency > 0 do
+          (winner_stats.efficiency - loser_stats.efficiency) / winner_stats.efficiency
+        else
+          1.0
+        end
+
+      %{
+        winner: winner,
+        loser: loser,
+        margin: Float.round(margin, 2),
+        winner_efficiency: Float.round(winner_stats.efficiency, 2)
+      }
+    end
+  end
+
+  defp calculate_efficiency_rating(battle_data) do
+    total_destroyed = get_in(battle_data, [:metadata, :total_isk_destroyed]) || 0
+    killmail_count = length(Map.get(battle_data, :killmails, []))
+
+    # Calculate ISK per kill as a measure of engagement quality
+    isk_per_kill = if killmail_count > 0, do: total_destroyed / killmail_count, else: 0
+
+    overall =
+      cond do
+        isk_per_kill > 1_000_000_000 -> 0.95
+        isk_per_kill > 500_000_000 -> 0.85
+        isk_per_kill > 100_000_000 -> 0.75
+        isk_per_kill > 50_000_000 -> 0.65
+        true -> 0.5
+      end
+
+    %{
+      overall: overall,
+      isk_efficiency: overall,
+      isk_per_kill: isk_per_kill,
+      killmail_count: killmail_count
+    }
+  end
+
+  defp extract_key_statistics(battle_data) do
+    killmails = Map.get(battle_data, :killmails, [])
+    participants = Map.get(battle_data, :participants, [])
+    metadata = Map.get(battle_data, :metadata, %{})
+
+    %{
+      participants: length(participants),
+      killmail_count: length(killmails),
+      isk_destroyed: Map.get(metadata, :total_isk_destroyed, 0),
+      systems_involved: length(Map.get(battle_data, :systems, [])),
+      duration_minutes: calculate_duration_minutes(battle_data)
+    }
+  end
+
+  defp calculate_duration_minutes(battle_data) do
+    start_time = get_in(battle_data, [:metadata, :start_time])
+    end_time = get_in(battle_data, [:metadata, :end_time])
+
+    if start_time && end_time do
+      DateTime.diff(end_time, start_time, :minute)
+    else
+      0
+    end
+  end
 
   defp generate_report_id,
     do: "br_" <> Base.encode16(:crypto.strong_rand_bytes(8), case: :lower)
@@ -296,14 +558,19 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.BattleCurator do
 
   defp add_share_urls(battle_report) do
     base_url = "https://evedmv.com/battles"
+    public_url = "#{base_url}/#{battle_report.id}"
 
     share_urls = %{
-      public: "#{base_url}/#{battle_report.id}",
+      public: public_url,
       embed: "#{base_url}/#{battle_report.id}/embed",
       api: "#{base_url}/#{battle_report.id}/api"
     }
 
-    Map.put(battle_report, :share_urls, share_urls)
+    battle_report
+    |> Map.put(:share_urls, share_urls)
+    # Also add singular share_url and report_id for API compatibility
+    |> Map.put(:share_url, public_url)
+    |> Map.put(:report_id, battle_report.id)
   end
 
   defp add_compatibility_data(battle_report) do

@@ -251,14 +251,16 @@ defmodule EveDmv.Intelligence.WandererClient do
     new_monitored = MapSet.delete(state.monitored_maps, map_id)
 
     # Stop SSE connection for this map
-    if sse_pid = get_in(state.sse_connections || %{}, [map_id]) do
-      send(sse_pid, :close)
-      new_sse_connections = Map.delete(state.sse_connections || %{}, map_id)
-      Logger.info("Stopped SSE monitoring for map #{map_id}")
-      {:noreply, %{state | monitored_maps: new_monitored, sse_connections: new_sse_connections}}
-    else
-      Logger.info("No longer monitoring map #{map_id}")
-      {:noreply, %{state | monitored_maps: new_monitored}}
+    case get_in(state.sse_connections || %{}, [map_id]) do
+      nil ->
+        Logger.info("No longer monitoring map #{map_id}")
+        {:noreply, %{state | monitored_maps: new_monitored}}
+
+      sse_pid ->
+        send(sse_pid, :close)
+        new_sse_connections = Map.delete(state.sse_connections || %{}, map_id)
+        Logger.info("Stopped SSE monitoring for map #{map_id}")
+        {:noreply, %{state | monitored_maps: new_monitored, sse_connections: new_sse_connections}}
     end
   end
 
@@ -667,9 +669,9 @@ defmodule EveDmv.Intelligence.WandererClient do
            timeout: :infinity,
            recv_timeout: :infinity
          ) do
-      {:ok, %HTTPoison.AsyncResponse{id: _id}} ->
+      {:ok, %HTTPoison.AsyncResponse{} = async_response} ->
         Logger.info("SSE connection established to #{url} for map #{map_id}")
-        sse_receive_loop(parent_pid, map_id)
+        sse_receive_loop(parent_pid, map_id, async_response)
 
       {:error, reason} ->
         Logger.error("Failed to establish SSE connection for map #{map_id}: #{inspect(reason)}")
@@ -677,13 +679,13 @@ defmodule EveDmv.Intelligence.WandererClient do
     end
   end
 
-  @dialyzer {:nowarn_function, sse_receive_loop: 2}
-  defp sse_receive_loop(parent_pid, map_id) do
+  @dialyzer {:nowarn_function, sse_receive_loop: 3}
+  defp sse_receive_loop(parent_pid, map_id, async_response) do
     receive do
       %HTTPoison.AsyncStatus{code: code} ->
         if code == 200 do
-          case HTTPoison.stream_next(self()) do
-            {:ok, _} -> sse_receive_loop(parent_pid, map_id)
+          case HTTPoison.stream_next(async_response) do
+            {:ok, _} -> sse_receive_loop(parent_pid, map_id, async_response)
             {:error, reason} -> send(parent_pid, {:sse_closed, map_id, {:stream_error, reason}})
           end
         else
@@ -692,16 +694,16 @@ defmodule EveDmv.Intelligence.WandererClient do
         end
 
       %HTTPoison.AsyncHeaders{headers: _headers} ->
-        case HTTPoison.stream_next(self()) do
-          {:ok, _} -> sse_receive_loop(parent_pid, map_id)
+        case HTTPoison.stream_next(async_response) do
+          {:ok, _} -> sse_receive_loop(parent_pid, map_id, async_response)
           {:error, reason} -> send(parent_pid, {:sse_closed, map_id, {:stream_error, reason}})
         end
 
       %HTTPoison.AsyncChunk{chunk: chunk} ->
         process_sse_chunk(chunk, parent_pid, map_id)
 
-        case HTTPoison.stream_next(self()) do
-          {:ok, _} -> sse_receive_loop(parent_pid, map_id)
+        case HTTPoison.stream_next(async_response) do
+          {:ok, _} -> sse_receive_loop(parent_pid, map_id, async_response)
           {:error, reason} -> send(parent_pid, {:sse_closed, map_id, {:stream_error, reason}})
         end
 

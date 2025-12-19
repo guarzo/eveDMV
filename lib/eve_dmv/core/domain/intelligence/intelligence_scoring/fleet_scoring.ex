@@ -23,10 +23,8 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.FleetScoring do
       # Get individual scores
       mapped_scores =
         Enum.map(character_ids, fn char_id ->
-          case calculate_comprehensive_score(char_id) do
-            {:ok, score} -> {char_id, score}
-            {:error, _} -> {char_id, nil}
-          end
+          {:ok, score} = calculate_comprehensive_score(char_id)
+          {char_id, score}
         end)
 
       individual_scores = Enum.filter(mapped_scores, fn {_, score} -> not is_nil(score) end)

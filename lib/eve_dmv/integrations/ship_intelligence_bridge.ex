@@ -168,37 +168,14 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
   @dialyzer {:nowarn_function, get_character_ship_preferences: 1}
   @spec get_character_ship_preferences(integer()) :: map()
   def get_character_ship_preferences(character_id) do
-    case calculate_ship_specialization(character_id, days_back: 30) do
-      {:ok, specialization} ->
-        %{
-          primary_ship_classes: extract_primary_ship_classes(specialization),
-          preferred_roles: Map.get(specialization, :preferred_roles, []),
-          specialization_diversity: calculate_specialization_diversity(specialization),
-          mastery_level: Map.get(specialization, :expertise_level, :unknown)
-        }
+    {:ok, specialization} = calculate_ship_specialization(character_id, days_back: 30)
 
-      {:error, reason} ->
-        Logger.warning(
-          "Failed to get ship preferences for character #{character_id}: #{inspect(reason)}"
-        )
-
-        %{
-          primary_ship_classes: [],
-          preferred_roles: [],
-          specialization_diversity: 0.0,
-          mastery_level: :unknown
-        }
-
-      other ->
-        Logger.warning("Unexpected return from calculate_ship_specialization: #{inspect(other)}")
-
-        %{
-          primary_ship_classes: [],
-          preferred_roles: [],
-          specialization_diversity: 0.0,
-          mastery_level: :unknown
-        }
-    end
+    %{
+      primary_ship_classes: extract_primary_ship_classes(specialization),
+      preferred_roles: Map.get(specialization, :preferred_roles, []),
+      specialization_diversity: calculate_specialization_diversity(specialization),
+      mastery_level: Map.get(specialization, :expertise_level, :unknown)
+    }
   end
 
   ## Fleet Operations Integration

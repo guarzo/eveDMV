@@ -81,25 +81,19 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.CachedBattleAnalyzer do
 
     # Compute missing battles
     computed =
-      if length(missing_ids) > 0 do
+      if missing_ids != [] do
         Logger.info("Computing #{length(missing_ids)} uncached battle analyses")
 
-        missing_ids
-        |> OptimizedBattleAnalyzer.get_battles_batch()
-        |> case do
-          {:ok, battles} ->
-            # Analyze and cache each battle
-            Enum.map(battles, fn battle ->
-              analysis = analyze_single_battle(battle)
-              cache_key = {:battle_analysis, battle.id}
-              MultiLayerCache.put(cache_key, analysis, ttl_ms: @cache_ttl_ms)
-              {battle.id, analysis}
-            end)
-            |> Map.new()
+        {:ok, battles} = OptimizedBattleAnalyzer.get_battles_batch(missing_ids)
 
-          {:error, _} ->
-            %{}
-        end
+        # Analyze and cache each battle
+        Enum.map(battles, fn battle ->
+          analysis = analyze_single_battle(battle)
+          cache_key = {:battle_analysis, battle.id}
+          MultiLayerCache.put(cache_key, analysis, ttl_ms: @cache_ttl_ms)
+          {battle.id, analysis}
+        end)
+        |> Map.new()
       else
         %{}
       end

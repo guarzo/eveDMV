@@ -79,7 +79,7 @@ defmodule EveDmv.Smoke.ApiSmokeTest do
 
       query = ItemType |> limit(1)
       {:ok, items} = Ash.read(query, domain: EveDmv.Api)
-      assert length(items) > 0, "No static data loaded"
+      assert not Enum.empty?(items), "No static data loaded"
     end
 
     test "solar systems are loaded" do
@@ -88,7 +88,7 @@ defmodule EveDmv.Smoke.ApiSmokeTest do
 
       query = SolarSystem |> limit(1)
       {:ok, systems} = Ash.read(query, domain: EveDmv.Api)
-      assert length(systems) > 0, "No solar systems loaded"
+      assert not Enum.empty?(systems), "No solar systems loaded"
     end
   end
 

@@ -328,7 +328,7 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer do
   end
 
   defp analyze_gang_participation(killmails) do
-    if Enum.empty?(killmails) do
+    if killmails == [] do
       %{solo_ratio: 0, avg_gang_size: 1, gang_preference: :unknown}
     else
       gang_sizes = Enum.map(killmails, fn km -> length(km.attackers) end)
@@ -406,22 +406,25 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer do
   end
 
   defp assess_engagement_quality(killmails, character_id) do
-    if Enum.empty?(killmails) do
+    if killmails == [] do
       %{quality_score: 0, assessment: :no_data}
     else
       kills = Enum.filter(killmails, fn km -> km.victim.character_id != character_id end)
       _losses = Enum.filter(killmails, fn km -> km.victim.character_id == character_id end)
 
       # Calculate quality metrics
+      killmail_count = length(killmails)
+      kill_count = length(kills)
+
       survival_rate =
-        if length(killmails) > 0 do
-          length(kills) / length(killmails)
+        if killmail_count > 0 do
+          kill_count / killmail_count
         else
           0
         end
 
       avg_kill_value =
-        if Enum.empty?(kills) do
+        if kills == [] do
           0
         else
           total_value = kills |> Enum.map(& &1.total_value) |> Enum.sum()
@@ -634,7 +637,7 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer do
       |> Enum.map(fn data -> data.gang_participation.solo_ratio end)
       |> Enum.filter(&(&1 > 0))
 
-    if Enum.empty?(solo_ratios) do
+    if solo_ratios == [] do
       0.0
     else
       Enum.sum(solo_ratios) / length(solo_ratios)
@@ -648,7 +651,7 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer do
       |> Enum.map(fn data -> data.gang_participation.avg_gang_size end)
       |> Enum.filter(&(&1 > 0))
 
-    if Enum.empty?(gang_sizes) do
+    if gang_sizes == [] do
       1.0
     else
       Enum.sum(gang_sizes) / length(gang_sizes)
@@ -676,7 +679,7 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer do
       |> Enum.map(& &1.ship_diversity)
       |> Enum.filter(&(&1 > 0))
 
-    if Enum.empty?(diversities) do
+    if diversities == [] do
       0
     else
       Enum.sum(diversities) / length(diversities)

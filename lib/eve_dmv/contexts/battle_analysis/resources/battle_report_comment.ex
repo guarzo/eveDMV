@@ -135,10 +135,13 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.BattleReportComment do
     update :soft_delete do
       accept([])
       require_atomic?(false)
+      change({EveDmv.Ash.Changes.SoftDelete, []})
+    end
 
-      change(fn changeset, _context ->
-        Ash.Changeset.change_attribute(changeset, :deleted_at, DateTime.utc_now())
-      end)
+    update :restore do
+      accept([])
+      require_atomic?(false)
+      change({EveDmv.Ash.Changes.SoftDelete, action: :restore})
     end
   end
 
@@ -151,6 +154,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.BattleReportComment do
     define(:upvote)
     define(:downvote)
     define(:soft_delete)
+    define(:restore)
     define(:read)
     define(:destroy)
   end

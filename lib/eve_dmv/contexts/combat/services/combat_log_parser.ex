@@ -508,7 +508,7 @@ defmodule EveDmv.Contexts.Combat.Services.CombatLogParser do
   defp calculate_peak_dps(damage_events) do
     timeline = build_damage_timeline(damage_events)
 
-    if length(timeline) > 0 do
+    if timeline != [] do
       timeline
       |> Enum.map(& &1.damage)
       |> Enum.max()
@@ -518,7 +518,7 @@ defmodule EveDmv.Contexts.Combat.Services.CombatLogParser do
   end
 
   defp calculate_average_dps(damage_events) do
-    if Enum.empty?(damage_events) do
+    if damage_events == [] do
       0
     else
       total_damage = Enum.sum(Enum.map(damage_events, & &1.damage))

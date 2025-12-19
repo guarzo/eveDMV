@@ -143,7 +143,9 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
       %{id: id} ->
         # Update existing profile
-        case safe_call(fn -> EveDmv.Contexts.Surveillance.Api.update_profile(id, profile_data) end) do
+        case safe_call(fn ->
+               EveDmv.Contexts.Surveillance.Api.update_profile(id, profile_data)
+             end) do
           {:ok, _profile} ->
             socket =
               socket

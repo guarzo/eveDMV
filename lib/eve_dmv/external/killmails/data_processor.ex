@@ -6,7 +6,6 @@ defmodule EveDmv.Killmails.DataProcessor do
   between pipeline stages and provide a single point of data processing.
   """
 
-  alias EveDmv.Eve.NameResolver
   alias EveDmv.Killmails.KillmailDataTransformer
   alias EveDmv.Killmails.ParticipantBuilder
 
@@ -92,6 +91,10 @@ defmodule EveDmv.Killmails.DataProcessor do
 
   @doc """
   Get victim information for logging.
+
+  Note: This function does NOT query the database to avoid N+1 queries during
+  pipeline processing. It only uses data already present in the killmail.
+  For display purposes, use the DisplayService which properly batches lookups.
   """
   @spec get_victim_info(processed_data()) :: {String.t(), String.t()}
   def get_victim_info(processed_data) do
@@ -100,13 +103,16 @@ defmodule EveDmv.Killmails.DataProcessor do
 
     system_id = original["solar_system_id"] || original["system_id"]
 
+    # Use only data from the original killmail - do NOT query the database here
+    # to avoid N+1 queries during pipeline processing. The system name will be
+    # resolved properly when displayed via DisplayService which batches lookups.
     system_name =
       case original["solar_system_name"] do
-        name when name in [nil, "", "Unknown System"] and system_id != nil ->
-          NameResolver.system_name(system_id)
-
-        name when name != nil ->
+        name when is_binary(name) and name != "" and name != "Unknown System" ->
           name
+
+        _ when is_integer(system_id) ->
+          "System #{system_id}"
 
         _ ->
           "Unknown System"

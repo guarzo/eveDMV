@@ -280,7 +280,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
       # Same target hit 3+ times
       |> Enum.filter(fn {_target, count} -> count >= 3 end)
 
-    if length(targets) > 0 do
+    if Enum.any?(targets) do
       ["Repeated targeting of specific individuals detected"]
     else
       []
@@ -530,11 +530,11 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
 
     combat_vectors =
       infiltration_vectors +
-        if length(recent_activity.combat_activity.suspicious_losses) > 0, do: 1, else: 0
+        if Enum.any?(recent_activity.combat_activity.suspicious_losses), do: 1, else: 0
 
     total_vectors =
       combat_vectors +
-        if length(recent_activity.member_logins.dormant_reactivations) > 0, do: 1, else: 0
+        if Enum.any?(recent_activity.member_logins.dormant_reactivations), do: 1, else: 0
 
     total_vectors
   end
@@ -566,7 +566,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
 
     # Espionage threat
     espionage_threats =
-      if length(threat_indicators.activity_indicators.dormant_reactivations) > 0 do
+      if Enum.any?(threat_indicators.activity_indicators.dormant_reactivations) do
         threat = %{
           threat_type: :espionage,
           severity: :moderate,
@@ -587,7 +587,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
 
     # Asset theft threat
     asset_threats =
-      if length(threat_indicators.activity_indicators.suspicious_losses) > 0 do
+      if Enum.any?(threat_indicators.activity_indicators.suspicious_losses) do
         threat = %{
           threat_type: :asset_theft,
           severity: :high,
@@ -716,7 +716,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
 
     # Generate alerts for patterns
     pattern_alerts =
-      if length(threat_patterns.coordination_patterns) > 0 do
+      if Enum.any?(threat_patterns.coordination_patterns) do
         [
           %{
             alert_id: generate_alert_id(),
@@ -868,7 +868,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
       patterns = %{
         active_infiltrations: length(infiltration_threats),
         infiltration_methods: extract_infiltration_methods(infiltration_threats),
-        risk_level: if(length(infiltration_threats) > 0, do: :high, else: :low)
+        risk_level: if(Enum.any?(infiltration_threats), do: :high, else: :low)
       }
 
       {:ok, patterns}
@@ -914,7 +914,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
       patterns = %{
         suspected_spies: length(espionage_threats),
         espionage_indicators: extract_espionage_indicators(espionage_threats),
-        information_risk: if(length(espionage_threats) > 0, do: :high, else: :low)
+        information_risk: if(Enum.any?(espionage_threats), do: :high, else: :low)
       }
 
       {:ok, patterns}
@@ -1086,7 +1086,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ThreatDetector do
       recent_ships
       |> Enum.filter(fn {_ship_id, count} -> count > 5 end)
 
-    if length(unusual_ships) > 0 do
+    if Enum.any?(unusual_ships) do
       [
         %{
           type: :unusual_ship_usage,

@@ -888,8 +888,8 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
       hauler_count =
         data.killmails
         |> Enum.count(fn km ->
+          # :hauler is not a valid type, use :freighter, :transport, :industrial
           classify_ship_type(km.victim.ship_type_id) in [
-            :hauler,
             :freighter,
             :transport,
             :industrial
@@ -934,8 +934,8 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
     hauler_kills =
       killmails
       |> Enum.filter(fn km ->
+        # :hauler is not a valid type, use :freighter, :transport, :industrial
         classify_ship_type(km.victim.ship_type_id) in [
-          :hauler,
           :freighter,
           :transport,
           :industrial
@@ -1004,8 +1004,8 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
 
     hauler_kills =
       Enum.count(killmails, fn km ->
+        # :hauler is not a valid type, use :freighter, :transport, :industrial
         classify_ship_type(km.victim.ship_type_id) in [
-          :hauler,
           :freighter,
           :transport,
           :industrial

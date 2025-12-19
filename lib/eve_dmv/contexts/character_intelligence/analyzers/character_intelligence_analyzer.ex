@@ -762,7 +762,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
   # Private helper functions
 
   defp calculate_diversity_score(preferences) when is_list(preferences) do
-    if Enum.empty?(preferences) do
+    if preferences == [] do
       0.0
     else
       # Simple diversity calculation based on distribution
@@ -904,12 +904,14 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
       |> add_gang_preference_indicator(preferred_gang_style)
       |> add_ship_diversity_indicator(ship_diversity)
 
+    indicator_count = length(threat_indicators)
+
     overall_threat_level =
       cond do
-        length(threat_indicators) >= 4 -> :extreme
-        length(threat_indicators) >= 3 -> :high
-        length(threat_indicators) >= 2 -> :medium
-        length(threat_indicators) >= 1 -> :low
+        indicator_count >= 4 -> :extreme
+        indicator_count >= 3 -> :high
+        indicator_count >= 2 -> :medium
+        indicator_count >= 1 -> :low
         true -> :minimal
       end
 

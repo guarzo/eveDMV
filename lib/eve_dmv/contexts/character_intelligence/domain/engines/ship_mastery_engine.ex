@@ -181,8 +181,17 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Shi
     victim_killmails = Map.get(combat_data, :victim_killmails, [])
     attacker_killmails = Map.get(combat_data, :attacker_killmails, [])
 
-    survival_rate = SharedUtilities.calculate_survival_rate(combat_data, victim_killmails)
-    damage_efficiency = SharedUtilities.calculate_damage_efficiency(attacker_killmails)
+    survival_rate =
+      case SharedUtilities.calculate_survival_rate(combat_data, victim_killmails) do
+        {:ok, rate} -> rate
+        {:error, :insufficient_data} -> 0.0
+      end
+
+    damage_efficiency =
+      case SharedUtilities.calculate_damage_efficiency(attacker_killmails) do
+        {:ok, efficiency} -> efficiency
+        {:error, :insufficient_data} -> 0.0
+      end
 
     # Ships that survive longer and deal more damage likely have better fits
     survival_rate * @survival_weight + damage_efficiency * @damage_weight

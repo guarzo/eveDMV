@@ -284,10 +284,10 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
     fleet_sizes = Enum.map(interactions, & &1.participant_count)
 
     avg_fleet_size =
-      if length(fleet_sizes) > 0 do
-        Enum.sum(fleet_sizes) / length(fleet_sizes)
-      else
+      if fleet_sizes == [] do
         0.0
+      else
+        Enum.sum(fleet_sizes) / length(fleet_sizes)
       end
 
     # Classify based on patterns
@@ -301,7 +301,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
   end
 
   defp calculate_average_fleet_size(interactions) when is_list(interactions) do
-    if Enum.empty?(interactions) do
+    if interactions == [] do
       0.0
     else
       total =
@@ -380,7 +380,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
     # Calculate the local clustering coefficient for all nodes
     nodes = MapSet.to_list(network_data.nodes)
 
-    if length(nodes) < 3 do
+    if Enum.count(nodes) < 3 do
       # Need at least 3 nodes for triangles
       0.0
     else
@@ -398,7 +398,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
         |> Enum.filter(&(&1 > 0))
 
       # Global clustering coefficient is the average
-      if Enum.empty?(node_coefficients) do
+      if node_coefficients == [] do
         0.0
       else
         coefficient_count = length(node_coefficients)
@@ -426,7 +426,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
   end
 
   defp calculate_node_clustering_coefficient(neighbors, edges) do
-    if length(neighbors) < 2 do
+    if Enum.count(neighbors) < 2 do
       # Need at least 2 neighbors to form triangles
       0.0
     else
@@ -473,7 +473,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
     # Calculate actual network diameter using BFS
     nodes = MapSet.to_list(network_data.nodes)
 
-    if length(nodes) < 2 do
+    if Enum.count(nodes) < 2 do
       0
     else
       # Build adjacency map for BFS
@@ -623,7 +623,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
       end)
       |> Enum.map(&analyze_single_fleet/1)
 
-    if Enum.empty?(fleets) do
+    if fleets == [] do
       %{
         average_fleet_size: 0,
         common_compositions: [],
@@ -665,13 +665,17 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
   end
 
   defp calculate_average_fleet_size_from_fleets(fleets)
-       when is_list(fleets) and length(fleets) > 0 do
-    total_size =
-      fleets
-      |> Enum.map(fn f -> Map.get(f, :fleet_size, 0) end)
-      |> Enum.sum()
+       when is_list(fleets) do
+    if fleets == [] do
+      0.0
+    else
+      total_size =
+        fleets
+        |> Enum.map(fn f -> Map.get(f, :fleet_size, 0) end)
+        |> Enum.sum()
 
-    Float.round(total_size / length(fleets), 1)
+      Float.round(total_size / length(fleets), 1)
+    end
   end
 
   defp calculate_average_fleet_size_from_fleets(_), do: 0.0
@@ -768,7 +772,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
       |> Map.values()
       |> Enum.map(&calculate_interaction_strength/1)
 
-    if Enum.empty?(strengths) do
+    if strengths == [] do
       %{average: 0, distribution: %{}}
     else
       %{
@@ -797,7 +801,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
 
   defp analyze_network_evolution(killmails) do
     # Analyze how the network has evolved over time
-    if length(killmails) < 20 do
+    if Enum.count(killmails) < 20 do
       %{trend: :insufficient_data}
     else
       sorted = Enum.sort_by(killmails, & &1.killmail_time)
@@ -817,33 +821,34 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
     end
   end
 
-  defp build_period_network(killmails) when is_list(killmails) and length(killmails) > 0 do
-    participants =
-      killmails
-      |> Enum.flat_map(&extract_participants/1)
-      |> Enum.filter(&is_map/1)
-      |> Enum.map(&Map.get(&1, :character_id))
-      |> Enum.filter(&is_integer/1)
-      |> Enum.uniq()
+  defp build_period_network(killmails) when is_list(killmails) do
+    if killmails == [] do
+      %{
+        node_count: 0,
+        edge_count: 0,
+        period_start: nil,
+        period_end: nil
+      }
+    else
+      participants =
+        killmails
+        |> Enum.flat_map(&extract_participants/1)
+        |> Enum.filter(&is_map/1)
+        |> Enum.map(&Map.get(&1, :character_id))
+        |> Enum.filter(&is_integer/1)
+        |> Enum.uniq()
 
-    first_km = List.first(killmails)
-    last_km = List.last(killmails)
+      first_km = List.first(killmails)
+      last_km = List.last(killmails)
 
-    %{
-      node_count: length(participants),
-      edge_count: length(killmails),
-      period_start: if(is_map(first_km), do: Map.get(first_km, :killmail_time), else: nil),
-      period_end: if(is_map(last_km), do: Map.get(last_km, :killmail_time), else: nil)
-    }
+      %{
+        node_count: length(participants),
+        edge_count: length(killmails),
+        period_start: if(is_map(first_km), do: Map.get(first_km, :killmail_time), else: nil),
+        period_end: if(is_map(last_km), do: Map.get(last_km, :killmail_time), else: nil)
+      }
+    end
   end
-
-  defp build_period_network(_),
-    do: %{
-      node_count: 0,
-      edge_count: 0,
-      period_start: nil,
-      period_end: nil
-    }
 
   defp determine_network_trend(first_network, second_network) do
     growth = second_network.node_count - first_network.node_count

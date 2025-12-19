@@ -1,52 +1,49 @@
 # EVE DMV
 
-A real-time PvP activity tracking platform for EVE Online. **Active development** with multiple working intelligence features and advanced analytics in progress.
+A real-time PvP activity tracking platform for EVE Online with intelligence features and advanced analytics.
 
 ## 📚 Documentation
 
-### Current Status
-- **Active Development** - Sprint 19 focused on removing placeholder implementations
-- See **[CLAUDE.md](./CLAUDE.md)** for development guidelines and current implementation status
-
-### Development
-- **[Project Instructions](./CLAUDE.md)** - Development guidelines and commands
+- **[CLAUDE.md](./CLAUDE.md)** - Development guidelines and current implementation status
 - **[Architecture Guide](./docs/ARCHITECTURE.md)** - System design and patterns
+- **[Deployment Guide](./docs/DEPLOYMENT_GUIDE.md)** - Production deployment instructions
+- **[Documentation Index](./docs/README.md)** - Complete documentation listing
 
-For complete documentation, see the [/docs directory](./docs/README.md). For deployment instructions, see [Deployment Guide](./docs/DEPLOYMENT_GUIDE.md).
+## Features
 
-## Current Features
+### Real-time Kill Tracking
+- **Live Kill Feed** (`/feed`) - Real-time killmail display from wanderer-kills SSE
+- **Killmail Details** (`/killmail/:id`) - Detailed view with participants and values
 
-### ✅ Working Features
-- 🔴 **Live Kill Feed** (`/feed`) - Real-time killmail display from wanderer-kills SSE
-- 🔍 **Character Intelligence** (`/character/:character_id`) - Complete analysis with ship preferences, activity patterns, and intelligence summary
-- 🏢 **Corporation Intelligence** (`/corporation/:corporation_id`) - Member activity analysis, timezone heatmaps, participation metrics
-- 🌍 **System Intelligence** (`/system/:system_id`) - Activity statistics, danger assessment, alliance presence analysis
-- 🔍 **Universal Search** (`/search`) - Auto-completion for characters, corporations, and systems
-- ⚔️ **Battle Analysis** (In Development) - Combat log parsing, ship performance analysis, battle metrics
-- 🔐 **EVE SSO Authentication** - Login/logout with EVE Online account
-- 📊 **Static Data** - Complete EVE universe data (49,906 items including all ships)
-- 🗃️ **Database Infrastructure** - PostgreSQL with Broadway pipeline processing 50-100 killmails/minute
-- 📈 **Monitoring Dashboard** (`/monitoring`) - Error tracking, pipeline health, performance monitoring
+### Intelligence & Analytics
+- **Character Intelligence** (`/character/:id`) - Ship preferences, activity patterns, threat scoring
+- **Corporation Intelligence** (`/corporation/:id`) - Member activity, timezone heatmaps, participation metrics
+- **System Intelligence** (`/system/:id`) - Activity statistics, danger assessment, alliance presence
+- **Battle Analysis** (`/battle`) - Multi-system battle detection, timeline reconstruction, fleet composition
 
-### 🚧 In Development (Sprint 19)
-- **Character Intelligence Cleanup** - Replacing placeholder functions with real database queries
-- **Advanced Battle Analysis** - Multi-system battle correlation and tactical phase detection
-- **Threat Intelligence Engine** - Multi-dimensional threat scoring with real data
+### Search & Surveillance
+- **Universal Search** (`/search`) - Search characters, corporations, systems, and alliances
+- **Surveillance Profiles** (`/surveillance-profiles`) - Track specific entities with custom filters
+- **Surveillance Alerts** (`/surveillance-alerts`) - Real-time notifications on profile matches
 
-### 📋 Future Priorities
-- **Price Integration** - Real-time ISK calculations via Janice/Mutamarket APIs
-- **Advanced Surveillance** - Profile matching and smart alert system
-- **Fleet Composition Tools** - Wormhole fleet optimization algorithms
-- **Predictive Analytics** - Machine learning for threat assessment
+### Administration
+- **Unified Dashboard** (`/dashboard`) - Overview of all activity and metrics
+- **Performance Monitoring** (`/admin/performance`) - Query analysis, index health, telemetry
+- **Admin Tools** (`/admin/users`, `/admin/system`) - User management and system configuration
 
-**Note**: All working features use real data and algorithms. No mock data in production features.
+### Authentication
+- **EVE SSO** - Login with EVE Online account
+- **Character Switching** - Switch between linked characters
+- **API Keys** - Programmatic access via API key authentication
+
+**Note**: All features use real data and algorithms. No mock data in production features.
 
 ## Quick Start
 
 ### Prerequisites
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) and Docker Compose
-- OR: Elixir 1.15+, Node.js 20+, PostgreSQL 16+
+- OR: Elixir 1.19+, Node.js 20+, PostgreSQL 16+
 
 ### Setup Instructions
 
@@ -114,10 +111,9 @@ For complete documentation, see the [/docs directory](./docs/README.md). For dep
 If you prefer not to use dev containers:
 
 1. **Install dependencies:**
-   - Elixir 1.15+
+   - Elixir 1.19+
    - Node.js 20+
-   - PostgreSQL 15+
-   - Redis 7+
+   - PostgreSQL 16+
 
 2. **Setup database:**
    ```bash
@@ -174,14 +170,19 @@ npm run watch --prefix assets         # Watch and rebuild assets
 ├── .devcontainer/          # Dev container configuration
 ├── assets/                 # Frontend assets (CSS, JS)
 ├── config/                 # Application configuration
+├── docs/                   # Project documentation
 ├── lib/
 │   ├── eve_dmv/            # Business logic with DDD structure
 │   │   ├── api.ex          # Main Ash API domain
-│   │   └── contexts/       # Domain contexts (battle, character, fleet, etc.)
+│   │   ├── contexts/       # Domain contexts (16+ bounded contexts)
+│   │   ├── core/           # Shared kernel and utilities
+│   │   ├── external/       # External service integrations (ESI, market)
+│   │   └── platform/       # Infrastructure services (cache, auth, DB)
 │   └── eve_dmv_web/        # Web interface (controllers, views, live views)
 ├── priv/
 │   ├── repo/               # Database migrations and seeds
 │   └── static/             # Static assets
+├── scripts/                # Quality check and deployment scripts
 ├── test/                   # Test files
 ├── docker-compose.yml      # Development services
 └── mix.exs                 # Project configuration
@@ -268,18 +269,17 @@ Before submitting a pull request:
 - All tests must pass
 - Code must be formatted (`mix format`)
 - Static analysis must pass (`mix credo --strict`)
-- Coverage should meet minimum threshold (70%)
+- Coverage should meet minimum threshold (40%)
 
 ## Documentation
 
-Complete project documentation is organized in the [`docs/`](./docs/) directory:
+Project documentation is organized in the [`docs/`](./docs/) directory:
 
 - **[Documentation Index](./docs/README.md)** - Complete overview of all documentation
-- **[Product Requirements](./docs/product-requirements.md)** - Business requirements and user stories  
 - **[Architecture](./docs/ARCHITECTURE.md)** - System design and implementation details
-- **[Implementation Status](./docs/IMPLEMENTATION_STATUS_COMBINED.md)** - Current feature status
-
-See the [Documentation Index](./docs/README.md) for the complete list of guides, implementation details, and reference materials.
+- **[Deployment Guide](./docs/DEPLOYMENT_GUIDE.md)** - Production deployment instructions
+- **[Product Requirements](./docs/EVE_DMV_PRD.md)** - Business requirements and user stories
+- **[Operations Runbook](./docs/OPERATIONS_RUNBOOK.md)** - Operational procedures and troubleshooting
 
 ## License
 

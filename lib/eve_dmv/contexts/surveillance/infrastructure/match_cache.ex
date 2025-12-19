@@ -310,7 +310,7 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.MatchCache do
         :ok
     end
 
-    if length(expired_keys) > 0 do
+    unless Enum.empty?(expired_keys) do
       Logger.debug("Cleaned up #{length(expired_keys)} expired cache entries")
     end
   end

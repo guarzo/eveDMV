@@ -8,9 +8,11 @@ defmodule EveDmv.Killmails.KillmailBroadcaster do
 
   alias Broadway.Message
   alias EveDmv.Surveillance.MatchingEngine
-  alias EveDmvWeb.Endpoint
 
   require Logger
+
+  # Use PubSub directly instead of Endpoint to avoid web layer dependency
+  @pubsub EveDmv.PubSub
 
   @doc """
   Broadcast killmails to LiveView clients via PubSub.
@@ -22,7 +24,8 @@ defmodule EveDmv.Killmails.KillmailBroadcaster do
   def broadcast_killmails(messages) do
     for %Message{data: killmail_data} <- messages do
       try do
-        Endpoint.broadcast!("kill_feed", "new_kill", killmail_data)
+        # Use PubSub directly to avoid web layer dependency
+        Phoenix.PubSub.broadcast(@pubsub, "kill_feed", {"new_kill", killmail_data})
       rescue
         error ->
           Logger.warning("Failed to broadcast killmail: #{inspect(error)}")

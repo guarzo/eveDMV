@@ -15,7 +15,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   """
 
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
-  alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Contexts.CharacterIntelligence.ThreatConfig
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
 
@@ -429,12 +429,14 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
           DateTimeUtils.compare(km.killmail_time, recent_cutoff) != :lt
         end)
 
-      if length(recent_killmails) < 3 do
-        # Insufficient recent data
+      if length(recent_killmails) < ThreatConfig.minimum_recent_killmails() do
+        # Insufficient recent data - use configured fallback score
+        insufficient_score = ThreatConfig.insufficient_data_score()
+
         %{
-          raw_score: 0.3,
-          normalized_score: 3.0,
-          components: %{recent_performance: 0.0, activity_level: 0.3},
+          raw_score: insufficient_score,
+          normalized_score: insufficient_score * 10.0,
+          components: %{recent_performance: 0.0, activity_level: insufficient_score},
           insights: ["Limited recent activity - may be inactive or laying low"]
         }
       else
@@ -458,11 +460,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
         }
       end
     else
-      # If not weighting recent activity, return neutral score
+      # If not weighting recent activity, return configured neutral score
+      neutral_score = ThreatConfig.weighting_disabled_neutral_score()
+
       %{
-        raw_score: 0.5,
-        normalized_score: 5.0,
-        components: %{recent_performance: 0.5, activity_level: 0.5},
+        raw_score: neutral_score,
+        normalized_score: neutral_score * 10.0,
+        components: %{recent_performance: neutral_score, activity_level: neutral_score},
         insights: ["Recent activity weighting disabled"]
       }
     end
@@ -533,18 +537,22 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   end
 
   defp calculate_survival_rate(combat_data) do
-    SharedUtilities.calculate_survival_rate(combat_data, combat_data.victim_killmails)
+    case SharedUtilities.calculate_survival_rate(combat_data, combat_data.victim_killmails) do
+      {:ok, rate} -> rate
+      {:error, :insufficient_data} -> 0.0
+    end
   end
 
   defp analyze_target_selection_quality(attacker_killmails) do
     if Enum.empty?(attacker_killmails) do
-      0.5
+      # Return 0.0 for insufficient data instead of fake "neutral" 0.5
+      0.0
     else
       # Analyze value and tactical importance of targets
       valuable_targets =
         Enum.count(attacker_killmails, fn km ->
-          # Targets worth >100M ISK
-          estimate_killmail_value(km) > 100_000_000
+          # Use ThreatConfig for threshold
+          estimate_killmail_value(km) > ThreatConfig.high_value_target_isk()
         end)
 
       tactical_targets =
@@ -567,7 +575,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   end
 
   defp calculate_damage_efficiency(attacker_killmails) do
-    SharedUtilities.calculate_damage_efficiency(attacker_killmails)
+    case SharedUtilities.calculate_damage_efficiency(attacker_killmails) do
+      {:ok, efficiency} -> efficiency
+      {:error, :insufficient_data} -> 0.0
+    end
   end
 
   defp extract_ship_types_used(killmails) do
@@ -593,10 +604,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
         ship_count = length(ships)
 
         # Mastery = usage frequency + diversity within class
-        # Normalize to frequent usage
-        usage_score = min(1.0, total_uses / 10)
-        # Normalize to good diversity
-        diversity_score = min(1.0, ship_count / 5)
+        # Use ThreatConfig for normalization constants
+        usage_score = min(1.0, total_uses / ThreatConfig.ship_usage_normalization())
+        diversity_score = min(1.0, ship_count / ThreatConfig.ship_diversity_normalization())
 
         (usage_score + diversity_score) / 2
       end)
@@ -656,7 +666,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
 
   defp calculate_specialization_balance(ship_types_map) do
     if map_size(ship_types_map) == 0 do
-      0.5
+      # No data - return 0.0 instead of fake neutral
+      0.0
     else
       total_uses = Map.values(ship_types_map) |> Enum.sum()
       max_usage = Map.values(ship_types_map) |> Enum.max()
@@ -718,8 +729,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     if total_kills > 0 do
       fleet_kills / total_kills
     else
-      # Neutral score for no data
-      0.5
+      # No data - return 0.0 instead of fake neutral
+      0.0
     end
   end
 
@@ -788,9 +799,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
 
   defp assess_fleet_coordination(killmails) do
     # Analyze coordination indicators from killmail timing and participation
-    if length(killmails) < 5 do
-      # Insufficient data
-      0.5
+    if length(killmails) < @minimum_killmails_for_scoring do
+      # Insufficient data - return 0.0 instead of fake neutral
+      0.0
     else
       # Look for coordinated strikes (multiple kills in short timeframes)
       coordinated_strikes =
@@ -812,7 +823,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   defp analyze_leadership_patterns(attacker_killmails) do
     # Analyze final blow patterns as leadership indicator
     if Enum.empty?(attacker_killmails) do
-      0.5
+      # Insufficient data - return 0.0 instead of fake neutral
+      0.0
     else
       final_blows =
         Enum.count(attacker_killmails, fn km ->
@@ -843,8 +855,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
       end)
 
     if Enum.empty?(support_ships_used) do
-      # Neutral score - not a support player
-      0.5
+      # No support ship usage data
+      0.0
     else
       # Simplified support effectiveness based on survival in support ships
       support_deaths = Enum.count(support_ships_used, &(&1.victim_character_id != nil))
@@ -915,8 +927,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
 
   defp analyze_engagement_time_variety(killmails) do
     # Analyze variety in engagement timing (time of day patterns)
-    if length(killmails) < 5 do
-      0.5
+    if length(killmails) < @minimum_killmails_for_scoring do
+      # Insufficient data
+      0.0
     else
       hours =
         killmails
@@ -938,8 +951,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     ship_types = extract_ship_types_used(combat_data.killmails)
 
     if map_size(ship_types) < 3 do
-      # Low variance - very predictable ship selection
-      0.3
+      # Low variance - very predictable ship selection (low but not zero)
+      0.2
     else
       # Analyze entropy in ship selection
       total_uses = Map.values(ship_types) |> Enum.sum()
@@ -957,7 +970,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
       if max_entropy > 0 do
         entropy / max_entropy
       else
-        0.5
+        # No entropy possible (single ship type)
+        0.0
       end
     end
   end
@@ -965,7 +979,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   defp analyze_engagement_timing_patterns(killmails) do
     # Analyze unpredictability in when character engages
     if length(killmails) < 10 do
-      0.5
+      # Insufficient data for timing pattern analysis
+      0.0
     else
       # Group by day of week and hour
       timing_patterns =
@@ -997,8 +1012,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   end
 
   defp calculate_target_selection_variance(attacker_killmails) do
-    if length(attacker_killmails) < 5 do
-      0.5
+    if length(attacker_killmails) < @minimum_killmails_for_scoring do
+      # Insufficient data
+      0.0
     else
       # Analyze variety in target types
       target_ship_types =
@@ -1044,14 +1060,15 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   defp calculate_performance_variance(combat_data) do
     # Analyze variance in combat performance over time
     if length(combat_data.killmails) < 10 do
-      0.5
+      # Insufficient data for variance analysis
+      0.0
     else
       # Group killmails by time periods and analyze performance variance
       time_periods =
         combat_data.killmails
         |> Enum.sort_by(& &1.killmail_time)
         # Groups of 5 killmails
-        |> Enum.chunk_every(5)
+        |> Enum.chunk_every(@minimum_killmails_for_scoring)
 
       performance_scores =
         time_periods
@@ -1062,7 +1079,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
         # Normalize variance
         min(1.0, variance * 5)
       else
-        0.5
+        # Only one period - no variance possible
+        0.0
       end
     end
   end
@@ -1074,7 +1092,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     _deaths = length(killmails) - kills
 
     if Enum.empty?(killmails) do
-      0.5
+      # No data - return 0.0
+      0.0
     else
       kills / length(killmails)
     end
@@ -1153,8 +1172,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     # High value targets relative to own ship usage
     high_value_kills =
       Enum.count(killmails, fn km ->
-        # 500M+ ISK targets
-        estimate_killmail_value(km) > 500_000_000
+        # Use configured threshold for opportunist targets
+        estimate_killmail_value(km) > ThreatConfig.opportunist_target_isk()
       end)
 
     opportunist_rate =

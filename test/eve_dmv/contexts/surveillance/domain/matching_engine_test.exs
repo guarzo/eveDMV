@@ -17,7 +17,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngineTest do
 
       assert {:ok, result} = MatchingEngine.test_criteria(criteria, test_data)
       assert result.matches == true
-      assert length(result.matched_criteria) > 0
+      assert Enum.any?(result.matched_criteria)
     end
 
     test "validates corporation watch criteria" do
@@ -52,7 +52,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngineTest do
 
       assert {:ok, result} = MatchingEngine.test_criteria(criteria, test_data)
       assert result.matches == true
-      assert length(result.matched_criteria) > 0
+      assert Enum.any?(result.matched_criteria)
 
       # Test with value below threshold
       low_value_data = %{test_data | zkb_total_value: 50_000_000}
@@ -83,7 +83,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngineTest do
 
       assert {:ok, result} = MatchingEngine.test_criteria(criteria, test_data)
       assert result.matches == true
-      assert length(result.matched_criteria) > 0
+      assert Enum.any?(result.matched_criteria)
 
       # Test with fewer participants
       small_gang_data = %{test_data | attackers: [%{"character_id" => 1}, %{"character_id" => 2}]}

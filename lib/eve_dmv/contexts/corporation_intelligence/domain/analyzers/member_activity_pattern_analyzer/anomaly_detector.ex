@@ -156,10 +156,12 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivit
   - Atom representing risk level (:none, :low, :medium, :high)
   """
   def determine_anomaly_risk_level(anomalies) do
+    anomaly_count = length(anomalies)
+
     cond do
-      length(anomalies) >= 3 -> :high
-      length(anomalies) >= 2 -> :medium
-      length(anomalies) >= 1 -> :low
+      anomaly_count >= 3 -> :high
+      anomaly_count >= 2 -> :medium
+      anomaly_count >= 1 -> :low
       true -> :none
     end
   end
@@ -217,7 +219,9 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivit
 
   defp check_timezone_pattern_anomaly(baseline, recent, _sensitivity, anomalies) do
     # Simple check for timezone pattern changes
-    if length(baseline.typical_hours -- recent.typical_hours) > 2 do
+    hour_diff = baseline.typical_hours -- recent.typical_hours
+
+    if hour_diff != [] and length(hour_diff) > 2 do
       anomaly = %{
         type: :timezone_pattern_change,
         severity: :high,

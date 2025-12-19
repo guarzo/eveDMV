@@ -404,10 +404,10 @@ defmodule EveDmv.Eve.ItemType do
       calculation(fn records, _context ->
         Enum.map(records, fn record ->
           cond do
-            record.is_ship and record.mass && record.mass > 1_000_000_000 -> "capital"
-            record.is_ship and record.mass && record.mass > 100_000_000 -> "battleship"
-            record.is_ship and record.mass && record.mass > 10_000_000 -> "cruiser"
-            record.is_ship and record.mass && record.mass > 1_000_000 -> "frigate"
+            (record.is_ship and record.mass) && record.mass > 1_000_000_000 -> "capital"
+            (record.is_ship and record.mass) && record.mass > 100_000_000 -> "battleship"
+            (record.is_ship and record.mass) && record.mass > 10_000_000 -> "cruiser"
+            (record.is_ship and record.mass) && record.mass > 1_000_000 -> "frigate"
             record.is_ship -> "unknown"
             true -> "item"
           end

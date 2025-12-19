@@ -109,6 +109,16 @@ defmodule EveDmv.Eve.NameResolver do
   """
   defdelegate system_security(system_id), to: StaticDataResolver
 
+  @doc """
+  Gets the security class and color for multiple solar systems efficiently.
+
+  ## Examples
+
+      iex> NameResolver.system_securities([30_000_142, 30_002_187])
+      %{30_000_142 => %{class: "highsec", ...}, 30_002_187 => %{class: "highsec", ...}}
+  """
+  defdelegate system_securities(system_ids), to: StaticDataResolver
+
   # ============================================================================
   # Public API - ESI Entity Resolution
   # ============================================================================

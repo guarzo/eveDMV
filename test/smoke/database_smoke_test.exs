@@ -13,7 +13,7 @@ defmodule EveDmv.Smoke.DatabaseSmokeTest do
           Ecto.Migrator.migrated_versions(repo)
         end)
 
-      assert length(versions) > 0, "No migrations found"
+      assert not Enum.empty?(versions), "No migrations found"
     end
   end
 
@@ -21,7 +21,7 @@ defmodule EveDmv.Smoke.DatabaseSmokeTest do
     test "killmails_raw table exists and is partitioned" do
       query = "SELECT tablename FROM pg_tables WHERE tablename LIKE 'killmails_raw%'"
       result = Ecto.Adapters.SQL.query!(EveDmv.Repo, query)
-      assert length(result.rows) > 0, "No killmail partitions found"
+      assert not Enum.empty?(result.rows), "No killmail partitions found"
     end
 
     test "can query killmails_raw partitioned table" do

@@ -10,9 +10,11 @@ defmodule EveDmv.Surveillance.NotificationService do
   alias EveDmv.Api.SurveillanceApi
   alias EveDmv.Surveillance.Notification
   alias EveDmv.Surveillance.Profile
-  alias EveDmvWeb.Endpoint
 
   require Logger
+
+  # Use PubSub directly instead of Endpoint to avoid web layer dependency
+  @pubsub EveDmv.PubSub
 
   @doc """
   Create a notification for a surveillance profile match.
@@ -265,12 +267,17 @@ defmodule EveDmv.Surveillance.NotificationService do
   end
 
   defp broadcast_to_user(user_id, event, payload) do
-    # Broadcast to user-specific channel
+    # Broadcast to user-specific channel using PubSub directly
+    # This avoids the web layer dependency (Endpoint.broadcast)
     user_topic = "user:#{user_id}"
-    Endpoint.broadcast(user_topic, event, payload)
+    Phoenix.PubSub.broadcast(@pubsub, user_topic, {event, payload})
 
     # Also broadcast to general surveillance channel for LiveView updates
-    Endpoint.broadcast("surveillance", event, Map.put(payload, :user_id, user_id))
+    Phoenix.PubSub.broadcast(
+      @pubsub,
+      "surveillance",
+      {event, Map.put(payload, :user_id, user_id)}
+    )
   end
 
   defp format_isk_value(value) when is_number(value) do

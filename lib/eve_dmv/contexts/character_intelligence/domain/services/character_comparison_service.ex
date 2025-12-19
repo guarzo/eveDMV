@@ -783,13 +783,15 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
 
     char2_wins = length(encounters) - char1_wins
 
+    encounter_count = length(encounters)
+
     %{
-      total_encounters: length(encounters),
+      total_encounters: encounter_count,
       character_1_wins: char1_wins,
       character_2_wins: char2_wins,
       win_rate:
-        if(length(encounters) > 0,
-          do: Float.round(char1_wins / length(encounters) * 100, 1),
+        if(encounter_count > 0,
+          do: Float.round(char1_wins / encounter_count * 100, 1),
           else: 0
         ),
       recent_encounters: Enum.take(encounters, 5) |> Enum.map(&summarize_encounter/1)

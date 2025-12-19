@@ -274,7 +274,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
   end
 
   defp assess_engagement_depth(killmails) do
-    if Enum.empty?(killmails) do
+    if killmails == [] do
       %{depth_score: 0, assessment: :no_activity}
     else
       # Analyze variety and commitment indicators
@@ -352,7 +352,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
     # Look for indicators of fleet leadership
     fleet_activities = Enum.filter(killmails, fn km -> length(km.attackers) >= 5 end)
 
-    if Enum.empty?(fleet_activities) do
+    if fleet_activities == [] do
       %{leadership_score: 0, indicators: []}
     else
       indicators = []
@@ -399,7 +399,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
       killmails
       |> Enum.map(fn km -> length(km.attackers) end)
 
-    if Enum.empty?(fleet_sizes) do
+    if fleet_sizes == [] do
       0
     else
       Enum.sum(fleet_sizes) / length(fleet_sizes)
@@ -458,7 +458,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
   defp assess_fleet_effectiveness(killmails, character_id) do
     fleet_kms = Enum.filter(killmails, fn km -> length(km.attackers) >= 5 end)
 
-    if Enum.empty?(fleet_kms) do
+    if fleet_kms == [] do
       %{effectiveness_score: 0, assessment: :no_fleet_activity}
     else
       # Calculate fleet win/loss ratio
@@ -547,7 +547,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
   defp calculate_avg_fleet_participation(members) do
     active_members = Enum.filter(members, fn member -> member.total_activities > 0 end)
 
-    if Enum.empty?(active_members) do
+    if active_members == [] do
       0.0
     else
       fleet_rates =
@@ -572,7 +572,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
         List.duplicate(round(member.avg_fleet_size), member.fleet_activities)
       end)
 
-    if Enum.empty?(all_fleet_sizes) do
+    if all_fleet_sizes == [] do
       %{}
     else
       all_fleet_sizes
@@ -599,7 +599,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
       potential_leaders: length(leaders),
       leadership_ratio: length(leaders) / max(length(members), 1),
       avg_leadership_score:
-        if Enum.empty?(leaders) do
+        if leaders == [] do
           0
         else
           leaders
@@ -613,7 +613,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
   defp calculate_overall_fleet_effectiveness(members) do
     fleet_members = Enum.filter(members, fn member -> member.fleet_activities > 0 end)
 
-    if Enum.empty?(fleet_members) do
+    if fleet_members == [] do
       %{score: 0, assessment: :no_fleet_activity}
     else
       effectiveness_scores = Enum.map(fleet_members, & &1.fleet_effectiveness.effectiveness_score)
@@ -780,20 +780,20 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
       total_members: length(all_members),
       active_members: length(active_members),
       participation_rate:
-        if length(all_members) > 0 do
+        if all_members != [] do
           length(active_members) / length(all_members) * 100
         else
           0
         end,
       total_activities: Enum.sum(Enum.map(all_members, & &1.total_activities)),
       avg_activities_per_member:
-        if length(active_members) > 0 do
+        if active_members != [] do
           Enum.sum(Enum.map(active_members, & &1.total_activities)) / length(active_members)
         else
           0
         end,
       fleet_participation_rate:
-        if length(active_members) > 0 do
+        if active_members != [] do
           members_with_fleets = Enum.count(active_members, fn m -> m.fleet_activities > 0 end)
           members_with_fleets / length(active_members) * 100
         else
@@ -831,7 +831,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
   end
 
   defp calculate_participation_statistics(activity_counts) do
-    if Enum.empty?(activity_counts) do
+    if activity_counts == [] do
       %{mean: 0, median: 0, std_dev: 0}
     else
       mean = Enum.sum(activity_counts) / length(activity_counts)
@@ -881,13 +881,13 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
           m.engagement_depth.assessment in [:deeply_engaged, :well_engaged]
         end),
       engagement_rate:
-        if length(all_members) > 0 do
+        if all_members != [] do
           length(engaged_members) / length(all_members) * 100
         else
           0
         end,
       avg_engagement_depth:
-        if length(all_members) > 0 do
+        if all_members != [] do
           all_members
           |> Enum.map(& &1.engagement_depth.depth_score)
           |> Enum.sum()
@@ -1112,7 +1112,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
 
   defp analyze_timezone_shifts(historical_data) do
     # Analyze how activity patterns shift over time
-    if Enum.empty?(historical_data) do
+    if historical_data == [] do
       %{shift_detected: false, trend: :stable}
     else
       # Group by time period and analyze peak hours

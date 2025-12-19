@@ -41,10 +41,8 @@ Comprehensive indexing strategy including:
 - **Table Partitioning**: Monthly partitions for killmails_raw
 - **Materialized Views**:
   - character_activity_summary
-  - recent_character_activity
   - system_activity_heatmap
-  - corporation_member_activity
-  - ship_type_effectiveness
+  - ship_type_usage
 - **Helper Functions**:
   - calculate_threat_score()
   - classify_engagement()

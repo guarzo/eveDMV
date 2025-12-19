@@ -46,7 +46,9 @@ defmodule EveDmvWeb.Api.CharacterThreatController do
       _ ->
         conn
         |> put_status(:internal_server_error)
-        |> json(%{error: %{message: "Failed to analyze character threat", code: "INTERNAL_ERROR"}})
+        |> json(%{
+          error: %{message: "Failed to analyze character threat", code: "INTERNAL_ERROR"}
+        })
     end
   end
 end

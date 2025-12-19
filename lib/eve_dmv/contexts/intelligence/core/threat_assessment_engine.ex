@@ -420,19 +420,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.ThreatAssessmentEngine do
   end
 
   defp analyze_threat_trends(character_id, current_score) do
-    case HistoricalTrendAnalysis.analyze_threat_trends(character_id, current_score) do
-      {:ok, trends} ->
-        trends
-
-      {:error, _reason} ->
-        # Fallback if trend analysis fails
-        %{
-          direction: :stable,
-          change_rate: 0,
-          projection: current_score,
-          momentum: :neutral,
-          confidence: :low
-        }
-    end
+    {:ok, trends} = HistoricalTrendAnalysis.analyze_threat_trends(character_id, current_score)
+    trends
   end
 end

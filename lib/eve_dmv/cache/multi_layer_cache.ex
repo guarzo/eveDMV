@@ -1,22 +1,24 @@
 defmodule EveDmv.Platform.Cache.MultiLayerCache do
   @moduledoc """
-  Multi-layer caching system for EVE DMV with Process → ETS → Redis layers.
+  Multi-layer caching system for EVE DMV with Process → ETS layers.
 
   Provides automatic cache promotion/demotion based on access patterns and
   implements intelligent cache warming and eviction strategies.
 
   ## Architecture
 
-  1. **Process Cache** (L1): Ultra-fast process dictionary cache for hot data
-  2. **ETS Cache** (L2): Fast shared memory cache for frequently accessed data  
-  3. **Redis Cache** (L3): Distributed cache for persistence and sharing across nodes
+  1. **Process Cache** (L1): Ultra-fast process dictionary cache for hot data (500 items max)
+  2. **ETS Cache** (L2): Fast shared memory cache for frequently accessed data
+
+  Note: L3 Redis layer is not currently implemented. The architecture supports
+  adding Redis for distributed caching in the future if needed.
 
   ## Features
 
-  - Automatic cache promotion on frequent access
+  - Automatic cache promotion on frequent access (after 5 hits)
   - Write-through and write-behind strategies
   - Cache warming on startup
-  - Adaptive TTL based on access patterns
+  - LRU eviction when L1 reaches capacity
   - Memory pressure monitoring and automatic eviction
   """
 
@@ -29,8 +31,8 @@ defmodule EveDmv.Platform.Cache.MultiLayerCache do
   # Cache access tracking for promotion
   # Number of accesses before promotion
   @promotion_threshold 5
-  # Max items in process cache
-  @l1_max_size 100
+  # Max items in process cache (increased from 100 for better hit rates)
+  @l1_max_size 500
   # 1 minute TTL for L1
   @l1_ttl_ms 60_000
   # 5 minutes TTL for L2
@@ -71,17 +73,9 @@ defmodule EveDmv.Platform.Cache.MultiLayerCache do
             {:ok, value}
 
           :miss ->
-            # Check L3 (Redis cache)
-            case get_from_redis_cache(key) do
-              {:ok, value} ->
-                track_access(:l3_hit)
-                promote_to_l2(key, value)
-                {:ok, value}
-
-              :miss ->
-                track_access(:cache_miss)
-                :miss
-            end
+            # L3 Redis layer is not implemented, always returns :miss
+            track_access(:cache_miss)
+            :miss
         end
     end
   end
@@ -305,26 +299,12 @@ defmodule EveDmv.Platform.Cache.MultiLayerCache do
     Cache.clear(:multi_layer_l2)
   end
 
-  defp get_from_redis_cache(_key) do
-    # Redis integration would go here
-    # For now, return miss as Redis is optional
-    :miss
-  end
-
-  defp put_to_redis_cache(_key, _value, _ttl_ms) do
-    # Redis integration would go here
-    :ok
-  end
-
-  defp delete_from_redis_cache(_key) do
-    # Redis integration would go here
-    :ok
-  end
-
-  defp clear_redis_cache do
-    # Redis integration would go here
-    :ok
-  end
+  # L3 Redis layer is not implemented - these are no-op stubs.
+  # The architecture supports adding Redis in the future if distributed
+  # caching across nodes becomes necessary.
+  defp put_to_redis_cache(_key, _value, _ttl_ms), do: :ok
+  defp delete_from_redis_cache(_key), do: :ok
+  defp clear_redis_cache, do: :ok
 
   defp put_to_all_layers(key, value, ttl) do
     put_to_process_cache(key, value, ttl || @l1_ttl_ms)
@@ -339,10 +319,6 @@ defmodule EveDmv.Platform.Cache.MultiLayerCache do
     if should_promote do
       put_to_process_cache(key, value, @l1_ttl_ms)
     end
-  end
-
-  defp promote_to_l2(key, value) do
-    put_to_ets_cache(key, value, @l2_ttl_ms)
   end
 
   defp queue_redis_write(key, value, ttl) do
@@ -390,16 +366,9 @@ defmodule EveDmv.Platform.Cache.MultiLayerCache do
     Logger.info("Evicted #{num_to_evict} entries from L1 cache due to memory pressure")
   end
 
-  defp flush_redis_writes(_queue, _redis_pool) do
-    # Batch write to Redis (would implement actual Redis writes)
-    # For now, just clear the queue
-    :queue.new()
-  end
-
-  defp init_redis_pool(_redis_config) do
-    # Would initialize Redis connection pool here
-    nil
-  end
+  # L3 Redis write operations - no-op stubs
+  defp flush_redis_writes(_queue, _redis_pool), do: :queue.new()
+  defp init_redis_pool(_redis_config), do: nil
 
   defp track_access(type) do
     :telemetry.execute(
@@ -427,10 +396,8 @@ defmodule EveDmv.Platform.Cache.MultiLayerCache do
     Cache.stats(:multi_layer_l2)
   end
 
-  defp redis_cache_stats do
-    # Placeholder
-    %{size: 0, memory_bytes: 0}
-  end
+  # L3 Redis layer not implemented - returns empty stats
+  defp redis_cache_stats, do: %{size: 0, memory_bytes: 0, enabled: false}
 
   defp memory_stats do
     %{

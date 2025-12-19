@@ -36,7 +36,7 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
         involves_ship?(km, ship_id)
       end)
 
-    if length(ship_killmails) > 0 do
+    if ship_killmails != [] do
       {:ok, analyze_ship_performance(ship_killmails, ship_id)}
     else
       {:error, :ship_not_found}
@@ -87,30 +87,34 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
       # Only consider kills within 5 minutes
       |> Enum.filter(&(&1 < 300))
 
-    if length(time_windows) > 0 do
-      Enum.sum(time_windows) / length(time_windows)
-    else
+    if time_windows == [] do
       0
+    else
+      Enum.sum(time_windows) / length(time_windows)
     end
   end
 
-  defp calculate_kill_velocity(killmails) do
-    if length(killmails) < 2 do
-      0
-    else
-      duration =
-        DateTimeUtils.diff(
-          List.last(killmails).killmail_time,
-          List.first(killmails).killmail_time,
-          :minute
-        )
+  defp calculate_kill_velocity(killmails) when length(killmails) < 2, do: 0
 
-      if duration > 0 do
-        length(killmails) / duration
-      else
-        length(killmails)
-      end
+  defp calculate_kill_velocity(killmails) do
+    duration =
+      DateTimeUtils.diff(
+        List.last(killmails).killmail_time,
+        List.first(killmails).killmail_time,
+        :minute
+      )
+
+    if duration > 0 do
+      length(killmails) / duration
+    else
+      length(killmails)
     end
+  end
+
+  defp calculate_isk_velocity(killmails) when length(killmails) < 2 do
+    Enum.reduce(killmails, 0.0, fn km, acc ->
+      acc + (get_in(km.zkb, ["totalValue"]) || 0.0)
+    end)
   end
 
   defp calculate_isk_velocity(killmails) do
@@ -119,21 +123,17 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
         acc + (get_in(km.zkb, ["totalValue"]) || 0.0)
       end)
 
-    if length(killmails) < 2 do
-      total_isk
-    else
-      duration =
-        DateTimeUtils.diff(
-          List.last(killmails).killmail_time,
-          List.first(killmails).killmail_time,
-          :minute
-        )
+    duration =
+      DateTimeUtils.diff(
+        List.last(killmails).killmail_time,
+        List.first(killmails).killmail_time,
+        :minute
+      )
 
-      if duration > 0 do
-        total_isk / duration
-      else
-        total_isk
-      end
+    if duration > 0 do
+      total_isk / duration
+    else
+      total_isk
     end
   end
 
@@ -169,7 +169,10 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
 
     kills_per_slot = Enum.map(time_slots, & &1.kill_count)
 
-    if length(kills_per_slot) > 1 do
+    if length(kills_per_slot) <= 1 do
+      # Single slot is perfectly consistent
+      100
+    else
       avg = Enum.sum(kills_per_slot) / length(kills_per_slot)
 
       variance =
@@ -187,9 +190,6 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
       else
         0
       end
-    else
-      # Single slot is perfectly consistent
-      100
     end
   end
 
@@ -381,24 +381,24 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
     victim_instances = Enum.filter(instances, &(&1.role == :victim))
 
     attack_score =
-      if length(attacker_instances) > 0 do
+      if attacker_instances == [] do
+        0
+      else
         avg_damage =
           Enum.sum(Enum.map(attacker_instances, & &1.damage_done)) /
             length(attacker_instances)
 
         # Max 50 points for damage
         min(avg_damage / 10_000 * 50, 50)
-      else
-        0
       end
 
     survival_score =
-      if length(instances) > 0 do
+      if instances == [] do
+        0
+      else
         survival_rate = (length(instances) - length(victim_instances)) / length(instances)
         # Max 50 points for survival
         survival_rate * 50
-      else
-        0
       end
 
     attack_score + survival_score
@@ -525,10 +525,10 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
         end
       end)
 
-    if length(killmails) > 0 do
-      overkill_instances / length(killmails) * 100
-    else
+    if killmails == [] do
       0
+    else
+      overkill_instances / length(killmails) * 100
     end
   end
 
@@ -548,14 +548,14 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
       |> Enum.map(fn km ->
         attackers = km.attackers || []
 
-        if length(attackers) > 0 do
+        if attackers == [] do
+          :unknown
+        else
           damages = Enum.map(attackers, &(&1["damage_done"] || 0))
           max_damage = Enum.max(damages, fn -> 0 end)
           total_damage = Enum.sum(damages)
 
           classify_damage_concentration(max_damage, total_damage)
-        else
-          :unknown
         end
       end)
 
@@ -642,7 +642,9 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
       |> Enum.filter(&(&1.value >= high_value_threshold))
       |> Enum.map(& &1.index)
 
-    if length(hvt_positions) > 0 do
+    if hvt_positions == [] do
+      :unknown
+    else
       avg_position = Enum.sum(hvt_positions) / length(hvt_positions)
       total_targets = length(target_values)
 
@@ -655,8 +657,6 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
         priority_score > 30 -> :moderate
         true -> :poor
       end
-    else
-      :unknown
     end
   end
 
@@ -666,7 +666,9 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
         target.strategic_value in [:critical, :high, :very_high]
       end)
 
-    if length(target_values) > 0 do
+    if target_values == [] do
+      :unknown
+    else
       focus_percentage = length(strategic_targets) / length(target_values) * 100
 
       cond do
@@ -675,8 +677,6 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
         focus_percentage > 10 -> :some_focus
         true -> :unfocused
       end
-    else
-      :unknown
     end
   end
 
@@ -720,10 +720,10 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
         acc + length(km.attackers || [])
       end)
 
-    if length(killmails) > 0 do
-      total_attackers / length(killmails)
-    else
+    if killmails == [] do
       0
+    else
+      total_attackers / length(killmails)
     end
   end
 
@@ -735,7 +735,9 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
         length(km.attackers || [])
       end)
 
-    if length(attacker_distributions) > 0 do
+    if attacker_distributions == [] do
+      :unknown
+    else
       avg = Enum.sum(attacker_distributions) / length(attacker_distributions)
 
       variance =
@@ -753,8 +755,6 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
         cv < 0.9 -> :somewhat_spread
         true -> :highly_spread
       end
-    else
-      :unknown
     end
   end
 
@@ -783,10 +783,10 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
     %{
       alpha_strike_count: length(alpha_candidates),
       alpha_strike_percentage:
-        if length(killmails) > 0 do
-          length(alpha_candidates) / length(killmails) * 100
-        else
+        if killmails == [] do
           0
+        else
+          length(alpha_candidates) / length(killmails) * 100
         end
     }
   end
@@ -834,10 +834,10 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
     %{
       burst_kill_count: length(burst_instances),
       burst_percentage:
-        if length(killmails) > 0 do
-          length(burst_instances) / length(killmails) * 100
-        else
+        if killmails == [] do
           0
+        else
+          length(burst_instances) / length(killmails) * 100
         end
     }
   end
@@ -846,7 +846,9 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
     # Rate ability to maintain damage output
     damage_over_time = create_damage_timeline(killmails)
 
-    if length(damage_over_time) > 1 do
+    if length(damage_over_time) <= 1 do
+      :unknown
+    else
       consistency = calculate_output_consistency(damage_over_time)
 
       cond do
@@ -855,8 +857,6 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
         consistency > 0.4 -> :moderate
         true -> :poor
       end
-    else
-      :unknown
     end
   end
 
@@ -881,7 +881,9 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
   defp calculate_output_consistency(damage_timeline) do
     damages = Enum.map(damage_timeline, & &1.damage)
 
-    if length(damages) > 0 do
+    if damages == [] do
+      0
+    else
       avg = Enum.sum(damages) / length(damages)
 
       variance =
@@ -897,8 +899,6 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
       else
         0
       end
-    else
-      0
     end
   end
 
@@ -909,7 +909,10 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
       |> Enum.map(fn km ->
         attackers = km.attackers || []
 
-        if length(attackers) > 1 do
+        if length(attackers) <= 1 do
+          # Single attacker is perfect focus
+          1.0
+        else
           damages = Enum.map(attackers, &(&1["damage_done"] || 0))
           total = Enum.sum(damages)
           max_damage = Enum.max(damages, fn -> 0 end)
@@ -920,17 +923,14 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
           else
             0
           end
-        else
-          # Single attacker is perfect focus
-          1.0
         end
       end)
 
     avg_focus =
-      if length(focus_scores) > 0 do
-        Enum.sum(focus_scores) / length(focus_scores)
-      else
+      if focus_scores == [] do
         0
+      else
+        Enum.sum(focus_scores) / length(focus_scores)
       end
 
     %{
@@ -1081,26 +1081,24 @@ defmodule EveDmv.Contexts.Combat.Core.PerformanceCalculator do
     }
   end
 
+  defp calculate_decisiveness(killmails) when length(killmails) < 2, do: :inconclusive
+
   defp calculate_decisiveness(killmails) do
     # How decisive was the engagement?
-    if length(killmails) < 2 do
-      :inconclusive
-    else
-      duration =
-        DateTimeUtils.diff(
-          List.last(killmails).killmail_time,
-          List.first(killmails).killmail_time,
-          :minute
-        )
+    duration =
+      DateTimeUtils.diff(
+        List.last(killmails).killmail_time,
+        List.first(killmails).killmail_time,
+        :minute
+      )
 
-      kills_per_minute = length(killmails) / max(duration, 1)
+    kills_per_minute = length(killmails) / max(duration, 1)
 
-      cond do
-        kills_per_minute > 1.0 && duration < 10 -> :swift_victory
-        kills_per_minute > 0.5 && duration < 20 -> :decisive
-        duration > 60 -> :prolonged_engagement
-        true -> :standard_engagement
-      end
+    cond do
+      kills_per_minute > 1.0 && duration < 10 -> :swift_victory
+      kills_per_minute > 0.5 && duration < 20 -> :decisive
+      duration > 60 -> :prolonged_engagement
+      true -> :standard_engagement
     end
   end
 end

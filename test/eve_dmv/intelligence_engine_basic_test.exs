@@ -261,7 +261,7 @@ defmodule EveDmv.IntelligenceEngineBasicTest do
       result = Config.validate_config(invalid_config)
       assert {:error, errors} = result
       assert is_list(errors)
-      assert length(errors) > 0
+      assert Enum.any?(errors)
     end
   end
 

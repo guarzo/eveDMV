@@ -110,10 +110,10 @@ defmodule EveDmv.Core.Refactoring.ArchitectureValidator do
 
     violations = find_boundary_violations(context_module, allowed)
 
-    if length(violations) > 0 do
-      {:violations, violations}
-    else
+    if violations == [] do
       :ok
+    else
+      {:violations, violations}
     end
   end
 
@@ -121,7 +121,17 @@ defmodule EveDmv.Core.Refactoring.ArchitectureValidator do
   Generate a dependency graph in DOT format
   """
   def generate_dependency_graph do
-    {:ok, state} = validate(report: false)
+    # Collect dependencies directly instead of from validation report
+    initial_state = %__MODULE__{
+      modules: [],
+      dependencies: %{},
+      violations: [],
+      circular_deps: [],
+      boundary_violations: [],
+      naming_violations: []
+    }
+
+    state = collect_modules_and_dependencies(initial_state)
 
     dot_content = build_dot_graph(state.dependencies)
 
@@ -261,10 +271,10 @@ defmodule EveDmv.Core.Refactoring.ArchitectureValidator do
           !allowed_dependency?(dep, allowed)
         end)
 
-      if length(violations) > 0 do
-        [{module, violations}]
-      else
+      if violations == [] do
         []
+      else
+        [{module, violations}]
       end
     else
       []
@@ -335,10 +345,10 @@ defmodule EveDmv.Core.Refactoring.ArchitectureValidator do
       if Regex.match?(from_pattern, module) do
         forbidden = Enum.filter(deps, &Regex.match?(to_pattern, &1))
 
-        if length(forbidden) > 0 do
-          [{module, from_pattern, forbidden}]
-        else
+        if forbidden == [] do
           []
+        else
+          [{module, from_pattern, forbidden}]
         end
       else
         []
@@ -501,19 +511,19 @@ defmodule EveDmv.Core.Refactoring.ArchitectureValidator do
   defp generate_recommendations(state) do
     []
     |> maybe_add_recommendation(
-      length(state.circular_deps) > 0,
+      Enum.any?(state.circular_deps),
       "Break circular dependencies by introducing abstractions or events"
     )
     |> maybe_add_recommendation(
-      length(state.boundary_violations) > 0,
+      Enum.any?(state.boundary_violations),
       "Refactor to respect context boundaries"
     )
     |> maybe_add_recommendation(
-      length(state.naming_violations) > 0,
+      Enum.any?(state.naming_violations),
       "Fix module naming to match directory structure"
     )
     |> maybe_add_recommendation(
-      length(state.violations) > 0,
+      Enum.any?(state.violations),
       "Remove forbidden dependencies between layers"
     )
   end

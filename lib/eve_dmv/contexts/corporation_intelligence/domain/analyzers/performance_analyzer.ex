@@ -183,15 +183,15 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.PerformanceAn
 
     # Calculate kill/death ratio
     kill_death_ratio =
-      if length(losses) > 0 do
+      if losses != [] do
         Float.round(length(kills) / length(losses), 2)
       else
-        if length(kills) > 0, do: Float.round(length(kills), 2), else: 0.0
+        if kills != [], do: Float.round(length(kills), 2), else: 0.0
       end
 
     # Calculate average engagement size
     avg_engagement_size =
-      if length(killmails) > 0 do
+      if killmails != [] do
         Float.round(Enum.sum(Enum.map(killmails, & &1.attacker_count)) / length(killmails), 1)
       else
         0.0
@@ -205,9 +205,9 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.PerformanceAn
       total_kills_value: total_kills_value,
       total_losses_value: total_losses_value,
       avg_kill_value:
-        if(length(kills) > 0, do: Float.round(total_kills_value / length(kills), 0), else: 0),
+        if(kills != [], do: Float.round(total_kills_value / length(kills), 0), else: 0),
       avg_loss_value:
-        if(length(losses) > 0, do: Float.round(total_losses_value / length(losses), 0), else: 0),
+        if(losses != [], do: Float.round(total_losses_value / length(losses), 0), else: 0),
       avg_engagement_size: avg_engagement_size,
       efficiency_rating: calculate_efficiency_rating(isk_efficiency, kill_death_ratio)
     }
@@ -240,7 +240,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.PerformanceAn
   end
 
   defp calculate_activity_growth(killmails) do
-    if length(killmails) < 2 do
+    if Enum.count(killmails) < 2 do
       0.0
     else
       # Compare first and last 30% of the period
@@ -250,7 +250,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.PerformanceAn
       first_period = Enum.take(sorted, split_point)
       last_period = Enum.take(sorted, -split_point)
 
-      if length(first_period) > 0 do
+      if first_period != [] do
         growth = (length(last_period) - length(first_period)) / length(first_period) * 100
         Float.round(growth, 1)
       else
@@ -260,7 +260,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.PerformanceAn
   end
 
   defp calculate_member_growth(members) do
-    if length(members) < 2 do
+    if Enum.count(members) < 2 do
       0.0
     else
       # Look at member join patterns
@@ -286,7 +286,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.PerformanceAn
   end
 
   defp calculate_engagement_growth(killmails) do
-    if length(killmails) < 2 do
+    if Enum.count(killmails) < 2 do
       0.0
     else
       sorted = Enum.sort_by(killmails, & &1.killmail_time)
@@ -296,14 +296,14 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.PerformanceAn
       last_period = Enum.take(sorted, -split_point)
 
       first_avg =
-        if length(first_period) > 0 do
+        if first_period != [] do
           Enum.sum(Enum.map(first_period, & &1.attacker_count)) / length(first_period)
         else
           0
         end
 
       last_avg =
-        if length(last_period) > 0 do
+        if last_period != [] do
           Enum.sum(Enum.map(last_period, & &1.attacker_count)) / length(last_period)
         else
           0
@@ -351,7 +351,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.PerformanceAn
   end
 
   defp calculate_value_growth(killmails) do
-    if length(killmails) < 2 do
+    if Enum.count(killmails) < 2 do
       0.0
     else
       sorted = Enum.sort_by(killmails, & &1.killmail_time)
@@ -453,7 +453,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.PerformanceAn
   end
 
   defp calculate_performance_volatility(weekly_data) do
-    if length(weekly_data) < 2 do
+    if Enum.count(weekly_data) < 2 do
       :insufficient_data
     else
       activities = Enum.map(weekly_data, & &1.kill_count)
@@ -479,7 +479,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.PerformanceAn
   end
 
   defp determine_trend_direction(weekly_data) do
-    if length(weekly_data) < 3 do
+    if Enum.count(weekly_data) < 3 do
       :insufficient_data
     else
       # Simple linear regression on activity
@@ -506,7 +506,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.PerformanceAn
   end
 
   defp calculate_consistency_score(weekly_data) do
-    if length(weekly_data) < 2 do
+    if Enum.count(weekly_data) < 2 do
       0.0
     else
       activities = Enum.map(weekly_data, & &1.kill_count)
@@ -654,7 +654,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.PerformanceAn
 
   defp assess_response_capability(killmails) do
     # Analyze response times and escalation patterns
-    if length(killmails) < 2 do
+    if Enum.count(killmails) < 2 do
       %{capability: :unknown, avg_response_time: nil}
     else
       # Group killmails by system and time proximity
@@ -796,7 +796,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.PerformanceAn
 
     # Good engagement sizes
     avg_engagement =
-      if length(killmails) > 0 do
+      if killmails != [] do
         Enum.sum(Enum.map(killmails, & &1.attacker_count)) / length(killmails)
       else
         0
@@ -849,7 +849,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.PerformanceAn
 
     # Small engagement sizes
     avg_engagement =
-      if length(killmails) > 0 do
+      if killmails != [] do
         Enum.sum(Enum.map(killmails, & &1.attacker_count)) / length(killmails)
       else
         0
@@ -881,7 +881,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.PerformanceAn
 
   defp generate_performance_forecast(killmails) do
     # Simple forecast based on recent trends
-    if length(killmails) < 7 do
+    if Enum.count(killmails) < 7 do
       %{
         forecast: :insufficient_data,
         confidence: 0.0
@@ -925,7 +925,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.PerformanceAn
   end
 
   defp calculate_daily_volatility(daily_values) do
-    if length(daily_values) < 2 do
+    if Enum.count(daily_values) < 2 do
       :low
     else
       avg = Enum.sum(daily_values) / length(daily_values)
@@ -1000,24 +1000,30 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.PerformanceAn
   defp maybe_add_risk(list, false, _risk), do: list
 
   defp identify_opportunities(killmails) do
-    opportunities = []
+    base_opportunities = []
 
     # Growing activity
-    if length(killmails) > 50 do
-      ["Momentum for expansion" | opportunities]
-    end
+    with_activity =
+      if length(killmails) > 50 do
+        ["Momentum for expansion" | base_opportunities]
+      else
+        base_opportunities
+      end
 
     # Diverse operations
     systems = killmails |> Enum.map(& &1.solar_system_id) |> Enum.uniq() |> length()
 
-    if systems > 10 do
-      ["Strong operational flexibility" | opportunities]
-    end
+    all_opportunities =
+      if systems > 10 do
+        ["Strong operational flexibility" | with_activity]
+      else
+        with_activity
+      end
 
-    if Enum.empty?(opportunities) do
+    if Enum.empty?(all_opportunities) do
       ["Focus on core operations"]
     else
-      opportunities
+      all_opportunities
     end
   end
 

@@ -71,8 +71,18 @@ defmodule EveDmvWeb.ProfileLive do
 
   defp get_character_combat_stats(character_id) do
     case CharacterIntelligence.get_character_intelligence_report(character_id) do
-      {:ok, report} -> report.combat_stats
-      _ -> %{}
+      {:ok, report} ->
+        # Extract combat stats from threat_analysis if available
+        threat_analysis = Map.get(report, :threat_analysis, %{})
+
+        %{
+          total_kills: Map.get(threat_analysis, :total_kills, 0),
+          total_losses: Map.get(threat_analysis, :total_losses, 0),
+          isk_efficiency: Map.get(threat_analysis, :isk_efficiency, 0)
+        }
+
+      _ ->
+        %{}
     end
   end
 

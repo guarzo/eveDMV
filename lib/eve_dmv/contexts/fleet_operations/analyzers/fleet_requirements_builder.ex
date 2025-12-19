@@ -109,10 +109,9 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.FleetRequirementsBuilder do
           "ship_class" => ship_class,
           "wormhole_suitable" => ship_info.wormhole_suitable,
           "wormhole_suitability" => %{
-            "small_wormholes" => wh_restrictions.can_pass_small,
-            "medium_wormholes" => wh_restrictions.can_pass_medium,
-            "large_wormholes" => wh_restrictions.can_pass_large,
-            "xl_wormholes" => wh_restrictions.can_pass_xl,
+            "max_ship_mass" => wh_restrictions.max_ship_mass,
+            "max_jump_mass" => wh_restrictions.max_jump_mass,
+            "capital_allowed" => wh_restrictions.capital_allowed,
             "mass_efficiency" => MassCalculator.calculate_ship_mass_efficiency(ship_info.mass_kg)
           }
         })

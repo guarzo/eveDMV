@@ -138,7 +138,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
       end)
       |> Enum.sort_by(&elem(&1, 0))
 
-    if length(weekly_stats) < 2 do
+    if Enum.count(weekly_stats) < 2 do
       %{
         current: 0.0,
         direction: :insufficient_data,
@@ -189,7 +189,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
       end)
       |> Enum.sort_by(&elem(&1, 0))
 
-    if length(weekly_isk) < 2 do
+    if Enum.count(weekly_isk) < 2 do
       %{
         current: 1.0,
         direction: :insufficient_data,
@@ -347,9 +347,15 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
     "#{year}-W#{String.pad_leading(to_string(week), 2, "0")}"
   end
 
-  defp calculate_direction(values) when length(values) < 2, do: :insufficient_data
+  defp calculate_direction(values) when is_list(values) do
+    if Enum.count(values) < 2 do
+      :insufficient_data
+    else
+      do_calculate_direction(values)
+    end
+  end
 
-  defp calculate_direction(values) do
+  defp do_calculate_direction(values) do
     # Compare recent average to older average
     midpoint = div(length(values), 2)
     older = Enum.take(values, midpoint)
@@ -367,31 +373,39 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
     end
   end
 
-  defp calculate_velocity(values) when length(values) < 2, do: 0.0
+  defp calculate_velocity(values) when is_list(values) do
+    if Enum.count(values) < 2 do
+      0.0
+    else
+      # Rate of change
+      diffs =
+        values
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.map(fn [a, b] -> b - a end)
 
-  defp calculate_velocity(values) do
-    # Rate of change
-    diffs =
-      values
-      |> Enum.chunk_every(2, 1, :discard)
-      |> Enum.map(fn [a, b] -> b - a end)
+      if diffs != [] do
+        diffs_length = length(diffs)
 
-    if length(diffs) > 0 do
-      diffs_length = length(diffs)
-
-      if diffs_length > 0 do
-        Float.round(Enum.sum(diffs) / diffs_length, 3)
+        if diffs_length > 0 do
+          Float.round(Enum.sum(diffs) / diffs_length, 3)
+        else
+          0.0
+        end
       else
         0.0
       end
-    else
-      0.0
     end
   end
 
-  defp calculate_volatility(values) when length(values) < 2, do: 0.0
+  defp calculate_volatility(values) when is_list(values) do
+    if Enum.count(values) < 2 do
+      0.0
+    else
+      do_calculate_volatility(values)
+    end
+  end
 
-  defp calculate_volatility(values) do
+  defp do_calculate_volatility(values) do
     mean = average(values)
 
     variance =
@@ -402,9 +416,15 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
     Float.round(:math.sqrt(variance), 3)
   end
 
-  defp calculate_improvement_rate(values) when length(values) < 2, do: 0.0
+  defp calculate_improvement_rate(values) when is_list(values) do
+    if Enum.count(values) < 2 do
+      0.0
+    else
+      do_calculate_improvement_rate(values)
+    end
+  end
 
-  defp calculate_improvement_rate(values) do
+  defp do_calculate_improvement_rate(values) do
     first = List.first(values) || 0.0
     last = List.last(values) || 0.0
 
@@ -524,7 +544,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
     %{
       new_ships: new_ships,
       abandoned_ships: abandoned_ships,
-      change_detected: length(new_ships) > 0 or length(abandoned_ships) > 0
+      change_detected: new_ships != [] or abandoned_ships != []
     }
   end
 
@@ -580,7 +600,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
   end
 
   defp calculate_activity_consistency(weekly_activity) do
-    if length(weekly_activity) < 4 do
+    if Enum.count(weekly_activity) < 4 do
       :insufficient_data
     else
       activity_values = Enum.map(weekly_activity, &elem(&1, 1))
@@ -627,7 +647,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
   defp calculate_solo_ratio(history, character_id) do
     kills = Enum.filter(history, fn km -> km.victim_character_id != character_id end)
 
-    if Enum.empty?(kills) do
+    if kills == [] do
       0.0
     else
       solo_kills =
@@ -647,7 +667,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
           length(extract_attackers(km)) > 1
       end)
 
-    if Enum.empty?(gang_kills) do
+    if gang_kills == [] do
       %{participation_rate: 0.0, average_gang_size: 0}
     else
       avg_size =
@@ -669,7 +689,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
       |> Enum.map(fn km -> km.victim_ship_type_id end)
       |> Enum.reject(&is_nil/1)
 
-    if Enum.empty?(victims) do
+    if victims == [] do
       %{preference: :none}
     else
       ship_classes =
@@ -712,7 +732,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
       ]
       |> Enum.reject(&(&1 == :insufficient_data))
 
-    if Enum.empty?(directions) do
+    if directions == [] do
       :insufficient_data
     else
       # Weight different trends
@@ -778,7 +798,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
       ]
       |> Enum.reject(&(&1 == 0))
 
-    if Enum.empty?(velocities) do
+    if velocities == [] do
       :neutral
     else
       avg_velocity = average(velocities)
@@ -804,7 +824,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
   end
 
   defp calculate_score_momentum(historical_scores, current_score) do
-    if length(historical_scores) < 3 do
+    if Enum.count(historical_scores) < 3 do
       :insufficient_data
     else
       recent_scores =
@@ -897,33 +917,37 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
 
   defp classify_threat_level(_), do: :unknown
 
-  defp determine_threat_trend_direction(threat_scores) when length(threat_scores) >= 3 do
-    scores = Enum.map(threat_scores, &elem(&1, 1))
-    first_third = scores |> Enum.take(div(length(scores), 3)) |> average()
-    last_third = scores |> Enum.drop(-div(length(scores), 3)) |> average()
+  defp determine_threat_trend_direction(threat_scores) when is_list(threat_scores) do
+    if Enum.count(threat_scores) < 3 do
+      :insufficient_data
+    else
+      scores = Enum.map(threat_scores, &elem(&1, 1))
+      first_third = scores |> Enum.take(div(length(scores), 3)) |> average()
+      last_third = scores |> Enum.drop(-div(length(scores), 3)) |> average()
 
-    cond do
-      last_third > first_third * 1.2 -> :escalating
-      last_third < first_third * 0.8 -> :declining
-      true -> :stable
+      cond do
+        last_third > first_third * 1.2 -> :escalating
+        last_third < first_third * 0.8 -> :declining
+        true -> :stable
+      end
     end
   end
 
-  defp determine_threat_trend_direction(_), do: :insufficient_data
+  defp identify_evolution_pattern(threat_scores) when is_list(threat_scores) do
+    if Enum.count(threat_scores) < 5 do
+      :insufficient_data
+    else
+      scores = Enum.map(threat_scores, &elem(&1, 1))
 
-  defp identify_evolution_pattern(threat_scores) when length(threat_scores) >= 5 do
-    scores = Enum.map(threat_scores, &elem(&1, 1))
-
-    # Check for patterns
-    cond do
-      steadily_increasing?(scores) -> :steady_escalation
-      steadily_decreasing?(scores) -> :gradual_decline
-      has_spike_pattern?(scores) -> :periodic_activity
-      true -> :irregular
+      # Check for patterns
+      cond do
+        steadily_increasing?(scores) -> :steady_escalation
+        steadily_decreasing?(scores) -> :gradual_decline
+        has_spike_pattern?(scores) -> :periodic_activity
+        true -> :irregular
+      end
     end
   end
-
-  defp identify_evolution_pattern(_), do: :insufficient_data
 
   defp steadily_increasing?(scores) do
     scores

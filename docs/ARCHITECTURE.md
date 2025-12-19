@@ -37,35 +37,39 @@ EVE DMV is a real-time PvP intelligence platform for EVE Online players that:
 
 ### Core Technologies
 
-- **Language**: Elixir 1.17.3
-- **Framework**: Phoenix 1.7.21 with LiveView
-- **Resource Layer**: Ash Framework 3.4 (replaces traditional Ecto schemas)
+- **Language**: Elixir 1.19+
+- **Framework**: Phoenix 1.8 with LiveView
+- **Resource Layer**: Ash Framework 3.7 (replaces traditional Ecto schemas)
 - **Database**: PostgreSQL 16 with partitioning
 - **Streaming**: Broadway for data pipelines
 - **Authentication**: EVE SSO OAuth2
-- **Caching**: ETS and Redis
+- **Caching**: ETS and Cachex
 - **Monitoring**: OpenTelemetry
 
 ### Key Dependencies
 
 ```elixir
 # Core
-phoenix: "~> 1.7.21"
-ash: "~> 3.4"
-ash_postgres: "~> 2.0"
-broadway: "~> 1.0"
+phoenix: "~> 1.8"
+ash: "~> 3.7"
+ash_postgres: "~> 2.4"
+broadway: "~> 1.1"
 
 # Authentication
 ash_authentication: "~> 4.0"
-ash_authentication_phoenix: "~> 2.0"
+ash_authentication_phoenix: "~> 2.1"
 
 # Real-time
 phoenix_live_view: "~> 1.0"
 phoenix_pubsub: "~> 2.1"
 
-# Performance
-telemetry: "~> 1.2"
-opentelemetry: "~> 1.3"
+# Caching
+cachex: "~> 4.1"
+
+# HTTP Clients
+finch: "~> 0.13"
+tesla: "~> 1.8"
+gun: "~> 2.0"
 ```
 
 ## Architecture Patterns
@@ -76,16 +80,81 @@ The application follows hexagonal architecture principles with clear boundaries:
 
 ```
 lib/eve_dmv/
-├── contexts/           # Bounded contexts (domain logic)
-│   ├── battle_analysis/
-│   ├── character_intelligence/
-│   ├── surveillance/
-│   └── ...
-├── infrastructure/     # External adapters
-├── eve/               # EVE API integrations
-├── database/          # Data access layer
-└── workers/           # Background processing
+├── contexts/                    # Bounded contexts (domain logic)
+│   ├── battle_analysis/         # Battle detection and analysis
+│   ├── battle_sharing/          # Battle report sharing
+│   ├── character_intelligence/  # Character threat scoring
+│   ├── combat/                  # Combat analysis and metrics
+│   ├── combat_analysis/         # Combat statistics
+│   ├── combat_intelligence/     # Combat intelligence gathering
+│   ├── corporation/             # Corporation analysis
+│   ├── corporation_analysis/    # Corp analytics
+│   ├── corporation_intelligence/# Corp intelligence
+│   ├── fleet_operations/        # Fleet composition analysis
+│   ├── intelligence/            # Intelligence engine
+│   ├── intelligence_infrastructure/ # Regional/constellation analysis
+│   ├── killmail_processing/     # Killmail pipeline handling
+│   ├── market_intelligence/     # Market data and pricing
+│   ├── player_profile/          # Player profile analysis
+│   ├── surveillance/            # Real-time entity monitoring
+│   ├── system_analysis/         # System/region analysis
+│   ├── threat_assessment/       # Threat scoring
+│   └── threat_surveillance/     # Threat monitoring
+│
+├── core/                  # Shared kernel (cross-cutting domain)
+│   ├── config/            # Configuration management
+│   ├── errors/            # Error types and handling
+│   ├── events/            # Domain event infrastructure
+│   ├── shared_kernel/     # Shared domain primitives
+│   └── utils/             # Utility functions (DateTimeUtils, etc.)
+│
+├── external/              # External service adapters
+│   ├── eve/               # EVE ESI API client and static data
+│   ├── killmails/         # Killmail processing & broadcasting
+│   ├── market/            # Market data (Janice, MutaMarket)
+│   └── wanderer/          # Wanderer-kills integration
+│
+├── platform/              # Platform services (infrastructure)
+│   ├── auth/              # Authentication services
+│   ├── cache/             # Multi-layer caching (ETS, Cachex)
+│   ├── database/          # Repositories and query utilities
+│   ├── monitoring/        # Telemetry and metrics
+│   ├── pubsub/            # Event broadcasting
+│   └── workers/           # Background job processing
+│
+├── api/                   # Ash API domain definitions
+├── static_data/           # EVE static data (ships, systems)
+├── users/                 # User and authentication resources
+└── intelligence_engine/   # Plugin-based intelligence system
 ```
+
+### Key Directory Conventions
+
+- **contexts/**: Each context follows a consistent structure:
+  - `api.ex` - **Required**: Public API interface, the only entry point for other contexts
+  - `core/` or `domain/` - Business logic and services
+  - `analyzers/` - Analysis algorithms (if applicable)
+  - `resources/` - Ash resource definitions (if applicable)
+  - `infrastructure/` - External integrations for this context (if applicable)
+
+  Example context structure:
+  ```
+  character_intelligence/
+  ├── api.ex                    # Public API
+  ├── threat_config.ex          # Configuration constants
+  ├── analyzers/                # Analysis algorithms
+  ├── domain/                   # Business logic
+  │   ├── threat_scoring_engine.ex
+  │   └── threat_scoring/       # Sub-modules
+  └── resources/                # Ash resources
+  ```
+
+- **core/**: Domain primitives shared across contexts (avoid cross-context dependencies)
+
+- **external/**: All external API integrations. Uses PubSub for broadcasting
+  (never imports web layer directly)
+
+- **platform/**: Infrastructure that supports the application but isn't domain-specific
 
 ### 2. Domain-Driven Design
 
@@ -171,10 +240,58 @@ EveDmvWeb.Live/
 # Multi-dimensional analysis system
 IntelligenceEngine
 ├── ThreatScoringEngine     # Character threat assessment
+├── ThreatConfig            # Documented configuration constants
 ├── BattleDetector          # Clustering algorithm
 ├── FleetAnalyzer           # Composition analysis
 └── PatternDetector         # Behavioral patterns
 ```
+
+### 5. Configuration Patterns
+
+The codebase uses dedicated configuration modules with documented rationale for algorithm parameters:
+
+```elixir
+# lib/eve_dmv/contexts/character_intelligence/threat_config.ex
+defmodule EveDmv.Contexts.CharacterIntelligence.ThreatConfig do
+  @moduledoc """
+  Configuration constants for threat scoring calculations.
+  All values are documented with rationale based on EVE Online combat statistics.
+  """
+
+  # Ship classification using EVE SDE group IDs
+  @frigate_group_ids [25]
+  @capital_group_ids [485, 547, 659, 30, 1538, 883]
+
+  # Normalization thresholds with documented rationale
+  @ship_usage_normalization 10  # Top 10% PvPers use 10+ ship types
+
+  def classify_by_group_id(group_id), do: ...
+end
+```
+
+Key principles:
+- **Document rationale**: Every threshold includes a comment explaining why
+- **Use SDE data**: Ship classifications use EVE group IDs, not hardcoded type ranges
+- **Centralize constants**: Related thresholds live in one configuration module
+- **Public API**: Expose values via documented functions with `@spec`
+
+### 6. Canonical Analyzers
+
+The following are the authoritative implementations for each analysis type.
+Other implementations with similar names are deprecated and delegate to these:
+
+| Analysis Type | Canonical Module | Notes |
+|--------------|-----------------|-------|
+| **Battle Analysis** | `BattleAnalysis.Core.OptimizedBattleAnalyzer` | N+1 query optimized |
+| **Cached Battle Analysis** | `BattleAnalysis.Core.CachedBattleAnalyzer` | Wraps OptimizedBattleAnalyzer |
+| **Corporation Analysis** | `Corporation.Core.CorporationAnalyzer` | GenServer-based |
+| **Character Analysis** | `Intelligence.Core.CharacterAnalyzer` | GenServer-based |
+| **Character Intelligence** | `CharacterIntelligence.Analyzers.CharacterIntelligenceAnalyzer` | Detailed query-based |
+
+**Deprecated modules** (use canonical instead):
+- `Combat.Core.BattleAnalyzer` → Use `BattleAnalysis.Core.OptimizedBattleAnalyzer`
+- `CombatIntelligence.Domain.CorporationAnalyzer` → Use `Corporation.Core.CorporationAnalyzer`
+- `CombatIntelligence.Domain.CharacterAnalyzer` → Use `Intelligence.Core.CharacterAnalyzer`
 
 ## Data Flow
 
@@ -392,7 +509,7 @@ end
 
 ```dockerfile
 # Multi-stage build for optimization
-FROM elixir:1.17.3-alpine AS build
+FROM elixir:1.19-alpine AS build
 # Build stage with dependencies
 
 FROM alpine:3.20 AS app
@@ -483,10 +600,10 @@ EveDmv.Eve.StaticDataLoader.SdeStartupService
 
 ### 3. Technical Debt
 
-- Complete removal of placeholder implementations
-- Improve test coverage to 80%+
+- Improve test coverage (currently 40% minimum)
 - Implement comprehensive API documentation
 - Add performance regression testing
+- Consolidate duplicate analyzer implementations
 
 ## Conclusion
 

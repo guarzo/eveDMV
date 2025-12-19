@@ -67,7 +67,7 @@ defmodule EveDmv.Platform.Database.MaterializedViewManager.ViewDefinitions do
       query: """
       SELECT
         character_id,
-        character_name,
+        MAX(character_name) as character_name,
         COUNT(*) as total_killmails,
         COUNT(*) FILTER (WHERE NOT is_victim) as kills,
         COUNT(*) FILTER (WHERE is_victim) as losses,
@@ -78,12 +78,14 @@ defmodule EveDmv.Platform.Database.MaterializedViewManager.ViewDefinitions do
         COUNT(DISTINCT corporation_id) as corp_count,
         COUNT(DISTINCT solar_system_id) as system_count
       FROM participants
-      WHERE updated_at >= NOW() - INTERVAL '1 year'
-      GROUP BY character_id, character_name
+      WHERE character_id IS NOT NULL
+        AND updated_at >= NOW() - INTERVAL '1 year'
+      GROUP BY character_id
       HAVING COUNT(*) >= 5
       """,
       indexes: [
-        "CREATE INDEX IF NOT EXISTS idx_character_activity_character_id ON character_activity_summary (character_id)",
+        # Unique index required for REFRESH MATERIALIZED VIEW CONCURRENTLY
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_character_activity_character_id ON character_activity_summary (character_id)",
         "CREATE INDEX IF NOT EXISTS idx_character_activity_last_activity ON character_activity_summary (last_activity DESC)",
         "CREATE INDEX IF NOT EXISTS idx_character_activity_kills ON character_activity_summary (kills DESC)"
       ],

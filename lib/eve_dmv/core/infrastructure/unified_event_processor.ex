@@ -6,7 +6,6 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedEventProcessor do
   - Surveillance.Infrastructure.KillmailEventProcessor
   - CombatIntelligence.Infrastructure.KillmailEventProcessor
   - CombatIntelligence.Infrastructure.StaticDataEventProcessor
-  - WormholeOperations.Infrastructure.WormholeEventProcessor
   - KillmailProcessing.Infrastructure.EventPublisher
 
   Provides:
@@ -103,10 +102,9 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedEventProcessor do
     batch_size = Keyword.get(opts, :batch_size, @default_batch_size)
     batch_timeout = Keyword.get(opts, :batch_timeout, @default_batch_timeout)
 
-    # Subscribe to domain events
-    EventBus.subscribe(self(), :killmail_events)
-    EventBus.subscribe(self(), :static_data_events)
-    EventBus.subscribe(self(), :wormhole_events)
+    # Subscribe to domain events using process subscription
+    EventBus.subscribe_process(:killmail_events)
+    EventBus.subscribe_process(:static_data_events)
 
     # Register default handlers
     default_handlers = register_default_handlers()
@@ -220,9 +218,6 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedEventProcessor do
       ],
       static_data_updated: [
         {EveDmv.Contexts.CombatIntelligence.Domain.StaticDataProcessor, :update_static_data}
-      ],
-      wormhole_signature_detected: [
-        {EveDmv.Contexts.WormholeOperations.Domain.SignatureProcessor, :process_signature}
       ]
     }
   end
@@ -452,13 +447,6 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedEventProcessor do
   """
   def process_static_data_update(static_data_event) do
     process_event(static_data_event)
-  end
-
-  @doc """
-  Process wormhole signature detection.
-  """
-  def process_wormhole_signature(signature_event) do
-    queue_event(signature_event)
   end
 
   @doc """

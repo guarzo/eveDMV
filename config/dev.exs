@@ -98,7 +98,6 @@ end
 
 # Configure logger to filter out noisy database connection messages
 config :logger,
-  backends: [:console],
   filters: %{
     db_connection_noise: {&EveDmvWeb.LoggerFilter.filter_db_connection_noise/2, nil}
   }

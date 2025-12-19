@@ -3,6 +3,14 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
   @moduledoc """
   Unified battle analysis module that provides comprehensive battle analytics.
 
+  ## Canonical Module Status
+
+  This is one of the primary battle analysis modules. For different use cases:
+
+  - **This module**: Feature-rich analysis with MVP detection, turning points, notable kills
+  - `OptimizedBattleAnalyzer`: N+1 optimized queries, better for batch processing
+  - `CachedBattleAnalyzer`: Caching wrapper around OptimizedBattleAnalyzer
+
   Consolidates functionality from:
   - Basic battle metrics calculation
   - Advanced tactical analysis
@@ -181,7 +189,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
     }
   end
 
-  defp calculate_duration(killmails) when length(killmails) < 2, do: 0
+  defp calculate_duration([]), do: 0
+  defp calculate_duration([_]), do: 0
 
   defp calculate_duration(killmails) do
     first = List.first(killmails).killmail_time
@@ -250,7 +259,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
 
   defp calculate_average_kill_value(killmails) do
     total = calculate_total_isk(killmails)
-    if length(killmails) > 0, do: total / length(killmails), else: 0
+    if killmails == [], do: 0, else: total / length(killmails)
   end
 
   defp get_ship_classes(killmails) do
@@ -379,7 +388,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
   end
 
   defp gate_camp?(killmails) do
-    if length(killmails) < 3,
+    if Enum.count(killmails) < 3,
       do: false,
       else:
         (
@@ -396,15 +405,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
 
           # Gate camps have consistent short intervals between kills
           avg_interval =
-            if length(kill_intervals) > 0,
-              do: Enum.sum(kill_intervals) / length(kill_intervals),
-              else: 600
+            if kill_intervals == [],
+              do: 600,
+              else: Enum.sum(kill_intervals) / length(kill_intervals)
 
           # 5 minutes
           short_intervals = Enum.count(kill_intervals, &(&1 < 300))
 
           # Consider it a gate camp if >60% of kills happen within 5 minutes of each other
-          length(kill_intervals) > 0 and short_intervals / length(kill_intervals) > 0.6 and
+          kill_intervals != [] and short_intervals / length(kill_intervals) > 0.6 and
             avg_interval < 180
         )
   end
@@ -474,7 +483,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
   defp identify_turning_point(analysis) do
     # Identify turning point based on timeline analysis
     case analysis do
-      %{timeline: %{events: events}} when is_list(events) and length(events) > 5 ->
+      %{timeline: %{events: [_, _, _, _, _, _ | _] = events}} when is_list(events) ->
         # Find the event with the biggest shift in momentum
         # Look for high-value kills or multiple simultaneous kills
         events
@@ -598,10 +607,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
         acc + length(km.attackers || [])
       end)
 
-    if length(killmails) > 0 do
-      Float.round(total_attackers / length(killmails), 1)
-    else
+    if killmails == [] do
       0.0
+    else
+      Float.round(total_attackers / length(killmails), 1)
     end
   end
 

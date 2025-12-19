@@ -1,63 +1,41 @@
 defmodule EveDmv.Contexts.Combat.Core.BattleAnalyzer do
-  @compile {:nowarn_unused_function}
   @moduledoc """
-  Unified battle analysis module that provides comprehensive battle analytics.
+  Battle analysis module for the Combat context.
 
-  Consolidates functionality from:
-  - Basic battle metrics calculation
-  - Advanced tactical analysis
-  - Strategic recommendations
-  - Combat effectiveness evaluation
+  **DEPRECATED**: This module is being consolidated. Use the canonical implementations:
+  - `EveDmv.Contexts.BattleAnalysis.Core.OptimizedBattleAnalyzer` for optimized analysis
+  - `EveDmv.Contexts.BattleAnalysis.Core.CachedBattleAnalyzer` for cached analysis
+
+  This module now delegates to the canonical implementations where possible
+  while maintaining backward compatibility for existing callers.
   """
 
   import Ecto.Query
 
+  alias EveDmv.Contexts.BattleAnalysis.Core.OptimizedBattleAnalyzer
   alias EveDmv.Contexts.BattleAnalysis.Resources.Battle
-  alias EveDmv.Contexts.Combat.Core.FleetCompositionAnalyzer
-  alias EveDmv.Contexts.Combat.Core.ParticipantAnalyzer
-  alias EveDmv.Contexts.Combat.Core.PerformanceCalculator
-  alias EveDmv.Contexts.Combat.Core.TacticalPatternDetector
-  alias EveDmv.Contexts.Combat.Core.TimelineBuilder
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Repo
 
+  require Logger
+
   @doc """
   Perform comprehensive analysis of a battle.
 
-  Returns a complete battle analysis including:
-  - Battle summary and key metrics
-  - Timeline of events
-  - Participant performance
-  - Fleet compositions
-  - Tactical patterns
-  - Strategic insights
+  **DEPRECATED**: Use `EveDmv.Contexts.BattleAnalysis.Core.OptimizedBattleAnalyzer.analyze_battle/1` instead.
   """
+  @deprecated "Use EveDmv.Contexts.BattleAnalysis.Core.OptimizedBattleAnalyzer.analyze_battle/1 instead"
   def analyze_battle(battle_id) do
-    with {:ok, battle} <- get_battle_data(battle_id),
-         {:ok, killmails} <- get_battle_killmails(battle),
-         {:ok, timeline} <- TimelineBuilder.build_timeline(killmails),
-         {:ok, participants} <- ParticipantAnalyzer.analyze_participants(killmails),
-         {:ok, fleet_comp} <- FleetCompositionAnalyzer.analyze_composition(killmails),
-         {:ok, tactics} <- TacticalPatternDetector.detect_patterns(killmails, timeline),
-         {:ok, performance} <- PerformanceCalculator.calculate_metrics(killmails, participants) do
-      {:ok,
-       %{
-         battle_id: battle_id,
-         summary: build_battle_summary(battle, killmails),
-         metrics: calculate_battle_metrics(killmails, participants),
-         timeline: timeline,
-         participants: participants,
-         fleet_composition: fleet_comp,
-         tactical_patterns: tactics,
-         performance_metrics: performance,
-         recommendations: generate_recommendations(tactics, fleet_comp, performance)
-       }}
-    end
+    # Delegate to canonical implementation
+    OptimizedBattleAnalyzer.analyze_battle(battle_id)
   end
 
   @doc """
   Get battle metrics for a specific battle.
+
+  This function provides metrics not available in the OptimizedBattleAnalyzer.
+  It will be migrated to the canonical module in a future release.
   """
   def get_battle_metrics(battle_id) do
     with {:ok, battle} <- get_battle_data(battle_id),
@@ -121,50 +99,8 @@ defmodule EveDmv.Contexts.Combat.Core.BattleAnalyzer do
     {:ok, killmails}
   end
 
-  defp build_battle_summary(battle, killmails) do
-    %{
-      battle_id: battle.id,
-      location: %{
-        system_id: battle.system_id,
-        region_id: battle.region_id,
-        constellation_id: battle.constellation_id
-      },
-      time_span: %{
-        start: List.first(killmails).killmail_time,
-        end: List.last(killmails).killmail_time,
-        duration_minutes: calculate_duration(killmails)
-      },
-      scale: categorize_battle_scale(killmails),
-      intensity: calculate_intensity(killmails),
-      type: identify_battle_type(killmails)
-    }
-  end
-
-  defp calculate_battle_metrics(killmails, participants) do
-    %{
-      destruction: %{
-        total_isk: calculate_total_isk(killmails),
-        ships_destroyed: length(killmails),
-        pods_killed: count_pod_kills(killmails)
-      },
-      participation: %{
-        unique_pilots: length(participants.all_participants),
-        unique_corporations: map_size(participants.by_corporation),
-        unique_alliances: map_size(participants.by_alliance)
-      },
-      efficiency: %{
-        isk_efficiency: calculate_isk_efficiency(killmails, participants),
-        kill_death_ratio: calculate_kd_ratio(participants)
-      },
-      engagement: %{
-        average_on_kill: calculate_average_on_kill(killmails),
-        solo_kills: count_solo_kills(killmails),
-        capital_kills: count_capital_kills(killmails)
-      }
-    }
-  end
-
-  defp calculate_duration(killmails) when length(killmails) < 2, do: 0
+  defp calculate_duration([]), do: 0
+  defp calculate_duration([_]), do: 0
 
   defp calculate_duration(killmails) do
     first = List.first(killmails).killmail_time
@@ -233,7 +169,8 @@ defmodule EveDmv.Contexts.Combat.Core.BattleAnalyzer do
 
   defp calculate_average_kill_value(killmails) do
     total = calculate_total_isk(killmails)
-    if length(killmails) > 0, do: total / length(killmails), else: 0
+    count = length(killmails)
+    if count > 0, do: total / count, else: 0
   end
 
   defp get_ship_classes(killmails) do
@@ -247,7 +184,6 @@ defmodule EveDmv.Contexts.Combat.Core.BattleAnalyzer do
   end
 
   defp get_system_security(battle) do
-    # Get actual system security from database
     EveDmv.StaticData.SystemData.get_security_status(battle.system_id)
   end
 
@@ -261,198 +197,10 @@ defmodule EveDmv.Contexts.Combat.Core.BattleAnalyzer do
     |> elem(0)
   end
 
-  defp categorize_battle_scale(killmails) do
-    participants = count_unique_participants(killmails)
-
-    cond do
-      participants <= 10 -> :small_gang
-      participants <= 25 -> :medium_gang
-      participants <= 50 -> :small_fleet
-      participants <= 150 -> :medium_fleet
-      true -> :large_fleet
-    end
-  end
-
-  defp calculate_intensity(killmails) do
-    duration = max(calculate_duration(killmails), 1)
-    kill_rate = length(killmails) / duration
-
-    cond do
-      kill_rate >= 2.0 -> :extreme
-      kill_rate >= 1.0 -> :high
-      kill_rate >= 0.5 -> :moderate
-      true -> :low
-    end
-  end
-
-  defp identify_battle_type(killmails) do
-    # Analyze patterns to determine battle type
-    capital_ratio = count_capital_kills(killmails) / max(length(killmails), 1)
-
-    cond do
-      capital_ratio > 0.3 -> :capital_brawl
-      has_structure_kill?(killmails) -> :structure_bash
-      gate_camp?(killmails) -> :gate_camp
-      bombing_run?(killmails) -> :bombing_run
-      true -> :fleet_fight
-    end
-  end
-
-  defp count_pod_kills(killmails) do
-    Enum.count(killmails, fn km ->
-      ship_type_id = get_in(km.victim, ["ship_type_id"])
-      # Capsule type ID
-      ship_type_id == 670
-    end)
-  end
-
-  defp count_solo_kills(killmails) do
-    Enum.count(killmails, fn km ->
-      length(km.attackers || []) == 1
-    end)
-  end
-
-  defp count_capital_kills(killmails) do
-    # Use actual capital ship type IDs from the database
-    capital_ids =
-      EveDmv.StaticData.ShipTypes.get_ship_ids_for_class(:capital) ++
-        EveDmv.StaticData.ShipTypes.get_ship_ids_for_class(:supercapital)
-
-    Enum.count(killmails, fn km ->
-      ship_type_id = get_in(km.victim, ["ship_type_id"])
-      ship_type_id && ship_type_id in capital_ids
-    end)
-  end
-
-  defp calculate_average_on_kill(killmails) do
-    if length(killmails) > 0 do
-      total_attackers = Enum.sum(Enum.map(killmails, &length(&1.attackers || [])))
-      total_attackers / length(killmails)
-    else
-      0
-    end
-  end
-
-  defp calculate_isk_efficiency(killmails, participants) do
-    # Calculate basic ISK efficiency
-    total_isk = calculate_total_isk(killmails)
-    participant_count = length(participants.all_participants)
-
-    if participant_count > 0 do
-      total_isk / participant_count
-    else
-      0
-    end
-  end
-
-  defp calculate_kd_ratio(participants) do
-    # Simple K/D ratio calculation
-    all_participants = participants.all_participants
-
-    if length(all_participants) > 0 do
-      # Placeholder - would need actual kill/death data
-      1.0
-    else
-      0
-    end
-  end
-
-  defp generate_recommendations(_tactics, _fleet_comp, _performance) do
-    # Simplified recommendations
-    []
-  end
-
-  defp generate_headline(_analysis) do
-    "Battle Summary"
-  end
-
-  defp extract_key_stats(_analysis) do
-    []
-  end
-
-  defp determine_winner(_analysis) do
-    :unknown
-  end
-
-  defp find_mvp(_analysis) do
-    nil
-  end
-
-  defp identify_turning_point(_analysis) do
-    nil
-  end
-
-  defp find_notable_kills(_analysis) do
-    []
-  end
-
-  defp has_structure_kill?(killmails) do
-    # Use actual structure ship type IDs from the database
-    structure_ids = EveDmv.StaticData.ShipTypes.get_ship_ids_for_class(:structure)
-
-    Enum.any?(killmails, fn km ->
-      ship_type_id = get_in(km.victim, ["ship_type_id"])
-      ship_type_id && ship_type_id in structure_ids
-    end)
-  end
-
-  defp gate_camp?(killmails) do
-    # Analyze kill patterns for gate camp characteristics
-    unique_victims =
-      killmails
-      |> Enum.map(&get_in(&1.victim, ["character_id"]))
-      |> Enum.uniq()
-      |> length()
-
-    total_kills = length(killmails)
-
-    # Gate camps typically have many different victims (high victim diversity)
-    victim_diversity = if total_kills > 0, do: unique_victims / total_kills, else: 0
-
-    # Check for single-system concentration and high victim diversity
-    systems =
-      killmails
-      |> Enum.map(& &1.solar_system_id)
-      |> Enum.uniq()
-
-    # Gate camp characteristics:
-    # - Single system (concentrated location)
-    # - High victim diversity (many different targets)
-    # - Minimum number of kills to establish pattern
-    length(systems) == 1 && victim_diversity > 0.7 && total_kills >= 3
-  end
-
-  defp bombing_run?(killmails) do
-    # Look for stealth bomber involvement and rapid kills
-    bomber_ids = EveDmv.StaticData.ShipTypes.get_ship_ids_for_class(:stealth_bomber)
-
-    bomber_attacks =
-      killmails
-      |> Enum.flat_map(fn km ->
-        (km.attackers || [])
-        |> Enum.filter(fn attacker ->
-          ship_type_id = attacker["ship_type_id"]
-          ship_type_id && ship_type_id in bomber_ids
-        end)
-      end)
-      |> length()
-
-    # Check for time clustering (bombs hit simultaneously)
-    if length(killmails) >= 3 do
-      time_span = calculate_time_span_seconds(killmails)
-      # Bombing run characteristics:
-      # - Multiple bomber attacks (at least 3)
-      # - Tight time clustering (bombs hit within 30 seconds)
-      bomber_attacks >= 3 && time_span <= 30
-    else
-      false
-    end
-  end
-
-  defp calculate_time_span_seconds(killmails) do
-    sorted = Enum.sort_by(killmails, & &1.killmail_time)
-    first = List.first(sorted).killmail_time
-    last = List.last(sorted).killmail_time
-    DateTimeUtils.diff(last, first, :second)
-  end
+  defp generate_headline(_analysis), do: "Battle Summary"
+  defp extract_key_stats(_analysis), do: []
+  defp determine_winner(_analysis), do: :unknown
+  defp find_mvp(_analysis), do: nil
+  defp identify_turning_point(_analysis), do: nil
+  defp find_notable_kills(_analysis), do: []
 end

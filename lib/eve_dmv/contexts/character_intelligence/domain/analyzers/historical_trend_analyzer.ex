@@ -116,7 +116,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrend
   end
 
   defp analyze_activity_trend(monthly_data) do
-    if Enum.empty?(monthly_data) do
+    if monthly_data == [] do
       %{
         data_points: [],
         trend_direction: :insufficient_data,
@@ -149,7 +149,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrend
   end
 
   defp find_peak_activity_day(kills) do
-    if Enum.empty?(kills) do
+    if kills == [] do
       nil
     else
       kills
@@ -285,7 +285,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrend
   end
 
   defp analyze_performance_trend(monthly_data, character_id) do
-    if Enum.empty?(monthly_data) do
+    if monthly_data == [] do
       %{
         metrics: [],
         improvement_rate: 0.0,
@@ -393,7 +393,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrend
       end)
       |> Enum.filter(&(&1 > 0))
 
-    if Enum.empty?(damage_shares) do
+    if damage_shares == [] do
       0.0
     else
       avg = Enum.sum(damage_shares) / length(damage_shares)
@@ -441,7 +441,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrend
   end
 
   defp calculate_average_performance(metrics) do
-    if Enum.empty?(metrics) do
+    if metrics == [] do
       0.0
     else
       # Composite score from KD ratio and ISK efficiency
@@ -483,7 +483,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrend
   end
 
   defp find_peak_performance(performance_metrics) do
-    if Enum.empty?(performance_metrics) do
+    if performance_metrics == [] do
       nil
     else
       performance_metrics
@@ -495,7 +495,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrend
   end
 
   defp analyze_ship_trend(monthly_data, character_id) do
-    if Enum.empty?(monthly_data) do
+    if monthly_data == [] do
       %{
         ship_diversity: [],
         specialization_trend: nil,
@@ -575,7 +575,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrend
   defp classify_ship_class(_), do: :unknown
 
   defp calculate_average_tech_level(ship_type_ids) do
-    if Enum.empty?(ship_type_ids) do
+    if ship_type_ids == [] do
       1.0
     else
       tech_levels = Enum.map(ship_type_ids, &estimate_tech_level/1)
@@ -642,7 +642,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrend
   end
 
   defp analyze_geographic_trend(monthly_data) do
-    if Enum.empty?(monthly_data) do
+    if monthly_data == [] do
       %{
         system_diversity: [],
         movement_pattern: nil,
@@ -724,7 +724,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrend
   end
 
   defp analyze_social_trend(monthly_data, character_id) do
-    if Enum.empty?(monthly_data) do
+    if monthly_data == [] do
       %{
         fleet_participation: [],
         average_fleet_size: 0.0,
@@ -761,7 +761,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrend
       |> Enum.map(&extract_fleet_size(&1, character_id_str))
       |> Enum.filter(&(&1 > 0))
 
-    if Enum.empty?(participation_data) do
+    if participation_data == [] do
       %{fleet_rate: 0.0, avg_fleet_size: 0.0, solo_rate: 0.0}
     else
       solo_count = Enum.count(participation_data, &(&1 == 1))
@@ -793,7 +793,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrend
   end
 
   defp calculate_overall_avg_fleet_size(social_by_month) do
-    if Enum.empty?(social_by_month) do
+    if social_by_month == [] do
       0.0
     else
       sizes = Enum.map(social_by_month, & &1.avg_fleet_size)
@@ -802,7 +802,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrend
   end
 
   defp determine_fleet_preference(social_by_month) do
-    if Enum.empty?(social_by_month) do
+    if social_by_month == [] do
       :unknown
     else
       avg_fleet_rate =
@@ -826,7 +826,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrend
   end
 
   defp estimate_skill_progression(monthly_data, character_id) do
-    if Enum.empty?(monthly_data) do
+    if monthly_data == [] do
       %{
         progression_data: [],
         skill_velocity: 0.0,
@@ -857,7 +857,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrend
   end
 
   defp detect_ship_specialization(ship_type_ids) do
-    if Enum.empty?(ship_type_ids) do
+    if ship_type_ids == [] do
       :none
     else
       ship_classes =
@@ -910,7 +910,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrend
   end
 
   defp estimate_sp_range(ship_progression) do
-    if Enum.empty?(ship_progression) do
+    if ship_progression == [] do
       :unknown
     else
       # Estimate based on average tech level and ship diversity
@@ -934,15 +934,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrend
     end
   end
 
-  defp average(list) when is_list(list) and length(list) > 0 do
-    Enum.sum(list) / length(list)
-  end
-
+  defp average([_ | _] = list), do: Enum.sum(list) / length(list)
   defp average(_), do: 0.0
 
   defp get_primary_timezone(activity_trend) do
     # Find most common active hours from trend data
-    if Enum.empty?(activity_trend.data_points) do
+    if activity_trend.data_points == [] do
       :unknown
     else
       # This would need more detailed hourly analysis

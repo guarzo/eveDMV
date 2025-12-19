@@ -86,7 +86,7 @@ defmodule EveDmv.Eve.StaticDataLoader.JsonlParserTest do
       types = Enum.to_list(stream)
 
       # Tempest Fleet Issue doesn't have graphic_id
-      tempest = Enum.find(types, &(&1.type_id == 17703))
+      tempest = Enum.find(types, &(&1.type_id == 17_703))
       assert tempest != nil
       assert tempest.graphic_id == nil
     end
@@ -111,7 +111,7 @@ defmodule EveDmv.Eve.StaticDataLoader.JsonlParserTest do
       assert jita.is_hub == true
       assert jita.is_regional == true
       assert jita.is_border == false
-      assert jita.sun_type_id == 45041
+      assert jita.sun_type_id == 45_041
     end
 
     test "handles boolean flags correctly" do
@@ -160,8 +160,8 @@ defmodule EveDmv.Eve.StaticDataLoader.JsonlParserTest do
 
       assert is_map(map)
       assert Map.has_key?(map, 587)
-      assert Map.has_key?(map, 24690)
-      assert Map.has_key?(map, 17703)
+      assert Map.has_key?(map, 24_690)
+      assert Map.has_key?(map, 17_703)
 
       assert map[587].name == "Rifter"
     end

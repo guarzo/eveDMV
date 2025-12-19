@@ -477,7 +477,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.NotificationService do
 
   # Placeholder implementations for external integrations
 
-  @spec store_notification_in_database(%{}) :: {:ok, :stored}
+  @spec store_notification_in_database(map()) :: {:ok, :stored}
   defp store_notification_in_database(_notification), do: {:ok, :stored}
 
   @spec get_user_webhook_url(integer()) :: {:ok, String.t()} | {:error, :not_configured}

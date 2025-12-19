@@ -1,11 +1,18 @@
 defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
   @moduledoc """
-  Main corporation analysis engine that provides comprehensive analysis
-  of corporation statistics, member composition, and organizational health.
+  **CANONICAL**: Main corporation analysis engine.
 
-  Consolidates functionality from:
-  - Corporation Analysis domain analyzers
-  - Corporation Intelligence analyzers
+  This is the primary corporation analysis module for the codebase.
+  Other corporation analyzers in different contexts are deprecated and
+  should delegate to this module.
+
+  Provides comprehensive analysis of:
+  - Corporation statistics
+  - Member composition
+  - Organizational health
+
+  Related specialized modules:
+  - `MemberActivityAnalyzer.CorporationAnalyzer` - Member activity report generation
   """
 
   use GenServer

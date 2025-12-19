@@ -428,30 +428,30 @@ defmodule EveDmv.Platform.Database.MaterializedViewOptimizer do
     missing_indexes = check_missing_indexes()
 
     index_recommendations =
-      if length(missing_indexes) > 0 do
-        ["Missing indexes on views: #{Enum.join(missing_indexes, ", ")}"]
-      else
+      if Enum.empty?(missing_indexes) do
         []
+      else
+        ["Missing indexes on views: #{Enum.join(missing_indexes, ", ")}"]
       end
 
     # Check for oversized views
     oversized = check_oversized_views()
 
     size_recommendations =
-      if length(oversized) > 0 do
-        ["Oversized views (>1GB): #{Enum.join(oversized, ", ")}" | index_recommendations]
-      else
+      if Enum.empty?(oversized) do
         index_recommendations
+      else
+        ["Oversized views (>1GB): #{Enum.join(oversized, ", ")}" | index_recommendations]
       end
 
     # Check refresh frequency
     stale = detect_stale_views()
 
-    if length(stale) > 0 do
+    if Enum.empty?(stale) do
+      size_recommendations
+    else
       stale_names = Enum.map(stale, & &1.name)
       ["Stale views needing refresh: #{Enum.join(stale_names, ", ")}" | size_recommendations]
-    else
-      size_recommendations
     end
   end
 
@@ -656,11 +656,11 @@ defmodule EveDmv.Platform.Database.MaterializedViewOptimizer do
     base_query = "CREATE MATERIALIZED VIEW #{name}"
 
     storage_clause =
-      if length(storage_params) > 0 do
+      if Enum.empty?(storage_params) do
+        ""
+      else
         params = Enum.map_join(storage_params, ", ", fn {k, v} -> "#{k}=#{v}" end)
         " WITH (#{params})"
-      else
-        ""
       end
 
     tablespace_clause =

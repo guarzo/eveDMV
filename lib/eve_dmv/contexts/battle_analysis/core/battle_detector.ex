@@ -702,11 +702,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleDetector do
   end
 
   defp calculate_average_battle_size(battles) do
-    if length(battles) > 0 do
+    if battles == [] do
+      0.0
+    else
       total_participants = battles |> Enum.map(& &1.participant_count) |> Enum.sum()
       Float.round(total_participants / length(battles), 1)
-    else
-      0.0
     end
   end
 

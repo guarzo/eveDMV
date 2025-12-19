@@ -36,13 +36,25 @@ defmodule EveDmv.IntelligenceEngine do
   Aggregates metrics from all bounded contexts.
   """
   def status do
+    cache_hit_rate = get_cache_hit_rate()
+
     %{
       version: "2.0.0-migrated",
       mode: :bounded_contexts,
       active_analyses: 0,
-      cache_hit_rate: 0.85,
+      cache_hit_rate: cache_hit_rate,
       average_analysis_time_ms: 150,
       uptime_seconds: System.system_time(:second)
     }
+  end
+
+  defp get_cache_hit_rate do
+    # Get real cache hit rate from surveillance matching engine
+    case EveDmv.Contexts.Surveillance.Domain.MatchingEngine.get_cache_stats() do
+      {:ok, stats} -> Map.get(stats, :hit_rate, 1.0)
+      _ -> 1.0
+    end
+  rescue
+    _ -> 1.0
   end
 end

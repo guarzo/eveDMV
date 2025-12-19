@@ -8,7 +8,6 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
 
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.Analyzers.CharacterAnalyzer
-  alias EveDmv.Intelligence.Core.CacheHelper
 
   require Logger
 
@@ -91,29 +90,27 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
     # Preload frequently accessed character data
     Logger.debug("Warming character cache")
 
-    # Simulate cache warming with sample data
-    sample_entries = [%{warmed_at: DateTime.utc_now(), entries: 100}]
-    CacheHelper.warm_cache(sample_entries, 3600)
+    # Cache warming is a placeholder - actual implementation would fetch
+    # commonly accessed characters and preload their analysis results
+    :ok
   end
 
   defp warm_analysis_cache do
     # Preload recent analysis results
     Logger.debug("Warming analysis cache")
 
-    CacheHelper.warm_cache(:analysis_cache, fn ->
-      # Simulate cache warming
-      %{warmed_at: DateTime.utc_now(), entries: 50}
-    end)
+    # Cache warming is a placeholder - actual implementation would preload
+    # recent analysis results from the database
+    :ok
   end
 
   defp warm_threat_cache do
     # Preload threat intelligence data
     Logger.debug("Warming threat cache")
 
-    CacheHelper.warm_cache(:threat_cache, fn ->
-      # Simulate cache warming
-      %{warmed_at: DateTime.utc_now(), entries: 25}
-    end)
+    # Cache warming is a placeholder - actual implementation would preload
+    # threat assessment data from recent analyses
+    :ok
   end
 
   def analyze_character_basic(character_id) do
@@ -212,11 +209,8 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
     # 2. Recent battle analyses
     battle_analyses = get_recent_battle_analyses(cutoff_time, limit)
 
-    # 3. Recent vetting analyses
-    vetting_analyses = get_recent_vetting_analyses(cutoff_time, limit)
-
     # Combine and sort by timestamp
-    (analyses ++ character_analyses ++ battle_analyses ++ vetting_analyses)
+    (analyses ++ character_analyses ++ battle_analyses)
     |> Enum.sort_by(& &1.timestamp, :desc)
     |> Enum.take(limit)
   rescue
@@ -449,38 +443,6 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
     _error -> []
   end
 
-  defp get_recent_vetting_analyses(cutoff_time, limit) do
-    alias EveDmv.Contexts.WormholeOperations.Domain.Wormhole.WhVetting, as: Vetting
-
-    # Get recent vetting analyses from the database
-    try do
-      cutoff_naive = DateTime.to_naive(cutoff_time)
-
-      # Query recent vetting records
-      # This is a simplified version - real implementation would use proper Ash queries
-      case Ash.read(Vetting, domain: EveDmv.Api) do
-        {:ok, vettings} ->
-          vettings
-          |> Enum.filter(fn v ->
-            case v.analysis_timestamp do
-              %DateTime{} = dt -> DateTime.compare(dt, cutoff_time) != :lt
-              %NaiveDateTime{} = ndt -> NaiveDateTime.compare(ndt, cutoff_naive) != :lt
-              _ -> false
-            end
-          end)
-
-          # Take 1/3 of limit for vetting analyses
-          |> Enum.take(div(limit, 3))
-          |> Enum.map(&convert_vetting_to_analysis_entry/1)
-
-        {:error, _reason} ->
-          []
-      end
-    rescue
-      _error -> []
-    end
-  end
-
   defp convert_battle_to_analysis_entry(battle) do
     %{
       id: battle.battle_id,
@@ -493,39 +455,5 @@ defmodule EveDmv.Intelligence.Core.IntelligenceCoordinator do
       participant_count: Map.get(battle.metadata, :total_participants, 0),
       timestamp: battle.metadata.start_time || DateTime.utc_now()
     }
-  end
-
-  defp convert_vetting_to_analysis_entry(vetting) do
-    recommendation =
-      case vetting.recommendation do
-        %{recommendation: rec} when is_binary(rec) -> string_to_recommendation_atom(rec)
-        rec when is_binary(rec) -> string_to_recommendation_atom(rec)
-        rec when is_atom(rec) -> rec
-        _ -> :unknown
-      end
-
-    %{
-      id: vetting.id,
-      type: :vetting_analysis,
-      character_id: vetting.character_id,
-      character_name: vetting.character_name,
-      status: :completed,
-      recommendation: recommendation,
-      risk_score: vetting.risk_score,
-      timestamp: vetting.analysis_timestamp || DateTime.utc_now()
-    }
-  end
-
-  defp string_to_recommendation_atom(string) when is_binary(string) do
-    # Define the allowed recommendation atoms
-    case string do
-      "approved" -> :approved
-      "rejected" -> :rejected
-      "flagged" -> :flagged
-      "pending_review" -> :pending_review
-      "conditional" -> :conditional
-      "under_review" -> :under_review
-      _ -> :unknown
-    end
   end
 end

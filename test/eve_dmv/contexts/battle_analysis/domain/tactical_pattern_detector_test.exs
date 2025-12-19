@@ -46,7 +46,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
       assert analysis.effectiveness_rating in [:excellent, :good, :moderate, :poor, :very_poor]
 
       # Should have time windows
-      assert length(analysis.time_windows) > 0
+      assert analysis.time_windows != []
 
       # Each window should have required fields
       window = List.first(analysis.time_windows)
@@ -68,7 +68,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
       assert analysis.overall_focus_score >= 0
 
       # If there are high focus periods, check their structure
-      if length(analysis.high_focus_periods) > 0 do
+      if analysis.high_focus_periods != [] do
         period = List.first(analysis.high_focus_periods)
         assert period.focus_score > 75
         assert is_list(period.primary_targets)
@@ -99,7 +99,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
       assert is_float(analysis.adaptability_score)
 
       # Should detect formations
-      assert length(analysis.detected_formations) > 0
+      assert analysis.detected_formations != []
 
       formation = List.first(analysis.detected_formations)
 
@@ -133,7 +133,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
       analysis = TacticalPatternDetector.analyze_formations(killmails)
 
       # Should detect transitions between formations
-      assert length(analysis.formation_transitions) > 0
+      assert analysis.formation_transitions != []
 
       transition = List.first(analysis.formation_transitions)
       assert Map.has_key?(transition, :from)
@@ -155,7 +155,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
       assert analysis.switching_efficiency in [:excellent, :good, :moderate, :poor, :unknown]
 
       # Should analyze individual switching
-      assert length(analysis.individual_analysis) > 0
+      assert analysis.individual_analysis != []
 
       individual = List.first(analysis.individual_analysis)
       assert individual.character_id
@@ -226,7 +226,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
       analysis = TacticalPatternDetector.analyze_coordination(killmails)
 
       # Should identify peak coordination periods
-      assert length(analysis.coordination_peaks) > 0
+      assert analysis.coordination_peaks != []
 
       peak = List.first(analysis.coordination_peaks)
       assert peak.kills_achieved >= 5

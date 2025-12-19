@@ -124,7 +124,7 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessorTest do
 
       assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(file_paths)
       assert is_list(item_types)
-      assert length(item_types) > 0
+      assert Enum.any?(item_types)
     end
 
     test "filters to killmail-relevant categories by default" do
@@ -138,7 +138,7 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessorTest do
 
       # Should include ships
       ships = Enum.filter(item_types, & &1.is_ship)
-      assert length(ships) > 0
+      assert Enum.any?(ships)
 
       # Should not include blueprints (category 9)
       blueprints = Enum.filter(item_types, & &1.is_blueprint)
@@ -270,7 +270,7 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessorTest do
       assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(file_paths)
 
       # Find the Snake Alpha
-      implant = Enum.find(item_types, &(&1.type_id == 10220))
+      implant = Enum.find(item_types, &(&1.type_id == 10_220))
       assert implant != nil
       assert implant.is_implant == true
       assert implant.category_name == "Implant"
@@ -286,7 +286,7 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessorTest do
       assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(file_paths)
 
       # Find the Mobile Depot
-      depot = Enum.find(item_types, &(&1.type_id == 28846))
+      depot = Enum.find(item_types, &(&1.type_id == 28_846))
       assert depot != nil
       assert depot.is_deployable == true
       assert depot.category_name == "Deployable"
@@ -302,7 +302,7 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessorTest do
       assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(file_paths)
 
       # Find the Dragonfly I
-      fighter = Enum.find(item_types, &(&1.type_id == 40340))
+      fighter = Enum.find(item_types, &(&1.type_id == 40_340))
       assert fighter != nil
       assert fighter.is_fighter == true
       assert fighter.category_name == "Fighter"
@@ -318,7 +318,7 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessorTest do
       assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(file_paths)
 
       # Find the Astrahus
-      structure = Enum.find(item_types, &(&1.type_id == 35833))
+      structure = Enum.find(item_types, &(&1.type_id == 35_833))
       assert structure != nil
       assert structure.is_deployable == true
       assert structure.category_name == "Structure"
@@ -380,7 +380,7 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessorTest do
       ships = ItemTypeProcessor.get_ship_types(item_types)
 
       assert Enum.all?(ships, & &1.is_ship)
-      assert length(ships) > 0
+      assert Enum.any?(ships)
     end
   end
 

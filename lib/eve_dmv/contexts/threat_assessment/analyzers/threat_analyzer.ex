@@ -879,24 +879,20 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
   defp update_single_inhabitant_threat(inhabitant_id, base_data, _opts) do
     # This would update threat data for a specific inhabitant
     # Implementation depends on how inhabitants are stored and managed
-    case ThreatDataProvider.get_inhabitant_details(inhabitant_id) do
-      {:ok, inhabitant} ->
-        case analyze(inhabitant.character_id, base_data,
-               corporation_id: inhabitant.corporation_id,
-               alliance_id: inhabitant.alliance_id
-             ) do
-          {:ok, analysis} ->
-            # Update inhabitant record with new threat data
-            ThreatDataProvider.update_inhabitant_threat(inhabitant_id, %{
-              threat_level: analysis.threat_level,
-              threat_score: analysis.threat_score,
-              bait_probability: analysis.bait_probability,
-              last_threat_update: DateTime.utc_now()
-            })
+    {:ok, inhabitant} = ThreatDataProvider.get_inhabitant_details(inhabitant_id)
 
-          {:error, reason} ->
-            {:error, reason}
-        end
+    case analyze(inhabitant.character_id, base_data,
+           corporation_id: inhabitant.corporation_id,
+           alliance_id: inhabitant.alliance_id
+         ) do
+      {:ok, analysis} ->
+        # Update inhabitant record with new threat data
+        ThreatDataProvider.update_inhabitant_threat(inhabitant_id, %{
+          threat_level: analysis.threat_level,
+          threat_score: analysis.threat_score,
+          bait_probability: analysis.bait_probability,
+          last_threat_update: DateTime.utc_now()
+        })
 
       {:error, reason} ->
         {:error, reason}

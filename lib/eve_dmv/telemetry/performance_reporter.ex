@@ -16,7 +16,9 @@ defmodule EveDmv.Telemetry.PerformanceReporter do
 
   # Report every minute
   @metrics_interval 60_000
-  @slow_query_threshold_ms 100
+  # 500ms is a reasonable threshold - 100ms was too aggressive and caused
+  # false positives for legitimate static data queries
+  @slow_query_threshold_ms 500
   @slow_api_threshold_ms 1000
 
   # Client API
@@ -342,11 +344,13 @@ defmodule EveDmv.Telemetry.PerformanceReporter do
   defp calculate_api_stats(api_calls) do
     durations = Enum.map(api_calls, & &1.duration)
     errors = Enum.count(api_calls, &(&1.status >= 400))
+    api_count = length(api_calls)
+    duration_count = length(durations)
 
     %{
-      count: length(api_calls),
-      avg_ms: if(length(durations) > 0, do: Enum.sum(durations) / length(durations), else: 0),
-      error_rate: if(length(api_calls) > 0, do: errors / length(api_calls) * 100, else: 0)
+      count: api_count,
+      avg_ms: if(duration_count > 0, do: Enum.sum(durations) / duration_count, else: 0),
+      error_rate: if(api_count > 0, do: errors / api_count * 100, else: 0)
     }
   end
 
@@ -354,10 +358,12 @@ defmodule EveDmv.Telemetry.PerformanceReporter do
 
   defp calculate_render_stats(render_times) do
     durations = Enum.map(render_times, & &1.duration)
+    render_count = length(render_times)
+    duration_count = length(durations)
 
     %{
-      count: length(render_times),
-      avg_ms: if(length(durations) > 0, do: Enum.sum(durations) / length(durations), else: 0),
+      count: render_count,
+      avg_ms: if(duration_count > 0, do: Enum.sum(durations) / duration_count, else: 0),
       p95_ms: percentile(durations, 0.95),
       p99_ms: percentile(durations, 0.99)
     }

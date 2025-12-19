@@ -57,10 +57,10 @@ defmodule EveDmv.Contexts.Corporation.Services.AnalyticsService do
       # Add comparative analysis if requested
       final_report =
         if include_comparisons do
-          case get_comparative_analysis(corporation_id, basic_analysis.alliance_id) do
-            {:ok, comparisons} -> Map.put(report, :comparative_analysis, comparisons)
-            {:error, _reason} -> report
-          end
+          {:ok, comparisons} =
+            get_comparative_analysis(corporation_id, basic_analysis.alliance_id)
+
+          Map.put(report, :comparative_analysis, comparisons)
         else
           report
         end

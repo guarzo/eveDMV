@@ -83,9 +83,6 @@ ADMIN_BOOTSTRAP_CHARACTER_IDS=123456789,987654321
 JANICE_API_KEY=your-janice-api-key
 MUTAMARKET_API_KEY=your-mutamarket-api-key
 
-# Redis Configuration
-REDIS_URL=redis://redis:6379
-
 # Performance Settings
 POOL_SIZE=10
 PORT=4000
@@ -95,7 +92,7 @@ PORT=4000
 
 ```bash
 # Generate SECRET_KEY_BASE
-docker run --rm -it elixir:1.17-alpine mix phx.gen.secret
+docker run --rm -it elixir:1.19-alpine mix phx.gen.secret
 
 # Generate strong database password
 openssl rand -base64 32
@@ -108,8 +105,7 @@ openssl rand -base64 32
 The repository includes a `docker-compose.production.yml` file. Here's what it contains:
 
 - **PostgreSQL** database with optimized settings
-- **Redis** for caching and real-time features
-- **EVE DMV application** container
+- **EVE DMV application** container with Cachex caching
 - The app will be accessible on port 4000 by default
 
 ### 2. Deploy with Docker Compose
@@ -207,7 +203,7 @@ The included `Dockerfile` is optimized for production:
 
 ```dockerfile
 # Build stage
-FROM elixir:1.17-alpine AS build
+FROM elixir:1.19-alpine AS build
 
 # Install build dependencies
 RUN apk add --no-cache build-base git python3 nodejs npm

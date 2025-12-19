@@ -35,15 +35,6 @@ defmodule EveDmv.Contexts do
       subscribes: [:killmail_enriched],
       dependencies: [:eve_universe]
     },
-    wormhole_operations: %{
-      name: "Wormhole Operations",
-      description: "Wormhole-specific tactics, chain management, and vetting",
-      type: :core,
-      module_prefix: EveDmv.Contexts.WormholeOperations,
-      publishes: [:chain_updated, :vetting_completed, :mass_calculated],
-      subscribes: [:killmail_enriched, :character_analyzed],
-      dependencies: [:eve_universe, :combat_intelligence]
-    },
     surveillance: %{
       name: "Surveillance",
       description: "Real-time threat monitoring and alerting",

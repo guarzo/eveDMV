@@ -204,12 +204,9 @@ defmodule EveDmv.Contexts.Combat.Core.TimelineBuilder do
           {:cont, [event | acc]}
         end
       end,
-      fn acc ->
-        if acc == [] do
-          {:cont, []}
-        else
-          {:cont, Enum.reverse(acc), []}
-        end
+      fn
+        [] -> {:cont, []}
+        acc -> {:cont, Enum.reverse(acc), []}
       end
     )
   end
@@ -371,7 +368,9 @@ defmodule EveDmv.Contexts.Combat.Core.TimelineBuilder do
   defp detect_key_moments(events, phases) do
     # First blood
     first_blood_moments =
-      if length(events) > 0 do
+      if events == [] do
+        []
+      else
         [
           %{
             type: :first_blood,
@@ -380,8 +379,6 @@ defmodule EveDmv.Contexts.Combat.Core.TimelineBuilder do
             description: "Battle begins"
           }
         ]
-      else
-        []
       end
 
     # Capital losses
@@ -461,7 +458,9 @@ defmodule EveDmv.Contexts.Combat.Core.TimelineBuilder do
   end
 
   defp calculate_average_intensity(phases) do
-    if length(phases) > 0 do
+    if phases == [] do
+      :none
+    else
       intensity_values =
         phases
         |> Enum.map(&intensity_to_number(&1.intensity))
@@ -470,8 +469,6 @@ defmodule EveDmv.Contexts.Combat.Core.TimelineBuilder do
       avg = sum / length(intensity_values)
 
       number_to_intensity(avg)
-    else
-      :none
     end
   end
 
@@ -608,12 +605,12 @@ defmodule EveDmv.Contexts.Combat.Core.TimelineBuilder do
   end
 
   defp stable_participation?(counts) do
-    if length(counts) > 0 do
+    if counts == [] do
+      true
+    else
       min = Enum.min(counts)
       max = Enum.max(counts)
       (max - min) / max < 0.2
-    else
-      true
     end
   end
 

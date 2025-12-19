@@ -15,6 +15,8 @@ defmodule EveDmv.Telemetry.QueryMonitor do
   @max_stored_queries 100
   @query_pattern_window :timer.minutes(10)
   @n_plus_one_threshold 5
+  # Transaction control statements that should be excluded from N+1 detection
+  @transaction_statements ["begin", "commit", "rollback", "savepoint", "release savepoint"]
 
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
@@ -313,8 +315,15 @@ defmodule EveDmv.Telemetry.QueryMonitor do
   defp check_n_plus_one_pattern({normalized_query, source}, recent_executions, current_alerts) do
     execution_count = length(recent_executions)
 
+    # Skip N+1 detection for transaction control statements - these are normal
+    # boundaries for bulk operations and not actual N+1 patterns
+    normalized_lower = String.downcase(String.trim(normalized_query))
+
+    is_transaction_statement =
+      Enum.any?(@transaction_statements, fn stmt -> normalized_lower == stmt end)
+
     # Detect N+1 pattern: same query executed many times in a short window
-    if execution_count >= @n_plus_one_threshold do
+    if execution_count >= @n_plus_one_threshold and not is_transaction_statement do
       # Check if we already have a recent alert for this pattern
       alert_key = {normalized_query, source}
 
@@ -401,7 +410,7 @@ defmodule EveDmv.Telemetry.QueryMonitor do
 
     # Check for N+1 alerts
     issues_with_n_plus_one =
-      if Enum.empty?(state.n_plus_one_alerts),
+      if state.n_plus_one_alerts == [],
         do: issues_with_frequent,
         else: ["#{length(state.n_plus_one_alerts)} N+1 query alerts" | issues_with_frequent]
 

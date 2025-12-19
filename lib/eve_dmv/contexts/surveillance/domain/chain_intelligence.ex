@@ -1,17 +1,16 @@
 defmodule EveDmv.Shared.ChainIntelligence do
   @moduledoc """
-  Unified chain intelligence service for surveillance and wormhole operations.
+  Unified chain intelligence service for surveillance operations.
 
-  Consolidates functionality from both contexts to provide:
+  Provides:
   - Chain topology monitoring
   - Activity tracking and analysis
   - Threat assessment and escalation
   - Strategic value calculations
   - Real-time intelligence updates
 
-  This module combines the capabilities of:
-  - Surveillance.Domain.ChainIntelligenceService
-  - WormholeOperations.Domain.ChainIntelligenceService
+  This module provides chain intelligence capabilities originally
+  from Surveillance.Domain.ChainIntelligenceService.
   """
 
   use EveDmv.Core.Errors.ErrorHandler
@@ -626,7 +625,7 @@ defmodule EveDmv.Shared.ChainIntelligence do
     # Analyze for hostile activity patterns based on kill data
     kills = Map.get(activity_data, :kills, [])
 
-    if Enum.empty?(kills) do
+    if kills == [] do
       %{
         detected: false,
         confidence: 0.0
@@ -708,9 +707,9 @@ defmodule EveDmv.Shared.ChainIntelligence do
     # Assess threat level based on hostile activity
     threat_level =
       cond do
-        length(hostile_data.hostile_pilots) > 10 -> :high
-        length(hostile_data.hostile_pilots) > 5 -> :medium
-        length(hostile_data.hostile_pilots) > 0 -> :low
+        Enum.count(hostile_data.hostile_pilots) > 10 -> :high
+        Enum.count(hostile_data.hostile_pilots) > 5 -> :medium
+        hostile_data.hostile_pilots != [] -> :low
         true -> :minimal
       end
 
@@ -982,13 +981,15 @@ defmodule EveDmv.Shared.ChainIntelligence do
 
       losses = length(corp_killmails) - victories
 
+      total_engagements = length(corp_killmails)
+
       %{
-        total_engagements: length(corp_killmails),
+        total_engagements: total_engagements,
         victories: victories,
         losses: losses,
         efficiency:
-          if(length(corp_killmails) > 0,
-            do: Float.round(victories / length(corp_killmails), 2),
+          if(corp_killmails != [],
+            do: Float.round(victories / total_engagements, 2),
             else: 0.0
           ),
         time_period_hours: 48

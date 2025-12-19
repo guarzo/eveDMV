@@ -116,6 +116,14 @@ if [ "${RUN_TESTS:-false}" = "true" ]; then
 fi
 
 # ===========================================
+# COVERAGE CHECK (Optional - requires tests)
+# ===========================================
+
+if [ "${CHECK_COVERAGE:-false}" = "true" ]; then
+    run_check "Coverage Threshold (70%)" "MIX_ENV=test mix coveralls --minimum-coverage 70" "true"
+fi
+
+# ===========================================
 # RESULTS SUMMARY
 # ===========================================
 

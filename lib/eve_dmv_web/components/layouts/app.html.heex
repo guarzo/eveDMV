@@ -195,7 +195,9 @@
 
   // Handle search navigation events
   window.addEventListener('phx:navigate', function(event) {
-    window.location.href = event.detail.path;
+    if (event.detail && event.detail.path) {
+      window.location.href = event.detail.path;
+    }
   });
 </script>
 <main class="px-4 pt-20 pb-8 sm:px-6 lg:px-8">

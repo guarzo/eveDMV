@@ -16,6 +16,15 @@ defmodule EveDmv.Killmails.Participant do
     table("participants")
     repo(EveDmv.Repo)
 
+    # Disable foreign keys for ship_type and weapon_type relationships.
+    # Killmails can reference item types that aren't in our filtered SDE import
+    # (e.g., SKINs, apparel, structures, or unpublished items).
+    # We keep the relationships for preloading but skip the FK constraints.
+    references do
+      reference(:ship_type, ignore?: true)
+      reference(:weapon_type, ignore?: true)
+    end
+
     custom_indexes do
       index([:killmail_id, :killmail_time], name: "participants_killmail_idx")
       index([:character_id], name: "participants_character_idx")

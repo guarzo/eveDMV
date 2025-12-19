@@ -12,6 +12,14 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
 
   Uses advanced statistical analysis, clustering algorithms, and tactical pattern matching
   to provide comprehensive intelligence on corporation combat capabilities and preferences.
+
+  ## Submodules
+
+  This module is organized into the following submodules for maintainability:
+
+  - `CombatDoctrine.FleetAnalyzer` - Fleet composition and engagement analysis
+  - `CombatDoctrine.DoctrineClassifier` - Doctrine classification and scoring
+  - `CombatDoctrine.ThreatAssessor` - Threat assessment and counter-strategy analysis
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
@@ -19,6 +27,9 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
 
   require Ash.Query
   require Logger
+
+  # Note: get_doctrine_strengths/1, get_doctrine_weaknesses/1, get_recommended_counters/1,
+  # and classify_ship_type/1 are all defined locally in this module with detailed implementations
 
   # Doctrine analysis parameters
   # Minimum active members for reliable analysis
@@ -384,7 +395,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
       |> Enum.reduce([], fn km, acc ->
         corp_participants = extract_corp_participants(km, corporation_id)
 
-        if Enum.empty?(corp_participants) do
+        if corp_participants == [] do
           acc
         else
           case find_matching_engagement(km, acc, corporation_id) do
@@ -654,7 +665,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
       count: length(specialized),
       types: Enum.group_by(specialized, & &1.specialization),
       percentage:
-        if(Enum.empty?(participants),
+        if(participants == [],
           do: 0.0,
           else: length(specialized) / length(participants)
         )
@@ -1092,7 +1103,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
   end
 
   defp calculate_doctrine_score(fleet_compositions, doctrine_key) do
-    if Enum.empty?(fleet_compositions) do
+    if fleet_compositions == [] do
       0.0
     else
       # Calculate average doctrine score across all fleet engagements
@@ -1283,7 +1294,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
 
     # Create a simplified engagement structure for coordination analysis
     sample_engagement =
-      if length(killmails) > 0 do
+      if killmails != [] do
         first_killmail = List.first(killmails)
 
         %{
@@ -1311,7 +1322,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
       |> Map.get(:killmails, [])
       |> Enum.sort_by(&DateTime.to_unix(&1.killmail_time), :desc)
 
-    if Enum.empty?(killmails) do
+    if killmails == [] do
       %{pattern: :insufficient_data}
     else
       # Analyze engagement patterns from killmail data
@@ -1340,7 +1351,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
     _active_members = Map.get(combat_data, :active_members, [])
     killmails = Map.get(combat_data, :killmails, [])
 
-    if Enum.empty?(killmails) do
+    if killmails == [] do
       %{
         pattern: :unknown,
         types_observed: [],
@@ -1457,7 +1468,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
 
   defp identify_formation_type(fleet_comp) do
     # Analyze actual fleet composition to identify formation type
-    if Enum.empty?(fleet_comp) do
+    if fleet_comp == [] do
       :unknown
     else
       # Count ship roles in the fleet
@@ -1978,7 +1989,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
 
   defp determine_trend(changes, adaptation_rate) do
     cond do
-      Enum.empty?(changes) -> :stable
+      changes == [] -> :stable
       adaptation_rate > 0.5 -> :rapidly_evolving
       adaptation_rate > 0.25 -> :evolving
       adaptation_rate > 0.1 -> :shifting
@@ -2126,7 +2137,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
 
       killmails = Enum.uniq_by(victim_killmails ++ attacker_killmails, & &1.killmail_id)
 
-      if Enum.empty?(killmails) do
+      if killmails == [] do
         {:ok,
          %{
            period_start: start_date,
@@ -2217,7 +2228,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
           doctrines
         end
 
-      if Enum.empty?(doctrines) do
+      if doctrines == [] do
         [{:mixed_doctrine, 1.0}]
       else
         Enum.sort_by(doctrines, &elem(&1, 1), :desc)
@@ -2240,7 +2251,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
     |> Enum.map(fn {period_start, kms} ->
       ship_types = extract_corporation_ship_types(kms, corporation_id)
       doctrines = analyze_doctrine_frequencies(ship_types)
-      primary_doctrine = if Enum.empty?(doctrines), do: :none, else: elem(hd(doctrines), 0)
+      primary_doctrine = if doctrines == [], do: :none, else: elem(hd(doctrines), 0)
       {period_start, primary_doctrine}
     end)
     |> Enum.chunk_every(2, 1, :discard)
@@ -2342,7 +2353,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
 
   defp analyze_doctrine_distribution(doctrine_analyses) do
     # Analyze distribution of doctrines across analyses
-    if Enum.empty?(doctrine_analyses) do
+    if doctrine_analyses == [] do
       %{distribution: %{}, dominant_doctrine: nil}
     else
       distribution =
@@ -2431,7 +2442,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
 
   defp analyze_counter_relationships(doctrine_analyses) do
     # Analyze counter relationships between observed doctrines
-    if Enum.empty?(doctrine_analyses) do
+    if doctrine_analyses == [] do
       %{counter_relationships: [], vulnerability_matrix: %{}}
     else
       doctrines =
@@ -2544,7 +2555,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
 
   defp generate_competitive_assessment(doctrine_analyses) do
     # Generate competitive assessment based on doctrine analyses
-    if Enum.empty?(doctrine_analyses) do
+    if doctrine_analyses == [] do
       %{assessment: :insufficient_data, recommendations: []}
     else
       doctrine_distribution = analyze_doctrine_distribution(doctrine_analyses)

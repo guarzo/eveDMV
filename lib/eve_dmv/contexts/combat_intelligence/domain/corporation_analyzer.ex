@@ -1,5 +1,12 @@
 defmodule EveDmv.Contexts.CombatIntelligence.Domain.CorporationAnalyzer do
   @moduledoc """
+  **DEPRECATED**: Use `EveDmv.Contexts.Corporation.Core.CorporationAnalyzer` instead.
+
+  This module is deprecated and will be removed in a future release.
+  The canonical corporation analyzer is in the Corporation context.
+
+  ---
+
   Analyzes corporation-wide combat patterns and effectiveness.
 
   This module handles the analysis of corporation-level metrics including

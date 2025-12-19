@@ -1,6 +1,13 @@
 defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   @compile {:nowarn_unused_function}
   @moduledoc """
+  **DEPRECATED**: Use `EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer` instead.
+
+  This module is deprecated and will be removed in a future release.
+  The canonical character analyzer is in the Intelligence context.
+
+  ---
+
   Analyzes character combat patterns and intelligence.
 
   Simplified character analysis module that provides direct analysis operations
@@ -540,12 +547,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
 
     %{
       character_id: character_id,
-      threat_score: threat_data.composite_score || 0.0,
-      threat_level: threat_data.threat_level || :unknown,
-      combat_effectiveness: threat_data.combat_effectiveness || 0.0,
-      activity_summary: activity_data.activity_summary,
-      engagement_patterns: activity_data.engagement_patterns,
-      temporal_patterns: activity_data.temporal_patterns,
+      threat_score: Map.get(threat_data, :composite_score, 0.0) || 0.0,
+      threat_level: Map.get(threat_data, :threat_level, :unknown) || :unknown,
+      combat_effectiveness: Map.get(threat_data, :combat_effectiveness, 0.0) || 0.0,
+      activity_summary: Map.get(activity_data, :activity_summary, %{}),
+      engagement_patterns: Map.get(activity_data, :engagement_patterns, %{}),
+      temporal_patterns: Map.get(activity_data, :temporal_patterns, %{}),
       recent_activity_count: recent_activity_count,
       data_quality_score: calculate_data_quality_score(threat_data, activity_data)
     }
@@ -747,10 +754,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
 
   defp calculate_data_quality_score(threat_data, activity_data) do
     # Calculate a score based on available data completeness
-    threat_score =
-      if threat_data.composite_score && threat_data.composite_score > 0, do: 0.5, else: 0.0
+    composite_score = Map.get(threat_data, :composite_score, 0.0) || 0.0
+    threat_score = if composite_score > 0, do: 0.5, else: 0.0
 
-    activity_score = if activity_data.activity_summary.total_events > 0, do: 0.5, else: 0.0
+    activity_summary = Map.get(activity_data, :activity_summary, %{})
+    total_events = Map.get(activity_summary, :total_events, 0) || 0
+    activity_score = if total_events > 0, do: 0.5, else: 0.0
 
     Float.round(threat_score + activity_score, 2)
   end
@@ -895,15 +904,15 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
          threat_level_max,
          cutoff_date
        ) do
-    threat_score = threat_data.composite_score || 0.0
+    threat_score = Map.get(threat_data, :composite_score, 0.0) || 0.0
 
     if threat_score >= threat_level_min and threat_score <= threat_level_max do
       %{
         character_id: character_id,
         threat_score: threat_score,
-        threat_level: threat_data.threat_level,
+        threat_level: Map.get(threat_data, :threat_level, :unknown),
         last_seen: get_last_activity_date(character_id, cutoff_date),
-        combat_effectiveness: threat_data.combat_effectiveness || 0.0,
+        combat_effectiveness: Map.get(threat_data, :combat_effectiveness, 0.0) || 0.0,
         matches_criteria: true
       }
     else

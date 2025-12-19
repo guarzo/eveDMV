@@ -8,6 +8,8 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
 
   use EveDmvWeb, :live_view
 
+  alias EveDmv.Contexts.Surveillance
+
   require Logger
 
   # LiveView lifecycle
@@ -220,19 +222,140 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
   end
 
   defp load_surveillance_profiles(_time_range) do
-    # Return empty list for now - this would normally load from ThreatSurveillance
-    []
+    # Load profiles from the Surveillance context
+    case Surveillance.list_profiles(active_only: true, limit: 100) do
+      {:ok, profiles} ->
+        profiles
+
+      {:error, reason} ->
+        Logger.warning("Failed to load surveillance profiles: #{inspect(reason)}")
+        []
+    end
+  rescue
+    error ->
+      Logger.error("Exception loading surveillance profiles: #{inspect(error)}")
+      []
   end
 
-  defp calculate_surveillance_metrics(_profiles, _time_range) do
-    # Return basic metrics structure
-    %{
-      total_profiles: 0,
-      active_alerts: 0,
-      match_rate: 0.0,
-      avg_response: "N/A",
-      system_health: "Good"
-    }
+  defp calculate_surveillance_metrics(profiles, time_range) do
+    # Calculate real metrics from profiles and surveillance data
+    total_profiles = length(profiles)
+
+    # Get surveillance metrics from the context
+    metrics_result =
+      try do
+        Surveillance.get_surveillance_metrics()
+      rescue
+        _ -> {:error, :service_unavailable}
+      end
+
+    # Get recent matches count for the time range
+    recent_matches_count = get_recent_matches_count(time_range)
+
+    case metrics_result do
+      {:ok, surveillance_metrics} ->
+        %{
+          total_profiles: total_profiles,
+          active_alerts: recent_matches_count,
+          match_rate: calculate_match_rate(profiles, time_range),
+          avg_response: format_response_time(surveillance_metrics.avg_response_time_ms),
+          system_health: determine_system_health(surveillance_metrics)
+        }
+
+      {:error, _} ->
+        # Fallback when service is unavailable
+        %{
+          total_profiles: total_profiles,
+          active_alerts: recent_matches_count,
+          match_rate: 0.0,
+          avg_response: "N/A",
+          system_health: "Unknown"
+        }
+    end
+  end
+
+  defp get_recent_matches_count(time_range) do
+    since = time_range_to_datetime(time_range)
+
+    case Surveillance.get_recent_matches(since: since, limit: 1000) do
+      {:ok, matches} -> length(matches)
+      {:error, _} -> 0
+    end
+  rescue
+    _ -> 0
+  end
+
+  defp calculate_match_rate(profiles, time_range) do
+    if Enum.empty?(profiles) do
+      0.0
+    else
+      since = time_range_to_datetime(time_range)
+
+      # Get match counts for each profile
+      match_counts =
+        profiles
+        |> Enum.map(fn profile ->
+          case Surveillance.get_match_statistics(profile.id, since) do
+            {:ok, stats} -> Map.get(stats, :total_matches, 0)
+            {:error, _} -> 0
+          end
+        end)
+
+      _total_matches = Enum.sum(match_counts)
+      active_profiles = Enum.count(match_counts, &(&1 > 0))
+
+      if Enum.empty?(profiles) do
+        0.0
+      else
+        active_profiles / length(profiles) * 100
+      end
+    end
+  rescue
+    _ -> 0.0
+  end
+
+  defp time_range_to_datetime(:last_hour) do
+    DateTime.add(DateTime.utc_now(), -3600, :second)
+  end
+
+  defp time_range_to_datetime(:last_24h) do
+    DateTime.add(DateTime.utc_now(), -86_400, :second)
+  end
+
+  defp time_range_to_datetime(:last_7d) do
+    DateTime.add(DateTime.utc_now(), -604_800, :second)
+  end
+
+  defp time_range_to_datetime(:last_30d) do
+    DateTime.add(DateTime.utc_now(), -2_592_000, :second)
+  end
+
+  defp time_range_to_datetime(_) do
+    DateTime.add(DateTime.utc_now(), -86_400, :second)
+  end
+
+  defp format_response_time(nil), do: "N/A"
+
+  defp format_response_time(ms) when is_number(ms) do
+    cond do
+      ms < 1 -> "< 1ms"
+      ms < 1000 -> "#{round(ms)}ms"
+      true -> "#{Float.round(ms / 1000, 1)}s"
+    end
+  end
+
+  defp format_response_time(_), do: "N/A"
+
+  defp determine_system_health(metrics) do
+    avg_response = Map.get(metrics, :avg_response_time_ms, 0)
+    cache_hit_rate = Map.get(metrics, :cache_hit_rate, 0)
+
+    cond do
+      avg_response > 5000 -> "Critical"
+      avg_response > 1000 -> "Degraded"
+      cache_hit_rate < 0.5 -> "Fair"
+      true -> "Good"
+    end
   end
 
   defp build_path_with_params(socket, params) do

@@ -312,7 +312,7 @@ defmodule EveDmv.Contexts.Corporation.Services.RecruitmentService do
 
   defp score_corp_history(corp_history) do
     # Analyze corporation history for stability
-    if Enum.empty?(corp_history) do
+    if corp_history == [] do
       # Neutral score for new players
       50
     else
@@ -342,8 +342,8 @@ defmodule EveDmv.Contexts.Corporation.Services.RecruitmentService do
       application.experience_description &&
         String.length(application.experience_description) > 30,
       application.timezone_info != nil,
-      application.preferred_activities != nil && length(application.preferred_activities) > 0,
-      application.references != nil && length(application.references) > 0
+      application.preferred_activities != nil && application.preferred_activities != [],
+      application.references != nil && application.references != []
     ]
 
     completed_factors = Enum.count(quality_factors, & &1)
@@ -416,7 +416,7 @@ defmodule EveDmv.Contexts.Corporation.Services.RecruitmentService do
       end
 
     corp_history_red_flags =
-      if application.corp_history && length(application.corp_history) > 10 do
+      if application.corp_history && Enum.count(application.corp_history) > 10 do
         ["Frequent corporation changes" | security_red_flags]
       else
         security_red_flags
@@ -437,9 +437,9 @@ defmodule EveDmv.Contexts.Corporation.Services.RecruitmentService do
     screening = perform_automated_screening(application)
 
     cond do
-      score >= 80 and Enum.empty?(screening.red_flags) -> :strongly_recommend
-      score >= 65 and length(screening.red_flags) <= 1 -> :recommend
-      score >= 50 and length(screening.red_flags) <= 2 -> :conditional_recommend
+      score >= 80 and screening.red_flags == [] -> :strongly_recommend
+      score >= 65 and Enum.count(screening.red_flags) <= 1 -> :recommend
+      score >= 50 and Enum.count(screening.red_flags) <= 2 -> :conditional_recommend
       score >= 35 -> :review_required
       true -> :reject
     end
@@ -466,13 +466,13 @@ defmodule EveDmv.Contexts.Corporation.Services.RecruitmentService do
       end
 
     final_notes =
-      if Enum.empty?(screening.red_flags) do
+      if screening.red_flags == [] do
         security_notes
       else
         ["Red flags identified: #{Enum.join(screening.red_flags, ", ")}" | security_notes]
       end
 
-    if Enum.empty?(final_notes) do
+    if final_notes == [] do
       ["Standard application, meets basic requirements"]
     else
       Enum.reverse(final_notes)
@@ -518,7 +518,7 @@ defmodule EveDmv.Contexts.Corporation.Services.RecruitmentService do
 
   defp requires_manual_review?(screening, recommendation) do
     recommendation in [:conditional_recommend, :review_required] or
-      length(screening.red_flags) > 0
+      screening.red_flags != []
   end
 
   defp schedule_interviews(corporation_id, applications) do
@@ -635,7 +635,7 @@ defmodule EveDmv.Contexts.Corporation.Services.RecruitmentService do
 
     decision =
       cond do
-        score >= 75 and Enum.empty?(screening.red_flags) -> :approved
+        score >= 75 and screening.red_flags == [] -> :approved
         score >= 60 and Enum.count(screening.red_flags) <= 1 -> :approved
         score >= 40 and Enum.count(screening.red_flags) <= 2 -> :deferred
         true -> :rejected
@@ -777,7 +777,7 @@ defmodule EveDmv.Contexts.Corporation.Services.RecruitmentService do
       Map.values(stage_efficiency)
       |> Enum.map(& &1.efficiency)
 
-    if Enum.empty?(efficiencies) do
+    if efficiencies == [] do
       0
     else
       Enum.sum(efficiencies) / length(efficiencies)
@@ -802,13 +802,13 @@ defmodule EveDmv.Contexts.Corporation.Services.RecruitmentService do
   end
 
   defp assess_strength_impact(strengths) do
-    if length(strengths) >= 3, do: :high_impact, else: :moderate_impact
+    if Enum.count(strengths) >= 3, do: :high_impact, else: :moderate_impact
   end
 
   defp assess_weakness_impact(weaknesses) do
     cond do
-      length(weaknesses) >= 4 -> :high_impact
-      length(weaknesses) >= 2 -> :moderate_impact
+      Enum.count(weaknesses) >= 4 -> :high_impact
+      Enum.count(weaknesses) >= 2 -> :moderate_impact
       true -> :low_impact
     end
   end
@@ -823,7 +823,7 @@ defmodule EveDmv.Contexts.Corporation.Services.RecruitmentService do
   end
 
   defp analyze_cohort_performance(cohorts) do
-    if Enum.empty?(cohorts) do
+    if cohorts == [] do
       %{performance: :no_data}
     else
       avg_retention =
@@ -879,7 +879,7 @@ defmodule EveDmv.Contexts.Corporation.Services.RecruitmentService do
 
     # Low cohort performance
     final_risk_factors =
-      if Enum.empty?(retention_analysis.cohorts) do
+      if retention_analysis.cohorts == [] do
         trend_risk_factors
       else
         avg_retention =
