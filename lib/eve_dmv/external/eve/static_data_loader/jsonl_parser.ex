@@ -17,14 +17,19 @@ defmodule EveDmv.Eve.StaticDataLoader.JsonlParser do
       {:ok, types_stream} = JsonlParser.stream_file("/path/to/types.jsonl")
       Enum.each(types_stream, fn item -> process_item(item) end)
 
-      # Or parse all at once for smaller files
-      {:ok, systems} = JsonlParser.parse_solar_systems("/path/to/mapSolarSystems.jsonl")
+      # Typed parsers also return streams with schema-normalized keys
+      {:ok, systems_stream} = JsonlParser.parse_solar_systems("/path/to/mapSolarSystems.jsonl")
+      Enum.each(systems_stream, fn system -> process_system(system) end)
+
+      # Use parse_file/2 to load all items into a list at once
+      {:ok, items_list} = JsonlParser.parse_file("/path/to/file.jsonl")
   """
 
   require Logger
 
   @type parsed_item :: map()
   @type parse_result :: {:ok, [parsed_item()]} | {:error, term()}
+  @type stream_result :: {:ok, Enumerable.t()} | {:error, term()}
 
   # ============================================================================
   # Public API - Streaming
@@ -93,9 +98,9 @@ defmodule EveDmv.Eve.StaticDataLoader.JsonlParser do
   @doc """
   Parses types.jsonl file into item type records.
 
-  Returns a list of maps with normalized keys matching the ItemType schema.
+  Returns a stream of maps with normalized keys matching the ItemType schema.
   """
-  @spec parse_types(String.t()) :: parse_result()
+  @spec parse_types(String.t()) :: stream_result()
   def parse_types(file_path) do
     stream_file(file_path, transform: &transform_type/1)
   end
@@ -103,7 +108,7 @@ defmodule EveDmv.Eve.StaticDataLoader.JsonlParser do
   @doc """
   Parses groups.jsonl file into item group records.
   """
-  @spec parse_groups(String.t()) :: parse_result()
+  @spec parse_groups(String.t()) :: stream_result()
   def parse_groups(file_path) do
     stream_file(file_path, transform: &transform_group/1)
   end
@@ -111,7 +116,7 @@ defmodule EveDmv.Eve.StaticDataLoader.JsonlParser do
   @doc """
   Parses categories.jsonl file into item category records.
   """
-  @spec parse_categories(String.t()) :: parse_result()
+  @spec parse_categories(String.t()) :: stream_result()
   def parse_categories(file_path) do
     stream_file(file_path, transform: &transform_category/1)
   end
@@ -119,7 +124,7 @@ defmodule EveDmv.Eve.StaticDataLoader.JsonlParser do
   @doc """
   Parses mapSolarSystems.jsonl file into solar system records.
   """
-  @spec parse_solar_systems(String.t()) :: parse_result()
+  @spec parse_solar_systems(String.t()) :: stream_result()
   def parse_solar_systems(file_path) do
     stream_file(file_path, transform: &transform_solar_system/1)
   end
@@ -127,7 +132,7 @@ defmodule EveDmv.Eve.StaticDataLoader.JsonlParser do
   @doc """
   Parses mapRegions.jsonl file into region records.
   """
-  @spec parse_regions(String.t()) :: parse_result()
+  @spec parse_regions(String.t()) :: stream_result()
   def parse_regions(file_path) do
     stream_file(file_path, transform: &transform_region/1)
   end
@@ -135,7 +140,7 @@ defmodule EveDmv.Eve.StaticDataLoader.JsonlParser do
   @doc """
   Parses mapConstellations.jsonl file into constellation records.
   """
-  @spec parse_constellations(String.t()) :: parse_result()
+  @spec parse_constellations(String.t()) :: stream_result()
   def parse_constellations(file_path) do
     stream_file(file_path, transform: &transform_constellation/1)
   end
@@ -143,7 +148,7 @@ defmodule EveDmv.Eve.StaticDataLoader.JsonlParser do
   @doc """
   Parses mapStargates.jsonl file into stargate records.
   """
-  @spec parse_stargates(String.t()) :: parse_result()
+  @spec parse_stargates(String.t()) :: stream_result()
   def parse_stargates(file_path) do
     stream_file(file_path, transform: &transform_stargate/1)
   end
@@ -336,16 +341,30 @@ defmodule EveDmv.Eve.StaticDataLoader.JsonlParser do
     end
   end
 
-  defp to_float(nil), do: 0.0
+  defp to_float(nil) do
+    Logger.warning("to_float received nil value, defaulting to 0.0")
+    0.0
+  end
+
   defp to_float(value) when is_float(value), do: value
-  defp to_float(value) when is_integer(value), do: value / 1.0
+  defp to_float(value) when is_integer(value), do: value * 1.0
 
   defp to_float(value) when is_binary(value) do
     case Float.parse(value) do
-      {f, _} -> f
-      :error -> 0.0
+      {f, _} ->
+        f
+
+      :error ->
+        Logger.warning(
+          "to_float failed to parse binary value: #{inspect(value)}, defaulting to 0.0"
+        )
+
+        0.0
     end
   end
 
-  defp to_float(_), do: 0.0
+  defp to_float(value) do
+    Logger.warning("to_float received unexpected type: #{inspect(value)}, defaulting to 0.0")
+    0.0
+  end
 end

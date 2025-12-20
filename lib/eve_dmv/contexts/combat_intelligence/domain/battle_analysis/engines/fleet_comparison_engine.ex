@@ -9,6 +9,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
   - Strategic impact assessment
   """
 
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   require Logger
 
   @doc """
@@ -382,9 +383,5 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Engines.Fleet
     (frigates * 3000 + (total - frigates - capitals) * 1500 + capitals * 500) / total
   end
 
-  defp average(list) when is_list(list) and list != [] do
-    Enum.sum(list) / length(list)
-  end
-
-  defp average(_), do: 0.0
+  defp average(list), do: SharedUtilities.average(list)
 end

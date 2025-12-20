@@ -280,30 +280,109 @@ defmodule EveDmv.Eve.StaticDataLoader.CcpSdeClient do
 
   defp download_large_file(url, output_path, headers, opts) do
     progress_callback = Keyword.get(opts, :progress_callback)
-
-    # Use streaming download for large files
     request = Finch.build(:get, url, headers)
 
-    with {:ok, response} <-
-           Finch.request(request, EveDmv.Finch, receive_timeout: @download_timeout) do
-      case response.status do
-        200 ->
-          # Get content length for progress reporting
-          content_length = get_content_length(response.headers)
+    # State for the streaming handler
+    initial_state = %{
+      status: nil,
+      content_length: nil,
+      bytes_downloaded: 0,
+      file: nil,
+      error: nil
+    }
 
-          if progress_callback && content_length do
-            progress_callback.(byte_size(response.body), content_length)
+    # Open file for writing before starting the stream
+    case File.open(output_path, [:write, :binary]) do
+      {:ok, file} ->
+        try do
+          stream_result =
+            Finch.stream(
+              request,
+              EveDmv.Finch,
+              %{initial_state | file: file},
+              fn
+                {:status, status}, state ->
+                  handle_stream_status(status, state)
+
+                {:headers, response_headers}, state ->
+                  handle_stream_headers(response_headers, state)
+
+                {:data, chunk}, state ->
+                  handle_stream_data(chunk, state, progress_callback)
+              end,
+              receive_timeout: @download_timeout
+            )
+
+          case stream_result do
+            {:ok, %{status: 200}} ->
+              {:ok, :downloaded}
+
+            {:ok, %{status: 304}} ->
+              # Clean up the empty file for 304 responses
+              File.rm(output_path)
+              {:ok, :not_modified}
+
+            {:ok, %{status: status}} ->
+              File.rm(output_path)
+              {:error, {:http_error, status}}
+
+            {:ok, %{error: error}} when error != nil ->
+              File.rm(output_path)
+              {:error, error}
+
+            {:error, reason} ->
+              File.rm(output_path)
+              {:error, reason}
           end
+        after
+          File.close(file)
+        end
 
-          File.write!(output_path, response.body)
-          {:ok, :downloaded}
+      {:error, reason} ->
+        {:error, {:file_open_error, reason}}
+    end
+  end
 
-        304 ->
-          {:ok, :not_modified}
+  defp handle_stream_status(status, state) do
+    case status do
+      200 ->
+        {:cont, %{state | status: status}}
 
-        status ->
-          {:error, {:http_error, status}}
-      end
+      304 ->
+        # For 304 Not Modified, we still continue to get the final state
+        {:cont, %{state | status: status}}
+
+      _other ->
+        # For other status codes, continue to capture the status but we'll handle it after
+        {:cont, %{state | status: status}}
+    end
+  end
+
+  defp handle_stream_headers(response_headers, state) do
+    content_length = get_content_length(response_headers)
+    {:cont, %{state | content_length: content_length}}
+  end
+
+  defp handle_stream_data(_chunk, %{status: status} = state, _progress_callback)
+       when status != 200 do
+    # Don't write data for non-200 responses
+    {:cont, state}
+  end
+
+  defp handle_stream_data(chunk, state, progress_callback) do
+    case IO.binwrite(state.file, chunk) do
+      :ok ->
+        new_bytes_downloaded = state.bytes_downloaded + byte_size(chunk)
+
+        # Call progress callback with incremental update
+        if progress_callback do
+          progress_callback.(new_bytes_downloaded, state.content_length)
+        end
+
+        {:cont, %{state | bytes_downloaded: new_bytes_downloaded}}
+
+      {:error, reason} ->
+        {:halt, %{state | error: {:write_error, reason}}}
     end
   end
 
@@ -342,6 +421,9 @@ defmodule EveDmv.Eve.StaticDataLoader.CcpSdeClient do
       "mapConstellations.jsonl" ->
         :constellations
 
+      # Optional SDE file - not in @required_sde_files because the application
+      # can function without stargate data. Used for enhanced system connectivity
+      # analysis when available. See parse_stargates/1 in JsonlParser.
       "mapStargates.jsonl" ->
         :stargates
 
@@ -352,7 +434,14 @@ defmodule EveDmv.Eve.StaticDataLoader.CcpSdeClient do
         try do
           String.to_existing_atom(key)
         rescue
-          ArgumentError -> :unknown_file
+          ArgumentError ->
+            Logger.warning(
+              "Unrecognized SDE file encountered: #{inspect(other)} (derived key: #{inspect(key)}). " <>
+                "Returning :unknown_file. If this file is needed, add it to @required_sde_files " <>
+                "and filename_to_key/1."
+            )
+
+            :unknown_file
         end
     end
   end

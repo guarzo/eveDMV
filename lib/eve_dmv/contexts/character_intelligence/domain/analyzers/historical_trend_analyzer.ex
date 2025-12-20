@@ -6,6 +6,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrend
 
   import Ash.Query
   alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   require Logger
 
   # Ship class classification ranges
@@ -934,8 +935,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrend
     end
   end
 
-  defp average([_ | _] = list), do: Enum.sum(list) / length(list)
-  defp average(_), do: 0.0
+  defp average(list), do: SharedUtilities.average(list)
 
   defp get_primary_timezone(activity_trend) do
     # Find most common active hours from trend data

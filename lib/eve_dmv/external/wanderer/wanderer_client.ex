@@ -249,16 +249,17 @@ defmodule EveDmv.Intelligence.WandererClient do
   @impl GenServer
   def handle_cast({:unmonitor_map, map_id}, state) do
     new_monitored = MapSet.delete(state.monitored_maps, map_id)
+    connections = state.sse_connections || %{}
 
     # Stop SSE connection for this map
-    case get_in(state.sse_connections || %{}, [map_id]) do
+    case Map.get(connections, map_id) do
       nil ->
         Logger.info("No longer monitoring map #{map_id}")
         {:noreply, %{state | monitored_maps: new_monitored}}
 
       sse_pid ->
         send(sse_pid, :close)
-        new_sse_connections = Map.delete(state.sse_connections || %{}, map_id)
+        new_sse_connections = Map.delete(connections, map_id)
         Logger.info("Stopped SSE monitoring for map #{map_id}")
         {:noreply, %{state | monitored_maps: new_monitored, sse_connections: new_sse_connections}}
     end

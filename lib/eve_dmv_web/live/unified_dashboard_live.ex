@@ -12,6 +12,20 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
 
   require Logger
 
+  # System health thresholds
+  # Response time above this value (in ms) indicates critical system issues
+  @critical_response_threshold_ms 5000
+  # Response time above this value (in ms) indicates degraded performance
+  @degraded_response_threshold_ms 1000
+  # Cache hit rate below this value indicates suboptimal caching
+  @minimum_acceptable_cache_hit_rate 0.5
+
+  # Time range constants in seconds
+  @seconds_per_hour 3_600
+  @seconds_per_day 86_400
+  @seconds_per_week 604_800
+  @seconds_per_30_days 2_592_000
+
   # LiveView lifecycle
 
   @impl Phoenix.LiveView
@@ -301,37 +315,31 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
           end
         end)
 
-      _total_matches = Enum.sum(match_counts)
       active_profiles = Enum.count(match_counts, &(&1 > 0))
-
-      if Enum.empty?(profiles) do
-        0.0
-      else
-        active_profiles / length(profiles) * 100
-      end
+      active_profiles / length(profiles) * 100
     end
   rescue
     _ -> 0.0
   end
 
   defp time_range_to_datetime(:last_hour) do
-    DateTime.add(DateTime.utc_now(), -3600, :second)
+    DateTime.add(DateTime.utc_now(), -@seconds_per_hour, :second)
   end
 
   defp time_range_to_datetime(:last_24h) do
-    DateTime.add(DateTime.utc_now(), -86_400, :second)
+    DateTime.add(DateTime.utc_now(), -@seconds_per_day, :second)
   end
 
   defp time_range_to_datetime(:last_7d) do
-    DateTime.add(DateTime.utc_now(), -604_800, :second)
+    DateTime.add(DateTime.utc_now(), -@seconds_per_week, :second)
   end
 
   defp time_range_to_datetime(:last_30d) do
-    DateTime.add(DateTime.utc_now(), -2_592_000, :second)
+    DateTime.add(DateTime.utc_now(), -@seconds_per_30_days, :second)
   end
 
   defp time_range_to_datetime(_) do
-    DateTime.add(DateTime.utc_now(), -86_400, :second)
+    DateTime.add(DateTime.utc_now(), -@seconds_per_day, :second)
   end
 
   defp format_response_time(nil), do: "N/A"
@@ -351,9 +359,9 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
     cache_hit_rate = Map.get(metrics, :cache_hit_rate, 0)
 
     cond do
-      avg_response > 5000 -> "Critical"
-      avg_response > 1000 -> "Degraded"
-      cache_hit_rate < 0.5 -> "Fair"
+      avg_response > @critical_response_threshold_ms -> "Critical"
+      avg_response > @degraded_response_threshold_ms -> "Degraded"
+      cache_hit_rate < @minimum_acceptable_cache_hit_rate -> "Fair"
       true -> "Good"
     end
   end

@@ -4,11 +4,6 @@ defmodule EveDmv.Eve.StaticDataLoader.FileManager do
 
   Downloads the official CCP Static Data Export in JSONL format from CCP's developer portal.
   Uses ZIP compression and contains all static data files.
-
-  ## CCP SDE
-
-  Downloads the official JSONL format from CCP's developer portal.
-  Uses ZIP compression and contains all static data files.
   """
 
   alias EveDmv.Eve.StaticDataLoader.CcpSdeClient
@@ -36,13 +31,16 @@ defmodule EveDmv.Eve.StaticDataLoader.FileManager do
   @doc """
   Gets the mapping of required file types to filenames.
   """
+  @spec get_required_files() :: map()
   def get_required_files, do: @ccp_files
 
   @doc """
   Gets the file mapping for the CCP source.
+
+  Delegates to `get_required_files/0` for the canonical file mapping.
   """
   @spec get_files_for_source() :: map()
-  def get_files_for_source, do: @ccp_files
+  def get_files_for_source, do: get_required_files()
 
   @doc """
   Ensures SDE files are available.
@@ -195,25 +193,16 @@ defmodule EveDmv.Eve.StaticDataLoader.FileManager do
 
   defp find_ccp_files(extracted_dir, required_files) do
     if File.exists?(extracted_dir) do
-      file_paths =
-        Enum.reduce_while(required_files, {:ok, %{}}, fn {key, filename}, {:ok, acc} ->
-          case Path.wildcard(Path.join([extracted_dir, "**", filename])) do
-            [path | _] ->
-              {:cont, {:ok, Map.put(acc, key, path)}}
+      Enum.reduce_while(required_files, {:ok, %{}}, fn {key, filename}, {:ok, acc} ->
+        case Path.wildcard(Path.join([extracted_dir, "**", filename])) do
+          [path | _] ->
+            {:cont, {:ok, Map.put(acc, key, path)}}
 
-            [] ->
-              Logger.debug("Missing CCP file: #{filename}")
-              {:halt, {:error, :missing_files}}
-          end
-        end)
-
-      case file_paths do
-        {:ok, paths} when map_size(paths) == map_size(required_files) ->
-          {:ok, paths}
-
-        _ ->
-          {:error, :missing_files}
-      end
+          [] ->
+            Logger.debug("Missing CCP file: #{filename}")
+            {:halt, {:error, :missing_files}}
+        end
+      end)
     else
       {:error, :missing_files}
     end

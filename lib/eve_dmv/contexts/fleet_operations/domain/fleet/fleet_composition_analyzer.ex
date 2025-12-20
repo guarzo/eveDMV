@@ -62,15 +62,29 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
     }
   end
 
+  # Standard wormhole size mass thresholds (in kg)
+  # Small: Frigate-only holes (e.g., C13 frig holes)
+  @small_wh_max_ship_mass 5_000_000
+  # Medium: Cruiser-class holes (most common WH connections)
+  @medium_wh_max_ship_mass 90_000_000
+  # Large: Battleship-class holes (larger WH connections)
+  @large_wh_max_ship_mass 300_000_000
+
   @doc """
   Analyze fleet wormhole compatibility based on ship masses and restrictions.
+
+  Derives compatibility flags from ship mass compared to standard wormhole size thresholds:
+  - Small: Ships with mass <= 5M kg (frigates)
+  - Medium: Ships with mass <= 90M kg (cruisers and below)
+  - Large: Ships with mass <= 300M kg (battleships and below)
   """
   def analyze_fleet_wh_compatibility(ship_analysis) do
     total_mass = Enum.sum(Enum.map(ship_analysis, & &1.mass_kg))
 
-    small_compatible = Enum.count(ship_analysis, & &1.wh_restrictions.can_pass_small)
-    medium_compatible = Enum.count(ship_analysis, & &1.wh_restrictions.can_pass_medium)
-    large_compatible = Enum.count(ship_analysis, & &1.wh_restrictions.can_pass_large)
+    # Derive compatibility from ship mass vs standard wormhole thresholds
+    small_compatible = Enum.count(ship_analysis, &(&1.mass_kg <= @small_wh_max_ship_mass))
+    medium_compatible = Enum.count(ship_analysis, &(&1.mass_kg <= @medium_wh_max_ship_mass))
+    large_compatible = Enum.count(ship_analysis, &(&1.mass_kg <= @large_wh_max_ship_mass))
 
     %{
       total_mass: total_mass,

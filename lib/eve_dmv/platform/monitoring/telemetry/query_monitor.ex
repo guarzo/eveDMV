@@ -320,7 +320,9 @@ defmodule EveDmv.Telemetry.QueryMonitor do
     normalized_lower = String.downcase(String.trim(normalized_query))
 
     is_transaction_statement =
-      Enum.any?(@transaction_statements, fn stmt -> normalized_lower == stmt end)
+      Enum.any?(@transaction_statements, fn stmt ->
+        String.starts_with?(normalized_lower, stmt)
+      end)
 
     # Detect N+1 pattern: same query executed many times in a short window
     if execution_count >= @n_plus_one_threshold and not is_transaction_statement do
@@ -410,9 +412,10 @@ defmodule EveDmv.Telemetry.QueryMonitor do
 
     # Check for N+1 alerts
     issues_with_n_plus_one =
-      if state.n_plus_one_alerts == [],
-        do: issues_with_frequent,
-        else: ["#{length(state.n_plus_one_alerts)} N+1 query alerts" | issues_with_frequent]
+      case state.n_plus_one_alerts do
+        [] -> issues_with_frequent
+        alerts -> ["#{length(alerts)} N+1 query alerts" | issues_with_frequent]
+      end
 
     # Check for queries with high duration variance
     high_variance_queries =

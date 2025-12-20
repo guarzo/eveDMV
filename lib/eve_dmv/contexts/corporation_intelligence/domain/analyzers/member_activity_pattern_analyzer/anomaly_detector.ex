@@ -221,7 +221,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.MemberActivit
     # Simple check for timezone pattern changes
     hour_diff = baseline.typical_hours -- recent.typical_hours
 
-    if hour_diff != [] and length(hour_diff) > 2 do
+    if length(hour_diff) > 2 do
       anomaly = %{
         type: :timezone_pattern_change,
         severity: :high,

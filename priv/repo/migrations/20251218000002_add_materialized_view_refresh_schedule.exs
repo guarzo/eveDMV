@@ -158,35 +158,59 @@ defmodule EveDmv.Repo.Migrations.AddMaterializedViewRefreshSchedule do
     pg_cron_available = check_pg_cron_available()
 
     if pg_cron_available do
-      # Remove scheduled jobs
+      # Remove scheduled jobs (only if they exist)
       execute """
-      SELECT cron.unschedule('refresh_ship_type_usage')
-      WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'refresh_ship_type_usage');
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'refresh_ship_type_usage') THEN
+          PERFORM cron.unschedule('refresh_ship_type_usage');
+        END IF;
+      END $$;
       """
 
       execute """
-      SELECT cron.unschedule('refresh_fleet_composition_summary')
-      WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'refresh_fleet_composition_summary');
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'refresh_fleet_composition_summary') THEN
+          PERFORM cron.unschedule('refresh_fleet_composition_summary');
+        END IF;
+      END $$;
       """
 
       execute """
-      SELECT cron.unschedule('refresh_high_value_targets')
-      WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'refresh_high_value_targets');
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'refresh_high_value_targets') THEN
+          PERFORM cron.unschedule('refresh_high_value_targets');
+        END IF;
+      END $$;
       """
 
       execute """
-      SELECT cron.unschedule('refresh_timezone_activity_patterns')
-      WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'refresh_timezone_activity_patterns');
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'refresh_timezone_activity_patterns') THEN
+          PERFORM cron.unschedule('refresh_timezone_activity_patterns');
+        END IF;
+      END $$;
       """
 
       execute """
-      SELECT cron.unschedule('refresh_character_activity_summary')
-      WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'refresh_character_activity_summary');
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'refresh_character_activity_summary') THEN
+          PERFORM cron.unschedule('refresh_character_activity_summary');
+        END IF;
+      END $$;
       """
 
       execute """
-      SELECT cron.unschedule('refresh_system_activity_heatmap')
-      WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'refresh_system_activity_heatmap');
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'refresh_system_activity_heatmap') THEN
+          PERFORM cron.unschedule('refresh_system_activity_heatmap');
+        END IF;
+      END $$;
       """
     end
 

@@ -420,6 +420,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.ThreatAssessmentEngine do
   end
 
   defp analyze_threat_trends(character_id, current_score) do
+    # analyze_threat_trends always returns {:ok, trends} per its spec
     {:ok, trends} = HistoricalTrendAnalysis.analyze_threat_trends(character_id, current_score)
     trends
   end

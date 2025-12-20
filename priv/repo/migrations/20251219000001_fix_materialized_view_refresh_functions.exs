@@ -20,10 +20,10 @@ defmodule EveDmv.Repo.Migrations.FixMaterializedViewRefreshFunctions do
     DO $$
     BEGIN
       IF NOT EXISTS (
-        SELECT 1 FROM pg_indexes
-        WHERE tablename = 'character_activity_summary'
-        AND indexdef LIKE '%UNIQUE%'
-        AND indexdef LIKE '%character_id%'
+        SELECT 1 FROM pg_index i
+        JOIN pg_class c ON c.oid = i.indrelid
+        WHERE c.relname = 'character_activity_summary'
+        AND i.indisunique = true
       ) THEN
         CREATE UNIQUE INDEX IF NOT EXISTS character_activity_summary_character_id_unique_idx
         ON character_activity_summary (character_id);
@@ -38,9 +38,10 @@ defmodule EveDmv.Repo.Migrations.FixMaterializedViewRefreshFunctions do
     DO $$
     BEGIN
       IF NOT EXISTS (
-        SELECT 1 FROM pg_indexes
-        WHERE tablename = 'corporation_member_summary'
-        AND indexdef LIKE '%UNIQUE%'
+        SELECT 1 FROM pg_index i
+        JOIN pg_class c ON c.oid = i.indrelid
+        WHERE c.relname = 'corporation_member_summary'
+        AND i.indisunique = true
       ) THEN
         CREATE UNIQUE INDEX IF NOT EXISTS corporation_member_summary_corp_char_unique_idx
         ON corporation_member_summary (corporation_id, character_id);

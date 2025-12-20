@@ -323,24 +323,21 @@ defmodule EveDmv.Contexts.Combat.Resources.ShipFitting do
       |> Ash.Query.filter(type_name: ship_name)
       |> Ash.Query.filter(is_ship: true)
 
-    case Ash.read_one(query) do
+    case Ash.read_one(query, domain: EveDmv.Api) do
       {:ok, ship} when not is_nil(ship) ->
         ship.type_id
 
       _ ->
-        # Try case-insensitive search
+        # Try case-insensitive search using the existing exact_name_search action
+        # which performs database-level case-insensitive comparison
         ships_query =
           EveDmv.Eve.ItemType
+          |> Ash.Query.for_read(:exact_name_search, %{type_name: ship_name})
           |> Ash.Query.filter(is_ship: true)
 
-        case Ash.read(ships_query) do
-          {:ok, ships} ->
-            ship =
-              Enum.find(ships, fn s ->
-                String.downcase(s.type_name) == String.downcase(ship_name)
-              end)
-
-            if ship, do: ship.type_id, else: 0
+        case Ash.read_one(ships_query, domain: EveDmv.Api) do
+          {:ok, ship} when not is_nil(ship) ->
+            ship.type_id
 
           _ ->
             0

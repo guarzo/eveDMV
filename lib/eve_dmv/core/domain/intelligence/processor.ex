@@ -218,7 +218,7 @@ defmodule EveDmv.Shared.Intelligence.Processor do
       |> Enum.map(fn {_source, data} -> Map.get(data, :reliability, 0.0) end)
       |> Enum.reject(&(&1 == 0.0))
 
-    if reliabilities == [] do
+    if Enum.empty?(reliabilities) do
       0.0
     else
       Float.round(Enum.sum(reliabilities) / length(reliabilities), 2)
@@ -328,7 +328,7 @@ defmodule EveDmv.Shared.Intelligence.Processor do
   end
 
   defp determine_scan_threat_level(threat_scans) do
-    count = Enum.count(threat_scans)
+    count = length(threat_scans)
 
     cond do
       count >= 5 -> :critical
@@ -403,7 +403,7 @@ defmodule EveDmv.Shared.Intelligence.Processor do
   defp determine_price_trend(data) do
     price_changes = data[:price_changes] || []
 
-    if price_changes == [] do
+    if Enum.empty?(price_changes) do
       :unknown
     else
       average_change =

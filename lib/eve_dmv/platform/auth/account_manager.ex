@@ -210,8 +210,8 @@ defmodule EveDmv.Users.AccountManager do
   @spec link_user_to_account(user(), account()) :: {:ok, user()} | error()
   defp link_user_to_account(user, account) do
     user
-    |> Ash.Changeset.for_update(:link_to_account, %{account_id: account.id}, domain: Api)
-    |> Ash.update()
+    |> Ash.Changeset.for_update(:link_to_account, %{account_id: account.id})
+    |> Ash.update(domain: EveDmv.Api)
   end
 
   @spec get_account!(account_id()) :: account() | no_return()

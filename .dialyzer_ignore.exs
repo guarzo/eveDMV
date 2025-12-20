@@ -23,16 +23,34 @@
   # Example: `if Mix.env() == :prod do ...` shows as "pattern can never match true"
   # when compiled/analyzed in :dev mode.
 
-  ~r/pattern_match.*The pattern can never match the type true/,
+  # router.ex:212 - `if Mix.env() == :prod do` for production-only LiveDashboard routes
+  # This is a compile-time conditional that dialyzer sees as a runtime check
+  ~r{lib/eve_dmv_web/router\.ex.*pattern_match.*The pattern can never match the type true},
 
   # ===========================================
-  # DEAD CODE IN EXHAUSTIVE PATTERN MATCHES
+  # DEAD CODE IN EXHAUSTIVE PATTERN MATCHES (pattern_match_cov)
   # ===========================================
   # Some functions have catch-all clauses for defensive programming
   # that dialyzer correctly identifies as unreachable. These are
   # intentional for future-proofing and error handling.
+  #
+  # To add new entries: Run `mix dialyzer` and look for pattern_match_cov
+  # warnings, then add file-specific patterns below.
 
-  ~r/pattern_match_cov.*can never match/,
+  # application.ex - Defensive catch-all for supervisor child specs
+  ~r/application\.ex.*pattern_match_cov.*can never match/,
+
+  # cached_battle_analyzer.ex - Defensive pattern matching on cache results
+  ~r/cached_battle_analyzer\.ex.*pattern_match_cov.*can never match/,
+
+  # analytics_service.ex - Exhaustive pattern matching for analytics operations
+  ~r/analytics_service\.ex.*pattern_match_cov.*can never match/,
+
+  # behavioral_pattern_analyzer.ex - Defensive catch-all for behavior analysis
+  ~r/behavioral_pattern_analyzer\.ex.*pattern_match_cov.*can never match/,
+
+  # single_system_analyzer.ex - Defensive catch-all for system analysis
+  ~r/single_system_analyzer\.ex.*pattern_match_cov.*can never match/,
 
   # ===========================================
   # CACHE LAYER FALSE POSITIVES

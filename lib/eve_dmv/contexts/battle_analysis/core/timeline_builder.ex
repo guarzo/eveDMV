@@ -627,7 +627,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.TimelineBuilder do
     else
       min = Enum.min(counts)
       max = Enum.max(counts)
-      (max - min) / max < 0.2
+
+      if max == 0 do
+        true
+      else
+        (max - min) / max < 0.2
+      end
     end
   end
 

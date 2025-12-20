@@ -55,12 +55,16 @@ defmodule EveDmv.Eve.StaticDataLoader.FileManagerTest do
 
   describe "ensure_sde_files/1" do
     test "function exists and accepts a list of keys" do
+      # Ensure module is loaded before checking function export
+      Code.ensure_loaded!(FileManager)
       assert function_exported?(FileManager, :ensure_sde_files, 1)
     end
   end
 
   describe "ensure_ccp_files/1" do
     test "function exists" do
+      # Ensure module is loaded before checking function export
+      Code.ensure_loaded!(FileManager)
       assert function_exported?(FileManager, :ensure_ccp_files, 1)
     end
   end

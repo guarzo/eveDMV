@@ -9,6 +9,7 @@ defmodule EveDmv.Shared.Strategic.TrendAnalyzer do
   - Trend prediction
   """
 
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   require Logger
 
   @trend_analysis_minimum_points 5
@@ -886,11 +887,5 @@ defmodule EveDmv.Shared.Strategic.TrendAnalyzer do
     end
   end
 
-  defp average(list) do
-    if Enum.empty?(list) do
-      0.0
-    else
-      Enum.sum(list) / length(list)
-    end
-  end
+  defp average(list), do: SharedUtilities.average(list)
 end

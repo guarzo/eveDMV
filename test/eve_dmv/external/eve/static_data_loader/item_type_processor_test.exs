@@ -4,6 +4,11 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessorTest do
   alias EveDmv.Eve.StaticDataLoader.ItemTypeProcessor
 
   @fixtures_dir Path.join([__DIR__, "..", "..", "..", "..", "fixtures", "sde"])
+  @file_paths %{
+    item_types: Path.join(@fixtures_dir, "types_extended.jsonl"),
+    item_groups: Path.join(@fixtures_dir, "groups_extended.jsonl"),
+    item_categories: Path.join(@fixtures_dir, "categories_sample.jsonl")
+  }
 
   describe "get_killmail_category_ids/0" do
     test "returns the list of killmail-relevant category IDs" do
@@ -116,25 +121,13 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessorTest do
 
   describe "process_item_data_jsonl/2" do
     test "processes JSONL files and returns item types" do
-      file_paths = %{
-        item_types: Path.join(@fixtures_dir, "types_extended.jsonl"),
-        item_groups: Path.join(@fixtures_dir, "groups_extended.jsonl"),
-        item_categories: Path.join(@fixtures_dir, "categories_sample.jsonl")
-      }
-
-      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(file_paths)
+      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(@file_paths)
       assert is_list(item_types)
       assert Enum.any?(item_types)
     end
 
     test "filters to killmail-relevant categories by default" do
-      file_paths = %{
-        item_types: Path.join(@fixtures_dir, "types_extended.jsonl"),
-        item_groups: Path.join(@fixtures_dir, "groups_extended.jsonl"),
-        item_categories: Path.join(@fixtures_dir, "categories_sample.jsonl")
-      }
-
-      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(file_paths)
+      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(@file_paths)
 
       # Should include ships
       ships = Enum.filter(item_types, & &1.is_ship)
@@ -150,19 +143,13 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessorTest do
     end
 
     test "imports all items when filter_categories is false" do
-      file_paths = %{
-        item_types: Path.join(@fixtures_dir, "types_extended.jsonl"),
-        item_groups: Path.join(@fixtures_dir, "groups_extended.jsonl"),
-        item_categories: Path.join(@fixtures_dir, "categories_sample.jsonl")
-      }
-
       assert {:ok, item_types} =
-               ItemTypeProcessor.process_item_data_jsonl(file_paths, filter_categories: false)
+               ItemTypeProcessor.process_item_data_jsonl(@file_paths, filter_categories: false)
 
       # Should include blueprints when not filtering
       total_count = length(item_types)
 
-      assert {:ok, filtered_types} = ItemTypeProcessor.process_item_data_jsonl(file_paths)
+      assert {:ok, filtered_types} = ItemTypeProcessor.process_item_data_jsonl(@file_paths)
       filtered_count = length(filtered_types)
 
       # Unfiltered should have more items
@@ -170,39 +157,21 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessorTest do
     end
 
     test "includes sde_version in processed items" do
-      file_paths = %{
-        item_types: Path.join(@fixtures_dir, "types_extended.jsonl"),
-        item_groups: Path.join(@fixtures_dir, "groups_extended.jsonl"),
-        item_categories: Path.join(@fixtures_dir, "categories_sample.jsonl")
-      }
-
       assert {:ok, item_types} =
-               ItemTypeProcessor.process_item_data_jsonl(file_paths, sde_version: "test-version")
+               ItemTypeProcessor.process_item_data_jsonl(@file_paths, sde_version: "test-version")
 
       assert Enum.all?(item_types, &(&1.sde_version == "test-version"))
     end
 
     test "includes sde_build_number when provided" do
-      file_paths = %{
-        item_types: Path.join(@fixtures_dir, "types_extended.jsonl"),
-        item_groups: Path.join(@fixtures_dir, "groups_extended.jsonl"),
-        item_categories: Path.join(@fixtures_dir, "categories_sample.jsonl")
-      }
-
       assert {:ok, item_types} =
-               ItemTypeProcessor.process_item_data_jsonl(file_paths, sde_build_number: 3_142_455)
+               ItemTypeProcessor.process_item_data_jsonl(@file_paths, sde_build_number: 3_142_455)
 
       assert Enum.all?(item_types, &(&1.sde_build_number == 3_142_455))
     end
 
     test "correctly identifies ships" do
-      file_paths = %{
-        item_types: Path.join(@fixtures_dir, "types_extended.jsonl"),
-        item_groups: Path.join(@fixtures_dir, "groups_extended.jsonl"),
-        item_categories: Path.join(@fixtures_dir, "categories_sample.jsonl")
-      }
-
-      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(file_paths)
+      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(@file_paths)
 
       # Find the Rifter (frigate, group 25)
       rifter = Enum.find(item_types, &(&1.type_id == 587))
@@ -213,13 +182,7 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessorTest do
     end
 
     test "correctly identifies modules" do
-      file_paths = %{
-        item_types: Path.join(@fixtures_dir, "types_extended.jsonl"),
-        item_groups: Path.join(@fixtures_dir, "groups_extended.jsonl"),
-        item_categories: Path.join(@fixtures_dir, "categories_sample.jsonl")
-      }
-
-      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(file_paths)
+      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(@file_paths)
 
       # Find the Damage Control I
       dc = Enum.find(item_types, &(&1.type_id == 2048))
@@ -229,13 +192,7 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessorTest do
     end
 
     test "correctly identifies drones" do
-      file_paths = %{
-        item_types: Path.join(@fixtures_dir, "types_extended.jsonl"),
-        item_groups: Path.join(@fixtures_dir, "groups_extended.jsonl"),
-        item_categories: Path.join(@fixtures_dir, "categories_sample.jsonl")
-      }
-
-      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(file_paths)
+      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(@file_paths)
 
       # Find the Hobgoblin I
       hobgoblin = Enum.find(item_types, &(&1.type_id == 2456))
@@ -245,13 +202,7 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessorTest do
     end
 
     test "correctly identifies charges" do
-      file_paths = %{
-        item_types: Path.join(@fixtures_dir, "types_extended.jsonl"),
-        item_groups: Path.join(@fixtures_dir, "groups_extended.jsonl"),
-        item_categories: Path.join(@fixtures_dir, "categories_sample.jsonl")
-      }
-
-      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(file_paths)
+      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(@file_paths)
 
       # Find the Antimatter Charge S
       ammo = Enum.find(item_types, &(&1.type_id == 220))
@@ -261,13 +212,7 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessorTest do
     end
 
     test "correctly identifies implants" do
-      file_paths = %{
-        item_types: Path.join(@fixtures_dir, "types_extended.jsonl"),
-        item_groups: Path.join(@fixtures_dir, "groups_extended.jsonl"),
-        item_categories: Path.join(@fixtures_dir, "categories_sample.jsonl")
-      }
-
-      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(file_paths)
+      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(@file_paths)
 
       # Find the Snake Alpha
       implant = Enum.find(item_types, &(&1.type_id == 10_220))
@@ -277,13 +222,7 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessorTest do
     end
 
     test "correctly identifies deployables" do
-      file_paths = %{
-        item_types: Path.join(@fixtures_dir, "types_extended.jsonl"),
-        item_groups: Path.join(@fixtures_dir, "groups_extended.jsonl"),
-        item_categories: Path.join(@fixtures_dir, "categories_sample.jsonl")
-      }
-
-      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(file_paths)
+      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(@file_paths)
 
       # Find the Mobile Depot
       depot = Enum.find(item_types, &(&1.type_id == 28_846))
@@ -293,13 +232,7 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessorTest do
     end
 
     test "correctly identifies fighters" do
-      file_paths = %{
-        item_types: Path.join(@fixtures_dir, "types_extended.jsonl"),
-        item_groups: Path.join(@fixtures_dir, "groups_extended.jsonl"),
-        item_categories: Path.join(@fixtures_dir, "categories_sample.jsonl")
-      }
-
-      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(file_paths)
+      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(@file_paths)
 
       # Find the Dragonfly I
       fighter = Enum.find(item_types, &(&1.type_id == 40_340))
@@ -309,13 +242,7 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessorTest do
     end
 
     test "correctly identifies structures" do
-      file_paths = %{
-        item_types: Path.join(@fixtures_dir, "types_extended.jsonl"),
-        item_groups: Path.join(@fixtures_dir, "groups_extended.jsonl"),
-        item_categories: Path.join(@fixtures_dir, "categories_sample.jsonl")
-      }
-
-      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(file_paths)
+      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(@file_paths)
 
       # Find the Astrahus
       structure = Enum.find(item_types, &(&1.type_id == 35_833))
@@ -325,13 +252,7 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessorTest do
     end
 
     test "builds search keywords correctly" do
-      file_paths = %{
-        item_types: Path.join(@fixtures_dir, "types_extended.jsonl"),
-        item_groups: Path.join(@fixtures_dir, "groups_extended.jsonl"),
-        item_categories: Path.join(@fixtures_dir, "categories_sample.jsonl")
-      }
-
-      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(file_paths)
+      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(@file_paths)
 
       rifter = Enum.find(item_types, &(&1.type_id == 587))
       assert rifter != nil
@@ -344,13 +265,7 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessorTest do
 
   describe "analyze_item_types/1" do
     test "returns statistics about item types" do
-      file_paths = %{
-        item_types: Path.join(@fixtures_dir, "types_extended.jsonl"),
-        item_groups: Path.join(@fixtures_dir, "groups_extended.jsonl"),
-        item_categories: Path.join(@fixtures_dir, "categories_sample.jsonl")
-      }
-
-      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(file_paths)
+      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(@file_paths)
 
       stats = ItemTypeProcessor.analyze_item_types(item_types)
 
@@ -369,13 +284,7 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessorTest do
 
   describe "get_ship_types/1" do
     test "filters to only ship types" do
-      file_paths = %{
-        item_types: Path.join(@fixtures_dir, "types_extended.jsonl"),
-        item_groups: Path.join(@fixtures_dir, "groups_extended.jsonl"),
-        item_categories: Path.join(@fixtures_dir, "categories_sample.jsonl")
-      }
-
-      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(file_paths)
+      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(@file_paths)
 
       ships = ItemTypeProcessor.get_ship_types(item_types)
 
@@ -386,13 +295,7 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessorTest do
 
   describe "get_module_types/1" do
     test "filters to only module types" do
-      file_paths = %{
-        item_types: Path.join(@fixtures_dir, "types_extended.jsonl"),
-        item_groups: Path.join(@fixtures_dir, "groups_extended.jsonl"),
-        item_categories: Path.join(@fixtures_dir, "categories_sample.jsonl")
-      }
-
-      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(file_paths)
+      assert {:ok, item_types} = ItemTypeProcessor.process_item_data_jsonl(@file_paths)
 
       modules = ItemTypeProcessor.get_module_types(item_types)
 

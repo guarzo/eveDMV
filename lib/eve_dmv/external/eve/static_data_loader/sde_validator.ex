@@ -149,13 +149,22 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeValidator do
         breakdown =
           items
           |> Enum.group_by(& &1.category_id)
-          |> Enum.map(fn {cat_id, items} ->
-            {cat_id,
-             %{
-               count: length(items),
-               category_name: List.first(items).category_name,
-               is_killmail_relevant: cat_id in killmail_categories
-             }}
+          |> Enum.map(fn
+            {cat_id, [first | _rest] = items} ->
+              {cat_id,
+               %{
+                 count: length(items),
+                 category_name: first.category_name,
+                 is_killmail_relevant: cat_id in killmail_categories
+               }}
+
+            {cat_id, []} ->
+              {cat_id,
+               %{
+                 count: 0,
+                 category_name: nil,
+                 is_killmail_relevant: cat_id in killmail_categories
+               }}
           end)
           |> Enum.into(%{})
 
@@ -285,9 +294,9 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeValidator do
   Validates that a ship with the given type_id exists and returns its details.
   """
   @spec validate_ship_exists(integer()) :: {:ok, map()} | {:error, :not_found}
-  def validate_ship_exists(type_id) do
+  def validate_ship_exists(type_id_param) do
     case Ash.Query.new(ItemType)
-         |> Ash.Query.filter(type_id == ^type_id and is_ship == true)
+         |> Ash.Query.filter(type_id == ^type_id_param and is_ship == true)
          |> Ash.read_one(domain: Api) do
       {:ok, nil} ->
         {:error, :not_found}
@@ -326,37 +335,53 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeValidator do
     }
 
     # Time unfiltered processing
-    {unfiltered_time, {:ok, unfiltered_items}} =
+    {unfiltered_time, unfiltered_result} =
       :timer.tc(fn ->
         ItemTypeProcessor.process_item_data_jsonl(file_paths, filter_categories: false)
       end)
 
-    # Time filtered processing
-    {filtered_time, {:ok, filtered_items}} =
-      :timer.tc(fn ->
-        ItemTypeProcessor.process_item_data_jsonl(file_paths, filter_categories: true)
-      end)
+    case unfiltered_result do
+      {:ok, unfiltered_items} ->
+        # Time filtered processing
+        {filtered_time, filtered_result} =
+          :timer.tc(fn ->
+            ItemTypeProcessor.process_item_data_jsonl(file_paths, filter_categories: true)
+          end)
 
-    result = %{
-      unfiltered: %{
-        count: length(unfiltered_items),
-        time_ms: unfiltered_time / 1000
-      },
-      filtered: %{
-        count: length(filtered_items),
-        time_ms: filtered_time / 1000
-      },
-      speedup_pct: calculate_speedup_pct(unfiltered_time, filtered_time),
-      reduction_pct: calculate_reduction_pct(length(unfiltered_items), length(filtered_items))
-    }
+        case filtered_result do
+          {:ok, filtered_items} ->
+            result = %{
+              unfiltered: %{
+                count: length(unfiltered_items),
+                time_ms: unfiltered_time / 1000
+              },
+              filtered: %{
+                count: length(filtered_items),
+                time_ms: filtered_time / 1000
+              },
+              speedup_pct: calculate_speedup_pct(unfiltered_time, filtered_time),
+              reduction_pct:
+                calculate_reduction_pct(length(unfiltered_items), length(filtered_items))
+            }
 
-    Logger.info(
-      "Performance: Filtered is #{result.speedup_pct}% faster with #{result.reduction_pct}% fewer items"
-    )
+            Logger.info(
+              "Performance: Filtered is #{result.speedup_pct}% faster with #{result.reduction_pct}% fewer items"
+            )
 
-    {:ok, result}
+            {:ok, result}
+
+          {:error, reason} ->
+            Logger.error("Filtered processing failed: #{inspect(reason)}")
+            {:error, {:performance_test_failed, {:filtered_processing, reason}}}
+        end
+
+      {:error, reason} ->
+        Logger.error("Unfiltered processing failed: #{inspect(reason)}")
+        {:error, {:performance_test_failed, {:unfiltered_processing, reason}}}
+    end
   rescue
     error ->
+      Logger.error("Performance test raised exception: #{inspect(error)}")
       {:error, {:performance_test_failed, error}}
   end
 

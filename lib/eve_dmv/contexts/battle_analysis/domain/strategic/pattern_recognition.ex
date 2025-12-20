@@ -9,6 +9,7 @@ defmodule EveDmv.Shared.Strategic.PatternRecognition do
   - Pattern classification
   """
 
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Shared.Strategic.Patterns.ResourcePattern
   alias EveDmv.Shared.Strategic.Patterns.TacticalPatterns
@@ -463,13 +464,7 @@ defmodule EveDmv.Shared.Strategic.PatternRecognition do
   defp phase_to_value(:decline), do: 1
   defp phase_to_value(:dormant), do: 0
 
-  defp average(list) do
-    if Enum.empty?(list) do
-      0.0
-    else
-      Enum.sum(list) / length(list)
-    end
-  end
+  defp average(list), do: SharedUtilities.average(list)
 
   defp calculate_pattern_stability(evolution_phases) do
     if length(evolution_phases) < 2 do

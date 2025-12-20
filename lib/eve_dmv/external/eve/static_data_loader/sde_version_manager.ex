@@ -116,9 +116,18 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManager do
     end
   end
 
-  # Version comparison
+  @doc """
+  Determines if an SDE update is needed based on version comparison.
 
-  defp version_needs_update?(current, latest) do
+  Returns true when:
+  - current is nil (no version installed)
+  - latest build number is greater than current build number
+  - current version is in a non-CCP format
+
+  Returns false when current build is same or newer than latest.
+  """
+  @spec version_needs_update?(version_info() | nil, version_info()) :: boolean()
+  def version_needs_update?(current, latest) do
     case {current, latest} do
       # No current version, always update
       {nil, _} ->
@@ -178,17 +187,35 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManager do
             update_attrs
           end
 
-        systems
-        |> Enum.each(fn system ->
-          Ash.update(
-            system,
-            update_attrs,
-            action: :update_sde_version,
-            domain: Api
-          )
-        end)
+        results =
+          systems
+          |> Enum.map(fn system ->
+            case Ash.update(
+                   system,
+                   update_attrs,
+                   action: :update_sde_version,
+                   domain: Api
+                 ) do
+              {:ok, _} ->
+                :ok
 
-        Logger.info("Version tracking updated successfully")
+              {:error, error} ->
+                Logger.warning(
+                  "Failed to update version for system #{system.system_id}: #{inspect(error)}"
+                )
+
+                :error
+            end
+          end)
+
+        failures = Enum.count(results, &(&1 == :error))
+
+        if failures > 0 do
+          Logger.warning("Version tracking completed with #{failures} failures")
+        else
+          Logger.info("Version tracking updated successfully")
+        end
+
         :ok
 
       {:error, error} ->

@@ -84,12 +84,8 @@ defmodule EveDmv.Core.Refactoring.ModuleReorganizer do
           !String.contains?(path, "/core/utils/cache.ex")
       end)
 
-    cache_problems =
-      if Enum.empty?(cache_modules) do
-        []
-      else
-        [{:misplaced_cache, cache_modules}]
-      end
+    misplaced_cache =
+      if Enum.empty?(cache_modules), do: [], else: [{:misplaced_cache, cache_modules}]
 
     # Check for error modules outside of core/errors
     error_modules =
@@ -99,12 +95,8 @@ defmodule EveDmv.Core.Refactoring.ModuleReorganizer do
           !String.contains?(path, "/utilities/error_formatter.ex")
       end)
 
-    error_problems =
-      if Enum.empty?(error_modules) do
-        cache_problems
-      else
-        [{:misplaced_error, error_modules} | cache_problems]
-      end
+    misplaced_error =
+      if Enum.empty?(error_modules), do: [], else: [{:misplaced_error, error_modules}]
 
     # Check for utils outside of core/utils
     utils_modules =
@@ -113,11 +105,10 @@ defmodule EveDmv.Core.Refactoring.ModuleReorganizer do
         !String.contains?(path, "/core/utils/")
       end)
 
-    if Enum.empty?(utils_modules) do
-      error_problems
-    else
-      [{:misplaced_utils, utils_modules} | error_problems]
-    end
+    misplaced_utils =
+      if Enum.empty?(utils_modules), do: [], else: [{:misplaced_utils, utils_modules}]
+
+    misplaced_cache ++ misplaced_error ++ misplaced_utils
   end
 
   defp check_deep_nesting do

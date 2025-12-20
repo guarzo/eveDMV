@@ -24,12 +24,13 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
 
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.StaticData.ShipTypes
 
   require Ash.Query
   require Logger
 
-  # Note: get_doctrine_strengths/1, get_doctrine_weaknesses/1, get_recommended_counters/1,
-  # and classify_ship_type/1 are all defined locally in this module with detailed implementations
+  # Note: get_doctrine_strengths/1, get_doctrine_weaknesses/1, get_recommended_counters/1
+  # are all defined locally in this module with detailed implementations
 
   # Doctrine analysis parameters
   # Minimum active members for reliable analysis
@@ -567,44 +568,9 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
   end
 
   defp classify_ship_type(ship_type_id) do
-    alias EveDmv.Eve.ItemType
-
-    case Ash.get(ItemType, ship_type_id, domain: EveDmv.Api) do
-      {:ok, ship} ->
-        # Use the actual group name from static data
-        name = String.downcase(ship.group_name || "")
-
-        cond do
-          String.contains?(name, "frigate") ->
-            :frigate
-
-          String.contains?(name, "destroyer") ->
-            :destroyer
-
-          String.contains?(name, "cruiser") and String.contains?(name, "heavy assault") ->
-            :cruiser
-
-          String.contains?(name, "cruiser") and String.contains?(name, "strategic") ->
-            :strategic_cruiser
-
-          String.contains?(name, "cruiser") ->
-            :cruiser
-
-          String.contains?(name, "battlecruiser") ->
-            :battlecruiser
-
-          String.contains?(name, "battleship") ->
-            :battleship
-
-          String.contains?(name, ["carrier", "dreadnought", "titan", "supercarrier"]) ->
-            :capital
-
-          true ->
-            :other
-        end
-
-      {:error, _} ->
-        :other
+    case ShipTypes.classify_ship_type(ship_type_id) do
+      :unknown -> :other
+      class -> class
     end
   end
 

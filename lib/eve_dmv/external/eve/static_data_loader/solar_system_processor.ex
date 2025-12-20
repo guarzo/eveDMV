@@ -16,8 +16,7 @@ defmodule EveDmv.Eve.StaticDataLoader.SolarSystemProcessor do
     cond do
       security_status >= 0.45 -> "highsec"
       security_status >= 0.05 -> "lowsec"
-      security_status < 0.05 -> "nullsec"
-      true -> "unknown"
+      true -> "nullsec"
     end
   end
 

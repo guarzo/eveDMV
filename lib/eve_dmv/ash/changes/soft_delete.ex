@@ -89,6 +89,8 @@ defmodule EveDmv.Ash.Changes.SoftDelete do
   @doc """
   Check if a record is soft deleted.
 
+  Optionally specify the timestamp field to check (default: :deleted_at).
+
   ## Examples
 
       iex> SoftDelete.deleted?(%{deleted_at: ~U[2025-01-01 00:00:00Z]})
@@ -96,10 +98,13 @@ defmodule EveDmv.Ash.Changes.SoftDelete do
 
       iex> SoftDelete.deleted?(%{deleted_at: nil})
       false
+
+      iex> SoftDelete.deleted?(%{archived_at: ~U[2025-01-01 00:00:00Z]}, :archived_at)
+      true
   """
-  @spec deleted?(map()) :: boolean()
-  def deleted?(record) when is_map(record) do
-    case Map.get(record, :deleted_at) do
+  @spec deleted?(map(), atom()) :: boolean()
+  def deleted?(record, field \\ :deleted_at) when is_map(record) do
+    case Map.get(record, field) do
       nil -> false
       %DateTime{} -> true
       _ -> false
@@ -109,6 +114,8 @@ defmodule EveDmv.Ash.Changes.SoftDelete do
   @doc """
   Check if a record is active (not soft deleted).
 
+  Optionally specify the timestamp field to check (default: :deleted_at).
+
   ## Examples
 
       iex> SoftDelete.active?(%{deleted_at: nil})
@@ -116,9 +123,12 @@ defmodule EveDmv.Ash.Changes.SoftDelete do
 
       iex> SoftDelete.active?(%{deleted_at: ~U[2025-01-01 00:00:00Z]})
       false
+
+      iex> SoftDelete.active?(%{archived_at: nil}, :archived_at)
+      true
   """
-  @spec active?(map()) :: boolean()
-  def active?(record) when is_map(record) do
-    not deleted?(record)
+  @spec active?(map(), atom()) :: boolean()
+  def active?(record, field \\ :deleted_at) when is_map(record) do
+    not deleted?(record, field)
   end
 end

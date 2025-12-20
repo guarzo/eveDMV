@@ -92,6 +92,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
 
   alias EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzers.IntelligenceQualityAnalyzer
 
+  alias EveDmv.Contexts.CharacterIntelligence.ThreatConfig
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Repo
 
@@ -316,8 +317,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
 
   defp add_major_entities_insight(acc, _), do: acc
 
-  defp add_escalation_risk_insight(acc, risk) when risk > 0.5 do
-    ["High escalation risk detected (#{Float.round(risk * 100, 1)}%)" | acc]
+  defp add_escalation_risk_insight(acc, risk) when is_number(risk) do
+    if risk > ThreatConfig.escalation_risk_threshold() do
+      ["High escalation risk detected (#{Float.round(risk * 100, 1)}%)" | acc]
+    else
+      acc
+    end
   end
 
   defp add_escalation_risk_insight(acc, _), do: acc
@@ -678,7 +683,33 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
 
   defp add_activity_threat_insight(acc, activity, threat) do
     if has_data?(activity) and has_data?(threat) do
-      ["Activity and threat patterns show correlation in key systems" | acc]
+      # Extract metrics from activity and threat patterns
+      high_activity_count = get_in(activity, [:activity_distribution, :high_activity]) || 0
+      hotspot_count = count_threat_hotspots(threat)
+
+      # Calculate correlation based on overlapping systems
+      {affected_systems, correlation_pct} =
+        calculate_activity_threat_correlation(activity, threat)
+
+      cond do
+        affected_systems > 0 and correlation_pct > 0 ->
+          [
+            "#{affected_systems} systems show #{correlation_pct}% correlation between activity and threat levels"
+            | acc
+          ]
+
+        high_activity_count > 0 and hotspot_count > 0 ->
+          [
+            "#{high_activity_count} high-activity systems overlap with #{hotspot_count} threat hotspots"
+            | acc
+          ]
+
+        true ->
+          [
+            "Activity and threat patterns detected but correlation insufficient for analysis"
+            | acc
+          ]
+      end
     else
       acc
     end
@@ -686,7 +717,37 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
 
   defp add_movement_activity_insight(acc, movement, activity) do
     if has_data?(movement) and has_data?(activity) do
-      ["Movement patterns correlate with activity spikes" | acc]
+      # Extract metrics from movement and activity patterns
+      corridor_count = count_movement_corridors(movement)
+      anomaly_count = count_activity_anomalies(activity)
+      active_travelers = Map.get(movement, :active_travelers, 0)
+
+      # Calculate correlation between movement corridors and activity spikes
+      {matching_corridors, correlation_pct} =
+        calculate_movement_activity_correlation(movement, activity)
+
+      cond do
+        matching_corridors > 0 and correlation_pct > 0 ->
+          [
+            "Movement spikes precede activity in #{matching_corridors} corridors, correlation: #{correlation_pct}%"
+            | acc
+          ]
+
+        corridor_count > 0 and anomaly_count > 0 ->
+          [
+            "#{corridor_count} movement corridors connect to systems with #{anomaly_count} activity anomalies"
+            | acc
+          ]
+
+        active_travelers > 0 ->
+          ["#{active_travelers} active travelers tracked across movement corridors" | acc]
+
+        true ->
+          [
+            "Movement and activity patterns detected but insufficient overlap for correlation"
+            | acc
+          ]
+      end
     else
       acc
     end
@@ -694,11 +755,218 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
 
   defp add_threat_movement_insight(acc, threat, movement) do
     if has_data?(threat) and has_data?(movement) do
-      ["Threat patterns follow predictable movement corridors" | acc]
+      # Extract metrics from threat and movement patterns
+      hotspot_count = count_threat_hotspots(threat)
+      choke_point_count = count_choke_points(movement)
+      primary_corridor_count = count_primary_corridors(movement)
+
+      # Calculate overlap between threat areas and movement corridors
+      {overlapping_systems, overlap_pct} =
+        calculate_threat_movement_overlap(threat, movement)
+
+      cond do
+        overlapping_systems > 0 and overlap_pct > 0 ->
+          [
+            "Threat patterns follow #{overlapping_systems} predictable movement corridors, #{overlap_pct}% overlap"
+            | acc
+          ]
+
+        choke_point_count > 0 and hotspot_count > 0 ->
+          [
+            "#{choke_point_count} choke points correlate with #{hotspot_count} threat hotspots"
+            | acc
+          ]
+
+        primary_corridor_count > 0 ->
+          ["#{primary_corridor_count} primary corridors identified for threat monitoring" | acc]
+
+        true ->
+          ["Threat and movement data available but correlation analysis inconclusive" | acc]
+      end
     else
       acc
     end
   end
+
+  # Metric extraction helpers for cross-pattern insights
+
+  defp count_threat_hotspots(threat) when is_map(threat) do
+    hotspots = Map.get(threat, :threat_hotspots, [])
+    if is_list(hotspots), do: length(hotspots), else: 0
+  end
+
+  defp count_threat_hotspots(_), do: 0
+
+  defp count_movement_corridors(movement) when is_map(movement) do
+    corridors = Map.get(movement, :movement_corridors, [])
+    if is_list(corridors), do: length(corridors), else: 0
+  end
+
+  defp count_movement_corridors(_), do: 0
+
+  defp count_activity_anomalies(activity) when is_map(activity) do
+    anomalies = Map.get(activity, :anomalies, [])
+    if is_list(anomalies), do: length(anomalies), else: 0
+  end
+
+  defp count_activity_anomalies(_), do: 0
+
+  defp count_choke_points(movement) when is_map(movement) do
+    choke_points = Map.get(movement, :choke_points, [])
+    if is_list(choke_points), do: length(choke_points), else: 0
+  end
+
+  defp count_choke_points(_), do: 0
+
+  defp count_primary_corridors(movement) when is_map(movement) do
+    corridors = Map.get(movement, :movement_corridors, [])
+
+    if is_list(corridors) do
+      Enum.count(corridors, fn c ->
+        is_map(c) and Map.get(c, :corridor_type) == :primary
+      end)
+    else
+      0
+    end
+  end
+
+  defp count_primary_corridors(_), do: 0
+
+  # Correlation calculation helpers
+
+  defp calculate_activity_threat_correlation(activity, threat) do
+    # Get high-activity systems
+    high_activity_systems = extract_high_activity_systems(activity)
+    # Get threat hotspot systems
+    hotspot_systems = extract_hotspot_systems(threat)
+
+    if Enum.empty?(high_activity_systems) or Enum.empty?(hotspot_systems) do
+      {0, 0}
+    else
+      overlapping = MapSet.intersection(high_activity_systems, hotspot_systems)
+      overlap_count = MapSet.size(overlapping)
+      total_unique = MapSet.union(high_activity_systems, hotspot_systems) |> MapSet.size()
+
+      correlation_pct =
+        if total_unique > 0,
+          do: Float.round(overlap_count / total_unique * 100, 0) |> trunc(),
+          else: 0
+
+      {overlap_count, correlation_pct}
+    end
+  end
+
+  defp calculate_movement_activity_correlation(movement, activity) do
+    # Get systems from movement corridors
+    corridor_systems = extract_corridor_systems(movement)
+    # Get systems with activity anomalies
+    anomaly_systems = extract_anomaly_systems(activity)
+
+    if Enum.empty?(corridor_systems) or Enum.empty?(anomaly_systems) do
+      {0, 0}
+    else
+      overlapping = MapSet.intersection(corridor_systems, anomaly_systems)
+      overlap_count = MapSet.size(overlapping)
+
+      correlation_pct =
+        if MapSet.size(corridor_systems) > 0,
+          do: Float.round(overlap_count / MapSet.size(corridor_systems) * 100, 0) |> trunc(),
+          else: 0
+
+      {overlap_count, correlation_pct}
+    end
+  end
+
+  defp calculate_threat_movement_overlap(threat, movement) do
+    # Get threat hotspot systems
+    hotspot_systems = extract_hotspot_systems(threat)
+    # Get movement corridor systems
+    corridor_systems = extract_corridor_systems(movement)
+
+    if Enum.empty?(hotspot_systems) or Enum.empty?(corridor_systems) do
+      {0, 0}
+    else
+      overlapping = MapSet.intersection(hotspot_systems, corridor_systems)
+      overlap_count = MapSet.size(overlapping)
+
+      overlap_pct =
+        if MapSet.size(hotspot_systems) > 0,
+          do: Float.round(overlap_count / MapSet.size(hotspot_systems) * 100, 0) |> trunc(),
+          else: 0
+
+      {overlap_count, overlap_pct}
+    end
+  end
+
+  # System extraction helpers
+
+  defp extract_high_activity_systems(activity) when is_map(activity) do
+    system_details = get_in(activity, [:activity_distribution, :system_details]) || []
+
+    system_details
+    |> Enum.filter(fn
+      {_system_id, :high, _kills} -> true
+      _ -> false
+    end)
+    |> Enum.map(fn {system_id, _, _} -> system_id end)
+    |> MapSet.new()
+  end
+
+  defp extract_high_activity_systems(_), do: MapSet.new()
+
+  defp extract_hotspot_systems(threat) when is_map(threat) do
+    hotspots = Map.get(threat, :threat_hotspots, [])
+
+    if is_list(hotspots) do
+      hotspots
+      |> Enum.map(fn
+        %{system_id: sys_id} -> sys_id
+        {sys_id, _} when is_integer(sys_id) -> sys_id
+        _ -> nil
+      end)
+      |> Enum.reject(&is_nil/1)
+      |> MapSet.new()
+    else
+      MapSet.new()
+    end
+  end
+
+  defp extract_hotspot_systems(_), do: MapSet.new()
+
+  defp extract_corridor_systems(movement) when is_map(movement) do
+    corridors = Map.get(movement, :movement_corridors, [])
+
+    if is_list(corridors) do
+      corridors
+      |> Enum.flat_map(fn
+        %{from_system: from, to_system: to} -> [from, to]
+        _ -> []
+      end)
+      |> MapSet.new()
+    else
+      MapSet.new()
+    end
+  end
+
+  defp extract_corridor_systems(_), do: MapSet.new()
+
+  defp extract_anomaly_systems(activity) when is_map(activity) do
+    anomalies = Map.get(activity, :anomalies, [])
+
+    if is_list(anomalies) do
+      anomalies
+      |> Enum.map(fn
+        %{system_id: sys_id} -> sys_id
+        _ -> nil
+      end)
+      |> Enum.reject(&is_nil/1)
+      |> MapSet.new()
+    else
+      MapSet.new()
+    end
+  end
+
+  defp extract_anomaly_systems(_), do: MapSet.new()
 
   # Helper to safely check if a pattern has data
   defp has_data?(patterns) when is_map(patterns), do: map_size(patterns) > 0

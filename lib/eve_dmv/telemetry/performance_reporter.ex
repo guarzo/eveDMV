@@ -345,11 +345,10 @@ defmodule EveDmv.Telemetry.PerformanceReporter do
     durations = Enum.map(api_calls, & &1.duration)
     errors = Enum.count(api_calls, &(&1.status >= 400))
     api_count = length(api_calls)
-    duration_count = length(durations)
 
     %{
       count: api_count,
-      avg_ms: if(duration_count > 0, do: Enum.sum(durations) / duration_count, else: 0),
+      avg_ms: if(api_count > 0, do: Enum.sum(durations) / api_count, else: 0),
       error_rate: if(api_count > 0, do: errors / api_count * 100, else: 0)
     }
   end
@@ -358,12 +357,11 @@ defmodule EveDmv.Telemetry.PerformanceReporter do
 
   defp calculate_render_stats(render_times) do
     durations = Enum.map(render_times, & &1.duration)
-    render_count = length(render_times)
-    duration_count = length(durations)
+    count = length(render_times)
 
     %{
-      count: render_count,
-      avg_ms: if(duration_count > 0, do: Enum.sum(durations) / duration_count, else: 0),
+      count: count,
+      avg_ms: if(count > 0, do: Enum.sum(durations) / count, else: 0),
       p95_ms: percentile(durations, 0.95),
       p99_ms: percentile(durations, 0.99)
     }

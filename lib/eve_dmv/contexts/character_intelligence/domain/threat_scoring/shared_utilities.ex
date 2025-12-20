@@ -21,6 +21,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtili
 
   alias EveDmv.Contexts.CharacterIntelligence.ThreatConfig
   alias EveDmv.Eve.ItemType
+  alias EveDmv.StaticData.ShipTypes
 
   require Logger
 
@@ -104,37 +105,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtili
   @doc """
   Classifies a ship type ID into its ship class.
 
-  Uses the SDE group_id to determine the ship's class (frigate, cruiser, etc.).
+  Uses the centralized ShipTypes module for consistent classification.
   Falls back to :other if the ship type cannot be classified.
   """
   def classify_ship_type(ship_type_id) do
-    case get_item_type_info(ship_type_id) do
-      {:ok, item_type} ->
-        classify_ship_class_by_group(item_type.group_id)
-
-      {:error, _} ->
-        :other
-    end
-  end
-
-  # Classifies ship by group_id into size-based classes
-  defp classify_ship_class_by_group(group_id) do
-    cond do
-      group_id in ThreatConfig.frigate_group_ids() -> :frigate
-      group_id in ThreatConfig.destroyer_group_ids() -> :destroyer
-      group_id in ThreatConfig.cruiser_group_ids() -> :cruiser
-      group_id in ThreatConfig.battlecruiser_group_ids() -> :battlecruiser
-      group_id in ThreatConfig.battleship_group_ids() -> :battleship
-      group_id in ThreatConfig.capital_group_ids() -> :capital
-      # Interceptors, assault frigates count as frigates
-      group_id in ThreatConfig.tackle_group_ids() -> :frigate
-      # Logistics count as their base size (most are cruiser-sized)
-      group_id in ThreatConfig.logistics_group_ids() -> :cruiser
-      # EWAR ships count as their base size
-      group_id in ThreatConfig.ewar_group_ids() -> :cruiser
-      # Command ships are battlecruiser-sized
-      group_id in ThreatConfig.command_group_ids() -> :battlecruiser
-      true -> :other
+    case ShipTypes.classify_ship_type(ship_type_id) do
+      :unknown -> :other
+      class -> class
     end
   end
 

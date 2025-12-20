@@ -30,7 +30,7 @@ defmodule EveDmv.Platform.Database.MaterializedViewManager.ViewLifecycle do
   def ensure_view_exists(view_def, existing_views \\ nil)
 
   def ensure_view_exists(view_def, existing_views)
-      when is_map(existing_views) or is_struct(existing_views, MapSet) do
+      when is_struct(existing_views, MapSet) do
     view_name = view_def.name
 
     if MapSet.member?(existing_views, view_name) do
@@ -69,7 +69,9 @@ defmodule EveDmv.Platform.Database.MaterializedViewManager.ViewLifecycle do
         |> Enum.map(fn [name] -> name end)
         |> MapSet.new()
 
-      _ ->
+      {:error, error} ->
+        Logger.error("get_existing_view_names/0 failed to query pg_matviews: #{inspect(error)}")
+
         MapSet.new()
     end
   end

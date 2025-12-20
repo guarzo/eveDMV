@@ -13,6 +13,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
 
   import Ash.Query, only: [filter: 2, sort: 2, limit: 2, new: 1]
 
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Shared.Infrastructure.UnifiedCache
@@ -976,17 +977,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.HistoricalTrendAnalysis do
     variance > mean * 0.5
   end
 
-  defp average([]), do: 0.0
-
-  defp average(list) do
-    len = length(list)
-
-    if len > 0 do
-      Enum.sum(list) / len
-    else
-      0.0
-    end
-  end
+  defp average(list), do: SharedUtilities.average(list)
 
   # Helper function to extract attackers from killmail data
   defp extract_attackers(killmail) do

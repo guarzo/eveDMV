@@ -7,7 +7,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrine.FleetAna
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Eve.ItemType
+  alias EveDmv.StaticData.ShipTypes
 
   require Ash.Query
   require Logger
@@ -188,45 +188,14 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrine.FleetAna
 
   @doc """
   Classifies a ship type by its category.
+  Uses the centralized ShipTypes module for consistent classification.
   """
   def classify_ship_type(nil), do: :other
 
   def classify_ship_type(ship_type_id) do
-    case Ash.get(ItemType, ship_type_id, domain: EveDmv.Api) do
-      {:ok, ship} ->
-        name = String.downcase(ship.group_name || "")
-
-        cond do
-          String.contains?(name, "frigate") ->
-            :frigate
-
-          String.contains?(name, "destroyer") ->
-            :destroyer
-
-          String.contains?(name, "cruiser") and String.contains?(name, "heavy assault") ->
-            :cruiser
-
-          String.contains?(name, "cruiser") and String.contains?(name, "strategic") ->
-            :strategic_cruiser
-
-          String.contains?(name, "cruiser") ->
-            :cruiser
-
-          String.contains?(name, "battlecruiser") ->
-            :battlecruiser
-
-          String.contains?(name, "battleship") ->
-            :battleship
-
-          String.contains?(name, ["carrier", "dreadnought", "titan", "supercarrier"]) ->
-            :capital
-
-          true ->
-            :other
-        end
-
-      {:error, _} ->
-        :other
+    case ShipTypes.classify_ship_type(ship_type_id) do
+      :unknown -> :other
+      class -> class
     end
   end
 

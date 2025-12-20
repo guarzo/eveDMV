@@ -11,6 +11,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
   - Bombing runs
   """
 
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   alias EveDmv.Contexts.Combat.Core.TimelineBuilder
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.StaticData.ShipTypes
@@ -863,11 +864,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
 
   # Utility functions
 
-  defp average([]), do: 0
-
-  defp average(list) do
-    Enum.sum(list) / length(list)
-  end
+  defp average(list), do: SharedUtilities.average(list)
 
   defp standard_deviation([]), do: 0
 

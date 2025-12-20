@@ -63,5 +63,8 @@ USER root
 # 8) Copy remainder of your app and set ownership
 COPY --chown=$USERNAME:$USERNAME . .
 
-# 9) Default to bash (you can always run `mix phx.server` via VSCode tasks)
+# 9) Switch to non-root user for container runtime
+USER $USERNAME
+
+# 10) Default to bash (you can always run `mix phx.server` via VSCode tasks)
 CMD ["bash"]

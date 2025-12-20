@@ -762,7 +762,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
   # Private helper functions
 
   defp calculate_diversity_score(preferences) when is_list(preferences) do
-    if preferences == [] do
+    if Enum.empty?(preferences) do
       0.0
     else
       # Simple diversity calculation based on distribution

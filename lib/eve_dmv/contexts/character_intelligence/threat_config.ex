@@ -33,6 +33,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.ThreatConfig do
   - `high_activity_kills_per_day` (2): 2+ kills/day indicates high activity
   - `active_hours_max` (12): Active across 12+ hours indicates timezone flexibility
   - `active_systems_max` (20): Activity in 20+ systems indicates geographic variance
+  - `escalation_risk_threshold` (0.5): Risk above 50% indicates high escalation potential
 
   ## Ship Group IDs (from EVE SDE)
 
@@ -109,6 +110,16 @@ defmodule EveDmv.Contexts.CharacterIntelligence.ThreatConfig do
 
   # Activity in 20+ different systems indicates high geographic variance.
   @active_systems_max 20
+
+  # =============================================================================
+  # Risk Assessment Thresholds
+  # =============================================================================
+
+  # Escalation risk threshold for determining high-risk situations.
+  # A value above 0.5 (50%) indicates significant escalation risk that warrants
+  # alerting users. This threshold is used in cross-system intelligence analysis
+  # to identify situations where threat levels are likely to increase.
+  @escalation_risk_threshold 0.5
 
   # =============================================================================
   # Fallback Score Constants
@@ -243,6 +254,20 @@ defmodule EveDmv.Contexts.CharacterIntelligence.ThreatConfig do
   @doc "Returns the maximum active systems threshold (20)."
   @spec active_systems_max() :: integer()
   def active_systems_max, do: @active_systems_max
+
+  # =============================================================================
+  # Public API - Risk Assessment Thresholds
+  # =============================================================================
+
+  @doc """
+  Returns the escalation risk threshold (0.5 / 50%).
+
+  Risk values above this threshold indicate high escalation risk that warrants
+  alerting users. Used in cross-system intelligence analysis to identify
+  situations where threat levels are likely to increase.
+  """
+  @spec escalation_risk_threshold() :: float()
+  def escalation_risk_threshold, do: @escalation_risk_threshold
 
   # =============================================================================
   # Public API - Fallback Scores

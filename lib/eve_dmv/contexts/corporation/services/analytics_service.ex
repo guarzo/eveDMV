@@ -57,6 +57,7 @@ defmodule EveDmv.Contexts.Corporation.Services.AnalyticsService do
       # Add comparative analysis if requested
       final_report =
         if include_comparisons do
+          # get_comparative_analysis always returns {:ok, comparisons} per its implementation
           {:ok, comparisons} =
             get_comparative_analysis(corporation_id, basic_analysis.alliance_id)
 

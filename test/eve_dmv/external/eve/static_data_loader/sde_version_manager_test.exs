@@ -61,45 +61,41 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManagerTest do
     end
   end
 
-  describe "version comparison rules" do
-    # Document the expected behavior of version comparison
-
+  describe "version_needs_update?/2" do
     test "nil current version should trigger update" do
-      # When current_version is nil, update should be needed
       current = nil
       latest = %{build_number: 3_142_455, version_string: "build-3142455"}
 
-      # Based on the implementation:
-      # version_needs_update?(nil, _) -> true
-      assert current == nil
-      assert latest.build_number > 0
+      assert SdeVersionManager.version_needs_update?(current, latest) == true
     end
 
     test "older build number should trigger update" do
       current = %{build_number: 3_142_454, version_string: "build-3142454"}
       latest = %{build_number: 3_142_455, version_string: "build-3142455"}
 
-      # Based on the implementation:
-      # version_needs_update?(%{build_number: a}, %{build_number: b}) when b > a -> true
-      assert latest.build_number > current.build_number
+      assert SdeVersionManager.version_needs_update?(current, latest) == true
     end
 
     test "same build number should not trigger update" do
       current = %{build_number: 3_142_455, version_string: "build-3142455"}
       latest = %{build_number: 3_142_455, version_string: "build-3142455"}
 
-      # Based on the implementation:
-      # version_needs_update?(%{build_number: a}, %{build_number: b}) when b > a -> true
-      # Otherwise false
-      refute latest.build_number > current.build_number
+      assert SdeVersionManager.version_needs_update?(current, latest) == false
     end
 
     test "newer current version should not trigger update" do
       current = %{build_number: 3_142_456, version_string: "build-3142456"}
       latest = %{build_number: 3_142_455, version_string: "build-3142455"}
 
-      # Edge case: current is somehow newer than latest (shouldn't happen normally)
-      refute latest.build_number > current.build_number
+      assert SdeVersionManager.version_needs_update?(current, latest) == false
+    end
+
+    test "non-CCP format current version should trigger update" do
+      # Current version without build_number key triggers update
+      current = %{version_string: "legacy-version"}
+      latest = %{build_number: 3_142_455, version_string: "build-3142455"}
+
+      assert SdeVersionManager.version_needs_update?(current, latest) == true
     end
   end
 
@@ -110,6 +106,10 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManagerTest do
 
     test "get_ccp_version_info/0 exists" do
       assert function_exported?(SdeVersionManager, :get_ccp_version_info, 0)
+    end
+
+    test "version_needs_update?/2 exists" do
+      assert function_exported?(SdeVersionManager, :version_needs_update?, 2)
     end
   end
 end
