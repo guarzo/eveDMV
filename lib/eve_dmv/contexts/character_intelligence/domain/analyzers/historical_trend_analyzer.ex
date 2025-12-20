@@ -5,8 +5,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrend
   """
 
   import Ash.Query
-  alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
+  alias EveDmv.Killmails.KillmailRaw
   require Logger
 
   # Ship class classification ranges

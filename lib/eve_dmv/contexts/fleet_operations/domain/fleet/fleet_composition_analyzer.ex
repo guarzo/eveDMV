@@ -8,6 +8,14 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
 
   alias EveDmv.Intelligence.Analyzers.MassCalculator
 
+  # Standard wormhole size mass thresholds (in kg)
+  # Small: Frigate-only holes (e.g., C13 frig holes)
+  @small_wh_max_ship_mass 5_000_000
+  # Medium: Cruiser-class holes (most common WH connections)
+  @medium_wh_max_ship_mass 90_000_000
+  # Large: Battleship-class holes (larger WH connections)
+  @large_wh_max_ship_mass 300_000_000
+
   @doc """
   Enhanced fleet composition analysis using StaticData.
   Provides detailed ship-by-ship analysis with wormhole suitability.
@@ -61,14 +69,6 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
       balance_score: calculate_balance_score(role_counts, total)
     }
   end
-
-  # Standard wormhole size mass thresholds (in kg)
-  # Small: Frigate-only holes (e.g., C13 frig holes)
-  @small_wh_max_ship_mass 5_000_000
-  # Medium: Cruiser-class holes (most common WH connections)
-  @medium_wh_max_ship_mass 90_000_000
-  # Large: Battleship-class holes (larger WH connections)
-  @large_wh_max_ship_mass 300_000_000
 
   @doc """
   Analyze fleet wormhole compatibility based on ship masses and restrictions.
