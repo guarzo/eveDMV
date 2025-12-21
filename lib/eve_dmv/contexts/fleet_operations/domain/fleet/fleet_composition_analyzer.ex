@@ -8,14 +8,6 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
 
   alias EveDmv.Intelligence.Analyzers.MassCalculator
 
-  # Standard wormhole size mass thresholds (in kg)
-  # Small: Frigate-only holes (e.g., C13 frig holes)
-  @small_wh_max_ship_mass 5_000_000
-  # Medium: Cruiser-class holes (most common WH connections)
-  @medium_wh_max_ship_mass 90_000_000
-  # Large: Battleship-class holes (larger WH connections)
-  @large_wh_max_ship_mass 300_000_000
-
   @doc """
   Enhanced fleet composition analysis using StaticData.
   Provides detailed ship-by-ship analysis with wormhole suitability.
@@ -38,17 +30,43 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
   Analyze individual ship characteristics and capabilities.
   """
   def analyze_individual_ship(ship_name) do
+    mass_kg = EveDmv.StaticData.get_ship_mass(ship_name)
+
     %{
       name: ship_name,
       category: EveDmv.StaticData.get_ship_category(ship_name),
-      mass_kg: EveDmv.StaticData.get_ship_mass(ship_name),
+      mass_kg: mass_kg,
       role: EveDmv.StaticData.get_ship_role(ship_name),
       ship_class: EveDmv.StaticData.get_ship_class(ship_name),
       wormhole_suitable: EveDmv.StaticData.wormhole_suitable?(ship_name),
       is_capital: EveDmv.StaticData.capital?(ship_name),
-      wh_restrictions:
-        EveDmv.StaticData.get_wormhole_restrictions(EveDmv.StaticData.get_ship_class(ship_name))
+      passable_wormhole_types: get_passable_wormhole_types(mass_kg)
     }
+  end
+
+  # Determine which wormhole types a ship can pass through based on its mass.
+  # Uses real EVE wormhole type identifiers from MassCalculator.
+  defp get_passable_wormhole_types(nil), do: []
+
+  defp get_passable_wormhole_types(mass_kg) when is_number(mass_kg) do
+    # Real EVE wormhole types and their max ship mass limits
+    wormhole_types = [
+      {"D382", 20_000_000},
+      {"C125", 20_000_000},
+      {"D845", 90_000_000},
+      {"A982", 90_000_000},
+      {"O477", 300_000_000},
+      {"L477", 300_000_000},
+      {"Z971", 300_000_000},
+      {"B041", 1_800_000_000},
+      {"A641", 1_800_000_000},
+      {"X702", 1_800_000_000},
+      {"K162", 3_000_000_000}
+    ]
+
+    wormhole_types
+    |> Enum.filter(fn {_type, max_mass} -> mass_kg <= max_mass end)
+    |> Enum.map(fn {type, _} -> type end)
   end
 
   @doc """
@@ -71,28 +89,56 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
   end
 
   @doc """
-  Analyze fleet wormhole compatibility based on ship masses and restrictions.
+  Analyze fleet wormhole compatibility based on ship masses.
 
-  Derives compatibility flags from ship mass compared to standard wormhole size thresholds:
-  - Small: Ships with mass <= 5M kg (frigates)
-  - Medium: Ships with mass <= 90M kg (cruisers and below)
-  - Large: Ships with mass <= 300M kg (battleships and below)
+  Uses real EVE wormhole type identifiers to determine fleet compatibility:
+  - Frigate holes (D382, C125): Max 20M kg per ship
+  - Cruiser holes (D845, A982): Max 90M kg per ship
+  - Battleship holes (O477, L477, Z971): Max 300M kg per ship
+  - Capital holes (B041, A641, X702): Max 1.8B kg per ship
+  - K-space connections (K162): Max 3B kg per ship
   """
   def analyze_fleet_wh_compatibility(ship_analysis) do
     total_mass = Enum.sum(Enum.map(ship_analysis, & &1.mass_kg))
+    ship_count = length(ship_analysis)
 
-    # Derive compatibility from ship mass vs standard wormhole thresholds
-    small_compatible = Enum.count(ship_analysis, &(&1.mass_kg <= @small_wh_max_ship_mass))
-    medium_compatible = Enum.count(ship_analysis, &(&1.mass_kg <= @medium_wh_max_ship_mass))
-    large_compatible = Enum.count(ship_analysis, &(&1.mass_kg <= @large_wh_max_ship_mass))
+    # Count ships by which wormhole categories they can pass through
+    # Using real EVE wormhole mass limits
+    frigate_hole_compatible =
+      Enum.count(ship_analysis, &(is_number(&1.mass_kg) and &1.mass_kg <= 20_000_000))
+
+    cruiser_hole_compatible =
+      Enum.count(ship_analysis, &(is_number(&1.mass_kg) and &1.mass_kg <= 90_000_000))
+
+    battleship_hole_compatible =
+      Enum.count(ship_analysis, &(is_number(&1.mass_kg) and &1.mass_kg <= 300_000_000))
+
+    capital_hole_compatible =
+      Enum.count(ship_analysis, &(is_number(&1.mass_kg) and &1.mass_kg <= 1_800_000_000))
+
+    # Find which wormhole types the entire fleet can use
+    # (where all ships can pass)
+    fleet_can_use_frigate_holes = frigate_hole_compatible == ship_count
+    fleet_can_use_cruiser_holes = cruiser_hole_compatible == ship_count
+    fleet_can_use_battleship_holes = battleship_hole_compatible == ship_count
+    fleet_can_use_capital_holes = capital_hole_compatible == ship_count
 
     %{
       total_mass: total_mass,
-      small_wh_ships: small_compatible,
-      medium_wh_ships: medium_compatible,
-      large_wh_ships: large_compatible,
+      average_ship_mass: if(ship_count > 0, do: round(total_mass / ship_count), else: 0),
       mass_distribution: MassCalculator.calculate_wormhole_compatibility(total_mass),
-      average_ship_mass: round(total_mass / length(ship_analysis))
+      ship_compatibility: %{
+        frigate_holes: frigate_hole_compatible,
+        cruiser_holes: cruiser_hole_compatible,
+        battleship_holes: battleship_hole_compatible,
+        capital_holes: capital_hole_compatible
+      },
+      fleet_wormhole_access: %{
+        frigate_holes: fleet_can_use_frigate_holes,
+        cruiser_holes: fleet_can_use_cruiser_holes,
+        battleship_holes: fleet_can_use_battleship_holes,
+        capital_holes: fleet_can_use_capital_holes
+      }
     }
   end
 
@@ -126,12 +172,18 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
   Generate optimization suggestions for fleet composition.
   """
   def generate_enhanced_suggestions(ship_analysis) do
-    # Mass optimization suggestions
-    total_mass = Enum.sum(Enum.map(ship_analysis, & &1.mass_kg))
+    # Check if any ships exceed common wormhole mass limits
+    # Cruiser holes (D845, A982) have a 90M kg limit - most common WH connections
+    cruiser_hole_limit = 90_000_000
+
+    heavy_ships =
+      Enum.count(ship_analysis, &(is_number(&1.mass_kg) and &1.mass_kg > cruiser_hole_limit))
 
     suggestions =
-      if total_mass > 100_000_000 do
-        ["Consider lighter ships for better wormhole mobility"]
+      if heavy_ships > 0 do
+        [
+          "#{heavy_ships} ship(s) exceed cruiser-class wormhole limits - consider lighter alternatives"
+        ]
       else
         []
       end

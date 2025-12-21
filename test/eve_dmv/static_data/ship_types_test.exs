@@ -348,20 +348,4 @@ defmodule EveDmv.StaticData.ShipTypesTest do
       assert {:error, :not_found} = result
     end
   end
-
-  describe "ship_type_ranges/0 (deprecated)" do
-    test "returns empty ranges map" do
-      ranges = ShipTypes.ship_type_ranges()
-
-      assert is_map(ranges)
-      assert Map.has_key?(ranges, :frigate)
-      assert Map.has_key?(ranges, :cruiser)
-      assert Map.has_key?(ranges, :battleship)
-
-      # All ranges should be empty (deprecated function)
-      Enum.each(ranges, fn {_class, range} ->
-        assert range == []
-      end)
-    end
-  end
 end

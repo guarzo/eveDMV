@@ -89,9 +89,8 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.FleetRequirementsBuilder do
       Enum.reduce(preferred_ships, acc, fn ship_name, acc2 ->
         ship_info = ship_data[ship_name] || %{mass_kg: 12_000_000, estimated_cost: 50_000_000}
 
-        # Get wormhole restrictions from StaticData
         ship_class = EveDmv.StaticData.get_ship_class(ship_name)
-        wh_restrictions = EveDmv.StaticData.get_wormhole_restrictions(ship_class)
+        mass_kg = ship_info.mass_kg
 
         # Use a hash of ship_name as type_id for demo purposes
         hash_value = :erlang.phash2(ship_name)
@@ -103,16 +102,17 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.FleetRequirementsBuilder do
           "quantity_needed" => required_count,
           # Placeholder
           "quantity_available" => 5,
-          "mass_kg" => ship_info.mass_kg,
+          "mass_kg" => mass_kg,
           "estimated_cost" => ship_info.estimated_cost,
           "category" => ship_info.category,
           "ship_class" => ship_class,
           "wormhole_suitable" => ship_info.wormhole_suitable,
           "wormhole_suitability" => %{
-            "max_ship_mass" => wh_restrictions.max_ship_mass,
-            "max_jump_mass" => wh_restrictions.max_jump_mass,
-            "capital_allowed" => wh_restrictions.capital_allowed,
-            "mass_efficiency" => MassCalculator.calculate_ship_mass_efficiency(ship_info.mass_kg)
+            "can_use_frigate_holes" => is_number(mass_kg) and mass_kg <= 20_000_000,
+            "can_use_cruiser_holes" => is_number(mass_kg) and mass_kg <= 90_000_000,
+            "can_use_battleship_holes" => is_number(mass_kg) and mass_kg <= 300_000_000,
+            "can_use_capital_holes" => is_number(mass_kg) and mass_kg <= 1_800_000_000,
+            "mass_efficiency" => MassCalculator.calculate_ship_mass_efficiency(mass_kg)
           }
         })
       end)

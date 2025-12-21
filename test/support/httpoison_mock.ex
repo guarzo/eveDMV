@@ -1,8 +1,8 @@
-defmodule HTTPoisonMock do
+defmodule EveDmv.TestHelpers.HTTPoisonMockHelpers do
   @moduledoc """
-  HTTPoison mock for testing SSE (Server-Sent Events) producers and API calls.
+  HTTPoison mock helpers for testing SSE (Server-Sent Events) producers and API calls.
 
-  This mock module provides standardized response helpers for testing HTTP interactions
+  This module provides standardized response helpers for testing HTTP interactions
   in EVE DMV, particularly for the killmail pipeline's SSE producer and external API
   integrations with services like ESI, Janice, and Mutamarket.
 
@@ -16,7 +16,7 @@ defmodule HTTPoisonMock do
           %HTTPoison.Response{
             status_code: 200,
             headers: [{"content-type", "text/event-stream"}],
-            body: HTTPoisonMock.sse_stream_body()
+            body: EveDmv.TestHelpers.HTTPoisonMockHelpers.sse_stream_body()
           }
         end)
 

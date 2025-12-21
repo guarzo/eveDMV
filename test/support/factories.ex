@@ -368,15 +368,19 @@ defmodule EveDmv.Factories do
   defp build_random_items do
     item_count = Enum.random(0..10)
 
-    for _i <- 1..item_count do
-      %{
-        # Various modules
-        "item_type_id" => Enum.random([2185, 1541, 438, 215]),
-        "singleton" => 0,
-        "flag" => Enum.random(11..34),
-        "quantity_destroyed" => Enum.random(0..5),
-        "quantity_dropped" => Enum.random(0..5)
-      }
+    if item_count == 0 do
+      []
+    else
+      for _i <- 1..item_count do
+        %{
+          # Various modules
+          "item_type_id" => Enum.random([2185, 1541, 438, 215]),
+          "singleton" => 0,
+          "flag" => Enum.random(11..34),
+          "quantity_destroyed" => Enum.random(0..5),
+          "quantity_dropped" => Enum.random(0..5)
+        }
+      end
     end
   end
 

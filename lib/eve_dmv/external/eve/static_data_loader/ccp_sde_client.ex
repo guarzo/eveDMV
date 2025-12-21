@@ -296,7 +296,7 @@ defmodule EveDmv.Eve.StaticDataLoader.CcpSdeClient do
       {:ok, file} ->
         try do
           stream_result =
-            Finch.stream(
+            Finch.stream_while(
               request,
               EveDmv.Finch,
               %{initial_state | file: file},
