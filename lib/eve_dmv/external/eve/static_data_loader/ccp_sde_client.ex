@@ -20,7 +20,7 @@ defmodule EveDmv.Eve.StaticDataLoader.CcpSdeClient do
   @version_url "#{@base_url}/tranquility/latest.jsonl"
   @latest_jsonl_url "#{@base_url}/eve-online-static-data-latest-jsonl.zip"
 
-  @user_agent "EveDmv/1.0 (https://github.com/eve-dmv; contact@example.com)"
+  @user_agent "EveDmv/1.0 (https://github.com/eve-dmv)"
 
   # 30 minutes for large downloads
   @download_timeout 30 * 60 * 1_000
@@ -388,8 +388,14 @@ defmodule EveDmv.Eve.StaticDataLoader.CcpSdeClient do
 
   defp get_content_length(headers) do
     case Enum.find(headers, fn {name, _} -> String.downcase(name) == "content-length" end) do
-      {_, value} -> String.to_integer(value)
-      nil -> nil
+      {_, value} ->
+        case Integer.parse(value) do
+          {int, ""} -> int
+          _ -> nil
+        end
+
+      nil ->
+        nil
     end
   end
 

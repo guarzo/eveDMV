@@ -360,7 +360,9 @@ defmodule EveDmv.Contexts.SystemAnalysisTest do
 
       if spillover.spillover_detected do
         case Map.get(spillover, :time_delay) do
-          nil -> :ok
+          nil ->
+            :ok
+
           time_delay ->
             # Delay in minutes or hours
             assert time_delay >= 0

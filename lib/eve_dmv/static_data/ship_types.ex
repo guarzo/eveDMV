@@ -770,5 +770,4 @@ defmodule EveDmv.StaticData.ShipTypes do
   def get_ship_class(ship_identifier) do
     EveDmv.StaticData.get_ship_class(ship_identifier)
   end
-
 end
