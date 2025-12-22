@@ -85,7 +85,17 @@ defmodule EveDmv.Eve.StaticDataLoader.CcpSdeClient do
   @spec download_sde_archive(String.t(), keyword()) ::
           {:ok, String.t()} | {:ok, :not_modified} | {:error, term()}
   def download_sde_archive(output_dir, opts \\ []) do
-    File.mkdir_p!(output_dir)
+    case File.mkdir_p(output_dir) do
+      :ok ->
+        do_download_sde_archive(output_dir, opts)
+
+      {:error, reason} ->
+        Logger.error("Failed to create output directory #{output_dir}: #{inspect(reason)}")
+        {:error, {:mkdir_failed, reason, output_dir}}
+    end
+  end
+
+  defp do_download_sde_archive(output_dir, opts) do
     archive_path = Path.join(output_dir, "eve-sde-latest.zip")
 
     Logger.info("Downloading SDE archive from CCP...")
@@ -121,12 +131,15 @@ defmodule EveDmv.Eve.StaticDataLoader.CcpSdeClient do
     Logger.info("Source: #{archive_path}")
     Logger.info("Destination: #{output_dir}")
 
-    File.mkdir_p!(output_dir)
-
-    case :zip.unzip(String.to_charlist(archive_path), [{:cwd, String.to_charlist(output_dir)}]) do
-      {:ok, _files} ->
-        Logger.info("SDE archive extracted successfully")
-        {:ok, output_dir}
+    with :ok <- File.mkdir_p(output_dir),
+         {:ok, _files} <-
+           :zip.unzip(String.to_charlist(archive_path), [{:cwd, String.to_charlist(output_dir)}]) do
+      Logger.info("SDE archive extracted successfully")
+      {:ok, output_dir}
+    else
+      {:error, posix} when is_atom(posix) ->
+        Logger.error("Failed to create output directory #{output_dir}: #{inspect(posix)}")
+        {:error, {:mkdir_failed, output_dir, posix}}
 
       {:error, reason} ->
         Logger.error("Failed to extract SDE archive: #{inspect(reason)}")
@@ -183,7 +196,8 @@ defmodule EveDmv.Eve.StaticDataLoader.CcpSdeClient do
     archive_dir = Path.join(base_dir, "archives")
     extracted_dir = Path.join(base_dir, "extracted")
 
-    with {:ok, archive_path} <- download_sde_archive(archive_dir, opts),
+    with {:ok, archive_path} when is_binary(archive_path) <-
+           download_sde_archive(archive_dir, opts),
          {:ok, _} <- extract_archive(archive_path, extracted_dir),
          {:ok, file_paths} <- validate_required_files(extracted_dir) do
       {:ok,
@@ -192,6 +206,19 @@ defmodule EveDmv.Eve.StaticDataLoader.CcpSdeClient do
          extracted_dir: extracted_dir,
          file_paths: file_paths
        }}
+    else
+      {:ok, :not_modified} ->
+        # If archive wasn't modified, validate existing extracted files
+        case validate_required_files(extracted_dir) do
+          {:ok, file_paths} ->
+            {:ok, %{archive_path: nil, extracted_dir: extracted_dir, file_paths: file_paths}}
+
+          error ->
+            error
+        end
+
+      error ->
+        error
     end
   end
 
@@ -319,19 +346,47 @@ defmodule EveDmv.Eve.StaticDataLoader.CcpSdeClient do
 
             {:ok, %{status: 304}} ->
               # Clean up the empty file for 304 responses
-              File.rm(output_path)
+              case File.rm(output_path) do
+                :ok ->
+                  :ok
+
+                {:error, reason} ->
+                  Logger.error("Failed to remove #{output_path}: #{inspect(reason)}")
+              end
+
               {:ok, :not_modified}
 
             {:ok, %{status: status}} ->
-              File.rm(output_path)
+              case File.rm(output_path) do
+                :ok ->
+                  :ok
+
+                {:error, reason} ->
+                  Logger.error("Failed to remove #{output_path}: #{inspect(reason)}")
+              end
+
               {:error, {:http_error, status}}
 
             {:ok, %{error: error}} when error != nil ->
-              File.rm(output_path)
+              case File.rm(output_path) do
+                :ok ->
+                  :ok
+
+                {:error, reason} ->
+                  Logger.error("Failed to remove #{output_path}: #{inspect(reason)}")
+              end
+
               {:error, error}
 
             {:error, reason} ->
-              File.rm(output_path)
+              case File.rm(output_path) do
+                :ok ->
+                  :ok
+
+                {:error, rm_reason} ->
+                  Logger.error("Failed to remove #{output_path}: #{inspect(rm_reason)}")
+              end
+
               {:error, reason}
           end
         after

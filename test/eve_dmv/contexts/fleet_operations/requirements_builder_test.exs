@@ -103,18 +103,33 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.RequirementsBuilderTes
   end
 
   describe "wormhole compatibility thresholds" do
-    test "default mass allows passage through cruiser wormholes" do
-      # Default mass of 12,000,000 kg should allow passage through:
-      # - Frigate holes (up to 20,000,000 kg) - yes
-      # - Cruiser holes (up to 90,000,000 kg) - yes
-      # - Battleship holes (up to 300,000,000 kg) - yes
-      # - Capital holes (up to 1,800,000,000 kg) - yes
+    test "wormhole mass limit accessor functions return expected values" do
+      # Verify the wormhole mass limits match EVE Online's SDE data
+      assert RequirementsBuilder.frigate_hole_max_mass() == 20_000_000
+      assert RequirementsBuilder.cruiser_hole_max_mass() == 90_000_000
+      assert RequirementsBuilder.battleship_hole_max_mass() == 300_000_000
+      assert RequirementsBuilder.capital_hole_max_mass() == 1_800_000_000
+    end
+
+    test "default mass allows passage through all wormhole types" do
+      # Default mass of 12,000,000 kg (T1 cruiser) should allow passage through:
+      # - Frigate holes - yes
+      # - Cruiser holes - yes
+      # - Battleship holes - yes
+      # - Capital holes - yes
       default_mass = RequirementsBuilder.default_ship_mass_kg()
 
-      assert default_mass <= 20_000_000, "Default mass should fit through frigate holes"
-      assert default_mass <= 90_000_000, "Default mass should fit through cruiser holes"
-      assert default_mass <= 300_000_000, "Default mass should fit through battleship holes"
-      assert default_mass <= 1_800_000_000, "Default mass should fit through capital holes"
+      assert default_mass <= RequirementsBuilder.frigate_hole_max_mass(),
+             "Default mass should fit through frigate holes"
+
+      assert default_mass <= RequirementsBuilder.cruiser_hole_max_mass(),
+             "Default mass should fit through cruiser holes"
+
+      assert default_mass <= RequirementsBuilder.battleship_hole_max_mass(),
+             "Default mass should fit through battleship holes"
+
+      assert default_mass <= RequirementsBuilder.capital_hole_max_mass(),
+             "Default mass should fit through capital holes"
     end
   end
 end

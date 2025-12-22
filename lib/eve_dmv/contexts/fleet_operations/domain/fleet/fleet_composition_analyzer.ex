@@ -58,20 +58,31 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
 
   @doc """
   Analyze individual ship characteristics and capabilities.
+  Returns nil if the ship name cannot be resolved to a known type.
   """
   def analyze_individual_ship(ship_name) do
-    mass_kg = EveDmv.StaticData.get_ship_mass(ship_name)
+    case EveDmv.StaticData.get_type_by_name(ship_name) do
+      %{type_id: type_id} ->
+        mass_kg =
+          case EveDmv.StaticData.get_ship_mass(type_id) do
+            {:ok, mass} -> mass
+            {:error, _} -> nil
+          end
 
-    %{
-      name: ship_name,
-      category: EveDmv.StaticData.get_ship_category(ship_name),
-      mass_kg: mass_kg,
-      role: EveDmv.StaticData.get_ship_role(ship_name),
-      ship_class: EveDmv.StaticData.get_ship_class(ship_name),
-      wormhole_suitable: EveDmv.StaticData.wormhole_suitable?(ship_name),
-      is_capital: EveDmv.StaticData.capital?(ship_name),
-      passable_wormhole_types: get_passable_wormhole_types(mass_kg)
-    }
+        %{
+          name: ship_name,
+          category: EveDmv.StaticData.get_ship_category(type_id),
+          mass_kg: mass_kg,
+          role: EveDmv.StaticData.get_ship_role(type_id),
+          ship_class: EveDmv.StaticData.get_ship_class(type_id),
+          wormhole_suitable: EveDmv.StaticData.wormhole_suitable?(type_id),
+          is_capital: EveDmv.StaticData.capital?(type_id),
+          passable_wormhole_types: get_passable_wormhole_types(mass_kg)
+        }
+
+      nil ->
+        nil
+    end
   end
 
   # Determine which wormhole types a ship can pass through based on its mass.
@@ -93,14 +104,25 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
     role_counts = Enum.frequencies_by(ship_analysis, & &1.role)
     total = length(ship_analysis)
 
-    %{
-      dps_ratio: Map.get(role_counts, "dps", 0) / total,
-      logistics_ratio: Map.get(role_counts, "logistics", 0) / total,
-      tackle_ratio: Map.get(role_counts, "tackle", 0) / total,
-      ewar_ratio: Map.get(role_counts, "ewar", 0) / total,
-      fc_ratio: Map.get(role_counts, "fc", 0) / total,
-      balance_score: calculate_balance_score(role_counts, total)
-    }
+    if total == 0 do
+      %{
+        dps_ratio: 0.0,
+        logistics_ratio: 0.0,
+        tackle_ratio: 0.0,
+        ewar_ratio: 0.0,
+        fc_ratio: 0.0,
+        balance_score: 0.0
+      }
+    else
+      %{
+        dps_ratio: Map.get(role_counts, "dps", 0) / total,
+        logistics_ratio: Map.get(role_counts, "logistics", 0) / total,
+        tackle_ratio: Map.get(role_counts, "tackle", 0) / total,
+        ewar_ratio: Map.get(role_counts, "ewar", 0) / total,
+        fc_ratio: Map.get(role_counts, "fc", 0) / total,
+        balance_score: calculate_balance_score(role_counts, total)
+      }
+    end
   end
 
   @doc """
@@ -120,10 +142,16 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
     # Count ships by which wormhole categories they can pass through
     # Using real EVE wormhole mass limits
     frigate_hole_compatible =
-      Enum.count(ship_analysis, &(is_number(&1.mass_kg) and &1.mass_kg <= @frigate_hole_mass_limit))
+      Enum.count(
+        ship_analysis,
+        &(is_number(&1.mass_kg) and &1.mass_kg <= @frigate_hole_mass_limit)
+      )
 
     cruiser_hole_compatible =
-      Enum.count(ship_analysis, &(is_number(&1.mass_kg) and &1.mass_kg <= @cruiser_hole_mass_limit))
+      Enum.count(
+        ship_analysis,
+        &(is_number(&1.mass_kg) and &1.mass_kg <= @cruiser_hole_mass_limit)
+      )
 
     battleship_hole_compatible =
       Enum.count(
@@ -132,7 +160,10 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
       )
 
     capital_hole_compatible =
-      Enum.count(ship_analysis, &(is_number(&1.mass_kg) and &1.mass_kg <= @capital_hole_mass_limit))
+      Enum.count(
+        ship_analysis,
+        &(is_number(&1.mass_kg) and &1.mass_kg <= @capital_hole_mass_limit)
+      )
 
     # Find which wormhole types the entire fleet can use
     # (where all ships can pass)
@@ -164,26 +195,36 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
   Analyze ship doctrine compliance against common wormhole doctrines.
   """
   def analyze_ship_doctrine_compliance(ship_analysis) do
-    # Check compliance with common WH doctrines
-    doctrines = ["armor", "shield", "armor_cruiser", "shield_cruiser"]
+    total = length(ship_analysis)
 
-    doctrine_scores =
-      doctrines
-      |> Enum.map(fn doctrine ->
-        compliant_ships =
-          Enum.count(ship_analysis, &EveDmv.StaticData.doctrine_ship?(&1.name, doctrine))
+    if total == 0 do
+      %{
+        doctrine_scores: %{},
+        recommended_doctrine: nil,
+        compliance_score: 0.0
+      }
+    else
+      # Check compliance with common WH doctrines
+      doctrines = ["armor", "shield", "armor_cruiser", "shield_cruiser"]
 
-        {doctrine, compliant_ships / length(ship_analysis)}
-      end)
-      |> Map.new()
+      doctrine_scores =
+        doctrines
+        |> Enum.map(fn doctrine ->
+          compliant_ships =
+            Enum.count(ship_analysis, &EveDmv.StaticData.doctrine_ship?(&1.name, doctrine))
 
-    {best_doctrine, _score} = Enum.max_by(doctrine_scores, fn {_doctrine, score} -> score end)
+          {doctrine, compliant_ships / total}
+        end)
+        |> Map.new()
 
-    %{
-      doctrine_scores: doctrine_scores,
-      recommended_doctrine: best_doctrine,
-      compliance_score: Map.get(doctrine_scores, best_doctrine, 0.0)
-    }
+      {best_doctrine, _score} = Enum.max_by(doctrine_scores, fn {_doctrine, score} -> score end)
+
+      %{
+        doctrine_scores: doctrine_scores,
+        recommended_doctrine: best_doctrine,
+        compliance_score: Map.get(doctrine_scores, best_doctrine, 0.0)
+      }
+    end
   end
 
   @doc """
@@ -242,6 +283,8 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
   end
 
   # Private helper functions
+
+  defp calculate_balance_score(_role_counts, 0), do: 0.0
 
   defp calculate_balance_score(role_counts, total) do
     # Ideal ratios for balanced WH fleet

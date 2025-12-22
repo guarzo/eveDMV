@@ -22,8 +22,27 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.RequirementsBuilder do
   encountering unknown ship types in doctrine templates.
   """
 
-  alias EveDmv.Intelligence.Analyzers.FleetAssetManager.ShipCostCalculator
   alias EveDmv.Contexts.FleetOperations.Core.MassCalculator
+  alias EveDmv.Intelligence.Analyzers.FleetAssetManager.ShipCostCalculator
+
+  # =============================================================================
+  # Wormhole Mass Limit Constants
+  # =============================================================================
+  # Maximum ship mass (in kg) that can pass through each wormhole category.
+  # These values are based on EVE Online wormhole mechanics from the SDE.
+  # Source: EVE Online Static Data Export - wormhole type definitions.
+  #
+  # Wormhole categories by ship class compatibility:
+  # - Frigate holes (D382, C125): frigates, destroyers only
+  # - Cruiser holes (D845, A982): cruisers, battlecruisers
+  # - Battleship holes (O477, L477, Z971): up to battleships
+  # - Capital holes (B041, A641, X702): capitals except supers/titans
+  # =============================================================================
+
+  @frigate_hole_max_mass 20_000_000
+  @cruiser_hole_max_mass 90_000_000
+  @battleship_hole_max_mass 300_000_000
+  @capital_hole_max_mass 1_800_000_000
 
   # =============================================================================
   # Default Ship Configuration Constants
@@ -40,6 +59,46 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.RequirementsBuilder do
   # This baseline ensures doctrine cost calculations remain reasonable
   # even for unknown ship types.
   @default_ship_estimated_cost 50_000_000
+
+  # =============================================================================
+  # Public API - Wormhole Mass Limits
+  # =============================================================================
+
+  @doc """
+  Returns the maximum ship mass (in kg) that can pass through frigate-sized wormholes.
+
+  Frigate holes (e.g., D382, C125) only allow frigates and destroyers to pass through.
+  The limit of 20,000,000 kg is based on EVE Online's wormhole static data.
+  """
+  @spec frigate_hole_max_mass() :: integer()
+  def frigate_hole_max_mass, do: @frigate_hole_max_mass
+
+  @doc """
+  Returns the maximum ship mass (in kg) that can pass through cruiser-sized wormholes.
+
+  Cruiser holes (e.g., D845, A982) allow cruisers and battlecruisers to pass through.
+  The limit of 90,000,000 kg is based on EVE Online's wormhole static data.
+  """
+  @spec cruiser_hole_max_mass() :: integer()
+  def cruiser_hole_max_mass, do: @cruiser_hole_max_mass
+
+  @doc """
+  Returns the maximum ship mass (in kg) that can pass through battleship-sized wormholes.
+
+  Battleship holes (e.g., O477, L477, Z971) allow up to battleships to pass through.
+  The limit of 300,000,000 kg is based on EVE Online's wormhole static data.
+  """
+  @spec battleship_hole_max_mass() :: integer()
+  def battleship_hole_max_mass, do: @battleship_hole_max_mass
+
+  @doc """
+  Returns the maximum ship mass (in kg) that can pass through capital-sized wormholes.
+
+  Capital holes (e.g., B041, A641, X702) allow capitals except supers/titans.
+  The limit of 1,800,000,000 kg is based on EVE Online's wormhole static data.
+  """
+  @spec capital_hole_max_mass() :: integer()
+  def capital_hole_max_mass, do: @capital_hole_max_mass
 
   # =============================================================================
   # Public API - Default Ship Configuration
@@ -236,7 +295,6 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.RequirementsBuilder do
               {acc2, [{ship_name, role} | missing_acc2]}
 
             ship_info ->
-              ship_class = EveDmv.StaticData.get_ship_class(ship_name)
               mass_kg = ship_info.mass_kg
 
               # Use real type_id from StaticData
@@ -254,14 +312,19 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.RequirementsBuilder do
                 "mass_kg" => mass_kg,
                 "estimated_cost" => ship_info.estimated_cost,
                 "category" => ship_info.category,
-                "ship_class" => ship_class,
+                "ship_class" => ship_info.ship_class,
                 "wormhole_suitable" => ship_info.wormhole_suitable,
                 "wormhole_suitability" => %{
-                  "can_use_frigate_holes" => is_number(mass_kg) and mass_kg <= 20_000_000,
-                  "can_use_cruiser_holes" => is_number(mass_kg) and mass_kg <= 90_000_000,
-                  "can_use_battleship_holes" => is_number(mass_kg) and mass_kg <= 300_000_000,
-                  "can_use_capital_holes" => is_number(mass_kg) and mass_kg <= 1_800_000_000,
-                  "mass_efficiency" => MassCalculator.calculate_ship_mass_efficiency(ship_analysis)
+                  "can_use_frigate_holes" =>
+                    is_number(mass_kg) and mass_kg <= @frigate_hole_max_mass,
+                  "can_use_cruiser_holes" =>
+                    is_number(mass_kg) and mass_kg <= @cruiser_hole_max_mass,
+                  "can_use_battleship_holes" =>
+                    is_number(mass_kg) and mass_kg <= @battleship_hole_max_mass,
+                  "can_use_capital_holes" =>
+                    is_number(mass_kg) and mass_kg <= @capital_hole_max_mass,
+                  "mass_efficiency" =>
+                    MassCalculator.calculate_ship_mass_efficiency(ship_analysis)
                 }
               }
 
@@ -395,6 +458,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.RequirementsBuilder do
 
   # Safely convert role to atom, defaulting to :unknown for invalid roles
   defp safe_to_atom(role) when is_atom(role), do: role
+
   defp safe_to_atom(role) when is_binary(role) do
     String.to_existing_atom(role)
   rescue
