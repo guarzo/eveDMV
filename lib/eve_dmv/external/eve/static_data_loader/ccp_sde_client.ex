@@ -14,6 +14,8 @@ defmodule EveDmv.Eve.StaticDataLoader.CcpSdeClient do
   - Download timeout of 30 minutes for large files
   """
 
+  alias EveDmv.Core.Utils.RetryUtils
+
   require Logger
 
   @base_url "https://developers.eveonline.com/static-data"
@@ -131,19 +133,23 @@ defmodule EveDmv.Eve.StaticDataLoader.CcpSdeClient do
     Logger.info("Source: #{archive_path}")
     Logger.info("Destination: #{output_dir}")
 
-    with :ok <- File.mkdir_p(output_dir),
-         {:ok, _files} <-
-           :zip.unzip(String.to_charlist(archive_path), [{:cwd, String.to_charlist(output_dir)}]) do
-      Logger.info("SDE archive extracted successfully")
-      {:ok, output_dir}
-    else
-      {:error, posix} when is_atom(posix) ->
+    case File.mkdir_p(output_dir) do
+      :ok ->
+        case :zip.unzip(String.to_charlist(archive_path),
+               cwd: String.to_charlist(output_dir)
+             ) do
+          {:ok, _files} ->
+            Logger.info("SDE archive extracted successfully")
+            {:ok, output_dir}
+
+          {:error, reason} ->
+            Logger.error("Failed to extract SDE archive: #{inspect(reason)}")
+            {:error, {:extraction_failed, reason}}
+        end
+
+      {:error, posix} ->
         Logger.error("Failed to create output directory #{output_dir}: #{inspect(posix)}")
         {:error, {:mkdir_failed, output_dir, posix}}
-
-      {:error, reason} ->
-        Logger.error("Failed to extract SDE archive: #{inspect(reason)}")
-        {:error, {:extraction_failed, reason}}
     end
   end
 
@@ -244,40 +250,45 @@ defmodule EveDmv.Eve.StaticDataLoader.CcpSdeClient do
   # Private Functions
   # ============================================================================
 
-  defp fetch_with_retry(url, attempt \\ 1) do
+  defp fetch_with_retry(url) do
     headers = [{"User-Agent", @user_agent}]
 
-    case Finch.build(:get, url, headers)
-         |> Finch.request(EveDmv.Finch, receive_timeout: 30_000) do
-      {:ok, %{status: 200, body: body}} ->
-        {:ok, body}
+    operation = fn ->
+      case Finch.build(:get, url, headers)
+           |> Finch.request(EveDmv.Finch, receive_timeout: 30_000) do
+        {:ok, %{status: 200, body: body}} ->
+          {:ok, body}
 
-      {:ok, %{status: status}} when status in [500, 502, 503, 504] and attempt <= @max_retries ->
-        delay = (@base_delay_ms * :math.pow(2, attempt - 1)) |> round()
+        {:ok, %{status: status}} when status in [500, 502, 503, 504] ->
+          {:retry, {:server_error, status}}
 
-        Logger.warning(
-          "Server error #{status}, retrying in #{delay}ms (attempt #{attempt}/#{@max_retries})"
-        )
+        {:ok, %{status: status}} ->
+          {:error, {:http_error, status}}
 
-        Process.sleep(delay)
-        fetch_with_retry(url, attempt + 1)
-
-      {:ok, %{status: status}} ->
-        {:error, {:http_error, status}}
-
-      {:error, reason} when attempt <= @max_retries ->
-        delay = (@base_delay_ms * :math.pow(2, attempt - 1)) |> round()
-
-        Logger.warning(
-          "Request failed: #{inspect(reason)}, retrying in #{delay}ms (attempt #{attempt}/#{@max_retries})"
-        )
-
-        Process.sleep(delay)
-        fetch_with_retry(url, attempt + 1)
-
-      {:error, reason} ->
-        {:error, reason}
+        {:error, reason} ->
+          {:retry, reason}
+      end
     end
+
+    log_fn = fn reason, delay_ms, attempt, max_retries ->
+      case reason do
+        {:server_error, status} ->
+          Logger.warning(
+            "Server error #{status}, retrying in #{delay_ms}ms (attempt #{attempt}/#{max_retries})"
+          )
+
+        other ->
+          Logger.warning(
+            "Request failed: #{inspect(other)}, retrying in #{delay_ms}ms (attempt #{attempt}/#{max_retries})"
+          )
+      end
+    end
+
+    RetryUtils.retry_with_backoff(operation,
+      max_retries: @max_retries,
+      base_delay_ms: @base_delay_ms,
+      log_fn: log_fn
+    )
   end
 
   defp parse_version_info(body) when is_binary(body) do
@@ -346,47 +357,19 @@ defmodule EveDmv.Eve.StaticDataLoader.CcpSdeClient do
 
             {:ok, %{status: 304}} ->
               # Clean up the empty file for 304 responses
-              case File.rm(output_path) do
-                :ok ->
-                  :ok
-
-                {:error, reason} ->
-                  Logger.error("Failed to remove #{output_path}: #{inspect(reason)}")
-              end
-
+              cleanup_file(output_path)
               {:ok, :not_modified}
 
             {:ok, %{status: status}} ->
-              case File.rm(output_path) do
-                :ok ->
-                  :ok
-
-                {:error, reason} ->
-                  Logger.error("Failed to remove #{output_path}: #{inspect(reason)}")
-              end
-
+              cleanup_file(output_path)
               {:error, {:http_error, status}}
 
             {:ok, %{error: error}} when error != nil ->
-              case File.rm(output_path) do
-                :ok ->
-                  :ok
-
-                {:error, reason} ->
-                  Logger.error("Failed to remove #{output_path}: #{inspect(reason)}")
-              end
-
+              cleanup_file(output_path)
               {:error, error}
 
             {:error, reason} ->
-              case File.rm(output_path) do
-                :ok ->
-                  :ok
-
-                {:error, rm_reason} ->
-                  Logger.error("Failed to remove #{output_path}: #{inspect(rm_reason)}")
-              end
-
+              cleanup_file(output_path)
               {:error, reason}
           end
         after
@@ -451,6 +434,13 @@ defmodule EveDmv.Eve.StaticDataLoader.CcpSdeClient do
 
       nil ->
         nil
+    end
+  end
+
+  defp cleanup_file(path) do
+    case File.rm(path) do
+      :ok -> :ok
+      {:error, reason} -> Logger.error("Failed to remove #{path}: #{inspect(reason)}")
     end
   end
 

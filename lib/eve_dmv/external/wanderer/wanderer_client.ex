@@ -9,6 +9,7 @@ defmodule EveDmv.Intelligence.WandererClient do
   use GenServer
 
   alias EveDmv.Core.Utils.DnsResolver
+  alias EveDmv.Core.Utils.RetryUtils
   alias HTTPoison
   alias Jason
 
@@ -416,22 +417,27 @@ defmodule EveDmv.Intelligence.WandererClient do
       5
   end
 
-  defp fetch_with_retry(fetch_fn, retries \\ 0) do
-    case fetch_fn.() do
-      {:ok, data} ->
-        {:ok, data}
-
-      {:error, reason} when retries < @max_retries ->
-        Logger.warning(
-          "API request failed (attempt #{retries + 1}), retrying in #{@retry_delay}ms: #{inspect(reason)}"
-        )
-
-        :timer.sleep(@retry_delay)
-        fetch_with_retry(fetch_fn, retries + 1)
-
-      {:error, reason} ->
-        {:error, reason}
+  defp fetch_with_retry(fetch_fn) do
+    operation = fn ->
+      case fetch_fn.() do
+        {:ok, data} -> {:ok, data}
+        {:error, reason} -> {:retry, reason}
+      end
     end
+
+    log_fn = fn reason, delay_ms, attempt, max_retries ->
+      Logger.warning(
+        "API request failed (attempt #{attempt}), retrying in #{delay_ms}ms: #{inspect(reason)}"
+      )
+
+      _ = max_retries
+    end
+
+    RetryUtils.retry_with_backoff(operation,
+      max_retries: @max_retries,
+      base_delay_ms: @retry_delay,
+      log_fn: log_fn
+    )
   end
 
   defp get_systems_api(map_id, auth_token) do
