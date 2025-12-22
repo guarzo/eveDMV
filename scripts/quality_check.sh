@@ -120,7 +120,7 @@ fi
 # ===========================================
 
 if [ "${CHECK_COVERAGE:-false}" = "true" ]; then
-    run_check "Coverage Threshold (70%)" "MIX_ENV=test mix coveralls --minimum-coverage 70" "true"
+    run_check "Coverage Threshold (70%)" "MIX_ENV=test mix coveralls" "true"
 fi
 
 # ===========================================

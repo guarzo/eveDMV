@@ -420,17 +420,22 @@ defmodule EveDmv.Intelligence.WandererClient do
   defp fetch_with_retry(fetch_fn) do
     operation = fn ->
       case fetch_fn.() do
-        {:ok, data} -> {:ok, data}
-        {:error, reason} -> {:retry, reason}
+        {:ok, data} ->
+          {:ok, data}
+
+        {:error, reason} ->
+          if retriable_error?(reason) do
+            {:retry, reason}
+          else
+            {:error, reason}
+          end
       end
     end
 
-    log_fn = fn reason, delay_ms, attempt, max_retries ->
+    log_fn = fn reason, delay_ms, attempt, _max_retries ->
       Logger.warning(
         "API request failed (attempt #{attempt}), retrying in #{delay_ms}ms: #{inspect(reason)}"
       )
-
-      _ = max_retries
     end
 
     RetryUtils.retry_with_backoff(operation,
@@ -439,6 +444,31 @@ defmodule EveDmv.Intelligence.WandererClient do
       log_fn: log_fn
     )
   end
+
+  # Determines if an error is retriable based on HTTP status or error type
+  defp retriable_error?("HTTP " <> status_rest) do
+    case Integer.parse(status_rest) do
+      {status, _} when status >= 500 -> true
+      {408, _} -> true
+      {429, _} -> true
+      _ -> false
+    end
+  end
+
+  # Network/connection errors from HTTPoison are retriable
+  defp retriable_error?(%HTTPoison.Error{reason: reason})
+       when reason in [:timeout, :connect_timeout, :closed, :econnrefused, :nxdomain] do
+    true
+  end
+
+  # Tuple errors with retriable reasons
+  defp retriable_error?({:timeout, _}), do: true
+  defp retriable_error?(:timeout), do: true
+  defp retriable_error?(:closed), do: true
+  defp retriable_error?(:econnrefused), do: true
+
+  # All other errors are not retriable (4xx client errors, etc.)
+  defp retriable_error?(_reason), do: false
 
   defp get_systems_api(map_id, auth_token) do
     url = "#{base_url()}/api/maps/#{map_id}/systems"

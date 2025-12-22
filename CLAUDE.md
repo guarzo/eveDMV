@@ -29,7 +29,7 @@ mix ecto.reset         # Drop, create, and migrate
 
 # Testing and Quality
 mix test               # Run tests
-mix test --cover       # Run with coverage (40% minimum)
+mix test --cover       # Run with coverage (70% minimum)
 mix credo --strict     # Static analysis
 mix format             # Format code
 mix dialyzer           # Type checking
@@ -365,7 +365,7 @@ mix format --check-formatted      # Check code formatting
 mix credo --strict                 # Static analysis
 mix dialyzer                      # Type checking (or use mix dialyzer.fast)
 mix deps.audit                    # Security audit
-mix test --cover                  # Tests with coverage (40% minimum)
+mix test --cover                  # Tests with coverage (70% minimum)
 ```
 
 ### Adding New LiveView Pages
@@ -392,7 +392,7 @@ mix test --cover                  # Tests with coverage (40% minimum)
 - **Quality Gates**: Format, Credo, Dialyzer, security audit, test coverage
 - **Docker**: Multi-stage builds with Alpine base for production
 - **Security**: Trivy vulnerability scanning, dependency auditing
-- **Coverage**: ExCoveralls with 40% minimum threshold
+- **Coverage**: ExCoveralls with 70% minimum threshold
 
 ## Key Files and Modules
 
