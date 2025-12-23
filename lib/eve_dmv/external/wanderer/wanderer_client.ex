@@ -716,33 +716,30 @@ defmodule EveDmv.Intelligence.WandererClient do
     end
   end
 
+  defp continue_sse_stream(async_response, parent_pid, map_id) do
+    case HTTPoison.stream_next(async_response) do
+      {:ok, _} -> sse_receive_loop(parent_pid, map_id, async_response)
+      {:error, reason} -> send(parent_pid, {:sse_closed, map_id, {:stream_error, reason}})
+    end
+  end
+
   @dialyzer {:nowarn_function, sse_receive_loop: 3}
   defp sse_receive_loop(parent_pid, map_id, async_response) do
     receive do
       %HTTPoison.AsyncStatus{code: code} ->
         if code == 200 do
-          case HTTPoison.stream_next(async_response) do
-            {:ok, _} -> sse_receive_loop(parent_pid, map_id, async_response)
-            {:error, reason} -> send(parent_pid, {:sse_closed, map_id, {:stream_error, reason}})
-          end
+          continue_sse_stream(async_response, parent_pid, map_id)
         else
           Logger.error("SSE connection failed with status: #{code} for map #{map_id}")
           send(parent_pid, {:sse_closed, map_id, {:http_error, code}})
         end
 
       %HTTPoison.AsyncHeaders{headers: _headers} ->
-        case HTTPoison.stream_next(async_response) do
-          {:ok, _} -> sse_receive_loop(parent_pid, map_id, async_response)
-          {:error, reason} -> send(parent_pid, {:sse_closed, map_id, {:stream_error, reason}})
-        end
+        continue_sse_stream(async_response, parent_pid, map_id)
 
       %HTTPoison.AsyncChunk{chunk: chunk} ->
         process_sse_chunk(chunk, parent_pid, map_id)
-
-        case HTTPoison.stream_next(async_response) do
-          {:ok, _} -> sse_receive_loop(parent_pid, map_id, async_response)
-          {:error, reason} -> send(parent_pid, {:sse_closed, map_id, {:stream_error, reason}})
-        end
+        continue_sse_stream(async_response, parent_pid, map_id)
 
       %HTTPoison.AsyncEnd{} ->
         Logger.info("SSE stream ended for map #{map_id}")

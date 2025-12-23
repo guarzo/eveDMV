@@ -15,7 +15,8 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
   Bulk creates item types in the database.
   """
   def bulk_create_item_types(item_data) do
-    Logger.info("Bulk creating #{length(item_data)} item types")
+    total_count = length(item_data)
+    Logger.info("🚀 Bulk creating #{total_count} item types...")
 
     case Ash.bulk_create(item_data, ItemType, :create,
            domain: EveDmv.Api,
@@ -53,25 +54,32 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
            ]
          ) do
       %Ash.BulkResult{records: _records, errors: []} ->
-        {:ok, length(item_data)}
+        Logger.info("✅ Item types: #{total_count} created/updated successfully")
+        {:ok, total_count}
 
       %Ash.BulkResult{records: records, errors: errors} when errors != [] ->
         created_count = length(records || [])
-        Logger.warning("Created #{created_count} item types, #{length(errors)} failed")
+        error_count = length(errors)
+        Logger.error("❌ Item types: #{created_count} created, #{error_count} FAILED out of #{total_count}")
 
         # Log first few errors for debugging
         log_creation_errors(errors, "item type", :type_id)
 
-        {:ok, created_count}
+        # Return error if all failed
+        if created_count == 0 do
+          {:error, {:all_failed, error_count, errors}}
+        else
+          {:ok, created_count}
+        end
 
       %Ash.BulkResult{} = _result ->
         # Successful bulk create, count may not be tracked
-        Logger.debug("Bulk create completed successfully")
-        {:ok, length(item_data)}
+        Logger.info("✅ Item types: #{total_count} created/updated successfully")
+        {:ok, total_count}
     end
   rescue
     error ->
-      Logger.error("Failed to bulk create item types: #{inspect(error)}")
+      Logger.error("❌ Item types bulk create FAILED: #{inspect(error)}")
       {:error, error}
   end
 
@@ -79,7 +87,8 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
   Bulk creates solar systems in the database.
   """
   def bulk_create_solar_systems(system_data) do
-    Logger.info("Bulk creating #{length(system_data)} solar systems")
+    total_count = length(system_data)
+    Logger.info("🌍 Bulk creating #{total_count} solar systems...")
 
     case Ash.bulk_create(system_data, SolarSystem, :create,
            domain: EveDmv.Api,
@@ -98,33 +107,43 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
              :constellation_name,
              :security_status,
              :security_class,
+             :wormhole_class_id,
+             :wormhole_effect_type,
              :x,
              :y,
              :z,
              :sde_version,
+             :sde_build_number,
              :last_updated
            ]
          ) do
       %Ash.BulkResult{records: _records, errors: []} ->
-        {:ok, length(system_data)}
+        Logger.info("✅ Solar systems: #{total_count} created/updated successfully")
+        {:ok, total_count}
 
       %Ash.BulkResult{records: records, errors: errors} when errors != [] ->
         created_count = length(records || [])
-        Logger.warning("Created #{created_count} solar systems, #{length(errors)} failed")
+        error_count = length(errors)
+        Logger.error("❌ Solar systems: #{created_count} created, #{error_count} FAILED out of #{total_count}")
 
         # Log first few errors for debugging
         log_creation_errors(errors, "solar system", :system_id)
 
-        {:ok, created_count}
+        # Return error if all failed
+        if created_count == 0 do
+          {:error, {:all_failed, error_count, errors}}
+        else
+          {:ok, created_count}
+        end
 
       %Ash.BulkResult{} = _result ->
         # Successful bulk create, count may not be tracked
-        Logger.debug("Bulk create completed successfully")
-        {:ok, length(system_data)}
+        Logger.info("✅ Solar systems: #{total_count} created/updated successfully")
+        {:ok, total_count}
     end
   rescue
     error ->
-      Logger.error("Failed to bulk create solar systems: #{inspect(error)}")
+      Logger.error("❌ Solar systems bulk create FAILED: #{inspect(error)}")
       {:error, error}
   end
 

@@ -31,6 +31,9 @@ defmodule EveDmv.Eve.StaticDataLoader.CcpSdeClient do
   @max_retries 3
   @base_delay_ms 1_000
 
+  # Maximum number of redirects to follow
+  @max_redirects 5
+
   @required_sde_files [
     "types.jsonl",
     "groups.jsonl",
@@ -317,6 +320,59 @@ defmodule EveDmv.Eve.StaticDataLoader.CcpSdeClient do
   end
 
   defp download_large_file(url, output_path, headers, opts) do
+    # First, resolve any redirects to get the final URL
+    case resolve_redirects(url, headers, @max_redirects) do
+      {:ok, :not_modified} ->
+        {:ok, :not_modified}
+
+      {:ok, final_url} ->
+        do_download_large_file(final_url, output_path, headers, opts)
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp resolve_redirects(url, headers, remaining_redirects) when remaining_redirects > 0 do
+    request = Finch.build(:head, url, headers)
+
+    case Finch.request(request, EveDmv.Finch, receive_timeout: 30_000) do
+      {:ok, %{status: status, headers: response_headers}} when status in [301, 302, 307, 308] ->
+        case get_location_header(response_headers) do
+          {:ok, location} ->
+            Logger.debug("Following redirect from #{url} to #{location}")
+            resolve_redirects(location, headers, remaining_redirects - 1)
+
+          :error ->
+            {:error, {:redirect_missing_location, status}}
+        end
+
+      {:ok, %{status: 200}} ->
+        {:ok, url}
+
+      {:ok, %{status: 304}} ->
+        {:ok, :not_modified}
+
+      {:ok, %{status: status}} ->
+        {:error, {:http_error, status}}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp resolve_redirects(_url, _headers, 0) do
+    {:error, :too_many_redirects}
+  end
+
+  defp get_location_header(headers) do
+    case Enum.find(headers, fn {name, _} -> String.downcase(name) == "location" end) do
+      {_, location} -> {:ok, location}
+      nil -> :error
+    end
+  end
+
+  defp do_download_large_file(url, output_path, headers, opts) do
     progress_callback = Keyword.get(opts, :progress_callback)
     request = Finch.build(:get, url, headers)
 

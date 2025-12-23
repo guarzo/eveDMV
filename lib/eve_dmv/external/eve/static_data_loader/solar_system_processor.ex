@@ -179,6 +179,15 @@ defmodule EveDmv.Eve.StaticDataLoader.SolarSystemProcessor do
 
     security_class = classify_security(system.security)
 
+    # Determine if this is a wormhole system - set security_class to "wormhole" if so
+    # The is_wormhole calculation in the resource depends on security_class == "wormhole"
+    final_security_class =
+      if region[:wormhole_class_id] != nil do
+        "wormhole"
+      else
+        security_class
+      end
+
     base_map = %{
       system_id: system.system_id,
       system_name: system.name,
@@ -187,12 +196,10 @@ defmodule EveDmv.Eve.StaticDataLoader.SolarSystemProcessor do
       constellation_id: system.constellation_id,
       constellation_name: constellation[:name],
       security_status: system.security,
-      security_class: security_class,
+      security_class: final_security_class,
       x: system.x || 0.0,
       y: system.y || 0.0,
       z: system.z || 0.0,
-      sun_type_id: system.sun_type_id,
-      is_wormhole: region[:wormhole_class_id] != nil,
       wormhole_class_id: region[:wormhole_class_id],
       sde_version: sde_version
     }

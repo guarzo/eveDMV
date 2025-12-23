@@ -135,7 +135,8 @@ jobs:
     
     services:
       postgres:
-        image: postgres:16
+        # PostgreSQL 18 - keep in sync with docker-compose.yml and docker-compose.production.yml
+        image: postgres:18
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -170,6 +171,18 @@ jobs:
           deps
           _build
         key: ${{ needs.setup.outputs.cache-key }}
+
+    - name: Verify PostgreSQL version
+      run: |
+        PG_VERSION=$(psql -h localhost -U postgres -t -c "SELECT version();" | head -1)
+        echo "PostgreSQL version: $PG_VERSION"
+        if ! echo "$PG_VERSION" | grep -q "PostgreSQL 18"; then
+          echo "❌ ERROR: Expected PostgreSQL 18, got: $PG_VERSION"
+          exit 1
+        fi
+        echo "✅ PostgreSQL 18 confirmed"
+      env:
+        PGPASSWORD: postgres
 
     - name: Setup database
       run: |

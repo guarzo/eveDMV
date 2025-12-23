@@ -52,7 +52,9 @@ defmodule EveDmv.Eve.StaticDataLoader do
            %{item_types: non_neg_integer(), solar_systems: non_neg_integer(), source: atom()}}
           | {:error, term()}
   def load_all_static_data do
-    Logger.info("Loading all EVE static data from CCP SDE")
+    Logger.info("=" <> String.duplicate("=", 59))
+    Logger.info("📦 LOADING EVE STATIC DATA FROM CCP SDE")
+    Logger.info("=" <> String.duplicate("=", 59))
 
     with {:ok, item_count} <- load_item_types(),
          {:ok, system_count} <- load_solar_systems() do
@@ -62,11 +64,19 @@ defmodule EveDmv.Eve.StaticDataLoader do
         source: :ccp
       }
 
-      Logger.info("Static data loading complete: #{item_count} items, #{system_count} systems")
+      Logger.info("=" <> String.duplicate("=", 59))
+      Logger.info("✅ STATIC DATA LOADING COMPLETE")
+      Logger.info("   Item types: #{item_count}")
+      Logger.info("   Solar systems: #{system_count}")
+      Logger.info("=" <> String.duplicate("=", 59))
+
       {:ok, results}
     else
       {:error, reason} = error ->
-        Logger.error("Failed to load static data: #{inspect(reason)}")
+        Logger.error("=" <> String.duplicate("=", 59))
+        Logger.error("❌ STATIC DATA LOADING FAILED")
+        Logger.error("   Error: #{inspect(reason)}")
+        Logger.error("=" <> String.duplicate("=", 59))
         error
     end
   end

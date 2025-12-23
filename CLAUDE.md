@@ -8,7 +8,7 @@ EVE DMV is an Elixir Phoenix application for real-time PvP intelligence and anal
 - **Phoenix 1.8** with LiveView for real-time UI updates
 - **Ash Framework 3.7** for declarative resource management (replaces traditional Ecto schemas)
 - **Broadway** for high-throughput killmail ingestion pipeline
-- **PostgreSQL 16** with partitioning and materialized views for performance
+- **PostgreSQL 18** with partitioning and materialized views for performance
 - **EVE SSO OAuth2** for authentication with automatic token refresh
 - **OpenTelemetry** for observability and performance monitoring
 - **Elixir 1.19** (required version)

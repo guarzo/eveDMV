@@ -1,10 +1,11 @@
 # Custom PostgreSQL image with pg_cron extension for EVE DMV development
 # Using Debian-based image for better package availability
-FROM postgres:16-bookworm
+# PostgreSQL 18 - keep in sync with ci.yml and docker-compose.production.yml
+FROM postgres:18-bookworm
 
 # Install pg_cron from PostgreSQL APT repository
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    postgresql-16-cron \
+    postgresql-18-cron \
     && rm -rf /var/lib/apt/lists/*
 
 # Add initialization script to enable pg_cron

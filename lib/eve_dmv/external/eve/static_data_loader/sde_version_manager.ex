@@ -8,8 +8,8 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManager do
   Uses CCP's official Static Data Export with build number versioning.
   """
 
-  alias EveDmv.Api
   alias EveDmv.Eve.SolarSystem
+  alias EveDmv.Eve.StaticDataLoader
   alias EveDmv.Eve.StaticDataLoader.CcpSdeClient
 
   require Logger
@@ -151,76 +151,32 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManager do
   defp update_sde_data(new_version) do
     version_string = new_version.version_string
     build_number = new_version.build_number
-    Logger.info("Updating SDE data to CCP version: #{version_string} (build: #{build_number})")
 
-    # Currently only tracking version updates
-    # The actual data loading is done separately via StaticDataLoader
+    Logger.info("=" <> String.duplicate("=", 59))
+    Logger.info("📥 STARTING SDE DATA UPDATE")
+    Logger.info("   Target version: #{version_string} (build: #{build_number})")
+    Logger.info("=" <> String.duplicate("=", 59))
 
-    Logger.info("SDE update completed successfully")
-    update_version_tracking(version_string, build_number)
-    {:ok, %{version: version_string, build_number: build_number}}
-  end
+    # Actually load the SDE data
+    case StaticDataLoader.load_all_static_data() do
+      {:ok, %{item_types: item_count, solar_systems: system_count}} ->
+        Logger.info("=" <> String.duplicate("=", 59))
+        Logger.info("✅ SDE UPDATE COMPLETED SUCCESSFULLY")
+        Logger.info("   Version: #{version_string}")
+        Logger.info("   Item types loaded: #{item_count}")
+        Logger.info("   Solar systems loaded: #{system_count}")
+        Logger.info("=" <> String.duplicate("=", 59))
 
-  defp update_version_tracking(new_version, build_number) do
-    Logger.info(
-      "Updating version tracking to: #{new_version}" <>
-        if(build_number, do: " (build: #{build_number})", else: "")
-    )
+        {:ok, %{version: version_string, build_number: build_number, item_types: item_count, solar_systems: system_count}}
 
-    # Update a sample of systems to track the new version
-    case Ash.Query.new(SolarSystem)
-         |> Ash.Query.limit(10)
-         |> Ash.read(domain: EveDmv.Api) do
-      {:ok, systems} ->
-        update_time = DateTime.utc_now()
+      {:error, reason} ->
+        Logger.error("=" <> String.duplicate("=", 59))
+        Logger.error("❌ SDE UPDATE FAILED")
+        Logger.error("   Target version: #{version_string}")
+        Logger.error("   Error: #{inspect(reason)}")
+        Logger.error("=" <> String.duplicate("=", 59))
 
-        update_attrs = %{
-          sde_version: new_version,
-          last_updated: update_time
-        }
-
-        # Add build number if provided
-        update_attrs =
-          if build_number do
-            Map.put(update_attrs, :sde_build_number, build_number)
-          else
-            update_attrs
-          end
-
-        results =
-          systems
-          |> Enum.map(fn system ->
-            case Ash.update(
-                   system,
-                   update_attrs,
-                   action: :update_sde_version,
-                   domain: Api
-                 ) do
-              {:ok, _} ->
-                :ok
-
-              {:error, error} ->
-                Logger.warning(
-                  "Failed to update version for system #{system.system_id}: #{inspect(error)}"
-                )
-
-                :error
-            end
-          end)
-
-        failures = Enum.count(results, &(&1 == :error))
-
-        if failures > 0 do
-          Logger.warning("Version tracking completed with #{failures} failures")
-        else
-          Logger.info("Version tracking updated successfully")
-        end
-
-        :ok
-
-      {:error, error} ->
-        Logger.error("Failed to update version tracking: #{inspect(error)}")
-        {:error, error}
+        {:error, reason}
     end
   end
 

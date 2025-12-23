@@ -341,10 +341,7 @@ defmodule EveDmv.Eve.StaticDataLoader.JsonlParser do
     end
   end
 
-  defp to_float(nil) do
-    Logger.warning("to_float received nil value, defaulting to 0.0")
-    0.0
-  end
+  defp to_float(nil), do: 0.0
 
   defp to_float(value) when is_float(value), do: value
   defp to_float(value) when is_integer(value), do: value * 1.0
