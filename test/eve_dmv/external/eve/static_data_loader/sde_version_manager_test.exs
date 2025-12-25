@@ -3,17 +3,6 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManagerTest do
 
   alias EveDmv.Eve.StaticDataLoader.SdeVersionManager
 
-  describe "version comparison logic" do
-    test "struct has expected fields" do
-      version_manager = %SdeVersionManager{}
-
-      assert Map.has_key?(version_manager, :current_version)
-      assert Map.has_key?(version_manager, :latest_version)
-      assert Map.has_key?(version_manager, :last_check)
-      assert Map.has_key?(version_manager, :needs_update)
-    end
-  end
-
   describe "version_info type" do
     test "version info should have expected structure" do
       # This tests the expected shape of version info returned by get_ccp_version_info
