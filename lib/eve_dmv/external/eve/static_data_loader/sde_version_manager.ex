@@ -137,9 +137,18 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManager do
       {nil, _} ->
         true
 
-      # Compare build numbers
-      {%{build_number: current_build}, %{build_number: latest_build}} ->
+      # Both have integer build numbers - compare them
+      {%{build_number: current_build}, %{build_number: latest_build}}
+      when is_integer(current_build) and is_integer(latest_build) ->
         latest_build > current_build
+
+      # Current has nil build number - treat as needing update
+      {%{build_number: nil}, %{build_number: latest_build}} when is_integer(latest_build) ->
+        true
+
+      # Latest has nil build number - cannot determine, don't update
+      {_, %{build_number: nil}} ->
+        false
 
       # Current version is not in CCP format, update to migrate
       {_, %{build_number: _}} ->
