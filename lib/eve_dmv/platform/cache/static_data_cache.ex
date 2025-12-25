@@ -63,6 +63,63 @@ defmodule EveDmv.Platform.Cache.StaticDataCache do
   end
 
   @doc """
+  Resolve multiple system IDs to security info in a single operation.
+  Returns a map of system_id => %{class: String.t(), color: String.t(), status: number()}.
+  """
+  def resolve_system_securities(system_ids) when is_list(system_ids) do
+    unique_ids = Enum.uniq(system_ids)
+
+    # Check cache first
+    {cached_results, missing_ids} =
+      Enum.reduce(unique_ids, {[], []}, fn id, {cached, missing} ->
+        case :ets.lookup(@table_name, {:system_security, id}) do
+          [{_, security_info}] -> {[{id, security_info} | cached], missing}
+          [] -> {cached, [id | missing]}
+        end
+      end)
+
+    # Update stats
+    if cached_results != [] do
+      GenServer.cast(__MODULE__, {:record_hits, length(cached_results)})
+    end
+
+    if missing_ids != [] do
+      GenServer.cast(__MODULE__, {:record_misses, length(missing_ids)})
+    end
+
+    cached_map = Map.new(cached_results)
+
+    # Batch fetch missing
+    if missing_ids == [] do
+      cached_map
+    else
+      fetched_map = batch_fetch_system_securities(missing_ids)
+      Map.merge(cached_map, fetched_map)
+    end
+  end
+
+  @doc """
+  Resolve a single system ID to security info.
+  """
+  def resolve_system_security(system_id) when is_integer(system_id) do
+    case :ets.lookup(@table_name, {:system_security, system_id}) do
+      [{_, security_info}] ->
+        GenServer.cast(__MODULE__, {:record_hits, 1})
+        security_info
+
+      [] ->
+        GenServer.cast(__MODULE__, {:record_misses, 1})
+        # Single fetch with caching
+        case fetch_and_cache_system_security(system_id) do
+          {:ok, security_info} -> security_info
+          :error -> %{class: "unknown", color: "text-gray-400", status: 0.0}
+        end
+    end
+  end
+
+  def resolve_system_security(_), do: %{class: "unknown", color: "text-gray-400", status: 0.0}
+
+  @doc """
   Resolve a single system ID to name.
   """
   def resolve_system_name(system_id) when is_integer(system_id) do
@@ -353,6 +410,85 @@ defmodule EveDmv.Platform.Cache.StaticDataCache do
       _ ->
         :error
     end
+  end
+
+  defp batch_fetch_system_securities(system_ids) do
+    Logger.debug("Batch fetching #{length(system_ids)} system securities")
+
+    query =
+      SolarSystem
+      |> new()
+      |> filter(system_id in ^system_ids)
+
+    case Ash.read(query, domain: EveDmv.Api) do
+      {:ok, systems} ->
+        # Cache all results
+        result_map =
+          Map.new(systems, fn system ->
+            security_info = build_security_info(system)
+            :ets.insert(@table_name, {{:system_security, system.system_id}, security_info})
+            {system.system_id, security_info}
+          end)
+
+        # Add "unknown" for any missing
+        missing_ids = system_ids -- Map.keys(result_map)
+
+        unknown_map =
+          Map.new(missing_ids, fn id ->
+            security_info = %{class: "unknown", color: "text-gray-400", status: 0.0}
+            :ets.insert(@table_name, {{:system_security, id}, security_info})
+            {id, security_info}
+          end)
+
+        Map.merge(result_map, unknown_map)
+
+      {:error, error} ->
+        Logger.error("Failed to batch fetch system securities: #{inspect(error)}")
+
+        Map.new(system_ids, fn id ->
+          {id, %{class: "unknown", color: "text-gray-400", status: 0.0}}
+        end)
+    end
+  end
+
+  defp fetch_and_cache_system_security(system_id) do
+    query =
+      SolarSystem
+      |> new()
+      |> filter(system_id == ^system_id)
+      |> limit(1)
+
+    case Ash.read(query, domain: EveDmv.Api) do
+      {:ok, [system]} ->
+        security_info = build_security_info(system)
+        :ets.insert(@table_name, {{:system_security, system_id}, security_info})
+        {:ok, security_info}
+
+      _ ->
+        :error
+    end
+  end
+
+  defp build_security_info(system) do
+    security_class = String.downcase(system.security_class || "unknown")
+
+    color =
+      case security_class do
+        "highsec" -> "text-green-400"
+        "lowsec" -> "text-yellow-400"
+        "nullsec" -> "text-red-400"
+        "wormhole" -> "text-purple-400"
+        _ -> "text-gray-400"
+      end
+
+    status =
+      case system.security_status do
+        %Decimal{} = decimal -> Decimal.to_float(decimal)
+        value when is_number(value) -> value
+        _ -> 0.0
+      end
+
+    %{class: security_class, color: color, status: status}
   end
 
   defp perform_cache_warming do

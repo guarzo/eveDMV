@@ -10,6 +10,7 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.FleetAnalysisEngine do
 
   alias EveDmv.Shared.Infrastructure.UnifiedCache
 
+  require Ash.Query
   require Logger
 
   # Ship class categories for analysis
@@ -431,7 +432,9 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.FleetAnalysisEngine do
 
   defp load_ship_static_data do
     # Load ship type data from the static data system
-    case Ash.read(EveDmv.Eve.ItemType, filter: [published: true], domain: EveDmv.Api) do
+    query = Ash.Query.filter(EveDmv.Eve.ItemType, published: true)
+
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, ship_types} ->
         Logger.info("Loaded #{length(ship_types)} ship types for fleet analysis")
         :ok
@@ -443,7 +446,9 @@ defmodule EveDmv.Contexts.CombatAnalysis.Domain.FleetAnalysisEngine do
   end
 
   defp get_ship_type_name(ship_type_id) do
-    case Ash.read(EveDmv.Eve.ItemType, filter: [type_id: ship_type_id], domain: EveDmv.Api) do
+    query = Ash.Query.filter(EveDmv.Eve.ItemType, type_id: ship_type_id)
+
+    case Ash.read(query, domain: EveDmv.Api) do
       {:ok, [ship_type]} -> ship_type.type_name || "Unknown Ship #{ship_type_id}"
       _ -> "Unknown Ship #{ship_type_id}"
     end

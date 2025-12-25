@@ -770,25 +770,4 @@ defmodule EveDmv.StaticData.ShipTypes do
   def get_ship_class(ship_identifier) do
     EveDmv.StaticData.get_ship_class(ship_identifier)
   end
-
-  @doc """
-  DEPRECATED: Returns ship type ranges. Use classify_ship_type/1 instead.
-
-  This function is kept for backward compatibility.
-  """
-  @deprecated "Use classify_ship_type/1 or database queries instead"
-  def ship_type_ranges do
-    # Return empty ranges - all classification is now done via database queries
-    %{
-      frigate: [],
-      destroyer: [],
-      cruiser: [],
-      battlecruiser: [],
-      battleship: [],
-      capital: [],
-      industrial: [],
-      mining: [],
-      supercapital: []
-    }
-  end
 end

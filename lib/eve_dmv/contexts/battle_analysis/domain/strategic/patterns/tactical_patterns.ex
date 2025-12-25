@@ -7,7 +7,9 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
   share similar analysis approaches.
   """
 
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.StaticData.ShipTypes
 
   require Logger
 
@@ -822,12 +824,11 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
   end
 
   defp analyze_hauler_kills(killmails) do
-    hauler_types = [:hauler, :freighter, :transport, :industrial]
-
+    # Industrial ships include haulers, transports, and freighters
     hauler_kills =
       killmails
       |> Enum.filter(fn km ->
-        classify_ship_type(km.victim.ship_type_id) in hauler_types
+        classify_ship_type(km.victim.ship_type_id) == :industrial
       end)
 
     %{
@@ -888,12 +889,8 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
       hauler_count =
         data.killmails
         |> Enum.count(fn km ->
-          classify_ship_type(km.victim.ship_type_id) in [
-            :hauler,
-            :freighter,
-            :transport,
-            :industrial
-          ]
+          # Industrial ships include haulers, transports, and freighters
+          classify_ship_type(km.victim.ship_type_id) == :industrial
         end)
 
       {data.system_id, hauler_count}
@@ -934,12 +931,8 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
     hauler_kills =
       killmails
       |> Enum.filter(fn km ->
-        classify_ship_type(km.victim.ship_type_id) in [
-          :hauler,
-          :freighter,
-          :transport,
-          :industrial
-        ]
+        # Industrial ships include haulers, transports, and freighters
+        classify_ship_type(km.victim.ship_type_id) == :industrial
       end)
 
     %{
@@ -1004,12 +997,8 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
 
     hauler_kills =
       Enum.count(killmails, fn km ->
-        classify_ship_type(km.victim.ship_type_id) in [
-          :hauler,
-          :freighter,
-          :transport,
-          :industrial
-        ]
+        # Industrial ships include haulers, transports, and freighters
+        classify_ship_type(km.victim.ship_type_id) == :industrial
       end)
 
     %{
@@ -1178,7 +1167,8 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
     end)
     |> Enum.count(fn km ->
       ship_class = classify_ship_type(km.victim.ship_type_id)
-      ship_class in [:battleship, :battlecruiser, :cruiser, :assault_frigate]
+      # Combat-capable ships: frigates, cruisers, battlecruisers, battleships
+      ship_class in [:battleship, :battlecruiser, :cruiser, :frigate]
     end)
   end
 
@@ -1297,7 +1287,8 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
       killmails
       |> Enum.filter(fn km ->
         ship_class = classify_ship_type(km.victim.ship_type_id)
-        ship_class in [:battleship, :battlecruiser, :cruiser, :assault_frigate]
+        # Combat-capable ships: frigates, cruisers, battlecruisers, battleships
+        ship_class in [:battleship, :battlecruiser, :cruiser, :frigate]
       end)
 
     fleet_indicators = detect_fleet_activity(killmails)
@@ -1558,122 +1549,12 @@ defmodule EveDmv.Shared.Strategic.Patterns.TacticalPatterns do
   end
 
   defp classify_ship_type(ship_type_id) do
-    # Map specific ship type IDs to their roles
-    # This is based on EVE Online ship type IDs
-    case ship_type_id do
-      # Freighters
-      # Providence
-      20_183 ->
-        :freighter
-
-      # Charon
-      20_185 ->
-        :freighter
-
-      # Obelisk
-      20_187 ->
-        :freighter
-
-      # Fenrir
-      20_189 ->
-        :freighter
-
-      # Jump Freighters
-      # Rhea
-      28_844 ->
-        :freighter
-
-      # Nomad
-      28_846 ->
-        :freighter
-
-      # Anshar
-      28_848 ->
-        :freighter
-
-      # Ark
-      28_850 ->
-        :freighter
-
-      # Deep Space Transports
-      # Crane
-      12_729 ->
-        :transport
-
-      # Bustard
-      12_731 ->
-        :transport
-
-      # Mastodon
-      12_733 ->
-        :transport
-
-      # Impel
-      12_735 ->
-        :transport
-
-      # Blockade Runners
-      # Prowler
-      12_743 ->
-        :transport
-
-      # Viator
-      12_745 ->
-        :transport
-
-      # Prorator
-      12_747 ->
-        :transport
-
-      # Wideload
-      12_749 ->
-        :transport
-
-      # Assault Frigates
-      # Enyo
-      11_184 ->
-        :assault_frigate
-
-      # Ishkur
-      11_186 ->
-        :assault_frigate
-
-      # Vengeance
-      11_200 ->
-        :assault_frigate
-
-      # Retribution
-      11_202 ->
-        :assault_frigate
-
-      # Harpy
-      12_042 ->
-        :assault_frigate
-
-      # Wolf
-      12_044 ->
-        :assault_frigate
-
-      # Hawk
-      12_034 ->
-        :assault_frigate
-
-      # Jaguar
-      12_038 ->
-        :assault_frigate
-
-      # Default classification based on group
-      _ ->
-        # Use static data classification
-        EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
+    # Use centralized ship classification from static data
+    case ShipTypes.classify_ship_type(ship_type_id) do
+      :unknown -> :other
+      class -> class
     end
   end
 
-  defp average(list) do
-    if Enum.empty?(list) do
-      0.0
-    else
-      Enum.sum(list) / length(list)
-    end
-  end
+  defp average(list), do: SharedUtilities.average(list)
 end

@@ -214,20 +214,24 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
     }
   end
 
-  defp calculate_average(list) when is_list(list) and length(list) > 0 do
-    list_length = length(list)
-
-    if list_length > 0 do
-      Enum.sum(list) / list_length
-    else
+  defp calculate_average(list) when is_list(list) do
+    if list == [] do
       0.0
+    else
+      list_length = length(list)
+
+      if list_length > 0 do
+        Enum.sum(list) / list_length
+      else
+        0.0
+      end
     end
   end
 
   defp calculate_average(_), do: 0
 
   defp calculate_session_regularity(sessions) do
-    if length(sessions) < 2 do
+    if Enum.count(sessions) < 2 do
       :insufficient_data
     else
       # Calculate time between session starts
@@ -267,7 +271,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
   end
 
   defp calculate_variance(values, mean) do
-    if Enum.empty?(values) do
+    if values == [] do
       0
     else
       values_length = length(values)
@@ -286,7 +290,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
   end
 
   defp estimate_timezone(killmails) do
-    if length(killmails) < 10 do
+    if Enum.count(killmails) < 10 do
       "Unknown"
     else
       # Find the most active 4-hour window
@@ -592,7 +596,7 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
   end
 
   defp calculate_consistency_score(daily_counts) do
-    if length(daily_counts) < 7 do
+    if Enum.count(daily_counts) < 7 do
       0.0
     else
       # Calculate coefficient of variation
@@ -635,7 +639,9 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
 
     # Higher concentration = higher predictability
     hour_concentration =
-      if length(hourly_activity) > 0 do
+      if hourly_activity == [] do
+        0
+      else
         hour_sum = Enum.sum(hourly_activity)
 
         if hour_sum > 0 do
@@ -643,12 +649,12 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
         else
           0
         end
-      else
-        0
       end
 
     system_concentration =
-      if length(system_activity) > 0 do
+      if system_activity == [] do
+        0
+      else
         system_sum = Enum.sum(system_activity)
 
         if system_sum > 0 do
@@ -656,8 +662,6 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
         else
           0
         end
-      else
-        0
       end
 
     Float.round((hour_concentration + system_concentration) / 2, 2)

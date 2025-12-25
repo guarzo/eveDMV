@@ -173,22 +173,19 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
           {:ok, threat_trend_analysis()} | {:error, intelligence_error()}
   @dialyzer {:nowarn_function, calculate_threat_trends: 2}
   def calculate_threat_trends(character_id, days_back \\ 90) do
-    case ThreatScoringEngine.analyze_threat_trends(character_id, analysis_window_days: days_back) do
-      {:ok, trend_data} ->
-        # Ensure the response matches our type spec
-        {:ok,
-         %{
-           character_id: character_id,
-           trend_direction: trend_data[:trend_direction] || :insufficient_data,
-           trend_strength: trend_data[:trend_strength] || 0.0,
-           historical_scores: trend_data[:historical_scores] || [],
-           analysis_period_days: days_back,
-           analysis_timestamp: DateTime.utc_now()
-         }}
+    {:ok, trend_data} =
+      ThreatScoringEngine.analyze_threat_trends(character_id, analysis_window_days: days_back)
 
-      {:error, reason} ->
-        {:error, reason}
-    end
+    # Ensure the response matches our type spec
+    {:ok,
+     %{
+       character_id: character_id,
+       trend_direction: trend_data[:trend_direction] || :insufficient_data,
+       trend_strength: trend_data[:trend_strength] || 0.0,
+       historical_scores: trend_data[:historical_scores] || [],
+       analysis_period_days: days_back,
+       analysis_timestamp: DateTime.utc_now()
+     }}
   end
 
   @doc """
@@ -458,10 +455,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
         threat_data
         |> Map.put(:ship_specialization, format_ship_specialization(ship_intelligence))
         |> Map.put(:dimensions, enhanced_dimensions)
-
-      {:error, _reason} ->
-        # Return threat_data unchanged if ship intelligence fails
-        threat_data
     end
   end
 

@@ -12,7 +12,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
   """
 
   alias EveDmv.Contexts.BattleAnalysis.Domain.ParticipantExtractor
-  alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
@@ -957,9 +957,5 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
     end
   end
 
-  defp average([]), do: 0.0
-
-  defp average(values) do
-    Enum.sum(values) / length(values)
-  end
+  defp average(list), do: SharedUtilities.average(list)
 end

@@ -231,25 +231,25 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
   end
 
   @impl GenServer
-  def handle_call({:update_alert_state, alert_id, new_state, user_id, notes}, _from, state) do
+  def handle_call({:update_alert_state, alert_id, target_state, user_id, notes}, _from, state) do
     case Map.get(state.alerts, alert_id) do
       nil ->
         {:reply, {:error, :alert_not_found}, state}
 
       alert ->
-        updated_alert = update_alert_state_internal(alert, new_state, user_id, notes)
+        updated_alert = update_alert_state_internal(alert, target_state, user_id, notes)
         new_alerts = Map.put(state.alerts, alert_id, updated_alert)
 
         # Update counters
-        new_counters = update_state_counters(state.alert_counters, alert.state, new_state)
+        new_counters = update_state_counters(state.alert_counters, alert.state, target_state)
 
-        new_state = %{
+        updated_state = %{
           state
           | alerts: new_alerts,
             alert_counters: new_counters
         }
 
-        Logger.info("Updated alert #{alert_id} state: #{alert.state} -> #{new_state}")
+        Logger.info("Updated alert #{alert_id} state: #{alert.state} -> #{target_state}")
 
         # Broadcast alert state change
         Phoenix.PubSub.broadcast(
@@ -258,7 +258,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
           {:alert_updated, alert_id}
         )
 
-        {:reply, {:ok, updated_alert}, new_state}
+        {:reply, {:ok, updated_alert}, updated_state}
     end
   end
 

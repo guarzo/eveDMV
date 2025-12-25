@@ -303,7 +303,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
   end
 
   defp determine_awox_risk_level(potential_awoxers) do
-    if Enum.empty?(potential_awoxers) do
+    if potential_awoxers == [] do
       :minimal
     else
       max_risk =
@@ -348,14 +348,14 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
 
         # Irregular timezone activity
         indicators =
-          if length(metric.peak_activity_hours) > 0 &&
+          if Enum.any?(metric.peak_activity_hours) &&
                unusual_timezone_pattern?(metric.peak_activity_hours) do
             ["Unusual timezone patterns" | indicators]
           else
             indicators
           end
 
-        if Enum.empty?(indicators) do
+        if indicators == [] do
           nil
         else
           %{
@@ -380,7 +380,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
     # Only active in one hour
     # Regular interval checks
     length(peak_hours) == 1 ||
-      (length(peak_hours) > 0 && Enum.all?(peak_hours, &(&1 in [0, 6, 12, 18])))
+      (Enum.any?(peak_hours) && Enum.all?(peak_hours, &(&1 in [0, 6, 12, 18])))
   end
 
   defp calculate_suspicion_level(indicators) do
@@ -398,7 +398,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
     cond do
       high_suspicion_count >= 3 -> :high
       high_suspicion_count >= 1 -> :moderate
-      length(spy_indicators) > 0 -> :low
+      spy_indicators != [] -> :low
       true -> :minimal
     end
   end
@@ -547,7 +547,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
       |> Enum.map(& &1.character_name)
 
     feeder_patterns =
-      if length(feeders) > 0 do
+      if feeders != [] do
         ["Potential feeders detected: #{Enum.join(feeders, ", ")}" | initial_patterns]
       else
         initial_patterns
@@ -608,7 +608,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
         awox_vulnerabilities
       end
 
-    if Enum.empty?(final_vulnerabilities) do
+    if final_vulnerabilities == [] do
       ["No critical security vulnerabilities identified"]
     else
       Enum.reverse(final_vulnerabilities)
@@ -675,7 +675,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
     potential_spies = Map.get(spy_indicators, :potential_spies, [])
 
     final_operational_indicators =
-      if length(potential_spies) > 0 do
+      if potential_spies != [] do
         ["Suspicious activity patterns detected" | initial_operational_indicators]
       else
         initial_operational_indicators

@@ -1,10 +1,12 @@
 # Custom PostgreSQL image with pg_cron extension for EVE DMV development
-FROM postgres:17-alpine
+# Using Debian-based image for better package availability
+# PostgreSQL 18 - keep in sync with ci.yml and docker-compose.production.yml
+FROM postgres:18-bookworm
 
-# Install pg_cron from Alpine community repository
-RUN apk add --no-cache \
-    --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community \
-    pg_cron
+# Install pg_cron from PostgreSQL APT repository
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-18-cron \
+    && rm -rf /var/lib/apt/lists/*
 
 # Add initialization script to enable pg_cron
 COPY postgres-init.sql /docker-entrypoint-initdb.d/

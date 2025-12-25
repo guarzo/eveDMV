@@ -128,7 +128,7 @@ defmodule EveDmv.Intelligence.CharacterMetricsTest do
       killmail_data = rifter_kills ++ stabber_kills ++ rifter_losses
       ship_usage = CharacterMetrics.analyze_ship_usage(character_id, killmail_data)
 
-      assert length(ship_usage.favorite_ships) > 0
+      assert Enum.any?(ship_usage.favorite_ships)
 
       # Find Rifter in favorite ships
       rifter_stats =
@@ -191,7 +191,7 @@ defmodule EveDmv.Intelligence.CharacterMetricsTest do
       killmail_data = jita_kills ++ amarr_kills
       geo_patterns = CharacterMetrics.analyze_geographic_patterns(killmail_data)
 
-      assert length(geo_patterns.most_active_systems) > 0
+      assert Enum.any?(geo_patterns.most_active_systems)
 
       # Jita should be the most active
       [top_system | _] = geo_patterns.most_active_systems
@@ -238,7 +238,7 @@ defmodule EveDmv.Intelligence.CharacterMetricsTest do
       killmail_data = frigate_kills ++ cruiser_kills
       target_prefs = CharacterMetrics.analyze_target_preferences(character_id, killmail_data)
 
-      assert length(target_prefs.preferred_target_ships) > 0
+      assert Enum.any?(target_prefs.preferred_target_ships)
       assert target_prefs.average_target_value >= 0
     end
   end
@@ -273,7 +273,7 @@ defmodule EveDmv.Intelligence.CharacterMetricsTest do
       killmail_data = losses_to_lokis ++ losses_to_sabres
       weaknesses = CharacterMetrics.identify_weaknesses(character_id, killmail_data)
 
-      assert length(weaknesses.vulnerable_to_ship_types) > 0
+      assert Enum.any?(weaknesses.vulnerable_to_ship_types)
       assert weaknesses.takes_bad_fights != nil
       assert weaknesses.overconfidence_indicator >= 0
     end
@@ -301,7 +301,7 @@ defmodule EveDmv.Intelligence.CharacterMetricsTest do
       killmail_data = morning_kills ++ evening_kills
       temporal = CharacterMetrics.analyze_temporal_patterns(killmail_data)
 
-      assert length(temporal.peak_hours) > 0
+      assert Enum.any?(temporal.peak_hours)
       assert temporal.timezone_estimate != nil
       assert temporal.activity_consistency >= 0
     end

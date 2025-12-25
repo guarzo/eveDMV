@@ -1,5 +1,12 @@
 defmodule EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer do
   @moduledoc """
+  **DEPRECATED**: Use `EveDmv.Contexts.Corporation.Core.CorporationAnalyzer` instead.
+
+  This module is deprecated and will be removed in a future release.
+  The canonical corporation analyzer is in the Corporation context.
+
+  ---
+
   Core corporation analysis service for EVE DMV.
 
   Provides comprehensive corporation analysis including member activity,

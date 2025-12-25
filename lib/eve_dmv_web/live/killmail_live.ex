@@ -155,13 +155,12 @@ defmodule EveDmvWeb.KillmailLive do
   end
 
   defp enrich_killmail_data(killmail) do
-    # Calculate killmail value
+    # Calculate killmail value - function returns {:ok, %{total_value: value}}
     killmail_value =
       case EveDmv.Contexts.MarketIntelligence.Domain.ValuationService.calculate_killmail_value(
              killmail
            ) do
         {:ok, %{total_value: value}} when is_number(value) -> value
-        %{total_value: value} when is_number(value) -> value
         _ -> 0
       end
 

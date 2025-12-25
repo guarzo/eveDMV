@@ -10,11 +10,13 @@ defmodule EveDmv.Intelligence.AnalysisScheduler do
   """
 
   use GenServer
+
+  alias EveDmv.Contexts.Corporation.Core.CorporationAnalyzer
+  alias EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Intelligence.Analyzers.CorporationAnalyzer
   alias EveDmv.Intelligence.Analyzers.MemberActivityAnalyzer
-  alias EveDmv.Intelligence.Analyzers.ThreatAnalyzer
   alias EveDmv.Intelligence.Core.Config
+
   require Logger
 
   # Default schedule check interval: 1 minute
@@ -240,10 +242,10 @@ defmodule EveDmv.Intelligence.AnalysisScheduler do
   end
 
   defp execute_single_task(task) do
-    analyzer_module = get_analyzer_module(task.analyzer_type)
+    result = execute_analyzer(task.analyzer_type, task.entity_id)
 
-    case analyzer_module.analyze(task.entity_id, %{scheduled: true}) do
-      {:ok, _result} ->
+    case result do
+      {:ok, _} ->
         Logger.debug(
           "Scheduled #{task.analyzer_type} analysis completed for entity #{task.entity_id}"
         )
@@ -266,13 +268,21 @@ defmodule EveDmv.Intelligence.AnalysisScheduler do
       {:error, error}
   end
 
-  defp get_analyzer_module(analyzer_type) do
-    case analyzer_type do
-      :threat -> ThreatAnalyzer
-      :corporation -> CorporationAnalyzer
-      :member_activity -> MemberActivityAnalyzer
-      _ -> raise "Unknown analyzer type: #{analyzer_type}"
-    end
+  # Execute the correct analyzer function for each type
+  defp execute_analyzer(:threat, entity_id) do
+    ThreatAnalyzer.analyze(entity_id, %{}, scheduled: true)
+  end
+
+  defp execute_analyzer(:corporation, entity_id) do
+    CorporationAnalyzer.analyze_corporation(entity_id, scheduled: true)
+  end
+
+  defp execute_analyzer(:member_activity, entity_id) do
+    MemberActivityAnalyzer.analyze_corporation_activity(entity_id)
+  end
+
+  defp execute_analyzer(unknown_type, _entity_id) do
+    {:error, "Unknown analyzer type: #{unknown_type}"}
   end
 
   defp generate_task_id(entity_id, analyzer_type) do

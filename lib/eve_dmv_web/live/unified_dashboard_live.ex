@@ -8,7 +8,26 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
 
   use EveDmvWeb, :live_view
 
+  alias EveDmv.Contexts.Surveillance
+
   require Logger
+
+  # Load current user from session on mount
+  on_mount({EveDmvWeb.AuthLive, :load_from_session})
+
+  # System health thresholds
+  # Response time above this value (in ms) indicates critical system issues
+  @critical_response_threshold_ms 5000
+  # Response time above this value (in ms) indicates degraded performance
+  @degraded_response_threshold_ms 1000
+  # Cache hit rate below this value indicates suboptimal caching
+  @minimum_acceptable_cache_hit_rate 0.5
+
+  # Time range constants in seconds
+  @seconds_per_hour 3_600
+  @seconds_per_day 86_400
+  @seconds_per_week 604_800
+  @seconds_per_30_days 2_592_000
 
   # LiveView lifecycle
 
@@ -220,19 +239,134 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
   end
 
   defp load_surveillance_profiles(_time_range) do
-    # Return empty list for now - this would normally load from ThreatSurveillance
-    []
+    # Load profiles from the Surveillance context
+    case Surveillance.list_profiles(active_only: true, limit: 100) do
+      {:ok, profiles} ->
+        profiles
+
+      {:error, reason} ->
+        Logger.warning("Failed to load surveillance profiles: #{inspect(reason)}")
+        []
+    end
+  rescue
+    error ->
+      Logger.error("Exception loading surveillance profiles: #{inspect(error)}")
+      []
   end
 
-  defp calculate_surveillance_metrics(_profiles, _time_range) do
-    # Return basic metrics structure
-    %{
-      total_profiles: 0,
-      active_alerts: 0,
-      match_rate: 0.0,
-      avg_response: "N/A",
-      system_health: "Good"
-    }
+  defp calculate_surveillance_metrics(profiles, time_range) do
+    # Calculate real metrics from profiles and surveillance data
+    total_profiles = length(profiles)
+
+    # Get surveillance metrics from the context
+    metrics_result =
+      try do
+        Surveillance.get_surveillance_metrics()
+      rescue
+        _ -> {:error, :service_unavailable}
+      end
+
+    # Get recent matches count for the time range
+    recent_matches_count = get_recent_matches_count(time_range)
+
+    case metrics_result do
+      {:ok, surveillance_metrics} ->
+        %{
+          total_profiles: total_profiles,
+          active_alerts: recent_matches_count,
+          match_rate: calculate_match_rate(profiles, time_range),
+          avg_response: format_response_time(surveillance_metrics.avg_response_time_ms),
+          system_health: determine_system_health(surveillance_metrics)
+        }
+
+      {:error, _} ->
+        # Fallback when service is unavailable
+        %{
+          total_profiles: total_profiles,
+          active_alerts: recent_matches_count,
+          match_rate: 0.0,
+          avg_response: "N/A",
+          system_health: "Unknown"
+        }
+    end
+  end
+
+  defp get_recent_matches_count(time_range) do
+    since = time_range_to_datetime(time_range)
+
+    case Surveillance.get_recent_matches(since: since, limit: 1000) do
+      {:ok, matches} -> length(matches)
+      {:error, _} -> 0
+    end
+  rescue
+    _ -> 0
+  end
+
+  defp calculate_match_rate(profiles, time_range) do
+    if Enum.empty?(profiles) do
+      0.0
+    else
+      since = time_range_to_datetime(time_range)
+
+      # Get match counts for each profile
+      match_counts =
+        profiles
+        |> Enum.map(fn profile ->
+          case Surveillance.get_match_statistics(profile.id, since) do
+            {:ok, stats} -> Map.get(stats, :total_matches, 0)
+            {:error, _} -> 0
+          end
+        end)
+
+      active_profiles = Enum.count(match_counts, &(&1 > 0))
+      active_profiles / length(profiles) * 100
+    end
+  rescue
+    _ -> 0.0
+  end
+
+  defp time_range_to_datetime(:last_hour) do
+    DateTime.add(DateTime.utc_now(), -@seconds_per_hour, :second)
+  end
+
+  defp time_range_to_datetime(:last_24h) do
+    DateTime.add(DateTime.utc_now(), -@seconds_per_day, :second)
+  end
+
+  defp time_range_to_datetime(:last_7d) do
+    DateTime.add(DateTime.utc_now(), -@seconds_per_week, :second)
+  end
+
+  defp time_range_to_datetime(:last_30d) do
+    DateTime.add(DateTime.utc_now(), -@seconds_per_30_days, :second)
+  end
+
+  defp time_range_to_datetime(_) do
+    DateTime.add(DateTime.utc_now(), -@seconds_per_day, :second)
+  end
+
+  defp format_response_time(nil), do: "N/A"
+
+  defp format_response_time(ms) when is_number(ms) do
+    cond do
+      ms < 1 -> "< 1ms"
+      ms < 1000 -> "#{round(ms)}ms"
+      true -> "#{Float.round(ms / 1000, 1)}s"
+    end
+  end
+
+  defp format_response_time(_), do: "N/A"
+
+  defp determine_system_health(metrics) do
+    avg_response = Map.get(metrics, :avg_response_time_ms, 0)
+    cache_hit_rate = Map.get(metrics, :cache_hit_rate, 0)
+
+    cond do
+      avg_response > @critical_response_threshold_ms -> "Critical"
+      avg_response > @degraded_response_threshold_ms -> "Degraded"
+      cache_hit_rate < @minimum_acceptable_cache_hit_rate -> "Fair"
+      true -> "Good"
+    end
   end
 
   defp build_path_with_params(socket, params) do
@@ -272,4 +406,281 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
         false
     end
   end
+
+  # Render functions
+
+  @impl Phoenix.LiveView
+  def render(assigns) do
+    ~H"""
+    <div class="min-h-screen bg-gray-900">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="mb-8">
+          <h1 class="text-3xl font-bold text-white">{@page_title}</h1>
+          <p class="mt-2 text-gray-400">
+            <%= case @dashboard_type do %>
+              <% :surveillance -> %>
+                Monitor your surveillance profiles and alerts in real-time.
+              <% :intelligence -> %>
+                Access character and corporation intelligence reports.
+              <% :monitoring -> %>
+                System health and performance monitoring.
+              <% _ -> %>
+                Welcome to your EVE DMV dashboard.
+            <% end %>
+          </p>
+        </div>
+
+        <%= if @loading do %>
+          <div class="flex items-center justify-center py-12">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
+          </div>
+        <% else %>
+          <%= if @error do %>
+            <div class="bg-red-900/50 border border-red-700 rounded-lg p-4 mb-6">
+              <div class="flex items-center">
+                <svg class="w-5 h-5 text-red-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                </svg>
+                <span class="text-red-200">{@error}</span>
+              </div>
+            </div>
+          <% end %>
+
+          {render_dashboard_content(assigns)}
+        <% end %>
+      </div>
+    </div>
+    """
+  end
+
+  defp render_dashboard_content(%{dashboard_type: :surveillance} = assigns) do
+    ~H"""
+    <div class="space-y-6">
+      <!-- Surveillance Metrics Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray-400 text-sm">Total Profiles</p>
+              <p class="text-2xl font-bold text-white mt-1">{Map.get(@profile_metrics, :total_profiles, 0)}</p>
+            </div>
+            <div class="p-3 bg-indigo-600/20 rounded-lg">
+              <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray-400 text-sm">Active Alerts</p>
+              <p class="text-2xl font-bold text-white mt-1">{Map.get(@profile_metrics, :active_alerts, 0)}</p>
+            </div>
+            <div class="p-3 bg-yellow-600/20 rounded-lg">
+              <svg class="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray-400 text-sm">Match Rate</p>
+              <p class="text-2xl font-bold text-white mt-1">{Float.round(Map.get(@profile_metrics, :match_rate, 0.0), 1)}%</p>
+            </div>
+            <div class="p-3 bg-green-600/20 rounded-lg">
+              <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray-400 text-sm">System Health</p>
+              <p class="text-2xl font-bold text-white mt-1">{Map.get(@profile_metrics, :system_health, "Unknown")}</p>
+            </div>
+            <div class={"p-3 rounded-lg #{health_color_class(Map.get(@profile_metrics, :system_health, "Unknown"))}"}>
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Surveillance Profiles List -->
+      <div class="bg-gray-800 rounded-lg border border-gray-700">
+        <div class="px-6 py-4 border-b border-gray-700">
+          <h2 class="text-lg font-semibold text-white">Active Surveillance Profiles</h2>
+        </div>
+        <div class="p-6">
+          <%= if Enum.empty?(@profiles) do %>
+            <div class="text-center py-8">
+              <svg class="mx-auto h-12 w-12 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+              </svg>
+              <p class="mt-2 text-gray-400">No active surveillance profiles</p>
+              <a href="/surveillance-profiles" class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+                Create Profile
+              </a>
+            </div>
+          <% else %>
+            <div class="space-y-4">
+              <%= for profile <- Enum.take(@profiles, 10) do %>
+                <div class="flex items-center justify-between p-4 bg-gray-700/50 rounded-lg">
+                  <div>
+                    <p class="text-white font-medium">{profile.name}</p>
+                    <p class="text-gray-400 text-sm">{profile.description || "No description"}</p>
+                  </div>
+                  <a href={"/surveillance-profiles"} class="text-indigo-400 hover:text-indigo-300 text-sm">
+                    View Details
+                  </a>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+    """
+  end
+
+  defp render_dashboard_content(%{dashboard_type: :intelligence} = assigns) do
+    ~H"""
+    <div class="space-y-6">
+      <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h2 class="text-lg font-semibold text-white mb-4">Intelligence Dashboard</h2>
+        <p class="text-gray-400">
+          Access character threat assessments, corporation analysis, and behavioral patterns.
+        </p>
+        <div class="mt-6 flex flex-wrap gap-4">
+          <a href="/search" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+            Search Characters
+          </a>
+          <a href="/surveillance" class="inline-flex items-center px-4 py-2 border border-gray-600 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700">
+            Surveillance Center
+          </a>
+        </div>
+      </div>
+    </div>
+    """
+  end
+
+  defp render_dashboard_content(%{dashboard_type: :monitoring} = assigns) do
+    ~H"""
+    <div class="space-y-6">
+      <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h2 class="text-lg font-semibold text-white mb-4">System Monitoring</h2>
+        <p class="text-gray-400">
+          Monitor system health, performance metrics, and operational status.
+        </p>
+        <div class="mt-6">
+          <a href="/admin/performance" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+            View Performance Dashboard
+          </a>
+        </div>
+      </div>
+    </div>
+    """
+  end
+
+  defp render_dashboard_content(assigns) do
+    ~H"""
+    <div class="space-y-6">
+      <!-- Quick Stats -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <a href="/feed" class="bg-gray-800 rounded-lg p-6 border border-gray-700 hover:border-indigo-500 transition-colors">
+          <div class="flex items-center">
+            <div class="p-3 bg-red-600/20 rounded-lg">
+              <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+              </svg>
+            </div>
+            <div class="ml-4">
+              <p class="text-gray-400 text-sm">Kill Feed</p>
+              <p class="text-white font-semibold">Real-time kills</p>
+            </div>
+          </div>
+        </a>
+
+        <a href="/surveillance" class="bg-gray-800 rounded-lg p-6 border border-gray-700 hover:border-indigo-500 transition-colors">
+          <div class="flex items-center">
+            <div class="p-3 bg-indigo-600/20 rounded-lg">
+              <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+            </div>
+            <div class="ml-4">
+              <p class="text-gray-400 text-sm">Surveillance</p>
+              <p class="text-white font-semibold">Track entities</p>
+            </div>
+          </div>
+        </a>
+
+        <a href="/search" class="bg-gray-800 rounded-lg p-6 border border-gray-700 hover:border-indigo-500 transition-colors">
+          <div class="flex items-center">
+            <div class="p-3 bg-green-600/20 rounded-lg">
+              <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+            </div>
+            <div class="ml-4">
+              <p class="text-gray-400 text-sm">Search</p>
+              <p class="text-white font-semibold">Find pilots & corps</p>
+            </div>
+          </div>
+        </a>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h2 class="text-lg font-semibold text-white mb-4">Quick Actions</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <a href="/surveillance-profiles" class="flex flex-col items-center p-4 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors">
+            <svg class="w-8 h-8 text-indigo-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+            </svg>
+            <span class="text-gray-300 text-sm">Profiles</span>
+          </a>
+
+          <a href="/battle" class="flex flex-col items-center p-4 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors">
+            <svg class="w-8 h-8 text-red-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            <span class="text-gray-300 text-sm">Battles</span>
+          </a>
+
+          <a href="/fleet" class="flex flex-col items-center p-4 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors">
+            <svg class="w-8 h-8 text-blue-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+            </svg>
+            <span class="text-gray-300 text-sm">Fleet</span>
+          </a>
+
+          <a href="/profile" class="flex flex-col items-center p-4 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors">
+            <svg class="w-8 h-8 text-purple-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+            </svg>
+            <span class="text-gray-300 text-sm">Profile</span>
+          </a>
+        </div>
+      </div>
+    </div>
+    """
+  end
+
+  defp health_color_class("Good"), do: "bg-green-600/20 text-green-400"
+  defp health_color_class("Fair"), do: "bg-yellow-600/20 text-yellow-400"
+  defp health_color_class("Degraded"), do: "bg-orange-600/20 text-orange-400"
+  defp health_color_class("Critical"), do: "bg-red-600/20 text-red-400"
+  defp health_color_class(_), do: "bg-gray-600/20 text-gray-400"
 end

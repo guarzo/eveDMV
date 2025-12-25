@@ -6,6 +6,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
   identify key moments, and provide temporal context for tactical analysis.
   """
 
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   alias EveDmv.Core.Utils.DateTimeUtils
   require Logger
 
@@ -1169,8 +1170,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Timeli
     end
   end
 
-  defp average(list) when list == [], do: 0
-  defp average(list), do: Enum.sum(list) / length(list)
+  defp average(list), do: SharedUtilities.average(list)
 
   defp calculate_timing_coordination(events) do
     # Score based on kill timing clustering

@@ -364,7 +364,7 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer do
     if participant[:deaths] > 0 do
       times = participant[:killmail_times] || []
 
-      if length(times) > 0 do
+      if Enum.any?(times) do
         first = List.first(times)
         last = List.last(times)
         DateTimeUtils.diff(last, first, :minute)
@@ -394,13 +394,13 @@ defmodule EveDmv.Contexts.Combat.Core.ParticipantAnalyzer do
         total_value = Enum.sum(Map.values(values))
         ship_count = length(ship_type_ids)
 
-        if ship_count > 0 do
+        if ship_type_ids == [] do
+          0
+        else
           avg_value = total_value / ship_count
           # Convert to relative threat value score (0-100)
           # Per million ISK
           min(100, avg_value / 1_000_000)
-        else
-          0
         end
 
       {:error, _} ->

@@ -8,6 +8,36 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
 
   alias EveDmv.Intelligence.Analyzers.MassCalculator
 
+  # Wormhole mass limits in kg - based on EVE Online wormhole mechanics.
+  # These are the maximum ship mass that can pass through each wormhole category.
+  # Source: EVE Online SDE - wormhole static data.
+  @frigate_hole_mass_limit 20_000_000
+  @cruiser_hole_mass_limit 90_000_000
+  @battleship_hole_mass_limit 300_000_000
+  @capital_hole_mass_limit 1_800_000_000
+  @kspace_hole_mass_limit 3_000_000_000
+
+  # EVE Online wormhole types mapped to their maximum single-ship mass limits.
+  # Wormholes are grouped by ship class compatibility:
+  # - Frigate holes (D382, C125): frigates, destroyers
+  # - Cruiser holes (D845, A982): cruisers, battlecruisers
+  # - Battleship holes (O477, L477, Z971): battleships
+  # - Capital holes (B041, A641, X702): capitals except supers/titans
+  # - K-space connections (K162): all ships
+  @wormhole_mass_limits %{
+    "D382" => @frigate_hole_mass_limit,
+    "C125" => @frigate_hole_mass_limit,
+    "D845" => @cruiser_hole_mass_limit,
+    "A982" => @cruiser_hole_mass_limit,
+    "O477" => @battleship_hole_mass_limit,
+    "L477" => @battleship_hole_mass_limit,
+    "Z971" => @battleship_hole_mass_limit,
+    "B041" => @capital_hole_mass_limit,
+    "A641" => @capital_hole_mass_limit,
+    "X702" => @capital_hole_mass_limit,
+    "K162" => @kspace_hole_mass_limit
+  }
+
   @doc """
   Enhanced fleet composition analysis using StaticData.
   Provides detailed ship-by-ship analysis with wormhole suitability.
@@ -28,19 +58,41 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
 
   @doc """
   Analyze individual ship characteristics and capabilities.
+  Returns nil if the ship name cannot be resolved to a known type.
   """
   def analyze_individual_ship(ship_name) do
-    %{
-      name: ship_name,
-      category: EveDmv.StaticData.get_ship_category(ship_name),
-      mass_kg: EveDmv.StaticData.get_ship_mass(ship_name),
-      role: EveDmv.StaticData.get_ship_role(ship_name),
-      ship_class: EveDmv.StaticData.get_ship_class(ship_name),
-      wormhole_suitable: EveDmv.StaticData.wormhole_suitable?(ship_name),
-      is_capital: EveDmv.StaticData.capital?(ship_name),
-      wh_restrictions:
-        EveDmv.StaticData.get_wormhole_restrictions(EveDmv.StaticData.get_ship_class(ship_name))
-    }
+    case EveDmv.StaticData.get_type_by_name(ship_name) do
+      %{type_id: type_id} ->
+        mass_kg =
+          case EveDmv.StaticData.get_ship_mass(type_id) do
+            {:ok, mass} -> mass
+            {:error, _} -> nil
+          end
+
+        %{
+          name: ship_name,
+          category: EveDmv.StaticData.get_ship_category(type_id),
+          mass_kg: mass_kg,
+          role: EveDmv.StaticData.get_ship_role(type_id),
+          ship_class: EveDmv.StaticData.get_ship_class(type_id),
+          wormhole_suitable: EveDmv.StaticData.wormhole_suitable?(type_id),
+          is_capital: EveDmv.StaticData.capital?(type_id),
+          passable_wormhole_types: get_passable_wormhole_types(mass_kg)
+        }
+
+      nil ->
+        nil
+    end
+  end
+
+  # Determine which wormhole types a ship can pass through based on its mass.
+  # Uses @wormhole_mass_limits module attribute for consistent data.
+  defp get_passable_wormhole_types(nil), do: []
+
+  defp get_passable_wormhole_types(mass_kg) when is_number(mass_kg) do
+    @wormhole_mass_limits
+    |> Enum.filter(fn {_type, max_mass} -> mass_kg <= max_mass end)
+    |> Enum.map(fn {type, _} -> type end)
   end
 
   @doc """
@@ -52,33 +104,90 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
     role_counts = Enum.frequencies_by(ship_analysis, & &1.role)
     total = length(ship_analysis)
 
-    %{
-      dps_ratio: Map.get(role_counts, "dps", 0) / total,
-      logistics_ratio: Map.get(role_counts, "logistics", 0) / total,
-      tackle_ratio: Map.get(role_counts, "tackle", 0) / total,
-      ewar_ratio: Map.get(role_counts, "ewar", 0) / total,
-      fc_ratio: Map.get(role_counts, "fc", 0) / total,
-      balance_score: calculate_balance_score(role_counts, total)
-    }
+    if total == 0 do
+      %{
+        dps_ratio: 0.0,
+        logistics_ratio: 0.0,
+        tackle_ratio: 0.0,
+        ewar_ratio: 0.0,
+        fc_ratio: 0.0,
+        balance_score: 0.0
+      }
+    else
+      %{
+        dps_ratio: Map.get(role_counts, "dps", 0) / total,
+        logistics_ratio: Map.get(role_counts, "logistics", 0) / total,
+        tackle_ratio: Map.get(role_counts, "tackle", 0) / total,
+        ewar_ratio: Map.get(role_counts, "ewar", 0) / total,
+        fc_ratio: Map.get(role_counts, "fc", 0) / total,
+        balance_score: calculate_balance_score(role_counts, total)
+      }
+    end
   end
 
   @doc """
-  Analyze fleet wormhole compatibility based on ship masses and restrictions.
+  Analyze fleet wormhole compatibility based on ship masses.
+
+  Uses real EVE wormhole type identifiers to determine fleet compatibility:
+  - Frigate holes (D382, C125): Max 20M kg per ship
+  - Cruiser holes (D845, A982): Max 90M kg per ship
+  - Battleship holes (O477, L477, Z971): Max 300M kg per ship
+  - Capital holes (B041, A641, X702): Max 1.8B kg per ship
+  - K-space connections (K162): Max 3B kg per ship
   """
   def analyze_fleet_wh_compatibility(ship_analysis) do
     total_mass = Enum.sum(Enum.map(ship_analysis, & &1.mass_kg))
+    ship_count = length(ship_analysis)
 
-    small_compatible = Enum.count(ship_analysis, & &1.wh_restrictions.can_pass_small)
-    medium_compatible = Enum.count(ship_analysis, & &1.wh_restrictions.can_pass_medium)
-    large_compatible = Enum.count(ship_analysis, & &1.wh_restrictions.can_pass_large)
+    # Count ships by which wormhole categories they can pass through
+    # Using real EVE wormhole mass limits
+    frigate_hole_compatible =
+      Enum.count(
+        ship_analysis,
+        &(is_number(&1.mass_kg) and &1.mass_kg <= @frigate_hole_mass_limit)
+      )
+
+    cruiser_hole_compatible =
+      Enum.count(
+        ship_analysis,
+        &(is_number(&1.mass_kg) and &1.mass_kg <= @cruiser_hole_mass_limit)
+      )
+
+    battleship_hole_compatible =
+      Enum.count(
+        ship_analysis,
+        &(is_number(&1.mass_kg) and &1.mass_kg <= @battleship_hole_mass_limit)
+      )
+
+    capital_hole_compatible =
+      Enum.count(
+        ship_analysis,
+        &(is_number(&1.mass_kg) and &1.mass_kg <= @capital_hole_mass_limit)
+      )
+
+    # Find which wormhole types the entire fleet can use
+    # (where all ships can pass)
+    fleet_can_use_frigate_holes = frigate_hole_compatible == ship_count
+    fleet_can_use_cruiser_holes = cruiser_hole_compatible == ship_count
+    fleet_can_use_battleship_holes = battleship_hole_compatible == ship_count
+    fleet_can_use_capital_holes = capital_hole_compatible == ship_count
 
     %{
       total_mass: total_mass,
-      small_wh_ships: small_compatible,
-      medium_wh_ships: medium_compatible,
-      large_wh_ships: large_compatible,
+      average_ship_mass: if(ship_count > 0, do: round(total_mass / ship_count), else: 0),
       mass_distribution: MassCalculator.calculate_wormhole_compatibility(total_mass),
-      average_ship_mass: round(total_mass / length(ship_analysis))
+      ship_compatibility: %{
+        frigate_holes: frigate_hole_compatible,
+        cruiser_holes: cruiser_hole_compatible,
+        battleship_holes: battleship_hole_compatible,
+        capital_holes: capital_hole_compatible
+      },
+      fleet_wormhole_access: %{
+        frigate_holes: fleet_can_use_frigate_holes,
+        cruiser_holes: fleet_can_use_cruiser_holes,
+        battleship_holes: fleet_can_use_battleship_holes,
+        capital_holes: fleet_can_use_capital_holes
+      }
     }
   end
 
@@ -86,38 +195,57 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
   Analyze ship doctrine compliance against common wormhole doctrines.
   """
   def analyze_ship_doctrine_compliance(ship_analysis) do
-    # Check compliance with common WH doctrines
-    doctrines = ["armor", "shield", "armor_cruiser", "shield_cruiser"]
+    total = length(ship_analysis)
 
-    doctrine_scores =
-      doctrines
-      |> Enum.map(fn doctrine ->
-        compliant_ships =
-          Enum.count(ship_analysis, &EveDmv.StaticData.doctrine_ship?(&1.name, doctrine))
+    if total == 0 do
+      %{
+        doctrine_scores: %{},
+        recommended_doctrine: nil,
+        compliance_score: 0.0
+      }
+    else
+      # Check compliance with common WH doctrines
+      doctrines = ["armor", "shield", "armor_cruiser", "shield_cruiser"]
 
-        {doctrine, compliant_ships / length(ship_analysis)}
-      end)
-      |> Map.new()
+      doctrine_scores =
+        doctrines
+        |> Enum.map(fn doctrine ->
+          compliant_ships =
+            Enum.count(ship_analysis, &EveDmv.StaticData.doctrine_ship?(&1.name, doctrine))
 
-    {best_doctrine, _score} = Enum.max_by(doctrine_scores, fn {_doctrine, score} -> score end)
+          {doctrine, compliant_ships / total}
+        end)
+        |> Map.new()
 
-    %{
-      doctrine_scores: doctrine_scores,
-      recommended_doctrine: best_doctrine,
-      compliance_score: Map.get(doctrine_scores, best_doctrine, 0.0)
-    }
+      {best_doctrine, _score} = Enum.max_by(doctrine_scores, fn {_doctrine, score} -> score end)
+
+      %{
+        doctrine_scores: doctrine_scores,
+        recommended_doctrine: best_doctrine,
+        compliance_score: Map.get(doctrine_scores, best_doctrine, 0.0)
+      }
+    end
   end
 
   @doc """
   Generate optimization suggestions for fleet composition.
   """
   def generate_enhanced_suggestions(ship_analysis) do
-    # Mass optimization suggestions
-    total_mass = Enum.sum(Enum.map(ship_analysis, & &1.mass_kg))
+    # Check if any ships exceed cruiser-class wormhole mass limits (D845, A982)
+    # These are the most common WH connections
+    heavy_ships =
+      Enum.count(
+        ship_analysis,
+        &(is_number(&1.mass_kg) and &1.mass_kg > @cruiser_hole_mass_limit)
+      )
 
     suggestions =
-      if total_mass > 100_000_000 do
-        ["Consider lighter ships for better wormhole mobility"]
+      if heavy_ships > 0 do
+        limit_in_millions = div(@cruiser_hole_mass_limit, 1_000_000)
+
+        [
+          "#{heavy_ships} ship(s) exceed cruiser-class wormhole limit (#{limit_in_millions}M kg) - consider lighter alternatives"
+        ]
       else
         []
       end
@@ -155,6 +283,8 @@ defmodule EveDmv.Intelligence.Fleet.FleetCompositionAnalyzer do
   end
 
   # Private helper functions
+
+  defp calculate_balance_score(_role_counts, 0), do: 0.0
 
   defp calculate_balance_score(role_counts, total) do
     # Ideal ratios for balanced WH fleet

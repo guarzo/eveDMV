@@ -64,14 +64,5 @@
     }
   },
 
-  "postCreateCommand": [
-    "echo 'Waiting for services...' && sleep 5",
-    "mix deps.get",
-    "mix ecto.create --quiet",
-    "mix ecto.migrate",
-    "mix assets.setup",
-    "git config --global core.editor vim",
-    "echo \"alias vi='vim'\" >> ~/.bashrc",
-    "echo '✅ Dev container setup complete!'"
-  ]
+  "postCreateCommand": "echo 'Waiting for services...' && sleep 5 && (mix deps.get || (echo 'Retrying deps.get...' && sleep 5 && mix deps.get)) && mix ecto.create --quiet && mix ecto.migrate && mix assets.setup && git config --global core.editor vim && echo \"alias vi='vim'\" >> ~/.bashrc && echo 'Dev container setup complete!'"
 }

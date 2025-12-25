@@ -202,7 +202,6 @@ defmodule EveDmv.Users.AccountManager do
     Account
     |> Ash.Changeset.for_create(:create, %{
       primary_character_id: user.id,
-      last_login_at: DateTime.utc_now(),
       is_admin: user.is_admin || false
     })
     |> Ash.create(domain: Api)
@@ -211,8 +210,8 @@ defmodule EveDmv.Users.AccountManager do
   @spec link_user_to_account(user(), account()) :: {:ok, user()} | error()
   defp link_user_to_account(user, account) do
     user
-    |> Ash.Changeset.for_update(:update, %{account_id: account.id})
-    |> then(fn changeset -> Ash.update(changeset.data, changeset, domain: EveDmv.Api) end)
+    |> Ash.Changeset.for_update(:link_to_account, %{account_id: account.id})
+    |> Ash.update(domain: EveDmv.Api)
   end
 
   @spec get_account!(account_id()) :: account() | no_return()

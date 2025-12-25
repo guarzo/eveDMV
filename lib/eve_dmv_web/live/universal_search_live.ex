@@ -109,7 +109,7 @@ defmodule EveDmvWeb.UniversalSearchLive do
     if query == socket.assigns.query do
       # Flatten results for navigation
       flattened = flatten_results(results)
-      selected_category = if length(flattened) > 0, do: elem(hd(flattened), 0), else: nil
+      selected_category = if Enum.empty?(flattened), do: nil, else: elem(hd(flattened), 0)
 
       {:noreply,
        assign(socket,
@@ -304,18 +304,20 @@ defmodule EveDmvWeb.UniversalSearchLive do
     flattened = flatten_results(socket.assigns.results)
     new_index = max(socket.assigns.selected_index - 1, 0)
 
-    if length(flattened) > 0 do
+    if Enum.empty?(flattened) do
+      {:noreply, socket}
+    else
       {category, _} = Enum.at(flattened, new_index)
       {:noreply, assign(socket, selected_index: new_index, selected_category: category)}
-    else
-      {:noreply, socket}
     end
   end
 
   defp handle_keyboard_navigation(socket, "Enter") do
     flattened = flatten_results(socket.assigns.results)
 
-    if length(flattened) > 0 do
+    if Enum.empty?(flattened) do
+      {:noreply, socket}
+    else
       case Enum.at(flattened, socket.assigns.selected_index) do
         {type, result} ->
           type_string = Atom.to_string(type)
@@ -324,8 +326,6 @@ defmodule EveDmvWeb.UniversalSearchLive do
         _ ->
           {:noreply, socket}
       end
-    else
-      {:noreply, socket}
     end
   end
 

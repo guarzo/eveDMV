@@ -9,6 +9,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
   - Territory stability assessment
   """
 
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
@@ -372,13 +373,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.TerritorialPattern do
     end
   end
 
-  defp average(list) do
-    if Enum.empty?(list) do
-      0.0
-    else
-      Enum.sum(list) / length(list)
-    end
-  end
+  defp average(list), do: SharedUtilities.average(list)
 
   defp calculate_consolidation_metrics(strategic_data) do
     case strategic_data.scope do

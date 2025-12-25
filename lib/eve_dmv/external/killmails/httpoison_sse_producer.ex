@@ -62,7 +62,10 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
            }}
 
         {:error, reason} ->
-          Logger.error("❌ Failed to start HTTPoison SSE stream: #{inspect(reason)}")
+          Logger.error(
+            "❌ Failed to start HTTPoison SSE stream to #{state.url}: #{inspect(reason)}"
+          )
+
           schedule_retry(state)
           {:noreply, [], %{state | demand: new_demand}}
       end
@@ -206,7 +209,10 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
          }}
 
       {:error, reason} ->
-        Logger.error("❌ Failed to reconnect HTTPoison SSE stream: #{inspect(reason)}")
+        Logger.error(
+          "❌ Failed to reconnect HTTPoison SSE stream to #{state.url}: #{inspect(reason)}"
+        )
+
         schedule_retry(state)
         {:noreply, [], state}
     end

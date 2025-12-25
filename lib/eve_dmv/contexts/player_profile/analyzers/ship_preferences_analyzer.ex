@@ -432,25 +432,28 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.ShipPreferencesAnalyzer do
   defp determine_primary_weapon_type(ship_type_id) do
     # Use ship racial bonuses to determine primary weapon type
     case EveDmv.StaticData.get_ship_bonuses(ship_type_id) do
-      {:ok, bonuses} ->
+      {:ok, bonuses} when bonuses != [] ->
         cond do
           has_bonus_for_weapon?(bonuses, "projectile") -> :projectile
           has_bonus_for_weapon?(bonuses, "laser") -> :laser
           has_bonus_for_weapon?(bonuses, "hybrid") -> :hybrid
           has_bonus_for_weapon?(bonuses, "missile") -> :missile
           has_bonus_for_weapon?(bonuses, "drone") -> :drone
-          true -> :unknown
+          true -> fallback_to_race(ship_type_id)
         end
 
-      {:error, _} ->
-        # Fallback to racial classification
-        case EveDmv.StaticData.get_ship_race(ship_type_id) do
-          {:ok, "Minmatar"} -> :projectile
-          {:ok, "Amarr"} -> :laser
-          {:ok, "Gallente"} -> :hybrid
-          {:ok, "Caldari"} -> :missile
-          _ -> :unknown
-        end
+      _ ->
+        fallback_to_race(ship_type_id)
+    end
+  end
+
+  defp fallback_to_race(ship_type_id) do
+    case EveDmv.StaticData.get_ship_race(ship_type_id) do
+      {:ok, "Minmatar"} -> :projectile
+      {:ok, "Amarr"} -> :laser
+      {:ok, "Gallente"} -> :hybrid
+      {:ok, "Caldari"} -> :missile
+      _ -> :unknown
     end
   end
 

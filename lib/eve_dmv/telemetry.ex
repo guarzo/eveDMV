@@ -10,10 +10,11 @@ defmodule EveDmv.Telemetry do
 
   def setup do
     # Attach slow query logging
+    # Use module-qualified function references to avoid performance penalty
     :telemetry.attach(
       "log-slow-queries",
       [:eve_dmv, :repo, :query],
-      &log_slow_query/4,
+      &__MODULE__.log_slow_query/4,
       nil
     )
 
@@ -21,7 +22,7 @@ defmodule EveDmv.Telemetry do
     :telemetry.attach(
       "log-slow-requests",
       [:phoenix, :endpoint, :stop],
-      &log_slow_request/4,
+      &__MODULE__.log_slow_request/4,
       nil
     )
 

@@ -355,7 +355,7 @@ defmodule EveDmv.Shared.Correlation.Facade do
 
     conflicts =
       Enum.reduce(corp_pairs, [], fn {corp1, corp2}, acc ->
-        common_systems = corp1.systems_active -- corp1.systems_active -- corp2.systems_active
+        common_systems = corp1.systems_active -- (corp1.systems_active -- corp2.systems_active)
 
         if length(common_systems) >= 2 do
           conflict_likelihood = assess_conflict_likelihood(corp1, corp2, common_systems)

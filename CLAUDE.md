@@ -5,12 +5,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 EVE DMV is an Elixir Phoenix application for real-time PvP intelligence and analytics for EVE Online. It uses:
-- **Phoenix 1.7.21** with LiveView for real-time UI updates
-- **Ash Framework 3.4** for declarative resource management (replaces traditional Ecto schemas)
+- **Phoenix 1.8** with LiveView for real-time UI updates
+- **Ash Framework 3.7** for declarative resource management (replaces traditional Ecto schemas)
 - **Broadway** for high-throughput killmail ingestion pipeline
-- **PostgreSQL 16** with partitioning and materialized views for performance
+- **PostgreSQL 18** with partitioning and materialized views for performance
 - **EVE SSO OAuth2** for authentication with automatic token refresh
 - **OpenTelemetry** for observability and performance monitoring
+- **Elixir 1.19** (required version)
 
 ## Essential Commands
 
@@ -39,23 +40,11 @@ mix ash_postgres.create           # Generate migration from resource changes
 mix ash_postgres.migrate          # Run Ash migrations
 mix ash.codegen <resource_name>   # Generate resource code
 
-# Static Data Management
-mix eve.load_static_data          # Load EVE static data (ships, systems)
-mix eve.update_sde                # Update to latest SDE version
-mix eve.stats                     # Display database statistics
+# Static Data Validation
+mix eve.validate_sde              # Validate SDE data import
 
-# Performance Analysis
-mix eve.analyze_performance       # Analyze query performance
-mix eve.check_indexes             # Verify index health
-mix eve.benchmark                 # Run performance benchmarks
-
-# Partition Management (Automated with pg_cron)
-mix eve.partition_manager status          # Show current partition status
-mix eve.partition_manager create_future   # Create partitions for next 3 months
-mix eve.partition_manager create 2024-12  # Create partition for specific month
-mix eve.partition_manager cleanup         # Clean up old partitions (12 months retention)
-mix eve.partition_manager cleanup --months=6  # Custom retention period
-mix eve.partition_manager stats           # Show detailed partition statistics
+# Note: Static data is loaded via database seeds or application startup
+# Partition management is handled automatically via pg_cron (see Database Configuration below)
 
 # Pipeline Management
 # Set PIPELINE_ENABLED=true/false in .env file to enable/disable Broadway pipeline
@@ -78,7 +67,7 @@ EVE DMV uses automated partition management via the pg_cron PostgreSQL extension
 **Development Environment (Docker/DevContainer)**:
 - ✅ pg_cron is automatically installed and configured
 - ✅ Partition automation works out of the box
-- ✅ Use `mix eve.partition_manager status` to verify
+- ✅ Check partition status via SQL: `SELECT * FROM cron.job;`
 
 **Production Environment Setup**:
 ```bash
@@ -89,12 +78,12 @@ CREATE EXTENSION IF NOT EXISTS pg_cron;
 mix ecto.migrate
 
 # Verify setup
-mix eve.partition_manager status
+SELECT * FROM cron.job;
 ```
 
 **Without pg_cron** (CI/Testing environments):
 - ⚠️ Automated partition management is disabled
-- ✅ Manual partition management still available via Mix tasks
+- ✅ Partitions are created via migrations
 - ✅ All core functionality works normally
 
 ### IMPORTANT: Test Environment Database Setup
@@ -213,13 +202,50 @@ A feature is **ONLY** considered done when:
 
 Better to have fewer features that work perfectly than many features that lie to users.
 
-## Current Implementation Status (Phases 1-6 Complete)
+### Configuration Constants Pattern
+When algorithms require numerical thresholds or normalization factors, use a dedicated configuration module with documented rationale. See `ThreatConfig` as the canonical example:
 
-### ✅ Production-Ready Features (Real Data Implementation)
+```elixir
+defmodule EveDmv.Contexts.CharacterIntelligence.ThreatConfig do
+  @moduledoc """
+  Configuration constants for threat scoring calculations.
+  All values are documented with rationale based on EVE Online combat statistics.
+  """
+
+  # A character using 10+ different ship types is considered highly versatile.
+  # Based on EVE PvP statistics, the top 10% of active PvPers regularly use
+  # 10 or more distinct ship types.
+  @ship_usage_normalization 10
+
+  @doc "Returns the ship usage normalization threshold (10 ship types)."
+  @spec ship_usage_normalization() :: integer()
+  def ship_usage_normalization, do: @ship_usage_normalization
+end
+```
+
+### Ship Classification Pattern
+Always classify ships using EVE SDE group IDs, not type ID ranges:
+
+```elixir
+# CORRECT - Use EVE group IDs from ThreatConfig
+case EveDmv.Eve.ItemType.get_by_type_id(ship_type_id) do
+  {:ok, item} ->
+    ThreatConfig.classify_by_group_id(item.group_id)
+  _ ->
+    {:error, :unknown_ship}
+end
+
+# WRONG - Never use hardcoded type ID ranges
+@frigate_range 580..700  # ❌ These don't match EVE data
+```
+
+## Current Implementation Status
+
+### ✅ Production-Ready Features
 - **Authentication** - Full EVE SSO integration with token refresh
 - **Kill Feed** (`/feed`) - Real-time killmail display from wanderer-kills SSE
 - **Database Pipeline** - Broadway ingestion with partitioned storage and error handling
-- **Static Data** - 49,906 item types and 8,436 systems loaded via SDE import
+- **Static Data** - EVE item types and systems loaded via CCP's official SDE
 - **Character Stats** - Kill/death counts, ISK efficiency from materialized views
 - **Threat Scoring** - Multi-dimensional analysis with configurable weights
 - **Battle Detection** - Clustering algorithm with timeline reconstruction
@@ -227,59 +253,66 @@ Better to have fewer features that work perfectly than many features that lie to
 - **Performance Monitoring** - Query analysis, index health, telemetry
 - **API Authentication** - Separate API key system for programmatic access
 - **Admin Features** - Performance dashboard, user management
-- **Fleet Operations** - Basic composition analysis without wormhole features
+- **Fleet Operations** - Basic composition analysis
 
-### ✅ Phase 2-6 Completed Features
-- **Character Intelligence** (Phase 2)
+### ✅ Intelligence Features
+- **Character Intelligence** (`/character/:id`)
+  - Ship preferences and activity patterns
   - Gang synergy analysis with real killmail data
-  - Character preference calculations from database
   - Predictive behavior modeling
-- **Corporation Intelligence** (Phase 3)
+- **Corporation Intelligence** (`/corporation/:id`)
   - Timezone analysis from member activity
-  - Activity pattern detection with real timestamps
+  - Activity pattern detection
   - Member performance metrics
-- **System Analysis** (Phase 4)
-  - Heatmap generation with real killmail aggregation
-  - Regional correlation analysis using Pearson correlation
-  - Activity spillover detection between systems
-- **Architecture Improvements** (Phase 5)
-  - Clean module boundaries, no circular dependencies
-  - Comprehensive database indexes
-  - Optimized query patterns
-- **Performance Optimization** (Phase 6)
-  - Multi-layer caching (hot_data, api_responses, analysis)
-  - N+1 query prevention with batch loading
-  - Optimized battle analyzer with single-query fetching
-  - Streaming for large dataset processing
+- **System Analysis** (`/system/:id`)
+  - Activity heatmaps with real killmail data
+  - Danger assessment and alliance presence
+  - Regional correlation analysis
+- **Battle Analysis** (`/battle`)
+  - Multi-system battle detection
+  - Timeline reconstruction
+  - Fleet composition analysis
 
-### ❌ Removed Features (Completed)
-- **Wormhole Operations** - Entire feature removed due to extensive placeholders
-  - Removed all wormhole-specific files and references
-  - Removed WH vetting, chain intelligence, and fleet optimization
-  - Decision: Better to have fewer working features than placeholders
+### ✅ Web Interface Pages
+- `/` - Home page
+- `/feed` - Real-time kill feed (public)
+- `/dashboard` - Unified dashboard
+- `/search` - Universal search (characters, corps, systems)
+- `/character/:id` - Character analysis
+- `/corporation/:id` - Corporation analysis
+- `/system/:id` - System analysis
+- `/battle` - Battle analysis
+- `/surveillance-profiles` - Surveillance profile management
+- `/surveillance-alerts` - Alert monitoring
+- `/fleet` - Fleet operations
+- `/admin/performance` - Performance monitoring (admin)
 
-### ✅ Recently Completed (August 2025)
-- **Module Reorganization** - Fixed import paths after Phase 5 reorganization
-  - Updated all Utils references to Core.Utils
-  - Fixed Cache and Error module references
-  - All modules now properly organized in bounded contexts
-- **Market Pricing Integration** - Janice API client functional
-  - Real-time price lookups with caching and rate limiting
-  - Fallback pricing for when API is unavailable
-  - Integrated into killmail valuation display
+### ✅ API Endpoints (v1)
+**Battle Intelligence:**
+- `GET /api/v1/battles/:id/intelligence` - Battle analysis and intelligence
+- `GET /api/v1/battles/:id/multi_system` - Multi-system battle detection
+- `POST /api/v1/battles/:id/share` - Create shareable battle report
+- `POST /api/v1/battles/:id/rate` - Rate a shared battle report
 
-### 🟡 Remaining Minor Items
-- **Fleet Analysis** - Some hardcoded DPS values in older modules
-- **Battle Phase Analysis** - Simplified implementation
+**Character Intelligence:**
+- `GET /api/v1/characters/:id/threat_score` - Character threat assessment
+- `GET /api/v1/characters/:id/behavioral_patterns` - Behavioral pattern analysis
 
+**Corporation Intelligence:**
+- `GET /api/v1/corporations/:id/doctrine_analysis` - Doctrine analysis
+- `GET /api/v1/corporations/:id/threat_assessment` - Corporation threat level
+
+**API Key Management:**
+- `GET /api/v1/api_keys` - List API keys
+- `POST /api/v1/api_keys` - Create new API key
+- `DELETE /api/v1/api_keys/:id` - Delete API key
+- `POST /api/v1/api_keys/:id/validate` - Validate API key
 
 ### 📋 Key Documentation
-- **Architecture**: `/workspace/ARCHITECTURE.md` - System design and patterns
-- **Production Plan**: `/workspace/docs/PRODUCTION_READINESS_IMPLEMENTATION_PLAN.md` - 6-week roadmap
-- **Phase 1 Complete**: `/workspace/docs/PHASE_1_WORMHOLE_REMOVAL_COMPLETE.md` - Wormhole ops removed
-- **Phase 2 Plan**: `/workspace/docs/PHASE_2_CHARACTER_INTELLIGENCE_IMPLEMENTATION.md` - Character intel completion
-- **Phase 7 Plan**: `/workspace/docs/PHASE_7_OPERATIONAL_EXCELLENCE_IMPLEMENTATION.md` - Production hardening
-- **Feature Gaps**: `/workspace/docs/FEATURE_GAPS_AND_TECHNICAL_DEBT.md` - Current state analysis
+- **Architecture**: `docs/ARCHITECTURE.md` - System design and patterns
+- **Deployment**: `docs/DEPLOYMENT_GUIDE.md` - Production deployment guide
+- **PRD**: `docs/EVE_DMV_PRD.md` - Product requirements document
+- **Operations**: `docs/OPERATIONS_RUNBOOK.md` - Operational procedures
 
 ## Environment Configuration
 
@@ -319,23 +352,20 @@ To run SQL queries directly:
 
 ### Quality Assurance
 ```bash
-# Quality Gate Scripts (Sprint 11)
+# Quality Gate Scripts
 ./scripts/quality_check.sh      # Run all quality checks (same as CI)
 ./scripts/quality_fix.sh        # Auto-fix quality issues where possible
-./scripts/analyze_todos.sh       # Analyze TODO comments for Sprint 12
 
 # Quality check options
 SKIP_DIALYZER=true ./scripts/quality_check.sh  # Skip slow Dialyzer check
-RUN_TESTS=true ./scripts/quality_check.sh      # Include full test suite
-CHECK_DOCS=true ./scripts/quality_check.sh     # Include documentation checks
 
 # Individual quality checks
 mix compile --warnings-as-errors  # Compilation with warnings as errors
 mix format --check-formatted      # Check code formatting
 mix credo --strict                 # Static analysis
-mix dialyzer                      # Type checking
+mix dialyzer                      # Type checking (or use mix dialyzer.fast)
 mix deps.audit                    # Security audit
-mix test --cover                  # Tests with coverage
+mix test --cover                  # Tests with coverage (70% minimum)
 ```
 
 ### Adding New LiveView Pages
@@ -369,25 +399,62 @@ mix test --cover                  # Tests with coverage
 ### Core Architecture
 - `lib/eve_dmv/application.ex` - Application supervisor tree
 - `lib/eve_dmv/api.ex` - Central Ash API domain
-- `lib/eve_dmv/contexts/` - Bounded contexts (battle_analysis, surveillance, etc.)
-- `ARCHITECTURE.md` - Complete system design documentation
+- `lib/eve_dmv/contexts/` - Bounded contexts (16+ domain contexts)
+- `docs/ARCHITECTURE.md` - Complete system design documentation
+
+### Bounded Contexts (`lib/eve_dmv/contexts/`)
+
+Each context follows a consistent structure with an `api.ex` file as the public interface:
+```
+context_name/
+├── api.ex              # Public API - the only entry point for other contexts
+├── core/ or domain/    # Business logic and services
+├── analyzers/          # Analysis algorithms (if applicable)
+├── resources/          # Ash resource definitions
+└── infrastructure/     # External integrations (if applicable)
+```
+
+**Available Contexts:**
+- `battle_analysis/` - Battle detection and analysis
+- `character_intelligence/` - Character threat scoring with `ThreatConfig`
+- `combat/` - Combat analysis and metrics
+- `corporation/` - Corporation analysis
+- `corporation_intelligence/` - Corporation intelligence gathering
+- `fleet_operations/` - Fleet composition analysis
+- `intelligence/` - Intelligence engine
+- `intelligence_infrastructure/` - Regional/constellation analysis
+- `market_intelligence/` - Market data and pricing
+- `surveillance/` - Real-time entity monitoring
+- `system_analysis/` - System/region analysis
+- `threat_assessment/` - Threat scoring
+- `threat_surveillance/` - Threat monitoring
+- `player_profile/` - Player profile analysis
+- `killmail_processing/` - Killmail pipeline handling
 
 ### Data Pipeline
-- `lib/eve_dmv/killmails/killmail_pipeline.ex` - Broadway pipeline
-- `lib/eve_dmv/killmails/sse_producer.ex` - SSE connection handler
-- `lib/eve_dmv/database/` - Partitioning, materialized views, query optimization
+- `lib/eve_dmv/external/killmails/killmail_pipeline.ex` - Broadway pipeline
+- `lib/eve_dmv/external/killmails/httpoison_sse_producer.ex` - SSE connection handler
+- `lib/eve_dmv/platform/database/` - Partitioning, materialized views, query optimization
+
+### External Integrations (`lib/eve_dmv/external/`)
+- `eve/` - EVE ESI API client and static data loader
+- `killmails/` - Killmail processing and broadcasting
+- `market/` - Market data (Janice, MutaMarket)
+- `wanderer/` - Wanderer-kills integration
 
 ### Web Interface
 - `lib/eve_dmv_web/router.ex` - Route definitions
-- `lib/eve_dmv_web/live/` - LiveView modules
+- `lib/eve_dmv_web/live/` - LiveView modules (25+ pages)
 - `lib/eve_dmv_web/components/` - Reusable UI components
 
-### Intelligence Engine
-- `lib/eve_dmv/intelligence/` - Analysis engines and scoring
-- `lib/eve_dmv/analytics/` - Battle detection, fleet analysis
-- `lib/eve_dmv/surveillance/` - Profile matching engine
+### Platform Services (`lib/eve_dmv/platform/`)
+- `auth/` - Authentication services
+- `cache/` - Multi-layer caching
+- `database/` - Repositories and query utilities
+- `monitoring/` - Telemetry and metrics
+- `pubsub/` - Event broadcasting
 
 ### Configuration
 - `config/config.exs` - Base configuration
 - `config/runtime.exs` - Runtime configuration with .env support
-- `.env` - Environment variable configuration
+- `.env` - Environment variable configuration (not committed)

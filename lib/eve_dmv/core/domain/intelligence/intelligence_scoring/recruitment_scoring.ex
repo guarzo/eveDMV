@@ -21,41 +21,37 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.RecruitmentScoring do
       ) do
     Logger.info("Calculating recruitment fitness score for character #{character_id}")
 
-    case get_vetting_data(character_id) do
-      {:ok, vetting_data} ->
-        # Evaluate against corporation requirements
-        requirement_scores =
-          evaluate_corporation_requirements(comprehensive_score, corporation_requirements)
+    {:ok, vetting_data} = get_vetting_data(character_id)
 
-        # Calculate fit scores
-        fitness_components = %{
-          skill_fit: calculate_skill_fitness(comprehensive_score),
-          cultural_fit: calculate_cultural_fitness(comprehensive_score, vetting_data),
-          security_fit: calculate_security_fitness(comprehensive_score),
-          operational_fit:
-            calculate_operational_fitness(comprehensive_score, corporation_requirements),
-          growth_potential: calculate_growth_potential(comprehensive_score, vetting_data)
-        }
+    # Evaluate against corporation requirements
+    requirement_scores =
+      evaluate_corporation_requirements(comprehensive_score, corporation_requirements)
 
-        recruitment_score = calculate_recruitment_score(fitness_components)
+    # Calculate fit scores
+    fitness_components = %{
+      skill_fit: calculate_skill_fitness(comprehensive_score),
+      cultural_fit: calculate_cultural_fitness(comprehensive_score, vetting_data),
+      security_fit: calculate_security_fitness(comprehensive_score),
+      operational_fit:
+        calculate_operational_fitness(comprehensive_score, corporation_requirements),
+      growth_potential: calculate_growth_potential(comprehensive_score, vetting_data)
+    }
 
-        recruitment_recommendation =
-          generate_recruitment_recommendation(recruitment_score, fitness_components)
+    recruitment_score = calculate_recruitment_score(fitness_components)
 
-        {:ok,
-         %{
-           recruitment_score: recruitment_score,
-           recruitment_recommendation: recruitment_recommendation,
-           fitness_components: fitness_components,
-           requirement_scores: requirement_scores,
-           decision_factors: identify_key_decision_factors(fitness_components),
-           probation_recommendations: suggest_probation_terms(fitness_components),
-           analysis_timestamp: DateTime.utc_now()
-         }}
+    recruitment_recommendation =
+      generate_recruitment_recommendation(recruitment_score, fitness_components)
 
-      {:error, reason} ->
-        {:error, reason}
-    end
+    {:ok,
+     %{
+       recruitment_score: recruitment_score,
+       recruitment_recommendation: recruitment_recommendation,
+       fitness_components: fitness_components,
+       requirement_scores: requirement_scores,
+       decision_factors: identify_key_decision_factors(fitness_components),
+       probation_recommendations: suggest_probation_terms(fitness_components),
+       analysis_timestamp: DateTime.utc_now()
+     }}
   end
 
   @doc """
@@ -262,7 +258,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.RecruitmentScoring do
     candidate_strengths = identify_candidate_strengths(comprehensive_score)
 
     # Calculate alignment based on role overlap
-    if Enum.empty?(preferred_roles) do
+    if preferred_roles == [] do
       # Default score if no specific roles defined
       0.7
     else
@@ -287,7 +283,10 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.RecruitmentScoring do
     strength_keywords = extract_strength_keywords(candidate_strengths)
 
     overlap_count =
-      length(MapSet.intersection(MapSet.new(role_keywords), MapSet.new(strength_keywords)))
+      role_keywords
+      |> MapSet.new()
+      |> MapSet.intersection(MapSet.new(strength_keywords))
+      |> MapSet.size()
 
     total_keywords = length(role_keywords)
 

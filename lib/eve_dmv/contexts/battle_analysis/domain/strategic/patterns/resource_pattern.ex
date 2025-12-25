@@ -9,7 +9,9 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
   - Resource flow tracking
   """
 
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.StaticData.ShipTypes
 
   require Logger
 
@@ -93,26 +95,11 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
   end
 
   defp detect_mining_activity(killmails) do
-    # Look for mining ship losses
-    mining_ships = [
-      # Simplified ship type IDs - in production would use actual IDs
-      :venture,
-      :procurer,
-      :retriever,
-      :covetor,
-      :skiff,
-      :mackinaw,
-      :hulk,
-      :orca,
-      :rorqual
-    ]
-
+    # Look for mining ship losses - use centralized classification
     mining_losses =
       killmails
       |> Enum.filter(fn km ->
-        # Simplified check - would use actual ship type IDs
-        ship_class = classify_ship_type(km.victim.ship_type_id)
-        ship_class in mining_ships
+        classify_ship_type(km.victim.ship_type_id) == :mining
       end)
 
     %{
@@ -124,96 +111,10 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
   end
 
   defp classify_ship_type(ship_type_id) do
-    # Map specific ship type IDs to their roles
-    # This is based on EVE Online ship type IDs
-    case ship_type_id do
-      # Mining ships
-      # Venture
-      32_880 ->
-        :venture
-
-      # Retriever
-      17_478 ->
-        :retriever
-
-      # Procurer
-      17_480 ->
-        :retriever
-
-      # Covetor
-      17_482 ->
-        :retriever
-
-      # Hulk
-      22_544 ->
-        :retriever
-
-      # Skiff
-      22_546 ->
-        :retriever
-
-      # Mackinaw
-      22_548 ->
-        :retriever
-
-      # Orca
-      28_606 ->
-        :orca
-
-      # Rorqual
-      28_352 ->
-        :rorqual
-
-      # Industrial/Hauling ships
-      # Badger
-      648 ->
-        :hauler
-
-      # Tayra
-      649 ->
-        :hauler
-
-      # Nereus
-      650 ->
-        :hauler
-
-      # Hoarder
-      651 ->
-        :hauler
-
-      # Mammoth
-      652 ->
-        :hauler
-
-      # Wreathe
-      653 ->
-        :hauler
-
-      # Kryos
-      654 ->
-        :hauler
-
-      # Epithal
-      655 ->
-        :hauler
-
-      # Miasmos
-      656 ->
-        :hauler
-
-      # Iteron Mark V
-      657 ->
-        :hauler
-
-      # Default classification based on group
-      _ ->
-        case EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id) do
-          # Default mining ship
-          :mining -> :venture
-          # Default hauler
-          :industrial -> :hauler
-          _ -> :combat
-        end
+    # Use centralized ship classification from static data
+    case ShipTypes.classify_ship_type(ship_type_id) do
+      :unknown -> :other
+      class -> class
     end
   end
 
@@ -253,13 +154,11 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
   end
 
   defp detect_hauling_activity(killmails) do
-    hauler_types = [:hauler, :freighter, :transport]
-
+    # Industrial ships include haulers, transports, and freighters
     hauling_losses =
       killmails
       |> Enum.filter(fn km ->
-        ship_class = classify_ship_type(km.victim.ship_type_id)
-        ship_class in hauler_types
+        classify_ship_type(km.victim.ship_type_id) == :industrial
       end)
 
     %{
@@ -300,12 +199,12 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
   end
 
   defp identify_resource_conflicts(killmails) do
-    # Look for conflicts over resource operations
+    # Look for conflicts over resource operations (mining and industrial ships)
     resource_related =
       killmails
       |> Enum.filter(fn km ->
         ship_class = classify_ship_type(km.victim.ship_type_id)
-        ship_class in [:venture, :retriever, :hauler, :orca, :rorqual]
+        ship_class in [:mining, :industrial]
       end)
 
     conflicts =
@@ -571,12 +470,12 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
   defp identify_competitors(strategic_data) do
     killmails = extract_all_killmails(strategic_data)
 
-    # Extract entities involved in resource activities
+    # Extract entities involved in resource activities (mining and industrial ships)
     resource_entities =
       killmails
       |> Enum.filter(fn km ->
         ship_class = classify_ship_type(km.victim.ship_type_id)
-        ship_class in [:venture, :retriever, :hauler, :orca, :rorqual]
+        ship_class in [:mining, :industrial]
       end)
       |> Enum.flat_map(fn km ->
         victim = if km.victim.corporation_id, do: [km.victim.corporation_id], else: []
@@ -770,13 +669,7 @@ defmodule EveDmv.Shared.Strategic.Patterns.ResourcePattern do
     end
   end
 
-  defp average(list) do
-    if Enum.empty?(list) do
-      0.0
-    else
-      Enum.sum(list) / length(list)
-    end
-  end
+  defp average(list), do: SharedUtilities.average(list)
 
   defp calculate_location_value(strategic_data) do
     # Simplified location value based on system count

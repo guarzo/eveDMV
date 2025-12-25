@@ -506,7 +506,9 @@ defmodule EveDmv.Performance.BatchNameResolver do
     # Character/corp/alliance names should already be cached from killmail data
     tasks =
       [
-        if(not Enum.empty?(ship_ids), do: Task.async(fn -> NameResolver.ship_names(ship_ids) end)),
+        if(not Enum.empty?(ship_ids),
+          do: Task.async(fn -> NameResolver.ship_names(ship_ids) end)
+        ),
         if(not Enum.empty?(system_ids),
           do: Task.async(fn -> NameResolver.system_names(system_ids) end)
         )

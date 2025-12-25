@@ -558,15 +558,9 @@ defmodule EveDmv.Shared.Monitoring.BaselineManager do
     # Simplified - would use actual ship type data
     Enum.count(killmails, fn km ->
       ship_type_id = km.victim.ship_type_id
-      # Use actual ship classification
-      case EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id) do
-        {:ok, ship_class}
-        when ship_class in [:carrier, :dreadnought, :titan, :supercarrier, :force_auxiliary] ->
-          true
-
-        _ ->
-          false
-      end
+      # classify_ship_type returns an atom directly, not a tuple
+      ship_class = EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
+      ship_class in [:capital, :supercapital]
     end)
   end
 

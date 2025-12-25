@@ -13,6 +13,7 @@ defmodule EveDmv.Shared.Correlation.SystemActivityCollector do
   alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.StaticData.ShipTypes
 
   require Logger
 
@@ -681,14 +682,14 @@ defmodule EveDmv.Shared.Correlation.SystemActivityCollector do
   end
 
   defp classify_ship_type(ship_type_id) do
-    # Simplified ship classification based on type ID ranges
-    cond do
-      ship_type_id >= 30_000 -> :capital_ship
-      ship_type_id >= 20_000 -> :battleship
-      ship_type_id >= 15_000 -> :cruiser
-      ship_type_id >= 10_000 -> :destroyer_frigate
-      ship_type_id >= 5000 -> :industrial
-      true -> :other
+    # Use centralized ship classification from static data
+    case ShipTypes.classify_ship_type(ship_type_id) do
+      :supercapital -> :capital_ship
+      :capital -> :capital_ship
+      :frigate -> :destroyer_frigate
+      :destroyer -> :destroyer_frigate
+      :unknown -> :other
+      class -> class
     end
   end
 

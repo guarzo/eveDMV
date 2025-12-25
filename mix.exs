@@ -5,10 +5,11 @@ defmodule EveDmv.MixProject do
     [
       app: :eve_dmv,
       version: "0.1.1",
-      elixir: "~> 1.17",
+      elixir: "~> 1.19",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       warnings_as_errors: System.get_env("CI") == "true",
+      listeners: [Phoenix.CodeReloader],
       aliases: aliases(),
       deps: deps(),
       # Test coverage
@@ -84,7 +85,7 @@ defmodule EveDmv.MixProject do
           ],
           "Market Data": [
             EveDmv.Market,
-            EveDmv.Market.JaniceClient,
+            EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient,
             EveDmv.Market.MutamarketClient,
             EveDmv.Market.PriceCache,
             EveDmv.Market.RateLimiter
@@ -161,7 +162,7 @@ defmodule EveDmv.MixProject do
       {:floki, ">= 0.30.0", only: :test},
       {:phoenix_live_dashboard, "~> 0.8.3"},
       {:esbuild, "~> 0.8", runtime: Mix.env() == :dev},
-      {:tailwind, "~> 0.3.1", runtime: Mix.env() == :dev},
+      {:tailwind, "~> 0.4", runtime: Mix.env() == :dev},
       {:heroicons,
        github: "tailwindlabs/heroicons",
        tag: "v2.1.1",
@@ -173,17 +174,13 @@ defmodule EveDmv.MixProject do
       {:finch, "~> 0.13"},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
-      {:gettext, "~> 0.26"},
+      {:gettext, "~> 1.0"},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2"},
       {:bandit, "~> 1.5"},
 
-      # WebSocket client for Wanderer integration
-      {:websockex, "~> 0.4.3"},
-      {:slipstream, "~> 1.2"},
-
       # Ash Framework
-      {:ash, "~> 3.4"},
+      {:ash, "~> 3.7"},
       {:ash_postgres, "~> 2.4"},
       {:ash_phoenix, "~> 2.1"},
       {:ash_json_api, "~> 1.4"},
@@ -191,7 +188,7 @@ defmodule EveDmv.MixProject do
       {:ash_authentication_phoenix, "~> 2.1"},
 
       # Additional dependencies for EVE integration
-      {:req, "~> 0.4"},
+      # NOTE: Finch is the recommended HTTP client for new code (see HTTP consolidation plan)
       {:broadway, "~> 1.1"},
       {:cachex, "~> 4.1"},
       {:gun, "~> 2.0"},
@@ -199,10 +196,7 @@ defmodule EveDmv.MixProject do
       {:tesla, "~> 1.8"},
       {:hackney, "~> 1.20"},
       {:dotenvy, "~> 1.1"},
-      {:nimble_csv, "~> 1.2"},
       {:hammer, "~> 7.1"},
-      # For native bzip2 decompression (requires libbz2-dev/bzip2-dev system package)
-      {:bzip2, "~> 0.3.0"},
       {:cowboy, "~> 2.9", only: [:dev, :test]},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
@@ -254,7 +248,6 @@ defmodule EveDmv.MixProject do
       # Fast dialyzer for CI/development
       "dialyzer.fast": ["cmd ./scripts/fast_dialyzer.sh"],
       "dialyzer.full": ["cmd ./scripts/fast_dialyzer.sh --rebuild-plt"],
-      "quality.parallel": ["cmd ./scripts/parallel_quality_check.sh"],
       "quality.fix": [
         "format",
         "deps.clean --unused",

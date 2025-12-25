@@ -207,7 +207,7 @@ defmodule EveDmv.Contexts.Corporation.Core.RecruitmentAnalyzer do
   end
 
   defp analyze_recruitment_timing(recruits) do
-    if Enum.empty?(recruits) do
+    if recruits == [] do
       %{}
     else
       # Analyze recruitment by day of week and hour
@@ -432,7 +432,7 @@ defmodule EveDmv.Contexts.Corporation.Core.RecruitmentAnalyzer do
         trend_strengths
       end
 
-    if Enum.empty?(batch_strengths) do
+    if batch_strengths == [] do
       ["Consistent recruitment activity"]
     else
       Enum.reverse(batch_strengths)
@@ -637,9 +637,11 @@ defmodule EveDmv.Contexts.Corporation.Core.RecruitmentAnalyzer do
               DateTimeUtils.diff(DateTime.utc_now(), member.last_seen, :day) < 30
           end)
 
+        cohort_count = length(cohort_members)
+
         retention_rate =
-          if length(cohort_members) > 0 do
-            active_members / length(cohort_members)
+          if cohort_count > 0 do
+            active_members / cohort_count
           else
             0
           end
@@ -668,7 +670,7 @@ defmodule EveDmv.Contexts.Corporation.Core.RecruitmentAnalyzer do
       recent_cohorts = Enum.take(cohort_analysis, 3)
       older_cohorts = Enum.drop(cohort_analysis, 3) |> Enum.take(3)
 
-      if Enum.empty?(older_cohorts) do
+      if older_cohorts == [] do
         :insufficient_data
       else
         recent_avg =

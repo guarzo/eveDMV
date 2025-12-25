@@ -11,6 +11,7 @@ defmodule EveDmv.Shared.Strategic.TerritorialAnalyzer do
 
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Shared.Strategic.Patterns.TerritorialPattern
+  alias EveDmv.StaticData.ShipTypes
 
   require Logger
 
@@ -672,9 +673,11 @@ defmodule EveDmv.Shared.Strategic.TerritorialAnalyzer do
   end
 
   defp classify_ship_type(ship_type_id) do
-    # Use actual ship classification from static data
-    ship_class = EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
-    if ship_class == :unknown, do: :other, else: ship_class
+    # Use centralized ship classification from static data
+    case ShipTypes.classify_ship_type(ship_type_id) do
+      :unknown -> :other
+      class -> class
+    end
   end
 
   defp find_dominant_entity(entities) do

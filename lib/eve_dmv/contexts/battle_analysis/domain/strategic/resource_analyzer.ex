@@ -9,8 +9,10 @@ defmodule EveDmv.Shared.Strategic.ResourceAnalyzer do
   - Resource flow analysis
   """
 
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Shared.Strategic.Patterns.ResourcePattern
+  alias EveDmv.StaticData.ShipTypes
 
   require Logger
 
@@ -168,7 +170,8 @@ defmodule EveDmv.Shared.Strategic.ResourceAnalyzer do
   end
 
   defp filter_resource_kills_by_window(strategic_data, start_time, end_time) do
-    resource_types = [:venture, :retriever, :hulk, :orca, :rorqual, :hauler, :freighter]
+    # Resource ships are mining and industrial ships
+    resource_types = [:mining, :industrial]
 
     case strategic_data.scope do
       :single_system ->
@@ -372,7 +375,8 @@ defmodule EveDmv.Shared.Strategic.ResourceAnalyzer do
       |> Enum.flat_map(fn data ->
         data.killmails
         |> Enum.filter(fn km ->
-          classify_ship_type(km.victim.ship_type_id) in [:hauler, :freighter, :transport]
+          # Industrial ships include haulers, transports, and freighters
+          classify_ship_type(km.victim.ship_type_id) == :industrial
         end)
         |> Enum.map(fn km ->
           %{
@@ -612,131 +616,13 @@ defmodule EveDmv.Shared.Strategic.ResourceAnalyzer do
     end
   end
 
-  defp average(list) do
-    if Enum.empty?(list) do
-      0.0
-    else
-      Enum.sum(list) / length(list)
-    end
-  end
+  defp average(list), do: SharedUtilities.average(list)
 
   defp classify_ship_type(ship_type_id) do
-    # Map specific ship type IDs to their roles
-    # This is based on EVE Online ship type IDs
-    case ship_type_id do
-      # Freighters
-      # Providence
-      20_183 ->
-        :freighter
-
-      # Charon
-      20_185 ->
-        :freighter
-
-      # Obelisk
-      20_187 ->
-        :freighter
-
-      # Fenrir
-      20_189 ->
-        :freighter
-
-      # Jump Freighters
-      # Rhea
-      28_844 ->
-        :freighter
-
-      # Nomad
-      28_846 ->
-        :freighter
-
-      # Anshar
-      28_848 ->
-        :freighter
-
-      # Ark
-      28_850 ->
-        :freighter
-
-      # Deep Space Transports
-      # Crane
-      12_729 ->
-        :transport
-
-      # Bustard
-      12_731 ->
-        :transport
-
-      # Mastodon
-      12_733 ->
-        :transport
-
-      # Impel
-      12_735 ->
-        :transport
-
-      # Blockade Runners
-      # Prowler
-      12_743 ->
-        :transport
-
-      # Viator
-      12_745 ->
-        :transport
-
-      # Prorator
-      12_747 ->
-        :transport
-
-      # Wideload
-      12_749 ->
-        :transport
-
-      # T1 Haulers
-      # Badger
-      648 ->
-        :hauler
-
-      # Tayra
-      649 ->
-        :hauler
-
-      # Nereus
-      650 ->
-        :hauler
-
-      # Hoarder
-      651 ->
-        :hauler
-
-      # Mammoth
-      652 ->
-        :hauler
-
-      # Wreathe
-      653 ->
-        :hauler
-
-      # Kryos
-      654 ->
-        :hauler
-
-      # Epithal
-      655 ->
-        :hauler
-
-      # Miasmos
-      656 ->
-        :hauler
-
-      # Iteron Mark V
-      657 ->
-        :hauler
-
-      # Default classification based on group
-      _ ->
-        ship_class = EveDmv.StaticData.ShipTypes.classify_ship_type(ship_type_id)
-        if ship_class == :unknown, do: :other, else: ship_class
+    # Use centralized ship classification from static data
+    case ShipTypes.classify_ship_type(ship_type_id) do
+      :unknown -> :other
+      class -> class
     end
   end
 end

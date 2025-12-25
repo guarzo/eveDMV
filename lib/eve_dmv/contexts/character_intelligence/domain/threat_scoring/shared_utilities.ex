@@ -4,24 +4,26 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtili
 
   This module contains common functions used across multiple threat scoring engines
   to avoid code duplication and ensure consistency.
+
+  ## Ship Classification
+
+  Ship classification is performed by querying the EVE Static Data Export (SDE)
+  via the ItemType resource. Ships are classified by their group_id, which
+  represents CCP's official ship categorization.
+
+  ## Price Estimation
+
+  Ship values are estimated using a priority fallback:
+  1. Market Intelligence service (real market prices)
+  2. SDE base_price (official CCP pricing)
+  3. Explicit error if no price data available
   """
 
+  alias EveDmv.Contexts.CharacterIntelligence.ThreatConfig
+  alias EveDmv.Eve.ItemType
+  alias EveDmv.StaticData.ShipTypes
+
   require Logger
-
-  # Ship type IDs for tactical roles
-  @logistics_ids [11_978, 11_987, 11_985, 12_003]
-  @ewar_ids [11_957, 11_958, 11_959, 11_961]
-  @command_ids [22_470, 22_852, 17_918, 17_920]
-
-  # Ship type ID ranges
-  @tackle_range 580..700
-  @dps_range 620..670
-  @capital_range 19_720..19_740
-  @frigate_range 580..700
-  @destroyer_range 420..450
-  @cruiser_range 620..650
-  @battlecruiser_range 540..570
-  @battleship_range 640..670
 
   @doc """
   Extracts unique ship types used from killmail data.
@@ -86,32 +88,30 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtili
 
   @doc """
   Classifies a ship type ID into its tactical role.
+
+  Uses the SDE group_id to determine the ship's role in fleet combat.
+  Falls back to :other if the ship type cannot be classified.
   """
   def classify_ship_role(ship_type_id) do
-    cond do
-      ship_type_id in @logistics_ids -> :logistics
-      ship_type_id in @ewar_ids -> :ewar
-      ship_type_id in @command_ids -> :command
-      # Check DPS range before tackle since they overlap
-      ship_type_id in @dps_range -> :dps
-      ship_type_id in @tackle_range -> :tackle
-      ship_type_id in @capital_range -> :capital
-      true -> :other
+    case get_item_type_info(ship_type_id) do
+      {:ok, item_type} ->
+        ThreatConfig.classify_by_group_id(item_type.group_id)
+
+      {:error, _} ->
+        :other
     end
   end
 
   @doc """
   Classifies a ship type ID into its ship class.
+
+  Uses the centralized ShipTypes module for consistent classification.
+  Falls back to :other if the ship type cannot be classified.
   """
   def classify_ship_type(ship_type_id) do
-    cond do
-      ship_type_id in @frigate_range -> :frigate
-      ship_type_id in @destroyer_range -> :destroyer
-      ship_type_id in @cruiser_range -> :cruiser
-      ship_type_id in @battlecruiser_range -> :battlecruiser
-      ship_type_id in @battleship_range -> :battleship
-      ship_type_id in @capital_range -> :capital
-      true -> :other
+    case ShipTypes.classify_ship_type(ship_type_id) do
+      :unknown -> :other
+      class -> class
     end
   end
 
@@ -124,26 +124,32 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtili
 
   @doc """
   Calculates survival rate based on combat data.
+
+  Returns {:ok, rate} on success or {:error, :insufficient_data} if no engagements.
+  Rate is between 0.0 and 1.0, where 1.0 means perfect survival.
   """
+  @spec calculate_survival_rate(map(), list()) :: {:ok, float()} | {:error, :insufficient_data}
   def calculate_survival_rate(combat_data, victim_killmails) do
     total_engagements = length(Map.get(combat_data, :killmails, []))
     deaths = length(victim_killmails)
 
     if total_engagements > 0 do
-      (total_engagements - deaths) / total_engagements
+      {:ok, (total_engagements - deaths) / total_engagements}
     else
-      # Neutral score for no data
-      0.5
+      {:error, :insufficient_data}
     end
   end
 
   @doc """
   Calculates damage efficiency from attacker killmails.
+
+  Returns {:ok, efficiency} on success or {:error, :insufficient_data} if no kills.
+  Efficiency is normalized to 0.0-1.0 where 1.0 means excellent damage contribution.
   """
+  @spec calculate_damage_efficiency(list()) :: {:ok, float()} | {:error, :insufficient_data}
   def calculate_damage_efficiency(attacker_killmails) do
-    # Analyze damage contribution patterns
     if Enum.empty?(attacker_killmails) do
-      0.5
+      {:error, :insufficient_data}
     else
       total_damage_contribution =
         attacker_killmails
@@ -153,8 +159,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtili
       average_contribution = total_damage_contribution / length(attacker_killmails)
 
       # Normalize damage contribution (higher is better)
-      # 15% average contribution = 1.0 score
-      min(1.0, average_contribution / 0.15)
+      # Use ThreatConfig for the normalization constant
+      {:ok, min(1.0, average_contribution / ThreatConfig.damage_contribution_excellent())}
     end
   end
 
@@ -183,78 +189,161 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtili
 
   @doc """
   Checks if a ship type is a tackle ship.
+
+  Uses group_id from SDE to identify interceptors, interdictors, and other tackle ships.
   """
   def tackle_ship?(ship_type_id) do
-    # Frigates and some cruisers commonly used for tackle
-    # Interceptors
-    ship_type_id in @tackle_range or ship_type_id in [11_182, 11_196]
+    case get_item_type_info(ship_type_id) do
+      {:ok, item_type} ->
+        item_type.group_id in ThreatConfig.tackle_group_ids()
+
+      {:error, _} ->
+        false
+    end
   end
 
   @doc """
   Checks if a ship type is a DPS ship.
+
+  DPS ships are combat-focused vessels: cruisers, battlecruisers, battleships.
   """
   def dps_ship?(ship_type_id) do
-    # Most cruisers, battlecruisers, battleships
-    ship_type_id in @dps_range
+    case get_item_type_info(ship_type_id) do
+      {:ok, item_type} ->
+        item_type.group_id in ThreatConfig.subcapital_combat_group_ids()
+
+      {:error, _} ->
+        false
+    end
   end
 
   @doc """
   Checks if a ship type is a support ship.
+
+  Support ships include logistics, EWAR, and command ships.
   """
   def support_ship?(ship_type_id) do
-    # EWAR, logistics, command ships
-    ship_type_id in @logistics_ids or ship_type_id in @ewar_ids
+    case get_item_type_info(ship_type_id) do
+      {:ok, item_type} ->
+        item_type.group_id in ThreatConfig.tactical_support_group_ids()
+
+      {:error, _} ->
+        false
+    end
   end
 
   @doc """
   Checks if a ship type is a logistics ship.
   """
   def logistics_ship?(ship_type_id) do
-    ship_type_id in @logistics_ids
+    case get_item_type_info(ship_type_id) do
+      {:ok, item_type} ->
+        item_type.group_id in ThreatConfig.logistics_group_ids()
+
+      {:error, _} ->
+        false
+    end
   end
 
   @doc """
   Checks if a ship type is an EWAR ship.
   """
   def ewar_ship?(ship_type_id) do
-    ship_type_id in @ewar_ids
+    case get_item_type_info(ship_type_id) do
+      {:ok, item_type} ->
+        item_type.group_id in ThreatConfig.ewar_group_ids()
+
+      {:error, _} ->
+        false
+    end
   end
 
   @doc """
   Checks if a ship type is a command ship.
   """
   def command_ship?(ship_type_id) do
-    ship_type_id in @command_ids
+    case get_item_type_info(ship_type_id) do
+      {:ok, item_type} ->
+        item_type.group_id in ThreatConfig.command_group_ids()
+
+      {:error, _} ->
+        false
+    end
   end
 
   @doc """
   Estimates the ISK value of a ship based on its type ID.
+
+  Priority order:
+  1. Market Intelligence service (if available)
+  2. SDE base_price from ItemType
+  3. Returns 0 if no price data available (explicit handling)
+
+  Returns an integer representing the estimated ISK value.
   """
   def estimate_ship_value(ship_type_id) do
-    cond do
-      # Frigates: 5M ISK
-      ship_type_id in @frigate_range -> 5_000_000
-      # Destroyers: 15M ISK
-      ship_type_id in @destroyer_range -> 15_000_000
-      # Cruisers: 50M ISK
-      ship_type_id in @cruiser_range -> 50_000_000
-      # Battlecruisers: 150M ISK
-      ship_type_id in @battlecruiser_range -> 150_000_000
-      # Battleships: 300M ISK
-      ship_type_id in @battleship_range -> 300_000_000
-      # Capitals: 2B ISK
-      ship_type_id in @capital_range -> 2_000_000_000
-      # Default: 25M ISK
-      true -> 25_000_000
+    # First try Market Intelligence for real market prices
+    case try_market_price(ship_type_id) do
+      {:ok, price} when price > 0 ->
+        trunc(price)
+
+      _ ->
+        # Fallback to SDE base_price
+        case get_item_type_info(ship_type_id) do
+          {:ok, item_type} when not is_nil(item_type.base_price) ->
+            # base_price is a Decimal, convert to integer
+            item_type.base_price
+            |> Decimal.to_float()
+            |> trunc()
+
+          _ ->
+            # No price data available - return 0 instead of fake value
+            0
+        end
+    end
+  end
+
+  # Attempts to get market price from MarketIntelligence context
+  # Safely handles test environments where the service may not be running
+  defp try_market_price(type_id) do
+    alias EveDmv.Contexts.MarketIntelligence
+
+    # Check if the price service is running before calling it
+    # This avoids EXIT signals in test environments
+    case Process.whereis(EveDmv.Contexts.MarketIntelligence.Domain.PriceService) do
+      nil ->
+        {:error, :service_unavailable}
+
+      _pid ->
+        try do
+          case MarketIntelligence.get_price(type_id) do
+            {:ok, %{price: price}} -> {:ok, price}
+            _ -> {:error, :no_market_price}
+          end
+        rescue
+          # Handle any exceptions
+          _ -> {:error, :service_unavailable}
+        catch
+          # Catch :exit when GenServer call fails
+          :exit, _ -> {:error, :service_unavailable}
+        end
     end
   end
 
   @doc """
   Checks if a ship type is a tactical target (high priority).
+
+  Tactical targets are ships that provide force multipliers:
+  logistics, EWAR, and command ships.
   """
   def tactical_target?(ship_type_id) do
-    # Ships that are tactically important targets
-    ship_type_id in @logistics_ids or ship_type_id in @ewar_ids or ship_type_id in @command_ids
+    case get_item_type_info(ship_type_id) do
+      {:ok, item_type} ->
+        ThreatConfig.tactical_target_group?(item_type.group_id)
+
+      {:error, _} ->
+        false
+    end
   end
 
   @doc """

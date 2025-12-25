@@ -17,7 +17,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
       assert is_map(analysis.analysis_metadata)
 
       # Should have participants
-      assert length(analysis.participants) > 0
+      assert analysis.participants != []
 
       # Each participant should have required fields
       participant = List.first(analysis.participants)
@@ -34,7 +34,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
 
       # Should identify DPS participants
       dps_participants = Enum.filter(analysis.participants, &(&1.primary_role == :dps))
-      assert length(dps_participants) > 0
+      assert dps_participants != []
 
       # DPS participants should have high damage
       dps_participant = List.first(dps_participants)
@@ -50,7 +50,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
       logistics_participants =
         Enum.filter(analysis.participants, &(&1.primary_role == :logistics))
 
-      assert length(logistics_participants) > 0
+      assert logistics_participants != []
 
       # Logistics participants should have logistics ships
       logistics_participant = List.first(logistics_participants)
@@ -79,7 +79,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
       analysis = ParticipantRoleAnalyzer.analyze_participant_roles(battle)
 
       # Should identify key players
-      assert length(analysis.key_players) > 0
+      assert analysis.key_players != []
 
       # Key players should be sorted by contribution
       key_player = List.first(analysis.key_players)
@@ -97,7 +97,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
       assert length(analysis.commanders) >= 0
 
       # If commanders identified, should have command indicators
-      if length(analysis.commanders) > 0 do
+      if analysis.commanders != [] do
         commander = List.first(analysis.commanders)
         assert commander.character_id
         assert is_list(commander.command_indicators)

@@ -7,6 +7,7 @@ defmodule EveDmv.Contexts.Combat.Api do
   """
 
   alias EveDmv.Contexts.BattleAnalysis.Core.BattleDetector
+  alias EveDmv.Contexts.BattleAnalysis.Core.OptimizedBattleAnalyzer
   alias EveDmv.Contexts.Combat.Core.BattleAnalyzer
   alias EveDmv.Contexts.Combat.Core.FleetCompositionAnalyzer
   alias EveDmv.Contexts.Combat.Core.ParticipantAnalyzer
@@ -23,7 +24,7 @@ defmodule EveDmv.Contexts.Combat.Api do
   defdelegate detect_battles_in_timeframe(start_time, end_time, opts \\ []), to: BattleDetector
 
   # Battle Analysis
-  defdelegate analyze_battle(battle_id), to: BattleAnalyzer
+  defdelegate analyze_battle(battle_id), to: OptimizedBattleAnalyzer
   defdelegate get_battle_metrics(battle_id), to: BattleAnalyzer
   defdelegate get_battle_summary(battle_id), to: BattleAnalyzer
 

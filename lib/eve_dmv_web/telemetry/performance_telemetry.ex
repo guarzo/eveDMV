@@ -9,10 +9,11 @@ defmodule EveDmvWeb.Telemetry.PerformanceTelemetry do
 
   def attach_handlers do
     # Attach Ecto query handlers
+    # Use module-qualified function references to avoid performance penalty
     :telemetry.attach(
       "eve-dmv-ecto-query-handler",
       [:eve_dmv, :repo, :query],
-      &handle_ecto_query/4,
+      &__MODULE__.handle_ecto_query/4,
       nil
     )
 
@@ -24,7 +25,7 @@ defmodule EveDmvWeb.Telemetry.PerformanceTelemetry do
         [:phoenix, :live_view, :handle_event, :stop],
         [:phoenix, :live_view, :handle_info, :stop]
       ],
-      &handle_liveview_event/4,
+      &__MODULE__.handle_liveview_event/4,
       nil
     )
 
@@ -32,7 +33,7 @@ defmodule EveDmvWeb.Telemetry.PerformanceTelemetry do
     :telemetry.attach(
       "eve-dmv-controller-handler",
       [:phoenix, :endpoint, :stop],
-      &handle_endpoint_stop/4,
+      &__MODULE__.handle_endpoint_stop/4,
       nil
     )
 
@@ -44,15 +45,15 @@ defmodule EveDmvWeb.Telemetry.PerformanceTelemetry do
         [:eve_dmv, :cache, :lookup, :stop],
         [:eve_dmv, :analysis, :stop]
       ],
-      &handle_custom_event/4,
+      &__MODULE__.handle_custom_event/4,
       nil
     )
 
     Logger.info("Performance telemetry handlers attached")
   end
 
-  # Ecto query handler
-  defp handle_ecto_query(_event_name, measurements, metadata, _config) do
+  @doc false
+  def handle_ecto_query(_event_name, measurements, metadata, _config) do
     duration_ms = System.convert_time_unit(measurements.total_time, :native, :millisecond)
 
     # Extract query info
@@ -72,8 +73,8 @@ defmodule EveDmvWeb.Telemetry.PerformanceTelemetry do
     )
   end
 
-  # LiveView event handlers
-  defp handle_liveview_event(event_name, measurements, metadata, _config) do
+  @doc false
+  def handle_liveview_event(event_name, measurements, metadata, _config) do
     duration_ms = System.convert_time_unit(measurements.duration, :native, :millisecond)
 
     view_module = inspect(metadata.socket.view)
@@ -95,8 +96,8 @@ defmodule EveDmvWeb.Telemetry.PerformanceTelemetry do
     PerformanceTracker.track_liveview(view_module, action, duration_ms, metadata: extra_metadata)
   end
 
-  # Phoenix endpoint handler
-  defp handle_endpoint_stop(_event_name, measurements, metadata, _config) do
+  @doc false
+  def handle_endpoint_stop(_event_name, measurements, metadata, _config) do
     duration_ms = System.convert_time_unit(measurements.duration, :native, :millisecond)
 
     # Only track if it's an API or LiveView request
@@ -113,8 +114,8 @@ defmodule EveDmvWeb.Telemetry.PerformanceTelemetry do
     end
   end
 
-  # Custom application event handlers
-  defp handle_custom_event(event_name, measurements, metadata, _config) do
+  @doc false
+  def handle_custom_event(event_name, measurements, metadata, _config) do
     duration_ms = System.convert_time_unit(measurements.duration, :native, :millisecond)
 
     case event_name do

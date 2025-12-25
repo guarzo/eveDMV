@@ -15,9 +15,27 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
   Bulk creates item types in the database.
   """
   def bulk_create_item_types(item_data) do
-    Logger.info("Bulk creating #{length(item_data)} item types")
+    # Deduplicate by type_id to avoid PostgreSQL cardinality violation
+    # "ON CONFLICT DO UPDATE command cannot affect row a second time"
+    deduplicated_data =
+      item_data
+      # Both JSONL parser and Type Resolver produce atom keys for type_id
+      |> Enum.reduce(%{}, fn item, acc ->
+        Map.put(acc, item[:type_id], item)
+      end)
+      |> Map.values()
 
-    case Ash.bulk_create(item_data, ItemType, :create,
+    total_count = length(deduplicated_data)
+
+    if length(item_data) != total_count do
+      Logger.warning(
+        "Deduplicated #{length(item_data) - total_count} duplicate type_ids from item data"
+      )
+    end
+
+    Logger.info("🚀 Bulk creating #{total_count} item types...")
+
+    case Ash.bulk_create(deduplicated_data, ItemType, :create,
            domain: EveDmv.Api,
            return_records?: false,
            return_errors?: true,
@@ -47,31 +65,21 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
              :is_charge,
              :is_blueprint,
              :is_deployable,
+             :is_drone,
+             :is_implant,
+             :is_fighter,
              :search_keywords,
              :sde_version,
+             :sde_build_number,
              :last_updated
            ]
          ) do
-      %Ash.BulkResult{records: _records, errors: []} ->
-        {:ok, length(item_data)}
-
-      %Ash.BulkResult{records: records, errors: errors} when errors != [] ->
-        created_count = length(records || [])
-        Logger.warning("Created #{created_count} item types, #{length(errors)} failed")
-
-        # Log first few errors for debugging
-        log_creation_errors(errors, "item type", :type_id)
-
-        {:ok, created_count}
-
-      %Ash.BulkResult{} = _result ->
-        # Successful bulk create, count may not be tracked
-        Logger.debug("Bulk create completed successfully")
-        {:ok, length(item_data)}
+      result ->
+        handle_bulk_result(result, total_count, "Item types", "item type", :type_id)
     end
   rescue
     error ->
-      Logger.error("Failed to bulk create item types: #{inspect(error)}")
+      Logger.error("❌ Item types bulk create FAILED: #{inspect(error)}")
       {:error, error}
   end
 
@@ -79,9 +87,27 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
   Bulk creates solar systems in the database.
   """
   def bulk_create_solar_systems(system_data) do
-    Logger.info("Bulk creating #{length(system_data)} solar systems")
+    # Deduplicate by system_id to avoid PostgreSQL cardinality violation
+    # "ON CONFLICT DO UPDATE command cannot affect row a second time"
+    deduplicated_data =
+      system_data
+      # SolarSystemProcessor produces atom keys for system_id
+      |> Enum.reduce(%{}, fn system, acc ->
+        Map.put(acc, system[:system_id], system)
+      end)
+      |> Map.values()
 
-    case Ash.bulk_create(system_data, SolarSystem, :create,
+    total_count = length(deduplicated_data)
+
+    if length(system_data) != total_count do
+      Logger.warning(
+        "Deduplicated #{length(system_data) - total_count} duplicate system_ids from system data"
+      )
+    end
+
+    Logger.info("🌍 Bulk creating #{total_count} solar systems...")
+
+    case Ash.bulk_create(deduplicated_data, SolarSystem, :create,
            domain: EveDmv.Api,
            return_records?: false,
            return_errors?: true,
@@ -98,33 +124,22 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
              :constellation_name,
              :security_status,
              :security_class,
+             :wormhole_class_id,
+             :wormhole_effect_type,
              :x,
              :y,
              :z,
              :sde_version,
+             :sde_build_number,
              :last_updated
            ]
          ) do
-      %Ash.BulkResult{records: _records, errors: []} ->
-        {:ok, length(system_data)}
-
-      %Ash.BulkResult{records: records, errors: errors} when errors != [] ->
-        created_count = length(records || [])
-        Logger.warning("Created #{created_count} solar systems, #{length(errors)} failed")
-
-        # Log first few errors for debugging
-        log_creation_errors(errors, "solar system", :system_id)
-
-        {:ok, created_count}
-
-      %Ash.BulkResult{} = _result ->
-        # Successful bulk create, count may not be tracked
-        Logger.debug("Bulk create completed successfully")
-        {:ok, length(system_data)}
+      result ->
+        handle_bulk_result(result, total_count, "Solar systems", "solar system", :system_id)
     end
   rescue
     error ->
-      Logger.error("Failed to bulk create solar systems: #{inspect(error)}")
+      Logger.error("❌ Solar systems bulk create FAILED: #{inspect(error)}")
       {:error, error}
   end
 
@@ -283,6 +298,34 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
   end
 
   # Private functions
+
+  defp handle_bulk_result(result, total_count, display_name, error_type, id_field) do
+    case result do
+      %Ash.BulkResult{records: _records, errors: []} ->
+        Logger.info("✅ #{display_name}: #{total_count} created/updated successfully")
+        {:ok, total_count}
+
+      %Ash.BulkResult{records: records, errors: errors} when errors != [] ->
+        created_count = length(records || [])
+        error_count = length(errors)
+
+        Logger.error(
+          "❌ #{display_name}: #{created_count} created, #{error_count} FAILED out of #{total_count}"
+        )
+
+        log_creation_errors(errors, error_type, id_field)
+
+        if created_count == 0 do
+          {:error, {:all_failed, error_count, errors}}
+        else
+          {:ok, created_count}
+        end
+
+      %Ash.BulkResult{} = _result ->
+        Logger.info("✅ #{display_name}: #{total_count} created/updated successfully")
+        {:ok, total_count}
+    end
+  end
 
   defp log_creation_errors(errors, type, id_field) do
     errors

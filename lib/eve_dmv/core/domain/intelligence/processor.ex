@@ -328,10 +328,12 @@ defmodule EveDmv.Shared.Intelligence.Processor do
   end
 
   defp determine_scan_threat_level(threat_scans) do
+    count = length(threat_scans)
+
     cond do
-      length(threat_scans) >= 5 -> :critical
-      length(threat_scans) >= 3 -> :high
-      length(threat_scans) >= 1 -> :medium
+      count >= 5 -> :critical
+      count >= 3 -> :high
+      count >= 1 -> :medium
       true -> :low
     end
   end

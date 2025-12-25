@@ -183,6 +183,24 @@ defmodule EveDmv.Eve.ItemType do
       description("Whether this item can be deployed in space")
     end
 
+    attribute :is_drone, :boolean do
+      allow_nil?(false)
+      default(false)
+      description("Whether this item is a drone")
+    end
+
+    attribute :is_implant, :boolean do
+      allow_nil?(false)
+      default(false)
+      description("Whether this item is an implant")
+    end
+
+    attribute :is_fighter, :boolean do
+      allow_nil?(false)
+      default(false)
+      description("Whether this item is a fighter")
+    end
+
     # Search metadata
     attribute :search_keywords, {:array, :string} do
       allow_nil?(true)
@@ -194,7 +212,12 @@ defmodule EveDmv.Eve.ItemType do
     attribute :sde_version, :string do
       allow_nil?(true)
       constraints(max_length: 50)
-      description("Version of the SDE this data came from")
+      description("Version of the SDE this data came from (legacy, prefer sde_build_number)")
+    end
+
+    attribute :sde_build_number, :integer do
+      allow_nil?(true)
+      description("CCP SDE build number (e.g., 3142455) - used for version tracking")
     end
 
     attribute :last_updated, :utc_datetime do
@@ -245,8 +268,12 @@ defmodule EveDmv.Eve.ItemType do
         :is_charge,
         :is_blueprint,
         :is_deployable,
+        :is_drone,
+        :is_implant,
+        :is_fighter,
         :search_keywords,
-        :sde_version
+        :sde_version,
+        :sde_build_number
       ])
 
       # Upsert for SDE updates
@@ -398,10 +425,10 @@ defmodule EveDmv.Eve.ItemType do
       calculation(fn records, _context ->
         Enum.map(records, fn record ->
           cond do
-            record.is_ship and record.mass && record.mass > 1_000_000_000 -> "capital"
-            record.is_ship and record.mass && record.mass > 100_000_000 -> "battleship"
-            record.is_ship and record.mass && record.mass > 10_000_000 -> "cruiser"
-            record.is_ship and record.mass && record.mass > 1_000_000 -> "frigate"
+            (record.is_ship and record.mass) && record.mass > 1_000_000_000 -> "capital"
+            (record.is_ship and record.mass) && record.mass > 100_000_000 -> "battleship"
+            (record.is_ship and record.mass) && record.mass > 10_000_000 -> "cruiser"
+            (record.is_ship and record.mass) && record.mass > 1_000_000 -> "frigate"
             record.is_ship -> "unknown"
             true -> "item"
           end

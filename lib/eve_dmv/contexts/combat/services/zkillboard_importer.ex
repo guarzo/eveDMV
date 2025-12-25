@@ -71,7 +71,7 @@ defmodule EveDmv.Contexts.Combat.Services.ZkillboardImporter do
     successful_kills = Enum.map(successes, fn {:ok, data} -> data end)
     failed_kills = Enum.map(failures, fn {:error, data} -> data end)
 
-    if length(failed_kills) > 0 do
+    if Enum.any?(failed_kills) do
       Logger.warning("Failed to import #{length(failed_kills)} kills: #{inspect(failed_kills)}")
     end
 

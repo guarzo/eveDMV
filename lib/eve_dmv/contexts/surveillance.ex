@@ -107,8 +107,33 @@ defmodule EveDmv.Contexts.Surveillance do
   end
 
   defp get_system_load_percent do
-    # Return 0 - real implementation would check actual system metrics
-    0
+    # Calculate system load from Erlang scheduler utilization
+    # This gives a real measure of how busy the BEAM VM is
+    # Get scheduler utilization if available
+    case :erlang.statistics(:scheduler_wall_time) do
+      :undefined ->
+        # Scheduler wall time not enabled, estimate from run queue
+        run_queue = :erlang.statistics(:run_queue)
+        scheduler_count = :erlang.system_info(:schedulers_online)
+        # Rough estimate: run_queue / schedulers * 100, capped at 100
+        min(100, round(run_queue / scheduler_count * 100))
+
+      scheduler_times when is_list(scheduler_times) ->
+        # Calculate actual utilization from scheduler wall times
+        total_active =
+          Enum.reduce(scheduler_times, 0, fn {_id, active, _total}, acc -> acc + active end)
+
+        total_time =
+          Enum.reduce(scheduler_times, 0, fn {_id, _active, total}, acc -> acc + total end)
+
+        if total_time > 0 do
+          round(total_active / total_time * 100)
+        else
+          0
+        end
+    end
+  rescue
+    _ -> 0
   end
 
   defp get_cache_hit_rate do

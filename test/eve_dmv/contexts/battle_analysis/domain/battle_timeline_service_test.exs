@@ -46,7 +46,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
 
       timeline = BattleTimelineService.reconstruct_timeline(battle)
 
-      assert length(timeline.fleet_composition) > 0
+      assert Enum.any?(timeline.fleet_composition)
 
       composition_window = List.first(timeline.fleet_composition)
       assert composition_window.timestamp
@@ -62,7 +62,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
 
       timeline = BattleTimelineService.reconstruct_timeline(battle)
 
-      assert length(timeline.key_moments) > 0
+      assert Enum.any?(timeline.key_moments)
 
       # Should have first blood
       first_blood = Enum.find(timeline.key_moments, &(&1.type == :first_blood))
@@ -94,8 +94,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
 
       assert timeline.battle_id == battle.battle_id
       assert length(timeline.events) == 1
-      assert length(timeline.phases) >= 1
-      assert length(timeline.key_moments) >= 1
+      assert timeline.phases != []
+      assert timeline.key_moments != []
     end
 
     test "correctly analyzes battle sides" do
@@ -110,7 +110,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
       Enum.each(composition.sides, fn side ->
         assert is_binary(side.side_id)
         assert is_list(side.corporations)
-        assert length(side.corporations) > 0
+        assert Enum.any?(side.corporations)
         assert is_integer(side.participant_count)
       end)
     end
@@ -141,7 +141,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleTimelineServiceTest do
       sequence = BattleTimelineService.analyze_battle_sequence(battles)
 
       # Should detect connection due to shared participant
-      assert length(sequence.connections) > 0
+      assert Enum.any?(sequence.connections)
       connection = List.first(sequence.connections)
       assert connection.connection_type in [:same_system_continuation, :roaming_gang]
       assert connection.time_gap_minutes == 15

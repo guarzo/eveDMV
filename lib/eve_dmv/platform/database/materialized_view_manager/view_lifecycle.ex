@@ -13,17 +13,35 @@ defmodule EveDmv.Platform.Database.MaterializedViewManager.ViewLifecycle do
 
   @doc """
   Ensures all defined materialized views exist in the database.
+  Uses a single query to check existence of all views to avoid N+1 queries.
   """
   def ensure_all_views_exist do
+    existing_views = get_existing_view_names()
+
     ViewDefinitions.all_views()
-    |> Enum.map(&ensure_view_exists/1)
+    |> Enum.map(&ensure_view_exists(&1, existing_views))
     |> Enum.into(%{})
   end
 
   @doc """
   Ensures a specific materialized view exists, creating it if necessary.
+  Accepts an optional set of existing view names to avoid N+1 queries when called in batch.
   """
-  def ensure_view_exists(view_def) do
+  def ensure_view_exists(view_def, existing_views \\ nil)
+
+  def ensure_view_exists(view_def, existing_views)
+      when is_struct(existing_views, MapSet) do
+    view_name = view_def.name
+
+    if MapSet.member?(existing_views, view_name) do
+      {view_name, {:ok, %{status: :exists, last_refresh: nil}}}
+    else
+      result = create_materialized_view(view_def)
+      {view_name, result}
+    end
+  end
+
+  def ensure_view_exists(view_def, nil) do
     view_name = view_def.name
 
     if materialized_view_exists?(view_name) do
@@ -35,7 +53,32 @@ defmodule EveDmv.Platform.Database.MaterializedViewManager.ViewLifecycle do
   end
 
   @doc """
+  Gets all existing materialized view names in a single query.
+  Returns a MapSet for efficient membership checks.
+  """
+  def get_existing_view_names do
+    query = """
+    SELECT matviewname
+    FROM pg_matviews
+    WHERE schemaname = 'public'
+    """
+
+    case SQL.query(Repo, query, []) do
+      {:ok, %{rows: rows}} ->
+        rows
+        |> Enum.map(fn [name] -> name end)
+        |> MapSet.new()
+
+      {:error, error} ->
+        Logger.error("get_existing_view_names/0 failed to query pg_matviews: #{inspect(error)}")
+
+        MapSet.new()
+    end
+  end
+
+  @doc """
   Checks if a materialized view exists in the database.
+  For batch operations, prefer using get_existing_view_names/0 to avoid N+1 queries.
   """
   def materialized_view_exists?(view_name) do
     query = """

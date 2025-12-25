@@ -36,12 +36,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
     case Ash.read(systems_query, domain: Api) do
       {:ok, systems} ->
-        # Get all system IDs in the constellation (TODO: use for filtering)
-        _system_ids = Enum.map(systems, & &1.system_id)
+        system_ids = Enum.map(systems, & &1.system_id)
 
-        # Query recent killmail activity - simplified for now
+        # Query recent killmail activity filtered by constellation systems
         killmail_query =
           KillmailRaw
+          |> Ash.Query.filter(solar_system_id in ^system_ids)
           |> Ash.Query.limit(100)
           |> Ash.Query.select([:killmail_id, :solar_system_id, :total_value])
 
@@ -119,12 +119,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
     case Ash.read(systems_query, domain: Api) do
       {:ok, systems} ->
-        # Get all system IDs in the constellation (TODO: use for filtering)
-        _system_ids = Enum.map(systems, & &1.system_id)
+        system_ids = Enum.map(systems, & &1.system_id)
 
-        # Get killmails with participants to analyze control - simplified for now
+        # Get killmails with participants to analyze control
         control_query =
           KillmailRaw
+          |> Ash.Query.filter(solar_system_id in ^system_ids)
           |> Ash.Query.limit(100)
           |> Ash.Query.load([:participants])
           |> Ash.Query.select([:killmail_id, :participants])
@@ -261,12 +261,12 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
     case Ash.read(systems_query, domain: Api) do
       {:ok, systems} ->
-        # Get all system IDs in the constellation (TODO: use for filtering)
-        _system_ids = Enum.map(systems, & &1.system_id)
+        system_ids = Enum.map(systems, & &1.system_id)
 
-        # Query high-value losses as threat indicators - simplified for now
+        # Query high-value losses as threat indicators
         threat_query =
           KillmailRaw
+          |> Ash.Query.filter(solar_system_id in ^system_ids)
           |> Ash.Query.limit(50)
           |> Ash.Query.load([:participants])
           |> Ash.Query.sort(desc: :killmail_time)

@@ -58,21 +58,14 @@ defmodule EveDmv.Core.Refactoring.ArchitectureValidator do
   def validate(opts \\ []) do
     Logger.info("Starting architecture validation...")
 
-    state = %__MODULE__{
-      modules: [],
-      dependencies: %{},
-      violations: [],
-      circular_deps: [],
-      boundary_violations: [],
-      naming_violations: []
-    }
+    state = initial_state()
 
     # Collect all modules and their dependencies
-    initial_state = collect_modules_and_dependencies(state)
+    collected_state = collect_modules_and_dependencies(state)
 
     # Run all checks in pipeline
     final_state =
-      initial_state
+      collected_state
       |> detect_circular_dependencies()
       |> check_boundary_violations()
       |> check_naming_conventions()
@@ -108,12 +101,11 @@ defmodule EveDmv.Core.Refactoring.ArchitectureValidator do
     allowed = Map.get(@context_boundaries, context_name, [])
     context_module = "EveDmv.Contexts.#{context_name}"
 
-    violations = find_boundary_violations(context_module, allowed)
-
-    if length(violations) > 0 do
-      {:violations, violations}
-    else
-      :ok
+    context_module
+    |> find_boundary_violations(allowed)
+    |> case do
+      [] -> :ok
+      violations -> {:violations, violations}
     end
   end
 
@@ -121,7 +113,8 @@ defmodule EveDmv.Core.Refactoring.ArchitectureValidator do
   Generate a dependency graph in DOT format
   """
   def generate_dependency_graph do
-    {:ok, state} = validate(report: false)
+    # Collect dependencies directly instead of from validation report
+    state = collect_modules_and_dependencies(initial_state())
 
     dot_content = build_dot_graph(state.dependencies)
 
@@ -136,6 +129,17 @@ defmodule EveDmv.Core.Refactoring.ArchitectureValidator do
   end
 
   ## Private Functions
+
+  defp initial_state do
+    %__MODULE__{
+      modules: [],
+      dependencies: %{},
+      violations: [],
+      circular_deps: [],
+      boundary_violations: [],
+      naming_violations: []
+    }
+  end
 
   defp collect_modules_and_dependencies(state) do
     modules = find_all_modules()
@@ -261,10 +265,9 @@ defmodule EveDmv.Core.Refactoring.ArchitectureValidator do
           !allowed_dependency?(dep, allowed)
         end)
 
-      if length(violations) > 0 do
-        [{module, violations}]
-      else
-        []
+      case violations do
+        [] -> []
+        _ -> [{module, violations}]
       end
     else
       []
@@ -333,18 +336,17 @@ defmodule EveDmv.Core.Refactoring.ArchitectureValidator do
   defp find_module_violations(module, deps) do
     Enum.flat_map(@forbidden_dependencies, fn {from_pattern, to_pattern} ->
       if Regex.match?(from_pattern, module) do
-        forbidden = Enum.filter(deps, &Regex.match?(to_pattern, &1))
-
-        if length(forbidden) > 0 do
-          [{module, from_pattern, forbidden}]
-        else
-          []
-        end
+        deps
+        |> Enum.filter(&Regex.match?(to_pattern, &1))
+        |> build_violation(module, from_pattern)
       else
         []
       end
     end)
   end
+
+  defp build_violation([], _module, _from_pattern), do: []
+  defp build_violation(forbidden, module, from_pattern), do: [{module, from_pattern, forbidden}]
 
   defp find_boundary_violations(context_module, allowed_patterns) do
     dependencies = get_module_dependencies(context_module)
@@ -501,19 +503,19 @@ defmodule EveDmv.Core.Refactoring.ArchitectureValidator do
   defp generate_recommendations(state) do
     []
     |> maybe_add_recommendation(
-      length(state.circular_deps) > 0,
+      Enum.any?(state.circular_deps),
       "Break circular dependencies by introducing abstractions or events"
     )
     |> maybe_add_recommendation(
-      length(state.boundary_violations) > 0,
+      Enum.any?(state.boundary_violations),
       "Refactor to respect context boundaries"
     )
     |> maybe_add_recommendation(
-      length(state.naming_violations) > 0,
+      Enum.any?(state.naming_violations),
       "Fix module naming to match directory structure"
     )
     |> maybe_add_recommendation(
-      length(state.violations) > 0,
+      Enum.any?(state.violations),
       "Remove forbidden dependencies between layers"
     )
   end

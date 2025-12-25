@@ -8,7 +8,7 @@ defmodule EveDmv.Market.Strategies.JaniceStrategy do
 
   @behaviour EveDmv.Market.PricingStrategy
 
-  alias EveDmv.Market.JaniceClient
+  alias EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient
   require Logger
 
   @impl EveDmv.Market.PricingStrategy

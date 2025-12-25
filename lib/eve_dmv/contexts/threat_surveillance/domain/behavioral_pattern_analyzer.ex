@@ -185,7 +185,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
   end
 
   defp analyze_killmail_patterns(killmails, _entity_type, pattern_types) do
-    if Enum.empty?(killmails) do
+    if killmails == [] do
       {:ok,
        %{
          activity_patterns: %{},
@@ -469,15 +469,11 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
 
   defp safe_percentage(_, _), do: 0.0
 
-  defp calculate_average(list) when length(list) > 0 do
-    list_length = length(list)
-
-    if list_length > 0 do
-      Float.round(Enum.sum(list) / list_length, 2)
-    else
-      0.0
-    end
+  defp calculate_average([_ | _] = list) do
+    Float.round(Enum.sum(list) / length(list), 2)
   end
+
+  defp calculate_average([]), do: 0.0
 
   defp calculate_average(_), do: 0.0
 
@@ -572,11 +568,15 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
     baseline_peaks = get_in(baseline, [:activity_patterns, :peak_hours]) || []
     recent_peaks = get_in(recent, [:activity_patterns, :peak_hours]) || []
 
-    if not Enum.empty?(recent_peaks) and not Enum.empty?(baseline_peaks) do
+    if Enum.empty?(recent_peaks) or Enum.empty?(baseline_peaks) do
+      anomalies
+    else
       # Check if recent activity is outside normal hours
       unusual_hours = Enum.reject(recent_peaks, &(&1 in baseline_peaks))
 
-      if length(unusual_hours) > 0 do
+      if Enum.empty?(unusual_hours) do
+        anomalies
+      else
         [
           {:timezone_anomaly,
            %{
@@ -587,11 +587,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
            }}
           | anomalies
         ]
-      else
-        anomalies
       end
-    else
-      anomalies
     end
   end
 
@@ -632,11 +628,15 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
     baseline_ships = Map.keys(get_in(baseline, [:ship_patterns, :ship_classes]) || %{})
     recent_ships = Map.keys(get_in(recent, [:ship_patterns, :ship_classes]) || %{})
 
-    if not Enum.empty?(recent_ships) and not Enum.empty?(baseline_ships) do
+    if Enum.empty?(recent_ships) or Enum.empty?(baseline_ships) do
+      anomalies
+    else
       # Check for unusual ship usage
       new_ship_classes = Enum.reject(recent_ships, &(&1 in baseline_ships))
 
-      if length(new_ship_classes) > 0 do
+      if Enum.empty?(new_ship_classes) do
+        anomalies
+      else
         [
           {:ship_anomaly,
            %{
@@ -646,11 +646,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
            }}
           | anomalies
         ]
-      else
-        anomalies
       end
-    else
-      anomalies
     end
   end
 

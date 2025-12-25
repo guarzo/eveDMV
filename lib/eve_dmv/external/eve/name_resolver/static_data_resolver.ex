@@ -9,7 +9,6 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
   alias EveDmv.Eve.ItemType
   alias EveDmv.Eve.NameResolver.CacheManager
   alias EveDmv.Eve.SolarSystem
-  alias EveDmv.Platform.Cache.Cache
   alias EveDmv.Platform.Cache.StaticDataCache
 
   require Ash.Query
@@ -115,55 +114,22 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
           status: number()
         }
   def system_security(system_id) when is_integer(system_id) do
-    # Use a specialized cache key for system security maps
-    cache_key = {:solar_system_security, system_id}
-
-    case Cache.get(:hot_data, cache_key) do
-      {:ok, security_info} ->
-        security_info
-
-      :miss ->
-        case fetch_system_security(system_id) do
-          {:ok, security_info} ->
-            # Cache the security info map directly with appropriate TTL
-            Cache.put(:hot_data, cache_key, security_info, ttl: :timer.hours(24))
-            security_info
-
-          {:error, _} ->
-            %{class: "unknown", color: "text-gray-400", status: 0.0}
-        end
-    end
+    # Use StaticDataCache for system security (handles caching internally)
+    StaticDataCache.resolve_system_security(system_id)
   end
 
-  defp fetch_system_security(system_id) do
-    case fetch_from_database(:solar_system_full, system_id) do
-      {:ok, system} ->
-        security_class = String.downcase(system.security_class || "unknown")
+  @doc """
+  Gets the security class and color for multiple solar systems efficiently.
 
-        color =
-          case security_class do
-            "highsec" -> "text-green-400"
-            "lowsec" -> "text-yellow-400"
-            "nullsec" -> "text-red-400"
-            "wormhole" -> "text-purple-400"
-            _ -> "text-gray-400"
-          end
+  ## Examples
 
-        security_info = %{
-          class: security_class,
-          color: color,
-          status:
-            case system.security_status do
-              %Decimal{} = decimal -> Decimal.to_float(decimal)
-              value -> value || 0.0
-            end
-        }
-
-        {:ok, security_info}
-
-      {:error, _} ->
-        {:error, :not_found}
-    end
+      iex> StaticDataResolver.system_securities([30_000_142, 30_002_187])
+      %{30_000_142 => %{class: "highsec", ...}, 30_002_187 => %{class: "highsec", ...}}
+  """
+  @spec system_securities(list(integer())) :: map()
+  def system_securities(system_ids) when is_list(system_ids) do
+    # Use StaticDataCache for batch system security resolution
+    StaticDataCache.resolve_system_securities(system_ids)
   end
 
   @doc """
@@ -210,54 +176,4 @@ defmodule EveDmv.Eve.NameResolver.StaticDataResolver do
   end
 
   def batch_fetch_from_database(_type, _ids), do: %{}
-
-  # Private helper functions
-
-  # Note: :ship_type and :item_type patterns are never called directly but kept for compatibility
-  @dialyzer {:nowarn_function, fetch_from_database: 2}
-  defp fetch_from_database(:ship_type, type_id) do
-    fetch_from_database(:item_type, type_id)
-  end
-
-  defp fetch_from_database(:item_type, type_id) do
-    case ItemType
-         |> Ash.Query.filter(type_id: type_id)
-         |> Ash.read_one(domain: EveDmv.Api, authorize?: false) do
-      {:ok, item} when is_struct(item) -> {:ok, item.type_name}
-      {:ok, nil} -> {:error, :not_found}
-      {:error, _} -> {:error, :not_found}
-    end
-  rescue
-    error ->
-      Logger.warning("Failed to fetch item type #{type_id}: #{inspect(error)}")
-      {:error, :database_error}
-  end
-
-  defp fetch_from_database(:solar_system, system_id) do
-    case SolarSystem
-         |> Ash.Query.filter(system_id: system_id)
-         |> Ash.read_one(domain: EveDmv.Api, authorize?: false) do
-      {:ok, system} when is_struct(system) -> {:ok, system.system_name}
-      {:ok, nil} -> {:error, :not_found}
-      {:error, _} -> {:error, :not_found}
-    end
-  rescue
-    error ->
-      Logger.warning("Failed to fetch solar system #{system_id}: #{inspect(error)}")
-      {:error, :database_error}
-  end
-
-  defp fetch_from_database(:solar_system_full, system_id) do
-    case SolarSystem
-         |> Ash.Query.filter(system_id: system_id)
-         |> Ash.read_one(domain: EveDmv.Api, authorize?: false) do
-      {:ok, system} when is_struct(system) -> {:ok, system}
-      {:ok, nil} -> {:error, :not_found}
-      {:error, _} -> {:error, :not_found}
-    end
-  rescue
-    error ->
-      Logger.warning("Failed to fetch solar system #{system_id}: #{inspect(error)}")
-      {:error, :database_error}
-  end
 end

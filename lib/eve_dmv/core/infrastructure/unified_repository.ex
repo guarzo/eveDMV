@@ -8,7 +8,6 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   - Corporation.Infrastructure.CorporationRepository
   - Surveillance.Infrastructure.ProfileRepository
   - PlayerProfile.Infrastructure.PlayerRepository
-  - WormholeOperations.Infrastructure.VettingRepository
 
   Provides:
   - Standardized CRUD operations across all domains
@@ -28,7 +27,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   require Ash.Query
   require Logger
 
-  @type domain :: :threat | :fleet | :corporation | :surveillance | :player | :wormhole
+  @type domain :: :threat | :fleet | :corporation | :surveillance | :player
   @type resource :: module()
   @type id :: term()
   @type filter :: keyword()
@@ -348,37 +347,6 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
     end
   end
 
-  ## Wormhole Operations Repository
-
-  @doc """
-  Get wormhole vetting information.
-  """
-  @spec get_wormhole_vetting(integer(), options()) :: {:ok, struct()} | {:error, :not_found}
-  def get_wormhole_vetting(character_id, opts \\ []) do
-    get_by_id(:wormhole, EveDmv.WormholeOperations.VettingInfo, character_id, opts)
-  end
-
-  @doc """
-  List recent wormhole signatures.
-  """
-  @spec get_recent_wormhole_signatures(integer(), options()) :: {:ok, list()} | {:error, term()}
-  def get_recent_wormhole_signatures(system_id, opts \\ []) do
-    since =
-      Keyword.get(opts, :since, DateTimeUtils.add(DateTimeUtils.utc_now(), -24 * 3600, :second))
-
-    filter = [
-      solar_system_id: system_id,
-      detected_at: [greater_than: since]
-    ]
-
-    list_by_filter(
-      :wormhole,
-      EveDmv.WormholeOperations.WormholeSignature,
-      filter,
-      Keyword.merge(opts, cache_ttl: 300)
-    )
-  end
-
   ## Statistics and Monitoring
 
   @doc """
@@ -564,8 +532,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
       fleet: %{reads: 200, writes: 40, cache_hits: 160},
       corporation: %{reads: 100, writes: 15, cache_hits: 80},
       surveillance: %{reads: 300, writes: 60, cache_hits: 240},
-      player: %{reads: 500, writes: 80, cache_hits: 420},
-      wormhole: %{reads: 75, writes: 20, cache_hits: 60}
+      player: %{reads: 500, writes: 80, cache_hits: 420}
     }
   end
 

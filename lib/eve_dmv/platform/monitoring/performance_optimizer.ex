@@ -7,7 +7,6 @@ defmodule EveDmv.Intelligence.PerformanceOptimizer do
   and resource management for intelligence operations.
   """
 
-  # alias EveDmv.Contexts.WormholeOperations.Domain.Wormhole.WhVetting - REMOVED IN PHASE 1
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.Cache.IntelligenceCache
   alias EveDmv.Intelligence.CharacterStats

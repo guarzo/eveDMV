@@ -13,8 +13,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
   The consolidation improves maintainability while preserving all real analysis functionality.
   """
 
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.StaticData.ShipTypes
   require Logger
 
   @doc """
@@ -691,26 +692,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
   # Helper utility functions
 
   defp classify_ship_type(ship_type_id) do
-    # This would use real EVE static data
-    # Simplified classification for now
-    cond do
-      ship_type_id in [587, 588, 589] -> :frigate
-      ship_type_id in [622, 623, 624] -> :destroyer
-      ship_type_id in [625, 626, 627] -> :cruiser
-      ship_type_id in [628, 629, 630] -> :battleship
-      true -> :unknown
-    end
+    ShipTypes.classify_ship_type(ship_type_id)
   end
 
   defp determine_ship_role(ship_type_id) do
-    # This would use real EVE static data
-    # Simplified role determination for now
-    case classify_ship_type(ship_type_id) do
-      :frigate -> :tackle
-      :destroyer -> :tackle
-      :cruiser -> :dps
-      :battleship -> :dps
-      _ -> :unknown
+    # Use centralized ship role determination
+    cond do
+      ShipTypes.tackle_ship?(ship_type_id) -> :tackle
+      ShipTypes.logistics?(ship_type_id) -> :logistics
+      ShipTypes.ewar?(ship_type_id) -> :ewar
+      ShipTypes.dps_ship?(ship_type_id) -> :dps
+      true -> :unknown
     end
   end
 
@@ -1293,19 +1285,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
 
   # Utility mathematical functions
 
-  defp average([]), do: 0.0
+  defp average(list), do: SharedUtilities.average(list)
 
-  defp average(list) when is_list(list) do
-    Enum.sum(list) / length(list)
-  end
-
-  defp calculate_variance([]), do: 0.0
-
-  defp calculate_variance(list) when is_list(list) do
-    mean = average(list)
-    squared_diffs = Enum.map(list, fn x -> (x - mean) * (x - mean) end)
-    average(squared_diffs)
-  end
+  defp calculate_variance(list), do: SharedUtilities.calculate_variance(list)
 
   defp calculate_window_coordination(window) do
     if length(window) < 2 do

@@ -1,6 +1,7 @@
 services:
   db:
     # Using custom image with pg_cron extension
+    # PostgreSQL 18 - keep in sync with ci.yml and docker-compose.production.yml
     build:
       context: .devcontainer
       dockerfile: Dockerfile.postgres
@@ -17,7 +18,9 @@ services:
       -c pg_stat_statements.max=10000
       -c cron.database_name=eve_tracker_dev
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # PostgreSQL 18+ requires mount at /var/lib/postgresql (not /data)
+      # This allows pg_upgrade to work properly with version-specific subdirectories
+      - postgres_data:/var/lib/postgresql
     ports:
       - "5433:5432"
     healthcheck:
@@ -45,6 +48,8 @@ services:
       context: .
       dockerfile: .devcontainer/Dockerfile
     container_name: eve_tracker_app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - .:/workspace:cached
       - mix_deps:/workspace/deps

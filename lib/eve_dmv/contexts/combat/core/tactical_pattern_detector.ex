@@ -11,6 +11,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
   - Bombing runs
   """
 
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   alias EveDmv.Contexts.Combat.Core.TimelineBuilder
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.StaticData.ShipTypes
@@ -62,7 +63,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
       |> Enum.filter(&focus_fire_sequence?/1)
       |> Enum.map(&analyze_focus_fire/1)
 
-    if length(focus_fire_instances) > 0 do
+    if focus_fire_instances != [] do
       pattern = %{
         type: :focus_fire,
         instances: focus_fire_instances,
@@ -165,7 +166,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
 
   defp calculate_order_correlation(list1, list2) do
     # Simple correlation calculation
-    if length(list1) <= 1 do
+    if Enum.count(list1) <= 1 do
       0.0
     else
       matches =
@@ -257,7 +258,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
   defp calculate_engagement_ranges(positions) do
     # Return empty ranges since position data is not available in killmails
     # This prevents analysis of range-based patterns until position data is implemented
-    if Enum.empty?(positions) do
+    if positions == [] do
       []
     else
       # Return default range estimates based on ship types if available
@@ -362,7 +363,9 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
       killmails
       |> Enum.filter(&involves_capital?/1)
 
-    if length(capitals_involved) > 0 do
+    if capitals_involved == [] do
+      patterns
+    else
       pattern = %{
         type: :capital_warfare,
         deployment_strategy: analyze_capital_deployment(capitals_involved, timeline),
@@ -372,8 +375,6 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
       }
 
       [pattern | patterns]
-    else
-      patterns
     end
   end
 
@@ -440,7 +441,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
       |> detect_simultaneous_kills()
       |> Enum.filter(&could_be_bomb_run?/1)
 
-    if length(potential_bomb_runs) > 0 do
+    if potential_bomb_runs != [] do
       pattern = %{
         type: :bombing_runs,
         instances: potential_bomb_runs,
@@ -508,7 +509,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
         length(run.kills) >= 5
       end)
 
-    if length(bomb_runs) > 0 do
+    if bomb_runs != [] do
       successful / length(bomb_runs) * 100
     else
       0
@@ -572,7 +573,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
   end
 
   defp calculate_target_calling_efficiency(sequences) do
-    if length(sequences) > 0 do
+    if sequences != [] do
       # High efficiency = quick target elimination
       avg_sequence_time =
         sequences
@@ -833,7 +834,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
 
   defp calculate_adaptation_score(pattern_changes, phase_changes) do
     # More pattern changes in response to phase changes = higher score
-    if length(phase_changes) > 0 do
+    if phase_changes != [] do
       changes_per_phase = length(pattern_changes) / length(phase_changes)
       min(changes_per_phase * 30, 100)
     else
@@ -863,11 +864,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
 
   # Utility functions
 
-  defp average([]), do: 0
-
-  defp average(list) do
-    Enum.sum(list) / length(list)
-  end
+  defp average(list), do: SharedUtilities.average(list)
 
   defp standard_deviation([]), do: 0
 
@@ -905,7 +902,7 @@ defmodule EveDmv.Contexts.Combat.Core.TacticalPatternDetector do
   end
 
   defp calculate_set_consistency(sets) do
-    if length(sets) < 2 do
+    if Enum.count(sets) < 2 do
       1.0
     else
       overlaps =

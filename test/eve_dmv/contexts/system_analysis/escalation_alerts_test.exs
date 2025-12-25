@@ -28,7 +28,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.EscalationAlertsTest do
 
       {:ok, escalations} = SystemAnalysis.detect_escalations(hours: 6, baseline_hours: 24)
 
-      assert length(escalations) > 0
+      assert escalations != []
 
       escalation = Enum.find(escalations, fn e -> e.system_id == 30_000_142 end)
       assert escalation != nil
@@ -54,7 +54,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.EscalationAlertsTest do
       # Should only return medium+ severity alerts
       assert is_list(alerts)
 
-      if length(alerts) > 0 do
+      if alerts != [] do
         alert = List.first(alerts)
         assert alert.severity in [:medium, :high, :critical]
         assert alert.system_id == 30_000_143

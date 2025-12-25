@@ -143,8 +143,8 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
         metadata: %{character_id: character_id}
       )
 
-    # Get ISK efficiency
-    isk_stats = calculate_isk_efficiency(character_id, since_date)
+    # Get ISK efficiency (QueryCache.get_or_compute returns {:ok, value} or {:error, reason})
+    {:ok, isk_stats} = calculate_isk_efficiency(character_id, since_date)
 
     # Get ship preferences
     ship_preferences = get_ship_preferences(character_id, since_date)
@@ -218,7 +218,8 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   @doc """
   Get weapon preferences for a character.
   """
-  @spec get_weapon_preferences(integer(), DateTime.t()) :: weapon_preferences()
+  @spec get_weapon_preferences(integer(), DateTime.t()) ::
+          {:ok, weapon_preferences()} | {:error, term()}
   def get_weapon_preferences(character_id, since_date) do
     cache_key =
       "weapon_preferences:#{character_id}:#{Date.to_iso8601(DateTime.to_date(since_date))}"
@@ -244,7 +245,8 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   @doc """
   Get external groups (corps/alliances) the character has flown with.
   """
-  @spec get_external_groups(integer(), DateTime.t()) :: external_groups()
+  @spec get_external_groups(integer(), DateTime.t()) ::
+          {:ok, external_groups()} | {:error, term()}
   def get_external_groups(character_id, since_date) do
     cache_key = "external_groups:#{character_id}:#{Date.to_iso8601(DateTime.to_date(since_date))}"
 
@@ -273,7 +275,8 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   @doc """
   Get gang size patterns for a character.
   """
-  @spec get_gang_size_patterns(integer(), DateTime.t()) :: gang_size_patterns()
+  @spec get_gang_size_patterns(integer(), DateTime.t()) ::
+          {:ok, gang_size_patterns()} | {:error, term()}
   def get_gang_size_patterns(character_id, since_date) do
     cache_key = "gang_patterns:#{character_id}:#{Date.to_iso8601(DateTime.to_date(since_date))}"
 
@@ -298,7 +301,8 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   @doc """
   Get intelligence summary for a character.
   """
-  @spec get_intelligence_summary(integer(), DateTime.t()) :: intelligence_summary()
+  @spec get_intelligence_summary(integer(), DateTime.t()) ::
+          {:ok, intelligence_summary()} | {:error, term()}
   def get_intelligence_summary(character_id, since_date) do
     cache_key =
       "intelligence_summary:#{character_id}:#{Date.to_iso8601(DateTime.to_date(since_date))}"

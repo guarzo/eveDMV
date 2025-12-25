@@ -20,11 +20,6 @@ defmodule EveDmv.Platform.Database.IncrementalViewRefresher do
       full_refresh_interval: :timer.hours(24),
       tracking_table: "view_refresh_tracking"
     },
-    "recent_character_activity" => %{
-      refresh_function: :refresh_recent_activity,
-      full_refresh_interval: :timer.hours(1),
-      tracking_table: "view_refresh_tracking"
-    },
     "system_activity_heatmap" => %{
       refresh_function: :refresh_system_heatmap,
       full_refresh_interval: :timer.hours(6),
@@ -254,35 +249,6 @@ defmodule EveDmv.Platform.Database.IncrementalViewRefresher do
     """
 
     case SQL.query(EveDmv.Repo, sql, [cutoff_time]) do
-      {:ok, result} ->
-        rows_updated = result.num_rows
-
-        %{rows_updated: rows_updated}
-
-      {:error, error} ->
-        raise error
-    end
-  end
-
-  def refresh_recent_activity(_last_refresh) do
-    # Recent activity is a smaller view, we can refresh it fully each time
-    sql = """
-    DELETE FROM recent_character_activity;
-
-    INSERT INTO recent_character_activity
-    SELECT
-      p.character_id,
-      p.character_name,
-      COUNT(*) FILTER (WHERE p.is_victim = false) as kills_24h,
-      COUNT(*) FILTER (WHERE p.is_victim = true) as losses_24h,
-      SUM(k.total_value) as isk_involved_24h
-    FROM participants p
-    JOIN killmails_raw k ON p.killmail_id = k.killmail_id
-    WHERE k.killmail_time >= NOW() - INTERVAL '24 hours'
-    GROUP BY p.character_id, p.character_name
-    """
-
-    case SQL.query(EveDmv.Repo, sql) do
       {:ok, result} ->
         rows_updated = result.num_rows
 

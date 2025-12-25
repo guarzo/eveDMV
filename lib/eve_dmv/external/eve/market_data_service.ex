@@ -203,23 +203,15 @@ defmodule EveDmv.External.Eve.MarketDataService do
     if Enum.empty?(uncached_ids) do
       {:ok, cached_prices}
     else
-      case fetch_prices_from_esi_batch(uncached_ids, region, price_type) do
-        {:ok, new_prices} ->
-          # Cache the new prices
-          cache_batch_prices(new_prices, region, price_type)
+      # fetch_prices_from_esi_batch always returns {:ok, prices}
+      {:ok, new_prices} = fetch_prices_from_esi_batch(uncached_ids, region, price_type)
 
-          # Merge with cached prices
-          all_prices = Map.merge(cached_prices, new_prices)
-          {:ok, all_prices}
+      # Cache the new prices
+      cache_batch_prices(new_prices, region, price_type)
 
-        {:error, reason} ->
-          Logger.warning("Batch price fetch failed: #{inspect(reason)}")
-
-          # Return cached prices with fallback estimates for missing ones
-          fallback_prices = estimate_missing_prices(uncached_ids)
-          all_prices = Map.merge(cached_prices, fallback_prices)
-          {:ok, all_prices}
-      end
+      # Merge with cached prices
+      all_prices = Map.merge(cached_prices, new_prices)
+      {:ok, all_prices}
     end
   end
 
@@ -250,17 +242,16 @@ defmodule EveDmv.External.Eve.MarketDataService do
     region_id = Map.get(@market_hubs, region, @market_hubs[@default_hub])
 
     # Split into batches to avoid ESI limits
-    type_ids
-    |> Enum.chunk_every(@batch_size)
-    |> Enum.reduce_while({:ok, %{}}, fn batch, {:ok, acc} ->
-      case fetch_batch_chunk(batch, region_id, price_type) do
-        {:ok, batch_prices} ->
-          {:cont, {:ok, Map.merge(acc, batch_prices)}}
+    # fetch_batch_chunk always returns {:ok, results}
+    all_prices =
+      type_ids
+      |> Enum.chunk_every(@batch_size)
+      |> Enum.reduce(%{}, fn batch, acc ->
+        {:ok, batch_prices} = fetch_batch_chunk(batch, region_id, price_type)
+        Map.merge(acc, batch_prices)
+      end)
 
-        {:error, reason} ->
-          {:halt, {:error, reason}}
-      end
-    end)
+    {:ok, all_prices}
   end
 
   defp fetch_batch_chunk(type_ids, region_id, price_type) do
@@ -461,15 +452,6 @@ defmodule EveDmv.External.Eve.MarketDataService do
       cache_key = {:ship_price, type_id, region, price_type}
       Cache.put(:analysis, cache_key, price, ttl: @cache_ttl)
     end)
-  end
-
-  defp estimate_missing_prices(type_ids) do
-    type_ids
-    |> Enum.map(fn type_id ->
-      {:ok, price} = estimate_ship_price_fallback(type_id)
-      {type_id, price}
-    end)
-    |> Map.new()
   end
 
   defp perform_cache_warming do

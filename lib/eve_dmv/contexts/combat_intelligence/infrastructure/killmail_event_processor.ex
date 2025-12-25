@@ -114,26 +114,26 @@ defmodule EveDmv.Contexts.CombatIntelligence.Infrastructure.KillmailEventProcess
 
   @impl GenServer
   def handle_call(:flush_processing_queue, _from, state) do
-    if length(state.processing_queue) > 0 do
+    if Enum.empty?(state.processing_queue) do
+      {:reply, {:ok, 0}, state}
+    else
       {new_state, results} = process_queue_batch(state.processing_queue, state)
       final_state = %{new_state | processing_queue: []}
       {:reply, {:ok, length(results)}, final_state}
-    else
-      {:reply, {:ok, 0}, state}
     end
   end
 
   @impl GenServer
   def handle_info(:process_batch, state) do
     # Process any queued events
-    if length(state.processing_queue) > 0 do
+    if Enum.empty?(state.processing_queue) do
+      schedule_batch_processing()
+      {:noreply, state}
+    else
       {new_state, _results} = process_queue_batch(state.processing_queue, state)
       final_state = %{new_state | processing_queue: []}
       schedule_batch_processing()
       {:noreply, final_state}
-    else
-      schedule_batch_processing()
-      {:noreply, state}
     end
   end
 

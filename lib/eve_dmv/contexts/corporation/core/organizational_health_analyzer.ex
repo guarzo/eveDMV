@@ -232,7 +232,7 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   defp assess_leadership_activity(members) do
     leaders = Enum.filter(members, &has_leadership_role?/1)
 
-    if Enum.empty?(leaders) do
+    if leaders == [] do
       %{
         activity_score: 0,
         assessment: :no_leadership_data,
@@ -286,11 +286,14 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
         Enum.sum(leader_tenures) / length(leader_tenures)
       end
 
+    potential_count = length(potential_leaders)
+    leader_count = length(leaders)
+
     succession_health =
       cond do
-        length(potential_leaders) >= length(leaders) -> :excellent_succession
-        length(potential_leaders) >= div(length(leaders), 2) -> :adequate_succession
-        length(potential_leaders) > 0 -> :limited_succession
+        potential_count >= leader_count -> :excellent_succession
+        potential_count >= div(leader_count, 2) -> :adequate_succession
+        potential_count > 0 -> :limited_succession
         true -> :poor_succession
       end
 
@@ -389,7 +392,7 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
 
   defp analyze_leadership_timezones(leaders) do
     # Analyze actual activity patterns to determine timezone distribution
-    if Enum.empty?(leaders) do
+    if leaders == [] do
       %{"Unknown" => 100}
     else
       # Analyze each leader's activity patterns
@@ -416,7 +419,7 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   end
 
   defp determine_timezone_from_activity(peak_hours) do
-    if Enum.empty?(peak_hours) do
+    if peak_hours == [] do
       "Unknown"
     else
       # Calculate average peak hour
@@ -529,7 +532,7 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
     # Analyze consistency in member activity
     member_metrics = activity_data.member_metrics || []
 
-    if Enum.empty?(member_metrics) do
+    if member_metrics == [] do
       %{consistency: 0, assessment: :no_data}
     else
       # Calculate activity score variance
@@ -665,7 +668,7 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
   end
 
   defp calculate_avg_monthly_growth(monthly_growth) do
-    if Enum.empty?(monthly_growth) do
+    if monthly_growth == [] do
       0
     else
       total_recruits = monthly_growth |> Enum.map(&elem(&1, 1)) |> Enum.sum()
@@ -726,7 +729,7 @@ defmodule EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer do
     # Infer member satisfaction from activity and risk data
     member_metrics = activity_data.member_metrics || []
 
-    if Enum.empty?(member_metrics) do
+    if member_metrics == [] do
       %{satisfaction_score: 0, assessment: :no_data}
     else
       # Calculate satisfaction indicators

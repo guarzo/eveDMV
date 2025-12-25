@@ -1,0 +1,11 @@
+{"_key": 25, "_value": {"name": {"en": "Frigate"}, "categoryID": 6, "published": true, "anchorable": false, "anchored": false, "fittableNonSingleton": false, "useBasePrice": true}}
+{"_key": 358, "_value": {"name": {"en": "Interdictor"}, "categoryID": 6, "published": true, "anchorable": false, "anchored": false, "fittableNonSingleton": false, "useBasePrice": true}}
+{"_key": 419, "_value": {"name": {"en": "Combat Battlecruiser"}, "categoryID": 6, "published": true, "anchorable": false, "anchored": false, "fittableNonSingleton": false, "useBasePrice": true}}
+{"_key": 55, "_value": {"name": {"en": "Damage Control"}, "categoryID": 7, "published": true, "anchorable": false, "anchored": false, "fittableNonSingleton": false, "useBasePrice": true}}
+{"_key": 83, "_value": {"name": {"en": "Hybrid Charge"}, "categoryID": 8, "published": true, "anchorable": false, "anchored": false, "fittableNonSingleton": false, "useBasePrice": true}}
+{"_key": 100, "_value": {"name": {"en": "Combat Drone"}, "categoryID": 18, "published": true, "anchorable": false, "anchored": false, "fittableNonSingleton": false, "useBasePrice": true}}
+{"_key": 300, "_value": {"name": {"en": "Attribute Enhancers"}, "categoryID": 20, "published": true, "anchorable": false, "anchored": false, "fittableNonSingleton": false, "useBasePrice": true}}
+{"_key": 1246, "_value": {"name": {"en": "Mobile Depot"}, "categoryID": 22, "published": true, "anchorable": true, "anchored": false, "fittableNonSingleton": false, "useBasePrice": true}}
+{"_key": 1538, "_value": {"name": {"en": "Light Fighter"}, "categoryID": 87, "published": true, "anchorable": false, "anchored": false, "fittableNonSingleton": false, "useBasePrice": true}}
+{"_key": 111, "_value": {"name": {"en": "Ship Blueprint"}, "categoryID": 9, "published": true, "anchorable": false, "anchored": false, "fittableNonSingleton": false, "useBasePrice": true}}
+{"_key": 1657, "_value": {"name": {"en": "Citadel"}, "categoryID": 65, "published": true, "anchorable": true, "anchored": false, "fittableNonSingleton": false, "useBasePrice": true}}

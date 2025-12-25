@@ -50,26 +50,26 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
     killmail_data = extract_killmail_data(killmail_event)
 
     # Evaluate against profile criteria
-    match_result = evaluate_killmail_against_profile(killmail_data, profile)
+    case evaluate_killmail_against_profile(killmail_data, profile) do
+      {:ok, match} ->
+        {:ok,
+         %{
+           profile_id: profile.id,
+           killmail_id: killmail_data.killmail_id,
+           matched: true,
+           matched_criteria: match.matched_criteria,
+           match_confidence: match.confidence_score,
+           timestamp: DateTime.utc_now()
+         }}
 
-    if match_result.matches do
-      {:ok,
-       %{
-         profile_id: profile.id,
-         killmail_id: killmail_data.killmail_id,
-         matched: true,
-         matched_criteria: match_result.matched_criteria,
-         match_confidence: match_result.confidence,
-         timestamp: DateTime.utc_now()
-       }}
-    else
-      {:ok,
-       %{
-         profile_id: profile.id,
-         killmail_id: killmail_data.killmail_id,
-         matched: false,
-         reason: match_result.reason
-       }}
+      {:error, :no_match} ->
+        {:ok,
+         %{
+           profile_id: profile.id,
+           killmail_id: killmail_data.killmail_id,
+           matched: false,
+           reason: :no_criteria_matched
+         }}
     end
   rescue
     error ->
@@ -165,7 +165,10 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
       active_profiles: 0,
       last_processed: nil,
       processing_times: [],
-      match_cache: %{}
+      match_cache: %{},
+      # Cache hit tracking for real hit rate calculation
+      cache_hits: 0,
+      cache_misses: 0
     }
 
     # Load active profiles into cache
@@ -262,11 +265,23 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
   @impl GenServer
   def handle_call(:get_cache_stats, _from, state) do
+    # Calculate real cache hit rate from tracked metrics
+    total_cache_ops = state.cache_hits + state.cache_misses
+
+    hit_rate =
+      if total_cache_ops > 0 do
+        Float.round(state.cache_hits / total_cache_ops, 3)
+      else
+        # Default to 1.0 if no operations yet (no misses = perfect rate)
+        1.0
+      end
+
     cache_stats = %{
-      # Simulated cache hit rate
-      hit_rate: 0.85,
+      hit_rate: hit_rate,
+      cache_hits: state.cache_hits,
+      cache_misses: state.cache_misses,
       cache_size: map_size(state.match_cache),
-      cache_memory_mb: :erlang.memory(:total) / (1024 * 1024),
+      cache_memory_mb: Float.round(:erlang.memory(:total) / (1024 * 1024), 2),
       last_cleanup: DateTime.utc_now()
     }
 

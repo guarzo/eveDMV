@@ -1,11 +1,17 @@
 defmodule EveDmv.Contexts.Intelligence.Core.CharacterAnalyzer do
   @moduledoc """
-  Comprehensive character analysis engine that combines player profiling
-  with statistical analysis.
+  **CANONICAL**: Comprehensive character analysis engine.
 
-  Merges functionality from:
+  This is the primary character analysis module for the codebase.
+  Other character analyzers in different contexts are deprecated and
+  should delegate to this module.
+
+  Combines player profiling with statistical analysis:
   - Character Intelligence character analysis
   - Player Profile player analyzer
+
+  Related specialized modules:
+  - `CharacterIntelligence.Analyzers.CharacterIntelligenceAnalyzer` - Detailed query-based analysis
   """
 
   use GenServer

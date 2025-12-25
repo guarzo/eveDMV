@@ -130,14 +130,9 @@ defmodule EveDmv.IntelligenceMigrationAdapter do
 
   defp analyze_fleet(_fleet_id, _opts) do
     # Use Fleet Operations bounded context
-    case FleetAnalyzer.analyze_composition(%{participants: []}) do
-      {:ok, analysis} ->
-        legacy_result = transform_to_legacy_format(:fleet, analysis, [])
-        {:ok, legacy_result}
-
-      {:error, reason} ->
-        {:error, reason}
-    end
+    {:ok, analysis} = FleetAnalyzer.analyze_composition(%{participants: []})
+    legacy_result = transform_to_legacy_format(:fleet, analysis, [])
+    {:ok, legacy_result}
   rescue
     exception ->
       Logger.error("Fleet analysis migration failed: #{inspect(exception)}")

@@ -9,6 +9,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.NotificationService do
   use GenServer
 
   alias EveDmv.Shared.Infrastructure.UnifiedCache
+  alias EveDmv.Surveillance.Notification, as: NotificationResource
   alias Phoenix.PubSub
 
   require Logger
@@ -292,16 +293,33 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.NotificationService do
 
   defp deliver_in_app_notification(notification) do
     # Publish to PubSub for real-time delivery
-    PubSub.broadcast(
-      EveDmv.PubSub,
-      "user:#{notification.user_id}:notifications",
-      {:new_notification, notification}
-    )
+    pubsub_result =
+      PubSub.broadcast(
+        EveDmv.PubSub,
+        "user:#{notification.user_id}:notifications",
+        {:new_notification, notification}
+      )
 
     # Store in database for persistence
-    store_notification_in_database(notification)
+    db_result = store_notification_in_database(notification)
 
-    {:ok, :delivered}
+    # Real-time delivery is primary; log database failures but still consider delivered
+    # PubSub.broadcast returns :ok on success (not {:ok, _})
+    case {pubsub_result, db_result} do
+      {:ok, {:ok, _record}} ->
+        {:ok, :delivered}
+
+      {:ok, {:error, db_error}} ->
+        Logger.warning(
+          "In-app notification broadcast succeeded but database storage failed: #{inspect(db_error)}"
+        )
+
+        {:ok, :delivered_without_persistence}
+
+      {pubsub_error, _} ->
+        Logger.error("Failed to broadcast in-app notification: #{inspect(pubsub_error)}")
+        {:error, :delivery_failed}
+    end
   rescue
     error ->
       Logger.error("Failed to deliver in-app notification: #{inspect(error)}")
@@ -475,10 +493,49 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.NotificationService do
     "notification_#{System.system_time(:second)}_#{:rand.uniform(10_000)}"
   end
 
-  # Placeholder implementations for external integrations
+  # Database persistence
 
-  @spec store_notification_in_database(%{}) :: {:ok, :stored}
-  defp store_notification_in_database(_notification), do: {:ok, :stored}
+  @spec store_notification_in_database(map()) ::
+          {:ok, NotificationResource.t()} | {:error, Ash.Error.t()}
+  defp store_notification_in_database(notification) do
+    # Map notification type to Ash resource types
+    notification_type = map_notification_type(notification.type)
+    priority = map_priority(notification.priority)
+
+    attrs = %{
+      user_id: notification.user_id,
+      notification_type: notification_type,
+      title: notification.title,
+      message: notification.message,
+      data: notification.data,
+      priority: priority,
+      killmail_id: get_in(notification, [:data, :killmail_id]),
+      profile_id: get_in(notification, [:data, :profile_id])
+    }
+
+    case NotificationResource.create(attrs) do
+      {:ok, record} ->
+        Logger.debug("Stored notification #{notification.id} in database")
+        {:ok, record}
+
+      {:error, error} ->
+        Logger.error("Failed to store notification in database: #{inspect(error)}")
+        {:error, error}
+    end
+  end
+
+  # Map internal notification types to Ash resource notification types
+  defp map_notification_type(:surveillance_match), do: :profile_match
+  defp map_notification_type(:threat_alert), do: :system_alert
+  defp map_notification_type(:custom), do: :system_alert
+  defp map_notification_type(_), do: :system_alert
+
+  # Map internal priority levels to Ash resource priority levels
+  defp map_priority(:critical), do: :urgent
+  defp map_priority(:high), do: :high
+  defp map_priority(:normal), do: :normal
+  defp map_priority(:low), do: :low
+  defp map_priority(_), do: :normal
 
   @spec get_user_webhook_url(integer()) :: {:ok, String.t()} | {:error, :not_configured}
   defp get_user_webhook_url(_user_id), do: {:error, :not_configured}

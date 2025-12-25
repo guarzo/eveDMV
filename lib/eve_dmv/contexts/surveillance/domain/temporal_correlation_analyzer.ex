@@ -20,7 +20,7 @@ defmodule EveDmv.Shared.Correlation.TemporalCorrelationAnalyzer do
   def analyze_temporal_correlations(activity_timeline) do
     events = Map.get(activity_timeline, :events, [])
 
-    if length(events) < 2 do
+    if Enum.count(events) < 2 do
       %{
         correlation_found: false,
         correlation_strength: 0.0,
@@ -205,14 +205,16 @@ defmodule EveDmv.Shared.Correlation.TemporalCorrelationAnalyzer do
     active_windows =
       by_time_window
       |> Enum.filter(fn {_window, events} ->
-        events
-        |> Enum.map(& &1[:system_id])
-        |> Enum.uniq()
-        |> length() > 1
+        system_ids =
+          events
+          |> Enum.map(& &1[:system_id])
+          |> Enum.uniq()
+
+        length(system_ids) > 1
       end)
 
     # Correlation exists if we have multi-system activity windows
-    length(active_windows) > 0
+    Enum.any?(active_windows)
   end
 
   defp calculate_overall_correlation_strength(events) do
@@ -331,7 +333,7 @@ defmodule EveDmv.Shared.Correlation.TemporalCorrelationAnalyzer do
 
   defp identify_temporal_clusters(events) do
     # Use density-based clustering to find temporal activity clusters
-    if length(events) < 3 do
+    if Enum.count(events) < 3 do
       []
     else
       events
@@ -342,7 +344,7 @@ defmodule EveDmv.Shared.Correlation.TemporalCorrelationAnalyzer do
   end
 
   defp create_time_series(activities, window_minutes) do
-    if Enum.empty?(activities) do
+    if activities == [] do
       []
     else
       # Get time range
@@ -374,13 +376,13 @@ defmodule EveDmv.Shared.Correlation.TemporalCorrelationAnalyzer do
   end
 
   defp calculate_correlation_coefficient(series1, series2) do
-    if Enum.empty?(series1) or Enum.empty?(series2) do
+    if series1 == [] or series2 == [] do
       0.0
     else
       # Align series by time window
       aligned = align_time_series(series1, series2)
 
-      if length(aligned) < 2 do
+      if Enum.count(aligned) < 2 do
         0.0
       else
         # Calculate Pearson correlation coefficient
@@ -451,7 +453,7 @@ defmodule EveDmv.Shared.Correlation.TemporalCorrelationAnalyzer do
   end
 
   defp calculate_average_lag(relationships) do
-    if Enum.empty?(relationships) do
+    if relationships == [] do
       0.0
     else
       total_lag = Enum.sum(Enum.map(relationships, & &1.lag_minutes))
@@ -505,7 +507,7 @@ defmodule EveDmv.Shared.Correlation.TemporalCorrelationAnalyzer do
   end
 
   defp calculate_synchronization_score(patterns) do
-    if Enum.empty?(patterns) do
+    if patterns == [] do
       0.0
     else
       # Average synchronization quality
@@ -524,7 +526,7 @@ defmodule EveDmv.Shared.Correlation.TemporalCorrelationAnalyzer do
 
   defp analyze_dependency(timeline1, timeline2) do
     # Analyze if timeline1 depends on timeline2
-    if Enum.empty?(timeline1) or Enum.empty?(timeline2) do
+    if timeline1 == [] or timeline2 == [] do
       %{type: :none, confidence: 0.0, impact_factor: 0.0, time_offset: 0}
     else
       # Check various dependency indicators
@@ -630,7 +632,7 @@ defmodule EveDmv.Shared.Correlation.TemporalCorrelationAnalyzer do
 
   defp check_entity_interaction(events1, events2) do
     # Check if entities interact (simplified)
-    not (Enum.empty?(events1) or Enum.empty?(events2))
+    not (events1 == [] or events2 == [])
   end
 
   defp calculate_interaction_score(_events1, _events2) do
@@ -717,7 +719,7 @@ defmodule EveDmv.Shared.Correlation.TemporalCorrelationAnalyzer do
   defp check_temporal_dependency(timeline1, timeline2) do
     # Check temporal dependency indicators
     # Simple check based on timeline overlap
-    length(timeline1) > 0 and length(timeline2) > 0
+    timeline1 != [] and timeline2 != []
   end
 
   defp check_causal_dependency(_timeline1, _timeline2) do
@@ -759,7 +761,7 @@ defmodule EveDmv.Shared.Correlation.TemporalCorrelationAnalyzer do
       new_visited = [system | visited]
       dependents = Map.get(graph, system, [])
 
-      if Enum.empty?(dependents) do
+      if dependents == [] do
         [Enum.reverse(new_visited)]
       else
         Enum.flat_map(dependents, fn dep ->

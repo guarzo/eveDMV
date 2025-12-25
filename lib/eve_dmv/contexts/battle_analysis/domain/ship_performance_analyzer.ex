@@ -16,6 +16,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   """
 
   alias EveDmv.Analytics.FleetAnalyzer
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Eve.NameResolver
   alias EveDmv.Integrations.ShipIntelligenceBridge
@@ -1960,11 +1961,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
     end
   end
 
-  defp average([]), do: 0.0
-
-  defp average(values) do
-    Enum.sum(values) / length(values)
-  end
+  defp average(list), do: SharedUtilities.average(list)
 
   # Fleet statistics calculation functions for template compatibility
 

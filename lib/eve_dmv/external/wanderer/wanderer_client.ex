@@ -9,6 +9,7 @@ defmodule EveDmv.Intelligence.WandererClient do
   use GenServer
 
   alias EveDmv.Core.Utils.DnsResolver
+  alias EveDmv.Core.Utils.RetryUtils
   alias HTTPoison
   alias Jason
 
@@ -249,16 +250,19 @@ defmodule EveDmv.Intelligence.WandererClient do
   @impl GenServer
   def handle_cast({:unmonitor_map, map_id}, state) do
     new_monitored = MapSet.delete(state.monitored_maps, map_id)
+    connections = state.sse_connections || %{}
 
     # Stop SSE connection for this map
-    if sse_pid = get_in(state.sse_connections || %{}, [map_id]) do
-      send(sse_pid, :close)
-      new_sse_connections = Map.delete(state.sse_connections || %{}, map_id)
-      Logger.info("Stopped SSE monitoring for map #{map_id}")
-      {:noreply, %{state | monitored_maps: new_monitored, sse_connections: new_sse_connections}}
-    else
-      Logger.info("No longer monitoring map #{map_id}")
-      {:noreply, %{state | monitored_maps: new_monitored}}
+    case Map.get(connections, map_id) do
+      nil ->
+        Logger.info("No longer monitoring map #{map_id}")
+        {:noreply, %{state | monitored_maps: new_monitored}}
+
+      sse_pid ->
+        send(sse_pid, :close)
+        new_sse_connections = Map.delete(connections, map_id)
+        Logger.info("Stopped SSE monitoring for map #{map_id}")
+        {:noreply, %{state | monitored_maps: new_monitored, sse_connections: new_sse_connections}}
     end
   end
 
@@ -413,23 +417,58 @@ defmodule EveDmv.Intelligence.WandererClient do
       5
   end
 
-  defp fetch_with_retry(fetch_fn, retries \\ 0) do
-    case fetch_fn.() do
-      {:ok, data} ->
-        {:ok, data}
+  defp fetch_with_retry(fetch_fn) do
+    operation = fn ->
+      case fetch_fn.() do
+        {:ok, data} ->
+          {:ok, data}
 
-      {:error, reason} when retries < @max_retries ->
-        Logger.warning(
-          "API request failed (attempt #{retries + 1}), retrying in #{@retry_delay}ms: #{inspect(reason)}"
-        )
+        {:error, reason} ->
+          if retriable_error?(reason) do
+            {:retry, reason}
+          else
+            {:error, reason}
+          end
+      end
+    end
 
-        :timer.sleep(@retry_delay)
-        fetch_with_retry(fetch_fn, retries + 1)
+    log_fn = fn reason, delay_ms, attempt, _max_retries ->
+      Logger.warning(
+        "API request failed (attempt #{attempt}), retrying in #{delay_ms}ms: #{inspect(reason)}"
+      )
+    end
 
-      {:error, reason} ->
-        {:error, reason}
+    RetryUtils.retry_with_backoff(operation,
+      max_retries: @max_retries,
+      base_delay_ms: @retry_delay,
+      log_fn: log_fn
+    )
+  end
+
+  # Determines if an error is retriable based on HTTP status or error type
+  defp retriable_error?("HTTP " <> status_rest) do
+    case Integer.parse(status_rest) do
+      {status, _} when status >= 500 -> true
+      {408, _} -> true
+      {429, _} -> true
+      _ -> false
     end
   end
+
+  # Network/connection errors from HTTPoison are retriable
+  defp retriable_error?(%HTTPoison.Error{reason: reason})
+       when reason in [:timeout, :connect_timeout, :closed, :econnrefused, :nxdomain] do
+    true
+  end
+
+  # Tuple errors with retriable reasons
+  defp retriable_error?({:timeout, _}), do: true
+  defp retriable_error?(:timeout), do: true
+  defp retriable_error?(:closed), do: true
+  defp retriable_error?(:econnrefused), do: true
+
+  # All other errors are not retriable (4xx client errors, etc.)
+  defp retriable_error?(_reason), do: false
 
   defp get_systems_api(map_id, auth_token) do
     url = "#{base_url()}/api/maps/#{map_id}/systems"
@@ -667,9 +706,9 @@ defmodule EveDmv.Intelligence.WandererClient do
            timeout: :infinity,
            recv_timeout: :infinity
          ) do
-      {:ok, %HTTPoison.AsyncResponse{id: _id}} ->
+      {:ok, %HTTPoison.AsyncResponse{} = async_response} ->
         Logger.info("SSE connection established to #{url} for map #{map_id}")
-        sse_receive_loop(parent_pid, map_id)
+        sse_receive_loop(parent_pid, map_id, async_response)
 
       {:error, reason} ->
         Logger.error("Failed to establish SSE connection for map #{map_id}: #{inspect(reason)}")
@@ -677,33 +716,30 @@ defmodule EveDmv.Intelligence.WandererClient do
     end
   end
 
-  @dialyzer {:nowarn_function, sse_receive_loop: 2}
-  defp sse_receive_loop(parent_pid, map_id) do
+  defp continue_sse_stream(async_response, parent_pid, map_id) do
+    case HTTPoison.stream_next(async_response) do
+      {:ok, _} -> sse_receive_loop(parent_pid, map_id, async_response)
+      {:error, reason} -> send(parent_pid, {:sse_closed, map_id, {:stream_error, reason}})
+    end
+  end
+
+  @dialyzer {:nowarn_function, sse_receive_loop: 3}
+  defp sse_receive_loop(parent_pid, map_id, async_response) do
     receive do
       %HTTPoison.AsyncStatus{code: code} ->
         if code == 200 do
-          case HTTPoison.stream_next(self()) do
-            {:ok, _} -> sse_receive_loop(parent_pid, map_id)
-            {:error, reason} -> send(parent_pid, {:sse_closed, map_id, {:stream_error, reason}})
-          end
+          continue_sse_stream(async_response, parent_pid, map_id)
         else
           Logger.error("SSE connection failed with status: #{code} for map #{map_id}")
           send(parent_pid, {:sse_closed, map_id, {:http_error, code}})
         end
 
       %HTTPoison.AsyncHeaders{headers: _headers} ->
-        case HTTPoison.stream_next(self()) do
-          {:ok, _} -> sse_receive_loop(parent_pid, map_id)
-          {:error, reason} -> send(parent_pid, {:sse_closed, map_id, {:stream_error, reason}})
-        end
+        continue_sse_stream(async_response, parent_pid, map_id)
 
       %HTTPoison.AsyncChunk{chunk: chunk} ->
         process_sse_chunk(chunk, parent_pid, map_id)
-
-        case HTTPoison.stream_next(self()) do
-          {:ok, _} -> sse_receive_loop(parent_pid, map_id)
-          {:error, reason} -> send(parent_pid, {:sse_closed, map_id, {:stream_error, reason}})
-        end
+        continue_sse_stream(async_response, parent_pid, map_id)
 
       %HTTPoison.AsyncEnd{} ->
         Logger.info("SSE stream ended for map #{map_id}")

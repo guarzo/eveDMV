@@ -7,6 +7,8 @@ defmodule EveDmv.Test.PartitionHelper do
   alias Ecto.Adapters.SQL
   alias EveDmv.Repo
 
+  require Logger
+
   @doc """
   Ensures partitions exist for test dates.
   Creates partitions for:
@@ -61,13 +63,12 @@ defmodule EveDmv.Test.PartitionHelper do
       {:ok, _} ->
         :ok
 
-      {:error, %Postgrex.Error{postgres: %{code: :duplicate_table}}} ->
+      {:error, %{postgres: %{code: :duplicate_table}}} ->
         # Partition already exists, that's fine
         :ok
 
       {:error, error} ->
         # Log but don't fail - partition might already exist or parent table might not be partitioned
-        require Logger
         Logger.debug("Could not create partition #{partition_name}: #{inspect(error)}")
         :ok
     end

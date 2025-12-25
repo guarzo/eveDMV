@@ -420,7 +420,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.InsightGenerator do
     geo_prefs = behavioral_patterns.geographic_preferences
 
     geographic_vulnerabilities =
-      if length(geo_prefs[:home_systems] || []) > 0 do
+      if (geo_prefs[:home_systems] || []) != [] do
         [
           %{
             type: :geographic,

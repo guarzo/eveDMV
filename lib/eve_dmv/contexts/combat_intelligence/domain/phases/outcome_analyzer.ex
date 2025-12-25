@@ -6,6 +6,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
   and provides insights for future tactical improvements.
   """
 
+  alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   require Logger
 
   @doc """
@@ -1688,13 +1689,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Phases.Outcom
     end
   end
 
-  defp average(values) when is_list(values) do
-    if Enum.empty?(values) do
-      0.0
-    else
-      Enum.sum(values) / length(values)
-    end
-  end
+  defp average(list), do: SharedUtilities.average(list)
 
   # Learning and adaptation
   defp calculate_learning_rate(historical_data) do
