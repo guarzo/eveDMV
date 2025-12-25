@@ -41,7 +41,10 @@ defmodule EveDmvWeb.AuthController do
     end
   end
 
-  def failure(conn, _activity, _reason) do
+  def failure(conn, activity, reason) do
+    require Logger
+    Logger.error("AUTH FAILURE - activity: #{inspect(activity)}, reason: #{inspect(reason)}")
+
     # Log failed authentication
     client_ip = get_client_ip(conn)
     AuditLogger.log_auth_attempt(nil, client_ip, false)

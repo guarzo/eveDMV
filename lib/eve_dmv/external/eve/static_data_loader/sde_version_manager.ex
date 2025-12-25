@@ -167,7 +167,13 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManager do
         Logger.info("   Solar systems loaded: #{system_count}")
         Logger.info("=" <> String.duplicate("=", 59))
 
-        {:ok, %{version: version_string, build_number: build_number, item_types: item_count, solar_systems: system_count}}
+        {:ok,
+         %{
+           version: version_string,
+           build_number: build_number,
+           item_types: item_count,
+           solar_systems: system_count
+         }}
 
       {:error, reason} ->
         Logger.error("=" <> String.duplicate("=", 59))

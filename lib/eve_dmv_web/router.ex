@@ -68,6 +68,8 @@ defmodule EveDmvWeb.Router do
 
     live("/dashboard", UnifiedDashboardLive)
     live("/profile", ProfileLive)
+    # Redirect /account/settings to /profile for backward compatibility
+    get("/account/settings", PageController, :redirect_to_profile)
     # Consolidated character search - redirect to universal search with filter
     live("/character", UniversalSearchLive, as: :character_search)
     live("/character/:character_id", CharacterAnalysisLive)

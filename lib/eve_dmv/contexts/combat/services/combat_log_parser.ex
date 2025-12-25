@@ -16,10 +16,15 @@ defmodule EveDmv.Contexts.Combat.Services.CombatLogParser do
 
   require Logger
 
-  @combat_log_regex ~r/^\[\s*(\d{4}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2})\s*\]\s*(.+)$/
-  @damage_regex ~r/\(combat\)\s*<[^>]+><[^>]+>\s*(.+?)\s*(?:-|from)\s*(.+?)\s*-\s*(.+?)\s*-\s*(.+)$/
-  @warp_regex ~r/\(notify\)\s*Warping to\s+(.+)\s+(.+)$/
-  @session_regex ~r/Session started:\s*(\d{4}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2})$/
+  # Regex patterns as functions to avoid Elixir 1.19+ deprecation warnings
+  # (storing regexes in module attributes is deprecated due to OTP 28 changes)
+  defp combat_log_regex, do: ~r/^\[\s*(\d{4}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2})\s*\]\s*(.+)$/
+
+  defp damage_regex,
+    do: ~r/\(combat\)\s*<[^>]+><[^>]+>\s*(.+?)\s*(?:-|from)\s*(.+?)\s*-\s*(.+?)\s*-\s*(.+)$/
+
+  defp warp_regex, do: ~r/\(notify\)\s*Warping to\s+(.+)\s+(.+)$/
+  defp session_regex, do: ~r/Session started:\s*(\d{4}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2})$/
 
   @doc """
   Parse a combat log file and extract combat events.
@@ -117,11 +122,11 @@ defmodule EveDmv.Contexts.Combat.Services.CombatLogParser do
 
   defp parse_log_line(line) do
     cond do
-      match = Regex.run(@combat_log_regex, line) ->
+      match = Regex.run(combat_log_regex(), line) ->
         [_, timestamp, content] = match
         parse_combat_content(timestamp, content)
 
-      match = Regex.run(@session_regex, line) ->
+      match = Regex.run(session_regex(), line) ->
         [_, timestamp] = match
 
         %{
@@ -139,10 +144,10 @@ defmodule EveDmv.Contexts.Combat.Services.CombatLogParser do
     parsed_time = parse_timestamp(timestamp)
 
     cond do
-      match = Regex.run(@damage_regex, content) ->
+      match = Regex.run(damage_regex(), content) ->
         parse_damage_event(parsed_time, match, content)
 
-      match = Regex.run(@warp_regex, content) ->
+      match = Regex.run(warp_regex(), content) ->
         parse_warp_event(parsed_time, match, content)
 
       String.contains?(content, ["(combat)", "(notify)"]) ->

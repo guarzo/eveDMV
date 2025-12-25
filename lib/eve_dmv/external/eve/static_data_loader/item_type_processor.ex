@@ -353,13 +353,11 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessor do
     category = Map.get(categories_map, category_id, %{})
 
     # Determine item classifications
+    # Note: Only classifications that have corresponding attributes in ItemType resource
     is_ship = type.group_id in @ship_group_ids
     is_module = category[:name] in ["Module", "Subsystem"]
     is_charge = category[:name] in ["Charge"]
     is_deployable = category[:name] in ["Deployable", "Structure"]
-    is_drone = category[:name] == "Drone"
-    is_implant = category[:name] == "Implant"
-    is_fighter = category[:name] == "Fighter"
     is_blueprint = category[:name] == "Blueprint"
 
     # Build search keywords
@@ -381,9 +379,6 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessor do
       is_module: is_module,
       is_charge: is_charge,
       is_deployable: is_deployable,
-      is_drone: is_drone,
-      is_implant: is_implant,
-      is_fighter: is_fighter,
       is_blueprint: is_blueprint,
       search_keywords: search_keywords,
       sde_version: sde_version

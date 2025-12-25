@@ -15,10 +15,27 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
   Bulk creates item types in the database.
   """
   def bulk_create_item_types(item_data) do
-    total_count = length(item_data)
+    # Deduplicate by type_id to avoid PostgreSQL cardinality violation
+    # "ON CONFLICT DO UPDATE command cannot affect row a second time"
+    deduplicated_data =
+      item_data
+      |> Enum.reduce(%{}, fn item, acc ->
+        type_id = item[:type_id] || item["type_id"]
+        Map.put(acc, type_id, item)
+      end)
+      |> Map.values()
+
+    total_count = length(deduplicated_data)
+
+    if length(item_data) != total_count do
+      Logger.warning(
+        "Deduplicated #{length(item_data) - total_count} duplicate type_ids from item data"
+      )
+    end
+
     Logger.info("🚀 Bulk creating #{total_count} item types...")
 
-    case Ash.bulk_create(item_data, ItemType, :create,
+    case Ash.bulk_create(deduplicated_data, ItemType, :create,
            domain: EveDmv.Api,
            return_records?: false,
            return_errors?: true,
@@ -60,7 +77,10 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
       %Ash.BulkResult{records: records, errors: errors} when errors != [] ->
         created_count = length(records || [])
         error_count = length(errors)
-        Logger.error("❌ Item types: #{created_count} created, #{error_count} FAILED out of #{total_count}")
+
+        Logger.error(
+          "❌ Item types: #{created_count} created, #{error_count} FAILED out of #{total_count}"
+        )
 
         # Log first few errors for debugging
         log_creation_errors(errors, "item type", :type_id)
@@ -124,7 +144,10 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
       %Ash.BulkResult{records: records, errors: errors} when errors != [] ->
         created_count = length(records || [])
         error_count = length(errors)
-        Logger.error("❌ Solar systems: #{created_count} created, #{error_count} FAILED out of #{total_count}")
+
+        Logger.error(
+          "❌ Solar systems: #{created_count} created, #{error_count} FAILED out of #{total_count}"
+        )
 
         # Log first few errors for debugging
         log_creation_errors(errors, "solar system", :system_id)

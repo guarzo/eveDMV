@@ -28,4 +28,8 @@ defmodule EveDmvWeb.PageController do
   def redirect_to_surveillance_profiles(conn, _params) do
     redirect(conn, to: ~p"/surveillance-profiles")
   end
+
+  def redirect_to_profile(conn, _params) do
+    redirect(conn, to: ~p"/profile")
+  end
 end
