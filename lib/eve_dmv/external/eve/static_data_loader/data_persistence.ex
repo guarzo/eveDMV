@@ -65,8 +65,12 @@ defmodule EveDmv.Eve.StaticDataLoader.DataPersistence do
              :is_charge,
              :is_blueprint,
              :is_deployable,
+             :is_drone,
+             :is_implant,
+             :is_fighter,
              :search_keywords,
              :sde_version,
+             :sde_build_number,
              :last_updated
            ]
          ) do

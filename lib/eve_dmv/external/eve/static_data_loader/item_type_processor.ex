@@ -387,12 +387,13 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessor do
       sde_version: sde_version
     }
 
-    # Add build number if provided
-    if sde_build_number do
-      Map.put(base_map, :sde_build_number, sde_build_number)
-    else
-      base_map
-    end
+    maybe_add_build_number(base_map, sde_build_number)
+  end
+
+  defp maybe_add_build_number(base_map, nil), do: base_map
+
+  defp maybe_add_build_number(base_map, sde_build_number) do
+    Map.put(base_map, :sde_build_number, sde_build_number)
   end
 
   defp build_search_keywords(name, group_name, category_name) do
