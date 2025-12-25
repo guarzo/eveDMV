@@ -15,13 +15,6 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManager do
   require Logger
   require Ash.Query
 
-  defstruct [
-    :current_version,
-    :latest_version,
-    :last_check,
-    :needs_update
-  ]
-
   @type version_info :: %{
           build_number: integer() | nil,
           release_date: String.t() | nil,
