@@ -192,8 +192,13 @@ defmodule EveDmv.Eve.StaticDataLoader.JsonlParser do
   end
 
   defp unwrap_keyed_object(%{"_key" => key, "_value" => value}) do
-    # CCP format wraps integer-keyed objects
+    # Old CCP format wraps integer-keyed objects in a _value field
     Map.put(value, "_id", key)
+  end
+
+  defp unwrap_keyed_object(%{"_key" => key} = data) do
+    # Current CCP format has _key directly at top level with other fields
+    Map.put(data, "_id", key)
   end
 
   defp unwrap_keyed_object(data), do: data

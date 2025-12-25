@@ -243,15 +243,13 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessor do
   - Their category is in the killmail-relevant list (or `filter_categories` is false)
   """
   @spec should_import_type?(map(), integer() | nil, boolean()) :: boolean()
-  def should_import_type?(type, category_id, filter_categories) do
-    if filter_categories do
-      # Must be published and in a killmail-relevant category
-      type.published == true and category_id in @killmail_category_ids
-    else
-      # Import all types when not filtering
-      true
-    end
+  def should_import_type?(%{published: true}, category_id, true) do
+    category_id in @killmail_category_ids
   end
+
+  def should_import_type?(_, _category_id, true), do: false
+
+  def should_import_type?(_type, _category_id, false), do: true
 
   @doc """
   Filters item types by category.
@@ -352,13 +350,15 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessor do
     category_id = group[:category_id]
     category = Map.get(categories_map, category_id, %{})
 
-    # Determine item classifications
-    # Note: Only classifications that have corresponding attributes in ItemType resource
+    # Determine item classifications based on category
     is_ship = type.group_id in @ship_group_ids
     is_module = category[:name] in ["Module", "Subsystem"]
-    is_charge = category[:name] in ["Charge"]
+    is_charge = category[:name] == "Charge"
     is_deployable = category[:name] in ["Deployable", "Structure"]
     is_blueprint = category[:name] == "Blueprint"
+    is_drone = category[:name] == "Drone"
+    is_implant = category[:name] == "Implant"
+    is_fighter = category[:name] == "Fighter"
 
     # Build search keywords
     search_keywords = build_search_keywords(type.name, group[:name], category[:name])
@@ -380,6 +380,9 @@ defmodule EveDmv.Eve.StaticDataLoader.ItemTypeProcessor do
       is_charge: is_charge,
       is_deployable: is_deployable,
       is_blueprint: is_blueprint,
+      is_drone: is_drone,
+      is_implant: is_implant,
+      is_fighter: is_fighter,
       search_keywords: search_keywords,
       sde_version: sde_version
     }

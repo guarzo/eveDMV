@@ -98,6 +98,10 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManager do
       {:ok, []} ->
         {:ok, nil}
 
+      {:ok, _} ->
+        # Handle records with unexpected shapes or types
+        {:ok, nil}
+
       {:error, error} ->
         {:error, error}
     end
@@ -106,13 +110,13 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManager do
   defp get_latest_sde_version do
     Logger.info("Checking latest SDE version from CCP...")
 
-    case CcpSdeClient.get_latest_build_number() do
-      {:ok, %{build_number: build, release_date: date}} ->
-        {:ok, %{build_number: build, release_date: date, version_string: "build-#{build}"}}
+    case get_ccp_version_info() do
+      {:ok, _version_info} = result ->
+        result
 
-      {:error, reason} ->
+      {:error, reason} = error ->
         Logger.error("Failed to get CCP SDE version: #{inspect(reason)}")
-        {:error, reason}
+        error
     end
   end
 

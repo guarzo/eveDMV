@@ -183,6 +183,24 @@ defmodule EveDmv.Eve.ItemType do
       description("Whether this item can be deployed in space")
     end
 
+    attribute :is_drone, :boolean do
+      allow_nil?(false)
+      default(false)
+      description("Whether this item is a drone")
+    end
+
+    attribute :is_implant, :boolean do
+      allow_nil?(false)
+      default(false)
+      description("Whether this item is an implant")
+    end
+
+    attribute :is_fighter, :boolean do
+      allow_nil?(false)
+      default(false)
+      description("Whether this item is a fighter")
+    end
+
     # Search metadata
     attribute :search_keywords, {:array, :string} do
       allow_nil?(true)
@@ -250,6 +268,9 @@ defmodule EveDmv.Eve.ItemType do
         :is_charge,
         :is_blueprint,
         :is_deployable,
+        :is_drone,
+        :is_implant,
+        :is_fighter,
         :search_keywords,
         :sde_version,
         :sde_build_number
