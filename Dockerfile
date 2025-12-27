@@ -46,7 +46,8 @@ RUN mix compile
 RUN mix release
 
 # Start a new build stage for the runtime image
-FROM alpine:3.18 AS runtime
+# IMPORTANT: Must match Alpine version from elixir:1.19-alpine to ensure OpenSSL compatibility
+FROM alpine:3.21 AS runtime
 
 # Install runtime dependencies
 RUN apk add --no-cache \
