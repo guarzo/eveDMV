@@ -18,7 +18,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.DatabaseMetrics do
     query = """
     SELECT
       schemaname,
-      tablename,
+      relname,
       n_tup_ins,
       n_tup_upd,
       n_tup_del,
@@ -85,14 +85,14 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.DatabaseMetrics do
     query = """
     SELECT
       schemaname,
-      tablename,
-      pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as total_size,
-      pg_size_pretty(pg_table_size(schemaname||'.'||tablename)) as table_size,
-      pg_size_pretty(pg_indexes_size(schemaname||'.'||tablename)) as indexes_size,
+      relname,
+      pg_size_pretty(pg_total_relation_size(schemaname||'.'||relname)) as total_size,
+      pg_size_pretty(pg_table_size(schemaname||'.'||relname)) as table_size,
+      pg_size_pretty(pg_indexes_size(schemaname||'.'||relname)) as indexes_size,
       n_live_tup as row_count
     FROM pg_stat_user_tables
     WHERE schemaname = 'public'
-    ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
+    ORDER BY pg_total_relation_size(schemaname||'.'||relname) DESC
     LIMIT 20
     """
 
@@ -196,7 +196,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.DatabaseMetrics do
     query = """
     SELECT
       schemaname,
-      tablename,
+      relname,
       seq_scan,
       seq_tup_read,
       idx_scan,
@@ -208,7 +208,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.DatabaseMetrics do
       n_live_tup,
       n_dead_tup
     FROM pg_stat_user_tables
-    WHERE tablename = $1
+    WHERE relname = $1
     """
 
     case SQL.query(EveDmv.Repo, query, [table_name]) do
@@ -276,7 +276,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.DatabaseMetrics do
     query = """
     SELECT
       schemaname,
-      tablename,
+      relname,
       last_analyze,
       last_autoanalyze,
       n_mod_since_analyze

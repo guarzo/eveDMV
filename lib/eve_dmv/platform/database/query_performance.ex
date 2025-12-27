@@ -100,14 +100,14 @@ defmodule EveDmv.Platform.Database.QueryPerformance do
     sql = """
     SELECT
       schemaname,
-      tablename,
-      indexname,
+      relname,
+      indexrelname,
       idx_scan as index_scans,
       idx_tup_read as tuples_read,
       idx_tup_fetch as tuples_fetched,
       pg_size_pretty(pg_relation_size(indexrelid)) as index_size
     FROM pg_stat_user_indexes
-    WHERE tablename = $1
+    WHERE relname = $1
     ORDER BY idx_scan DESC
     """
 

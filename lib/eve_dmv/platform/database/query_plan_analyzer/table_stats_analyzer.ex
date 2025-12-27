@@ -36,7 +36,7 @@ defmodule EveDmv.Platform.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
     stats_query = """
     SELECT
       schemaname,
-      tablename,
+      relname,
       seq_scan,
       seq_tup_read,
       idx_scan,
@@ -51,7 +51,7 @@ defmodule EveDmv.Platform.Database.QueryPlanAnalyzer.TableStatsAnalyzer do
       last_analyze,
     last_autoanalyze
     FROM pg_stat_user_tables
-    WHERE tablename = $1
+    WHERE relname = $1
     AND schemaname = 'public'
     """
 

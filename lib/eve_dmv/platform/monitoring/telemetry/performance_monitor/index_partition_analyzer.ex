@@ -17,8 +17,8 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer do
     query = """
     SELECT
       schemaname,
-      tablename,
-      indexname,
+      relname,
+      indexrelname,
       idx_scan,
       idx_tup_read,
       idx_tup_fetch,
@@ -120,7 +120,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer do
     query = """
     SELECT
       s.schemaname,
-      s.tablename,
+      s.relname,
       s.indexrelname,
       s.idx_scan,
       s.idx_tup_read,
@@ -133,7 +133,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer do
     FROM pg_stat_user_indexes s
     JOIN pg_index i ON s.indexrelid = i.indexrelid
     WHERE s.schemaname = 'public'
-    ORDER BY s.tablename, s.indexrelname
+    ORDER BY s.relname, s.indexrelname
     """
 
     case SQL.query(EveDmv.Repo, query) do
@@ -182,13 +182,13 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer do
     query = """
     SELECT
       schemaname,
-      tablename,
+      relname,
       seq_scan,
       seq_tup_read,
       idx_scan,
       idx_tup_fetch,
       n_live_tup,
-      pg_total_relation_size(schemaname||'.'||tablename) as table_size
+      pg_total_relation_size(schemaname||'.'||relname) as table_size
     FROM pg_stat_user_tables
     WHERE schemaname = 'public'
       AND seq_scan > idx_scan
@@ -300,26 +300,26 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.IndexPartitionAnalyzer do
     query = """
     WITH index_bloat AS (
     SELECT
-        schemaname,
-        tablename,
-        indexname,
-        pg_relation_size(indexrelid) as actual_size,
-        CASE WHEN indisprimary THEN 0
-             ELSE CEIL(n_live_tup *
+        i.schemaname,
+        i.relname,
+        i.indexrelname,
+        pg_relation_size(i.indexrelid) as actual_size,
+        CASE WHEN idx.indisprimary THEN 0
+             ELSE CEIL(t.n_live_tup *
                       (SELECT avg_width FROM pg_stats
                        WHERE schemaname = 'public'
-                       AND tablename = pg_stat_user_indexes.tablename
+                       AND tablename = i.relname
                        LIMIT 1) * 0.5)
         END as estimated_size
-      FROM pg_stat_user_indexes
-      JOIN pg_index ON indexrelid = pg_index.indexrelid
-      JOIN pg_stat_user_tables USING (schemaname, tablename)
-      WHERE schemaname = 'public'
+      FROM pg_stat_user_indexes i
+      JOIN pg_index idx ON i.indexrelid = idx.indexrelid
+      JOIN pg_stat_user_tables t ON i.schemaname = t.schemaname AND i.relname = t.relname
+      WHERE i.schemaname = 'public'
     )
     SELECT
       schemaname,
-      tablename,
-      indexname,
+      relname,
+      indexrelname,
       pg_size_pretty(actual_size) as actual_size,
       pg_size_pretty(estimated_size) as estimated_size,
       CASE WHEN estimated_size > 0

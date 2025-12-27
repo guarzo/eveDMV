@@ -243,13 +243,13 @@ defmodule EveDmv.Platform.Database.MaterializedViewManager.ViewMetrics do
   defp get_view_index_info(view_name) do
     query = """
     SELECT
-      indexname,
-      pg_relation_size(indexname::regclass) as size,
+      indexrelname,
+      pg_relation_size(indexrelname::regclass) as size,
       idx_scan,
       idx_tup_read,
     idx_tup_fetch
     FROM pg_stat_user_indexes
-    WHERE schemaname = 'public' AND tablename = $1
+    WHERE schemaname = 'public' AND relname = $1
     """
 
     case SQL.query(Repo, query, [view_name]) do

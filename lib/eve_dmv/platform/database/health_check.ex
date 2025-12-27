@@ -129,8 +129,8 @@ defmodule EveDmv.Platform.Database.HealthCheck do
     query = """
     SELECT
       schemaname,
-      tablename,
-      indexname,
+      relname,
+      indexrelname,
       idx_scan,
       idx_tup_read,
     idx_tup_fetch
@@ -169,7 +169,7 @@ defmodule EveDmv.Platform.Database.HealthCheck do
     query = """
     SELECT
       schemaname,
-      tablename,
+      relname,
       last_vacuum,
       last_autovacuum,
       n_dead_tup,
@@ -250,10 +250,10 @@ defmodule EveDmv.Platform.Database.HealthCheck do
     query = """
     SELECT
       schemaname,
-      tablename,
+      relname,
       n_live_tup,
       n_dead_tup,
-      pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as total_size
+      pg_size_pretty(pg_total_relation_size(schemaname||'.'||relname)) as total_size
     FROM pg_stat_user_tables
     WHERE schemaname = 'public'
     ORDER BY n_live_tup DESC
@@ -363,8 +363,8 @@ defmodule EveDmv.Platform.Database.HealthCheck do
     query = """
     SELECT
       schemaname,
-      tablename,
-      indexname,
+      relname,
+      indexrelname,
       idx_scan,
       idx_tup_read,
       idx_tup_fetch,

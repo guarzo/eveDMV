@@ -188,8 +188,11 @@ defmodule EveDmv.Http.UnifiedClient do
   # Private helper functions
 
   defp build_client(opts) do
+    # Check if this is a form-urlencoded request by looking at headers
+    additional_headers = Keyword.get(opts, :headers, [])
+    is_form_encoded = has_form_content_type?(additional_headers)
+
     base_middlewares = [
-      Tesla.Middleware.JSON,
       {Tesla.Middleware.FollowRedirects, max_redirects: 3},
       {Tesla.Middleware.Timeout, timeout: Keyword.get(opts, :timeout, 30_000)},
       {Tesla.Middleware.Logger, debug: false},
@@ -203,6 +206,14 @@ defmodule EveDmv.Http.UnifiedClient do
          {:error, _} -> true
        end}
     ]
+
+    # Only add JSON middleware for non-form-encoded requests
+    base_middlewares =
+      if is_form_encoded do
+        base_middlewares
+      else
+        [Tesla.Middleware.JSON | base_middlewares]
+      end
 
     # Add authentication if provided
     middlewares =
@@ -224,14 +235,36 @@ defmodule EveDmv.Http.UnifiedClient do
   end
 
   defp build_headers(opts) do
-    base_headers = [
-      {"User-Agent", "EVE-DMV/1.0 (+https://eve-dmv.com)"},
-      {"Accept", "application/json"},
-      {"Content-Type", "application/json"}
-    ]
-
     additional_headers = Keyword.get(opts, :headers, [])
+
+    # Check if Content-Type is specified in additional headers
+    has_custom_content_type =
+      Enum.any?(additional_headers, fn
+        {"Content-Type", _} -> true
+        {"content-type", _} -> true
+        _ -> false
+      end)
+
+    base_headers =
+      [
+        {"User-Agent", "EVE-DMV/1.0 (+https://eve-dmv.com)"},
+        {"Accept", "application/json"}
+      ] ++
+        if has_custom_content_type do
+          []
+        else
+          [{"Content-Type", "application/json"}]
+        end
+
     base_headers ++ additional_headers
+  end
+
+  defp has_form_content_type?(headers) do
+    Enum.any?(headers, fn
+      {"Content-Type", value} -> String.contains?(value, "x-www-form-urlencoded")
+      {"content-type", value} -> String.contains?(value, "x-www-form-urlencoded")
+      _ -> false
+    end)
   end
 
   defp body_type(body) when is_binary(body), do: "string"

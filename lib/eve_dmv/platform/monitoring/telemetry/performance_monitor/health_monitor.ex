@@ -275,7 +275,7 @@ defmodule EveDmv.Telemetry.PerformanceMonitor.HealthMonitor do
     query = """
     SELECT
       schemaname,
-      tablename,
+      relname,
       last_vacuum,
       last_autovacuum,
       n_dead_tup,
