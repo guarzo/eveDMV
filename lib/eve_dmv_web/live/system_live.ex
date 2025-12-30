@@ -8,6 +8,8 @@ defmodule EveDmvWeb.SystemLive do
 
   use EveDmvWeb, :live_view
 
+  on_mount({EveDmvWeb.AuthLive, :load_from_session_optional})
+
   import EveDmvWeb.FormatHelpers
 
   alias Ecto.Adapters.SQL

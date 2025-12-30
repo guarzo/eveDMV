@@ -18,6 +18,10 @@ defmodule EveDmv.Application do
     # Initialize ETS table for fitting cache
     :ets.new(:battle_fitting_cache, [:set, :public, :named_table])
 
+    # Initialize ETS tables for StaticData cache (used by threat scoring)
+    :ets.new(:static_data_type_cache, [:set, :named_table, :public, {:read_concurrency, true}])
+    :ets.new(:static_data_system_cache, [:set, :named_table, :public, {:read_concurrency, true}])
+
     # Initialize EVE name resolver cache
     # NameResolver.start_cache()
 
@@ -66,6 +70,8 @@ defmodule EveDmv.Application do
       EveDmv.Platform.Cache.StaticDataCache,
       # Start the query cache for expensive database queries
       EveDmv.Platform.Cache.QueryCache,
+      # Start the analysis cache for character/corporation/system analysis
+      EveDmv.Platform.Cache.AnalysisCache,
       # Start the performance tracker
       EveDmv.Monitoring.PerformanceTracker,
       # Start the simple memory monitor

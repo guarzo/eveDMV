@@ -30,9 +30,15 @@ defmodule EveDmv.StaticData do
 
   @doc false
   def start_link do
-    # Initialize ETS tables for caching
-    :ets.new(@type_cache_table, [:set, :named_table, :public, {:read_concurrency, true}])
-    :ets.new(@system_cache_table, [:set, :named_table, :public, {:read_concurrency, true}])
+    # Initialize ETS tables for caching (if not already created by Application.start)
+    if :ets.whereis(@type_cache_table) == :undefined do
+      :ets.new(@type_cache_table, [:set, :named_table, :public, {:read_concurrency, true}])
+    end
+
+    if :ets.whereis(@system_cache_table) == :undefined do
+      :ets.new(@system_cache_table, [:set, :named_table, :public, {:read_concurrency, true}])
+    end
+
     {:ok, self()}
   end
 
@@ -629,45 +635,64 @@ defmodule EveDmv.StaticData do
   # Cache helper functions
 
   defp get_from_cache(table, key) do
-    case :ets.lookup(table, key) do
-      [{^key, value, timestamp}] ->
-        if cache_expired?(timestamp) do
-          :ets.delete(table, key)
-          :miss
-        else
-          {:hit, value}
-        end
+    # Check if table exists before accessing
+    if :ets.whereis(table) == :undefined do
+      :miss
+    else
+      case :ets.lookup(table, key) do
+        [{^key, value, timestamp}] ->
+          if cache_expired?(timestamp) do
+            :ets.delete(table, key)
+            :miss
+          else
+            {:hit, value}
+          end
 
-      [] ->
-        :miss
+        [] ->
+          :miss
+      end
     end
+  rescue
+    ArgumentError -> :miss
   end
 
   defp get_multiple_from_cache(table, keys) do
-    now = System.system_time(:second)
+    # Return all keys as missing if table doesn't exist
+    if :ets.whereis(table) == :undefined do
+      {%{}, keys}
+    else
+      now = System.system_time(:second)
 
-    {cached, missing} =
-      Enum.reduce(keys, {%{}, []}, fn key, {cached_acc, missing_acc} ->
-        case :ets.lookup(table, key) do
-          [{^key, value, timestamp}] ->
-            if now - timestamp < @cache_ttl do
-              {Map.put(cached_acc, key, value), missing_acc}
-            else
-              :ets.delete(table, key)
+      {cached, missing} =
+        Enum.reduce(keys, {%{}, []}, fn key, {cached_acc, missing_acc} ->
+          case :ets.lookup(table, key) do
+            [{^key, value, timestamp}] ->
+              if now - timestamp < @cache_ttl do
+                {Map.put(cached_acc, key, value), missing_acc}
+              else
+                :ets.delete(table, key)
+                {cached_acc, [key | missing_acc]}
+              end
+
+            [] ->
               {cached_acc, [key | missing_acc]}
-            end
+          end
+        end)
 
-          [] ->
-            {cached_acc, [key | missing_acc]}
-        end
-      end)
-
-    {cached, missing}
+      {cached, missing}
+    end
+  rescue
+    ArgumentError -> {%{}, keys}
   end
 
   defp cache_item(table, key, value) do
-    timestamp = System.system_time(:second)
-    :ets.insert(table, {key, value, timestamp})
+    # Only cache if table exists
+    if :ets.whereis(table) != :undefined do
+      timestamp = System.system_time(:second)
+      :ets.insert(table, {key, value, timestamp})
+    end
+  rescue
+    ArgumentError -> :ok
   end
 
   defp cache_expired?(timestamp) do

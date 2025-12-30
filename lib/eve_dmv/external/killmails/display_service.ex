@@ -81,9 +81,11 @@ defmodule EveDmv.Killmails.DisplayService do
   # Enriched table provides no value - see /docs/architecture/enriched-raw-analysis.md
 
   def build_killmail_display(killmail_data) do
-    # Handle wanderer-kills format with separate victim and attackers
-    victim = killmail_data["victim"] || %{}
-    attackers = killmail_data["attackers"] || []
+    # Handle both wanderer-kills formats:
+    # 1. Separate victim/attackers fields
+    # 2. Participants array with is_victim flag
+    victim = find_victim_in_raw(killmail_data)
+    attackers = find_attackers_in_raw(killmail_data)
     final_blow = Enum.find(attackers, & &1["final_blow"])
 
     system_id = extract_solar_system_id(killmail_data)
@@ -242,10 +244,25 @@ defmodule EveDmv.Killmails.DisplayService do
     case raw_data["victim"] do
       nil ->
         # Fallback to old participants format
-        Enum.find(raw_data["participants"] || [], & &1["is_victim"])
+        Enum.find(raw_data["participants"] || [], & &1["is_victim"]) || %{}
 
       victim ->
         victim
+    end
+  end
+
+  defp find_attackers_in_raw(raw_data) do
+    # Handle wanderer-kills format with separate attackers field
+    case raw_data["attackers"] do
+      nil ->
+        # Fallback to old participants format
+        Enum.filter(raw_data["participants"] || [], &(!&1["is_victim"]))
+
+      attackers when is_list(attackers) ->
+        attackers
+
+      _ ->
+        []
     end
   end
 

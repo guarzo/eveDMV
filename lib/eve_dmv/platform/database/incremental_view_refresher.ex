@@ -190,13 +190,19 @@ defmodule EveDmv.Platform.Database.IncrementalViewRefresher do
     Logger.info("Performing full refresh for #{view_name}")
     start_time = System.monotonic_time(:millisecond)
 
-    sql = "REFRESH MATERIALIZED VIEW CONCURRENTLY #{view_name}"
+    # Use a transaction with increased work_mem to avoid disk spills during sort
+    # The character_activity_summary view requires ~9MB for sorting, default is 4MB
+    result =
+      EveDmv.Repo.transaction(fn ->
+        SQL.query!(EveDmv.Repo, "SET LOCAL work_mem = '32MB'")
+        SQL.query!(EveDmv.Repo, "REFRESH MATERIALIZED VIEW CONCURRENTLY #{view_name}")
+      end)
 
-    case SQL.query(EveDmv.Repo, sql) do
-      {:ok, result} ->
+    case result do
+      {:ok, query_result} ->
         duration = System.monotonic_time(:millisecond) - start_time
 
-        rows = result.num_rows
+        rows = query_result.num_rows
 
         update_refresh_tracking(view_name, "full", duration, rows)
 
@@ -211,83 +217,44 @@ defmodule EveDmv.Platform.Database.IncrementalViewRefresher do
 
   # Specific refresh implementations
 
-  def refresh_character_activity(last_refresh) do
-    cutoff_time = last_refresh || DateTimeUtils.add(DateTime.utc_now(), -86_400, :second)
+  def refresh_character_activity(_last_refresh) do
+    # character_activity_summary is a materialized view, not a regular table.
+    # Materialized views cannot be incrementally updated with INSERT - they
+    # must be fully refreshed. We use CONCURRENTLY to avoid locking reads.
+    # Use increased work_mem to avoid disk spills during sort operations.
+    result =
+      EveDmv.Repo.transaction(fn ->
+        SQL.query!(EveDmv.Repo, "SET LOCAL work_mem = '32MB'")
 
-    sql = """
-    WITH recent_kills AS (
-    SELECT
-        character_id,
-        character_name,
-        is_victim,
-        killmail_time,
-    total_value
-      FROM participants p
-      JOIN killmails_raw k ON p.killmail_id = k.killmail_id
-      WHERE k.killmail_time > $1
-    ),
-    activity_delta AS (
-    SELECT
-        character_id,
-        character_name,
-        COUNT(*) FILTER (WHERE is_victim = false) as kills,
-        COUNT(*) FILTER (WHERE is_victim = true) as losses,
-        SUM(total_value) FILTER (WHERE is_victim = false) as isk_destroyed,
-        SUM(total_value) FILTER (WHERE is_victim = true) as isk_lost,
-        MAX(killmail_time) as last_activity
-      FROM recent_kills
-      GROUP BY character_id, character_name
-    )
-    INSERT INTO character_activity_summary
-    SELECT * FROM activity_delta
-    ON CONFLICT (character_id) DO UPDATE SET
-      total_kills = character_activity_summary.total_kills + EXCLUDED.total_kills,
-      total_losses = character_activity_summary.total_losses + EXCLUDED.total_losses,
-      total_isk_destroyed = character_activity_summary.total_isk_destroyed + EXCLUDED.total_isk_destroyed,
-      total_isk_lost = character_activity_summary.total_isk_lost + EXCLUDED.total_isk_lost,
-      last_activity = GREATEST(character_activity_summary.last_activity, EXCLUDED.last_activity)
-    """
+        SQL.query!(
+          EveDmv.Repo,
+          "REFRESH MATERIALIZED VIEW CONCURRENTLY character_activity_summary"
+        )
+      end)
 
-    case SQL.query(EveDmv.Repo, sql, [cutoff_time]) do
-      {:ok, result} ->
-        rows_updated = result.num_rows
-
-        %{rows_updated: rows_updated}
+    case result do
+      {:ok, query_result} ->
+        %{rows_updated: query_result.num_rows}
 
       {:error, error} ->
         raise error
     end
   end
 
-  def refresh_system_heatmap(last_refresh) do
-    # 7 days
-    cutoff_time = last_refresh || DateTimeUtils.add(DateTime.utc_now(), -604_800, :second)
+  def refresh_system_heatmap(_last_refresh) do
+    # system_activity_heatmap is a materialized view, not a regular table.
+    # Materialized views cannot be incrementally updated with INSERT - they
+    # must be fully refreshed. We use CONCURRENTLY to avoid locking reads.
+    # Use increased work_mem to avoid disk spills during sort operations.
+    result =
+      EveDmv.Repo.transaction(fn ->
+        SQL.query!(EveDmv.Repo, "SET LOCAL work_mem = '32MB'")
+        SQL.query!(EveDmv.Repo, "REFRESH MATERIALIZED VIEW CONCURRENTLY system_activity_heatmap")
+      end)
 
-    sql = """
-    WITH recent_activity AS (
-    SELECT
-        solar_system_id,
-        DATE_TRUNC('hour', killmail_time) as hour,
-        COUNT(*) as kill_count,
-        SUM(total_value) as total_isk_destroyed,
-        COUNT(DISTINCT victim_character_id) as unique_victims
-      FROM killmails_raw
-      WHERE killmail_time > $1
-      GROUP BY solar_system_id, DATE_TRUNC('hour', killmail_time)
-    )
-    INSERT INTO system_activity_heatmap
-    SELECT * FROM recent_activity
-    ON CONFLICT (solar_system_id, hour) DO UPDATE SET
-      kill_count = EXCLUDED.kill_count,
-      total_isk_destroyed = EXCLUDED.total_isk_destroyed,
-      unique_victims = EXCLUDED.unique_victims
-    """
-
-    case SQL.query(EveDmv.Repo, sql, [cutoff_time]) do
-      {:ok, result} ->
-        rows_updated = result.num_rows
-
-        %{rows_updated: rows_updated}
+    case result do
+      {:ok, query_result} ->
+        %{rows_updated: query_result.num_rows}
 
       {:error, error} ->
         raise error

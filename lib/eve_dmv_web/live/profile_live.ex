@@ -412,6 +412,69 @@ defmodule EveDmvWeb.ProfileLive do
         </div>
       </div>
 
+    <!-- Account Characters -->
+      <%= if assigns[:current_account] && @current_account && @current_account.characters do %>
+        <div class="mt-8 bg-gray-800 rounded-lg p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-white">
+              Account Characters
+              <span class="text-gray-400 text-sm font-normal ml-2">
+                (<%= length(@current_account.characters) %> of 10)
+              </span>
+            </h3>
+            <a
+              href="/auth/user/eve_sso?link_to_account=true"
+              class="flex items-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Add Character
+            </a>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <%= for character <- @current_account.characters do %>
+              <div class={"p-4 rounded-lg border transition-colors #{if character.id == @current_user.id, do: "bg-blue-900/30 border-blue-500", else: "bg-gray-700 border-gray-600 hover:border-gray-500"}"}>
+                <div class="flex items-center gap-3">
+                  <img
+                    src={"https://images.evetech.net/characters/#{character.eve_character_id}/portrait?size=64"}
+                    alt={character.eve_character_name}
+                    class="w-12 h-12 rounded-lg"
+                  />
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                      <p class="text-white font-medium truncate">
+                        <%= character.eve_character_name %>
+                      </p>
+                      <%= if character.id == @current_user.id do %>
+                        <span class="text-xs bg-green-600 text-white px-2 py-0.5 rounded">Active</span>
+                      <% end %>
+                      <%= if character.id == @current_account.primary_character_id do %>
+                        <span class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded">Primary</span>
+                      <% end %>
+                    </div>
+                    <p class="text-gray-400 text-sm truncate">
+                      <%= character.eve_corporation_name || "No Corporation" %>
+                    </p>
+                  </div>
+                </div>
+                <%= if character.id != @current_user.id do %>
+                  <div class="mt-3 flex gap-2">
+                    <a
+                      href={"/auth/switch/#{character.id}"}
+                      class="flex-1 text-center text-sm px-3 py-1.5 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors"
+                    >
+                      Switch
+                    </a>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
     <!-- Quick Actions -->
       <div class="mt-8 bg-gray-800 rounded-lg p-6">
         <h3 class="text-lg font-semibold text-white mb-4">Quick Actions</h3>

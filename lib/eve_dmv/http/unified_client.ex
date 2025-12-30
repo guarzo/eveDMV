@@ -207,10 +207,11 @@ defmodule EveDmv.Http.UnifiedClient do
        end}
     ]
 
-    # Only add JSON middleware for non-form-encoded requests
+    # Add appropriate encoding middleware based on content type
     base_middlewares =
       if is_form_encoded do
-        base_middlewares
+        # Use FormUrlencoded middleware for form-encoded requests
+        [Tesla.Middleware.FormUrlencoded | base_middlewares]
       else
         [Tesla.Middleware.JSON | base_middlewares]
       end

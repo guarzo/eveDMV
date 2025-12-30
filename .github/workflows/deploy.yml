@@ -1,4 +1,4 @@
-name: Deploy EVE DMV
+name: Deploy
 
 on:
   # Manual deployment with environment selection
@@ -10,7 +10,6 @@ on:
         default: 'production'
         type: choice
         options:
-          - staging
           - production
       version:
         description: 'Version tag (leave empty for latest)'
@@ -24,7 +23,7 @@ on:
         options:
           - deploy
           - rollback
-          
+
   # Auto-deploy on successful CI to main
   workflow_run:
     workflows: ["CI/CD Pipeline"]
@@ -33,29 +32,28 @@ on:
 
 env:
   DOCKER_IMAGE_NAME: guarzo/evedmv
-  ELIXIR_VERSION: "1.17.2"
-  OTP_VERSION: "27.0"
 
 jobs:
   deploy:
-    name: Deploy EVE DMV Application
+    name: Deploy Application
     runs-on: ubuntu-latest
-    
+
     # Only run if CI passed or manual trigger
     if: |
-      github.event_name == 'workflow_dispatch' || 
+      github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
-    
+
     permissions:
       contents: write
-      packages: write
-      
+      deployments: write
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           persist-credentials: true
-          
+          fetch-depth: 0
+
       - name: Determine deployment parameters
         id: params
         run: |
@@ -67,101 +65,27 @@ jobs:
           else
             ENVIRONMENT="production"
             ACTION="deploy"
-            VERSION=""
+            # Get the most recent tag by creation time
+            VERSION=$(git for-each-ref --sort=-creatordate --format='%(refname:short)' refs/tags | grep -E "^v[0-9]+" | head -1)
+            echo "Using most recent tag by creation time: $VERSION"
           fi
-          
-          # Generate version if not provided
+
+          # If no version found, exit with error
           if [ -z "$VERSION" ]; then
-            VERSION="v$(date +%Y%m%d%H%M%S)"
+            echo "❌ No version tag found! Cannot deploy without a version tag."
+            echo "Please ensure the CI/CD pipeline has created version tags."
+            exit 1
           fi
-          
+
           echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_OUTPUT
           echo "ACTION=$ACTION" >> $GITHUB_OUTPUT
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          
+
           echo "📋 Deployment Parameters:"
           echo "  Environment: $ENVIRONMENT"
           echo "  Action: $ACTION"
           echo "  Version: $VERSION"
-          
-      - name: Create and push tag (deploy only)
-        if: steps.params.outputs.ACTION == 'deploy'
-        id: create_tag
-        run: |
-          VERSION="${{ steps.params.outputs.VERSION }}"
-          
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          
-          git tag -a "$VERSION" -m "Deploy to ${{ steps.params.outputs.ENVIRONMENT }}"
-          git push origin "$VERSION"
-          
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-        
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          registry: docker.io
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
-          
-      - name: Re-tag and push existing image (deploy only)
-        if: steps.params.outputs.ACTION == 'deploy' && github.event_name == 'workflow_run'
-        run: |
-          # For auto-deploy, reuse the existing CI-built image from Docker Hub
-          # Try multiple possible source tags (SHA and branch)
-          COMMIT_SHA="${{ github.event.workflow_run.head_sha }}"
-          SOURCE_TAG_SHA="${{ env.DOCKER_IMAGE_NAME }}:sha-${COMMIT_SHA:0:7}"
-          SOURCE_TAG_MAIN="${{ env.DOCKER_IMAGE_NAME }}:main"
-          VERSION_TAG="${{ env.DOCKER_IMAGE_NAME }}:${{ steps.params.outputs.VERSION }}"
-          LATEST_TAG="${{ env.DOCKER_IMAGE_NAME }}:latest"
-          
-          echo "🏷️ Re-tagging existing CI image from Docker Hub"
-          echo "  Commit SHA: $COMMIT_SHA"
-          echo "  Trying source tags: $SOURCE_TAG_SHA, $SOURCE_TAG_MAIN"
-          echo "  Target: $VERSION_TAG"
-          
-          # Try to pull the SHA-tagged image first, fall back to main
-          if docker pull $SOURCE_TAG_SHA 2>/dev/null; then
-            SOURCE_TAG="$SOURCE_TAG_SHA"
-            echo "✅ Using SHA-tagged image: $SOURCE_TAG"
-          elif docker pull $SOURCE_TAG_MAIN 2>/dev/null; then
-            SOURCE_TAG="$SOURCE_TAG_MAIN"
-            echo "✅ Using main-tagged image: $SOURCE_TAG"
-          else
-            echo "❌ Could not find CI-built image"
-            echo "📋 Available images in Docker Hub:"
-            docker images "${{ env.DOCKER_IMAGE_NAME }}" || echo "No images found"
-            exit 1
-          fi
-          
-          # Re-tag with version and latest
-          docker tag $SOURCE_TAG $VERSION_TAG
-          docker tag $SOURCE_TAG $LATEST_TAG
-          
-          # Push new tags to Docker Hub
-          docker push $VERSION_TAG
-          docker push $LATEST_TAG
-          
-          echo "✅ Successfully re-tagged and pushed: $VERSION_TAG"
-          
-      - name: Build and push new Docker image (fallback or manual deploy)
-        if: |
-          steps.params.outputs.ACTION == 'deploy' && (
-            github.event_name == 'workflow_dispatch' || 
-            (github.event_name == 'workflow_run' && failure())
-          )
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: |
-            ${{ env.DOCKER_IMAGE_NAME }}:latest
-            ${{ env.DOCKER_IMAGE_NAME }}:${{ steps.params.outputs.VERSION }}
-          build-args: |
-            VERSION=${{ steps.params.outputs.VERSION }}
-            MIX_ENV=prod
-                      
+
       - name: Deploy to server
         uses: appleboy/ssh-action@v0.1.8
         with:
@@ -171,126 +95,73 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             set -e
-            
+
             VERSION="${{ steps.params.outputs.VERSION }}"
             ACTION="${{ steps.params.outputs.ACTION }}"
             ENVIRONMENT="${{ steps.params.outputs.ENVIRONMENT }}"
-            
+
             echo "🚀 Performing $ACTION to $ENVIRONMENT with version $VERSION"
-            
+
             # Navigate to the correct directory
             cd /app/wanderer
-            
-            # Update the docker-compose file with the new version
-            if [ -f "docker-compose-dmv.yml" ]; then
-              cp docker-compose-dmv.yml docker-compose-dmv.yml.backup
-              
-              # Update the image tag in docker-compose-dmv.yml
-              sed -i "s|image: guarzo/evedmv:.*|image: guarzo/evedmv:$VERSION|g" docker-compose-dmv.yml
-              
-              echo "✅ Updated EVEDMV_VERSION to $VERSION in docker-compose-dmv.yml"
+
+            # Update the docker-compose-pkmgradegap.yml file with the new version
+            if [ -f "docker-compose-pkmgradegap.yml" ]; then
+              cp docker-compose-pkmgradegap.yml docker-compose-pkmgradegap.yml.backup
+
+              # Update the image tag in the docker-compose file
+              # This assumes the image line format is like "image: guarzo/evedmv:TAG"
+              sed -i "s|image: guarzo/evedmv:.*|image: guarzo/evedmv:$VERSION|" docker-compose-pkmgradegap.yml
+
+              echo "✅ Updated EVEDMV_VERSION to $VERSION in docker-compose-pkmgradegap.yml"
             else
-              echo "❌ docker-compose-dmv.yml file not found"
+              echo "❌ docker-compose-pkmgradegap.yml file not found"
               exit 1
             fi
-            
+
             # Run the compose manager to upgrade
             if [ "$ACTION" = "rollback" ]; then
               echo "🔄 Rolling back to version $VERSION"
             fi
-            
+
             echo "🚀 Running compose-manager.sh upgrade evedmv"
             ./compose-manager.sh upgrade evedmv
-            
-            echo "✅ Deployment completed successfully!"
-          
-      - name: Generate release notes
-        if: steps.params.outputs.ACTION == 'deploy' && steps.params.outputs.ENVIRONMENT == 'production'
-        id: release_notes
-        run: |
-          # Get the previous tag for changelog
-          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
-          
-          # Generate changelog from commits since last tag
-          if [ -n "$PREVIOUS_TAG" ]; then
-            CHANGELOG=$(git log --oneline --pretty=format:"- %s" ${PREVIOUS_TAG}..HEAD)
-          else
-            CHANGELOG=$(git log --oneline --pretty=format:"- %s" -10)
-          fi
-          
-          # Check if CHANGELOG.md exists and get latest section
-          CHANGELOG_SECTION=""
-          if [ -f "CHANGELOG.md" ]; then
-            # Extract the first unreleased section from CHANGELOG.md
-            CHANGELOG_SECTION=$(awk '/^## \[/ {if (found) exit; if ($0 !~ /Unreleased/) found=1; next} found {print}' CHANGELOG.md | head -20)
-          fi
-          
-          # Create release body
-          cat > release_body.md << 'EOF'
-          ## 🚀 EVE DMV Deployment Information
-          
-          - **Environment:** ${{ steps.params.outputs.ENVIRONMENT }}
-          - **Version:** ${{ steps.params.outputs.VERSION }}
-          - **Docker Image:** `${{ env.DOCKER_IMAGE_NAME }}:${{ steps.params.outputs.VERSION }}`
-          - **Commit:** ${{ github.sha }}
-          
-          ### Changes in this Release
-          EOF
-          
-          if [ -n "$CHANGELOG_SECTION" ]; then
-            echo "$CHANGELOG_SECTION" >> release_body.md
-          else
-            echo "$CHANGELOG" >> release_body.md
-          fi
-          
-          cat >> release_body.md << 'EOF'
-          
-        
-          ### Links
-          - [Full commit history](https://github.com/${{ github.repository }}/commits/${{ steps.params.outputs.VERSION }})
-          - [Docker image](https://hub.docker.com/r/${{ env.DOCKER_IMAGE_NAME }}/tags)
-          EOF
-          
-          echo "RELEASE_BODY<<EOF" >> $GITHUB_OUTPUT
-          cat release_body.md >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Create GitHub Release
-        if: steps.params.outputs.ACTION == 'deploy' && steps.params.outputs.ENVIRONMENT == 'production'
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            echo "✅ Deployment completed successfully!"
+
+      - name: Create deployment record
+        if: success() && steps.params.outputs.ACTION == 'deploy'
+        uses: actions/github-script@v7
         with:
-          tag_name: "${{ steps.params.outputs.VERSION }}"
-          release_name: "EVE DMV Release ${{ steps.params.outputs.VERSION }}"
-          body: ${{ steps.release_notes.outputs.RELEASE_BODY }}
-          draft: false
-          prerelease: ${{ steps.params.outputs.ENVIRONMENT == 'staging' }}
-          
+          script: |
+            // Create a deployment record
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              environment: '${{ steps.params.outputs.ENVIRONMENT }}',
+              description: 'Deployed version ${{ steps.params.outputs.VERSION }}',
+              auto_merge: false,
+              required_contexts: []
+            });
+
+            // Mark deployment as successful
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: deployment.data.id,
+              state: 'success',
+              description: 'Deployment completed successfully'
+            });
+
       - name: Notify deployment status
         if: always()
         run: |
           if [ "${{ job.status }}" = "success" ]; then
-            echo "✅ EVE DMV deployment to ${{ steps.params.outputs.ENVIRONMENT }} completed successfully!"
-            echo "🌐 Application should be available at the configured domain"
-            echo "📊 Monitor logs with: docker-compose logs -f web"
+            echo "✅ Deployment to ${{ steps.params.outputs.ENVIRONMENT }} completed successfully!"
+            echo "📦 Version: ${{ steps.params.outputs.VERSION }}"
+            echo "🔗 Environment: ${{ steps.params.outputs.ENVIRONMENT }}"
           else
-            echo "❌ EVE DMV deployment to ${{ steps.params.outputs.ENVIRONMENT }} failed!"
-            echo "🔍 Check logs with: docker-compose logs web"
-            echo "🔄 Rollback available via manual workflow dispatch"
+            echo "❌ Deployment to ${{ steps.params.outputs.ENVIRONMENT }} failed!"
+            echo "📦 Attempted version: ${{ steps.params.outputs.VERSION }}"
           fi
-
-      - name: Post-deployment verification
-        if: steps.params.outputs.ACTION == 'deploy' && job.status == 'success'
-        run: |
-          echo "🎉 Deployment Summary:"
-          echo "  • Application: EVE DMV"
-          echo "  • Version: ${{ steps.params.outputs.VERSION }}"
-          echo "  • Environment: ${{ steps.params.outputs.ENVIRONMENT }}"
-          echo "  • Docker Image: ${{ env.DOCKER_IMAGE_NAME }}:${{ steps.params.outputs.VERSION }}"
-          echo ""
-          echo "📋 Next Steps:"
-          echo "  • Verify application functionality"
-          echo "  • Check killmail feed connectivity"
-          echo "  • Test EVE SSO authentication"
-          echo "  • Monitor performance metrics"

@@ -69,7 +69,13 @@ defmodule EveDmv.Eve.CircuitBreaker do
         # No circuit breaker started, execute directly
         try do
           task = Task.async(fun)
-          {:ok, Task.await(task, timeout)}
+
+          # Don't double-wrap if function already returns {:ok, _} or {:error, _}
+          case Task.await(task, timeout) do
+            {:ok, _} = result -> result
+            {:error, _} = error -> error
+            result -> {:ok, result}
+          end
         catch
           :exit, {:timeout, _} -> {:error, :timeout}
           kind, reason -> {:error, {kind, reason}}
@@ -236,11 +242,25 @@ defmodule EveDmv.Eve.CircuitBreaker do
   defp execute_and_handle_result(fun, timeout, state) do
     # Execute with timeout
     task = Task.async(fun)
-    result = Task.await(task, timeout)
+    raw_result = Task.await(task, timeout)
 
-    # Record success
-    new_state = handle_success(state)
-    {:reply, {:ok, result}, new_state}
+    # Don't double-wrap if function already returns {:ok, _} or {:error, _}
+    case raw_result do
+      {:ok, _} = result ->
+        # Record success and return as-is
+        new_state = handle_success(state)
+        {:reply, result, new_state}
+
+      {:error, reason} ->
+        # Record failure and return error
+        new_state = handle_failure(state, reason)
+        {:reply, {:error, reason}, new_state}
+
+      result ->
+        # Wrap non-tuple results
+        new_state = handle_success(state)
+        {:reply, {:ok, result}, new_state}
+    end
   rescue
     e ->
       new_state = handle_failure(state, e)

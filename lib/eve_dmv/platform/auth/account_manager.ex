@@ -62,6 +62,41 @@ defmodule EveDmv.Users.AccountManager do
   end
 
   @doc """
+  Re-links a character from one account to another.
+
+  This is used when a user wants to add a character that was previously
+  linked to a different account (e.g., from testing or accidental separate logins).
+  The old account may become empty if this was its only character.
+  """
+  @spec relink_character_to_account(user(), account_id()) :: {:ok, account(), user()} | error()
+  def relink_character_to_account(user, new_account_id) do
+    old_account_id = user.account_id
+    new_account = get_account!(new_account_id)
+
+    Logger.info("Re-linking character #{user.eve_character_name} from account #{old_account_id} to #{new_account_id}")
+
+    # Update the user's account_id to point to the new account
+    with {:ok, updated_user} <- link_user_to_account(user, new_account) do
+      # Clean up: if old account has no more characters, we could delete it
+      # For now, just log this situation
+      old_char_count = get_account_character_count(old_account_id)
+      if old_char_count == 0 do
+        Logger.info("Old account #{old_account_id} now has no characters - consider cleanup")
+      end
+
+      {:ok, new_account, updated_user}
+    end
+  end
+
+  @doc """
+  Gets an account by its ID. Raises if not found.
+  """
+  @spec get_account_by_id!(account_id()) :: account() | no_return()
+  def get_account_by_id!(account_id) do
+    get_account!(account_id)
+  end
+
+  @doc """
   Switches the active character for an account.
 
   Updates the last character switch timestamp and optionally updates
@@ -132,8 +167,8 @@ defmodule EveDmv.Users.AccountManager do
       character.account_id == account.id ->
         {:error, :already_linked_to_this_account}
 
-      # Check if we've reached a character limit (optional)
-      length(get_account_characters(account.id)) >= max_characters_per_account() ->
+      # Check if we've reached a character limit (use count query instead of loading all)
+      get_account_character_count(account.id) >= max_characters_per_account() ->
         {:error, :character_limit_reached}
 
       true ->
@@ -152,18 +187,11 @@ defmodule EveDmv.Users.AccountManager do
     source_account = get_account!(source_account_id)
     target_account = get_account!(target_account_id)
 
-    # Get all characters from source account
-    source_characters = get_account_characters(source_account_id)
-
-    # Move each character to target account
-    Enum.each(source_characters, fn character ->
-      attrs = %{account_id: target_account_id}
-
-      case Ash.update(character, attrs, domain: EveDmv.Api) do
-        {:ok, _updated} -> :ok
-        {:error, reason} -> raise "Failed to update character: #{inspect(reason)}"
-      end
-    end)
+    # Bulk update all characters from source account to target account
+    User
+    |> Ash.Query.new()
+    |> Ash.Query.filter(account_id: source_account_id)
+    |> Ash.bulk_update!(:update, %{account_id: target_account_id}, domain: EveDmv.Api)
 
     # If source account's primary character isn't set in target, use it
     if is_nil(target_account.primary_character_id) && source_account.primary_character_id do
@@ -238,5 +266,14 @@ defmodule EveDmv.Users.AccountManager do
   defp max_characters_per_account do
     # Could be made configurable
     Application.get_env(:eve_dmv, :max_characters_per_account, 10)
+  end
+
+  @spec get_account_character_count(account_id()) :: integer()
+  defp get_account_character_count(account_id) do
+    # Use count query instead of loading all characters
+    User
+    |> Ash.Query.new()
+    |> Ash.Query.filter(account_id: account_id)
+    |> Ash.count!(domain: EveDmv.Api)
   end
 end

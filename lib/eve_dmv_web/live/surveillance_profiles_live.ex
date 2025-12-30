@@ -11,6 +11,8 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
   use EveDmvWeb, :live_view
 
+  on_mount({EveDmvWeb.AuthLive, :load_from_session_optional})
+
   alias EveDmv.Contexts.Surveillance.Api, as: SurveillanceApi
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.WandererClient

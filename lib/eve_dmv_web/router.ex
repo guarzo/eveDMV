@@ -42,6 +42,7 @@ defmodule EveDmvWeb.Router do
     plug(EveDmvWeb.Plugs.SecurityHeaders)
     plug(EveDmvWeb.Plugs.AuthRateLimiter)
     plug(EveDmvWeb.Plugs.SessionActivity)
+    plug(EveDmvWeb.Plugs.LinkToAccountPlug)
     plug(:load_from_session)
   end
 
@@ -52,6 +53,11 @@ defmodule EveDmvWeb.Router do
 
   pipeline :require_admin do
     plug(EveDmvWeb.Plugs.RequireAdmin)
+  end
+
+  # Handle .well-known requests (Chrome DevTools, etc.) - return 204 No Content
+  scope "/.well-known", EveDmvWeb do
+    get("/*path", WellKnownController, :index)
   end
 
   # Public routes - accessible without authentication

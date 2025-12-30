@@ -11,6 +11,8 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
 
   use EveDmvWeb, :live_view
 
+  on_mount({EveDmvWeb.AuthLive, :load_from_session_optional})
+
   alias EveDmv.Contexts.Surveillance.Domain.AlertService
   alias EveDmv.Contexts.Surveillance.Domain.NotificationService
   alias EveDmv.Core.Utils.DateTimeUtils

@@ -202,11 +202,16 @@ defmodule EveDmvWeb.Admin.SystemLive do
   end
 
   defp run_maintenance_task("refresh_views") do
-    Ecto.Adapters.SQL.query(
-      EveDmv.Repo,
-      "REFRESH MATERIALIZED VIEW CONCURRENTLY character_stats",
-      []
-    )
+    # Use transaction with increased work_mem to avoid disk spills during sort
+    EveDmv.Repo.transaction(fn ->
+      Ecto.Adapters.SQL.query!(EveDmv.Repo, "SET LOCAL work_mem = '32MB'")
+
+      Ecto.Adapters.SQL.query!(
+        EveDmv.Repo,
+        "REFRESH MATERIALIZED VIEW CONCURRENTLY character_stats",
+        []
+      )
+    end)
   end
 
   defp run_maintenance_task(_), do: :ok

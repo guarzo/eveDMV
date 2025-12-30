@@ -10,6 +10,8 @@ defmodule EveDmvWeb.UniversalSearchLive do
 
   use EveDmvWeb, :live_view
 
+  on_mount({EveDmvWeb.AuthLive, :load_from_session_optional})
+
   alias EveDmv.Eve.SolarSystem
   alias EveDmv.Platform.Cache.AnalysisCache
 

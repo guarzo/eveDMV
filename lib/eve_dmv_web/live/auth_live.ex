@@ -134,7 +134,7 @@ defmodule EveDmvWeb.AuthLive do
   defp load_account_if_present(nil), do: nil
 
   defp load_account_if_present(account_id) do
-    case Ash.get(Account, account_id, domain: Api) do
+    case Ash.get(Account, account_id, domain: Api, load: [:characters, :total_characters]) do
       {:ok, acc} -> acc
       _ -> nil
     end

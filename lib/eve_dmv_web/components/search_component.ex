@@ -200,11 +200,30 @@ defmodule EveDmvWeb.SearchComponent do
   defp placeholder_text(_), do: "Search..."
 
   defp perform_universal_search(query) do
-    # Perform parallel searches across all types
+    # Perform parallel searches across all types with error handling
+    # Wrap each search in try/catch to prevent one failure from blocking all results
     tasks = [
-      Task.async(fn -> search_systems(query) end),
-      Task.async(fn -> search_characters(query) end),
-      Task.async(fn -> search_corporations(query) end)
+      Task.async(fn ->
+        try do
+          search_systems(query)
+        rescue
+          _ -> []
+        end
+      end),
+      Task.async(fn ->
+        try do
+          search_characters(query)
+        rescue
+          _ -> []
+        end
+      end),
+      Task.async(fn ->
+        try do
+          search_corporations(query)
+        rescue
+          _ -> []
+        end
+      end)
     ]
 
     [systems, characters, corporations] = Task.await_many(tasks, 5000)
@@ -232,8 +251,9 @@ defmodule EveDmvWeb.SearchComponent do
   defp search_systems(query) do
     alias EveDmv.Eve.SolarSystem
 
+    # Try the Ash search first
     case SolarSystem.search_by_name(name_pattern: query, similarity_threshold: 0.2) do
-      {:ok, systems} ->
+      {:ok, systems} when systems != [] ->
         systems
         |> Enum.take(3)
         |> Enum.map(fn system ->
@@ -241,6 +261,46 @@ defmodule EveDmvWeb.SearchComponent do
             id: system.system_id,
             name: system.system_name,
             subtitle: "#{system.constellation_name} • #{system.region_name}",
+            security_class: system.security_class,
+            type_label: "System"
+          }
+        end)
+
+      # Fallback to direct SQL search if Ash search fails or returns no results
+      {:ok, []} ->
+        fallback_system_search(query)
+
+      {:error, _reason} ->
+        fallback_system_search(query)
+    end
+  end
+
+  defp fallback_system_search(query) do
+    search_pattern = "%#{query}%"
+
+    system_query = """
+    SELECT
+      system_id,
+      system_name,
+      constellation_name,
+      region_name,
+      security_class
+    FROM eve_solar_systems
+    WHERE system_name ILIKE $1
+    ORDER BY
+      CASE WHEN system_name ILIKE $1 THEN 0 ELSE 1 END,
+      system_name
+    LIMIT 3
+    """
+
+    case SQL.query(EveDmv.Repo, system_query, [search_pattern]) do
+      {:ok, %{rows: rows}} ->
+        Enum.map(rows, fn [sys_id, sys_name, const_name, reg_name, sec_class] ->
+          %{
+            id: sys_id,
+            name: sys_name,
+            subtitle: "#{const_name || "Unknown"} • #{reg_name || "Unknown"}",
+            security_class: sec_class,
             type_label: "System"
           }
         end)
