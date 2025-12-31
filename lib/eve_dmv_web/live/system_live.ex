@@ -15,6 +15,7 @@ defmodule EveDmvWeb.SystemLive do
   alias Ecto.Adapters.SQL
   alias EveDmv.Analytics.BattleDetector
   alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Eve.NameResolver
   alias EveDmv.Eve.SolarSystem
   alias EveDmv.Platform.Cache.AnalysisCache
   alias EveDmv.Repo
@@ -31,7 +32,9 @@ defmodule EveDmvWeb.SystemLive do
            page_title: "System Intelligence - #{system_data.system_name}",
            system_id: system_id,
            system_data: system_data,
-           loading: false
+           loading: false,
+           detail_panel: nil,
+           detail_type: nil
          )}
 
       {:error, :not_found} ->
@@ -72,6 +75,23 @@ defmodule EveDmvWeb.SystemLive do
     end
   end
 
+  @impl Phoenix.LiveView
+  def handle_event("show_kills", _params, socket) do
+    {:noreply, assign(socket, detail_panel: :kills, detail_type: :kills)}
+  end
+
+  def handle_event("show_pilots", _params, socket) do
+    {:noreply, assign(socket, detail_panel: :pilots, detail_type: :pilots)}
+  end
+
+  def handle_event("show_corporations", _params, socket) do
+    {:noreply, assign(socket, detail_panel: :corporations, detail_type: :corporations)}
+  end
+
+  def handle_event("close_detail_panel", _params, socket) do
+    {:noreply, assign(socket, detail_panel: nil, detail_type: nil)}
+  end
+
   # Load comprehensive system data with caching
   defp load_system_data(system_id) do
     cache_key = "system_#{system_id}_overview"
@@ -84,7 +104,8 @@ defmodule EveDmvWeb.SystemLive do
              {:ok, structure_kills} <- get_structure_kills(system_id),
              {:ok, corp_presence} <- get_corporation_presence(system_id),
              {:ok, danger_assessment} <- calculate_danger_assessment(system_id),
-             {:ok, activity_heatmap} <- get_activity_heatmap(system_id) do
+             {:ok, activity_heatmap} <- get_activity_heatmap(system_id),
+             {:ok, recent_kills} <- get_recent_kills(system_id) do
           # Calculate peak activity hour and timezone
           peak_hour =
             if Enum.any?(activity_heatmap),
@@ -97,12 +118,18 @@ defmodule EveDmvWeb.SystemLive do
           recent_battles = BattleDetector.detect_system_battles(system_id, 10)
           battle_stats = BattleDetector.get_system_battle_stats(system_id)
 
+          # Get corrected security class (handles wormhole detection properly)
+          security_info = NameResolver.system_security(system_id)
+
+          # Separate regular kills from structure kills
+          {ship_kills, structure_kill_list} = Enum.split_with(recent_kills, &(!&1.is_structure))
+
           system_data = %{
             system_name: system_info.system_name,
             region_name: system_info.region_name,
             constellation_name: system_info.constellation_name,
             security_status: system_info.security_status,
-            security_class: system_info.security_class,
+            security_class: security_info.class,
             activity_stats: activity_stats,
             structure_kills: structure_kills,
             corp_presence: corp_presence,
@@ -111,7 +138,9 @@ defmodule EveDmvWeb.SystemLive do
             peak_activity_hour: peak_hour.hour,
             primary_timezone: primary_timezone,
             recent_battles: recent_battles,
-            battle_stats: battle_stats
+            battle_stats: battle_stats,
+            recent_kills: ship_kills,
+            recent_structure_kills: structure_kill_list
           }
 
           {:ok, system_data}
@@ -396,5 +425,93 @@ defmodule EveDmvWeb.SystemLive do
       peak_hour >= 14 && peak_hour < 22 -> "USTZ (Americas)"
       true -> "AUTZ (Oceania)"
     end
+  end
+
+  # Get recent kills in this system (last 7 days, max 20)
+  defp get_recent_kills(system_id) do
+    seven_days_ago = DateTimeUtils.add(DateTime.utc_now(), -7 * 24 * 60 * 60, :second)
+
+    kills_query = """
+    SELECT
+      k.killmail_id,
+      k.killmail_time,
+      k.victim_character_id,
+      k.victim_ship_type_id,
+      k.total_value,
+      k.attacker_count,
+      t.type_name as ship_name,
+      t.group_name as ship_group,
+      COALESCE(k.raw_data->'victim'->>'character_name', 'Unknown Pilot') as victim_name,
+      COALESCE(k.raw_data->'victim'->>'corporation_name', 'Unknown Corp') as corporation_name
+    FROM killmails_raw k
+    LEFT JOIN eve_item_types t ON k.victim_ship_type_id = t.type_id
+    WHERE k.solar_system_id = $1
+      AND k.killmail_time >= $2
+    ORDER BY k.killmail_time DESC
+    LIMIT 20
+    """
+
+    case SQL.query(Repo, kills_query, [system_id, seven_days_ago]) do
+      {:ok, %{rows: rows}} ->
+        kills =
+          Enum.map(rows, fn [
+                              killmail_id,
+                              killmail_time,
+                              victim_character_id,
+                              victim_ship_type_id,
+                              total_value,
+                              attacker_count,
+                              ship_name,
+                              ship_group,
+                              victim_name,
+                              corporation_name
+                            ] ->
+            # Determine if this is a structure kill
+            is_structure = is_structure_kill?(ship_group, ship_name)
+
+            %{
+              killmail_id: killmail_id,
+              killmail_time: killmail_time,
+              victim_character_id: victim_character_id,
+              victim_ship_type_id: victim_ship_type_id,
+              total_value: total_value || Decimal.new(0),
+              attacker_count: attacker_count || 0,
+              ship_name: ship_name || "Unknown Ship",
+              ship_group: ship_group,
+              victim_name: victim_name,
+              corporation_name: corporation_name,
+              is_structure: is_structure
+            }
+          end)
+
+        {:ok, kills}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  # Check if a kill is a structure/citadel
+  defp is_structure_kill?(ship_group, ship_name) do
+    structure_groups = [
+      "Citadel",
+      "Engineering Complex",
+      "Refinery",
+      "Upwell Structure"
+    ]
+
+    structure_keywords = [
+      "Astrahus",
+      "Fortizar",
+      "Keepstar",
+      "Raitaru",
+      "Azbel",
+      "Sotiyo",
+      "Athanor",
+      "Tatara"
+    ]
+
+    (ship_group && ship_group in structure_groups) ||
+      (ship_name && Enum.any?(structure_keywords, &String.contains?(ship_name, &1)))
   end
 end

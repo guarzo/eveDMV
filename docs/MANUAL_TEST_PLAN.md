@@ -119,7 +119,11 @@ Before testing, ensure:
 | 5 | Verify no placeholder data | All data appears real (no "Test Kill" or random values) |
 
 **Issues Found:**
-- [ ] _None yet_
+- [x] **ISSUE-007**: All kills showed "Unknown Corp" for victim corporation. The raw killmail data from wanderer-kills contains `corporation_id` but not `corporation_name`. **FIXED** by:
+  - Added corporation ID extraction and batch preloading via `NameResolver.corporation_names()` in `preload_raw_killmail_names/1`
+  - Updated `build_killmail_from_raw/1` to resolve corporation names via `NameResolver.corporation_name()` when not provided
+  - Updated `build_killmail_display/1` (for real-time SSE) with same resolution logic
+  - Added `resolve_corporation_name/1` helper function
 
 ---
 
@@ -348,9 +352,28 @@ Before testing, ensure:
 | 3 | Check activity statistics | Kill counts, ISK destroyed shown |
 | 4 | View danger assessment | Danger score (0-100) displayed |
 | 5 | Check alliance presence | Active alliances in system listed |
+| 6 | Check wormhole classification | J-space systems show "wormhole" not "nullsec" |
+| 7 | View recent kills section | Recent kills displayed prominently |
+| 8 | Click on stat cards | Detail panel shows kills/pilots/corps |
+| 9 | Check structure kills | Structure kills shown at bottom |
 
 **Issues Found:**
-- [ ] _None yet_
+- [x] **ISSUE-008**: Wormhole systems (J-space) were showing as "nullsec" instead of "wormhole". **FIXED** by:
+  - Added `is_wormhole_system?/1` helper in `StaticDataCache` to detect J-space systems by ID range (31000000-31999999)
+  - Updated `determine_security_class/1` to check for wormholes before using database value
+  - Updated `SystemLive` to use `NameResolver.system_security()` for corrected security class
+- [x] **ISSUE-009**: System page lacked prominent recent kills display. **FIXED** by:
+  - Added `get_recent_kills/1` function to fetch last 7 days of kills
+  - Added prominent "Recent Kills" section after activity stats
+  - Separated ship kills from structure kills in display
+- [x] **ISSUE-010**: Structure/citadel kills were not clearly organized. **FIXED** by:
+  - Moved structure kills section to bottom of page
+  - Added detection for structure kills via `is_structure_kill?/2`
+  - Shows both aggregated structure types and recent structure kills
+- [x] **ISSUE-011**: Stats cards not interactive. **FIXED** by:
+  - Made Total Kills, Unique Pilots, and Corporations cards clickable
+  - Added detail panel that shows expanded list when clicking stats
+  - Panel replaces the quick overview section with detailed breakdowns
 
 ---
 
@@ -687,13 +710,18 @@ _Issues that significantly impact user experience_
 |----|---------|-------------|--------|
 | ISSUE-004 | 1.1 Auth | TokenRefreshPlug timeout blocks page access | FIXED |
 | ISSUE-005 | 1.3 Switch | TokenRefreshService crashes with Ash.Changeset bug | FIXED |
+| ISSUE-006 | 1.4 Logout | Sign out link uses wrong URL (underscore vs hyphen) | FIXED |
 
 ### Medium Priority Issues
 _Issues that cause inconvenience but have workarounds_
 
 | ID | Section | Description | Status |
 |----|---------|-------------|--------|
-| - | - | _None found yet_ | - |
+| ISSUE-007 | 2.1 Kill Feed | All kills showed "Unknown Corp" - corporation names not being resolved | FIXED |
+| ISSUE-008 | 6.1 System | Wormhole systems (J-space) showing as "nullsec" instead of "wormhole" | FIXED |
+| ISSUE-009 | 6.1 System | System page lacked prominent recent kills display | FIXED |
+| ISSUE-010 | 6.1 System | Structure/citadel kills not clearly organized | FIXED |
+| ISSUE-011 | 6.1 System | Stats cards (kills, pilots, corps) not interactive | FIXED |
 
 ### Low Priority Issues
 _Minor issues, cosmetic problems, or nice-to-haves_

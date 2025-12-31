@@ -470,7 +470,9 @@ defmodule EveDmv.Platform.Cache.StaticDataCache do
   end
 
   defp build_security_info(system) do
-    security_class = String.downcase(system.security_class || "unknown")
+    # Detect wormhole systems based on system ID range
+    # J-space (wormhole) systems have IDs in the 31000000-31999999 range
+    security_class = determine_security_class(system)
 
     color =
       case security_class do
@@ -490,6 +492,31 @@ defmodule EveDmv.Platform.Cache.StaticDataCache do
 
     %{class: security_class, color: color, status: status}
   end
+
+  # Determines security class, with special handling for wormhole systems
+  # EVE Online wormhole (J-space) systems have IDs in the 31000000-31999999 range
+  defp determine_security_class(system) do
+    cond do
+      # Wormhole systems: J-space has system IDs 31000000+
+      is_wormhole_system?(system.system_id) ->
+        "wormhole"
+
+      # Use database value if available
+      is_binary(system.security_class) and system.security_class != "" ->
+        String.downcase(system.security_class)
+
+      # Fallback to unknown
+      true ->
+        "unknown"
+    end
+  end
+
+  # J-space (wormhole) systems have IDs in the 31000000-31999999 range
+  defp is_wormhole_system?(system_id) when is_integer(system_id) do
+    system_id >= 31_000_000 and system_id <= 31_999_999
+  end
+
+  defp is_wormhole_system?(_), do: false
 
   defp perform_cache_warming do
     Logger.info("Starting static data cache warming")

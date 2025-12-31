@@ -105,6 +105,14 @@ defmodule EveDmv.Killmails.DisplayService do
         fn -> NameResolver.system_name(system_id) end
       )
 
+    # Resolve corporation name from ID if not provided
+    victim_corporation_name =
+      resolve_name_if_unknown(
+        victim["corporation_name"],
+        ["Unknown Corp"],
+        fn -> resolve_corporation_name(victim["corporation_id"]) end
+      )
+
     system_security = NameResolver.system_security(system_id)
 
     %{
@@ -113,7 +121,7 @@ defmodule EveDmv.Killmails.DisplayService do
       killmail_time: parse_killmail_timestamp(killmail_data),
       victim_character_id: victim["character_id"],
       victim_character_name: victim["character_name"] || "Unknown Pilot",
-      victim_corporation_name: victim["corporation_name"] || "Unknown Corp",
+      victim_corporation_name: victim_corporation_name,
       victim_alliance_name: victim["alliance_name"],
       victim_ship_name: victim_ship_name,
       solar_system_id: system_id,
@@ -182,9 +190,24 @@ defmodule EveDmv.Killmails.DisplayService do
       |> Enum.reject(&is_nil/1)
       |> Enum.uniq()
 
+    # Extract corporation IDs for name resolution
+    corporation_ids =
+      raw_killmails
+      |> Enum.map(fn raw ->
+        victim = find_victim_in_raw(raw.raw_data)
+        get_in(victim, ["corporation_id"])
+      end)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+
     # Bulk preload all names into cache
     NameResolver.ship_names(ship_type_ids)
     NameResolver.system_names(system_ids)
+
+    # Preload corporation names
+    if length(corporation_ids) > 0 do
+      NameResolver.corporation_names(corporation_ids)
+    end
 
     # Preload system security data using batch function
     NameResolver.system_securities(system_ids)
@@ -213,6 +236,16 @@ defmodule EveDmv.Killmails.DisplayService do
         fn -> NameResolver.system_name(raw.solar_system_id) end
       )
 
+    # Resolve corporation name from ID if not provided
+    victim_corporation_id = get_in(victim, ["corporation_id"])
+
+    victim_corporation_name =
+      resolve_name_if_unknown(
+        get_in(victim, ["corporation_name"]),
+        ["Unknown Corp"],
+        fn -> resolve_corporation_name(victim_corporation_id) end
+      )
+
     system_security = NameResolver.system_security(raw.solar_system_id)
 
     %{
@@ -221,7 +254,7 @@ defmodule EveDmv.Killmails.DisplayService do
       killmail_time: raw.killmail_time,
       victim_character_id: get_in(victim, ["character_id"]) || raw.victim_character_id,
       victim_character_name: get_in(victim, ["character_name"]) || "Unknown Pilot",
-      victim_corporation_name: get_in(victim, ["corporation_name"]) || "Unknown Corp",
+      victim_corporation_name: victim_corporation_name,
       victim_alliance_name: get_in(victim, ["alliance_name"]),
       victim_ship_name: victim_ship_name,
       solar_system_id: raw.solar_system_id,
@@ -337,6 +370,17 @@ defmodule EveDmv.Killmails.DisplayService do
       resolver_fn.()
     else
       name
+    end
+  end
+
+  # Helper function to resolve corporation name from ID
+  defp resolve_corporation_name(nil), do: "Unknown Corp"
+
+  defp resolve_corporation_name(corporation_id) do
+    case NameResolver.corporation_name(corporation_id) do
+      nil -> "Unknown Corp"
+      name when is_binary(name) and name != "" -> name
+      _ -> "Unknown Corp"
     end
   end
 
