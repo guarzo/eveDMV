@@ -146,8 +146,8 @@ defmodule EveDmv.Platform.Database.CorporationQueries do
             kills: kills,
             losses: losses,
             efficiency: efficiency,
-            isk_destroyed: Decimal.to_float(isk_destroyed || 0),
-            isk_lost: Decimal.to_float(isk_lost || 0),
+            isk_destroyed: safe_decimal_to_float(isk_destroyed),
+            isk_lost: safe_decimal_to_float(isk_lost),
             systems_active: systems_active,
             ships_flown: ships_flown,
             days_active: days_active,
@@ -489,4 +489,10 @@ defmodule EveDmv.Platform.Database.CorporationQueries do
     total = destroyed + lost
     if total > 0, do: Float.round(destroyed / total * 100, 2), else: 50.0
   end
+
+  # Safely convert Decimal or nil to float
+  defp safe_decimal_to_float(nil), do: 0.0
+  defp safe_decimal_to_float(%Decimal{} = d), do: Decimal.to_float(d)
+  defp safe_decimal_to_float(value) when is_number(value), do: value * 1.0
+  defp safe_decimal_to_float(_), do: 0.0
 end

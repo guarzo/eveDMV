@@ -435,15 +435,18 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
   defp get_character_killmail_data(character_id, days_back) do
     cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -days_back * 24 * 60 * 60, :second)
 
+    # Use the indexed participants table instead of JSONB extraction
+    # This uses idx_participants_character_activity index on [:character_id, :killmail_time]
     query =
-      from(k in "killmails_raw",
-        where: k.killmail_time >= ^cutoff_date,
-        where: fragment("?->>'character_id' = ?", k.raw_data, ^to_string(character_id)),
+      from(p in "participants",
+        where: p.killmail_time >= ^cutoff_date,
+        where: p.character_id == ^character_id,
         select: %{
-          killmail_id: k.killmail_id,
-          killmail_time: k.killmail_time,
-          victim_ship_type_id: k.victim_ship_type_id,
-          raw_data: k.raw_data
+          killmail_id: p.killmail_id,
+          killmail_time: p.killmail_time,
+          # Use ship_type_id from participants - this is the ship the character was flying
+          victim_ship_type_id: p.ship_type_id,
+          is_victim: p.is_victim
         },
         limit: 1000
       )
@@ -537,7 +540,8 @@ defmodule EveDmv.Integrations.ShipIntelligenceBridge do
   defp calculate_time_span_days(times) when length(times) < 2, do: 1
 
   defp calculate_time_span_days(times) do
-    sorted_times = Enum.sort(times, DateTime)
+    # Use DateTimeUtils.compare for sorting to handle both DateTime and NaiveDateTime
+    sorted_times = Enum.sort(times, &(DateTimeUtils.compare(&1, &2) != :gt))
     first = List.first(sorted_times)
     last = List.last(sorted_times)
     DateTimeUtils.diff(last, first, :day) + 1

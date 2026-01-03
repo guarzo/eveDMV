@@ -374,6 +374,9 @@ Before testing, ensure:
   - Made Total Kills, Unique Pilots, and Corporations cards clickable
   - Added detail panel that shows expanded list when clicking stats
   - Panel replaces the quick overview section with detailed breakdowns
+- [x] **ISSUE-012**: System page crashed with `FunctionClauseError` when displaying recent kills. **FIXED** by:
+  - Added `NaiveDateTime` handling to `format_relative_time/1` in `TimeFormatter`
+  - SQL query returns `NaiveDateTime` which is now converted to `DateTime` for formatting
 
 ---
 
@@ -722,6 +725,7 @@ _Issues that cause inconvenience but have workarounds_
 | ISSUE-009 | 6.1 System | System page lacked prominent recent kills display | FIXED |
 | ISSUE-010 | 6.1 System | Structure/citadel kills not clearly organized | FIXED |
 | ISSUE-011 | 6.1 System | Stats cards (kills, pilots, corps) not interactive | FIXED |
+| ISSUE-012 | 6.1 System | System page crashed with NaiveDateTime in format_relative_time | FIXED |
 
 ### Low Priority Issues
 _Minor issues, cosmetic problems, or nice-to-haves_

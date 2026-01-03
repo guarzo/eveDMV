@@ -12,13 +12,20 @@
     </button>
   </div>
   
-  <!-- Error State -->
-  <div class="mx-auto">
-    <.error_state :if={@error} message={@error} />
-    
-    <%= if !@error do %>
-      <!-- Corporation Header -->
-      <%= if @corp_info do %>
+  <!-- Loading State -->
+  <%= if @loading do %>
+    <div class="flex flex-col items-center justify-center py-20">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+      <p class="text-gray-400">Loading corporation data...</p>
+    </div>
+  <% else %>
+    <!-- Error State -->
+    <div class="mx-auto">
+      <.error_state :if={@error} message={@error} />
+
+      <%= if !@error do %>
+        <!-- Corporation Header -->
+        <%= if assigns[:corp_info] do %>
         <div class="bg-gray-800 rounded-lg p-6 mb-8 border border-gray-700">
           <div class="flex items-start justify-between">
             <div class="flex items-center space-x-4">
@@ -1073,4 +1080,5 @@
       </div>
     <% end %>
   </div>
+  <% end %>
 </div>

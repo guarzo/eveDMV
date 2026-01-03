@@ -276,37 +276,64 @@
         <% end %>
       </div>
 
-      <!-- Activity Heatmap and Detail Panel -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <!-- Activity Heatmap -->
-        <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-          <h3 class="text-lg font-medium text-white mb-4">Activity Distribution (24h)</h3>
-          <div class="space-y-2">
-            <%= for hour_data <- @system_data.activity_heatmap do %>
-              <div class="flex items-center">
-                <div class="w-12 text-sm text-gray-400">
-                  <%= String.pad_leading(to_string(hour_data.hour), 2, "0") %>:00
-                </div>
-                <div class="flex-1 mx-2">
-                  <div class="bg-gray-700 rounded-full overflow-hidden" style="height: 20px;">
-                    <%= if hour_data.percentage > 0 do %>
-                      <div class="bg-blue-500 h-full transition-all duration-300"
-                           style={"width: #{hour_data.percentage}%"}></div>
-                    <% end %>
-                  </div>
-                </div>
-                <div class="w-12 text-sm text-gray-300 text-right">
-                  <%= hour_data.count %>
-                </div>
+      <!-- Activity Heatmap (Compact) -->
+      <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6">
+        <h3 class="text-lg font-medium text-white mb-4">Activity Distribution (24h)</h3>
+
+        <!-- Compact horizontal heatmap -->
+        <div class="flex items-end space-x-1 h-16 mb-2">
+          <%= for hour_data <- @system_data.activity_heatmap do %>
+            <div
+              class="flex-1 group relative cursor-pointer"
+              title={"#{String.pad_leading(to_string(hour_data.hour), 2, "0")}:00 - #{hour_data.count} kills"}
+            >
+              <div
+                class={[
+                  "w-full rounded-t transition-all",
+                  cond do
+                    hour_data.percentage >= 80 -> "bg-red-500"
+                    hour_data.percentage >= 60 -> "bg-orange-500"
+                    hour_data.percentage >= 40 -> "bg-yellow-500"
+                    hour_data.percentage >= 20 -> "bg-blue-500"
+                    hour_data.percentage > 0 -> "bg-blue-700"
+                    true -> "bg-gray-700"
+                  end
+                ]}
+                style={"height: #{max(hour_data.percentage, 8)}%"}
+              ></div>
+              <!-- Tooltip -->
+              <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 border border-gray-600 rounded text-xs text-white opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-10 transition-opacity">
+                <%= String.pad_leading(to_string(hour_data.hour), 2, "0") %>:00 - <%= hour_data.count %> kills
               </div>
-            <% end %>
-          </div>
+            </div>
+          <% end %>
         </div>
 
-        <!-- Detail Panel (shows when clicking on stats cards) -->
-        <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-          <%= if @detail_panel do %>
-            <div class="flex items-center justify-between mb-4">
+        <!-- Hour labels -->
+        <div class="flex justify-between text-xs text-gray-500 px-1 mb-4">
+          <span>00:00</span>
+          <span>06:00</span>
+          <span>12:00</span>
+          <span>18:00</span>
+          <span>23:00</span>
+        </div>
+
+        <!-- Summary stats -->
+        <div class="flex items-center justify-between pt-4 border-t border-gray-700 text-sm">
+          <div class="text-gray-400">
+            Peak: <span class="text-white font-medium"><%= String.pad_leading(to_string(@system_data.peak_activity_hour), 2, "0") %>:00 EVE</span>
+            <span class="text-gray-500">(<%= @system_data.primary_timezone %>)</span>
+          </div>
+          <div class="text-gray-400">
+            Total: <span class="text-white font-medium"><%= Enum.sum(Enum.map(@system_data.activity_heatmap, & &1.count)) %></span> kills (30d)
+          </div>
+        </div>
+      </div>
+
+      <!-- Detail Panel (shows when clicking on stats cards) -->
+      <%= if @detail_panel do %>
+        <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6">
+          <div class="flex items-center justify-between mb-4">
               <h3 class="text-lg font-medium text-white">
                 <%= case @detail_type do %>
                   <% :kills -> %>
@@ -399,43 +426,8 @@
                   Click on a stat card to view details
                 </div>
             <% end %>
-          <% else %>
-            <!-- Default: Quick Overview -->
-            <h3 class="text-lg font-medium text-white mb-4">Quick Overview</h3>
-            <div class="space-y-4">
-              <div class="flex justify-between items-center">
-                <span class="text-gray-400">Kills per day</span>
-                <span class="text-white font-medium">
-                  <%= Float.round(@system_data.activity_stats.kills_per_day, 1) %>
-                </span>
-              </div>
-              <div class="flex justify-between items-center">
-                <span class="text-gray-400">Active alliances</span>
-                <span class="text-white font-medium">
-                  <%= @system_data.activity_stats.unique_alliances %>
-                </span>
-              </div>
-              <div class="flex justify-between items-center">
-                <span class="text-gray-400">Recent battles</span>
-                <span class="text-white font-medium">
-                  <%= if @system_data.battle_stats, do: @system_data.battle_stats.total_battles, else: 0 %>
-                </span>
-              </div>
-              <div class="flex justify-between items-center">
-                <span class="text-gray-400">Structure kills</span>
-                <span class="text-white font-medium">
-                  <%= length(@system_data.structure_kills) %>
-                </span>
-              </div>
-              <div class="pt-4 mt-4 border-t border-gray-700">
-                <p class="text-xs text-gray-500">
-                  Click on Total Kills, Pilots, or Corps above to see detailed breakdowns
-                </p>
-              </div>
-            </div>
-          <% end %>
         </div>
-      </div>
+      <% end %>
 
       <!-- System Battle Activity -->
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6">

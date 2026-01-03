@@ -615,6 +615,19 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   end
 
   @doc """
+  Get ship loadouts for a character - weapons grouped by ship.
+  Returns only actual data from killmails, no inference.
+  """
+  @spec get_ship_loadouts(integer(), Date.t() | DateTime.t()) ::
+          {:ok, map()} | {:error, atom()}
+  def get_ship_loadouts(character_id, since_date) do
+    CharacterIntelligenceAnalyzer.analyze_ship_loadouts(
+      character_id,
+      since_date
+    )
+  end
+
+  @doc """
   Calculate ISK efficiency metrics for a character.
   Returns ISK destroyed/lost, efficiency percentage, and risk assessment.
   """

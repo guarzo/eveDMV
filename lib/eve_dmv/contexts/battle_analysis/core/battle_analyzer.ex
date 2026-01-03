@@ -277,9 +277,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
         0.5
 
       system_id ->
-        # Query system security from eve_systems table
+        # Query system security from eve_solar_systems table
         query =
-          from(s in "eve_systems",
+          from(s in "eve_solar_systems",
             where: s.system_id == ^system_id,
             select: s.security_status
           )

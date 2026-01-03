@@ -190,26 +190,10 @@ defmodule EveDmv.Killmails.DisplayService do
       |> Enum.reject(&is_nil/1)
       |> Enum.uniq()
 
-    # Extract corporation IDs for name resolution
-    corporation_ids =
-      raw_killmails
-      |> Enum.map(fn raw ->
-        victim = find_victim_in_raw(raw.raw_data)
-        get_in(victim, ["corporation_id"])
-      end)
-      |> Enum.reject(&is_nil/1)
-      |> Enum.uniq()
-
-    # Bulk preload all names into cache
+    # Bulk preload static data (ships, systems)
+    # Corporation names are resolved at ingestion time in DataProcessor.enrich_entity_names/1
     NameResolver.ship_names(ship_type_ids)
     NameResolver.system_names(system_ids)
-
-    # Preload corporation names
-    if length(corporation_ids) > 0 do
-      NameResolver.corporation_names(corporation_ids)
-    end
-
-    # Preload system security data using batch function
     NameResolver.system_securities(system_ids)
   end
 
@@ -373,16 +357,12 @@ defmodule EveDmv.Killmails.DisplayService do
     end
   end
 
-  # Helper function to resolve corporation name from ID
+  # Corporation names are resolved at ingestion time in DataProcessor.enrich_entity_names/1
+  # If a name is missing here, it means the data was ingested before enrichment was added.
+  # Run priv/repo/scripts/backfill_corporation_names.exs to fix existing data.
   defp resolve_corporation_name(nil), do: "Unknown Corp"
-
-  defp resolve_corporation_name(corporation_id) do
-    case NameResolver.corporation_name(corporation_id) do
-      nil -> "Unknown Corp"
-      name when is_binary(name) and name != "" -> name
-      _ -> "Unknown Corp"
-    end
-  end
+  defp resolve_corporation_name(name) when is_binary(name), do: name
+  defp resolve_corporation_name(_), do: "Unknown Corp"
 
   # Filter functions
   defp apply_filters(query, filters) do

@@ -106,6 +106,8 @@ defmodule EveDmv.Application do
       maybe_start_process(EveDmv.Intelligence.ChainAnalysis.ChainMonitor),
       # Start mock SSE server in development
       maybe_start_mock_sse_server(),
+      # Start the surveillance matching engine (must start before pipeline)
+      maybe_start_surveillance_matching_engine(),
       # Start the killmail ingestion pipeline
       maybe_start_pipeline(),
       # Start background static data loader
@@ -215,6 +217,8 @@ defmodule EveDmv.Application do
         EveDmv.Platform.Database.ArchiveManager,
         EveDmv.Enrichment.ReEnrichmentWorker,
         EveDmv.Enrichment.RealTimePriceUpdater,
+        # Corporation name backfill for existing data without names
+        EveDmv.Killmails.CorporationNameBackfill,
         # Ship role analysis worker for continuous fleet intelligence
         EveDmv.Workers.ShipRoleAnalysisWorker,
         # Intelligence analysis supervisor for managing analysis tasks
@@ -276,6 +280,19 @@ defmodule EveDmv.Application do
     else
       # Return a no-op process if mock server is disabled
       %{id: :noop_mock_server, start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}}
+    end
+  end
+
+  # Conditionally start the surveillance matching engine
+  defp maybe_start_surveillance_matching_engine do
+    if Application.get_env(:eve_dmv, :environment, :prod) != :test do
+      EveDmv.Surveillance.MatchingEngine
+    else
+      # No-op process for tests
+      %{
+        id: :surveillance_matching_engine_noop,
+        start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}
+      }
     end
   end
 

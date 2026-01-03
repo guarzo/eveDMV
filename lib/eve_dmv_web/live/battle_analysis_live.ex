@@ -499,6 +499,11 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     {:noreply, socket}
   end
 
+  # Handle dropdown hide messages from search component (ignore)
+  def handle_info({:hide_dropdown, _component_id}, socket) do
+    {:noreply, socket}
+  end
+
   def handle_info({:reanalyze_with_fitting, fitting}, socket) do
     if socket.assigns.selected_ship do
       # Update ship data with new fitting

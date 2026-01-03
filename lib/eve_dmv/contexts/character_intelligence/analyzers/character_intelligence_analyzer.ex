@@ -30,6 +30,135 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
   @intelligence_summary_ttl :timer.minutes(30)
 
   @doc """
+  Analyze ship loadouts - weapons grouped by ship from actual killmail data.
+
+  Returns only weapons we've actually seen the character use on each ship.
+  No inference or guessing - purely data-driven.
+  """
+  def analyze_ship_loadouts(character_id, since_date) do
+    cache_key =
+      "ship_loadouts:#{character_id}:#{Date.to_iso8601(DateTime.to_date(since_date))}"
+
+    QueryCache.get_or_compute(
+      cache_key,
+      fn ->
+        # Query to get weapons used per ship from attacker data in killmails
+        # We can only know what weapons they used when they were an ATTACKER
+        # because that's what gets recorded in the killmail
+        # Also includes death counts for each ship type
+        loadout_query = """
+        WITH character_kills AS (
+          -- Get killmails where character was an attacker
+          SELECT DISTINCT p.killmail_id, p.killmail_time
+          FROM participants p
+          WHERE p.character_id = $3
+            AND p.killmail_time >= $2
+            AND p.is_victim = false
+        ),
+        character_deaths AS (
+          -- Get killmails where character died (to count deaths per ship)
+          SELECT k.victim_ship_type_id as ship_type_id, COUNT(*) as death_count
+          FROM killmails_raw k
+          WHERE k.victim_character_id = $3
+            AND k.killmail_time >= $2
+          GROUP BY k.victim_ship_type_id
+        ),
+        attacker_data AS (
+          -- Extract the character's ship and weapon from each kill
+          SELECT
+            k.killmail_id,
+            (attacker->>'ship_type_id')::integer as ship_type_id,
+            (attacker->>'weapon_type_id')::integer as weapon_type_id
+          FROM killmails_raw k
+          INNER JOIN character_kills ck ON k.killmail_id = ck.killmail_id
+            AND k.killmail_time = ck.killmail_time
+          CROSS JOIN LATERAL jsonb_array_elements(k.raw_data->'attackers') as attacker
+          WHERE attacker->>'character_id' = $1
+            AND attacker->>'ship_type_id' IS NOT NULL
+        ),
+        ship_weapon_usage AS (
+          SELECT
+            ad.ship_type_id,
+            ad.weapon_type_id,
+            COUNT(DISTINCT ad.killmail_id) as usage_count
+          FROM attacker_data ad
+          WHERE ad.weapon_type_id IS NOT NULL
+            AND ad.weapon_type_id > 0
+          GROUP BY ad.ship_type_id, ad.weapon_type_id
+        ),
+        ship_stats AS (
+          SELECT
+            ad.ship_type_id,
+            COUNT(DISTINCT ad.killmail_id) as total_kills
+          FROM attacker_data ad
+          GROUP BY ad.ship_type_id
+        )
+        SELECT
+          swu.ship_type_id,
+          ship.type_name as ship_name,
+          swu.weapon_type_id,
+          weapon.type_name as weapon_name,
+          weapon.group_name as weapon_group,
+          swu.usage_count,
+          ss.total_kills as ship_total_kills,
+          COALESCE(cd.death_count, 0) as ship_deaths
+        FROM ship_weapon_usage swu
+        JOIN ship_stats ss ON swu.ship_type_id = ss.ship_type_id
+        LEFT JOIN character_deaths cd ON swu.ship_type_id = cd.ship_type_id
+        LEFT JOIN eve_item_types ship ON swu.ship_type_id = ship.type_id
+        LEFT JOIN eve_item_types weapon ON swu.weapon_type_id = weapon.type_id
+        WHERE weapon.category_id NOT IN (6, 20, 22)  -- Exclude ships, implants, deployables
+        ORDER BY ss.total_kills DESC, swu.ship_type_id, swu.usage_count DESC
+        """
+
+        case Ecto.Adapters.SQL.query(EveDmv.Repo, loadout_query, [
+               to_string(character_id),
+               since_date,
+               character_id
+             ]) do
+          {:ok, %{rows: rows}} ->
+            # Group results by ship
+            ship_loadouts =
+              rows
+              |> Enum.group_by(fn [ship_type_id, ship_name, _, _, _, _, total_kills, deaths] ->
+                {ship_type_id, ship_name, total_kills, deaths}
+              end)
+              |> Enum.map(fn {{ship_type_id, ship_name, total_kills, deaths}, weapon_rows} ->
+                weapons =
+                  weapon_rows
+                  |> Enum.map(fn [_, _, weapon_type_id, weapon_name, weapon_group, usage_count, _, _] ->
+                    %{
+                      weapon_type_id: weapon_type_id,
+                      weapon_name: weapon_name || "Unknown",
+                      weapon_group: weapon_group || "Unknown",
+                      usage_count: usage_count || 0
+                    }
+                  end)
+                  |> Enum.take(5)  # Top 5 weapons per ship
+
+                %{
+                  ship_type_id: ship_type_id,
+                  ship_name: ship_name || "Unknown Ship",
+                  total_kills: total_kills || 0,
+                  total_deaths: deaths || 0,
+                  weapons: weapons
+                }
+              end)
+              |> Enum.sort_by(& &1.total_kills, :desc)
+              |> Enum.take(10)  # Top 10 ships
+
+            {:ok, %{ship_loadouts: ship_loadouts, analysis_period: %{from: since_date, to: DateTime.utc_now()}}}
+
+          {:error, error} ->
+            Logger.error("Ship loadout analysis failed: #{inspect(error)}")
+            {:error, :query_failed}
+        end
+      end,
+      ttl: @ship_preferences_ttl
+    )
+  end
+
+  @doc """
   Analyze weapon preferences for a character within a given time range.
   """
   def analyze_weapon_preferences(character_id, since_date) do
@@ -39,38 +168,51 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
     QueryCache.get_or_compute(
       cache_key,
       fn ->
+        # Optimized query: Use participants table for indexed lookup,
+        # then extract weapon_type_id from attacker data (not items - attackers use weapon_type_id)
+        # $1 = character_id as string (for JSONB text comparison)
+        # $2 = since_date
+        # $3 = character_id as integer (for participants table)
         weapon_query = """
-        WITH character_weapons AS (
-        SELECT
-            attacker->>'character_id' as char_id,
-            jsonb_array_elements(attacker->'items') as item_data,
+        WITH character_killmails AS (
+          -- Step 1: Fast indexed lookup via participants table
+          -- Uses idx_participants_character_activity index on (character_id, killmail_time)
+          SELECT DISTINCT p.killmail_id, p.killmail_time
+          FROM participants p
+          WHERE p.character_id = $3
+            AND p.killmail_time >= $2
+            AND p.is_victim = false
+        ),
+        character_weapons AS (
+          -- Step 2: Extract weapon_type_id from attacker data
+          -- EVE killmails store weapon_type_id directly on each attacker, not in an items array
+          SELECT
+            (attacker->>'weapon_type_id')::integer as weapon_type_id,
             k.killmail_time
-          FROM killmails_raw k,
-               jsonb_array_elements(k.raw_data->'attackers') as attacker
+          FROM killmails_raw k
+          INNER JOIN character_killmails ck ON k.killmail_id = ck.killmail_id AND k.killmail_time = ck.killmail_time
+          CROSS JOIN LATERAL jsonb_array_elements(k.raw_data->'attackers') as attacker
           WHERE attacker->>'character_id' = $1
-            AND k.killmail_time >= $2
-            AND jsonb_array_length(COALESCE(attacker->'items', '[]'::jsonb)) > 0
+            AND attacker->>'weapon_type_id' IS NOT NULL
         ),
         weapon_usage AS (
-        SELECT
-            (item_data->>'type_id')::integer as weapon_type_id,
+          SELECT
+            cw.weapon_type_id,
             COUNT(*) as usage_count,
-            MAX(killmail_time) as last_used
+            MAX(cw.killmail_time) as last_used
           FROM character_weapons cw
-          JOIN eve_item_types eit ON (cw.item_data->>'type_id')::integer = eit.type_id
-          WHERE eit.category_id IN (7, 8, 18)  -- Modules, Charges, Drones
-            AND (
-              eit.group_id IN (
-                53, 54, 55, 74, 76, 506, 507, 508, 509, 510, 511, 512, 513, 514, 515, 516, 517, 518, 519, 520
-              ) OR
-              eit.type_name ILIKE '%gun%' OR
-              eit.type_name ILIKE '%launcher%' OR
-              eit.type_name ILIKE '%turret%' OR
-              eit.type_name ILIKE '%missile%' OR
-              eit.type_name ILIKE '%torpedo%' OR
-              eit.type_name ILIKE '%drone%'
-            )
-          GROUP BY weapon_type_id
+          JOIN eve_item_types eit ON cw.weapon_type_id = eit.type_id
+          WHERE cw.weapon_type_id IS NOT NULL
+            AND cw.weapon_type_id > 0
+            -- Exclude ships (category 6), deployables (22), implants (20)
+            AND eit.category_id NOT IN (6, 20, 22)
+            -- Exclude tackle/ewar modules: warp scramblers (52), stasis webs (65),
+            -- warp disrupt field gen (899), target painters (379), sensor dampeners (289),
+            -- tracking disruptors (290), ECM (273), remote sensor dampeners (283)
+            AND eit.group_id NOT IN (52, 65, 899, 379, 289, 290, 273, 283, 291, 292)
+            -- Exclude EW drones (639), but keep combat drones (100)
+            AND NOT (eit.category_id = 18 AND eit.group_id = 639)
+          GROUP BY cw.weapon_type_id
           ORDER BY usage_count DESC
           LIMIT 20
         )
@@ -82,13 +224,15 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
           eit.group_name,
           eit.category_name
         FROM weapon_usage wu
-        JOIN eve_item_types eit ON wu.weapon_type_id = eit.type_id
+        LEFT JOIN eve_item_types eit ON wu.weapon_type_id = eit.type_id
         ORDER BY wu.usage_count DESC
         """
 
+        # $1 = string (JSONB), $2 = date, $3 = integer (participants)
         case Ecto.Adapters.SQL.query(EveDmv.Repo, weapon_query, [
-               character_id,
-               since_date
+               to_string(character_id),
+               since_date,
+               character_id
              ]) do
           {:ok, %{rows: rows}} ->
             total_usage = Enum.sum(Enum.map(rows, &Enum.at(&1, 1)))
@@ -231,19 +375,28 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
     QueryCache.get_or_compute(
       cache_key,
       fn ->
+        # Optimized: Use participants table for indexed character lookup
+        # Uses idx_participants_character_activity on (character_id, killmail_time)
+        # $1 = character_id (integer), $2 = since_date
         gang_size_query = """
-        WITH character_gang_data AS (
-        SELECT
+        WITH character_killmails AS (
+          -- Fast indexed lookup via participants table
+          SELECT DISTINCT p.killmail_id, p.killmail_time
+          FROM participants p
+          WHERE p.character_id = $1
+            AND p.killmail_time >= $2
+            AND p.is_victim = false
+        ),
+        character_gang_data AS (
+          SELECT
             k.killmail_id,
             k.killmail_time,
-            jsonb_array_length(k.raw_data->'attackers') as gang_size,
-            COALESCE((k.raw_data->>'total_value')::numeric, 0) as kill_value,
+            k.attacker_count as gang_size,
+            COALESCE((k.raw_data->'zkb'->>'totalValue')::numeric, k.total_value, 0) as kill_value,
             k.solar_system_id
-          FROM killmails_raw k,
-               jsonb_array_elements(k.raw_data->'attackers') as attacker
-          WHERE attacker->>'character_id' = $1
-            AND k.killmail_time >= $2
-            AND jsonb_array_length(k.raw_data->'attackers') > 0
+          FROM character_killmails ck
+          JOIN killmails_raw k ON k.killmail_id = ck.killmail_id AND k.killmail_time = ck.killmail_time
+          WHERE k.attacker_count > 0
         ),
         gang_size_categories AS (
         SELECT
@@ -273,9 +426,15 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
         ORDER BY participation_count DESC
         """
 
+        # $1 = character_id (integer), $2 = since_date
         case Ecto.Adapters.SQL.query(EveDmv.Repo, gang_size_query, [character_id, since_date]) do
           {:ok, %{rows: rows}} ->
-            total_participations = Enum.sum(Enum.map(rows, &Enum.at(&1, 1)))
+            # Convert participation counts to floats before summing (handles Decimals)
+            total_participations =
+              rows
+              |> Enum.map(&Enum.at(&1, 1))
+              |> Enum.map(&(to_float(&1) || 0.0))
+              |> Enum.sum()
 
             gang_patterns =
               Enum.map(rows, fn [
@@ -287,20 +446,24 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
                                   min_gang_size,
                                   max_gang_size
                                 ] ->
+                # Convert Decimals to floats for arithmetic
+                count = to_float(participation_count) || 0.0
+                avg_size = to_float(avg_gang_size)
+                avg_value = to_float(avg_kill_value)
+
                 %{
                   size_category: size_category,
-                  participation_count: participation_count || 0,
+                  participation_count: trunc(count),
                   participation_percentage:
                     if(total_participations > 0,
-                      do: Float.round(participation_count / total_participations * 100, 1),
+                      do: Float.round(count / total_participations * 100, 1),
                       else: 0.0
                     ),
-                  avg_gang_size: if(avg_gang_size, do: Float.round(avg_gang_size, 1), else: 0.0),
-                  total_isk_involved: total_isk_involved || 0,
-                  avg_kill_value:
-                    if(avg_kill_value, do: Float.round(avg_kill_value, 0), else: 0.0),
-                  min_gang_size: min_gang_size || 0,
-                  max_gang_size: max_gang_size || 0
+                  avg_gang_size: if(avg_size, do: Float.round(avg_size, 1), else: 0.0),
+                  total_isk_involved: to_float(total_isk_involved) || 0.0,
+                  avg_kill_value: if(avg_value, do: Float.round(avg_value, 0), else: 0.0),
+                  min_gang_size: to_float(min_gang_size) || 0,
+                  max_gang_size: to_float(max_gang_size) || 0
                 }
               end)
 
@@ -339,28 +502,30 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
     QueryCache.get_or_compute(
       cache_key,
       fn ->
+        # Optimized: Use participants table for indexed character lookup
+        # Uses idx_participants_character_activity on (character_id, killmail_time)
+        # $1 = character_id (integer), $2 = since_date
         activity_query = """
-        WITH character_activity AS (
+        WITH character_participation AS (
+          -- Fast indexed lookup via participants table
+          SELECT DISTINCT p.killmail_id, p.killmail_time, p.is_victim
+          FROM participants p
+          WHERE p.character_id = $1
+            AND p.killmail_time >= $2
+        ),
+        character_activity AS (
           -- Get all killmails where character participated
-        SELECT
+          SELECT
             k.killmail_time,
             DATE(k.killmail_time) as activity_date,
             EXTRACT(HOUR FROM k.killmail_time) as hour_utc,
             EXTRACT(DOW FROM k.killmail_time) as day_of_week,
-        CASE
-              WHEN k.victim_character_id = $3 THEN 'death'
+            CASE
+              WHEN cp.is_victim THEN 'death'
               ELSE 'kill'
             END as activity_type
-          FROM killmails_raw k
-          WHERE k.killmail_time >= $2
-            AND (
-              k.victim_character_id = $3
-              OR EXISTS (
-                SELECT 1
-                FROM jsonb_array_elements(k.raw_data->'attackers') as attacker
-                WHERE attacker->>'character_id' = $1
-              )
-            )
+          FROM character_participation cp
+          JOIN killmails_raw k ON k.killmail_id = cp.killmail_id AND k.killmail_time = cp.killmail_time
         ),
         hourly_activity AS (
         SELECT
@@ -400,10 +565,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
         FROM activity_summary
         """
 
+        # $1 = character_id (integer), $2 = since_date
         case Ecto.Adapters.SQL.query(EveDmv.Repo, activity_query, [
                character_id,
-               since_date,
-               character_id
+               since_date
              ]) do
           {:ok,
            %{
@@ -494,26 +659,39 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
     QueryCache.get_or_compute(
       cache_key,
       fn ->
+        # Optimized: Use participants table for indexed character lookup
+        # Uses idx_participants_character_activity on (character_id, killmail_time)
+        # $1 = character_id as integer, $2 = since_date
+        # Note: total_value is stored in raw_data->'zkb'->>'totalValue' from zKillboard
         efficiency_query = """
-        WITH character_isk_data AS (
-          -- ISK destroyed (when character is attacker)
-        SELECT
-            SUM(COALESCE((k.raw_data->>'total_value')::numeric, 0)) as isk_destroyed,
+        WITH character_kills AS (
+          SELECT DISTINCT p.killmail_id, p.killmail_time
+          FROM participants p
+          WHERE p.character_id = $1
+            AND p.killmail_time >= $2
+            AND p.is_victim = false
+        ),
+        character_losses AS (
+          SELECT DISTINCT p.killmail_id, p.killmail_time
+          FROM participants p
+          WHERE p.character_id = $1
+            AND p.killmail_time >= $2
+            AND p.is_victim = true
+        ),
+        character_isk_data AS (
+          SELECT
+            SUM(COALESCE((k.raw_data->'zkb'->>'totalValue')::numeric, k.total_value, 0)) as isk_destroyed,
             0 as isk_lost
-          FROM killmails_raw k,
-               jsonb_array_elements(k.raw_data->'attackers') as attacker
-          WHERE attacker->>'character_id' = $1
-            AND k.killmail_time >= $2
+          FROM character_kills ck
+          JOIN killmails_raw k ON k.killmail_id = ck.killmail_id AND k.killmail_time = ck.killmail_time
 
           UNION ALL
 
-          -- ISK lost (when character is victim)
-        SELECT
+          SELECT
             0 as isk_destroyed,
-            SUM(COALESCE((k.raw_data->>'total_value')::numeric, 0)) as isk_lost
-          FROM killmails_raw k
-          WHERE k.victim_character_id = $1
-            AND k.killmail_time >= $2
+            SUM(COALESCE((k.raw_data->'zkb'->>'totalValue')::numeric, k.total_value, 0)) as isk_lost
+          FROM character_losses cl
+          JOIN killmails_raw k ON k.killmail_id = cl.killmail_id AND k.killmail_time = cl.killmail_time
         )
         SELECT
           SUM(isk_destroyed) as total_isk_destroyed,
@@ -522,9 +700,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
         """
 
         case Ecto.Adapters.SQL.query(EveDmv.Repo, efficiency_query, [character_id, since_date]) do
-          {:ok, %{rows: [[isk_destroyed, isk_lost]]}} ->
-            isk_destroyed = isk_destroyed || 0
-            isk_lost = isk_lost || 0
+          {:ok, %{rows: [[isk_destroyed_raw, isk_lost_raw]]}} ->
+            # Convert Decimal results to float for arithmetic
+            isk_destroyed = to_float(isk_destroyed_raw) || 0.0
+            isk_lost = to_float(isk_lost_raw) || 0.0
             net_isk = isk_destroyed - isk_lost
 
             efficiency_ratio =
@@ -575,30 +754,31 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
     QueryCache.get_or_compute(
       cache_key,
       fn ->
+        # Optimized: Use participants table for indexed character lookup
+        # Uses idx_participants_character_activity on (character_id, killmail_time)
+        # $1 = character_id as integer, $2 = since_date
         intelligence_summary_query = """
-        WITH character_activity AS (
-        SELECT
+        WITH character_participation AS (
+          SELECT DISTINCT p.killmail_id, p.killmail_time, p.is_victim
+          FROM participants p
+          WHERE p.character_id = $1
+            AND p.killmail_time >= $2
+        ),
+        character_activity AS (
+          SELECT
             k.killmail_time,
             k.solar_system_id,
             s.system_name,
             s.region_name,
             EXTRACT(HOUR FROM k.killmail_time) as hour_utc,
-        CASE
-              WHEN k.victim_character_id = $3 THEN 'death'
+            CASE
+              WHEN cp.is_victim THEN 'death'
               ELSE 'kill'
             END as activity_type,
-            COALESCE((k.raw_data->>'total_value')::numeric, 0) as isk_value
-          FROM killmails_raw k
-          LEFT JOIN eve_systems s ON k.solar_system_id = s.system_id
-          WHERE k.killmail_time >= $2
-            AND (
-              k.victim_character_id = $3
-              OR EXISTS (
-                SELECT 1
-                FROM jsonb_array_elements(k.raw_data->'attackers') as attacker
-                WHERE attacker->>'character_id' = $1
-              )
-            )
+            COALESCE((k.raw_data->'zkb'->>'totalValue')::numeric, k.total_value, 0) as isk_value
+          FROM character_participation cp
+          JOIN killmails_raw k ON k.killmail_id = cp.killmail_id AND k.killmail_time = cp.killmail_time
+          LEFT JOIN eve_solar_systems s ON k.solar_system_id = s.system_id
         ),
         regional_activity AS (
         SELECT
@@ -635,8 +815,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
 
         case Ecto.Adapters.SQL.query(EveDmv.Repo, intelligence_summary_query, [
                character_id,
-               since_date,
-               character_id
+               since_date
              ]) do
           {:ok,
            %{
@@ -662,10 +841,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
               total_kills: total_kills || 0,
               total_deaths: total_deaths || 0,
               kill_death_ratio:
-                if(total_deaths && total_deaths > 0,
-                  do: Float.round(total_kills / total_deaths, 2),
-                  else: :infinite
-                ),
+                calculate_kd_ratio(total_kills, total_deaths),
               threat_level: threat_level,
               activity_intensity: activity_intensity,
               mobility_score: calculate_mobility_score(unique_systems, unique_regions),
@@ -673,8 +849,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
               analysis_period: %{
                 from: since_date,
                 to: DateTime.utc_now(),
-                span_hours:
-                  if(activity_span_hours, do: Float.round(activity_span_hours, 1), else: 0.0)
+                span_hours: to_float(activity_span_hours) || 0.0
               }
             }
 
@@ -861,8 +1036,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
   end
 
   defp calculate_activity_intensity(total_events, activity_span_hours) do
-    if activity_span_hours && activity_span_hours > 0 do
-      events_per_hour = total_events / activity_span_hours
+    # Convert values to floats to handle Decimal types from database
+    events = to_float(total_events)
+    hours = to_float(activity_span_hours)
+
+    if hours && hours > 0 do
+      events_per_hour = events / hours
 
       cond do
         events_per_hour >= 5 -> :very_high
@@ -878,10 +1057,33 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
 
   defp calculate_mobility_score(unique_systems, unique_regions) do
     # Simple mobility score based on system and region diversity
-    system_score = min(unique_systems / 10, 1.0) * 0.7
-    region_score = min(unique_regions / 5, 1.0) * 0.3
+    # Convert to float to handle database types
+    systems = to_float(unique_systems) || 0.0
+    regions = to_float(unique_regions) || 0.0
+
+    system_score = min(systems / 10, 1.0) * 0.7
+    region_score = min(regions / 5, 1.0) * 0.3
 
     Float.round(system_score + region_score, 2)
+  end
+
+  # Helper to safely convert database values (Decimal, integer, nil) to float
+  defp to_float(nil), do: nil
+  defp to_float(%Decimal{} = d), do: Decimal.to_float(d)
+  defp to_float(n) when is_integer(n), do: n * 1.0
+  defp to_float(n) when is_float(n), do: n
+  defp to_float(_), do: nil
+
+  # Helper to calculate kill/death ratio safely
+  defp calculate_kd_ratio(kills, deaths) do
+    k = to_float(kills) || 0.0
+    d = to_float(deaths) || 0.0
+
+    cond do
+      d > 0 -> Float.round(k / d, 2)
+      k > 0 -> :infinite
+      true -> 0.0
+    end
   end
 
   defp generate_overall_assessment(

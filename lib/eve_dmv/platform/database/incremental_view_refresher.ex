@@ -14,14 +14,14 @@ defmodule EveDmv.Platform.Database.IncrementalViewRefresher do
   require Logger
 
   @refresh_interval :timer.minutes(5)
-  @incremental_views %{
+  # Materialized views can only be fully refreshed - there is no incremental option.
+  # The full_refresh_interval determines the minimum time between refreshes.
+  @materialized_views %{
     "character_activity_summary" => %{
-      refresh_function: :refresh_character_activity,
       full_refresh_interval: :timer.hours(24),
       tracking_table: "view_refresh_tracking"
     },
     "system_activity_heatmap" => %{
-      refresh_function: :refresh_system_heatmap,
       full_refresh_interval: :timer.hours(6),
       tracking_table: "view_refresh_tracking"
     }
@@ -126,7 +126,7 @@ defmodule EveDmv.Platform.Database.IncrementalViewRefresher do
     start_time = System.monotonic_time(:millisecond)
 
     results =
-      Enum.map(@incremental_views, fn {view_name, config} ->
+      Enum.map(@materialized_views, fn {view_name, config} ->
         refresh_result = perform_view_refresh(view_name, config)
         {view_name, refresh_result}
       end)
@@ -142,11 +142,12 @@ defmodule EveDmv.Platform.Database.IncrementalViewRefresher do
   end
 
   defp perform_view_refresh(view_name, config) do
-    last_refresh = get_last_refresh_time(view_name)
     last_full_refresh = get_last_full_refresh_time(view_name)
 
-    # Determine if we need a full refresh
-    needs_full_refresh =
+    # Determine if enough time has passed to warrant a refresh
+    # For materialized views, we always do full refresh (the only option)
+    # This check just determines WHEN to refresh, not HOW
+    should_refresh =
       case last_full_refresh do
         nil ->
           true
@@ -156,33 +157,12 @@ defmodule EveDmv.Platform.Database.IncrementalViewRefresher do
           time_since > config.full_refresh_interval
       end
 
-    if needs_full_refresh do
+    if should_refresh do
+      # Materialized views can only be fully refreshed - there is no incremental option
       perform_full_refresh(view_name)
     else
-      perform_incremental_refresh(view_name, config, last_refresh)
-    end
-  end
-
-  defp perform_incremental_refresh(view_name, config, last_refresh) do
-    Logger.info("Performing incremental refresh for #{view_name}")
-    start_time = System.monotonic_time(:millisecond)
-
-    try do
-      # Call the appropriate refresh function
-      refresh_function = config.refresh_function
-      result = apply(__MODULE__, refresh_function, [last_refresh])
-
-      duration = System.monotonic_time(:millisecond) - start_time
-
-      # Update tracking
-      update_refresh_tracking(view_name, "incremental", duration, result[:rows_updated] || 0)
-
-      Logger.info("Incremental refresh of #{view_name} completed in #{duration}ms")
-      {:ok, duration, result}
-    rescue
-      error ->
-        Logger.error("Failed to refresh #{view_name}: #{inspect(error)}")
-        {:error, error}
+      Logger.debug("Skipping refresh of #{view_name} - recently refreshed")
+      {:ok, 0, %{rows_updated: 0, skipped: true}}
     end
   end
 
@@ -215,66 +195,7 @@ defmodule EveDmv.Platform.Database.IncrementalViewRefresher do
     end
   end
 
-  # Specific refresh implementations
-
-  def refresh_character_activity(_last_refresh) do
-    # character_activity_summary is a materialized view, not a regular table.
-    # Materialized views cannot be incrementally updated with INSERT - they
-    # must be fully refreshed. We use CONCURRENTLY to avoid locking reads.
-    # Use increased work_mem to avoid disk spills during sort operations.
-    result =
-      EveDmv.Repo.transaction(fn ->
-        SQL.query!(EveDmv.Repo, "SET LOCAL work_mem = '32MB'")
-
-        SQL.query!(
-          EveDmv.Repo,
-          "REFRESH MATERIALIZED VIEW CONCURRENTLY character_activity_summary"
-        )
-      end)
-
-    case result do
-      {:ok, query_result} ->
-        %{rows_updated: query_result.num_rows}
-
-      {:error, error} ->
-        raise error
-    end
-  end
-
-  def refresh_system_heatmap(_last_refresh) do
-    # system_activity_heatmap is a materialized view, not a regular table.
-    # Materialized views cannot be incrementally updated with INSERT - they
-    # must be fully refreshed. We use CONCURRENTLY to avoid locking reads.
-    # Use increased work_mem to avoid disk spills during sort operations.
-    result =
-      EveDmv.Repo.transaction(fn ->
-        SQL.query!(EveDmv.Repo, "SET LOCAL work_mem = '32MB'")
-        SQL.query!(EveDmv.Repo, "REFRESH MATERIALIZED VIEW CONCURRENTLY system_activity_heatmap")
-      end)
-
-    case result do
-      {:ok, query_result} ->
-        %{rows_updated: query_result.num_rows}
-
-      {:error, error} ->
-        raise error
-    end
-  end
-
   # Helper functions
-
-  defp get_last_refresh_time(view_name) do
-    sql = """
-    SELECT last_refresh_time
-    FROM view_refresh_tracking
-    WHERE view_name = $1
-    """
-
-    case SQL.query(EveDmv.Repo, sql, [view_name]) do
-      {:ok, %{rows: [[timestamp]]}} when timestamp != nil -> timestamp
-      _ -> nil
-    end
-  end
 
   defp get_last_full_refresh_time(view_name) do
     sql = """
@@ -329,7 +250,7 @@ defmodule EveDmv.Platform.Database.IncrementalViewRefresher do
   end
 
   defp refresh_single_view(view_name, opts) do
-    case Map.get(@incremental_views, view_name) do
+    case Map.get(@materialized_views, view_name) do
       nil ->
         {:error, :unknown_view}
 
@@ -337,8 +258,8 @@ defmodule EveDmv.Platform.Database.IncrementalViewRefresher do
         if Keyword.get(opts, :full, false) do
           perform_full_refresh(view_name)
         else
-          last_refresh = get_last_refresh_time(view_name)
-          perform_incremental_refresh(view_name, config, last_refresh)
+          # Use perform_view_refresh which handles incremental refresh logic
+          perform_view_refresh(view_name, config)
         end
     end
   end
@@ -368,7 +289,7 @@ defmodule EveDmv.Platform.Database.IncrementalViewRefresher do
                 last_duration_ms: duration,
                 last_rows_updated: rows,
                 last_refresh_type: type,
-                configured: Map.has_key?(@incremental_views, name)
+                configured: Map.has_key?(@materialized_views, name)
               }
             end),
           last_run: state.last_refresh,

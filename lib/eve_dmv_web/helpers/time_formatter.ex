@@ -25,7 +25,7 @@ defmodule EveDmvWeb.Helpers.TimeFormatter do
   @doc """
   Formats a DateTime as relative time (e.g., "5m ago", "2h ago").
   """
-  @spec format_relative_time(DateTime.t() | nil) :: String.t()
+  @spec format_relative_time(DateTime.t() | NaiveDateTime.t() | nil) :: String.t()
   def format_relative_time(%DateTime{} = datetime) do
     diff = DateTimeUtils.diff(DateTime.utc_now(), datetime, :second)
 
@@ -35,6 +35,16 @@ defmodule EveDmvWeb.Helpers.TimeFormatter do
       diff < @seconds_per_day -> "#{div(diff, @seconds_per_hour)}h ago"
       true -> "#{div(diff, @seconds_per_day)}d ago"
     end
+  end
+
+  def format_relative_time(%NaiveDateTime{} = datetime) do
+    # Convert NaiveDateTime to DateTime (assuming UTC)
+    case DateTimeUtils.to_datetime(datetime) do
+      nil -> "N/A"
+      dt -> format_relative_time(dt)
+    end
+  rescue
+    _ -> "N/A"
   end
 
   def format_relative_time(nil), do: "N/A"

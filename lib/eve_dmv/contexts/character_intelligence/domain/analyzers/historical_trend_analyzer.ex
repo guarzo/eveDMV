@@ -4,7 +4,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrend
   All analysis based on real killmail data - NO PLACEHOLDERS.
   """
 
-  import Ash.Query
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   alias EveDmv.Killmails.KillmailRaw
   require Logger
@@ -80,27 +79,44 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrend
 
   defp get_historical_killmails(character_id, months) do
     cutoff_date = DateTime.add(DateTime.utc_now(), -months * 30 * 86_400, :second)
-    character_id_str = to_string(character_id)
 
-    KillmailRaw
-    |> filter(killmail_time > ^cutoff_date)
-    |> filter(
-      victim_character_id == ^character_id or
-        fragment(
-          "EXISTS (SELECT 1 FROM jsonb_array_elements(raw_data->'attackers') a WHERE a->>'character_id' = ?)",
-          ^character_id_str
-        )
-    )
-    |> select([
-      :killmail_id,
-      :killmail_time,
-      :solar_system_id,
-      :victim_character_id,
-      :victim_ship_type_id,
-      :raw_data,
-      :total_value
-    ])
-    |> Ash.read!(domain: EveDmv.Api)
+    # Optimized: Use participants table first to find killmail_ids via indexed lookup,
+    # then fetch full killmail data. This avoids slow jsonb_array_elements scan.
+    # Uses idx_participants_character_activity index on (character_id, killmail_time)
+    query = """
+    SELECT DISTINCT
+      k.killmail_id,
+      k.killmail_time,
+      k.solar_system_id,
+      k.victim_character_id,
+      k.victim_ship_type_id,
+      k.raw_data,
+      k.total_value
+    FROM participants p
+    INNER JOIN killmails_raw k ON k.killmail_id = p.killmail_id AND k.killmail_time = p.killmail_time
+    WHERE p.character_id = $1
+      AND p.killmail_time > $2
+    ORDER BY k.killmail_time DESC
+    """
+
+    case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [character_id, cutoff_date]) do
+      {:ok, %{rows: rows, columns: columns}} ->
+        columns = Enum.map(columns, &String.to_atom/1)
+
+        Enum.map(rows, fn row ->
+          row
+          |> Enum.zip(columns)
+          |> Enum.map(fn {val, col} -> {col, val} end)
+          |> Map.new()
+          |> then(fn map ->
+            struct(KillmailRaw, map)
+          end)
+        end)
+
+      {:error, error} ->
+        Logger.error("Failed to get historical killmails: #{inspect(error)}")
+        []
+    end
   rescue
     error ->
       Logger.error("Failed to get historical killmails: #{inspect(error)}")

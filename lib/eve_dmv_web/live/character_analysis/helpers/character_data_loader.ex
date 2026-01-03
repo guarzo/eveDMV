@@ -31,12 +31,20 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
     ninety_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
 
     # Get character stats using optimized query
-    stats =
+    stats_result =
       QueryPerformance.tracked_query(
         "character_stats",
         fn -> CharacterQueries.get_character_stats(character_id, ninety_days_ago) end,
         metadata: %{character_id: character_id}
       )
+
+    # Unwrap the {:ok, value} result from QueryCache
+    stats =
+      case stats_result do
+        {:ok, value} -> value
+        value when is_map(value) -> value
+        _ -> %{kills: 0, deaths: 0, kd_ratio: 0}
+      end
 
     # Get character name from killmail data
     character_name =
@@ -59,23 +67,60 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
       )
 
     # Get ship and weapon preferences from CharacterIntelligence context
+    # Transform to the format expected by ActivityFeedComponent: [{ship_name, stats}]
     top_ships =
       case CharacterIntelligence.get_detailed_ship_preferences(character_id, ninety_days_ago) do
-        {:ok, %{preferences: ships, stats: _stats}} -> ships
-        _ -> []
+        {:ok, %{preferences: ships, stats: _stats}} ->
+          Enum.map(ships, fn ship ->
+            {
+              ship.ship_name,
+              %{
+                ship_type_id: to_string(ship.ship_type_id),
+                kills: ship.kills_in_ship,
+                deaths: ship.losses_in_ship
+              }
+            }
+          end)
+
+        _ ->
+          []
       end
 
+    # Get ship loadouts (weapons grouped by ship) - only real data, no inference
+    ship_loadouts =
+      case CharacterIntelligence.get_ship_loadouts(character_id, ninety_days_ago) do
+        {:ok, %{ship_loadouts: loadouts}} -> loadouts
+        {:error, _} -> []
+      end
+
+    # Keep weapon_preferences for backwards compatibility (flat list)
     weapon_preferences =
       case CharacterIntelligence.get_weapon_preferences(character_id, ninety_days_ago) do
-        {:ok, weapons} -> weapons
-        {:error, _} -> []
+        {:ok, %{preferences: weapons}} ->
+          Enum.map(weapons, fn weapon ->
+            %{
+              weapon_name: weapon.weapon_name,
+              usage_count: weapon.usage_count
+            }
+          end)
+
+        {:ok, weapons} when is_list(weapons) ->
+          Enum.map(weapons, fn weapon ->
+            %{
+              weapon_name: Map.get(weapon, :weapon_name) || Map.get(weapon, "weapon_name"),
+              usage_count: Map.get(weapon, :usage_count) || Map.get(weapon, "usage_count")
+            }
+          end)
+
+        {:error, _} ->
+          []
       end
 
     # Calculate ISK efficiency
     isk_stats =
       case CharacterIntelligence.calculate_isk_efficiency(character_id, ninety_days_ago) do
         {:ok, stats} -> stats
-        {:error, _} -> %{efficiency: 0, destroyed: 0, lost: 0}
+        {:error, _} -> %{efficiency_percentage: 0.0, isk_destroyed: 0.0, isk_lost: 0.0}
       end
 
     # Get external groups analysis (15-day window for more recent activity)
@@ -99,16 +144,39 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
 
     activity_stats =
       case CharacterIntelligence.calculate_activity_stats(character_id, thirty_days_ago) do
-        {:ok, stats} -> stats
-        {:error, _} -> %{recent_kills: 0, most_active_weekday: nil, active_days: 0}
+        {:ok, %{stats: stats}} -> stats
+        {:error, _} -> %{total_kills: 0, peak_activity_day: nil, peak_activity_hour: nil, active_days: 0}
       end
 
-    # Calculate intelligence summary
-    intelligence_summary =
+    # Calculate intelligence summary - build structure expected by component
+    # The component expects: peak_activity_hour, top_location, primary_timezone
+    raw_intelligence =
       case CharacterIntelligence.get_intelligence_summary(character_id, ninety_days_ago) do
         {:ok, summary} -> summary
-        {:error, _} -> %{peak_activity_hour: nil, top_location: %{}, top_region: %{}}
+        {:error, _} -> %{}
       end
+
+    # Extract top region from regional_activity if available
+    top_region =
+      case Map.get(raw_intelligence, :regional_activity) do
+        [first | _] when is_map(first) ->
+          %{name: Map.get(first, "region") || Map.get(first, :region)}
+
+        _ ->
+          %{}
+      end
+
+    # Build the structure expected by the component
+    intelligence_summary = %{
+      peak_activity_hour: activity_stats.peak_activity_hour,
+      top_location: top_region,
+      top_region: top_region,
+      primary_timezone: derive_timezone(activity_stats.peak_activity_hour),
+      # Also include the raw data for other uses
+      total_events: Map.get(raw_intelligence, :total_events, 0),
+      unique_systems: Map.get(raw_intelligence, :unique_systems, 0),
+      regional_activity: Map.get(raw_intelligence, :regional_activity, [])
+    }
 
     analysis = %{
       character_id: character_id,
@@ -120,15 +188,16 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
       total_kills: stats.kills,
       total_deaths: stats.deaths,
       kd_ratio: stats.kd_ratio,
-      isk_efficiency: isk_stats.efficiency,
-      isk_destroyed: isk_stats.destroyed,
-      isk_lost: isk_stats.lost,
+      isk_efficiency: isk_stats.efficiency_percentage,
+      isk_destroyed: isk_stats.isk_destroyed,
+      isk_lost: isk_stats.isk_lost,
       top_ships: top_ships,
       weapon_preferences: weapon_preferences,
+      ship_loadouts: ship_loadouts,
       external_groups: external_groups,
       gang_size_patterns: gang_size_patterns,
-      recent_kills: activity_stats.recent_kills,
-      most_active_day: activity_stats.most_active_weekday,
+      recent_kills: activity_stats.total_kills,
+      most_active_day: activity_stats.peak_activity_day,
       active_days: activity_stats.active_days,
       intelligence_summary: intelligence_summary
     }
@@ -139,4 +208,39 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
       Logger.error("Analysis failed for character #{character_id}: #{inspect(error)}")
       {:error, "Failed to analyze character: #{inspect(error)}"}
   end
+
+  # Derive timezone from peak activity hour (EVE time is UTC)
+  # Maps peak activity UTC hour to the player's likely real-world timezone.
+  #
+  # EVE time is UTC. We infer timezone based on what would be "prime time" (evening hours)
+  # for players in different regions:
+  #
+  # | UTC Hour   | US Time (EST)      | EU Time (CET)     | AU Time (AEDT)    |
+  # |------------|-------------------|-------------------|-------------------|
+  # | 00:00-08:00| 19:00-03:00 (eve) | 01:00-09:00 (night)| 11:00-19:00 (day)|
+  # | 08:00-16:00| 03:00-11:00 (night)| 09:00-17:00 (day) | 19:00-03:00 (eve)|
+  # | 16:00-24:00| 11:00-19:00 (day) | 17:00-01:00 (eve) | 03:00-11:00 (night)|
+  #
+  # Players most likely play during their evening hours (17:00-01:00 local).
+  defp derive_timezone(nil), do: nil
+
+  defp derive_timezone(peak_hour) when is_number(peak_hour) do
+    # Convert to integer in case PostgreSQL returns a float from EXTRACT
+    hour = if is_float(peak_hour), do: trunc(peak_hour), else: peak_hour
+
+    cond do
+      # 00:00-08:00 UTC = US evening/late night (19:00-03:00 EST)
+      hour >= 0 and hour < 8 -> "US TZ"
+      # 08:00-16:00 UTC = EU evening (09:00-17:00 CET) / AU evening (19:00-03:00 AEDT overlap)
+      hour >= 8 and hour < 16 -> "EU TZ"
+      # 16:00-24:00 UTC = EU late night / US daytime / potential AU
+      hour >= 16 and hour < 20 -> "US TZ"
+      # 20:00-24:00 UTC = Could be AU prime time or US afternoon
+      hour >= 20 and hour < 24 -> "AU/NZ TZ"
+      true -> nil
+    end
+  end
+
+  defp derive_timezone(%Decimal{} = peak_hour), do: derive_timezone(Decimal.to_integer(peak_hour))
+  defp derive_timezone(_), do: nil
 end

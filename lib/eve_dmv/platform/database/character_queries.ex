@@ -20,41 +20,25 @@ defmodule EveDmv.Platform.Database.CharacterQueries do
     QueryCache.get_or_compute(
       cache_key,
       fn ->
-        # Deaths are easy - we have a direct column
-        deaths_query = """
-        SELECT COUNT(*) as death_count
-        FROM killmails_raw
-        WHERE victim_character_id = $1
-          AND killmail_time >= $2
+        # Use participants table for fast indexed lookup
+        # This replaces the slow JSONB containment query
+        # Uses idx_participants_character_activity index on (character_id, killmail_time)
+        stats_query = """
+        SELECT
+          COUNT(CASE WHEN p.is_victim = false THEN 1 END) as kill_count,
+          COUNT(CASE WHEN p.is_victim = true THEN 1 END) as death_count
+        FROM participants p
+        WHERE p.character_id = $1
+          AND p.killmail_time >= $2
         """
 
-        # For kills, we need to check the raw_data
-        # But we'll limit the search to recent killmails for performance
-        kills_query = """
-        WITH character_kills AS (
-          SELECT killmail_id
-          FROM killmails_raw
-          WHERE killmail_time >= $2
-            AND raw_data @> jsonb_build_object(
-              'attackers', jsonb_build_array(
-                jsonb_build_object('character_id', $1::text)
-              )
-            )
-          LIMIT 1000
-        )
-        SELECT COUNT(*) as kill_count FROM character_kills
-        """
-
-        # Run queries
-        {:ok, %{rows: [[death_count]]}} = Repo.query(deaths_query, [character_id, since_date])
-
-        {:ok, %{rows: [[kill_count]]}} =
-          Repo.query(kills_query, [to_string(character_id), since_date])
+        {:ok, %{rows: [[kill_count, death_count]]}} =
+          Repo.query(stats_query, [character_id, since_date])
 
         %{
-          kills: kill_count,
-          deaths: death_count,
-          kd_ratio: calculate_kd_ratio(kill_count, death_count)
+          kills: kill_count || 0,
+          deaths: death_count || 0,
+          kd_ratio: calculate_kd_ratio(kill_count || 0, death_count || 0)
         }
       end,
       ttl: :timer.hours(1)

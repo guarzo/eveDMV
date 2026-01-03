@@ -188,21 +188,21 @@ defmodule EveDmv.Platform.Cache.QueryCache do
 
   @impl GenServer
   def init(_opts) do
-    # Create cache table
+    # Create cache table with :public access so any process can read/write
     cache_table =
       :ets.new(@table_name, [
         :named_table,
-        :protected,
+        :public,
         :set,
         read_concurrency: true,
         write_concurrency: true
       ])
 
-    # Create stats table
+    # Create stats table with :public access for counter updates
     stats_table =
       :ets.new(:query_cache_stats, [
         :named_table,
-        :protected,
+        :public,
         :set,
         write_concurrency: true
       ])
@@ -211,7 +211,7 @@ defmodule EveDmv.Platform.Cache.QueryCache do
     pattern_cache_table =
       :ets.new(@pattern_cache_table, [
         :named_table,
-        :protected,
+        :public,
         :set,
         read_concurrency: true
       ])

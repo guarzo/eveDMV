@@ -275,6 +275,8 @@ defmodule EveDmvWeb.SystemLive do
 
     case SQL.query(Repo, presence_query, [system_id, thirty_days_ago]) do
       {:ok, %{rows: rows}} ->
+        # Corporation names are resolved at ingestion time in DataProcessor.enrich_entity_names/1
+        # If names are missing, run: mix run priv/repo/scripts/backfill_corporation_names.exs
         corporations =
           Enum.map(rows, fn [
                               corp_id,
@@ -316,7 +318,10 @@ defmodule EveDmvWeb.SystemLive do
       COUNT(CASE WHEN k.killmail_time >= $2 THEN 1 END) as recent_kills,
       COUNT(CASE WHEN k.killmail_time >= $3 THEN 1 END) as total_kills,
       COUNT(DISTINCT CASE WHEN k.killmail_time >= $2 THEN p.corporation_id END) as recent_hostile_corps,
-      COUNT(DISTINCT CASE WHEN k.killmail_time >= $2 THEN DATE(k.killmail_time) END) as recent_active_days
+      COUNT(DISTINCT CASE WHEN k.killmail_time >= $2 THEN DATE(k.killmail_time) END) as recent_active_days,
+      COALESCE(AVG(CASE WHEN k.killmail_time >= $2 THEN
+        COALESCE(k.total_value, (k.raw_data->'zkb'->>'totalValue')::numeric)
+      END), 0) as recent_avg_value
     FROM killmails_raw k
     JOIN participants p ON k.killmail_id = p.killmail_id
     WHERE k.solar_system_id = $1
@@ -329,14 +334,14 @@ defmodule EveDmvWeb.SystemLive do
            seven_days_ago,
            thirty_days_ago
          ]) do
-      {:ok, %{rows: [[recent_kills, total_kills, hostile_corps, active_days]]}} ->
+      {:ok, %{rows: [[recent_kills, total_kills, hostile_corps, active_days, avg_value]]}} ->
         # Calculate danger score (0-100) without value component
         # Up to 40 points for recent activity
-        recent_activity_score = min(recent_kills * 5, 40)
+        recent_activity_score = min((recent_kills || 0) * 5, 40)
         # Up to 30 points for multiple hostile corps
-        hostility_score = min(hostile_corps * 3, 30)
+        hostility_score = min((hostile_corps || 0) * 3, 30)
         # Up to 30 points for consistent activity
-        consistency_score = min(active_days * 4, 30)
+        consistency_score = min((active_days || 0) * 4, 30)
 
         danger_score = recent_activity_score + hostility_score + consistency_score
 
@@ -353,12 +358,11 @@ defmodule EveDmvWeb.SystemLive do
          %{
            danger_score: danger_score,
            danger_level: danger_level,
-           recent_kills: recent_kills,
-           total_kills: total_kills,
-           hostile_corporations: hostile_corps,
-           active_days: active_days,
-           # Not available in current schema
-           recent_avg_value: 0.0
+           recent_kills: recent_kills || 0,
+           total_kills: total_kills || 0,
+           hostile_corporations: hostile_corps || 0,
+           active_days: active_days || 0,
+           recent_avg_value: decimal_to_float(avg_value)
          }}
 
       {:error, reason} ->
@@ -437,7 +441,7 @@ defmodule EveDmvWeb.SystemLive do
       k.killmail_time,
       k.victim_character_id,
       k.victim_ship_type_id,
-      k.total_value,
+      COALESCE(k.total_value, (k.raw_data->'zkb'->>'totalValue')::numeric, 0) as total_value,
       k.attacker_count,
       t.type_name as ship_name,
       t.group_name as ship_group,
@@ -514,4 +518,11 @@ defmodule EveDmvWeb.SystemLive do
     (ship_group && ship_group in structure_groups) ||
       (ship_name && Enum.any?(structure_keywords, &String.contains?(ship_name, &1)))
   end
+
+  # Safely convert Decimal or number to float
+  defp decimal_to_float(nil), do: 0.0
+  defp decimal_to_float(%Decimal{} = value), do: Decimal.to_float(value)
+  defp decimal_to_float(value) when is_float(value), do: value
+  defp decimal_to_float(value) when is_integer(value), do: value / 1.0
+  defp decimal_to_float(_), do: 0.0
 end

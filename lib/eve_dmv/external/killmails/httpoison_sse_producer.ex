@@ -17,6 +17,9 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
   # Sprint 15A: Memory optimization - prevent buffer overflow
   # 1MB buffer limit
   @max_buffer_size 1_048_576
+  # Deduplication: Track last N killmail IDs to prevent duplicate processing
+  # 1000 IDs should cover ~15-20 minutes of typical EVE activity
+  @dedup_cache_size 1000
 
   def init(opts) do
     url = Keyword.fetch!(opts, :url)
@@ -34,7 +37,10 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
       buffer: "",
       killmail_count: 0,
       last_summary_time: DateTimeUtils.utc_now(),
-      summary_timer: summary_timer
+      summary_timer: summary_timer,
+      # Deduplication cache: stores recent killmail IDs as a list (newest first)
+      seen_killmails: [],
+      duplicate_count: 0
     }
 
     {:producer, state,
@@ -114,22 +120,32 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
     # Process incoming SSE chunk
     {events, new_buffer} = parse_sse_data(combined_data)
 
-    # Convert events to Broadway messages and count killmails
+    # Convert events to Broadway messages with deduplication
     filtered_events = Enum.reject(events, &is_nil/1)
 
-    {broadway_messages, killmail_count} =
-      Enum.reduce(filtered_events, {[], 0}, fn event, {messages, count} ->
-        case to_broadway_message(event) do
-          {:batch, batch_messages} ->
-            {messages ++ batch_messages, count + length(batch_messages)}
+    {broadway_messages, killmail_count, new_seen, dup_count} =
+      Enum.reduce(filtered_events, {[], 0, state.seen_killmails, 0}, fn event,
+                                                                        {messages, count, seen,
+                                                                         dups} ->
+        case to_broadway_message_with_dedup(event, seen) do
+          {:ok, {:batch, batch_messages}, updated_seen} ->
+            {messages ++ batch_messages, count + length(batch_messages), updated_seen, dups}
 
-          message when is_struct(message, Message) ->
-            {[message | messages], count + 1}
+          {:ok, message, updated_seen} when is_struct(message, Message) ->
+            {[message | messages], count + 1, updated_seen, dups}
 
-          nil ->
-            {messages, count}
+          {:duplicate, _killmail_id, updated_seen} ->
+            {messages, count, updated_seen, dups + 1}
+
+          {:skip, updated_seen} ->
+            {messages, count, updated_seen, dups}
         end
       end)
+
+    # Log duplicates if any were found
+    if dup_count > 0 do
+      Logger.debug("Skipped #{dup_count} duplicate killmail(s) in chunk")
+    end
 
     # Only emit messages if we have demand
     {to_emit, remaining_demand} =
@@ -145,7 +161,9 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
        state
        | buffer: new_buffer,
          demand: remaining_demand,
-         killmail_count: state.killmail_count + killmail_count
+         killmail_count: state.killmail_count + killmail_count,
+         seen_killmails: new_seen,
+         duplicate_count: state.duplicate_count + dup_count
      }}
   end
 
@@ -182,15 +200,27 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
     connection_duration =
       if state.connected_at, do: DateTimeUtils.diff(now, state.connected_at, :second), else: 0
 
+    # Include duplicate stats if any were found
+    dup_info =
+      if state.duplicate_count > 0,
+        do: " | Duplicates filtered: #{state.duplicate_count}",
+        else: ""
+
     Logger.info(
-      "📊 EVE DMV Killmail Summary: #{state.killmail_count} kills received in last #{duration}s (#{rate}/min) | Status: #{connection_status} for #{connection_duration}s"
+      "📊 EVE DMV Killmail Summary: #{state.killmail_count} kills received in last #{duration}s (#{rate}/min) | Status: #{connection_status} for #{connection_duration}s#{dup_info}"
     )
 
     # Schedule next summary log
     summary_timer = Process.send_after(self(), :log_summary, 60_000)
 
     {:noreply, [],
-     %{state | killmail_count: 0, last_summary_time: now, summary_timer: summary_timer}}
+     %{
+       state
+       | killmail_count: 0,
+         last_summary_time: now,
+         summary_timer: summary_timer,
+         duplicate_count: 0
+     }}
   end
 
   def handle_info(:retry_connection, state) do
@@ -296,6 +326,59 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
       # No complete events yet, keep everything in buffer
       {[], data}
     end
+  end
+
+  # Deduplication wrapper for to_broadway_message
+  # Returns {:ok, message, updated_seen}, {:duplicate, killmail_id, seen}, or {:skip, seen}
+  defp to_broadway_message_with_dedup(%{data: payload} = event, seen_killmails) do
+    # Try to extract killmail_id for deduplication
+    case extract_killmail_id(payload) do
+      {:ok, killmail_id} ->
+        if killmail_id in seen_killmails do
+          # Already seen this killmail, skip it
+          Logger.debug("Skipping duplicate killmail #{killmail_id}")
+          {:duplicate, killmail_id, seen_killmails}
+        else
+          # New killmail, process and add to seen list
+          case to_broadway_message(event) do
+            nil ->
+              {:skip, seen_killmails}
+
+            {:batch, _} = batch ->
+              # For batch, we add all IDs - extract from batch
+              updated_seen = add_to_seen(seen_killmails, killmail_id)
+              {:ok, batch, updated_seen}
+
+            message ->
+              updated_seen = add_to_seen(seen_killmails, killmail_id)
+              {:ok, message, updated_seen}
+          end
+        end
+
+      :not_a_killmail ->
+        # Non-killmail events pass through without deduplication
+        case to_broadway_message(event) do
+          nil -> {:skip, seen_killmails}
+          message -> {:ok, message, seen_killmails}
+        end
+    end
+  end
+
+  # Extract killmail_id from payload for deduplication
+  defp extract_killmail_id(payload) when is_binary(payload) do
+    # Quick pattern match to extract killmail_id without full JSON parse
+    case Regex.run(~r/"killmail_id"\s*:\s*(\d+)/, payload) do
+      [_, id_str] -> {:ok, String.to_integer(id_str)}
+      nil -> :not_a_killmail
+    end
+  end
+
+  defp extract_killmail_id(_), do: :not_a_killmail
+
+  # Add killmail_id to seen list, maintaining max size
+  defp add_to_seen(seen, killmail_id) do
+    [killmail_id | seen]
+    |> Enum.take(@dedup_cache_size)
   end
 
   defp to_broadway_message(%{event: "killmail", data: payload}) do
