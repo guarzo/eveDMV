@@ -18,7 +18,7 @@ defmodule EveDmvWeb.CorporationLive do
   import EveDmvWeb.EveImageComponents
   import EveDmvWeb.FormatHelpers
 
-  alias EveDmv.Analytics.BattleDetector
+  alias EveDmv.Contexts.BattleAnalysis.Domain.Services.DetectionService, as: BattleDetector
   alias EveDmv.Contexts.CorporationIntelligence
   alias EveDmv.Pagination.CursorPaginator
   alias EveDmv.Platform.Cache.AnalysisCache

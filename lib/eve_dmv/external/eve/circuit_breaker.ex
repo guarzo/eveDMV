@@ -25,7 +25,8 @@ defmodule EveDmv.Eve.CircuitBreaker do
     :failure_threshold,
     :recovery_timeout,
     :success_threshold,
-    :timeout
+    :timeout,
+    :error_classifier
   ]
 
   # Circuit states
@@ -46,6 +47,13 @@ defmodule EveDmv.Eve.CircuitBreaker do
   # Request timeout
   @default_timeout 10_000
 
+  @doc """
+  Default error classifier that treats all errors as failures.
+  Returns true for any error, preserving the original circuit breaker behavior.
+  """
+  @spec default_error_classifier(term()) :: boolean()
+  def default_error_classifier(_error), do: true
+
   # Client API
 
   @doc """
@@ -58,11 +66,32 @@ defmodule EveDmv.Eve.CircuitBreaker do
 
   @doc """
   Execute a function with circuit breaker protection.
+
+  ## Options
+
+    * `:timeout` - Request timeout in milliseconds (default: #{@default_timeout})
+    * `:error_classifier` - A function `(error :: term()) :: boolean()` that determines
+      whether an error should count toward opening the circuit. Returns `true` if the
+      error should be counted as a failure, `false` otherwise. When `false`, the error
+      is still returned but doesn't affect circuit state. Defaults to the instance-level
+      classifier or `default_error_classifier/1` which treats all errors as failures.
+
+  ## Examples
+
+      # Only count 5xx errors as failures
+      CircuitBreaker.call(:my_service, fn -> ... end,
+        error_classifier: fn
+          {:http_error, status} when status >= 500 -> true
+          _ -> false
+        end
+      )
+
   """
   @spec call(atom(), (-> term()), keyword()) ::
           {:ok, term()} | {:error, atom() | {atom(), term()}}
   def call(service_name, fun, opts \\ []) do
     timeout = Keyword.get(opts, :timeout, @default_timeout)
+    error_classifier = Keyword.get(opts, :error_classifier)
 
     case GenServer.whereis(via_tuple(service_name)) do
       nil ->
@@ -82,7 +111,7 @@ defmodule EveDmv.Eve.CircuitBreaker do
         end
 
       pid ->
-        GenServer.call(pid, {:execute_request, fun, timeout}, timeout + 1000)
+        GenServer.call(pid, {:execute_request, fun, timeout, error_classifier}, timeout + 1000)
     end
   end
 
@@ -146,6 +175,7 @@ defmodule EveDmv.Eve.CircuitBreaker do
     recovery_timeout = Keyword.get(opts, :recovery_timeout, @default_recovery_timeout)
     success_threshold = Keyword.get(opts, :success_threshold, @default_success_threshold)
     timeout = Keyword.get(opts, :timeout, @default_timeout)
+    error_classifier = Keyword.get(opts, :error_classifier, &default_error_classifier/1)
 
     state = %__MODULE__{
       service_name: service_name,
@@ -156,7 +186,8 @@ defmodule EveDmv.Eve.CircuitBreaker do
       failure_threshold: failure_threshold,
       recovery_timeout: recovery_timeout,
       success_threshold: success_threshold,
-      timeout: timeout
+      timeout: timeout,
+      error_classifier: error_classifier
     }
 
     Logger.info("Circuit breaker started for service: #{inspect(service_name)}")
@@ -213,15 +244,17 @@ defmodule EveDmv.Eve.CircuitBreaker do
   end
 
   @impl GenServer
-  def handle_call({:execute_request, fun, timeout}, _from, state) do
+  def handle_call({:execute_request, fun, timeout, call_error_classifier}, _from, state) do
     current_state = determine_current_state(state)
+    # Use call-level classifier if provided, otherwise fall back to instance-level
+    error_classifier = call_error_classifier || state.error_classifier
 
     case current_state do
       @open ->
         {:reply, {:error, :circuit_open}, %{state | state: current_state}}
 
       state_val when state_val in [@closed, @half_open] ->
-        execute_and_handle_result(fun, timeout, %{state | state: current_state})
+        execute_and_handle_result(fun, timeout, error_classifier, %{state | state: current_state})
     end
   end
 
@@ -239,11 +272,66 @@ defmodule EveDmv.Eve.CircuitBreaker do
 
   # Private server functions
 
-  defp execute_and_handle_result(fun, timeout, state) do
-    # Execute with timeout
-    task = Task.async(fun)
-    raw_result = Task.await(task, timeout)
+  defp execute_and_handle_result(fun, timeout, error_classifier, state) do
+    # Execute function in a separate process without linking to avoid EXIT propagation
+    # that could crash the GenServer before we can handle errors
+    caller = self()
+    ref = make_ref()
 
+    pid =
+      spawn(fn ->
+        result =
+          try do
+            {:ok, fun.()}
+          rescue
+            e -> {:exception, e}
+          catch
+            kind, reason -> {:caught, kind, reason}
+          end
+
+        send(caller, {ref, result})
+      end)
+
+    monitor = Process.monitor(pid)
+
+    receive do
+      {^ref, {:ok, raw_result}} ->
+        Process.demonitor(monitor, [:flush])
+        handle_raw_result(raw_result, error_classifier, state)
+
+      {^ref, {:exception, exception}} ->
+        Process.demonitor(monitor, [:flush])
+        # Exceptions always count as failures (infrastructure issues)
+        new_state = handle_failure(state, exception)
+        {:reply, {:error, {:error, exception}}, new_state}
+
+      {^ref, {:caught, kind, reason}} ->
+        Process.demonitor(monitor, [:flush])
+        # Catches always count as failures (infrastructure issues)
+        new_state = handle_failure(state, {kind, reason})
+        {:reply, {:error, {kind, reason}}, new_state}
+
+      {:DOWN, ^monitor, :process, ^pid, reason} ->
+        # Process crashed unexpectedly - count as failure
+        new_state = handle_failure(state, reason)
+        {:reply, {:error, {:exit, reason}}, new_state}
+    after
+      timeout ->
+        Process.demonitor(monitor, [:flush])
+        Process.exit(pid, :kill)
+        # Drain any pending message from the killed process
+        receive do
+          {^ref, _} -> :ok
+        after
+          0 -> :ok
+        end
+
+        new_state = handle_failure(state, :timeout)
+        {:reply, {:error, :timeout}, new_state}
+    end
+  end
+
+  defp handle_raw_result(raw_result, error_classifier, state) do
     # Don't double-wrap if function already returns {:ok, _} or {:error, _}
     case raw_result do
       {:ok, _} = result ->
@@ -252,27 +340,21 @@ defmodule EveDmv.Eve.CircuitBreaker do
         {:reply, result, new_state}
 
       {:error, reason} ->
-        # Record failure and return error
-        new_state = handle_failure(state, reason)
-        {:reply, {:error, reason}, new_state}
+        # Use classifier to determine if error counts toward circuit failure
+        if error_classifier.(reason) do
+          # Error counts as failure - increment failure state
+          new_state = handle_failure(state, reason)
+          {:reply, {:error, reason}, new_state}
+        else
+          # Error doesn't count as failure - don't affect circuit state
+          {:reply, {:error, reason}, state}
+        end
 
       result ->
         # Wrap non-tuple results
         new_state = handle_success(state)
         {:reply, {:ok, result}, new_state}
     end
-  rescue
-    e ->
-      new_state = handle_failure(state, e)
-      {:reply, {:error, e}, new_state}
-  catch
-    :exit, {:timeout, _} ->
-      new_state = handle_failure(state, :timeout)
-      {:reply, {:error, :timeout}, new_state}
-
-    kind, reason ->
-      new_state = handle_failure(state, {kind, reason})
-      {:reply, {:error, {kind, reason}}, new_state}
   end
 
   defp determine_current_state(state) do

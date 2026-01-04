@@ -1,9 +1,10 @@
 defmodule EveDmv.Platform.Database.IncrementalViewRefresher do
   @moduledoc """
-  Incremental materialized view refresh strategy for improved performance.
+  Scheduled materialized view refresh manager.
 
-  Instead of fully refreshing materialized views, this module implements
-  an incremental refresh approach that only updates changed data.
+  Manages periodic full refreshes of materialized views with configurable
+  intervals. Uses REFRESH MATERIALIZED VIEW CONCURRENTLY to avoid blocking
+  reads during refresh.
   """
 
   use GenServer
@@ -167,6 +168,13 @@ defmodule EveDmv.Platform.Database.IncrementalViewRefresher do
   end
 
   defp perform_full_refresh(view_name) do
+    # Validate view_name against whitelist to prevent SQL injection
+    unless Map.has_key?(@materialized_views, view_name) do
+      raise ArgumentError,
+            "Unknown materialized view: #{inspect(view_name)}. " <>
+              "Only configured views are allowed: #{inspect(Map.keys(@materialized_views))}"
+    end
+
     Logger.info("Performing full refresh for #{view_name}")
     start_time = System.monotonic_time(:millisecond)
 
@@ -179,15 +187,14 @@ defmodule EveDmv.Platform.Database.IncrementalViewRefresher do
       end)
 
     case result do
-      {:ok, query_result} ->
+      {:ok, _query_result} ->
         duration = System.monotonic_time(:millisecond) - start_time
 
-        rows = query_result.num_rows
-
-        update_refresh_tracking(view_name, "full", duration, rows)
+        # Note: REFRESH MATERIALIZED VIEW doesn't return a meaningful row count
+        update_refresh_tracking(view_name, "full", duration, 0)
 
         Logger.info("Full refresh of #{view_name} completed in #{duration}ms")
-        {:ok, duration, %{rows_updated: rows}}
+        {:ok, duration, %{rows_updated: 0}}
 
       {:error, error} ->
         Logger.error("Failed to fully refresh #{view_name}: #{inspect(error)}")

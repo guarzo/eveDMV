@@ -73,18 +73,26 @@ defmodule EveDmv.Users.AccountManager do
     old_account_id = user.account_id
     new_account = get_account!(new_account_id)
 
-    Logger.info(
-      "Re-linking character #{user.eve_character_name} from account #{old_account_id} to #{new_account_id}"
-    )
+    if old_account_id do
+      Logger.info(
+        "Re-linking character #{user.eve_character_name} from account #{old_account_id} to #{new_account_id}"
+      )
+    else
+      Logger.info(
+        "Linking character #{user.eve_character_name} (no previous account) to account #{new_account_id}"
+      )
+    end
 
     # Update the user's account_id to point to the new account
     with {:ok, updated_user} <- link_user_to_account(user, new_account) do
       # Clean up: if old account has no more characters, we could delete it
-      # For now, just log this situation
-      old_char_count = get_account_character_count(old_account_id)
+      # For now, just log this situation (only check if there was a previous account)
+      if old_account_id do
+        old_char_count = get_account_character_count(old_account_id)
 
-      if old_char_count == 0 do
-        Logger.info("Old account #{old_account_id} now has no characters - consider cleanup")
+        if old_char_count == 0 do
+          Logger.info("Old account #{old_account_id} now has no characters - consider cleanup")
+        end
       end
 
       {:ok, new_account, updated_user}
@@ -92,11 +100,14 @@ defmodule EveDmv.Users.AccountManager do
   end
 
   @doc """
-  Gets an account by its ID. Raises if not found.
+  Gets an account by its ID. Returns nil if not found.
   """
-  @spec get_account_by_id!(account_id()) :: account() | no_return()
-  def get_account_by_id!(account_id) do
-    get_account!(account_id)
+  @spec get_account_by_id(account_id()) :: account() | nil
+  def get_account_by_id(account_id) do
+    case Ash.get(Account, account_id, domain: Api) do
+      {:ok, account} -> account
+      _ -> nil
+    end
   end
 
   @doc """
@@ -245,8 +256,11 @@ defmodule EveDmv.Users.AccountManager do
     |> Ash.update(domain: EveDmv.Api)
   end
 
+  @doc """
+  Gets an account by its ID. Raises if not found.
+  """
   @spec get_account!(account_id()) :: account() | no_return()
-  defp get_account!(account_id) do
+  def get_account!(account_id) do
     Account
     |> Ash.get(account_id, domain: Api)
     |> case do
@@ -272,6 +286,8 @@ defmodule EveDmv.Users.AccountManager do
   end
 
   @spec get_account_character_count(account_id()) :: integer()
+  defp get_account_character_count(nil), do: 0
+
   defp get_account_character_count(account_id) do
     # Use count query instead of loading all characters
     User

@@ -120,10 +120,9 @@ Before testing, ensure:
 
 **Issues Found:**
 - [x] **ISSUE-007**: All kills showed "Unknown Corp" for victim corporation. The raw killmail data from wanderer-kills contains `corporation_id` but not `corporation_name`. **FIXED** by:
-  - Added corporation ID extraction and batch preloading via `NameResolver.corporation_names()` in `preload_raw_killmail_names/1`
-  - Updated `build_killmail_from_raw/1` to resolve corporation names via `NameResolver.corporation_name()` when not provided
-  - Updated `build_killmail_display/1` (for real-time SSE) with same resolution logic
-  - Added `resolve_corporation_name/1` helper function
+  - Corporation names are now resolved at ingestion time in `DataProcessor.enrich_entity_names/1`
+  - Display code uses inline fallback to "Unknown Corp" if name is missing from pre-enriched data
+  - For existing data ingested before enrichment, run `priv/repo/scripts/backfill_corporation_names.exs`
 
 ---
 

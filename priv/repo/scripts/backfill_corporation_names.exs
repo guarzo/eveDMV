@@ -36,23 +36,37 @@ else
 
   Logger.info("Resolved #{map_size(corp_names)} corporation names")
 
-  # Update participants in batches
-  Enum.each(corp_names, fn {corp_id, corp_name} ->
-    update_query = """
-    UPDATE participants
-    SET corporation_name = $1
-    WHERE corporation_id = $2
-      AND (corporation_name IS NULL OR corporation_name = '')
+  # Build arrays for bulk update
+  {ids, names} =
+    corp_names
+    |> Enum.map(fn {corp_id, corp_name} -> {corp_id, corp_name} end)
+    |> Enum.unzip()
+
+  if Enum.empty?(ids) do
+    Logger.info("No resolved names to update - skipping bulk update")
+  else
+    # Perform a single bulk UPDATE using PostgreSQL UNNEST
+    bulk_update_query = """
+    UPDATE participants p
+    SET corporation_name = t.corporation_name
+    FROM (
+      SELECT unnest($1::text[]) AS corporation_name,
+             unnest($2::integer[]) AS corporation_id
+    ) t
+    WHERE p.corporation_id = t.corporation_id
+      AND (p.corporation_name IS NULL OR p.corporation_name = '')
     """
 
-    case SQL.query(Repo, update_query, [corp_name, corp_id]) do
+    case SQL.query(Repo, bulk_update_query, [names, ids]) do
       {:ok, %{num_rows: num_rows}} ->
-        Logger.info("Updated #{num_rows} participants for corporation #{corp_id}: #{corp_name}")
+        Logger.info(
+          "Bulk updated #{num_rows} participants for #{length(ids)} corporations"
+        )
 
       {:error, error} ->
-        Logger.error("Failed to update corporation #{corp_id}: #{inspect(error)}")
+        Logger.error("Bulk update failed: #{inspect(error)}")
     end
-  end)
+  end
 
   Logger.info("Corporation name backfill complete!")
 end

@@ -47,92 +47,94 @@
               </div>
             </form>
 
-            <!-- Search Results Dropdown (only for authenticated users) -->
-            <%= if show_search_dropdown?(assigns) do %>
-              <div class="absolute left-0 right-0 mt-2 bg-gray-800 border border-gray-700 rounded-lg shadow-lg max-h-96 overflow-y-auto z-50">
-              <%= if @search_results.systems != [] do %>
-                <div class="border-b border-gray-700">
-                  <div class="px-4 py-2 bg-gray-700/50">
-                    <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Systems</span>
+            <!-- Search Results Dropdown or Loading State (mutually exclusive) -->
+            <%= cond do %>
+              <% @search_loading -> %>
+                <!-- Loading State -->
+                <div class="absolute left-0 right-0 mt-2 bg-gray-800 border border-gray-700 rounded-lg shadow-lg p-4 z-50">
+                  <div class="flex items-center justify-center">
+                    <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+                    <span class="ml-2 text-gray-400">Searching...</span>
                   </div>
-                  <%= for system <- @search_results.systems do %>
-                    <div
-                      phx-click="select_search_result"
-                      phx-value-type="system"
-                      phx-value-id={system.id}
-                      class="px-4 py-3 hover:bg-gray-700 cursor-pointer transition-colors"
-                    >
-                      <div class="flex items-center justify-between">
-                        <div>
-                          <div class="font-medium text-white"><%= system.name %></div>
-                          <div class="text-sm text-gray-400"><%= system.subtitle %></div>
+                </div>
+              <% show_search_dropdown?(assigns) -> %>
+                <!-- Search Results Dropdown -->
+                <div class="absolute left-0 right-0 mt-2 bg-gray-800 border border-gray-700 rounded-lg shadow-lg max-h-96 overflow-y-auto z-50">
+                <%= if @search_results.systems != [] do %>
+                  <div class="border-b border-gray-700">
+                    <div class="px-4 py-2 bg-gray-700/50">
+                      <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Systems</span>
+                    </div>
+                    <%= for system <- @search_results.systems do %>
+                      <div
+                        phx-click="select_search_result"
+                        phx-value-type="system"
+                        phx-value-id={system.id}
+                        class="px-4 py-3 hover:bg-gray-700 cursor-pointer transition-colors"
+                      >
+                        <div class="flex items-center justify-between">
+                          <div>
+                            <div class="font-medium text-white"><%= system.name %></div>
+                            <div class="text-sm text-gray-400"><%= system.subtitle %></div>
+                          </div>
+                          <span class={[
+                            "text-xs font-medium",
+                            case system.security_class do
+                              "highsec" -> "text-green-400"
+                              "lowsec" -> "text-yellow-400"
+                              "nullsec" -> "text-red-400"
+                              "wormhole" -> "text-purple-400"
+                              _ -> "text-gray-400"
+                            end
+                          ]}>
+                            <%= String.capitalize(system.security_class || "unknown") %>
+                          </span>
                         </div>
-                        <span class={[
-                          "text-xs font-medium",
-                          case system.security_class do
-                            "highsec" -> "text-green-400"
-                            "lowsec" -> "text-yellow-400"
-                            "nullsec" -> "text-red-400"
-                            "wormhole" -> "text-purple-400"
-                            _ -> "text-gray-400"
-                          end
-                        ]}>
-                          <%= String.capitalize(system.security_class || "unknown") %>
-                        </span>
                       </div>
-                    </div>
-                  <% end %>
-                </div>
-              <% end %>
-              
-              <%= if @search_results.characters != [] do %>
-                <div class="border-b border-gray-700">
-                  <div class="px-4 py-2 bg-gray-700/50">
-                    <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Characters</span>
+                    <% end %>
                   </div>
-                  <%= for character <- @search_results.characters do %>
-                    <div
-                      phx-click="select_search_result"
-                      phx-value-type="character"
-                      phx-value-id={character.id}
-                      class="px-4 py-3 hover:bg-gray-700 cursor-pointer transition-colors"
-                    >
-                      <div class="font-medium text-white"><%= character.name %></div>
-                      <div class="text-sm text-gray-400"><%= character.subtitle %></div>
-                    </div>
-                  <% end %>
-                </div>
-              <% end %>
-              
-              <%= if @search_results.corporations != [] do %>
-                <div>
-                  <div class="px-4 py-2 bg-gray-700/50">
-                    <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Corporations</span>
-                  </div>
-                  <%= for corporation <- @search_results.corporations do %>
-                    <div
-                      phx-click="select_search_result"
-                      phx-value-type="corporation"
-                      phx-value-id={corporation.id}
-                      class="px-4 py-3 hover:bg-gray-700 cursor-pointer transition-colors"
-                    >
-                      <div class="font-medium text-white"><%= corporation.name %></div>
-                      <div class="text-sm text-gray-400"><%= corporation.subtitle %></div>
-                    </div>
-                  <% end %>
-                </div>
-              <% end %>
-              </div>
-            <% end %>
+                <% end %>
 
-            <!-- Loading State -->
-            <%= if @search_loading do %>
-              <div class="absolute left-0 right-0 mt-2 bg-gray-800 border border-gray-700 rounded-lg shadow-lg p-4">
-                <div class="flex items-center justify-center">
-                  <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
-                  <span class="ml-2 text-gray-400">Searching...</span>
+                <%= if @search_results.characters != [] do %>
+                  <div class="border-b border-gray-700">
+                    <div class="px-4 py-2 bg-gray-700/50">
+                      <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Characters</span>
+                    </div>
+                    <%= for character <- @search_results.characters do %>
+                      <div
+                        phx-click="select_search_result"
+                        phx-value-type="character"
+                        phx-value-id={character.id}
+                        class="px-4 py-3 hover:bg-gray-700 cursor-pointer transition-colors"
+                      >
+                        <div class="font-medium text-white"><%= character.name %></div>
+                        <div class="text-sm text-gray-400"><%= character.subtitle %></div>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+
+                <%= if @search_results.corporations != [] do %>
+                  <div>
+                    <div class="px-4 py-2 bg-gray-700/50">
+                      <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Corporations</span>
+                    </div>
+                    <%= for corporation <- @search_results.corporations do %>
+                      <div
+                        phx-click="select_search_result"
+                        phx-value-type="corporation"
+                        phx-value-id={corporation.id}
+                        class="px-4 py-3 hover:bg-gray-700 cursor-pointer transition-colors"
+                      >
+                        <div class="font-medium text-white"><%= corporation.name %></div>
+                        <div class="text-sm text-gray-400"><%= corporation.subtitle %></div>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
                 </div>
-              </div>
+              <% true -> %>
+                <!-- No dropdown shown -->
             <% end %>
           <% else %>
             <!-- Login Button for Logged-out Users -->

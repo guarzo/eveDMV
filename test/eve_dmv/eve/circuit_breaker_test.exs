@@ -311,6 +311,188 @@ defmodule EveDmv.Eve.CircuitBreakerTest do
     end
   end
 
+  describe "error classifier" do
+    test "default classifier treats all errors as failures" do
+      service = "test_service_#{System.unique_integer([:positive])}"
+
+      {:ok, _pid} =
+        CircuitBreaker.start_link(
+          service_name: service,
+          failure_threshold: 3
+        )
+
+      # All errors should count as failures with default classifier
+      for _i <- 1..3 do
+        CircuitBreaker.call(service, fn -> {:error, :some_error} end)
+      end
+
+      # Circuit should be open
+      assert CircuitBreaker.get_state(service) == :open
+    end
+
+    test "custom classifier at init excludes certain errors from failure count" do
+      service = "test_service_#{System.unique_integer([:positive])}"
+
+      # Classifier that only treats :server_error as a failure
+      classifier = fn
+        :server_error -> true
+        _ -> false
+      end
+
+      {:ok, _pid} =
+        CircuitBreaker.start_link(
+          service_name: service,
+          failure_threshold: 3,
+          error_classifier: classifier
+        )
+
+      # Client errors should not count as failures
+      for _i <- 1..5 do
+        CircuitBreaker.call(service, fn -> {:error, :client_error} end)
+      end
+
+      # Circuit should still be closed since client errors don't count
+      assert CircuitBreaker.get_state(service) == :closed
+
+      # Server errors should count
+      for _i <- 1..3 do
+        CircuitBreaker.call(service, fn -> {:error, :server_error} end)
+      end
+
+      # Now circuit should be open
+      assert CircuitBreaker.get_state(service) == :open
+    end
+
+    test "custom classifier per call overrides instance classifier" do
+      service = "test_service_#{System.unique_integer([:positive])}"
+
+      # Instance classifier that counts all errors
+      {:ok, _pid} =
+        CircuitBreaker.start_link(
+          service_name: service,
+          failure_threshold: 3,
+          error_classifier: fn _error -> true end
+        )
+
+      # Per-call classifier that ignores all errors
+      call_classifier = fn _error -> false end
+
+      # These errors should not count due to call-level classifier
+      for _i <- 1..5 do
+        CircuitBreaker.call(service, fn -> {:error, :ignored} end,
+          error_classifier: call_classifier
+        )
+      end
+
+      # Circuit should still be closed
+      assert CircuitBreaker.get_state(service) == :closed
+
+      # Verify stats show no failures
+      stats = CircuitBreaker.get_stats(service)
+      assert stats.failure_count == 0
+    end
+
+    test "error still returned even when not counted as failure" do
+      service = "test_service_#{System.unique_integer([:positive])}"
+
+      # Classifier that ignores all errors
+      {:ok, _pid} =
+        CircuitBreaker.start_link(
+          service_name: service,
+          failure_threshold: 3,
+          error_classifier: fn _error -> false end
+        )
+
+      # Error should be returned but not counted
+      result = CircuitBreaker.call(service, fn -> {:error, :my_error} end)
+
+      assert {:error, :my_error} = result
+
+      # Failure count should be 0
+      stats = CircuitBreaker.get_stats(service)
+      assert stats.failure_count == 0
+    end
+
+    test "exceptions always count as failures regardless of classifier" do
+      service = "test_service_#{System.unique_integer([:positive])}"
+
+      # Classifier that tries to ignore all errors
+      {:ok, _pid} =
+        CircuitBreaker.start_link(
+          service_name: service,
+          failure_threshold: 3,
+          error_classifier: fn _error -> false end
+        )
+
+      # Exceptions should still count as failures (infrastructure issues)
+      for _i <- 1..3 do
+        CircuitBreaker.call(service, fn -> raise "exception" end)
+      end
+
+      # Circuit should be open because exceptions bypass the classifier
+      assert CircuitBreaker.get_state(service) == :open
+    end
+
+    test "timeouts always count as failures regardless of classifier" do
+      service = "test_service_#{System.unique_integer([:positive])}"
+
+      # Classifier that tries to ignore all errors
+      {:ok, _pid} =
+        CircuitBreaker.start_link(
+          service_name: service,
+          failure_threshold: 3,
+          error_classifier: fn _error -> false end
+        )
+
+      # Timeouts should still count as failures
+      for _i <- 1..3 do
+        CircuitBreaker.call(
+          service,
+          fn ->
+            :timer.sleep(200)
+            :should_timeout
+          end,
+          timeout: 50
+        )
+      end
+
+      # Circuit should be open because timeouts bypass the classifier
+      assert CircuitBreaker.get_state(service) == :open
+    end
+
+    test "classifier can be used for HTTP status-based filtering" do
+      service = "test_service_#{System.unique_integer([:positive])}"
+
+      # Only count 5xx errors as failures, not 4xx
+      http_classifier = fn
+        {:http_error, status} when status >= 500 -> true
+        {:http_error, _status} -> false
+        _ -> true
+      end
+
+      {:ok, _pid} =
+        CircuitBreaker.start_link(
+          service_name: service,
+          failure_threshold: 3,
+          error_classifier: http_classifier
+        )
+
+      # 4xx errors should not count
+      for _i <- 1..5 do
+        CircuitBreaker.call(service, fn -> {:error, {:http_error, 404}} end)
+      end
+
+      assert CircuitBreaker.get_state(service) == :closed
+
+      # 5xx errors should count
+      for _i <- 1..3 do
+        CircuitBreaker.call(service, fn -> {:error, {:http_error, 503}} end)
+      end
+
+      assert CircuitBreaker.get_state(service) == :open
+    end
+  end
+
   describe "concurrent access" do
     @describetag :skip
     test "handles concurrent calls correctly" do

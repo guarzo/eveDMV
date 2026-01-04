@@ -27,6 +27,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
   alias EveDmv.Contexts.Combat.Core.TacticalPatternDetector
   alias EveDmv.Contexts.Combat.Core.TimelineBuilder
   alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Core.Utils.NumericUtils
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Repo
 
@@ -592,12 +593,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
     # Calculate kill/death ratio across all participants
     total_kills = Map.get(participants, :total_kills, 0)
     total_losses = Map.get(participants, :total_losses, 0)
-
-    if total_losses > 0 do
-      Float.round(total_kills / total_losses, 2)
-    else
-      total_kills
-    end
+    NumericUtils.calculate_kd_ratio(total_kills, total_losses)
   end
 
   defp calculate_average_on_kill(killmails) do

@@ -150,7 +150,7 @@
               
               <div class="text-center">
                 <p class="text-sm text-gray-400">
-                  💡 Try: <button type="button" class="text-indigo-400 hover:text-indigo-300 underline" onclick="document.getElementById('character-input').value='96_218_312'; document.getElementById('character-search-form').requestSubmit();">Johhny Maricadie</button> 
+                  💡 Try: <button type="button" class="text-indigo-400 hover:text-indigo-300 underline" data-example-character="96_218_312">Johhny Maricadie</button>
                   or search for any EVE pilot
                 </p>
               </div>
@@ -373,12 +373,12 @@
       document.getElementById('character-search-form').addEventListener('submit', function(e) {
         e.preventDefault();
         const input = document.getElementById('character-input').value.trim();
-        
+
         if (!input) {
           alert('Please enter a character name or ID');
           return;
         }
-        
+
         // Check if input is a number (character ID)
         if (/^\d+$/.test(input)) {
           // Direct navigation to character analysis with ID
@@ -387,6 +387,14 @@
           // Character name - redirect to search for name resolution
           window.location.href = `/search?q=${encodeURIComponent(input)}&type=character`;
         }
+      });
+
+      // Handle example character buttons using event delegation
+      document.querySelectorAll('[data-example-character]').forEach(button => {
+        button.addEventListener('click', function() {
+          document.getElementById('character-input').value = this.dataset.exampleCharacter;
+          document.getElementById('character-search-form').requestSubmit();
+        });
       });
     </script>
   </body>

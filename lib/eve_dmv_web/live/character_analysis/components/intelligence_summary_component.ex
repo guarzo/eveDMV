@@ -7,7 +7,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.IntelligenceSummaryComponent do
 
   def render(assigns) do
     # Safely extract values with defaults
-    summary = assigns.analysis.intelligence_summary || %{}
+    summary = get_in(assigns, [:analysis, :intelligence_summary]) || %{}
     peak_hour = Map.get(summary, :peak_activity_hour)
     top_location = Map.get(summary, :top_location)
     primary_tz = Map.get(summary, :primary_timezone)

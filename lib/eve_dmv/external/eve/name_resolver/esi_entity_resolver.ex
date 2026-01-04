@@ -151,16 +151,24 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
     found_ids = Map.keys(db_results)
     missing_ids = alliance_ids -- found_ids
 
-    # For missing alliances, try ESI
+    # For missing alliances, try ESI in parallel using Task.async_stream
     esi_results =
       missing_ids
-      |> Enum.map(fn id ->
-        case fetch_from_esi(:alliance, id) do
-          {:ok, name} -> {id, name}
-          {:error, _} -> {id, "Unknown Alliance (#{id})"}
-        end
+      |> Task.async_stream(
+        fn id ->
+          case fetch_from_esi(:alliance, id) do
+            {:ok, name} -> {id, name}
+            {:error, _} -> {id, "Unknown Alliance (#{id})"}
+          end
+        end,
+        max_concurrency: 10,
+        timeout: 10_000,
+        on_timeout: :kill_task
+      )
+      |> Enum.reduce(%{}, fn
+        {:ok, {id, name}}, acc -> Map.put(acc, id, name)
+        {:exit, _reason}, acc -> acc
       end)
-      |> Map.new()
 
     {:ok, Map.merge(db_results, esi_results)}
   rescue

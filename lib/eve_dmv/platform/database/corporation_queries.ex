@@ -37,8 +37,8 @@ defmodule EveDmv.Platform.Database.CorporationQueries do
             %{
               kills: kills || 0,
               losses: losses || 0,
-              isk_destroyed: Decimal.to_float(isk_destroyed || 0),
-              isk_lost: Decimal.to_float(isk_lost || 0),
+              isk_destroyed: safe_decimal_to_float(isk_destroyed),
+              isk_lost: safe_decimal_to_float(isk_lost),
               active_members: active_members || 0,
               efficiency: calculate_efficiency(kills || 0, losses || 0),
               isk_efficiency: calculate_isk_efficiency(isk_destroyed || 0, isk_lost || 0)

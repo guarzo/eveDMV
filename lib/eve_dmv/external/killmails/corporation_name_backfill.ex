@@ -25,6 +25,35 @@ defmodule EveDmv.Killmails.CorporationNameBackfill do
 
   @batch_size 100
 
+  @doc """
+  Starts the corporation name backfill worker.
+
+  ## Arguments
+
+    * `opts` - GenServer options (typically empty list from supervisor)
+
+  ## Returns
+
+    * `{:ok, pid}` - Successfully started the worker
+    * `{:error, reason}` - Failed to start
+
+  ## Usage
+
+  This GenServer is typically started as part of the application supervision tree.
+  After a 10-second delay, it automatically begins backfilling missing corporation
+  names by querying ESI in batches of #{@batch_size} corporations.
+
+  ## Example
+
+      # Started via supervisor (typical usage)
+      children = [
+        EveDmv.Killmails.CorporationNameBackfill
+      ]
+
+      # Manual start (for testing)
+      {:ok, pid} = EveDmv.Killmails.CorporationNameBackfill.start_link([])
+
+  """
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end

@@ -1,5 +1,4 @@
 defmodule EveDmv.Contexts.CharacterIntelligence do
-  @compile {:nowarn_unused_function}
   @moduledoc """
   Context module for character intelligence and threat analysis.
 
@@ -12,6 +11,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   alias EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnalyzer
   alias EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrendAnalyzer
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine
+  alias EveDmv.Eve.EsiCharacterClient
+  alias EveDmv.Eve.EsiCorporationClient
   alias EveDmv.Integrations.ShipIntelligenceBridge
 
   require Ash.Query
@@ -237,9 +238,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   end
 
   defp fetch_character_info(character_id) do
-    alias EveDmv.Eve.EsiCharacterClient
-    alias EveDmv.Eve.EsiCorporationClient
-
     case EsiCharacterClient.get_character(character_id) do
       {:ok, character} when is_map(character) ->
         extract_character_info(character)
@@ -259,14 +257,15 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   end
 
   defp extract_character_info(character) when is_map(character) do
-    alias EveDmv.Eve.EsiCorporationClient
-
     # Handle both atom and string keys
     name = Map.get(character, :name) || Map.get(character, "name") || "Unknown Pilot"
     corporation_id = Map.get(character, :corporation_id) || Map.get(character, "corporation_id")
     alliance_id = Map.get(character, :alliance_id) || Map.get(character, "alliance_id")
 
-    # Fetch corporation name
+    # Sequential fetch for corporation and alliance names is intentional:
+    # Both EsiCorporationClient.get_corporation/1 and EsiUniverseClient.get_alliance/1
+    # consult a cache layer, so cache hits are common and fast. Parallelizing with
+    # Task.async would add complexity only to benefit the cache-miss case.
     corp_name =
       if corporation_id do
         case EsiCorporationClient.get_corporation(corporation_id) do
@@ -361,11 +360,14 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
 
       breakdown ->
         %{
-          combat_skill: round(breakdown.combat_skill.normalized_score * 10),
-          ship_mastery: round(breakdown.ship_mastery.normalized_score * 10),
-          gang_effectiveness: round(breakdown.gang_effectiveness.normalized_score * 10),
-          unpredictability: round(breakdown.unpredictability.normalized_score * 10),
-          recent_activity: round(breakdown.recent_activity.normalized_score * 10)
+          combat_skill: round((get_in(breakdown, [:combat_skill, :normalized_score]) || 0) * 10),
+          ship_mastery: round((get_in(breakdown, [:ship_mastery, :normalized_score]) || 0) * 10),
+          gang_effectiveness:
+            round((get_in(breakdown, [:gang_effectiveness, :normalized_score]) || 0) * 10),
+          unpredictability:
+            round((get_in(breakdown, [:unpredictability, :normalized_score]) || 0) * 10),
+          recent_activity:
+            round((get_in(breakdown, [:recent_activity, :normalized_score]) || 0) * 10)
         }
     end
   end

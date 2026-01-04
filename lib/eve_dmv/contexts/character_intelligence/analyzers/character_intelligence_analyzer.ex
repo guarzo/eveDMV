@@ -16,6 +16,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Core.Utils.NumericUtils
   alias EveDmv.Platform.Cache.QueryCache
   alias EveDmv.Shared.KillmailQueries
   alias EveDmv.StaticData
@@ -239,18 +240,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
                 }
               end)
 
-            weapon_stats = %{
-              total_weapons_used: length(rows),
-              total_usage_count: total_usage,
-              most_used_weapon: List.first(weapon_preferences),
-              weapon_diversity_score: calculate_diversity_score(weapon_preferences),
-              analysis_period: %{
-                from: since_date,
-                to: DateTime.utc_now()
-              }
-            }
-
-            {:ok, %{preferences: weapon_preferences, stats: weapon_stats}}
+            {:ok, %{preferences: weapon_preferences}}
 
           {:error, error} ->
             Logger.error("Weapon preference analysis failed: #{inspect(error)}")
@@ -408,7 +398,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
             # Convert participation counts to floats before summing (handles Decimals)
             total_participations =
               rows
-              |> Enum.map(fn row -> to_float(Enum.at(row, 1)) || 0.0 end)
+              |> Enum.map(fn row -> NumericUtils.to_float(Enum.at(row, 1)) || 0.0 end)
               |> Enum.sum()
 
             gang_patterns =
@@ -422,9 +412,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
                                   max_gang_size
                                 ] ->
                 # Convert Decimals to floats for arithmetic
-                count = to_float(participation_count) || 0.0
-                avg_size = to_float(avg_gang_size)
-                avg_value = to_float(avg_kill_value)
+                count = NumericUtils.to_float(participation_count) || 0.0
+                avg_size = NumericUtils.to_float(avg_gang_size)
+                avg_value = NumericUtils.to_float(avg_kill_value)
 
                 %{
                   size_category: size_category,
@@ -435,10 +425,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
                       else: 0.0
                     ),
                   avg_gang_size: if(avg_size, do: Float.round(avg_size, 1), else: 0.0),
-                  total_isk_involved: to_float(total_isk_involved) || 0.0,
+                  total_isk_involved: NumericUtils.to_float(total_isk_involved) || 0.0,
                   avg_kill_value: if(avg_value, do: Float.round(avg_value, 0), else: 0.0),
-                  min_gang_size: to_float(min_gang_size) || 0,
-                  max_gang_size: to_float(max_gang_size) || 0
+                  min_gang_size: NumericUtils.to_float(min_gang_size) || 0,
+                  max_gang_size: NumericUtils.to_float(max_gang_size) || 0
                 }
               end)
 
@@ -677,8 +667,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
         case Ecto.Adapters.SQL.query(EveDmv.Repo, efficiency_query, [character_id, since_date]) do
           {:ok, %{rows: [[isk_destroyed_raw, isk_lost_raw]]}} ->
             # Convert Decimal results to float for arithmetic
-            isk_destroyed = to_float(isk_destroyed_raw) || 0.0
-            isk_lost = to_float(isk_lost_raw) || 0.0
+            isk_destroyed = NumericUtils.to_float(isk_destroyed_raw) || 0.0
+            isk_lost = NumericUtils.to_float(isk_lost_raw) || 0.0
             net_isk = isk_destroyed - isk_lost
 
             efficiency_ratio =
@@ -815,7 +805,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
               unique_regions: unique_regions || 0,
               total_kills: total_kills || 0,
               total_deaths: total_deaths || 0,
-              kill_death_ratio: calculate_kd_ratio(total_kills, total_deaths),
+              kill_death_ratio: NumericUtils.calculate_kd_ratio(total_kills, total_deaths),
               threat_level: threat_level,
               activity_intensity: activity_intensity,
               mobility_score: calculate_mobility_score(unique_systems, unique_regions),
@@ -823,7 +813,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
               analysis_period: %{
                 from: since_date,
                 to: DateTime.utc_now(),
-                span_hours: to_float(activity_span_hours) || 0.0
+                span_hours: NumericUtils.to_float(activity_span_hours) || 0.0
               }
             }
 
@@ -1188,7 +1178,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
                       do: Float.round((cls["total_kills"] || 0) / total * 100, 1),
                       else: 0.0
                     ),
-                  total_value: to_float(cls["total_value"]) || 0.0
+                  total_value: NumericUtils.to_float(cls["total_value"]) || 0.0
                 }
               end)
               |> Enum.filter(&(&1.total_kills > 0))
@@ -1201,11 +1191,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
                   ship_name: t["ship_name"] || "Unknown",
                   group_name: t["group_name"] || "Unknown",
                   kill_count: t["kill_count"] || 0,
-                  total_value: to_float(t["total_value"]) || 0.0
+                  total_value: NumericUtils.to_float(t["total_value"]) || 0.0
                 }
               end)
 
-            avg_val = to_float(avg_value) || 0.0
+            avg_val = NumericUtils.to_float(avg_value) || 0.0
 
             # Determine if they punch up or down
             target_assessment =
@@ -1296,8 +1286,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
                   date: day["date"],
                   kills: day["kills"] || 0,
                   deaths: day["deaths"] || 0,
-                  isk_destroyed: to_float(day["isk_destroyed"]) || 0.0,
-                  isk_lost: to_float(day["isk_lost"]) || 0.0
+                  isk_destroyed: NumericUtils.to_float(day["isk_destroyed"]) || 0.0,
+                  isk_lost: NumericUtils.to_float(day["isk_lost"]) || 0.0
                 }
               end)
 
@@ -1494,9 +1484,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
                total_deaths: total,
                deaths_with_related_kills: with_kills,
                bait_percentage: bait_percentage,
-               avg_related_kills: to_float(avg_related) || 0.0,
-               total_related_value: to_float(total_related_val) || 0.0,
-               total_bait_losses: to_float(bait_losses) || 0.0,
+               avg_related_kills: NumericUtils.to_float(avg_related) || 0.0,
+               total_related_value: NumericUtils.to_float(total_related_val) || 0.0,
+               total_bait_losses: NumericUtils.to_float(bait_losses) || 0.0,
                is_likely_bait: is_likely_bait,
                bait_assessment:
                  if(is_likely_bait, do: "Potential bait pilot", else: "No bait indicators")
@@ -1659,8 +1649,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
 
   defp calculate_activity_intensity(total_events, activity_span_hours) do
     # Convert values to floats to handle Decimal types from database
-    events = to_float(total_events)
-    hours = to_float(activity_span_hours)
+    events = NumericUtils.to_float(total_events)
+    hours = NumericUtils.to_float(activity_span_hours)
 
     if hours && hours > 0 do
       events_per_hour = events / hours
@@ -1680,8 +1670,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
   defp calculate_mobility_score(unique_systems, unique_regions) do
     # Simple mobility score based on system and region diversity
     # Convert to float to handle database types
-    systems = to_float(unique_systems) || 0.0
-    regions = to_float(unique_regions) || 0.0
+    systems = NumericUtils.to_float(unique_systems) || 0.0
+    regions = NumericUtils.to_float(unique_regions) || 0.0
 
     system_score = min(systems / 10, 1.0) * 0.7
     region_score = min(regions / 5, 1.0) * 0.3
@@ -1722,25 +1712,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
       weapon_group: weapon_group || "Unknown",
       usage_count: usage_count || 0
     }
-  end
-
-  # Helper to safely convert database values (Decimal, integer, nil) to float
-  defp to_float(nil), do: nil
-  defp to_float(%Decimal{} = d), do: Decimal.to_float(d)
-  defp to_float(n) when is_integer(n), do: n * 1.0
-  defp to_float(n) when is_float(n), do: n
-  defp to_float(_), do: nil
-
-  # Helper to calculate kill/death ratio safely
-  defp calculate_kd_ratio(kills, deaths) do
-    k = to_float(kills) || 0.0
-    d = to_float(deaths) || 0.0
-
-    cond do
-      d > 0 -> Float.round(k / d, 2)
-      k > 0 -> :infinite
-      true -> 0.0
-    end
   end
 
   defp generate_overall_assessment(

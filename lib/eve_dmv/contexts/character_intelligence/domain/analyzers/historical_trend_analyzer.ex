@@ -104,13 +104,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrend
         columns = Enum.map(columns, &String.to_atom/1)
 
         Enum.map(rows, fn row ->
-          row
-          |> Enum.zip(columns)
-          |> Enum.map(fn {val, col} -> {col, val} end)
-          |> Map.new()
-          |> then(fn map ->
-            struct(KillmailRaw, map)
-          end)
+          map = Map.new(Enum.zip(columns, row))
+          struct(KillmailRaw, map)
         end)
 
       {:error, error} ->

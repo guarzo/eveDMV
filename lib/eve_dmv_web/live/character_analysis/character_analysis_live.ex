@@ -10,7 +10,7 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
 
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
-  alias EveDmv.Analytics.BattleDetector
+  alias EveDmv.Contexts.BattleAnalysis.Domain.Services.DetectionService, as: BattleDetector
   alias EveDmv.Integrations.ShipIntelligenceBridge
   alias EveDmv.Platform.Cache.AnalysisCache
   alias EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader
@@ -19,6 +19,8 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
   alias EveDmvWeb.CharacterAnalysis.Components.CharacterHeaderComponent
   alias EveDmvWeb.CharacterAnalysis.Components.IntelligenceSummaryComponent
   alias EveDmvWeb.CharacterAnalysis.Components.StatisticsPanelComponent
+
+  @valid_tabs ~w(overview battles ships weapons activity)a
 
   @impl Phoenix.LiveView
   def mount(%{"character_id" => character_id}, _session, socket) do
@@ -121,7 +123,16 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
 
   @impl Phoenix.LiveView
   def handle_event("change_tab", %{"tab" => tab}, socket) do
-    {:noreply, assign(socket, :active_tab, String.to_existing_atom(tab))}
+    tab_atom = String.to_existing_atom(tab)
+
+    if tab_atom in @valid_tabs do
+      {:noreply, assign(socket, :active_tab, tab_atom)}
+    else
+      {:noreply, socket}
+    end
+  rescue
+    ArgumentError ->
+      {:noreply, socket}
   end
 
   @impl Phoenix.LiveView

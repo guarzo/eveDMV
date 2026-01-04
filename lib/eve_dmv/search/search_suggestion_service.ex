@@ -459,8 +459,7 @@ defmodule EveDmv.Search.SearchSuggestionService do
     cond do
       security_status >= 0.5 -> "High Sec"
       security_status > 0.0 -> "Low Sec"
-      security_status <= 0.0 -> "Null Sec"
-      true -> "Unknown"
+      true -> "Null Sec"
     end
   end
 

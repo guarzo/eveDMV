@@ -35,7 +35,9 @@ The Character Analysis page has several issues that undermine its usefulness for
 - Nav bar template (`app.html.heex:15`) checks `assigns[:current_user]`
 
 ### Fix
+
 Add to the LiveView module:
+
 ```elixir
 use EveDmvWeb, :live_view
 
@@ -67,6 +69,7 @@ Likely issues:
 - The engine may be returning "insufficient data" despite 19 kills existing
 
 ### Investigation Needed
+
 ```elixir
 # Debug in IEx:
 character_id = 12345  # Stealthbot's ID
@@ -109,6 +112,7 @@ EVE time is UTC. Player timezone should be inferred from what's "prime time" for
 | 06:00-14:00 | 17:00-01:00 AEDT | **AU/NZ Evening** |
 
 ### Corrected Logic
+
 ```elixir
 defp derive_timezone(peak_hour) when is_number(peak_hour) do
   hour = if is_float(peak_hour), do: trunc(peak_hour), else: peak_hour
@@ -142,11 +146,13 @@ Clicking "Export JSON" or "Export CSV" does nothing visible.
 
 ### Root Cause
 The export uses LiveView hooks:
+
 ```heex
 <div id="file-download-hook" phx-hook="FileDownload" style="display: none;"></div>
 ```
 
 The `FileDownload` hook must be implemented in JavaScript to handle the `download_file` event:
+
 ```javascript
 Hooks.FileDownload = {
   mounted() {
@@ -176,7 +182,8 @@ Either:
 ## Issue 5: Weapons Not Associated with Ships
 
 ### Current Display
-```
+
+```text
 Weapon Preferences:
 - Scourge Javelin Heavy Assault Missile: 6 uses
 - 'Augmented' Hornet: 2 uses
@@ -188,7 +195,8 @@ Weapon Preferences:
 This information is not actionable. Knowing weapon counts in isolation doesn't help assess threat. What matters is understanding their **fits**.
 
 ### Better Display
-```
+
+```text
 Ship Fits Analysis:
 
 Cenotaph (9 kills, 0 deaths)
@@ -208,6 +216,7 @@ Tholos (3 kills, 0 deaths)
 
 ### Implementation Approach
 Query weapons grouped by ship:
+
 ```sql
 SELECT
   k.victim_ship_type_id as ship_type_id,
@@ -275,7 +284,7 @@ The `ThreatScoringEngine` uses 5 dimensions with weights:
 
 ### Proposed Threat Score Formula (0-100)
 
-```
+```text
 Base Components (max 100 points):
 
 K/D Ratio Component (0-30 points):
@@ -316,7 +325,8 @@ Modifiers:
 ```
 
 ### Example: Stealthbot Score
-```
+
+```text
 K/D: 19:0 (infinite) = 30 points
 ISK Efficiency: 100% = 25 points
 Activity: 19 kills / ~4 days = 4.75/day = 15 points
@@ -351,8 +361,9 @@ Final Score: 100/100 "Extreme Threat"
 **Root Cause Found:** The `fetch_character_combat_data/2` function in `ThreatScoringEngine` was fetching 1000 random recent killmails and filtering in memory for attackers. If the database had >1000 killmails, the target character's kills would likely not be included.
 
 **Fix Applied:** Replaced inefficient memory-based filtering with proper JSONB SQL query:
-```elixir
-# New fetch_attacker_killmail_ids/2 function uses:
+
+```sql
+-- New fetch_attacker_killmail_ids/2 function uses:
 SELECT DISTINCT killmail_id
 FROM killmails_raw,
      jsonb_array_elements(raw_data->'attackers') as attacker
@@ -386,6 +397,7 @@ This now correctly finds ALL killmails where the character was an attacker.
 3. **ISK Efficiency** - Wasn't properly rewarding 100% efficiency
 
 **New Scoring Functions:**
+
 ```elixir
 # calculate_kd_score/2 - Enhanced K/D scoring
 # 0 deaths = 0.8-1.0 score (scaled by kill count)

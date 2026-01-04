@@ -12,17 +12,9 @@ on:
         options:
           - production
       version:
-        description: 'Version tag (leave empty for latest)'
+        description: 'Version tag (leave empty for latest, or specify older version to roll back)'
         required: false
         default: ''
-      action:
-        description: 'Deployment action'
-        required: true
-        default: 'deploy'
-        type: choice
-        options:
-          - deploy
-          - rollback
 
   # Auto-deploy on successful CI to main
   workflow_run:
@@ -60,11 +52,15 @@ jobs:
           # Set environment (default to production for auto-deploy)
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             ENVIRONMENT="${{ github.event.inputs.environment }}"
-            ACTION="${{ github.event.inputs.action }}"
             VERSION="${{ github.event.inputs.version }}"
+
+            # If no version provided, get the most recent tag
+            if [ -z "$VERSION" ]; then
+              VERSION=$(git for-each-ref --sort=-creatordate --format='%(refname:short)' refs/tags | grep -E "^v[0-9]+" | head -1)
+              echo "No version specified, using most recent tag: $VERSION"
+            fi
           else
             ENVIRONMENT="production"
-            ACTION="deploy"
             # Get the most recent tag by creation time
             VERSION=$(git for-each-ref --sort=-creatordate --format='%(refname:short)' refs/tags | grep -E "^v[0-9]+" | head -1)
             echo "Using most recent tag by creation time: $VERSION"
@@ -78,12 +74,10 @@ jobs:
           fi
 
           echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_OUTPUT
-          echo "ACTION=$ACTION" >> $GITHUB_OUTPUT
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
           echo "📋 Deployment Parameters:"
           echo "  Environment: $ENVIRONMENT"
-          echo "  Action: $ACTION"
           echo "  Version: $VERSION"
 
       - name: Deploy to server
@@ -97,10 +91,9 @@ jobs:
             set -e
 
             VERSION="${{ steps.params.outputs.VERSION }}"
-            ACTION="${{ steps.params.outputs.ACTION }}"
             ENVIRONMENT="${{ steps.params.outputs.ENVIRONMENT }}"
 
-            echo "🚀 Performing $ACTION to $ENVIRONMENT with version $VERSION"
+            echo "🚀 Deploying to $ENVIRONMENT with version $VERSION"
 
             # Navigate to the correct directory
             cd /app/wanderer
@@ -119,18 +112,13 @@ jobs:
               exit 1
             fi
 
-            # Run the compose manager to upgrade
-            if [ "$ACTION" = "rollback" ]; then
-              echo "🔄 Rolling back to version $VERSION"
-            fi
-
             echo "🚀 Running compose-manager.sh upgrade evedmv"
             ./compose-manager.sh upgrade evedmv
 
             echo "✅ Deployment completed successfully!"
 
       - name: Create deployment record
-        if: success() && steps.params.outputs.ACTION == 'deploy'
+        if: success()
         uses: actions/github-script@v7
         with:
           script: |

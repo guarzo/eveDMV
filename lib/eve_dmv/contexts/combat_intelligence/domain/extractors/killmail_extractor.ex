@@ -214,6 +214,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ki
     # Return engagement type based on available data
     # Use SDE security_class for proper wormhole detection
 
+    # Normalize security_status at the start to handle nil/Decimal values
+    security_status = normalize_security_status(Map.get(killmail, :security_status))
+
     if killmail.war_id do
       :war
     else
@@ -236,9 +239,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ki
         _ ->
           # Fallback to security_status for unknown systems
           cond do
-            killmail.security_status > 0.5 -> :highsec_gank
-            killmail.security_status > 0.0 -> :lowsec_pvp
-            killmail.security_status <= 0.0 -> :nullsec_pvp
+            security_status > 0.5 -> :highsec_gank
+            security_status > 0.0 -> :lowsec_pvp
+            security_status <= 0.0 -> :nullsec_pvp
             true -> :unknown_pvp
           end
       end
@@ -258,19 +261,29 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ki
   end
 
   defp extract_environmental_factors(killmail) do
+    # Normalize security_status at the start to handle nil/Decimal values
+    security_status = normalize_security_status(Map.get(killmail, :security_status))
+
     # Return environmental factors based on SDE system classification
     system_class = EveDmv.StaticData.classify_system(killmail.solar_system_id)
     is_wormhole = system_class in @wormhole_classes
 
     %{
       # No gate guns or CONCORD in wormholes
-      gate_guns: not is_wormhole and killmail.security_status > 0.0,
-      concord_response: not is_wormhole and killmail.security_status >= 0.5,
+      gate_guns: not is_wormhole and security_status > 0.0,
+      concord_response: not is_wormhole and security_status >= 0.5,
       station_presence: false,
       pos_presence: false,
       citadel_presence: false
     }
   end
+
+  # Normalize security_status to a float, handling nil and Decimal values
+  defp normalize_security_status(nil), do: 0.0
+  defp normalize_security_status(value) when is_number(value), do: value + 0.0
+
+  defp normalize_security_status(value) when is_struct(value, Decimal),
+    do: Decimal.to_float(value)
 
   defp generate_fitting_hash(killmail) do
     # For now, return basic fitting hash

@@ -13,12 +13,43 @@ defmodule EveDmvWeb.SystemLive do
   import EveDmvWeb.FormatHelpers
 
   alias Ecto.Adapters.SQL
-  alias EveDmv.Analytics.BattleDetector
+  alias EveDmv.Contexts.BattleAnalysis.Domain.Services.DetectionService, as: BattleDetector
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Eve.NameResolver
   alias EveDmv.Eve.SolarSystem
   alias EveDmv.Platform.Cache.AnalysisCache
   alias EveDmv.Repo
+
+  # Structure classification constants for EVE Online citadels and upwell structures
+  # Used for both Elixir matching and SQL query generation
+  @structure_groups [
+    "Citadel",
+    "Engineering Complex",
+    "Refinery",
+    "Upwell Structure"
+  ]
+
+  # Keywords for structure name matching (stored lowercase for consistent SQL ILIKE comparison)
+  # Includes generic terms and specific structure type names
+  @structure_keywords [
+    "citadel",
+    "complex",
+    "refinery",
+    "engineering",
+    "astrahus",
+    "fortizar",
+    "keepstar",
+    "raitaru",
+    "azbel",
+    "sotiyo",
+    "tatara",
+    "athanor"
+  ]
+
+  # Build SQL ILIKE conditions from @structure_keywords at compile time
+  @structure_ilike_conditions Enum.map_join(@structure_keywords, " OR\n        ", fn keyword ->
+                               "t.type_name ILIKE '%#{keyword}%'"
+                             end)
 
   @impl Phoenix.LiveView
   def mount(%{"system_id" => system_id}, _session, socket) do
@@ -105,7 +136,8 @@ defmodule EveDmvWeb.SystemLive do
              {:ok, corp_presence} <- get_corporation_presence(system_id),
              {:ok, danger_assessment} <- calculate_danger_assessment(system_id),
              {:ok, activity_heatmap} <- get_activity_heatmap(system_id),
-             {:ok, recent_kills} <- get_recent_kills(system_id) do
+             {:ok, recent_kills} <- get_recent_kills(system_id),
+             {:ok, recent_pilots} <- get_recent_pilots(system_id) do
           # Calculate peak activity hour and timezone
           peak_hour =
             if Enum.any?(activity_heatmap),
@@ -122,7 +154,8 @@ defmodule EveDmvWeb.SystemLive do
           security_info = NameResolver.system_security(system_id)
 
           # Separate regular kills from structure kills
-          {ship_kills, structure_kill_list} = Enum.split_with(recent_kills, &(!&1.is_structure))
+          {ship_kills, structure_kill_list} =
+            Enum.split_with(recent_kills, fn kill -> not kill.is_structure end)
 
           system_data = %{
             system_name: system_info.system_name,
@@ -133,6 +166,7 @@ defmodule EveDmvWeb.SystemLive do
             activity_stats: activity_stats,
             structure_kills: structure_kills,
             corp_presence: corp_presence,
+            recent_pilots: recent_pilots,
             danger_assessment: danger_assessment,
             activity_heatmap: activity_heatmap,
             peak_activity_hour: peak_hour.hour,
@@ -213,18 +247,7 @@ defmodule EveDmvWeb.SystemLive do
     WHERE k.solar_system_id = $1
       AND k.killmail_time >= $2
       AND (
-        t.type_name ILIKE '%citadel%' OR
-        t.type_name ILIKE '%complex%' OR
-        t.type_name ILIKE '%refinery%' OR
-        t.type_name ILIKE '%engineering%' OR
-        t.type_name ILIKE '%astrahus%' OR
-        t.type_name ILIKE '%fortizar%' OR
-        t.type_name ILIKE '%keepstar%' OR
-        t.type_name ILIKE '%raitaru%' OR
-        t.type_name ILIKE '%azbel%' OR
-        t.type_name ILIKE '%sotiyo%' OR
-        t.type_name ILIKE '%tatara%' OR
-        t.type_name ILIKE '%athanor%'
+        #{@structure_ilike_conditions}
       )
     GROUP BY t.type_id, t.type_name
     ORDER BY kill_count DESC
@@ -495,28 +518,101 @@ defmodule EveDmvWeb.SystemLive do
     end
   end
 
+  # Get recent pilots active in this system (attackers on kills)
+  defp get_recent_pilots(system_id) do
+    thirty_days_ago = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
+
+    pilots_query = """
+    SELECT
+      p.character_id,
+      p.character_name,
+      p.corporation_id,
+      p.corporation_name,
+      p.ship_type_id,
+      t.type_name as ship_name,
+      COUNT(*) as kill_count,
+      MAX(k.killmail_time) as last_seen,
+      SUM(CASE WHEN p.final_blow = true THEN 1 ELSE 0 END) as final_blows
+    FROM participants p
+    JOIN killmails_raw k ON p.killmail_id = k.killmail_id
+    LEFT JOIN eve_item_types t ON p.ship_type_id = t.type_id
+    WHERE k.solar_system_id = $1
+      AND k.killmail_time >= $2
+      AND p.character_id IS NOT NULL
+    GROUP BY p.character_id, p.character_name, p.corporation_id, p.corporation_name,
+             p.ship_type_id, t.type_name
+    ORDER BY kill_count DESC, last_seen DESC
+    LIMIT 30
+    """
+
+    case SQL.query(Repo, pilots_query, [system_id, thirty_days_ago]) do
+      {:ok, %{rows: rows}} ->
+        # Group by character to combine ship usage
+        pilots_by_id =
+          Enum.reduce(rows, %{}, fn [
+                                      character_id,
+                                      character_name,
+                                      corporation_id,
+                                      corporation_name,
+                                      _ship_type_id,
+                                      ship_name,
+                                      kill_count,
+                                      last_seen,
+                                      final_blows
+                                    ],
+                                    acc ->
+            Map.update(
+              acc,
+              character_id,
+              %{
+                character_id: character_id,
+                character_name: character_name || "Unknown Pilot",
+                corporation_id: corporation_id,
+                corporation_name: corporation_name || "Unknown Corp",
+                last_ship: ship_name || "Unknown Ship",
+                kill_count: kill_count,
+                final_blows: final_blows,
+                last_seen: last_seen
+              },
+              fn existing ->
+                %{
+                  existing
+                  | kill_count: existing.kill_count + kill_count,
+                    final_blows: existing.final_blows + final_blows,
+                    last_seen: max_datetime(existing.last_seen, last_seen)
+                }
+              end
+            )
+          end)
+
+        pilots =
+          pilots_by_id
+          |> Map.values()
+          |> Enum.sort_by(& &1.kill_count, :desc)
+          |> Enum.take(20)
+
+        {:ok, pilots}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp max_datetime(nil, dt), do: dt
+  defp max_datetime(dt, nil), do: dt
+
+  defp max_datetime(dt1, dt2) do
+    if DateTime.compare(dt1, dt2) == :gt, do: dt1, else: dt2
+  end
+
   # Check if a kill is a structure/citadel
+  # Uses @structure_groups and @structure_keywords module attributes for consistency with SQL query
   defp structure_kill?(ship_group, ship_name) do
-    structure_groups = [
-      "Citadel",
-      "Engineering Complex",
-      "Refinery",
-      "Upwell Structure"
-    ]
-
-    structure_keywords = [
-      "Astrahus",
-      "Fortizar",
-      "Keepstar",
-      "Raitaru",
-      "Azbel",
-      "Sotiyo",
-      "Athanor",
-      "Tatara"
-    ]
-
-    (ship_group && ship_group in structure_groups) ||
-      (ship_name && Enum.any?(structure_keywords, &String.contains?(ship_name, &1)))
+    (ship_group && ship_group in @structure_groups) ||
+      (ship_name &&
+         Enum.any?(@structure_keywords, fn keyword ->
+           String.contains?(String.downcase(ship_name), keyword)
+         end))
   end
 
   # Safely convert Decimal or number to float

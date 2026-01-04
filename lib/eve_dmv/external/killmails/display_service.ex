@@ -105,12 +105,12 @@ defmodule EveDmv.Killmails.DisplayService do
         fn -> NameResolver.system_name(system_id) end
       )
 
-    # Resolve corporation name from ID if not provided
+    # Corporation names are resolved at ingestion time - no dynamic lookup available
     victim_corporation_name =
       resolve_name_if_unknown(
         victim["corporation_name"],
         ["Unknown Corp"],
-        fn -> resolve_corporation_name(victim["corporation_id"]) end
+        fn -> "Unknown Corp" end
       )
 
     system_security = NameResolver.system_security(system_id)
@@ -220,14 +220,12 @@ defmodule EveDmv.Killmails.DisplayService do
         fn -> NameResolver.system_name(raw.solar_system_id) end
       )
 
-    # Resolve corporation name from ID if not provided
-    victim_corporation_id = get_in(victim, ["corporation_id"])
-
+    # Corporation names are resolved at ingestion time - no dynamic lookup available
     victim_corporation_name =
       resolve_name_if_unknown(
         get_in(victim, ["corporation_name"]),
         ["Unknown Corp"],
-        fn -> resolve_corporation_name(victim_corporation_id) end
+        fn -> "Unknown Corp" end
       )
 
     system_security = NameResolver.system_security(raw.solar_system_id)
@@ -356,13 +354,6 @@ defmodule EveDmv.Killmails.DisplayService do
       name
     end
   end
-
-  # Corporation names are resolved at ingestion time in DataProcessor.enrich_entity_names/1
-  # If a name is missing here, it means the data was ingested before enrichment was added.
-  # Run priv/repo/scripts/backfill_corporation_names.exs to fix existing data.
-  defp resolve_corporation_name(nil), do: "Unknown Corp"
-  defp resolve_corporation_name(name) when is_binary(name), do: name
-  defp resolve_corporation_name(_), do: "Unknown Corp"
 
   # Filter functions
   defp apply_filters(query, filters) do

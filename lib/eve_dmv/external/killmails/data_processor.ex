@@ -164,32 +164,24 @@ defmodule EveDmv.Killmails.DataProcessor do
   end
 
   defp extract_entity_ids(killmail_data) do
+    corp_ids = extract_ids(killmail_data, "corporation_id", "corporation_name")
+    alliance_ids = extract_ids(killmail_data, "alliance_id", "alliance_name")
+
+    {corp_ids, alliance_ids}
+  end
+
+  # Extracts unique IDs from victim and attackers where the ID is present but name is missing
+  defp extract_ids(killmail_data, id_key, name_key) do
     victim = killmail_data["victim"] || %{}
     attackers = killmail_data["attackers"] || []
 
-    # Collect corporation IDs (only if no name already present)
-    corp_ids =
-      [victim | attackers]
-      |> Enum.filter(fn p ->
-        p["corporation_id"] != nil and
-          (p["corporation_name"] == nil or p["corporation_name"] == "")
-      end)
-      |> Enum.map(& &1["corporation_id"])
-      |> Enum.uniq()
-      |> Enum.reject(&is_nil/1)
-
-    # Collect alliance IDs (only if no name already present)
-    alliance_ids =
-      [victim | attackers]
-      |> Enum.filter(fn p ->
-        p["alliance_id"] != nil and
-          (p["alliance_name"] == nil or p["alliance_name"] == "")
-      end)
-      |> Enum.map(& &1["alliance_id"])
-      |> Enum.uniq()
-      |> Enum.reject(&is_nil/1)
-
-    {corp_ids, alliance_ids}
+    [victim | attackers]
+    |> Enum.filter(fn p ->
+      p[id_key] != nil and (p[name_key] == nil or p[name_key] == "")
+    end)
+    |> Enum.map(& &1[id_key])
+    |> Enum.uniq()
+    |> Enum.reject(&is_nil/1)
   end
 
   defp inject_entity_names(killmail_data, corp_names, alliance_names) do
@@ -198,8 +190,8 @@ defmodule EveDmv.Killmails.DataProcessor do
 
     updated_victim =
       victim
-      |> maybe_add_corp_name(corp_names)
-      |> maybe_add_alliance_name(alliance_names)
+      |> maybe_add_entity_name(corp_names, "corporation_id", "corporation_name")
+      |> maybe_add_entity_name(alliance_names, "alliance_id", "alliance_name")
 
     # Update attackers
     attackers = killmail_data["attackers"] || []
@@ -207,8 +199,8 @@ defmodule EveDmv.Killmails.DataProcessor do
     updated_attackers =
       Enum.map(attackers, fn attacker ->
         attacker
-        |> maybe_add_corp_name(corp_names)
-        |> maybe_add_alliance_name(alliance_names)
+        |> maybe_add_entity_name(corp_names, "corporation_id", "corporation_name")
+        |> maybe_add_entity_name(alliance_names, "alliance_id", "alliance_name")
       end)
 
     killmail_data
@@ -216,32 +208,15 @@ defmodule EveDmv.Killmails.DataProcessor do
     |> Map.put("attackers", updated_attackers)
   end
 
-  defp maybe_add_corp_name(participant, corp_names) do
-    corp_id = participant["corporation_id"]
-    existing_name = participant["corporation_name"]
+  defp maybe_add_entity_name(participant, names_map, id_field, name_field) do
+    existing_name = participant[name_field]
 
     cond do
       is_binary(existing_name) and existing_name != "" ->
         participant
 
-      corp_id != nil and Map.has_key?(corp_names, corp_id) ->
-        Map.put(participant, "corporation_name", corp_names[corp_id])
-
-      true ->
-        participant
-    end
-  end
-
-  defp maybe_add_alliance_name(participant, alliance_names) do
-    alliance_id = participant["alliance_id"]
-    existing_name = participant["alliance_name"]
-
-    cond do
-      is_binary(existing_name) and existing_name != "" ->
-        participant
-
-      alliance_id != nil and Map.has_key?(alliance_names, alliance_id) ->
-        Map.put(participant, "alliance_name", alliance_names[alliance_id])
+      participant[id_field] != nil and Map.has_key?(names_map, participant[id_field]) ->
+        Map.put(participant, name_field, names_map[participant[id_field]])
 
       true ->
         participant

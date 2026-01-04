@@ -23,10 +23,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
 
   # Type definitions
   @type cache_stats :: %{
-          cache_size: non_neg_integer(),
-          hit_rate: float(),
-          miss_rate: float(),
-          evictions: non_neg_integer()
+          size: non_neg_integer(),
+          memory_bytes: non_neg_integer()
         }
 
   @type character_intelligence :: %{

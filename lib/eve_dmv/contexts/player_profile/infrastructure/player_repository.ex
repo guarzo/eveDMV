@@ -612,20 +612,15 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
       GROUP BY other_p.corporation_id, other_p.corporation_name, other_p.alliance_id, other_p.alliance_name
       ORDER BY interaction_count DESC
       LIMIT 20
-    ),
-    alliance_name_lookup AS (
-      -- Look up alliance names from alliances table (holistic solution)
-      SELECT alliance_id, alliance_name
-      FROM alliances
     )
     SELECT
       ei.corporation_id,
       ei.corporation_name,
       ei.alliance_id,
-      COALESCE(ei.alliance_name, anl.alliance_name) as alliance_name,
+      COALESCE(ei.alliance_name, a.alliance_name) as alliance_name,
       ei.interaction_count
     FROM external_interactions ei
-    LEFT JOIN alliance_name_lookup anl ON ei.alliance_id = anl.alliance_id
+    LEFT JOIN alliances a ON ei.alliance_id = a.alliance_id
     ORDER BY ei.interaction_count DESC
     """
   end

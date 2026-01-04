@@ -46,7 +46,21 @@ defmodule EveDmvWeb.AuthController do
             "Character #{user.eve_character_name} is already in account #{existing_account_id}"
           )
 
-          {:ok, AccountManager.get_account_by_id!(existing_account_id), user}
+          case AccountManager.get_account_by_id(existing_account_id) do
+            nil ->
+              # Account no longer exists, create a new one
+              Logger.warning(
+                "Account #{existing_account_id} no longer exists, creating new account for #{user.eve_character_name}"
+              )
+
+              case AccountManager.ensure_user_account(user) do
+                {:ok, account} -> {:ok, account, user}
+                error -> error
+              end
+
+            account ->
+              {:ok, account, user}
+          end
 
         link_to_account? && existing_account_id && user.account_id != existing_account_id ->
           # Character is linked to a DIFFERENT account - need to re-link
@@ -87,20 +101,6 @@ defmodule EveDmvWeb.AuthController do
         |> put_session("current_account_id", account.id)
         |> put_session("last_activity", System.system_time(:millisecond))
         |> put_flash(:info, message)
-        |> redirect(to: ~p"/dashboard")
-
-      {:ok, account} ->
-        # Fallback for ensure_user_account which returns {:ok, account}
-        AccountManager.update_account_activity(account.id)
-
-        conn
-        |> store_in_session(user)
-        |> assign(:current_user, user)
-        |> assign(:current_account, account)
-        |> put_session("current_user_id", user.id)
-        |> put_session("current_account_id", account.id)
-        |> put_session("last_activity", System.system_time(:millisecond))
-        |> put_flash(:info, "Welcome back, #{user.eve_character_name || "pilot"}!")
         |> redirect(to: ~p"/dashboard")
 
       {:error, :already_linked_to_different_account} ->

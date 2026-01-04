@@ -31,19 +31,15 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
     ninety_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
 
     # Get character stats using optimized query
-    stats_result =
-      QueryPerformance.tracked_query(
-        "character_stats",
-        fn -> CharacterQueries.get_character_stats(character_id, ninety_days_ago) end,
-        metadata: %{character_id: character_id}
-      )
-
-    # Unwrap the {:ok, value} result from QueryCache
+    # QueryCache.get_or_compute always returns {:ok, value} or {:error, reason}
     stats =
-      case stats_result do
+      case QueryPerformance.tracked_query(
+             "character_stats",
+             fn -> CharacterQueries.get_character_stats(character_id, ninety_days_ago) end,
+             metadata: %{character_id: character_id}
+           ) do
         {:ok, value} -> value
-        value when is_map(value) -> value
-        _ -> %{kills: 0, deaths: 0, kd_ratio: 0}
+        {:error, _} -> %{kills: 0, deaths: 0, kd_ratio: 0}
       end
 
     # Get character name from killmail data
@@ -93,23 +89,12 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
         {:error, _} -> []
       end
 
-    # Keep weapon_preferences for backwards compatibility (flat list)
+    # Get weapon preferences (flat list for display)
     weapon_preferences =
       case CharacterIntelligence.get_weapon_preferences(character_id, ninety_days_ago) do
         {:ok, %{preferences: weapons}} ->
-          Enum.map(weapons, fn weapon ->
-            %{
-              weapon_name: weapon.weapon_name,
-              usage_count: weapon.usage_count
-            }
-          end)
-
-        {:ok, weapons} when is_list(weapons) ->
-          Enum.map(weapons, fn weapon ->
-            %{
-              weapon_name: Map.get(weapon, :weapon_name) || Map.get(weapon, "weapon_name"),
-              usage_count: Map.get(weapon, :usage_count) || Map.get(weapon, "usage_count")
-            }
+          Enum.map(weapons, fn %{weapon_name: wn, usage_count: uc} ->
+            %{weapon_name: wn, usage_count: uc}
           end)
 
         {:error, _} ->
@@ -118,15 +103,13 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
 
     # Calculate ISK efficiency
     isk_stats =
-      case CharacterIntelligence.calculate_isk_efficiency(character_id, ninety_days_ago) do
-        {:ok, stats} -> stats
-        {:error, _} -> %{efficiency_percentage: 0.0, isk_destroyed: 0.0, isk_lost: 0.0}
-      end
+      CharacterIntelligence.calculate_isk_efficiency(character_id, ninety_days_ago)
+      |> unwrap_or_default(%{efficiency_percentage: 0.0, isk_destroyed: 0.0, isk_lost: 0.0})
 
     # Get external groups analysis (15-day window for more recent activity)
     fifteen_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-15 * 24 * 60 * 60, :second)
 
-    {:ok, external_groups} =
+    external_groups =
       CombatIntelligence.get_external_groups(character_id, fifteen_days_ago)
 
     # Get gang size patterns - transform from list to map format for template
@@ -157,56 +140,50 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
 
     # Get known associates
     known_associates =
-      case CharacterIntelligence.get_known_associates(character_id, ninety_days_ago) do
-        {:ok, data} -> data
-        {:error, _} -> %{associates: [], total_associates: 0}
-      end
+      CharacterIntelligence.get_known_associates(character_id, ninety_days_ago)
+      |> unwrap_or_default(%{associates: [], total_associates: 0})
 
     # Get hunting grounds
     hunting_grounds =
-      case CharacterIntelligence.get_hunting_grounds(character_id, ninety_days_ago) do
-        {:ok, data} -> data
-        {:error, _} -> %{top_systems: [], security_preference: [], primary_security: "unknown"}
-      end
+      CharacterIntelligence.get_hunting_grounds(character_id, ninety_days_ago)
+      |> unwrap_or_default(%{
+        top_systems: [],
+        security_preference: [],
+        primary_security: "unknown"
+      })
 
     # Get target selection patterns
     target_selection =
-      case CharacterIntelligence.get_target_selection(character_id, ninety_days_ago) do
-        {:ok, data} ->
-          data
-
-        {:error, _} ->
-          %{
-            top_targets: [],
-            class_breakdown: [],
-            avg_victim_value: 0,
-            target_assessment: "unknown"
-          }
-      end
+      CharacterIntelligence.get_target_selection(character_id, ninety_days_ago)
+      |> unwrap_or_default(%{
+        top_targets: [],
+        class_breakdown: [],
+        avg_victim_value: 0,
+        target_assessment: "unknown"
+      })
 
     # Get activity timeline (last 30 days)
     thirty_days_ago_for_timeline =
       DateTime.utc_now() |> DateTimeUtils.add(-30 * 24 * 60 * 60, :second)
 
     activity_timeline =
-      case CharacterIntelligence.get_activity_timeline(character_id, thirty_days_ago_for_timeline) do
-        {:ok, data} -> data
-        {:error, _} -> %{timeline: [], week_kills: 0, week_deaths: 0, activity_trend: "unknown"}
-      end
+      CharacterIntelligence.get_activity_timeline(character_id, thirty_days_ago_for_timeline)
+      |> unwrap_or_default(%{
+        timeline: [],
+        week_kills: 0,
+        week_deaths: 0,
+        activity_trend: "unknown"
+      })
 
     # Get corp context
     corp_context =
-      case CharacterIntelligence.get_corp_context(character_id, ninety_days_ago) do
-        {:ok, data} -> data
-        {:error, _} -> %{active_pilots: 0, corp_kills: 0, corp_size_assessment: "unknown"}
-      end
+      CharacterIntelligence.get_corp_context(character_id, ninety_days_ago)
+      |> unwrap_or_default(%{active_pilots: 0, corp_kills: 0, corp_size_assessment: "unknown"})
 
     # Get bait indicators
     bait_indicators =
-      case CharacterIntelligence.get_bait_indicators(character_id, ninety_days_ago) do
-        {:ok, data} -> data
-        {:error, _} -> %{is_likely_bait: false, bait_assessment: "No data"}
-      end
+      CharacterIntelligence.get_bait_indicators(character_id, ninety_days_ago)
+      |> unwrap_or_default(%{is_likely_bait: false, bait_assessment: "No data"})
 
     # Calculate activity metrics for the last 30 days
     thirty_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-30 * 24 * 60 * 60, :second)
@@ -223,16 +200,14 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
     # Calculate intelligence summary - build structure expected by component
     # The component expects: peak_activity_hour, top_location, primary_timezone
     raw_intelligence =
-      case CharacterIntelligence.get_intelligence_summary(character_id, ninety_days_ago) do
-        {:ok, summary} -> summary
-        {:error, _} -> %{}
-      end
+      CharacterIntelligence.get_intelligence_summary(character_id, ninety_days_ago)
+      |> unwrap_or_default(%{})
 
     # Extract top region from regional_activity if available
     top_region =
       case Map.get(raw_intelligence, :regional_activity) do
         [first | _] when is_map(first) ->
-          %{name: Map.get(first, "region") || Map.get(first, :region)}
+          %{name: Map.get(first, "region")}
 
         _ ->
           %{}
@@ -322,4 +297,8 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
 
   defp derive_timezone(%Decimal{} = peak_hour), do: derive_timezone(Decimal.to_integer(peak_hour))
   defp derive_timezone(_), do: nil
+
+  # Helper to unwrap {:ok, data} or return default on {:error, _}
+  defp unwrap_or_default({:ok, data}, _default), do: data
+  defp unwrap_or_default({:error, _}, default), do: default
 end

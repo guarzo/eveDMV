@@ -266,10 +266,7 @@ defmodule EveDmvWeb.SearchComponent do
         end)
 
       # Fallback to direct SQL search if Ash search fails or returns no results
-      {:ok, []} ->
-        fallback_system_search(query)
-
-      {:error, _reason} ->
+      _ ->
         fallback_system_search(query)
     end
   end

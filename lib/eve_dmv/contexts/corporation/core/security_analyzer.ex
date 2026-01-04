@@ -10,6 +10,7 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
   alias EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer
   alias EveDmv.Contexts.Corporation.Core.MemberRiskAssessment
   alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Core.Utils.NumericUtils
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
   alias EveDmv.Platform.Database.CharacterRepository
   alias EveDmv.Platform.Database.CorporationRepository
@@ -968,18 +969,11 @@ defmodule EveDmv.Contexts.Corporation.Core.SecurityAnalyzer do
   defp analyze_killmail_patterns_for_vetting(killmail_history) do
     %{
       combat_participation: killmail_history.total_killmails > 0,
-      kill_death_ratio: calculate_kd_ratio(killmail_history.kills, killmail_history.losses),
+      kill_death_ratio:
+        NumericUtils.calculate_kd_ratio(killmail_history.kills, killmail_history.losses),
       primary_operational_area: List.first(killmail_history.operational_areas),
       concerning_patterns: []
     }
-  end
-
-  defp calculate_kd_ratio(kills, losses) do
-    if losses > 0 do
-      Float.round(kills / losses, 2)
-    else
-      kills
-    end
   end
 
   defp assess_activity_for_vetting(activity_patterns) do

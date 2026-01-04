@@ -5,6 +5,7 @@ defmodule EveDmv.Platform.Database.CharacterQueries do
   Uses materialized views and efficient indexing to avoid expensive JSONB operations.
   """
 
+  alias EveDmv.Core.Utils.NumericUtils
   alias EveDmv.Platform.Cache.QueryCache
   alias EveDmv.Platform.Database.Pagination
   alias EveDmv.Repo
@@ -38,7 +39,7 @@ defmodule EveDmv.Platform.Database.CharacterQueries do
         %{
           kills: kill_count || 0,
           deaths: death_count || 0,
-          kd_ratio: calculate_kd_ratio(kill_count || 0, death_count || 0)
+          kd_ratio: NumericUtils.calculate_kd_ratio(kill_count || 0, death_count || 0)
         }
       end,
       ttl: :timer.hours(1)
@@ -223,10 +224,4 @@ defmodule EveDmv.Platform.Database.CharacterQueries do
         }
     end
   end
-
-  defp calculate_kd_ratio(kills, deaths) when deaths > 0 do
-    Float.round(kills / deaths, 2)
-  end
-
-  defp calculate_kd_ratio(kills, _deaths), do: kills
 end

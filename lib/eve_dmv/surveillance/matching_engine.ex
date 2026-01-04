@@ -186,7 +186,24 @@ defmodule EveDmv.Surveillance.MatchingEngine do
     end
 
     # Clean up expired cache entries
-    IndexManager.cleanup_expired_cache()
+    try do
+      cleaned_count = IndexManager.cleanup_expired_cache()
+
+      if cleaned_count > 0 do
+        Logger.debug("Cleaned up #{cleaned_count} expired cache entries")
+      end
+    rescue
+      error ->
+        Logger.error(
+          "Failed to cleanup expired cache: #{Exception.message(error)}\n#{Exception.format_stacktrace(__STACKTRACE__)}"
+        )
+
+        :telemetry.execute(
+          [:eve_dmv, :surveillance, :cache_cleanup_error],
+          %{count: 1},
+          %{error: inspect(error)}
+        )
+    end
 
     # Schedule next batch recording
     schedule_batch_recording()

@@ -315,7 +315,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   Returns corporations and alliances the character has flown with but are not part of their own.
   Useful for understanding social connections and potential allies.
   """
-  @spec get_external_groups(integer(), DateTime.t()) :: {:ok, list()}
+  @spec get_external_groups(integer(), DateTime.t()) :: {:ok, list(map())} | {:error, term()}
   def get_external_groups(character_id, since_date) do
     Domain.ExternalGroupAnalyzer.analyze(character_id, since_date)
   end

@@ -637,52 +637,60 @@ defmodule EveDmv.StaticData do
   defp get_from_cache(table, key) do
     # Check if table exists before accessing
     if :ets.whereis(table) == :undefined do
+      Logger.debug("ETS table #{inspect(table)} is missing, cache lookup skipped")
       :miss
     else
-      case :ets.lookup(table, key) do
-        [{^key, value, timestamp}] ->
-          if cache_expired?(timestamp) do
-            :ets.delete(table, key)
-            :miss
-          else
-            {:hit, value}
-          end
+      # Guard against race where table is deleted between check and lookup
+      try do
+        case :ets.lookup(table, key) do
+          [{^key, value, timestamp}] ->
+            if cache_expired?(timestamp) do
+              :ets.delete(table, key)
+              :miss
+            else
+              {:hit, value}
+            end
 
-        [] ->
-          :miss
+          [] ->
+            :miss
+        end
+      rescue
+        ArgumentError -> :miss
       end
     end
-  rescue
-    ArgumentError -> :miss
   end
 
   defp get_multiple_from_cache(table, keys) do
     # Return all keys as missing if table doesn't exist
     if :ets.whereis(table) == :undefined do
+      Logger.debug("ETS table #{inspect(table)} is missing, keys: #{inspect(keys)}")
       {%{}, keys}
     else
-      now = System.system_time(:second)
-
       Enum.reduce(keys, {%{}, []}, fn key, {cached_acc, missing_acc} ->
-        check_cache_entry(table, key, now, cached_acc, missing_acc)
+        check_cache_entry(table, key, cached_acc, missing_acc)
       end)
     end
-  rescue
-    ArgumentError -> {%{}, keys}
   end
 
-  defp check_cache_entry(table, key, now, cached_acc, missing_acc) do
+  # Guard against race where table is deleted between check and lookup
+  defp check_cache_entry(table, key, cached_acc, missing_acc) do
     case :ets.lookup(table, key) do
-      [{^key, value, timestamp}] when now - timestamp < @cache_ttl ->
-        {Map.put(cached_acc, key, value), missing_acc}
-
-      [{^key, _value, _timestamp}] ->
-        :ets.delete(table, key)
-        {cached_acc, [key | missing_acc]}
+      [{^key, value, timestamp}] ->
+        if cache_expired?(timestamp) do
+          :ets.delete(table, key)
+          {cached_acc, [key | missing_acc]}
+        else
+          {Map.put(cached_acc, key, value), missing_acc}
+        end
 
       [] ->
         {cached_acc, [key | missing_acc]}
     end
+  rescue
+    ArgumentError ->
+      Logger.debug("ArgumentError accessing ETS table #{inspect(table)}, key: #{inspect(key)}")
+
+      {cached_acc, [key | missing_acc]}
   end
 
   defp cache_item(table, key, value) do
@@ -690,9 +698,16 @@ defmodule EveDmv.StaticData do
     if :ets.whereis(table) != :undefined do
       timestamp = System.system_time(:second)
       :ets.insert(table, {key, value, timestamp})
+    else
+      Logger.warning("ETS table missing for cache_item: table=#{inspect(table)}, cache_key=#{inspect(key)}")
     end
   rescue
-    ArgumentError -> :ok
+    e in ArgumentError ->
+      Logger.error(
+        "ArgumentError in cache_item: table=#{inspect(table)}, cache_key=#{inspect(key)}, error=#{Exception.message(e)}"
+      )
+
+      :ok
   end
 
   defp cache_expired?(timestamp) do

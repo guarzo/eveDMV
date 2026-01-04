@@ -9,6 +9,18 @@ defmodule EveDmvWeb.SurveillanceStatsComponent do
   use EveDmvWeb, :live_component
 
   @doc """
+  Ensures @engine_stats and @recent_matches are always safe to access.
+  """
+  @impl Phoenix.LiveComponent
+  def update(assigns, socket) do
+    {:ok,
+     socket
+     |> assign(assigns)
+     |> assign(:engine_stats, assigns[:engine_stats] || %{})
+     |> assign(:recent_matches, assigns[:recent_matches] || [])}
+  end
+
+  @doc """
   Renders the surveillance stats sidebar with engine statistics and recent matches.
   """
   @impl Phoenix.LiveComponent

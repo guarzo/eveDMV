@@ -43,7 +43,10 @@ defmodule EveDmvWeb.CorporationLive.DataLoader do
       |> Enum.map(&Task.await(&1, 30_000))
       |> Map.new()
 
-    # Combine all data, unwrapping {:ok, data} tuples from cache functions
+    # Combine all data from both cache-backed functions (returning {:ok, data} tuples)
+    # and non-cache functions like load_top_members/2 and load_recent_activity/2
+    # (returning raw data via QueryPerformance.tracked_query/3). Unwraps tuple
+    # responses when present and passes through plain responses unchanged.
     %{
       corporation_id: corporation_id,
       info: unwrap_result(results["info"]),
@@ -55,8 +58,15 @@ defmodule EveDmvWeb.CorporationLive.DataLoader do
     }
   end
 
-  # Unwrap {:ok, data} tuples from cache functions, pass through plain data
+  # Unwrap {:ok, data} tuples from cache functions, handle errors with logging
   defp unwrap_result({:ok, data}), do: data
+
+  defp unwrap_result({:error, reason}) do
+    Logger.error("Corporation data loading failed: #{inspect(reason)}, type=data_load_failure")
+
+    nil
+  end
+
   defp unwrap_result(data), do: data
 
   @doc """

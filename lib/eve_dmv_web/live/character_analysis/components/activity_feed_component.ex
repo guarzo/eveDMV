@@ -17,7 +17,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.ActivityFeedComponent do
           <div class="bg-gray-700 rounded p-3">
             <div class="flex items-center gap-3">
               <.ship_image
-                type_id={String.to_integer(stats.ship_type_id || "0")}
+                type_id={to_integer(stats.ship_type_id)}
                 name={ship_name}
                 size={48}
               />
@@ -41,4 +41,8 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.ActivityFeedComponent do
     </div>
     """
   end
+
+  defp to_integer(nil), do: 0
+  defp to_integer(value) when is_integer(value), do: value
+  defp to_integer(value) when is_binary(value), do: String.to_integer(value)
 end
