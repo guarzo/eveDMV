@@ -306,9 +306,7 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
     Ecto.Adapters.SQL.query(EveDmv.Repo, query, [alliance_id, alliance_name, sanitized_ticker])
   rescue
     error ->
-      Logger.warning(
-        "Failed to save alliance #{alliance_id} to database: #{inspect(error)}"
-      )
+      Logger.warning("Failed to save alliance #{alliance_id} to database: #{inspect(error)}")
 
       {:error, error}
   end

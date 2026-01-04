@@ -356,7 +356,9 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
         seen_count = length(killmails) - length(unseen_killmails)
 
         if seen_count > 0 do
-          Logger.debug("Filtered #{seen_count} duplicate killmails from batch of #{length(killmails)}")
+          Logger.debug(
+            "Filtered #{seen_count} duplicate killmails from batch of #{length(killmails)}"
+          )
         end
 
         case unseen_killmails do
