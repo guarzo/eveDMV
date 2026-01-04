@@ -11,6 +11,7 @@ defmodule EveDmv.Eve.StaticDataLoader.SolarSystemProcessor do
 
   @doc """
   Classifies a system's security status.
+  For proper wormhole detection, use classify_security/2 which accepts system_name.
   """
   def classify_security(security_status) when is_number(security_status) do
     cond do
@@ -21,6 +22,29 @@ defmodule EveDmv.Eve.StaticDataLoader.SolarSystemProcessor do
   end
 
   def classify_security(_), do: "unknown"
+
+  @doc """
+  Classifies a system's security status with wormhole detection.
+  Wormhole systems are identified by their naming pattern (J + 6 digits).
+  """
+  def classify_security(security_status, system_name) when is_binary(system_name) do
+    if is_wormhole_system_name?(system_name) do
+      "wormhole"
+    else
+      classify_security(security_status)
+    end
+  end
+
+  def classify_security(security_status, _), do: classify_security(security_status)
+
+  @doc """
+  Checks if a system name matches the wormhole naming pattern (J + 6 digits).
+  """
+  def is_wormhole_system_name?(system_name) when is_binary(system_name) do
+    Regex.match?(~r/^J\d{6}$/, system_name)
+  end
+
+  def is_wormhole_system_name?(_), do: false
 
   @doc """
   Filters systems by security class.

@@ -129,14 +129,69 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
     {:ok, external_groups} =
       CombatIntelligence.get_external_groups(character_id, fifteen_days_ago)
 
-    # Get gang size patterns
+    # Get gang size patterns - transform from list to map format for template
     gang_size_patterns =
       case CharacterIntelligence.get_gang_size_patterns(character_id, ninety_days_ago) do
-        {:ok, patterns} ->
+        {:ok, %{patterns: patterns}} when is_list(patterns) ->
+          # Convert list of patterns to map keyed by category atom
+          Enum.reduce(patterns, %{solo: %{}, small_gang: %{}, medium_gang: %{}, large_gang: %{}, fleet: %{}}, fn pattern, acc ->
+            category = String.to_existing_atom(pattern.size_category)
+            Map.put(acc, category, %{
+              count: pattern.participation_count,
+              percentage: pattern.participation_percentage,
+              avg_size: pattern.avg_gang_size
+            })
+          end)
+
+        {:ok, patterns} when is_map(patterns) ->
           patterns
 
         {:error, _} ->
           %{solo: %{}, small_gang: %{}, medium_gang: %{}, large_gang: %{}, fleet: %{}}
+      end
+
+    # Get known associates
+    known_associates =
+      case CharacterIntelligence.get_known_associates(character_id, ninety_days_ago) do
+        {:ok, data} -> data
+        {:error, _} -> %{associates: [], total_associates: 0}
+      end
+
+    # Get hunting grounds
+    hunting_grounds =
+      case CharacterIntelligence.get_hunting_grounds(character_id, ninety_days_ago) do
+        {:ok, data} -> data
+        {:error, _} -> %{top_systems: [], security_preference: [], primary_security: "unknown"}
+      end
+
+    # Get target selection patterns
+    target_selection =
+      case CharacterIntelligence.get_target_selection(character_id, ninety_days_ago) do
+        {:ok, data} -> data
+        {:error, _} -> %{top_targets: [], class_breakdown: [], avg_victim_value: 0, target_assessment: "unknown"}
+      end
+
+    # Get activity timeline (last 30 days)
+    thirty_days_ago_for_timeline = DateTime.utc_now() |> DateTimeUtils.add(-30 * 24 * 60 * 60, :second)
+
+    activity_timeline =
+      case CharacterIntelligence.get_activity_timeline(character_id, thirty_days_ago_for_timeline) do
+        {:ok, data} -> data
+        {:error, _} -> %{timeline: [], week_kills: 0, week_deaths: 0, activity_trend: "unknown"}
+      end
+
+    # Get corp context
+    corp_context =
+      case CharacterIntelligence.get_corp_context(character_id, ninety_days_ago) do
+        {:ok, data} -> data
+        {:error, _} -> %{active_pilots: 0, corp_kills: 0, corp_size_assessment: "unknown"}
+      end
+
+    # Get bait indicators
+    bait_indicators =
+      case CharacterIntelligence.get_bait_indicators(character_id, ninety_days_ago) do
+        {:ok, data} -> data
+        {:error, _} -> %{is_likely_bait: false, bait_assessment: "No data"}
       end
 
     # Calculate activity metrics for the last 30 days
@@ -199,7 +254,14 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
       recent_kills: activity_stats.total_kills,
       most_active_day: activity_stats.peak_activity_day,
       active_days: activity_stats.active_days,
-      intelligence_summary: intelligence_summary
+      intelligence_summary: intelligence_summary,
+      # Enhanced intelligence features
+      known_associates: known_associates,
+      hunting_grounds: hunting_grounds,
+      target_selection: target_selection,
+      activity_timeline: activity_timeline,
+      corp_context: corp_context,
+      bait_indicators: bait_indicators
     }
 
     {:ok, analysis}

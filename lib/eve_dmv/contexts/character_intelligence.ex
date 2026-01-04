@@ -628,6 +628,78 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   end
 
   @doc """
+  Get known associates - pilots who frequently fly with this character.
+  """
+  @spec get_known_associates(integer(), Date.t() | DateTime.t()) ::
+          {:ok, map()} | {:error, atom()}
+  def get_known_associates(character_id, since_date) do
+    CharacterIntelligenceAnalyzer.analyze_known_associates(
+      character_id,
+      since_date
+    )
+  end
+
+  @doc """
+  Get hunting grounds - systems where this character is most active.
+  """
+  @spec get_hunting_grounds(integer(), Date.t() | DateTime.t()) ::
+          {:ok, map()} | {:error, atom()}
+  def get_hunting_grounds(character_id, since_date) do
+    CharacterIntelligenceAnalyzer.analyze_hunting_grounds(
+      character_id,
+      since_date
+    )
+  end
+
+  @doc """
+  Get target selection patterns - what types of ships does this character hunt.
+  """
+  @spec get_target_selection(integer(), Date.t() | DateTime.t()) ::
+          {:ok, map()} | {:error, atom()}
+  def get_target_selection(character_id, since_date) do
+    CharacterIntelligenceAnalyzer.analyze_target_selection(
+      character_id,
+      since_date
+    )
+  end
+
+  @doc """
+  Get activity timeline - daily activity over recent period.
+  """
+  @spec get_activity_timeline(integer(), Date.t() | DateTime.t()) ::
+          {:ok, map()} | {:error, atom()}
+  def get_activity_timeline(character_id, since_date) do
+    CharacterIntelligenceAnalyzer.analyze_activity_timeline(
+      character_id,
+      since_date
+    )
+  end
+
+  @doc """
+  Get corporation context - how active is their corp.
+  """
+  @spec get_corp_context(integer(), Date.t() | DateTime.t()) ::
+          {:ok, map()} | {:error, atom()}
+  def get_corp_context(character_id, since_date) do
+    CharacterIntelligenceAnalyzer.analyze_corp_context(
+      character_id,
+      since_date
+    )
+  end
+
+  @doc """
+  Get bait indicators - is this pilot likely bait?
+  """
+  @spec get_bait_indicators(integer(), Date.t() | DateTime.t()) ::
+          {:ok, map()} | {:error, atom()}
+  def get_bait_indicators(character_id, since_date) do
+    CharacterIntelligenceAnalyzer.analyze_bait_indicators(
+      character_id,
+      since_date
+    )
+  end
+
+  @doc """
   Calculate ISK efficiency metrics for a character.
   Returns ISK destroyed/lost, efficiency percentage, and risk assessment.
   """

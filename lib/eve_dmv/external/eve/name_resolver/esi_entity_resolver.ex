@@ -78,7 +78,11 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
 
   def alliance_name(alliance_id) when is_integer(alliance_id) do
     case CacheManager.get_cached_or_fetch(:alliance, alliance_id, fn ->
-           fetch_from_esi(:alliance, alliance_id)
+           # First try database lookup, then fall back to ESI
+           case fetch_from_database(:alliance, alliance_id) do
+             {:ok, name} -> {:ok, name}
+             {:error, _} -> fetch_from_esi(:alliance, alliance_id)
+           end
          end) do
       {:ok, name} -> name
       {:error, _} -> "Unknown Alliance (#{alliance_id})"
@@ -142,13 +146,23 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
   end
 
   def bulk_esi_lookup(:alliance, alliance_ids) when length(alliance_ids) <= 50 do
-    # Skip ESI calls for alliance names - they should be in killmail data
-    results =
-      alliance_ids
-      |> Enum.map(fn id -> {id, "Alliance #{id}"} end)
+    # First try database lookup, then fall back to ESI for missing ones
+    db_results = fetch_alliances_from_database(alliance_ids)
+    found_ids = Map.keys(db_results)
+    missing_ids = alliance_ids -- found_ids
+
+    # For missing alliances, try ESI
+    esi_results =
+      missing_ids
+      |> Enum.map(fn id ->
+        case fetch_from_esi(:alliance, id) do
+          {:ok, name} -> {id, name}
+          {:error, _} -> {id, "Unknown Alliance (#{id})"}
+        end
+      end)
       |> Map.new()
 
-    {:ok, results}
+    {:ok, Map.merge(db_results, esi_results)}
   rescue
     error in [FunctionClauseError, ArgumentError, RuntimeError] ->
       Logger.warning("Parallel fetch error: #{inspect(error)}")
@@ -185,6 +199,43 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
 
   # Private helper functions
 
+  # Database lookups for cached entity names
+  defp fetch_from_database(:alliance, alliance_id) do
+    query = "SELECT alliance_name FROM alliances WHERE alliance_id = $1 LIMIT 1"
+
+    case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [alliance_id]) do
+      {:ok, %{rows: [[name]]}} when is_binary(name) -> {:ok, name}
+      _ -> {:error, :not_found}
+    end
+  rescue
+    error ->
+      Logger.debug("Database lookup failed for alliance #{alliance_id}: #{inspect(error)}")
+      {:error, :db_error}
+  end
+
+  defp fetch_from_database(_type, _id), do: {:error, :not_supported}
+
+  # Bulk database lookup for alliances
+  defp fetch_alliances_from_database(alliance_ids) when is_list(alliance_ids) do
+    if Enum.empty?(alliance_ids) do
+      %{}
+    else
+      query = "SELECT alliance_id, alliance_name FROM alliances WHERE alliance_id = ANY($1)"
+
+      case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [alliance_ids]) do
+        {:ok, %{rows: rows}} ->
+          rows
+          |> Enum.map(fn [id, name] -> {id, name} end)
+          |> Map.new()
+
+        _ ->
+          %{}
+      end
+    end
+  rescue
+    _ -> %{}
+  end
+
   defp fetch_from_esi(:character, character_id) do
     case EsiClient.get_character(character_id) do
       {:ok, character} -> {:ok, character.name}
@@ -209,12 +260,35 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
 
   defp fetch_from_esi(:alliance, alliance_id) do
     case EsiClient.get_alliance(alliance_id) do
-      {:ok, alliance} -> {:ok, alliance.name}
-      {:error, _} -> {:error, :not_found}
+      {:ok, alliance} ->
+        # Cache in database for future lookups
+        save_alliance_to_database(alliance_id, alliance.name, alliance[:ticker])
+        {:ok, alliance.name}
+
+      {:error, _} ->
+        {:error, :not_found}
     end
   rescue
     error ->
       Logger.warning("Failed to fetch alliance #{alliance_id} from ESI: #{inspect(error)}")
       {:error, :esi_error}
+  end
+
+  # Save discovered alliance to database for future lookups
+  defp save_alliance_to_database(alliance_id, alliance_name, ticker) do
+    query = """
+    INSERT INTO alliances (alliance_id, alliance_name, ticker, inserted_at, updated_at)
+    VALUES ($1, $2, $3, NOW(), NOW())
+    ON CONFLICT (alliance_id) DO UPDATE SET
+      alliance_name = EXCLUDED.alliance_name,
+      ticker = COALESCE(EXCLUDED.ticker, alliances.ticker),
+      updated_at = NOW()
+    """
+
+    Ecto.Adapters.SQL.query(EveDmv.Repo, query, [alliance_id, alliance_name, ticker])
+  rescue
+    error ->
+      Logger.debug("Failed to save alliance #{alliance_id} to database: #{inspect(error)}")
+      :ok
   end
 end

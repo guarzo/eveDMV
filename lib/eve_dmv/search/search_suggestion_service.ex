@@ -168,7 +168,7 @@ defmodule EveDmv.Search.SearchSuggestionService do
         system_query =
           EveSolarSystem
           |> Ash.Query.new()
-          |> Ash.Query.select([:system_id, :system_name, :region_name, :security_status])
+          |> Ash.Query.select([:system_id, :system_name, :region_name, :security_status, :security_class])
           |> Ash.Query.limit(500)
 
         case Ash.read(system_query, domain: EveDmv.Api) do
@@ -183,13 +183,13 @@ defmodule EveDmv.Search.SearchSuggestionService do
 
             suggestions =
               Enum.map(filtered_systems, fn system ->
-                security_class = format_security_status(system.security_status)
+                sec_display = format_security_status(system.security_class, system.security_status)
 
                 %{
                   id: system.system_id,
                   name: system.system_name,
                   type: :system,
-                  subtitle: "#{system.region_name} (#{security_class})"
+                  subtitle: "#{system.region_name} (#{sec_display})"
                 }
               end)
 
@@ -437,7 +437,18 @@ defmodule EveDmv.Search.SearchSuggestionService do
     end
   end
 
-  defp format_security_status(security_status) when is_number(security_status) do
+  # Use security_class from SDE as authoritative source, with security_status as fallback
+  defp format_security_status(security_class, _security_status) when is_binary(security_class) do
+    case security_class do
+      "highsec" -> "High Sec"
+      "lowsec" -> "Low Sec"
+      "nullsec" -> "Null Sec"
+      "wormhole" -> "Wormhole"
+      _ -> "Unknown"
+    end
+  end
+
+  defp format_security_status(nil, security_status) when is_number(security_status) do
     cond do
       security_status >= 0.5 -> "High Sec"
       security_status > 0.0 -> "Low Sec"
@@ -446,5 +457,5 @@ defmodule EveDmv.Search.SearchSuggestionService do
     end
   end
 
-  defp format_security_status(_), do: "Unknown"
+  defp format_security_status(_, _), do: "Unknown"
 end

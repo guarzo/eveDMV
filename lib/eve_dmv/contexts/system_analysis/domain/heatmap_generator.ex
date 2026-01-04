@@ -278,15 +278,20 @@ defmodule EveDmv.Contexts.SystemAnalysis.Domain.HeatmapGenerator do
     # Factor in security status and activity type
     base_danger = calculate_intensity(activity) / 10.0
 
-    # Adjust for security status
+    # Use security_class from SDE for proper classification
     sec_modifier =
-      cond do
-        # Highsec
-        system.security_status >= 0.5 -> 0.5
-        # Lowsec
-        system.security_status >= 0.0 -> 1.0
-        # Nullsec/Wormhole
-        true -> 1.5
+      case system.security_class do
+        "highsec" -> 0.5
+        "lowsec" -> 1.0
+        "nullsec" -> 1.5
+        "wormhole" -> 1.8  # Wormholes are slightly more dangerous (no local, no cynos)
+        _ ->
+          # Fallback to security_status for systems without security_class
+          cond do
+            system.security_status >= 0.5 -> 0.5
+            system.security_status >= 0.0 -> 1.0
+            true -> 1.5
+          end
       end
 
     # Check for capital kills (high danger)

@@ -239,6 +239,53 @@ end
 @frigate_range 580..700  # ❌ These don't match EVE data
 ```
 
+### Solar System Security Classification Pattern
+**ALWAYS** use the `security_class` field from `eve_solar_systems` table to identify space type. This is the authoritative source from CCP's SDE.
+
+**Available `security_class` values:**
+- `"highsec"` - High security space (0.5 to 1.0)
+- `"lowsec"` - Low security space (0.1 to 0.4)
+- `"nullsec"` - Null security space (0.0 and below)
+- `"wormhole"` - Wormhole space (J-space systems)
+
+**Additional wormhole-specific fields:**
+- `wormhole_class_id` - Integer for wormhole class (1-6 for C1-C6, 12 for Thera, etc.)
+- `wormhole_effect_type` - Environmental effect (Pulsar, Magnetar, Black Hole, etc.)
+
+```elixir
+# CORRECT - Use security_class from SDE
+case system.security_class do
+  "highsec" -> :safe
+  "lowsec" -> :dangerous
+  "nullsec" -> :very_dangerous
+  "wormhole" -> :extremely_dangerous
+  _ -> :unknown
+end
+
+# CORRECT - In SQL queries, use the security_class column directly
+"""
+SELECT COALESCE(s.security_class, 'unknown') as sec_class
+FROM eve_solar_systems s
+WHERE s.system_id = $1
+"""
+
+# CORRECT - For programmatic lookup
+EveDmv.StaticData.classify_system(system_id)  # Returns :highsec, :lowsec, :nullsec, :wormhole_c1, etc.
+
+# WRONG - Never use regex on system names to detect wormholes
+system_name ~ '^J[0-9]{6}$'  # ❌ Fragile, misses edge cases
+
+# WRONG - Never assume security_status alone identifies wormholes
+WHEN security_status IS NULL THEN 'wormhole'  # ❌ Wormholes have 0.0 security_status
+WHEN security_status <= 0.0 THEN 'nullsec'    # ❌ This incorrectly classifies wormholes as nullsec
+```
+
+**Key differences between wormholes and nullsec:**
+- Wormholes have no local chat (delayed mode)
+- Wormholes don't allow cynosural fields
+- Wormholes have mass limits on connections
+- Wormholes may have environmental effects that modify combat
+
 ## Current Implementation Status
 
 ### ✅ Production-Ready Features

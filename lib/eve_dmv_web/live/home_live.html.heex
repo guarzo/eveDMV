@@ -1,7 +1,7 @@
 <div class="min-h-screen bg-gray-900">
   <!-- Hero Section with Search -->
   <div class="bg-gradient-to-b from-gray-800 to-gray-900 text-white">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+    <div class="px-4 sm:px-6 lg:px-8 xl:px-16 py-20">
       <div class="text-center">
         <h1 class="text-5xl font-bold mb-6">EVE PvP Intelligence Platform</h1>
         <p class="text-xl mb-12 max-w-3xl mx-auto text-gray-300">
@@ -46,28 +46,10 @@
                 <% end %>
               </div>
             </form>
-          <% else %>
-            <!-- Login Button for Logged-out Users -->
-            <div class="text-center">
-              <.link
-                navigate={~p"/login"}
-                class="inline-flex items-center px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white text-lg font-medium rounded-lg transition-colors duration-200 shadow-lg"
-              >
-                <svg class="w-6 h-6 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M10 2L3 7v10l7 5 7-5V7l-7-5zM8 8h4v4H8V8z" clip-rule="evenodd"/>
-                </svg>
-                Sign in with EVE Online
-              </.link>
-              <p class="mt-4 text-gray-400">
-                Access real-time intelligence and analysis tools
-              </p>
-            </div>
-          <% end %>
-        </div>
-        
-        <!-- Search Results Dropdown (only for authenticated users) -->
-        <%= if show_search_dropdown?(assigns) do %>
-          <div class="absolute mt-2 w-full bg-gray-800 border border-gray-700 rounded-lg shadow-lg max-h-96 overflow-y-auto z-50">
+
+            <!-- Search Results Dropdown (only for authenticated users) -->
+            <%= if show_search_dropdown?(assigns) do %>
+              <div class="absolute left-0 right-0 mt-2 bg-gray-800 border border-gray-700 rounded-lg shadow-lg max-h-96 overflow-y-auto z-50">
               <%= if @search_results.systems != [] do %>
                 <div class="border-b border-gray-700">
                   <div class="px-4 py-2 bg-gray-700/50">
@@ -140,19 +122,36 @@
                   <% end %>
                 </div>
               <% end %>
-            </div>
-          <% end %>
-          
-          <!-- Loading State (only for authenticated users) -->
-          <%= if assigns[:current_user] && @search_loading do %>
-            <div class="absolute mt-2 w-full bg-gray-800 border border-gray-700 rounded-lg shadow-lg p-4">
-              <div class="flex items-center justify-center">
-                <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
-                <span class="ml-2 text-gray-400">Searching...</span>
               </div>
+            <% end %>
+
+            <!-- Loading State -->
+            <%= if @search_loading do %>
+              <div class="absolute left-0 right-0 mt-2 bg-gray-800 border border-gray-700 rounded-lg shadow-lg p-4">
+                <div class="flex items-center justify-center">
+                  <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+                  <span class="ml-2 text-gray-400">Searching...</span>
+                </div>
+              </div>
+            <% end %>
+          <% else %>
+            <!-- Login Button for Logged-out Users -->
+            <div class="text-center">
+              <.link
+                navigate={~p"/login"}
+                class="inline-flex items-center px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white text-lg font-medium rounded-lg transition-colors duration-200 shadow-lg"
+              >
+                <svg class="w-6 h-6 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 2L3 7v10l7 5 7-5V7l-7-5zM8 8h4v4H8V8z" clip-rule="evenodd"/>
+                </svg>
+                Sign in with EVE Online
+              </.link>
+              <p class="mt-4 text-gray-400">
+                Access real-time intelligence and analysis tools
+              </p>
             </div>
           <% end %>
-        
+        </div>
       </div>
     </div>
   </div>
@@ -160,7 +159,7 @@
   
   <!-- Features Grid -->
   <div class="py-16 bg-gray-900">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="px-4 sm:px-6 lg:px-8 xl:px-16">
       <div class="text-center mb-12">
         <h2 class="text-3xl font-bold text-white">Core Features</h2>
         <p class="mt-4 text-lg text-gray-300">
@@ -219,7 +218,7 @@
   
   <!-- Platform Capabilities -->
   <div class="py-16 bg-gray-800">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="px-4 sm:px-6 lg:px-8 xl:px-16">
       <div class="text-center mb-12">
         <h2 class="text-3xl font-bold text-white">Platform Capabilities</h2>
         <p class="mt-4 text-lg text-gray-300">
@@ -299,7 +298,7 @@
   
   <!-- Footer -->
   <footer class="bg-gray-800 text-white py-12 border-t border-gray-700">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="px-4 sm:px-6 lg:px-8 xl:px-16">
       <div class="text-center">
         <h3 class="text-lg font-medium mb-4">EVE DMV - PvP Intelligence Platform</h3>
         <p class="text-gray-400 mb-4">Built with Phoenix LiveView and the Ash Framework</p>

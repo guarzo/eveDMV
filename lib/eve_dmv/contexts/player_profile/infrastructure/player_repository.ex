@@ -582,6 +582,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
     # Step 1: Find killmail_ids where the character participated (indexed)
     # Step 2: Find OTHER participants on those same killmails (indexed join)
     # Step 3: Group by corporation/alliance
+    # Step 4: Look up missing alliance names from other participant records
     # $1 = character_id (integer), $2 = since_date
     """
     WITH character_killmails AS (
@@ -611,8 +612,21 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
       GROUP BY other_p.corporation_id, other_p.corporation_name, other_p.alliance_id, other_p.alliance_name
       ORDER BY interaction_count DESC
       LIMIT 20
+    ),
+    alliance_name_lookup AS (
+      -- Look up alliance names from alliances table (holistic solution)
+      SELECT alliance_id, alliance_name
+      FROM alliances
     )
-    SELECT * FROM external_interactions
+    SELECT
+      ei.corporation_id,
+      ei.corporation_name,
+      ei.alliance_id,
+      COALESCE(ei.alliance_name, anl.alliance_name) as alliance_name,
+      ei.interaction_count
+    FROM external_interactions ei
+    LEFT JOIN alliance_name_lookup anl ON ei.alliance_id = anl.alliance_id
+    ORDER BY ei.interaction_count DESC
     """
   end
 

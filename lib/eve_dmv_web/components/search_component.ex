@@ -59,11 +59,10 @@ defmodule EveDmvWeb.SearchComponent do
         _ -> "/"
       end
 
-    # Use JavaScript to navigate since we can't push_navigate from a component
     {:noreply,
      socket
      |> assign(show_dropdown: false, query: "")
-     |> push_event("navigate", %{path: path})}
+     |> push_navigate(to: path)}
   end
 
   @impl Phoenix.LiveComponent

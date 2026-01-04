@@ -284,7 +284,7 @@
         <div class="flex items-end space-x-1 h-16 mb-2">
           <%= for hour_data <- @system_data.activity_heatmap do %>
             <div
-              class="flex-1 group relative cursor-pointer"
+              class="flex-1 h-full flex items-end group relative cursor-pointer"
               title={"#{String.pad_leading(to_string(hour_data.hour), 2, "0")}:00 - #{hour_data.count} kills"}
             >
               <div
@@ -299,7 +299,7 @@
                     true -> "bg-gray-700"
                   end
                 ]}
-                style={"height: #{max(hour_data.percentage, 8)}%"}
+                style={"height: #{Kernel.max(hour_data.percentage, 8)}%"}
               ></div>
               <!-- Tooltip -->
               <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 border border-gray-600 rounded text-xs text-white opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-10 transition-opacity">
@@ -516,12 +516,13 @@
           <div class="space-y-4">
             <h4 class="text-sm font-medium text-gray-300 mb-3">Recent Major Engagements</h4>
             <%= for battle <- @system_data.recent_battles do %>
-              <div class="bg-gray-700 rounded-lg p-4 hover:bg-gray-600 transition-colors">
-                <div class="flex items-start justify-between">
-                  <div class="flex-1">
-                    <div class="flex items-center space-x-3 mb-2">
-                      <!-- Battle Type Badge -->
-                      <% {badge_text, badge_class} = case Map.get(battle, :battle_type, "unknown") do
+              <.link navigate={~p"/battle/#{Map.get(battle, :battle_id, "unknown")}"} class="block">
+                <div class="bg-gray-700 rounded-lg p-4 hover:bg-gray-600 transition-colors cursor-pointer">
+                  <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                      <div class="flex items-center space-x-3 mb-2">
+                        <!-- Battle Type Badge -->
+                        <% {badge_text, badge_class} = case Map.get(battle, :battle_type, "unknown") do
                         "major_battle" -> {"Major Battle", "bg-red-600 text-white"}
                         "fleet_engagement" -> {"Fleet Fight", "bg-orange-600 text-white"}
                         "skirmish" -> {"Skirmish", "bg-yellow-600 text-white"}
@@ -609,6 +610,7 @@
                   </div>
                 <% end %>
               </div>
+              </.link>
             <% end %>
           </div>
         <% else %>

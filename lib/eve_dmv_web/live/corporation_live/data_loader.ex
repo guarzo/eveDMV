@@ -43,17 +43,21 @@ defmodule EveDmvWeb.CorporationLive.DataLoader do
       |> Enum.map(&Task.await(&1, 30_000))
       |> Map.new()
 
-    # Combine all data
+    # Combine all data, unwrapping {:ok, data} tuples from cache functions
     %{
       corporation_id: corporation_id,
-      info: results["info"],
-      stats: results["stats"],
-      members: results["members"],
-      activity: results["activity"],
-      timezone: results["timezone"],
-      ships: results["ships"]
+      info: unwrap_result(results["info"]),
+      stats: unwrap_result(results["stats"]),
+      members: unwrap_result(results["members"]),
+      activity: unwrap_result(results["activity"]),
+      timezone: unwrap_result(results["timezone"]),
+      ships: unwrap_result(results["ships"])
     }
   end
+
+  # Unwrap {:ok, data} tuples from cache functions, pass through plain data
+  defp unwrap_result({:ok, data}), do: data
+  defp unwrap_result(data), do: data
 
   @doc """
   Load corporation basic info (name, alliance, etc).

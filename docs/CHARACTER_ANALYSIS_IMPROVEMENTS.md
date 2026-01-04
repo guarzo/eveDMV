@@ -430,6 +430,53 @@ This now correctly finds ALL killmails where the character was an attacker.
 
 ---
 
+### Phase 5: Enhanced Intelligence Features - COMPLETED ✅
+
+**New Features Added:**
+
+1. **Known Associates**
+   - Shows pilots the character frequently flies with
+   - Clickable links to view associate profiles
+   - Shows count of times seen together
+
+2. **Hunting Grounds**
+   - Displays top systems where the character is active
+   - Shows security status classification (highsec/lowsec/nullsec/wormhole)
+   - Color-coded security status for each system
+
+3. **Target Selection Patterns**
+   - Shows what ships the character typically kills
+   - Average victim value calculation
+   - Target assessment (opportunistic/selective/predatory/defensive)
+
+4. **Fleet Size Distribution (Enhanced)**
+   - Visual progress bars for each fleet size category
+   - Percentage breakdown: Solo, Small Gang, Medium Gang, Large Gang, Fleet
+   - Color-coded bars for easy scanning
+
+5. **Activity Timeline**
+   - 7-day kills/deaths summary
+   - Activity trend indicator (increasing/stable/decreasing/inactive)
+   - Mini bar chart showing 14-day activity
+
+6. **Corp Context**
+   - Active corp pilots count
+   - Corp kills in last 90 days
+   - Corp size assessment (solo/small/medium/large)
+   - Link to full corporation analysis
+
+7. **Bait Indicators**
+   - Warning banner if pilot shows bait patterns
+   - Explains why the pilot might be bait
+
+**Files Modified:**
+- `lib/eve_dmv/contexts/character_intelligence/analyzers/character_intelligence_analyzer.ex`
+- `lib/eve_dmv/contexts/character_intelligence.ex`
+- `lib/eve_dmv_web/live/character_analysis/helpers/character_data_loader.ex`
+- `lib/eve_dmv_web/live/character_analysis/character_analysis_live.ex`
+
+---
+
 ## Success Criteria
 
 1. ✅ Nav bar shows character name when logged in
@@ -438,3 +485,10 @@ This now correctly finds ALL killmails where the character was an attacker.
 4. ✅ Export buttons removed or functional
 5. ✅ Weapons displayed per ship with fit insights
 6. ✅ No console errors on page load
+7. ✅ Known associates displayed with links
+8. ✅ Hunting grounds show systems with security status
+9. ✅ Target selection shows preferred victims
+10. ✅ Fleet size distribution with visual bars
+11. ✅ Activity timeline with trend indicators
+12. ✅ Corp context with size assessment
+13. ✅ Bait warnings displayed when applicable

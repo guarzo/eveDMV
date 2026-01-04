@@ -23,7 +23,7 @@ defmodule EveDmvWeb.Components.CharacterSwitcher do
 
   def character_switcher(assigns) do
     ~H"""
-    <div id={@id} class="relative" phx-hook="CharacterSwitcher">
+    <div id={@id} class="relative">
       <button
         type="button"
         class="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white transition-colors"

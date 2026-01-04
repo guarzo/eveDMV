@@ -198,15 +198,29 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ki
   defp determine_tactical_role(_), do: :unknown
 
   defp determine_engagement_type(killmail) do
-    # For now, return basic engagement type
-    # Return basic engagement type based on available data
+    # Return engagement type based on available data
+    # Use SDE security_class for proper wormhole detection
 
     cond do
       killmail.war_id -> :war
-      killmail.security_status > 0.5 -> :highsec_gank
-      killmail.security_status > 0.0 -> :lowsec_pvp
-      killmail.security_status == 0.0 -> :nullsec_pvp
-      true -> :wormhole_pvp
+      true ->
+        # Look up system classification from SDE data
+        system_class = EveDmv.StaticData.classify_system(killmail.solar_system_id)
+
+        case system_class do
+          :highsec -> :highsec_gank
+          :lowsec -> :lowsec_pvp
+          :nullsec -> :nullsec_pvp
+          class when class in [:wormhole_c1, :wormhole_c2, :wormhole_c3, :wormhole_c4, :wormhole_c5, :wormhole_c6, :wormhole_c13, :wormhole_c14, :wormhole_unknown] -> :wormhole_pvp
+          _ ->
+            # Fallback to security_status for unknown systems
+            cond do
+              killmail.security_status > 0.5 -> :highsec_gank
+              killmail.security_status > 0.0 -> :lowsec_pvp
+              killmail.security_status <= 0.0 -> :nullsec_pvp
+              true -> :unknown_pvp
+            end
+        end
     end
   end
 
@@ -223,12 +237,15 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ki
   end
 
   defp extract_environmental_factors(killmail) do
-    # For now, return basic environmental factors
-    # Return basic environmental factors from killmail data
+    # Return environmental factors based on SDE system classification
+    system_class = EveDmv.StaticData.classify_system(killmail.solar_system_id)
+
+    is_wormhole = system_class in [:wormhole_c1, :wormhole_c2, :wormhole_c3, :wormhole_c4, :wormhole_c5, :wormhole_c6, :wormhole_c13, :wormhole_c14, :wormhole_unknown]
 
     %{
-      gate_guns: killmail.security_status > 0.0,
-      concord_response: killmail.security_status >= 0.5,
+      # No gate guns or CONCORD in wormholes
+      gate_guns: not is_wormhole and killmail.security_status > 0.0,
+      concord_response: not is_wormhole and killmail.security_status >= 0.5,
       station_presence: false,
       pos_presence: false,
       citadel_presence: false

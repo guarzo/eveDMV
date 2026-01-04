@@ -322,7 +322,7 @@ defmodule EveDmv.Analytics.BattleDetector do
         k.victim_alliance_id,
         k.victim_ship_type_id,
         k.raw_data->'victim'->>'ship_type_name' as victim_ship_type_name,
-        k.total_value,
+        COALESCE(k.total_value, (k.raw_data->'zkb'->>'totalValue')::numeric, 0) as total_value,
         k.attacker_count
       FROM killmails_raw k
       WHERE k.solar_system_id = $1
@@ -392,7 +392,7 @@ defmodule EveDmv.Analytics.BattleDetector do
     SELECT
         k.killmail_id,
         k.killmail_time,
-        k.total_value,
+        COALESCE(k.total_value, (k.raw_data->'zkb'->>'totalValue')::numeric, 0) as total_value,
         k.attacker_count as fleet_size,
         -- Count distinct corporations from attackers JSONB
         (
@@ -651,7 +651,10 @@ defmodule EveDmv.Analytics.BattleDetector do
 
     total_isk =
       killmails
-      |> Enum.map(&(Map.get(&1, "total_value") || 0))
+      |> Enum.map(fn km ->
+        value = Map.get(km, "total_value")
+        decimal_to_rounded_float(value, 2)
+      end)
       |> Enum.sum()
 
     participants =
@@ -699,12 +702,41 @@ defmodule EveDmv.Analytics.BattleDetector do
     time = Map.get(first_km, "killmail_time")
     system = Map.get(first_km, "solar_system_id")
 
-    hash_input = "#{time}_#{system}_#{length(killmails)}"
+    # Generate deterministic battle ID in format: "battle_SYSTEMID_YYYYMMDDHHMMSS"
+    # This format is expected by BattleAnalysis.get_battle_with_timeline
+    timestamp = format_battle_timestamp(time)
 
-    hash_input
-    |> then(&:crypto.hash(:md5, &1))
-    |> Base.encode16()
-    |> String.slice(0, 8)
+    "battle_#{system || 0}_#{timestamp}"
+  end
+
+  # Format timestamp to exactly 14 characters: YYYYMMDDHHMMSS
+  defp format_battle_timestamp(nil) do
+    Calendar.strftime(DateTime.utc_now(), "%Y%m%d%H%M%S")
+  end
+
+  defp format_battle_timestamp(%DateTime{} = dt) do
+    Calendar.strftime(dt, "%Y%m%d%H%M%S")
+  end
+
+  defp format_battle_timestamp(%NaiveDateTime{} = ndt) do
+    Calendar.strftime(ndt, "%Y%m%d%H%M%S")
+  end
+
+  defp format_battle_timestamp(binary) when is_binary(binary) do
+    case DateTime.from_iso8601(binary) do
+      {:ok, dt, _offset} ->
+        Calendar.strftime(dt, "%Y%m%d%H%M%S")
+
+      _ ->
+        # Fallback: remove separators and take first 14 chars
+        binary
+        |> String.replace([" ", ":", "-", "T", "Z", "."], "")
+        |> String.slice(0, 14)
+    end
+  end
+
+  defp format_battle_timestamp(_) do
+    Calendar.strftime(DateTime.utc_now(), "%Y%m%d%H%M%S")
   end
 
   defp parse_datetime(nil), do: DateTime.utc_now()
