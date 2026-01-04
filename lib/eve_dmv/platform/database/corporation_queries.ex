@@ -349,7 +349,7 @@ defmodule EveDmv.Platform.Database.CorporationQueries do
           %{
             ship_type_id: ship_id,
             usage_count: usage,
-            isk_lost: Decimal.to_float(isk_lost || Decimal.new(0))
+            isk_lost: safe_decimal_to_float(isk_lost)
           }
         end)
 
@@ -407,7 +407,7 @@ defmodule EveDmv.Platform.Database.CorporationQueries do
             character_id: char_id,
             character_name: char_name,
             involvement_type: inv_type,
-            total_value: Decimal.to_float(value || Decimal.new(0))
+            total_value: safe_decimal_to_float(value)
           }
         end)
 

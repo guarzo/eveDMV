@@ -14,7 +14,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ExternalGroupAnalyzer do
   @spec analyze(integer(), DateTime.t()) :: {:ok, list(map())} | {:error, term()}
   def analyze(character_id, since_date) do
     # Delegate to PlayerRepository which now contains the consolidated external groups logic
-    # PlayerRepository.get_external_groups returns a list from QueryCache
+    # PlayerRepository.get_external_groups returns {:ok, list} via QueryCache.get_or_compute
     EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository.get_external_groups(
       character_id,
       since_date

@@ -265,7 +265,9 @@ defmodule EveDmv.Platform.Database.IncrementalViewRefresher do
         if Keyword.get(opts, :full, false) do
           perform_full_refresh(view_name)
         else
-          # Use perform_view_refresh which handles incremental refresh logic
+          # Performs a full refresh if enough time has elapsed, otherwise skips.
+          # Note: PostgreSQL materialized views only support full refresh;
+          # there is no incremental refresh option available.
           perform_view_refresh(view_name, config)
         end
     end

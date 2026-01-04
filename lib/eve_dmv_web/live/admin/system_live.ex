@@ -72,7 +72,7 @@ defmodule EveDmvWeb.Admin.SystemLive do
   def handle_event("run_maintenance", %{"task" => task}, socket) do
     liveview_pid = self()
 
-    Task.start(fn ->
+    Task.async(fn ->
       result = run_maintenance_task(task)
       send(liveview_pid, {:maintenance_complete, task, result})
     end)

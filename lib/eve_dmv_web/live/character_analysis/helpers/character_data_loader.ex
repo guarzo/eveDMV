@@ -21,6 +21,15 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
   alias EveDmv.Platform.Database.QueryPerformance
   require Logger
 
+  # Module attribute for safe gang category string to atom conversion
+  @valid_gang_categories %{
+    "solo" => :solo,
+    "small_gang" => :small_gang,
+    "medium_gang" => :medium_gang,
+    "large_gang" => :large_gang,
+    "fleet" => :fleet
+  }
+
   @doc """
   Analyze character data for the character analysis LiveView.
   """
@@ -31,7 +40,8 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
     ninety_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
 
     # Get character stats using optimized query
-    # QueryCache.get_or_compute always returns {:ok, value} or {:error, reason}
+    # CharacterQueries.get_character_stats returns {:ok, value} or {:error, reason}
+    # (uses QueryCache internally for caching)
     stats =
       case QueryPerformance.tracked_query(
              "character_stats",
@@ -111,23 +121,30 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
 
     external_groups =
       CombatIntelligence.get_external_groups(character_id, fifteen_days_ago)
+      |> unwrap_or_default([])
 
     # Get gang size patterns - transform from list to map format for template
     gang_size_patterns =
       case CharacterIntelligence.get_gang_size_patterns(character_id, ninety_days_ago) do
         {:ok, %{patterns: patterns}} when is_list(patterns) ->
           # Convert list of patterns to map keyed by category atom
+          # Use safe_string_to_category_atom/1 to avoid ArgumentError from unknown categories
           Enum.reduce(
             patterns,
             %{solo: %{}, small_gang: %{}, medium_gang: %{}, large_gang: %{}, fleet: %{}},
             fn pattern, acc ->
-              category = String.to_existing_atom(pattern.size_category)
+              case safe_string_to_category_atom(pattern.size_category) do
+                {:ok, category} ->
+                  Map.put(acc, category, %{
+                    count: pattern.participation_count,
+                    percentage: pattern.participation_percentage,
+                    avg_size: pattern.avg_gang_size
+                  })
 
-              Map.put(acc, category, %{
-                count: pattern.participation_count,
-                percentage: pattern.participation_percentage,
-                avg_size: pattern.avg_gang_size
-              })
+                :error ->
+                  # Unknown category, skip it
+                  acc
+              end
             end
           )
 
@@ -280,7 +297,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
 
   defp derive_timezone(peak_hour) when is_number(peak_hour) do
     # Convert to integer in case PostgreSQL returns a float from EXTRACT
-    hour = if is_float(peak_hour), do: trunc(peak_hour), else: peak_hour
+    hour = trunc(peak_hour)
 
     cond do
       # 00:00-08:00 UTC = US evening/late night (19:00-03:00 EST)
@@ -295,10 +312,21 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
     end
   end
 
-  defp derive_timezone(%Decimal{} = peak_hour), do: derive_timezone(Decimal.to_integer(peak_hour))
+  defp derive_timezone(%Decimal{} = dec), do: derive_timezone(Decimal.to_float(dec) |> trunc())
   defp derive_timezone(_), do: nil
 
   # Helper to unwrap {:ok, data} or return default on {:error, _}
   defp unwrap_or_default({:ok, data}, _default), do: data
   defp unwrap_or_default({:error, _}, default), do: default
+
+  # Safely convert gang size category string to atom without raising on unknown values.
+  # Returns {:ok, atom} for known categories, :error for unknown.
+  defp safe_string_to_category_atom(category) when is_binary(category) do
+    case Map.fetch(@valid_gang_categories, category) do
+      {:ok, atom} -> {:ok, atom}
+      :error -> :error
+    end
+  end
+
+  defp safe_string_to_category_atom(_), do: :error
 end

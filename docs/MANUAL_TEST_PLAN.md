@@ -697,7 +697,8 @@ Before testing, ensure:
 ## Issues Summary
 
 ### Critical Issues
-_Issues that block core functionality_
+
+Issues that block core functionality
 
 | ID | Section | Description | Status |
 |----|---------|-------------|--------|
@@ -706,16 +707,18 @@ _Issues that block core functionality_
 | ISSUE-003 | 1.2 Multi-Character | Profile page only shows single character | FIXED |
 
 ### High Priority Issues
-_Issues that significantly impact user experience_
+
+Issues that significantly impact user experience
 
 | ID | Section | Description | Status |
 |----|---------|-------------|--------|
 | ISSUE-004 | 1.1 Auth | TokenRefreshPlug timeout blocks page access | FIXED |
 | ISSUE-005 | 1.3 Switch | TokenRefreshService crashes with Ash.Changeset bug | FIXED |
-| ISSUE-006 | 1.4 Logout | Sign out link uses wrong URL (underscore vs hyphen) | FIXED |
+| ISSUE-006 | 1.4 Logout | Sign-out link uses wrong URL (underscore vs hyphen) | FIXED |
 
 ### Medium Priority Issues
-_Issues that cause inconvenience but have workarounds_
+
+Issues that cause inconvenience but have workarounds
 
 | ID | Section | Description | Status |
 |----|---------|-------------|--------|
@@ -727,11 +730,12 @@ _Issues that cause inconvenience but have workarounds_
 | ISSUE-012 | 6.1 System | System page crashed with NaiveDateTime in format_relative_time | FIXED |
 
 ### Low Priority Issues
-_Minor issues, cosmetic problems, or nice-to-haves_
+
+Minor issues, cosmetic problems, or nice-to-haves
 
 | ID | Section | Description | Status |
 |----|---------|-------------|--------|
-| - | - | _None found yet_ | - |
+| - | - | None found yet | - |
 
 ---
 

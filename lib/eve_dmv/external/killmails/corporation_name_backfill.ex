@@ -62,13 +62,50 @@ defmodule EveDmv.Killmails.CorporationNameBackfill do
   def init(_opts) do
     # Run backfill after a short delay to let the app fully start
     Process.send_after(self(), :run_backfill, :timer.seconds(10))
-    {:ok, %{status: :pending}}
+    {:ok, %{status: :pending, task_ref: nil}}
   end
 
   @impl GenServer
   def handle_info(:run_backfill, state) do
-    Task.start(fn -> run_backfill() end)
-    {:noreply, %{state | status: :running}}
+    # Use Task.async with Process.monitor to track completion and handle errors
+    parent = self()
+
+    task =
+      Task.async(fn ->
+        result = run_backfill()
+        send(parent, {:backfill_complete, result})
+        result
+      end)
+
+    {:noreply, %{state | status: :running, task_ref: task.ref}}
+  end
+
+  @impl GenServer
+  def handle_info({:backfill_complete, :ok}, state) do
+    {:noreply, %{state | status: :completed}}
+  end
+
+  def handle_info({:backfill_complete, {:error, reason}}, state) do
+    Logger.error("🏢 Corporation name backfill failed: #{inspect(reason)}")
+    {:noreply, %{state | status: :failed, error: reason}}
+  end
+
+  # Handle task completion/failure from Task.async
+  def handle_info({ref, _result}, %{task_ref: ref} = state) do
+    # Task completed successfully, demonitor and flush
+    Process.demonitor(ref, [:flush])
+    {:noreply, state}
+  end
+
+  def handle_info({:DOWN, ref, :process, _pid, reason}, %{task_ref: ref} = state) do
+    # Task crashed
+    Logger.error("🏢 Corporation name backfill task crashed: #{inspect(reason)}")
+    {:noreply, %{state | status: :failed, error: reason}}
+  end
+
+  def handle_info({:DOWN, _ref, :process, _pid, _reason}, state) do
+    # Unrelated DOWN message, ignore
+    {:noreply, state}
   end
 
   defp run_backfill do
@@ -88,6 +125,7 @@ defmodule EveDmv.Killmails.CorporationNameBackfill do
     case SQL.query(Repo, query) do
       {:ok, %{rows: []}} ->
         Logger.info("🏢 No corporations need backfill - all names are present")
+        :ok
 
       {:ok, %{rows: rows}} ->
         corp_ids = rows |> Enum.map(fn [id] -> id end) |> Enum.reject(&is_nil/1)
@@ -113,13 +151,15 @@ defmodule EveDmv.Killmails.CorporationNameBackfill do
         # Update raw_data JSONB in killmails_raw
         update_raw_data(all_corp_names)
 
-        # Update participants table
+        # Update participants table (using bulk update for efficiency)
         update_participants(all_corp_names)
 
         Logger.info("🏢 Corporation name backfill complete!")
+        :ok
 
       {:error, error} ->
         Logger.error("🏢 Failed to query corporations for backfill: #{inspect(error)}")
+        {:error, error}
     end
   end
 
@@ -206,25 +246,33 @@ defmodule EveDmv.Killmails.CorporationNameBackfill do
     end)
   end
 
+  defp update_participants(corp_names) when map_size(corp_names) == 0 do
+    :ok
+  end
+
   defp update_participants(corp_names) do
-    Enum.each(corp_names, fn {corp_id, corp_name} ->
-      update_query = """
-      UPDATE participants
-      SET corporation_name = $1
-      WHERE corporation_id = $2
-        AND (corporation_name IS NULL OR corporation_name = '')
-      """
+    # Bulk update using UNNEST for efficiency - single query instead of N queries
+    # This is the same pattern used in backfill_corporation_names.exs
+    {corp_ids, names} = Enum.unzip(corp_names)
 
-      case SQL.query(Repo, update_query, [corp_name, corp_id]) do
-        {:ok, %{num_rows: num_rows}} when num_rows > 0 ->
-          Logger.debug("🏢 Updated #{num_rows} participants for #{corp_name}")
+    update_query = """
+    UPDATE participants p
+    SET corporation_name = updates.corp_name
+    FROM (
+      SELECT UNNEST($1::bigint[]) as corp_id, UNNEST($2::text[]) as corp_name
+    ) updates
+    WHERE p.corporation_id = updates.corp_id
+      AND (p.corporation_name IS NULL OR p.corporation_name = '')
+    """
 
-        {:ok, _} ->
-          :ok
+    case SQL.query(Repo, update_query, [corp_ids, names]) do
+      {:ok, %{num_rows: num_rows}} ->
+        Logger.info("🏢 Bulk updated #{num_rows} participant records")
+        :ok
 
-        {:error, error} ->
-          Logger.error("🏢 Failed to update participants for corp #{corp_id}: #{inspect(error)}")
-      end
-    end)
+      {:error, error} ->
+        Logger.error("🏢 Failed to bulk update participants: #{inspect(error)}")
+        {:error, error}
+    end
   end
 end

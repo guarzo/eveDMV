@@ -339,8 +339,56 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
   # Deduplication wrapper for to_broadway_message
   # Returns {:ok, message, updated_seen}, {:duplicate, killmail_id, seen}, or {:skip, seen}
   # seen_killmails is %{set: MapSet.t(), queue: :queue.queue()} for O(1) lookups
+  defp to_broadway_message_with_dedup(%{event: "batch", data: payload} = _event, seen_killmails) do
+    # Handle batch events with per-killmail deduplication
+    case Jason.decode(payload) do
+      {:ok, killmails} when is_list(killmails) ->
+        # Extract all killmail IDs from the batch
+        all_ids = Enum.map(killmails, & &1["killmail_id"]) |> Enum.reject(&is_nil/1)
+
+        # Filter to only unseen killmails
+        unseen_killmails =
+          Enum.filter(killmails, fn km ->
+            killmail_id = km["killmail_id"]
+            killmail_id != nil and not MapSet.member?(seen_killmails.set, killmail_id)
+          end)
+
+        seen_count = length(killmails) - length(unseen_killmails)
+
+        if seen_count > 0 do
+          Logger.debug("Filtered #{seen_count} duplicate killmails from batch of #{length(killmails)}")
+        end
+
+        case unseen_killmails do
+          [] ->
+            # All killmails in batch were duplicates
+            {:duplicate, all_ids, seen_killmails}
+
+          _ ->
+            # Build batch with only unseen killmails
+            messages =
+              Enum.map(unseen_killmails, fn km ->
+                %Message{
+                  data: km,
+                  acknowledger: Broadway.NoopAcknowledger.init(),
+                  batcher: :db_insert
+                }
+              end)
+
+            # Track newly processed IDs
+            new_ids = Enum.map(unseen_killmails, & &1["killmail_id"]) |> Enum.reject(&is_nil/1)
+            updated_seen = add_ids_to_seen(seen_killmails, new_ids)
+
+            {:ok, {:batch, messages}, updated_seen}
+        end
+
+      _ ->
+        {:skip, seen_killmails}
+    end
+  end
+
   defp to_broadway_message_with_dedup(%{data: payload} = event, seen_killmails) do
-    # Try to extract killmail_id for deduplication
+    # Try to extract killmail_id for deduplication (single killmail events)
     case extract_killmail_id(payload) do
       {:ok, killmail_id} ->
         if MapSet.member?(seen_killmails.set, killmail_id) do
@@ -354,7 +402,7 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
               {:skip, seen_killmails}
 
             {:batch, _} = batch ->
-              # For batch, extract and track all killmail IDs from the batch
+              # For batch returned from non-batch event (shouldn't happen normally)
               batch_ids = extract_batch_killmail_ids(batch)
               updated_seen = add_ids_to_seen(seen_killmails, batch_ids)
               {:ok, batch, updated_seen}

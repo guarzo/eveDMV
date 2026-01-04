@@ -1,4 +1,4 @@
-defmodule EveDmv.Contexts.BattleAnalysis.Domain.Services.DetectionService.Assessment do
+defmodule EveDmv.Contexts.BattleAnalysis.Domain.Detectors.BattleDetector.Assessment do
   @moduledoc """
   Assessment module for evaluating battle detection quality and performance.
   """

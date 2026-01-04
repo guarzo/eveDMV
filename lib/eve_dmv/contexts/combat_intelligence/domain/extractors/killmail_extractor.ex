@@ -238,11 +238,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ki
 
         _ ->
           # Fallback to security_status for unknown systems
+          # Note: The three conditions cover all numeric cases:
+          # - > 0.5 covers highsec
+          # - > 0.0 and <= 0.5 covers lowsec
+          # - <= 0.0 covers nullsec (including wormholes that weren't matched above)
           cond do
             security_status > 0.5 -> :highsec_gank
             security_status > 0.0 -> :lowsec_pvp
-            security_status <= 0.0 -> :nullsec_pvp
-            true -> :unknown_pvp
+            true -> :nullsec_pvp
           end
       end
     end

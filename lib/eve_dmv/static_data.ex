@@ -699,7 +699,9 @@ defmodule EveDmv.StaticData do
       timestamp = System.system_time(:second)
       :ets.insert(table, {key, value, timestamp})
     else
-      Logger.warning("ETS table missing for cache_item: table=#{inspect(table)}, cache_key=#{inspect(key)}")
+      Logger.warning(
+        "ETS table missing for cache_item: table=#{inspect(table)}, cache_key=#{inspect(key)}"
+      )
     end
   rescue
     e in ArgumentError ->

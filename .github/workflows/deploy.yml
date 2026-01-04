@@ -102,11 +102,46 @@ jobs:
             if [ -f "docker-compose-pkmgradegap.yml" ]; then
               cp docker-compose-pkmgradegap.yml docker-compose-pkmgradegap.yml.backup
 
+              # Set up trap to restore backup on any failure and clean up on exit
+              cleanup() {
+                local exit_code=$?
+                if [ $exit_code -ne 0 ] && [ -f "docker-compose-pkmgradegap.yml.backup" ]; then
+                  echo "⚠️ Deployment failed (exit code: $exit_code), restoring docker-compose-pkmgradegap.yml from backup..."
+                  cp docker-compose-pkmgradegap.yml.backup docker-compose-pkmgradegap.yml
+                  echo "✅ Backup restored"
+                fi
+                rm -f docker-compose-pkmgradegap.yml.backup
+                exit $exit_code
+              }
+              trap cleanup EXIT
+
+              # Record original image line for debugging
+              ORIGINAL_LINE=$(grep -E "^\s*image:\s*.*guarzo/evedmv:" docker-compose-pkmgradegap.yml || echo "")
+              if [ -z "$ORIGINAL_LINE" ]; then
+                echo "❌ ERROR: Could not find guarzo/evedmv image line in docker-compose-pkmgradegap.yml"
+                echo "File contents:"
+                cat docker-compose-pkmgradegap.yml
+                exit 1
+              fi
+              echo "📋 Original image line: $ORIGINAL_LINE"
+
               # Update the image tag in the docker-compose file
               # This assumes the image line format is like "image: guarzo/evedmv:TAG"
               sed -i "s|image: guarzo/evedmv:.*|image: guarzo/evedmv:$VERSION|" docker-compose-pkmgradegap.yml
 
-              echo "✅ Updated EVEDMV_VERSION to $VERSION in docker-compose-pkmgradegap.yml"
+              # Verify the sed replacement actually worked
+              # Use a permissive grep pattern that allows for whitespace and optional quotes
+              if ! grep -qE "^\s*image:\s*['\"]?guarzo/evedmv:${VERSION}['\"]?\s*$" docker-compose-pkmgradegap.yml; then
+                echo "❌ ERROR: Failed to update image version in docker-compose-pkmgradegap.yml"
+                echo "Expected to find: image: guarzo/evedmv:$VERSION"
+                echo "Original line was: $ORIGINAL_LINE"
+                echo "Current file contents around image lines:"
+                grep -n "image:" docker-compose-pkmgradegap.yml || echo "(no image lines found)"
+                exit 1  # Trap will restore backup automatically
+              fi
+
+              echo "✅ Updated image to guarzo/evedmv:$VERSION in docker-compose-pkmgradegap.yml"
+              echo "📋 New image line: $(grep -E 'guarzo/evedmv:' docker-compose-pkmgradegap.yml)"
             else
               echo "❌ docker-compose-pkmgradegap.yml file not found"
               exit 1

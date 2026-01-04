@@ -30,6 +30,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
   @isk_efficiency_ttl :timer.hours(1)
   @intelligence_summary_ttl :timer.minutes(30)
 
+  # Bait detection thresholds - these may be tuned based on game meta changes
+  # Percentage of deaths that result in related kills to classify as potential bait pilot
+  @bait_percentage_threshold 40
+  # Minimum number of total deaths required before bait classification applies
+  @bait_min_total 3
+
   @doc """
   Analyze ship loadouts - weapons grouped by ship from actual killmail data.
 
@@ -1477,7 +1483,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
             bait_percentage =
               if total > 0, do: Float.round(with_kills / total * 100, 1), else: 0.0
 
-            is_likely_bait = bait_percentage >= 40 and total >= 3
+            is_likely_bait =
+              bait_percentage >= @bait_percentage_threshold and total >= @bait_min_total
 
             {:ok,
              %{

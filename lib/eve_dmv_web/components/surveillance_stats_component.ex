@@ -13,11 +13,12 @@ defmodule EveDmvWeb.SurveillanceStatsComponent do
   """
   @impl Phoenix.LiveComponent
   def update(assigns, socket) do
-    {:ok,
-     socket
-     |> assign(assigns)
-     |> assign(:engine_stats, assigns[:engine_stats] || %{})
-     |> assign(:recent_matches, assigns[:recent_matches] || [])}
+    assigns_with_defaults =
+      assigns
+      |> Map.put_new(:engine_stats, %{})
+      |> Map.put_new(:recent_matches, [])
+
+    {:ok, assign(socket, assigns_with_defaults)}
   end
 
   @doc """

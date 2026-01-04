@@ -278,22 +278,26 @@ defmodule EveDmv.Eve.CircuitBreaker do
     caller = self()
     ref = make_ref()
 
-    pid =
-      spawn(fn ->
-        result =
-          try do
-            {:ok, fun.()}
-          rescue
-            e -> {:exception, e}
-          catch
-            kind, reason -> {:caught, kind, reason}
-          end
-
-        send(caller, {ref, result})
-      end)
-
+    pid = spawn(fn -> execute_and_send(fun, caller, ref) end)
     monitor = Process.monitor(pid)
 
+    await_result(ref, monitor, pid, timeout, error_classifier, state)
+  end
+
+  defp execute_and_send(fun, caller, ref) do
+    result =
+      try do
+        {:ok, fun.()}
+      rescue
+        e -> {:exception, e}
+      catch
+        kind, reason -> {:caught, kind, reason}
+      end
+
+    send(caller, {ref, result})
+  end
+
+  defp await_result(ref, monitor, pid, timeout, error_classifier, state) do
     receive do
       {^ref, {:ok, raw_result}} ->
         Process.demonitor(monitor, [:flush])
@@ -301,34 +305,52 @@ defmodule EveDmv.Eve.CircuitBreaker do
 
       {^ref, {:exception, exception}} ->
         Process.demonitor(monitor, [:flush])
-        # Exceptions always count as failures (infrastructure issues)
-        new_state = handle_failure(state, exception)
-        {:reply, {:error, {:error, exception}}, new_state}
+        handle_exception_result(exception, state)
 
       {^ref, {:caught, kind, reason}} ->
         Process.demonitor(monitor, [:flush])
-        # Catches always count as failures (infrastructure issues)
-        new_state = handle_failure(state, {kind, reason})
-        {:reply, {:error, {kind, reason}}, new_state}
+        handle_caught_result(kind, reason, state)
 
       {:DOWN, ^monitor, :process, ^pid, reason} ->
-        # Process crashed unexpectedly - count as failure
-        new_state = handle_failure(state, reason)
-        {:reply, {:error, {:exit, reason}}, new_state}
+        handle_down_result(reason, state)
     after
       timeout ->
-        Process.demonitor(monitor, [:flush])
-        Process.exit(pid, :kill)
-        # Drain any pending message from the killed process
-        receive do
-          {^ref, _} -> :ok
-        after
-          0 -> :ok
-        end
-
-        new_state = handle_failure(state, :timeout)
-        {:reply, {:error, :timeout}, new_state}
+        handle_timeout(ref, monitor, pid, state)
     end
+  end
+
+  defp handle_exception_result(exception, state) do
+    # Exceptions always count as failures (infrastructure issues)
+    new_state = handle_failure(state, exception)
+    {:reply, {:error, {:error, exception}}, new_state}
+  end
+
+  defp handle_caught_result(kind, reason, state) do
+    # Catches always count as failures (infrastructure issues)
+    new_state = handle_failure(state, {kind, reason})
+    {:reply, {:error, {kind, reason}}, new_state}
+  end
+
+  defp handle_down_result(reason, state) do
+    # Process crashed unexpectedly - count as failure
+    new_state = handle_failure(state, reason)
+    {:reply, {:error, {:exit, reason}}, new_state}
+  end
+
+  defp handle_timeout(ref, monitor, pid, state) do
+    Process.demonitor(monitor, [:flush])
+    Process.exit(pid, :kill)
+
+    # Drain any pending message from the killed process to prevent leaked messages
+    # in the GenServer's mailbox that could interfere with future operations
+    receive do
+      {^ref, _} -> :ok
+    after
+      0 -> :ok
+    end
+
+    new_state = handle_failure(state, :timeout)
+    {:reply, {:error, :timeout}, new_state}
   end
 
   defp handle_raw_result(raw_result, error_classifier, state) do

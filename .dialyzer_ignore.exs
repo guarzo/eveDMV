@@ -198,5 +198,6 @@
   # ===========================================
   # OPAQUE TERM IN FUNCTION CALLS
   # ===========================================
-  ~r/contains an opaque term/
+  # Legacy dialyzer warning about opaque terms in function calls
+  ~r/multi_system_battle_correlator\.ex:241/
 ]

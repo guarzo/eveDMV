@@ -283,7 +283,17 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
   end
 
   # Save discovered alliance to database for future lookups
+  # Note: The alliances.ticker column allows NULLs (see Alliance resource definition).
+  # ESI may return nil for ticker, which is acceptable.
   defp save_alliance_to_database(alliance_id, alliance_name, ticker) do
+    # Sanitize ticker: ensure it's either nil or a valid non-empty string
+    sanitized_ticker =
+      case ticker do
+        nil -> nil
+        t when is_binary(t) and byte_size(t) > 0 -> t
+        _ -> nil
+      end
+
     query = """
     INSERT INTO alliances (alliance_id, alliance_name, ticker, inserted_at, updated_at)
     VALUES ($1, $2, $3, NOW(), NOW())
@@ -293,10 +303,13 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
       updated_at = NOW()
     """
 
-    Ecto.Adapters.SQL.query(EveDmv.Repo, query, [alliance_id, alliance_name, ticker])
+    Ecto.Adapters.SQL.query(EveDmv.Repo, query, [alliance_id, alliance_name, sanitized_ticker])
   rescue
     error ->
-      Logger.debug("Failed to save alliance #{alliance_id} to database: #{inspect(error)}")
-      :ok
+      Logger.warning(
+        "Failed to save alliance #{alliance_id} to database: #{inspect(error)}"
+      )
+
+      {:error, error}
   end
 end

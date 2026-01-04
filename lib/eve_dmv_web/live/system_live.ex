@@ -15,41 +15,29 @@ defmodule EveDmvWeb.SystemLive do
   alias Ecto.Adapters.SQL
   alias EveDmv.Contexts.BattleAnalysis.Domain.Services.DetectionService, as: BattleDetector
   alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Core.Utils.NumericUtils
   alias EveDmv.Eve.NameResolver
   alias EveDmv.Eve.SolarSystem
   alias EveDmv.Platform.Cache.AnalysisCache
   alias EveDmv.Repo
 
-  # Structure classification constants for EVE Online citadels and upwell structures
-  # Used for both Elixir matching and SQL query generation
-  @structure_groups [
+  # Structure group names from EVE SDE for identifying citadels and upwell structures.
+  # These are authoritative group_name values from the eve_item_types table.
+  # Used in parameterized SQL queries (passed as query parameters, not interpolated).
+  @structure_group_names [
+    # Upwell structures (modern citadels)
     "Citadel",
     "Engineering Complex",
     "Refinery",
-    "Upwell Structure"
+    # Legacy POS structures
+    "Control Tower",
+    "POS Module",
+    "Starbase",
+    # Sovereignty structures
+    "Territorial Claim Unit",
+    "Infrastructure Hub",
+    "Sovereignty Blockade Unit"
   ]
-
-  # Keywords for structure name matching (stored lowercase for consistent SQL ILIKE comparison)
-  # Includes generic terms and specific structure type names
-  @structure_keywords [
-    "citadel",
-    "complex",
-    "refinery",
-    "engineering",
-    "astrahus",
-    "fortizar",
-    "keepstar",
-    "raitaru",
-    "azbel",
-    "sotiyo",
-    "tatara",
-    "athanor"
-  ]
-
-  # Build SQL ILIKE conditions from @structure_keywords at compile time
-  @structure_ilike_conditions Enum.map_join(@structure_keywords, " OR\n        ", fn keyword ->
-                               "t.type_name ILIKE '%#{keyword}%'"
-                             end)
 
   @impl Phoenix.LiveView
   def mount(%{"system_id" => system_id}, _session, socket) do
@@ -234,9 +222,11 @@ defmodule EveDmvWeb.SystemLive do
   end
 
   # Get structure and citadel kills
+  # Uses EVE SDE group_name for authoritative structure classification
   defp get_structure_kills(system_id) do
     thirty_days_ago = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
 
+    # Query uses parameterized group_name matching via PostgreSQL ANY() operator
     structure_query = """
     SELECT
       t.type_name,
@@ -246,15 +236,13 @@ defmodule EveDmvWeb.SystemLive do
     JOIN eve_item_types t ON k.victim_ship_type_id = t.type_id
     WHERE k.solar_system_id = $1
       AND k.killmail_time >= $2
-      AND (
-        #{@structure_ilike_conditions}
-      )
+      AND t.group_name = ANY($3)
     GROUP BY t.type_id, t.type_name
     ORDER BY kill_count DESC
     LIMIT 20
     """
 
-    case SQL.query(Repo, structure_query, [system_id, thirty_days_ago]) do
+    case SQL.query(Repo, structure_query, [system_id, thirty_days_ago, @structure_group_names]) do
       {:ok, %{rows: rows}} ->
         structures =
           Enum.map(rows, fn [type_name, type_id, count] ->
@@ -385,7 +373,7 @@ defmodule EveDmvWeb.SystemLive do
            total_kills: total_kills || 0,
            hostile_corporations: hostile_corps || 0,
            active_days: active_days || 0,
-           recent_avg_value: decimal_to_float(avg_value)
+           recent_avg_value: NumericUtils.to_float(avg_value) || 0.0
          }}
 
       {:error, reason} ->
@@ -579,7 +567,8 @@ defmodule EveDmvWeb.SystemLive do
                   existing
                   | kill_count: existing.kill_count + kill_count,
                     final_blows: existing.final_blows + final_blows,
-                    last_seen: max_datetime(existing.last_seen, last_seen)
+                    last_seen: max_datetime(existing.last_seen, last_seen),
+                    last_ship: select_most_recent_ship(existing, ship_name, last_seen)
                 }
               end
             )
@@ -605,20 +594,26 @@ defmodule EveDmvWeb.SystemLive do
     if DateTime.compare(dt1, dt2) == :gt, do: dt1, else: dt2
   end
 
-  # Check if a kill is a structure/citadel
-  # Uses @structure_groups and @structure_keywords module attributes for consistency with SQL query
-  defp structure_kill?(ship_group, ship_name) do
-    (ship_group && ship_group in @structure_groups) ||
-      (ship_name &&
-         Enum.any?(@structure_keywords, fn keyword ->
-           String.contains?(String.downcase(ship_name), keyword)
-         end))
+  # Select the most recent ship based on last_seen timestamps
+  defp select_most_recent_ship(existing, ship_name, last_seen) do
+    cond do
+      is_nil(last_seen) ->
+        existing.last_ship
+
+      is_nil(existing.last_seen) ->
+        ship_name || existing.last_ship
+
+      DateTime.compare(last_seen, existing.last_seen) == :gt ->
+        ship_name || existing.last_ship
+
+      true ->
+        existing.last_ship
+    end
   end
 
-  # Safely convert Decimal or number to float
-  defp decimal_to_float(nil), do: 0.0
-  defp decimal_to_float(%Decimal{} = value), do: Decimal.to_float(value)
-  defp decimal_to_float(value) when is_float(value), do: value
-  defp decimal_to_float(value) when is_integer(value), do: value / 1.0
-  defp decimal_to_float(_), do: 0.0
+  # Check if a kill is a structure/citadel using EVE SDE group_name
+  # Uses @structure_group_names module attribute for consistency with SQL query
+  defp structure_kill?(ship_group, _ship_name) do
+    ship_group && ship_group in @structure_group_names
+  end
 end

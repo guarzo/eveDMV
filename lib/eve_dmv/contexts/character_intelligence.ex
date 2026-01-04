@@ -389,10 +389,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
     patterns =
       if breakdown do
         %{
-          solo_hunter: breakdown.unpredictability.normalized_score / 10,
-          fleet_anchor: breakdown.gang_effectiveness.normalized_score / 10,
-          specialist: breakdown.ship_mastery.normalized_score / 10,
-          opportunist: breakdown.combat_skill.normalized_score / 10
+          solo_hunter: (get_in(breakdown, [:unpredictability, :normalized_score]) || 0) / 10,
+          fleet_anchor: (get_in(breakdown, [:gang_effectiveness, :normalized_score]) || 0) / 10,
+          specialist: (get_in(breakdown, [:ship_mastery, :normalized_score]) || 0) / 10,
+          opportunist: (get_in(breakdown, [:combat_skill, :normalized_score]) || 0) / 10
         }
       else
         %{
@@ -418,12 +418,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   defp get_insights_from_breakdown(nil), do: []
 
   defp get_insights_from_breakdown(breakdown) do
-    # Collect insights from all dimensions
-    combat_insights = breakdown.combat_skill[:insights] || []
-    ship_insights = breakdown.ship_mastery[:insights] || []
-    gang_insights = breakdown.gang_effectiveness[:insights] || []
-    unpred_insights = breakdown.unpredictability[:insights] || []
-    recent_insights = breakdown.recent_activity[:insights] || []
+    # Collect insights from all dimensions using safe access
+    combat_insights = get_in(breakdown, [:combat_skill, :insights]) || []
+    ship_insights = get_in(breakdown, [:ship_mastery, :insights]) || []
+    gang_insights = get_in(breakdown, [:gang_effectiveness, :insights]) || []
+    unpred_insights = get_in(breakdown, [:unpredictability, :insights]) || []
+    recent_insights = get_in(breakdown, [:recent_activity, :insights]) || []
 
     (combat_insights ++ ship_insights ++ gang_insights ++ unpred_insights ++ recent_insights)
     |> Enum.filter(&is_binary/1)

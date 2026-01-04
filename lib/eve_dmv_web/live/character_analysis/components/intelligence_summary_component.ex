@@ -30,7 +30,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.IntelligenceSummaryComponent do
             <div>
               <div class="text-xs text-gray-400">Peak Activity</div>
               <div class="text-sm text-white font-medium">
-                <%= format_hour(@peak_hour) %>:00 EVE
+                <%= format_hour(@peak_hour) %> EVE
               </div>
             </div>
           </div>
@@ -71,12 +71,12 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.IntelligenceSummaryComponent do
   defp format_location(location) when is_binary(location), do: location
   defp format_location(_), do: "Unknown"
 
-  # Convert hour to two-digit string, handling floats from PostgreSQL EXTRACT
+  # Convert hour to formatted time string (e.g., "07:00"), handling various types from PostgreSQL
   defp format_hour(hour) when is_float(hour), do: format_hour(trunc(hour))
 
   defp format_hour(hour) when is_integer(hour),
-    do: String.pad_leading(Integer.to_string(hour), 2, "0")
+    do: "#{String.pad_leading(Integer.to_string(hour), 2, "0")}:00"
 
   defp format_hour(%Decimal{} = hour), do: format_hour(Decimal.to_integer(hour))
-  defp format_hour(_), do: "??"
+  defp format_hour(_), do: "??:00"
 end

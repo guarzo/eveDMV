@@ -8,6 +8,8 @@ defmodule EveDmvWeb.SearchComponent do
 
   alias Ecto.Adapters.SQL
 
+  require Logger
+
   @impl Phoenix.LiveComponent
   def mount(socket) do
     {:ok,
@@ -198,44 +200,71 @@ defmodule EveDmvWeb.SearchComponent do
   defp placeholder_text(:corporations), do: "Search corporations..."
   defp placeholder_text(_), do: "Search..."
 
+  # Wraps a search function with proper exception logging
+  defp safe_search(search_type, query, search_fn) do
+    search_fn.(query)
+  rescue
+    error ->
+      Logger.error(
+        "Search failed: type=#{search_type} query=#{inspect(query)} error=#{Exception.message(error)}\n#{Exception.format_stacktrace(__STACKTRACE__)}"
+      )
+
+      []
+  end
+
   defp perform_universal_search(query) do
     # Perform parallel searches across all types with error handling
-    # Wrap each search in try/catch to prevent one failure from blocking all results
+    # Each search is wrapped with proper error logging for debugging
+    search_timeout = 5_000
+
     tasks = [
+      Task.async(fn -> {:systems, safe_search(:systems, query, &search_systems/1)} end),
+      Task.async(fn -> {:characters, safe_search(:characters, query, &search_characters/1)} end),
       Task.async(fn ->
-        try do
-          search_systems(query)
-        rescue
-          _ -> []
-        end
-      end),
-      Task.async(fn ->
-        try do
-          search_characters(query)
-        rescue
-          _ -> []
-        end
-      end),
-      Task.async(fn ->
-        try do
-          search_corporations(query)
-        rescue
-          _ -> []
-        end
+        {:corporations, safe_search(:corporations, query, &search_corporations/1)}
       end)
     ]
 
-    [systems, characters, corporations] = Task.await_many(tasks, 5000)
+    # Use Task.yield_many with explicit timeout handling
+    results = Task.yield_many(tasks, timeout: search_timeout)
+
+    # Process results, handling timeouts and exits with proper logging
+    {systems, characters, corporations} =
+      Enum.reduce(results, {[], [], []}, fn {task, result}, {sys, chars, corps} ->
+        case result do
+          {:ok, {:systems, data}} ->
+            {data, chars, corps}
+
+          {:ok, {:characters, data}} ->
+            {sys, data, corps}
+
+          {:ok, {:corporations, data}} ->
+            {sys, chars, data}
+
+          {:exit, reason} ->
+            # Log the exit reason with context
+            Logger.error("Search task exited: query=#{inspect(query)} reason=#{inspect(reason)}")
+
+            Task.shutdown(task, :brutal_kill)
+            {sys, chars, corps}
+
+          nil ->
+            # Task timed out
+            Logger.warning(
+              "Search task timed out: query=#{inspect(query)} timeout_ms=#{search_timeout}"
+            )
+
+            Task.shutdown(task, :brutal_kill)
+            {sys, chars, corps}
+        end
+      end)
 
     # Combine results in a single list with type information
-    results =
-      []
-      |> Kernel.++(Enum.map(systems, &Map.put(&1, :type, "system")))
-      |> Kernel.++(Enum.map(characters, &Map.put(&1, :type, "character")))
-      |> Kernel.++(Enum.map(corporations, &Map.put(&1, :type, "corporation")))
-
     # Sort by relevance and take top 10
-    results
+    []
+    |> Kernel.++(Enum.map(systems, &Map.put(&1, :type, "system")))
+    |> Kernel.++(Enum.map(characters, &Map.put(&1, :type, "character")))
+    |> Kernel.++(Enum.map(corporations, &Map.put(&1, :type, "corporation")))
     |> Enum.sort_by(fn result ->
       # Simple relevance scoring - exact matches first
       if String.downcase(result.name) == String.downcase(query) do
