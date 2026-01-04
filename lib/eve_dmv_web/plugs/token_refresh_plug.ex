@@ -49,12 +49,14 @@ defmodule EveDmvWeb.TokenRefreshPlug do
               Logger.warning(
                 "⏱️ Token refresh timed out for #{user.eve_character_name}, continuing with existing token"
               )
+
               conn
 
             :exit, reason ->
               Logger.warning(
                 "❌ Token refresh failed with exit for #{user.eve_character_name}: #{inspect(reason)}"
               )
+
               conn
           end
         else

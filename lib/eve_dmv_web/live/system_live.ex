@@ -471,7 +471,7 @@ defmodule EveDmvWeb.SystemLive do
                               corporation_name
                             ] ->
             # Determine if this is a structure kill
-            is_structure = is_structure_kill?(ship_group, ship_name)
+            is_structure = structure_kill?(ship_group, ship_name)
 
             %{
               killmail_id: killmail_id,
@@ -496,7 +496,7 @@ defmodule EveDmvWeb.SystemLive do
   end
 
   # Check if a kill is a structure/citadel
-  defp is_structure_kill?(ship_group, ship_name) do
+  defp structure_kill?(ship_group, ship_name) do
     structure_groups = [
       "Citadel",
       "Engineering Complex",

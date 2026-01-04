@@ -72,11 +72,14 @@ defmodule EveDmv.Killmails.CorporationNameBackfill do
           |> Enum.reduce(%{}, fn {batch, batch_num}, acc ->
             Logger.info("🏢 Resolving batch #{batch_num} (#{length(batch)} corporations)")
             names = NameResolver.corporation_names(batch)
-            Process.sleep(100)  # Be nice to ESI
+            # Be nice to ESI
+            Process.sleep(100)
             Map.merge(acc, names)
           end)
 
-        Logger.info("🏢 Resolved #{map_size(all_corp_names)} corporation names, updating database...")
+        Logger.info(
+          "🏢 Resolved #{map_size(all_corp_names)} corporation names, updating database..."
+        )
 
         # Update raw_data JSONB in killmails_raw
         update_raw_data(all_corp_names)
@@ -123,7 +126,9 @@ defmodule EveDmv.Killmails.CorporationNameBackfill do
           :ok
 
         {:error, error} ->
-          Logger.error("🏢 Failed to update victim raw_data for corp #{corp_id}: #{inspect(error)}")
+          Logger.error(
+            "🏢 Failed to update victim raw_data for corp #{corp_id}: #{inspect(error)}"
+          )
       end
 
       # Update attacker corporation_names in raw_data JSONB
@@ -165,7 +170,9 @@ defmodule EveDmv.Killmails.CorporationNameBackfill do
           :ok
 
         {:error, error} ->
-          Logger.error("🏢 Failed to update attacker raw_data for corp #{corp_id}: #{inspect(error)}")
+          Logger.error(
+            "🏢 Failed to update attacker raw_data for corp #{corp_id}: #{inspect(error)}"
+          )
       end
     end)
   end

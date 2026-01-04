@@ -169,7 +169,7 @@ defmodule EveDmv.Killmails.DataProcessor do
 
     # Collect corporation IDs (only if no name already present)
     corp_ids =
-      ([victim | attackers])
+      [victim | attackers]
       |> Enum.filter(fn p ->
         p["corporation_id"] != nil and
           (p["corporation_name"] == nil or p["corporation_name"] == "")
@@ -180,7 +180,7 @@ defmodule EveDmv.Killmails.DataProcessor do
 
     # Collect alliance IDs (only if no name already present)
     alliance_ids =
-      ([victim | attackers])
+      [victim | attackers]
       |> Enum.filter(fn p ->
         p["alliance_id"] != nil and
           (p["alliance_name"] == nil or p["alliance_name"] == "")

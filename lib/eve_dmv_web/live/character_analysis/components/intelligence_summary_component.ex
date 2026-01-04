@@ -73,7 +73,10 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.IntelligenceSummaryComponent do
 
   # Convert hour to two-digit string, handling floats from PostgreSQL EXTRACT
   defp format_hour(hour) when is_float(hour), do: format_hour(trunc(hour))
-  defp format_hour(hour) when is_integer(hour), do: String.pad_leading(Integer.to_string(hour), 2, "0")
+
+  defp format_hour(hour) when is_integer(hour),
+    do: String.pad_leading(Integer.to_string(hour), 2, "0")
+
   defp format_hour(%Decimal{} = hour), do: format_hour(Decimal.to_integer(hour))
   defp format_hour(_), do: "??"
 end

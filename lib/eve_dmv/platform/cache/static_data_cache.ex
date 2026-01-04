@@ -498,7 +498,7 @@ defmodule EveDmv.Platform.Cache.StaticDataCache do
   defp determine_security_class(system) do
     cond do
       # Wormhole systems: J-space has system IDs 31000000+
-      is_wormhole_system?(system.system_id) ->
+      wormhole_system?(system.system_id) ->
         "wormhole"
 
       # Use database value if available
@@ -512,11 +512,11 @@ defmodule EveDmv.Platform.Cache.StaticDataCache do
   end
 
   # J-space (wormhole) systems have IDs in the 31000000-31999999 range
-  defp is_wormhole_system?(system_id) when is_integer(system_id) do
+  defp wormhole_system?(system_id) when is_integer(system_id) do
     system_id >= 31_000_000 and system_id <= 31_999_999
   end
 
-  defp is_wormhole_system?(_), do: false
+  defp wormhole_system?(_), do: false
 
   defp perform_cache_warming do
     Logger.info("Starting static data cache warming")

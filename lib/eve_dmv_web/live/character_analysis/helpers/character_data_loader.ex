@@ -134,14 +134,19 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
       case CharacterIntelligence.get_gang_size_patterns(character_id, ninety_days_ago) do
         {:ok, %{patterns: patterns}} when is_list(patterns) ->
           # Convert list of patterns to map keyed by category atom
-          Enum.reduce(patterns, %{solo: %{}, small_gang: %{}, medium_gang: %{}, large_gang: %{}, fleet: %{}}, fn pattern, acc ->
-            category = String.to_existing_atom(pattern.size_category)
-            Map.put(acc, category, %{
-              count: pattern.participation_count,
-              percentage: pattern.participation_percentage,
-              avg_size: pattern.avg_gang_size
-            })
-          end)
+          Enum.reduce(
+            patterns,
+            %{solo: %{}, small_gang: %{}, medium_gang: %{}, large_gang: %{}, fleet: %{}},
+            fn pattern, acc ->
+              category = String.to_existing_atom(pattern.size_category)
+
+              Map.put(acc, category, %{
+                count: pattern.participation_count,
+                percentage: pattern.participation_percentage,
+                avg_size: pattern.avg_gang_size
+              })
+            end
+          )
 
         {:ok, patterns} when is_map(patterns) ->
           patterns
@@ -167,12 +172,21 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
     # Get target selection patterns
     target_selection =
       case CharacterIntelligence.get_target_selection(character_id, ninety_days_ago) do
-        {:ok, data} -> data
-        {:error, _} -> %{top_targets: [], class_breakdown: [], avg_victim_value: 0, target_assessment: "unknown"}
+        {:ok, data} ->
+          data
+
+        {:error, _} ->
+          %{
+            top_targets: [],
+            class_breakdown: [],
+            avg_victim_value: 0,
+            target_assessment: "unknown"
+          }
       end
 
     # Get activity timeline (last 30 days)
-    thirty_days_ago_for_timeline = DateTime.utc_now() |> DateTimeUtils.add(-30 * 24 * 60 * 60, :second)
+    thirty_days_ago_for_timeline =
+      DateTime.utc_now() |> DateTimeUtils.add(-30 * 24 * 60 * 60, :second)
 
     activity_timeline =
       case CharacterIntelligence.get_activity_timeline(character_id, thirty_days_ago_for_timeline) do
@@ -199,8 +213,11 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
 
     activity_stats =
       case CharacterIntelligence.calculate_activity_stats(character_id, thirty_days_ago) do
-        {:ok, %{stats: stats}} -> stats
-        {:error, _} -> %{total_kills: 0, peak_activity_day: nil, peak_activity_hour: nil, active_days: 0}
+        {:ok, %{stats: stats}} ->
+          stats
+
+        {:error, _} ->
+          %{total_kills: 0, peak_activity_day: nil, peak_activity_hour: nil, active_days: 0}
       end
 
     # Calculate intelligence summary - build structure expected by component

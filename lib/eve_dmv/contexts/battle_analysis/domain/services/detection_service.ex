@@ -460,7 +460,8 @@ defmodule EveDmv.Analytics.BattleDetector do
           medium_battle_count: medium_count || 0,
           small_battle_count: (total || 0) - (major_count || 0) - (medium_count || 0),
           battle_frequency: calculate_battle_frequency(total || 0, battle_days || 0),
-          threat_level: calculate_system_threat_level(total || 0, max_intensity || 0, battle_days || 0)
+          threat_level:
+            calculate_system_threat_level(total || 0, max_intensity || 0, battle_days || 0)
         }
 
       {:error, reason} ->

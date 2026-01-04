@@ -359,7 +359,7 @@ Before testing, ensure:
 
 **Issues Found:**
 - [x] **ISSUE-008**: Wormhole systems (J-space) were showing as "nullsec" instead of "wormhole". **FIXED** by:
-  - Added `is_wormhole_system?/1` helper in `StaticDataCache` to detect J-space systems by ID range (31000000-31999999)
+  - Added `wormhole_system?/1` helper in `StaticDataCache` to detect J-space systems by ID range (31000000-31999999)
   - Updated `determine_security_class/1` to check for wormholes before using database value
   - Updated `SystemLive` to use `NameResolver.system_security()` for corrected security class
 - [x] **ISSUE-009**: System page lacked prominent recent kills display. **FIXED** by:
@@ -368,7 +368,7 @@ Before testing, ensure:
   - Separated ship kills from structure kills in display
 - [x] **ISSUE-010**: Structure/citadel kills were not clearly organized. **FIXED** by:
   - Moved structure kills section to bottom of page
-  - Added detection for structure kills via `is_structure_kill?/2`
+  - Added detection for structure kills via `structure_kill?/2`
   - Shows both aggregated structure types and recent structure kills
 - [x] **ISSUE-011**: Stats cards not interactive. **FIXED** by:
   - Made Total Kills, Unique Pilots, and Corporations cards clickable

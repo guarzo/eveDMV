@@ -1372,10 +1372,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
 
   # Utility and normalization functions
 
-  defp normalize_score(value, min_val, max_val) do
-    SharedUtilities.normalize_score(value, min_val, max_val)
-  end
-
   defp normalize_to_10_scale(score) do
     SharedUtilities.normalize_to_10_scale(score)
   end

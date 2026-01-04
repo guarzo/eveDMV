@@ -281,10 +281,19 @@ defmodule EveDmv.Contexts.SystemAnalysis.Domain.HeatmapGenerator do
     # Use security_class from SDE for proper classification
     sec_modifier =
       case system.security_class do
-        "highsec" -> 0.5
-        "lowsec" -> 1.0
-        "nullsec" -> 1.5
-        "wormhole" -> 1.8  # Wormholes are slightly more dangerous (no local, no cynos)
+        "highsec" ->
+          0.5
+
+        "lowsec" ->
+          1.0
+
+        "nullsec" ->
+          1.5
+
+        # Wormholes are slightly more dangerous (no local, no cynos)
+        "wormhole" ->
+          1.8
+
         _ ->
           # Fallback to security_status for systems without security_class
           cond do

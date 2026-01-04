@@ -117,37 +117,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
                character_id
              ]) do
           {:ok, %{rows: rows}} ->
-            # Group results by ship
-            ship_loadouts =
-              rows
-              |> Enum.group_by(fn [ship_type_id, ship_name, _, _, _, _, total_kills, deaths] ->
-                {ship_type_id, ship_name, total_kills, deaths}
-              end)
-              |> Enum.map(fn {{ship_type_id, ship_name, total_kills, deaths}, weapon_rows} ->
-                weapons =
-                  weapon_rows
-                  |> Enum.map(fn [_, _, weapon_type_id, weapon_name, weapon_group, usage_count, _, _] ->
-                    %{
-                      weapon_type_id: weapon_type_id,
-                      weapon_name: weapon_name || "Unknown",
-                      weapon_group: weapon_group || "Unknown",
-                      usage_count: usage_count || 0
-                    }
-                  end)
-                  |> Enum.take(5)  # Top 5 weapons per ship
+            ship_loadouts = build_ship_loadouts(rows)
 
-                %{
-                  ship_type_id: ship_type_id,
-                  ship_name: ship_name || "Unknown Ship",
-                  total_kills: total_kills || 0,
-                  total_deaths: deaths || 0,
-                  weapons: weapons
-                }
-              end)
-              |> Enum.sort_by(& &1.total_kills, :desc)
-              |> Enum.take(10)  # Top 10 ships
-
-            {:ok, %{ship_loadouts: ship_loadouts, analysis_period: %{from: since_date, to: DateTime.utc_now()}}}
+            {:ok,
+             %{
+               ship_loadouts: ship_loadouts,
+               analysis_period: %{from: since_date, to: DateTime.utc_now()}
+             }}
 
           {:error, error} ->
             Logger.error("Ship loadout analysis failed: #{inspect(error)}")
@@ -432,8 +408,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
             # Convert participation counts to floats before summing (handles Decimals)
             total_participations =
               rows
-              |> Enum.map(&Enum.at(&1, 1))
-              |> Enum.map(&(to_float(&1) || 0.0))
+              |> Enum.map(fn row -> to_float(Enum.at(row, 1)) || 0.0 end)
               |> Enum.sum()
 
             gang_patterns =
@@ -840,8 +815,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
               unique_regions: unique_regions || 0,
               total_kills: total_kills || 0,
               total_deaths: total_deaths || 0,
-              kill_death_ratio:
-                calculate_kd_ratio(total_kills, total_deaths),
+              kill_death_ratio: calculate_kd_ratio(total_kills, total_deaths),
               threat_level: threat_level,
               activity_intensity: activity_intensity,
               mobility_score: calculate_mobility_score(unique_systems, unique_regions),
@@ -1082,9 +1056,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
                   security_status: sys["security_status"],
                   region_name: sys["region_name"] || "Unknown",
                   activity_count: sys["activity_count"] || 0,
-                  activity_pct: if(total_activity > 0,
-                    do: Float.round((sys["activity_count"] || 0) / total_activity * 100, 1),
-                    else: 0.0),
+                  activity_pct:
+                    if(total_activity > 0,
+                      do: Float.round((sys["activity_count"] || 0) / total_activity * 100, 1),
+                      else: 0.0
+                    ),
                   kills: sys["kills"] || 0,
                   deaths: sys["deaths"] || 0
                 }
@@ -1097,22 +1073,26 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
                 %{
                   sec_class: sec["sec_class"],
                   count: sec["count"] || 0,
-                  percentage: if(sec_total > 0,
-                    do: Float.round((sec["count"] || 0) / sec_total * 100, 1),
-                    else: 0.0)
+                  percentage:
+                    if(sec_total > 0,
+                      do: Float.round((sec["count"] || 0) / sec_total * 100, 1),
+                      else: 0.0
+                    )
                 }
               end)
               |> Enum.sort_by(& &1.count, :desc)
 
-            primary_sec = if Enum.empty?(security_preference),
-              do: "unknown",
-              else: List.first(security_preference).sec_class
+            primary_sec =
+              if Enum.empty?(security_preference),
+                do: "unknown",
+                else: List.first(security_preference).sec_class
 
-            {:ok, %{
-              top_systems: top_systems,
-              security_preference: security_preference,
-              primary_security: primary_sec
-            }}
+            {:ok,
+             %{
+               top_systems: top_systems,
+               security_preference: security_preference,
+               primary_security: primary_sec
+             }}
 
           {:error, error} ->
             Logger.error("Hunting grounds analysis failed: #{inspect(error)}")
@@ -1203,13 +1183,15 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
                   ship_class: humanize_ship_class(cls["ship_class"]),
                   raw_class: cls["ship_class"],
                   total_kills: cls["total_kills"] || 0,
-                  percentage: if(total > 0,
-                    do: Float.round((cls["total_kills"] || 0) / total * 100, 1),
-                    else: 0.0),
+                  percentage:
+                    if(total > 0,
+                      do: Float.round((cls["total_kills"] || 0) / total * 100, 1),
+                      else: 0.0
+                    ),
                   total_value: to_float(cls["total_value"]) || 0.0
                 }
               end)
-              |> Enum.filter(& &1.total_kills > 0)
+              |> Enum.filter(&(&1.total_kills > 0))
               |> Enum.sort_by(& &1.total_kills, :desc)
 
             formatted_targets =
@@ -1226,20 +1208,22 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
             avg_val = to_float(avg_value) || 0.0
 
             # Determine if they punch up or down
-            target_assessment = cond do
-              avg_val > 500_000_000 -> "high_value_hunter"
-              avg_val > 100_000_000 -> "standard_pvp"
-              avg_val > 20_000_000 -> "opportunist"
-              true -> "ganker"
-            end
+            target_assessment =
+              cond do
+                avg_val > 500_000_000 -> "high_value_hunter"
+                avg_val > 100_000_000 -> "standard_pvp"
+                avg_val > 20_000_000 -> "opportunist"
+                true -> "ganker"
+              end
 
-            {:ok, %{
-              top_targets: formatted_targets,
-              class_breakdown: class_summary,
-              avg_victim_value: avg_val,
-              total_kills: total_kills || 0,
-              target_assessment: target_assessment
-            }}
+            {:ok,
+             %{
+               top_targets: formatted_targets,
+               class_breakdown: class_summary,
+               avg_victim_value: avg_val,
+               total_kills: total_kills || 0,
+               target_assessment: target_assessment
+             }}
 
           {:error, error} ->
             Logger.error("Target selection analysis failed: #{inspect(error)}")
@@ -1320,15 +1304,16 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
             # Calculate current streak
             {kill_streak, death_streak} = calculate_streaks(formatted_timeline)
 
-            {:ok, %{
-              timeline: formatted_timeline,
-              last_day_kills: last_day || 0,
-              week_kills: week_kills || 0,
-              week_deaths: week_deaths || 0,
-              current_kill_streak: kill_streak,
-              current_death_streak: death_streak,
-              activity_trend: determine_trend(formatted_timeline)
-            }}
+            {:ok,
+             %{
+               timeline: formatted_timeline,
+               last_day_kills: last_day || 0,
+               week_kills: week_kills || 0,
+               week_deaths: week_deaths || 0,
+               current_kill_streak: kill_streak,
+               current_death_streak: death_streak,
+               activity_trend: determine_trend(formatted_timeline)
+             }}
 
           {:error, error} ->
             Logger.error("Activity timeline analysis failed: #{inspect(error)}")
@@ -1392,30 +1377,33 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
 
         case Ecto.Adapters.SQL.query(EveDmv.Repo, corp_query, [character_id, since_date]) do
           {:ok, %{rows: [[corp_id, corp_name, active_pilots, corp_kills]]}} ->
-            corp_size_assessment = cond do
-              (active_pilots || 0) >= 20 -> "large_active_corp"
-              (active_pilots || 0) >= 10 -> "medium_active_corp"
-              (active_pilots || 0) >= 5 -> "small_active_corp"
-              (active_pilots || 0) >= 2 -> "micro_corp"
-              true -> "solo_corp"
-            end
+            corp_size_assessment =
+              cond do
+                (active_pilots || 0) >= 20 -> "large_active_corp"
+                (active_pilots || 0) >= 10 -> "medium_active_corp"
+                (active_pilots || 0) >= 5 -> "small_active_corp"
+                (active_pilots || 0) >= 2 -> "micro_corp"
+                true -> "solo_corp"
+              end
 
-            {:ok, %{
-              corporation_id: corp_id,
-              corporation_name: corp_name || "Unknown",
-              active_pilots: active_pilots || 0,
-              corp_kills: corp_kills || 0,
-              corp_size_assessment: corp_size_assessment
-            }}
+            {:ok,
+             %{
+               corporation_id: corp_id,
+               corporation_name: corp_name || "Unknown",
+               active_pilots: active_pilots || 0,
+               corp_kills: corp_kills || 0,
+               corp_size_assessment: corp_size_assessment
+             }}
 
           {:ok, %{rows: []}} ->
-            {:ok, %{
-              corporation_id: nil,
-              corporation_name: "Unknown",
-              active_pilots: 0,
-              corp_kills: 0,
-              corp_size_assessment: "unknown"
-            }}
+            {:ok,
+             %{
+               corporation_id: nil,
+               corporation_name: "Unknown",
+               active_pilots: 0,
+               corp_kills: 0,
+               corp_size_assessment: "unknown"
+             }}
 
           {:error, error} ->
             Logger.error("Corp context analysis failed: #{inspect(error)}")
@@ -1487,24 +1475,32 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
         """
 
         case Ecto.Adapters.SQL.query(EveDmv.Repo, bait_query, [character_id, since_date]) do
-          {:ok, %{rows: [[deaths_with_kills, total_deaths, avg_related, total_related_val, bait_losses]]}} ->
+          {:ok,
+           %{
+             rows: [
+               [deaths_with_kills, total_deaths, avg_related, total_related_val, bait_losses]
+             ]
+           }} ->
             total = total_deaths || 0
             with_kills = deaths_with_kills || 0
 
-            bait_percentage = if total > 0, do: Float.round(with_kills / total * 100, 1), else: 0.0
+            bait_percentage =
+              if total > 0, do: Float.round(with_kills / total * 100, 1), else: 0.0
 
             is_likely_bait = bait_percentage >= 40 and total >= 3
 
-            {:ok, %{
-              total_deaths: total,
-              deaths_with_related_kills: with_kills,
-              bait_percentage: bait_percentage,
-              avg_related_kills: to_float(avg_related) || 0.0,
-              total_related_value: to_float(total_related_val) || 0.0,
-              total_bait_losses: to_float(bait_losses) || 0.0,
-              is_likely_bait: is_likely_bait,
-              bait_assessment: if(is_likely_bait, do: "Potential bait pilot", else: "No bait indicators")
-            }}
+            {:ok,
+             %{
+               total_deaths: total,
+               deaths_with_related_kills: with_kills,
+               bait_percentage: bait_percentage,
+               avg_related_kills: to_float(avg_related) || 0.0,
+               total_related_value: to_float(total_related_val) || 0.0,
+               total_bait_losses: to_float(bait_losses) || 0.0,
+               is_likely_bait: is_likely_bait,
+               bait_assessment:
+                 if(is_likely_bait, do: "Potential bait pilot", else: "No bait indicators")
+             }}
 
           {:error, error} ->
             Logger.error("Bait indicators analysis failed: #{inspect(error)}")
@@ -1691,6 +1687,41 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
     region_score = min(regions / 5, 1.0) * 0.3
 
     Float.round(system_score + region_score, 2)
+  end
+
+  # Helper to build ship loadouts from query results
+  defp build_ship_loadouts(rows) do
+    rows
+    |> Enum.group_by(fn [ship_type_id, ship_name, _, _, _, _, total_kills, deaths] ->
+      {ship_type_id, ship_name, total_kills, deaths}
+    end)
+    |> Enum.map(&build_ship_loadout/1)
+    |> Enum.sort_by(& &1.total_kills, :desc)
+    |> Enum.take(10)
+  end
+
+  defp build_ship_loadout({{ship_type_id, ship_name, total_kills, deaths}, weapon_rows}) do
+    weapons =
+      weapon_rows
+      |> Enum.map(&parse_weapon_row/1)
+      |> Enum.take(5)
+
+    %{
+      ship_type_id: ship_type_id,
+      ship_name: ship_name || "Unknown Ship",
+      total_kills: total_kills || 0,
+      total_deaths: deaths || 0,
+      weapons: weapons
+    }
+  end
+
+  defp parse_weapon_row([_, _, weapon_type_id, weapon_name, weapon_group, usage_count, _, _]) do
+    %{
+      weapon_type_id: weapon_type_id,
+      weapon_name: weapon_name || "Unknown",
+      weapon_group: weapon_group || "Unknown",
+      usage_count: usage_count || 0
+    }
   end
 
   # Helper to safely convert database values (Decimal, integer, nil) to float

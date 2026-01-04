@@ -8,6 +8,19 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ki
 
   require Logger
 
+  # Wormhole system classification atoms from StaticData.classify_system/1
+  @wormhole_classes [
+    :wormhole_c1,
+    :wormhole_c2,
+    :wormhole_c3,
+    :wormhole_c4,
+    :wormhole_c5,
+    :wormhole_c6,
+    :wormhole_c13,
+    :wormhole_c14,
+    :wormhole_unknown
+  ]
+
   @doc """
   Extract victim details from killmail data.
   """
@@ -201,26 +214,34 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ki
     # Return engagement type based on available data
     # Use SDE security_class for proper wormhole detection
 
-    cond do
-      killmail.war_id -> :war
-      true ->
-        # Look up system classification from SDE data
-        system_class = EveDmv.StaticData.classify_system(killmail.solar_system_id)
+    if killmail.war_id do
+      :war
+    else
+      # Look up system classification from SDE data
+      system_class = EveDmv.StaticData.classify_system(killmail.solar_system_id)
 
-        case system_class do
-          :highsec -> :highsec_gank
-          :lowsec -> :lowsec_pvp
-          :nullsec -> :nullsec_pvp
-          class when class in [:wormhole_c1, :wormhole_c2, :wormhole_c3, :wormhole_c4, :wormhole_c5, :wormhole_c6, :wormhole_c13, :wormhole_c14, :wormhole_unknown] -> :wormhole_pvp
-          _ ->
-            # Fallback to security_status for unknown systems
-            cond do
-              killmail.security_status > 0.5 -> :highsec_gank
-              killmail.security_status > 0.0 -> :lowsec_pvp
-              killmail.security_status <= 0.0 -> :nullsec_pvp
-              true -> :unknown_pvp
-            end
-        end
+      case system_class do
+        :highsec ->
+          :highsec_gank
+
+        :lowsec ->
+          :lowsec_pvp
+
+        :nullsec ->
+          :nullsec_pvp
+
+        class when class in @wormhole_classes ->
+          :wormhole_pvp
+
+        _ ->
+          # Fallback to security_status for unknown systems
+          cond do
+            killmail.security_status > 0.5 -> :highsec_gank
+            killmail.security_status > 0.0 -> :lowsec_pvp
+            killmail.security_status <= 0.0 -> :nullsec_pvp
+            true -> :unknown_pvp
+          end
+      end
     end
   end
 
@@ -239,8 +260,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ki
   defp extract_environmental_factors(killmail) do
     # Return environmental factors based on SDE system classification
     system_class = EveDmv.StaticData.classify_system(killmail.solar_system_id)
-
-    is_wormhole = system_class in [:wormhole_c1, :wormhole_c2, :wormhole_c3, :wormhole_c4, :wormhole_c5, :wormhole_c6, :wormhole_c13, :wormhole_c14, :wormhole_unknown]
+    is_wormhole = system_class in @wormhole_classes
 
     %{
       # No gate guns or CONCORD in wormholes

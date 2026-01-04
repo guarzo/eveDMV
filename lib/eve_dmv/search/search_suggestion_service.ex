@@ -168,7 +168,13 @@ defmodule EveDmv.Search.SearchSuggestionService do
         system_query =
           EveSolarSystem
           |> Ash.Query.new()
-          |> Ash.Query.select([:system_id, :system_name, :region_name, :security_status, :security_class])
+          |> Ash.Query.select([
+            :system_id,
+            :system_name,
+            :region_name,
+            :security_status,
+            :security_class
+          ])
           |> Ash.Query.limit(500)
 
         case Ash.read(system_query, domain: EveDmv.Api) do
@@ -183,7 +189,8 @@ defmodule EveDmv.Search.SearchSuggestionService do
 
             suggestions =
               Enum.map(filtered_systems, fn system ->
-                sec_display = format_security_status(system.security_class, system.security_status)
+                sec_display =
+                  format_security_status(system.security_class, system.security_status)
 
                 %{
                   id: system.system_id,

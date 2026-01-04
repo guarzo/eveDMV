@@ -255,7 +255,7 @@ defmodule EveDmv.StaticData do
       _ ->
         # If system not in database, check if it's a wormhole by ID range
         cond do
-          is_wormhole_system?(system_id) ->
+          wormhole_system?(system_id) ->
             # Unknown class wormhole
             :wormhole_unknown
 
@@ -393,7 +393,7 @@ defmodule EveDmv.StaticData do
   Check if a type is a wormhole by ID range.
   J-space systems are 31_000_000-32_000_000.
   """
-  def is_wormhole_system?(system_id) when is_integer(system_id) do
+  def wormhole_system?(system_id) when is_integer(system_id) do
     system_id >= 31_000_000 and system_id < 32_000_000
   end
 
@@ -607,7 +607,7 @@ defmodule EveDmv.StaticData do
   # Private functions
 
   defp classify_by_security(sec_status, sec_class, system_id) do
-    if is_wormhole_system?(system_id) do
+    if wormhole_system?(system_id) do
       # Wormhole systems
       case sec_class do
         "C1" -> :wormhole_c1
@@ -663,26 +663,26 @@ defmodule EveDmv.StaticData do
     else
       now = System.system_time(:second)
 
-      {cached, missing} =
-        Enum.reduce(keys, {%{}, []}, fn key, {cached_acc, missing_acc} ->
-          case :ets.lookup(table, key) do
-            [{^key, value, timestamp}] ->
-              if now - timestamp < @cache_ttl do
-                {Map.put(cached_acc, key, value), missing_acc}
-              else
-                :ets.delete(table, key)
-                {cached_acc, [key | missing_acc]}
-              end
-
-            [] ->
-              {cached_acc, [key | missing_acc]}
-          end
-        end)
-
-      {cached, missing}
+      Enum.reduce(keys, {%{}, []}, fn key, {cached_acc, missing_acc} ->
+        check_cache_entry(table, key, now, cached_acc, missing_acc)
+      end)
     end
   rescue
     ArgumentError -> {%{}, keys}
+  end
+
+  defp check_cache_entry(table, key, now, cached_acc, missing_acc) do
+    case :ets.lookup(table, key) do
+      [{^key, value, timestamp}] when now - timestamp < @cache_ttl ->
+        {Map.put(cached_acc, key, value), missing_acc}
+
+      [{^key, _value, _timestamp}] ->
+        :ets.delete(table, key)
+        {cached_acc, [key | missing_acc]}
+
+      [] ->
+        {cached_acc, [key | missing_acc]}
+    end
   end
 
   defp cache_item(table, key, value) do

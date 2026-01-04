@@ -25,24 +25,35 @@ defmodule EveDmvWeb.AuthController do
     existing_account_id = get_session(conn, "current_account_id")
     link_to_account? = get_session(conn, "link_to_account") == true
 
-    Logger.info("AuthController.success - link_to_account?: #{link_to_account?}, existing_account_id: #{inspect(existing_account_id)}, user.account_id: #{inspect(user.account_id)}")
+    Logger.info(
+      "AuthController.success - link_to_account?: #{link_to_account?}, existing_account_id: #{inspect(existing_account_id)}, user.account_id: #{inspect(user.account_id)}"
+    )
 
     result =
       cond do
         # User wants to link to existing account and has an active session
         link_to_account? && existing_account_id && is_nil(user.account_id) ->
           # Character has no account yet - link it to the existing account
-          Logger.info("Linking new character #{user.eve_character_name} to existing account #{existing_account_id}")
+          Logger.info(
+            "Linking new character #{user.eve_character_name} to existing account #{existing_account_id}"
+          )
+
           AccountManager.link_character_to_account(user, existing_account_id)
 
         link_to_account? && existing_account_id && user.account_id == existing_account_id ->
           # Character is already in this account - just return success
-          Logger.info("Character #{user.eve_character_name} is already in account #{existing_account_id}")
+          Logger.info(
+            "Character #{user.eve_character_name} is already in account #{existing_account_id}"
+          )
+
           {:ok, AccountManager.get_account_by_id!(existing_account_id), user}
 
         link_to_account? && existing_account_id && user.account_id != existing_account_id ->
           # Character is linked to a DIFFERENT account - need to re-link
-          Logger.info("Re-linking character #{user.eve_character_name} from account #{user.account_id} to #{existing_account_id}")
+          Logger.info(
+            "Re-linking character #{user.eve_character_name} from account #{user.account_id} to #{existing_account_id}"
+          )
+
           AccountManager.relink_character_to_account(user, existing_account_id)
 
         # User already has an account or normal login

@@ -73,13 +73,16 @@ defmodule EveDmv.Users.AccountManager do
     old_account_id = user.account_id
     new_account = get_account!(new_account_id)
 
-    Logger.info("Re-linking character #{user.eve_character_name} from account #{old_account_id} to #{new_account_id}")
+    Logger.info(
+      "Re-linking character #{user.eve_character_name} from account #{old_account_id} to #{new_account_id}"
+    )
 
     # Update the user's account_id to point to the new account
     with {:ok, updated_user} <- link_user_to_account(user, new_account) do
       # Clean up: if old account has no more characters, we could delete it
       # For now, just log this situation
       old_char_count = get_account_character_count(old_account_id)
+
       if old_char_count == 0 do
         Logger.info("Old account #{old_account_id} now has no characters - consider cleanup")
       end
