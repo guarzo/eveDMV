@@ -120,6 +120,15 @@
                 <%= @system_data.danger_assessment.danger_level %>
               </div>
             </div>
+
+          <!-- Historical Data Status -->
+          <div class="mt-4 border-t border-gray-700 pt-4">
+            <.historical_fetch_indicator
+              status={@historical_fetch_status}
+              entity_type={:system}
+              entity_id={@system_id}
+            />
+          </div>
           </div>
         </div>
 

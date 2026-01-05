@@ -375,9 +375,23 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
   end
 
   defp get_enabled_channels(notification_config) do
-    Enum.filter([@channel_email, @channel_webhook, @channel_in_app], fn channel ->
-      channel_config = Map.get(notification_config, channel, %{})
-      Map.get(channel_config, :enabled, false)
+    # Check for both string and atom keys in notification config
+    channel_pairs = [
+      {@channel_email, :email},
+      {@channel_webhook, :webhook},
+      {@channel_in_app, :in_app}
+    ]
+
+    Enum.flat_map(channel_pairs, fn {string_key, atom_key} ->
+      channel_config =
+        Map.get(notification_config, string_key) ||
+          Map.get(notification_config, atom_key, %{})
+
+      if Map.get(channel_config, :enabled, false) do
+        [string_key]
+      else
+        []
+      end
     end)
   end
 
@@ -627,7 +641,8 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
 
   defp validate_notification_config(_), do: {:error, :invalid_config_format}
 
-  defp validate_channel_config(@channel_email, config) do
+  # Accept both string and atom keys for channel configuration
+  defp validate_channel_config(channel, config) when channel in [@channel_email, :email] do
     if Map.get(config, :enabled, false) do
       if Map.has_key?(config, :email_address) and is_binary(config.email_address) do
         {:ok, config}
@@ -639,7 +654,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
     end
   end
 
-  defp validate_channel_config(@channel_webhook, config) do
+  defp validate_channel_config(channel, config) when channel in [@channel_webhook, :webhook] do
     if Map.get(config, :enabled, false) do
       if Map.has_key?(config, :webhook_url) and is_binary(config.webhook_url) do
         {:ok, config}
@@ -651,7 +666,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
     end
   end
 
-  defp validate_channel_config(@channel_in_app, config) do
+  defp validate_channel_config(channel, config) when channel in [@channel_in_app, :in_app] do
     # In-app notifications don't require additional configuration
     {:ok, config}
   end
@@ -715,8 +730,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
     status_distribution =
       recent_notifications
       |> Enum.group_by(& &1.status)
-
-    Map.new(fn {status, notifications} -> {status, length(notifications)} end)
+      |> Map.new(fn {status, notifications} -> {status, length(notifications)} end)
 
     %{
       time_range: time_range,

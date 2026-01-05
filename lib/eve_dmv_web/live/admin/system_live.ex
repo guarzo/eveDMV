@@ -5,6 +5,8 @@ defmodule EveDmvWeb.Admin.SystemLive do
 
   use EveDmvWeb, :live_view
 
+  require Logger
+
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     if connected?(socket) do
@@ -72,7 +74,9 @@ defmodule EveDmvWeb.Admin.SystemLive do
   def handle_event("run_maintenance", %{"task" => task}, socket) do
     liveview_pid = self()
 
-    Task.async(fn ->
+    # Use Task.start/1 for fire-and-forget behavior - we manually send the result
+    # via {:maintenance_complete, ...} so we don't need Task.async's {ref, result} messages
+    Task.start(fn ->
       result = run_maintenance_task(task)
       send(liveview_pid, {:maintenance_complete, task, result})
     end)
@@ -216,8 +220,6 @@ defmodule EveDmvWeb.Admin.SystemLive do
   defp clear_cache(_), do: :error
 
   defp run_maintenance_task("vacuum") do
-    require Logger
-
     case Ecto.Adapters.SQL.query(EveDmv.Repo, "VACUUM ANALYZE", []) do
       {:ok, _} ->
         Logger.info("VACUUM ANALYZE completed successfully")
@@ -230,8 +232,6 @@ defmodule EveDmvWeb.Admin.SystemLive do
   end
 
   defp run_maintenance_task("reindex") do
-    require Logger
-
     case Ecto.Adapters.SQL.query(EveDmv.Repo, "REINDEX DATABASE eve_dmv", []) do
       {:ok, _} ->
         Logger.info("REINDEX completed successfully")
@@ -244,8 +244,6 @@ defmodule EveDmvWeb.Admin.SystemLive do
   end
 
   defp run_maintenance_task("refresh_views") do
-    require Logger
-
     # Use transaction with increased work_mem to avoid disk spills during sort
     result =
       EveDmv.Repo.transaction(fn ->

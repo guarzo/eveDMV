@@ -240,13 +240,14 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAssessmentEngine do
   defp update_threat_assessment(entity_id, entity_type, intelligence_data) do
     # Update threat assessment with new intelligence
     current_assessment = get_current_assessment(entity_id, entity_type)
+    current_sources = Map.get(current_assessment, :intelligence_sources, [])
 
-    updated_assessment = %{
-      current_assessment
-      | last_updated: DateTime.utc_now(),
-        intelligence_sources: [intelligence_data | current_assessment.intelligence_sources || []],
+    updated_assessment =
+      Map.merge(current_assessment, %{
+        last_updated: DateTime.utc_now(),
+        intelligence_sources: [intelligence_data | current_sources],
         threat_score: recalculate_threat_score(current_assessment, intelligence_data)
-    }
+      })
 
     {:ok, updated_assessment}
   end
@@ -429,17 +430,26 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAssessmentEngine do
   end
 
   defp get_current_assessment(entity_id, entity_type) do
-    cache_key = {safe_entity_type_atom(entity_type), entity_id}
+    # Try the assessment cache first (used by cache_threat_assessment)
+    assessment_cache_key = {:assessment, entity_id}
+    entity_cache_key = {safe_entity_type_atom(entity_type), entity_id}
 
-    case UnifiedCache.get(:threat, cache_key) do
-      {:ok, assessment} -> assessment
-      {:error, :not_found} -> %{intelligence_sources: []}
+    case UnifiedCache.get(:threat, assessment_cache_key) do
+      {:ok, assessment} ->
+        assessment
+
+      {:error, :not_found} ->
+        # Fall back to entity-specific cache key
+        case UnifiedCache.get(:threat, entity_cache_key) do
+          {:ok, assessment} -> assessment
+          {:error, :not_found} -> %{intelligence_sources: [], threat_score: 0.0}
+        end
     end
   end
 
   defp recalculate_threat_score(current_assessment, _intelligence_data) do
     # Recalculate threat score with new intelligence
-    current_assessment[:threat_score] || 0.0
+    Map.get(current_assessment, :threat_score, 0.0)
   end
 
   # Placeholder implementations for data gathering functions

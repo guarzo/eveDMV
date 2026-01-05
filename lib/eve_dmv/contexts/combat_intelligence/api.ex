@@ -317,10 +317,9 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   """
   @spec get_external_groups(integer(), DateTime.t()) :: list(map())
   def get_external_groups(character_id, since_date) do
-    case Domain.ExternalGroupAnalyzer.analyze(character_id, since_date) do
-      {:ok, groups} -> groups
-      {:error, _} -> []
-    end
+    # ExternalGroupAnalyzer.analyze/2 always returns {:ok, groups}
+    {:ok, groups} = Domain.ExternalGroupAnalyzer.analyze(character_id, since_date)
+    groups
   end
 
   # Private validation functions

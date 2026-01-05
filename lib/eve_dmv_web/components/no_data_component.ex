@@ -13,7 +13,6 @@ defmodule EveDmvWeb.NoDataComponent do
   """
   def render(assigns) do
     ~H"""
-    <!-- No Statistics Available -->
     <div class="bg-gray-800 rounded-lg p-8 border border-gray-700 text-center">
       <div class="text-gray-400 mb-4">
         <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

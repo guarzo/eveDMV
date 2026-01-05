@@ -243,7 +243,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
   def handle_call(:get_metrics, _from, state) do
     avg_processing_time =
       case state.processing_times do
-        [] -> 0
+        [] -> 0.0
         times -> Enum.sum(times) / length(times)
       end
 
@@ -256,7 +256,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
       matches_per_killmail:
         if(state.processed_killmails > 0,
           do: state.total_matches / state.processed_killmails,
-          else: 0
+          else: 0.0
         )
     }
 

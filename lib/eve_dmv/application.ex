@@ -209,7 +209,7 @@ defmodule EveDmv.Application do
         EveDmv.Platform.Database.ConnectionPoolMonitor,
         EveDmv.Platform.Database.PartitionManager,
         EveDmv.Platform.Database.MaterializedViewOptimizer,
-        EveDmv.Platform.Database.IncrementalViewRefresher,
+        EveDmv.Platform.Database.MaterializedViewRefresher,
         EveDmv.Platform.Database.CacheInvalidator,
         EveDmv.Platform.Database.CacheHashManager,
         EveDmv.Platform.Database.QueryPlanAnalyzer,
@@ -227,7 +227,9 @@ defmodule EveDmv.Application do
         EveDmv.Historical.ImportPipeline,
         EveDmv.Historical.ImportProgressMonitor,
         # Performance monitoring dashboard (Sprint 15A)
-        EveDmv.Platform.Monitoring.PerformanceDashboard
+        EveDmv.Platform.Monitoring.PerformanceDashboard,
+        # Historical fetch worker for 2-year killmail data (Phase 2)
+        EveDmv.Contexts.KillmailProcessing.Domain.HistoricalFetchWorker
       ]
     else
       []

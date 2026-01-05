@@ -1,11 +1,12 @@
 # Phase 7: Unnecessary Complexity - Review Findings
 
-This document contains the findings from Phase 7 of the code review, focusing on identifying unnecessary complexity in the EVE DMV codebase.
+This document contains the findings from Phase 7 of the code review,
+focusing on identifying unnecessary complexity in the EVE DMV codebase.
 
 ## Executive Summary
 
 | Finding Category | Count | Severity |
-|-----------------|-------|----------|
+| --------------- | ----- | -------- |
 | Over-abstracted modules (1-2 public functions) | 60+ | Medium |
 | Delegation-heavy facades | 320+ uses | Low |
 | Circular dependency cycles | 2 (one with 194 modules) | High |
@@ -23,7 +24,8 @@ This document contains the findings from Phase 7 of the code review, focusing on
 The following modules have minimal public interfaces and may represent over-abstraction:
 
 **Intelligence Pipeline (potential over-engineering):**
-```
+
+```text
 lib/eve_dmv/core/domain/intelligence/facade.ex          - 1 public function
 lib/eve_dmv/core/domain/intelligence/processor.ex       - 1 public function
 lib/eve_dmv/core/domain/intelligence/collector.ex       - 2 public functions
@@ -32,14 +34,16 @@ lib/eve_dmv/core/domain/intelligence/intelligence_engine.ex - 1 public function
 ```
 
 **Combat Analysis (many single-purpose modules):**
-```
-lib/eve_dmv/contexts/combat/core/participant_analyzer/affiliation_analyzer.ex - 1 function
-lib/eve_dmv/contexts/combat/core/participant_analyzer/role_classifier.ex      - 1 function
-lib/eve_dmv/contexts/combat/core/participant_analyzer/experience_analyzer.ex  - 1 function
+
+```text
+contexts/combat/.../affiliation_analyzer.ex  - 1 function
+contexts/combat/.../role_classifier.ex       - 1 function
+contexts/combat/.../experience_analyzer.ex   - 1 function
 ```
 
 **Character Intelligence (fragmented analyzers):**
-```
+
+```text
 lib/eve_dmv/contexts/character_intelligence/domain/engines/player_stats_engine.ex      - 1 function
 lib/eve_dmv/contexts/character_intelligence/domain/analyzers/trend_analyzer.ex         - 1 function
 lib/eve_dmv/contexts/character_intelligence/domain/calculators/threat_score_calculator.ex - 1 function
@@ -47,15 +51,19 @@ lib/eve_dmv/contexts/character_intelligence/domain/generators/comparison_engine.
 lib/eve_dmv/contexts/character_intelligence/domain/data_fetchers/combat_data_fetcher.ex - 1 function
 ```
 
-**Recommendation:** Consolidate single-function modules into their parent modules unless there's a clear architectural reason for separation (like testing isolation or dependency management).
+**Recommendation:** Consolidate single-function modules into their parent
+modules unless there's a clear architectural reason for separation
+(like testing isolation or dependency management).
 
 ### 7.1.2 Delegation-Heavy Facades
 
-Found **320+ `defdelegate` usages** across the codebase. While the facade pattern is valid, excessive delegation can obscure the actual code flow.
+Found **320+ `defdelegate` usages** across the codebase. While the facade
+pattern is valid, excessive delegation can obscure the actual code flow.
 
 **Files with highest delegation counts:**
+
 | File | Delegate Count |
-|------|---------------|
+| ---- | -------------- |
 | `contexts/corporation/api.ex` | 47 |
 | `contexts/intelligence/api.ex` | 38 |
 | `contexts/combat/api.ex` | 23 |
@@ -65,6 +73,7 @@ Found **320+ `defdelegate` usages** across the codebase. While the facade patter
 | `platform/database/archive_manager.ex` | 25 |
 
 **Example of acceptable delegation (facade pattern):**
+
 ```elixir
 # name_resolver.ex - legitimate facade for multiple resolvers
 defdelegate character_name(character_id), to: EsiEntityResolver
@@ -73,6 +82,7 @@ defdelegate system_name(system_id), to: StaticDataResolver
 ```
 
 **Example of questionable delegation (unnecessary indirection):**
+
 ```elixir
 # cache.ex - adds a layer of indirection with no added value
 defdelegate get(namespace, key), to: PlatformCache
@@ -85,12 +95,14 @@ defdelegate put(namespace, key, value), to: PlatformCache
 
 **Cycle 1 (194 modules):**
 This massive cycle involves most of the core application:
+
 - `lib/eve_dmv/api.ex`
 - `lib/eve_dmv/contexts/` (most context modules)
 - `lib/eve_dmv_web/` (most web modules)
 - `lib/eve_dmv/external/` (several integration modules)
 
 **Root cause:** Compile-time dependencies in 8 modules:
+
 1. `api.ex`
 2. `combat_intelligence.ex`
 3. `fleet_operations.ex`
@@ -101,13 +113,15 @@ This massive cycle involves most of the core application:
 8. `platform/database/character_repository.ex`
 
 **Cycle 2 (3 modules):**
-```
+
+```text
 lib/eve_dmv/contexts/intelligence/core/character_analyzer.ex
 lib/eve_dmv/contexts/intelligence/core/performance_analyzer.ex
 lib/eve_dmv/contexts/intelligence/core/threat_assessment_engine.ex
 ```
 
 **Recommendation:** Break circular dependencies by:
+
 1. Introducing behavior modules
 2. Moving shared types to dedicated type modules
 3. Using runtime module resolution instead of compile-time
@@ -118,18 +132,20 @@ lib/eve_dmv/contexts/intelligence/core/threat_assessment_engine.ex
 
 ### 7.2.1 Excessive GenServer/Agent Usage
 
-Found **92 GenServer/Agent modules** in the codebase. Many may be unnecessary for the actual load patterns.
+Found **92 GenServer/Agent modules** in the codebase. Many may be
+unnecessary for the actual load patterns.
 
 **Potentially over-engineered processes:**
 
 | Module | Purpose | Concern |
-|--------|---------|---------|
-| `CacheWarmingWorker` | Scheduled cache warming | Has placeholder implementations, warming actual data not implemented |
-| `CacheCleanupWorker` | Cache maintenance | Cleanup logic returns `0` entries cleaned |
-| `AnalysisWorkerPool` | Worker pool for analysis | May not be needed with Broadway already handling concurrency |
-| `RealTimePriceUpdater` | Price updates | Complex GenServer for simple periodic updates |
+| ------ | ------- | ------- |
+| `CacheWarmingWorker` | Cache warming | Placeholder implementations |
+| `CacheCleanupWorker` | Cache maintenance | Returns `0` entries cleaned |
+| `AnalysisWorkerPool` | Worker pool | Broadway may suffice |
+| `RealTimePriceUpdater` | Price updates | Overkill for periodic updates |
 
 **Example of over-engineering in CacheWarmingWorker:**
+
 ```elixir
 # Lines 389-418: All data fetching functions return placeholder data
 defp get_critical_character_ids(limit) do
@@ -147,7 +163,7 @@ end
 
 The caching infrastructure appears over-designed:
 
-```
+```text
 platform/cache/
 ├── static_data_cache.ex     # GenServer
 ├── query_cache.ex           # GenServer
@@ -162,7 +178,8 @@ contexts/
 └── battle_analysis/core/cached_battle_analyzer.ex
 ```
 
-**Recommendation:** Consolidate caching into a single abstraction layer with namespace support rather than multiple specialized caches.
+**Recommendation:** Consolidate caching into a single abstraction layer
+with namespace support rather than multiple specialized caches.
 
 ---
 
@@ -172,7 +189,7 @@ contexts/
 
 ```elixir
 # lib/eve_dmv/contexts/combat/core/battle_analyzer.ex:28
-@deprecated "Use EveDmv.Contexts.BattleAnalysis.Core.OptimizedBattleAnalyzer.analyze_battle/1 instead"
+@deprecated "Use OptimizedBattleAnalyzer.analyze_battle/1 instead"
 ```
 
 **Action:** Remove the deprecated module or add migration timeline.
@@ -180,6 +197,7 @@ contexts/
 ### 7.3.2 Commented-Out Code
 
 **lib/eve_dmv_web/live/profile_live.ex:**
+
 ```elixir
 # Lines 151-169: Entire block of commented-out formatting functions
 # defp format_isk(amount) when amount >= 1_000_000_000 do
@@ -188,16 +206,19 @@ contexts/
 ```
 
 **lib/eve_dmv_web/controllers/error_json.ex:**
+
 ```elixir
 # Line 11: Commented-out function
 # def render("500.json", _assigns) do
 ```
 
-**Recommendation:** Remove all commented-out code. Git history preserves deleted code if needed.
+**Recommendation:** Remove all commented-out code.
+Git history preserves deleted code if needed.
 
 ### 7.3.3 Unused Module Indicators
 
 Notes in code suggest removed functions:
+
 ```elixir
 # lib/eve_dmv/core/infrastructure/unified_event_processor.ex:462
 # defp process_with_retry - removed as unused
@@ -223,6 +244,7 @@ end
 ```
 
 **Active feature flags:**
+
 - `pipeline_enabled` - Controls Broadway pipeline
 
 No abandoned or remnant feature flags were detected.
@@ -238,7 +260,7 @@ No abandoned or remnant feature flags were detected.
 **Files with hardcoded type ID ranges:**
 
 | File | Violation Count |
-|------|----------------|
+| ---- | --------------- |
 | `fleet_operations_live.ex` | 10 |
 | `battle_analysis_live/helpers.ex` | 11 |
 | `presentation/formatters.ex` | 5 |
@@ -257,6 +279,7 @@ No abandoned or remnant feature flags were detected.
 | `external_price_client.ex` | 3 |
 
 **Example violation (from `collector.ex:406-412`):**
+
 ```elixir
 # WRONG - Hardcoded type ID ranges
 defp classify_ship_class(ship_type_id) do
@@ -270,6 +293,7 @@ end
 ```
 
 **Correct pattern (from CLAUDE.md):**
+
 ```elixir
 # CORRECT - Use EVE group IDs from StaticData
 case EveDmv.Eve.ItemType.get_by_type_id(ship_type_id) do
@@ -287,12 +311,12 @@ end
 **Violations found:**
 
 | File | Line | Code |
-|------|------|------|
-| `threat_assessment_engine.ex` | 452 | `get_corporation_member_count(_corp_id), do: :rand.uniform(2000)` |
-| `threat_assessment_engine.ex` | 453 | `get_active_member_count(_corp_id, _time_range), do: :rand.uniform(1000)` |
-| `analytics_service.ex` | 834 | `variation = (:rand.uniform() - 0.5) * 0.1` |
+| ---- | ---- | ---- |
+| `threat_assessment_engine.ex` | 452 | `:rand.uniform(2000)` |
+| `threat_assessment_engine.ex` | 453 | `:rand.uniform(1000)` |
+| `analytics_service.ex` | 834 | `(:rand.uniform() - 0.5) * 0.1` |
 | `experience_analyzer.ex` | 928 | `:rand.uniform() * 0.4 + 0.6` |
-| `notification_dispatcher.ex` | 301 | `if :rand.uniform() > 0.95 do` |
+| `notification_dispatcher.ex` | 301 | `:rand.uniform() > 0.95` |
 
 **These functions must be replaced with real data queries or removed entirely.**
 
@@ -302,23 +326,32 @@ end
 
 ### Immediate Actions (High Priority)
 
-1. **Fix circular dependencies** - Break the 194-module cycle by restructuring compile-time dependencies
-2. **Replace hardcoded ship type ID ranges** - Use EVE SDE group IDs via StaticData module
-3. **Remove random data generation** - Replace with real queries or remove functions entirely
+1. **Fix circular dependencies** - Break the 194-module cycle
+   by restructuring compile-time dependencies
+2. **Replace hardcoded ship type ID ranges** - Use EVE SDE group IDs
+   via StaticData module
+3. **Remove random data generation** - Replace with real queries
+   or remove functions entirely
 4. **Remove commented-out code** - Git preserves history
 
 ### Medium-Term Actions
 
-1. **Consolidate caching** - Reduce from 10+ cache modules to 1-2 with namespaces
-2. **Review GenServer necessity** - Many processes may be replaceable with simple functions
-3. **Consolidate single-function modules** - Especially in intelligence and combat analysis
-4. **Remove deprecated code** - Complete migration from `BattleAnalyzer` to `OptimizedBattleAnalyzer`
+1. **Consolidate caching** - Reduce from 10+ cache modules to 1-2
+   with namespaces
+2. **Review GenServer necessity** - Many processes may be replaceable
+   with simple functions
+3. **Consolidate single-function modules** - Especially in intelligence
+   and combat analysis
+4. **Remove deprecated code** - Complete migration from `BattleAnalyzer`
+   to `OptimizedBattleAnalyzer`
 
 ### Architectural Review Needed
 
-1. **Delegation patterns** - Review if 320+ delegates add value or just indirection
+1. **Delegation patterns** - Review if 320+ delegates add value
+   or just indirection
 2. **Context boundaries** - Ensure context modules have clear responsibilities
-3. **Worker pool necessity** - Evaluate if `AnalysisWorkerPool` provides value over Broadway
+3. **Worker pool necessity** - Evaluate if `AnalysisWorkerPool`
+   provides value over Broadway
 
 ---
 
@@ -327,17 +360,17 @@ end
 ### Files with Multiple Issues
 
 | File | Issues |
-|------|--------|
-| `lib/eve_dmv/contexts/threat_surveillance/domain/threat_assessment_engine.ex` | Random data, placeholder implementations |
-| `lib/eve_dmv/platform/workers/cache_warming_worker.ex` | Placeholder implementations throughout |
-| `lib/eve_dmv_web/live/fleet_operations_live.ex` | Hardcoded type ID ranges |
-| `lib/eve_dmv/contexts/battle_analysis/domain/ship_performance_analyzer.ex` | Hardcoded type ID ranges (19 instances) |
-| `lib/eve_dmv/contexts/battle_analysis/domain/tactical_phase_detector.ex` | Hardcoded type ID ranges (18 instances) |
-| `lib/eve_dmv/core/domain/intelligence/collector.ex` | Hardcoded type ID ranges |
+| ---- | ------ |
+| `threat_assessment_engine.ex` | Random data, placeholders |
+| `cache_warming_worker.ex` | Placeholder implementations |
+| `fleet_operations_live.ex` | Hardcoded type ID ranges |
+| `ship_performance_analyzer.ex` | Hardcoded IDs (19 instances) |
+| `tactical_phase_detector.ex` | Hardcoded IDs (18 instances) |
+| `collector.ex` | Hardcoded type ID ranges |
 
 ### xref Graph Stats
 
-```
+```text
 Tracked files: 847 (nodes)
 Compile dependencies: 152 (edges)
 Exports dependencies: 136 (edges)
@@ -346,6 +379,7 @@ Cycles: 2
 ```
 
 **Top files with most outgoing dependencies:**
+
 1. `application.ex` (57)
 2. `router.ex` (52)
 3. `corporation_live.ex` (20)
@@ -353,6 +387,7 @@ Cycles: 2
 5. `battle_analysis_service.ex` (18)
 
 **Top files with most incoming dependencies (potential god objects):**
+
 1. `datetime_utils.ex` (228)
 2. `repo.ex` (137)
 3. `api.ex` (97)

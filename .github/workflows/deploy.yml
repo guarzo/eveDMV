@@ -168,6 +168,15 @@ jobs:
               required_contexts: []
             });
 
+            // Check if deployment was created successfully
+            // createDeployment can return 202 status when there's a merge conflict or other issue,
+            // in which case deployment.data.id would be undefined
+            if (!deployment.data.id) {
+              console.log('Deployment creation returned:', JSON.stringify(deployment.data));
+              core.warning('Could not create deployment record - this does not affect the actual deployment');
+              return;
+            }
+
             // Mark deployment as successful
             await github.rest.repos.createDeploymentStatus({
               owner: context.repo.owner,

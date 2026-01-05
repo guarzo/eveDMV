@@ -248,40 +248,6 @@ defmodule EveDmv.Platform.Database.CorporationRepository do
   end
 
   @doc """
-  Get corporation statistics including member count and activity.
-  """
-  def get_corporation_stats(corporation_id) when is_integer(corporation_id) do
-    with {:ok, corp_info} <- get_corporation_analytics(corporation_id),
-         {:ok, activity_stats} <- get_corporation_activity_stats(corporation_id) do
-      member_count =
-        case corp_info.member_count do
-          nil -> 0
-          count -> count
-        end
-
-      {:ok,
-       %{
-         corporation_id: corporation_id,
-         member_count: member_count,
-         active_members_30d: activity_stats.active_members,
-         total_kills_30d: activity_stats.total_kills,
-         total_losses_30d: activity_stats.total_losses,
-         isk_efficiency_30d: activity_stats.isk_efficiency
-       }}
-    else
-      {:error, reason} ->
-        Logger.error("Failed to get corporation stats for #{corporation_id}: #{inspect(reason)}")
-        {:error, reason}
-    end
-  rescue
-    error ->
-      Logger.error("Failed to get corporation stats for #{corporation_id}: #{inspect(error)}")
-      {:error, :query_failed}
-  end
-
-  def get_corporation_stats(_), do: {:error, :invalid_corporation_id}
-
-  @doc """
   Get a specific corporation member.
   """
   def get_corporation_member(member_id) when is_integer(member_id) do

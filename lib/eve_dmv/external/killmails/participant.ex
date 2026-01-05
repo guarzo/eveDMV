@@ -47,6 +47,7 @@ defmodule EveDmv.Killmails.Participant do
     define(:by_corporation, args: [:corporation_id])
     define(:attackers_only, args: [:killmail_id, :killmail_time])
     define(:victims_only, args: [:killmail_id, :killmail_time])
+    define(:character_activity_summary, args: [:character_id])
   end
 
   # Attributes
@@ -361,6 +362,32 @@ defmodule EveDmv.Killmails.Participant do
 
       filter(expr(alliance_id == ^arg(:alliance_id)))
       prepare(build(sort: [killmail_time: :desc]))
+    end
+
+    read :character_activity_summary do
+      description("Get activity summary for a character with kill/loss breakdown")
+
+      argument :character_id, :integer do
+        allow_nil?(false)
+        description("Character ID to get activity summary for")
+      end
+
+      argument :since_days, :integer do
+        allow_nil?(false)
+        default(90)
+        description("Number of days to look back")
+      end
+
+      pagination do
+        offset?(true)
+        default_limit(50)
+        max_page_size(100)
+      end
+
+      filter(expr(character_id == ^arg(:character_id)))
+      filter(expr(killmail_time >= ago(^arg(:since_days), :day)))
+
+      prepare(build(sort: [killmail_time: :desc], load: [:ship_type, :participation_type]))
     end
   end
 

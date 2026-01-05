@@ -64,6 +64,9 @@ defmodule EveDmv.Api do
     resource(EveDmv.Contexts.Corporation.Resources.MemberPerformanceSnapshot)
     resource(EveDmv.Contexts.Corporation.Resources.MemberActivityLog)
     resource(EveDmv.Contexts.Corporation.Resources.RecruitmentCampaign)
+
+    # Killmail processing resources
+    resource(EveDmv.Contexts.KillmailProcessing.Resources.HistoricalFetchStatus)
   end
 
   # Authorization configuration

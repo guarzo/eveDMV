@@ -1,191 +1,339 @@
 defmodule EveDmv.Platform.Database.MaterializedViewRefresher do
   @moduledoc """
-  Sprint 15A: GenServer responsible for periodically refreshing materialized views.
+  Scheduled materialized view refresh manager.
 
-  Refreshes character_activity_summary and corporation_member_summary views
-  to ensure they contain up-to-date aggregated data for performance optimization.
+  Manages periodic full refreshes of materialized views with configurable
+  intervals. Uses REFRESH MATERIALIZED VIEW CONCURRENTLY to avoid blocking
+  reads during refresh.
+
+  Note: PostgreSQL materialized views only support full refresh; there is no
+  incremental refresh option. This module schedules and executes those full
+  refreshes based on configurable time intervals.
   """
 
   use GenServer
 
-  alias EveDmv.Repo
+  alias Ecto.Adapters.SQL
+  alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
 
-  # Refresh interval - 15 minutes by default
-  @refresh_interval :timer.minutes(15)
+  @refresh_interval :timer.minutes(5)
+  # Materialized views can only be fully refreshed - there is no incremental option.
+  # The full_refresh_interval determines the minimum time between refreshes.
+  @materialized_views %{
+    "character_activity_summary" => %{
+      full_refresh_interval: :timer.hours(24),
+      tracking_table: "view_refresh_tracking"
+    },
+    "system_activity_heatmap" => %{
+      full_refresh_interval: :timer.hours(6),
+      tracking_table: "view_refresh_tracking"
+    }
+  }
 
-  # View refresh queries
-  @character_activity_refresh "SELECT refresh_character_activity_summary();"
-  @corporation_summary_refresh "SELECT refresh_corporation_member_summary();"
+  # Client API
 
-  def start_link(_opts) do
-    GenServer.start_link(__MODULE__, [], name: __MODULE__)
+  def start_link(opts) do
+    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  @impl GenServer
-  def init(_) do
-    # Schedule first refresh after 1 minute to allow system to start up
-    Process.send_after(self(), :refresh_views, :timer.minutes(1))
-
-    Logger.info("📊 Materialized View Refresher started - first refresh in 1 minute")
-
-    {:ok,
-     %{
-       last_refresh: nil,
-       refresh_count: 0,
-       errors: 0,
-       enabled: Application.get_env(:eve_dmv, :materialized_views_enabled, true)
-     }}
+  @doc """
+  Manually trigger refresh for a specific view.
+  """
+  def refresh_view(view_name, opts \\ []) do
+    GenServer.call(__MODULE__, {:refresh_view, view_name, opts}, :timer.minutes(10))
   end
 
+  @doc """
+  Get refresh status for all managed views.
+  """
+  def get_refresh_status do
+    GenServer.call(__MODULE__, :get_status)
+  end
+
+  @doc """
+  Force full refresh of a specific view.
+  """
+  def force_full_refresh(view_name) do
+    GenServer.call(__MODULE__, {:full_refresh, view_name}, :timer.minutes(30))
+  end
+
+  # Server callbacks
+
   @impl GenServer
-  def handle_info(:refresh_views, %{enabled: false} = state) do
-    # Skip refresh if disabled
-    schedule_next_refresh()
-    {:noreply, state}
+  def init(opts) do
+    state = %{
+      enabled: Keyword.get(opts, :enabled, true),
+      refresh_interval: Keyword.get(opts, :refresh_interval, @refresh_interval),
+      last_refresh: %{},
+      refresh_stats: %{}
+    }
+
+    if state.enabled do
+      # Ensure tracking table exists
+      ensure_tracking_table()
+
+      # Schedule first refresh
+      schedule_refresh(state.refresh_interval)
+    end
+
+    {:ok, state}
   end
 
   @impl GenServer
   def handle_info(:refresh_views, state) do
-    Logger.info("🔄 Starting materialized view refresh...")
-    start_time = System.monotonic_time(:millisecond)
+    new_state = perform_scheduled_refreshes(state)
+    schedule_refresh(state.refresh_interval)
+    {:noreply, new_state}
+  end
 
-    case refresh_all_views() do
-      {:ok, _} ->
-        duration = System.monotonic_time(:millisecond) - start_time
-        Logger.info("✅ Materialized views refreshed successfully in #{duration}ms")
-
-        # Emit telemetry
-        :telemetry.execute(
-          [:eve_dmv, :materialized_views, :refresh],
-          %{duration: duration},
-          %{status: :success}
-        )
-
-        schedule_next_refresh()
-
-        {:noreply,
-         %{state | last_refresh: DateTime.utc_now(), refresh_count: state.refresh_count + 1}}
-
-      {:error, reason} ->
-        Logger.error("❌ Failed to refresh materialized views: #{inspect(reason)}")
-
-        # Emit telemetry
-        :telemetry.execute(
-          [:eve_dmv, :materialized_views, :refresh],
-          %{duration: 0},
-          %{status: :error, reason: reason}
-        )
-
-        # Schedule retry sooner on error (5 minutes)
-        Process.send_after(self(), :refresh_views, :timer.minutes(5))
-
-        {:noreply, %{state | errors: state.errors + 1}}
-    end
+  @impl GenServer
+  def handle_call({:refresh_view, view_name, opts}, _from, state) do
+    result = refresh_single_view(view_name, opts)
+    {:reply, result, state}
   end
 
   @impl GenServer
   def handle_call(:get_status, _from, state) do
-    status = %{
-      last_refresh: state.last_refresh,
-      refresh_count: state.refresh_count,
-      errors: state.errors,
-      enabled: state.enabled,
-      next_refresh_in: get_next_refresh_time()
-    }
-
-    {:reply, {:ok, status}, state}
+    status = compile_refresh_status(state)
+    {:reply, status, state}
   end
 
   @impl GenServer
-  def handle_call(:force_refresh, _from, state) do
-    Logger.info("🔄 Force refresh requested for materialized views")
-
-    case refresh_all_views() do
-      {:ok, _} ->
-        {:reply, :ok,
-         %{state | last_refresh: DateTime.utc_now(), refresh_count: state.refresh_count + 1}}
-
-      {:error, reason} ->
-        {:reply, {:error, reason}, %{state | errors: state.errors + 1}}
-    end
-  end
-
-  @impl GenServer
-  def handle_call({:enable, enabled}, _from, state) do
-    Logger.info("📊 Materialized view refresh #{if enabled, do: "enabled", else: "disabled"}")
-    {:reply, :ok, %{state | enabled: enabled}}
-  end
-
-  # Public API
-
-  @doc "Get the current status of the materialized view refresher"
-  def get_status do
-    GenServer.call(__MODULE__, :get_status)
-  end
-
-  @doc "Force an immediate refresh of all materialized views"
-  def force_refresh do
-    GenServer.call(__MODULE__, :force_refresh)
-  end
-
-  @doc "Enable or disable automatic refresh"
-  def set_enabled(enabled) when is_boolean(enabled) do
-    GenServer.call(__MODULE__, {:enable, enabled})
+  def handle_call({:full_refresh, view_name}, _from, state) do
+    result = perform_full_refresh(view_name)
+    {:reply, result, state}
   end
 
   # Private functions
 
-  defp refresh_all_views do
-    # Use a transaction to ensure consistency
-    Repo.transaction(fn ->
-      # First refresh character activity (base view)
-      case Repo.query(@character_activity_refresh) do
-        {:ok, _} ->
-          Logger.debug("✓ character_activity_summary refreshed")
+  defp ensure_tracking_table do
+    sql = """
+    CREATE TABLE IF NOT EXISTS view_refresh_tracking (
+      view_name TEXT PRIMARY KEY,
+      last_refresh_time TIMESTAMP WITH TIME ZONE,
+      last_full_refresh_time TIMESTAMP WITH TIME ZONE,
+      refresh_duration_ms INTEGER,
+      rows_updated INTEGER,
+      refresh_type TEXT
+    )
+    """
 
-        {:error, error} ->
-          Logger.error("Failed to refresh character_activity_summary: #{inspect(error)}")
-          Repo.rollback(error)
+    case SQL.query(EveDmv.Repo, sql) do
+      {:ok, _} -> :ok
+      {:error, error} -> Logger.error("Failed to create tracking table: #{inspect(error)}")
+    end
+  end
+
+  defp perform_scheduled_refreshes(state) do
+    Logger.info("Starting scheduled materialized view refreshes")
+    start_time = System.monotonic_time(:millisecond)
+
+    results =
+      Enum.map(@materialized_views, fn {view_name, config} ->
+        refresh_result = perform_view_refresh(view_name, config)
+        {view_name, refresh_result}
+      end)
+
+    duration = System.monotonic_time(:millisecond) - start_time
+    Logger.info("Completed scheduled refreshes in #{duration}ms")
+
+    %{
+      state
+      | last_refresh: Map.merge(state.last_refresh, Map.new(results)),
+        refresh_stats: update_refresh_stats(state.refresh_stats, results)
+    }
+  end
+
+  defp perform_view_refresh(view_name, config) do
+    last_full_refresh = get_last_full_refresh_time(view_name)
+
+    # Determine if enough time has passed to warrant a refresh
+    # For materialized views, we always do full refresh (the only option)
+    # This check just determines WHEN to refresh, not HOW
+    should_refresh =
+      case last_full_refresh do
+        nil ->
+          true
+
+        timestamp ->
+          time_since = DateTimeUtils.diff(DateTime.utc_now(), timestamp, :millisecond)
+          time_since > config.full_refresh_interval
       end
 
-      # Then refresh corporation summary (depends on character activity)
-      case Repo.query(@corporation_summary_refresh) do
-        {:ok, _} ->
-          Logger.debug("✓ corporation_member_summary refreshed")
+    if should_refresh do
+      # Materialized views can only be fully refreshed - there is no incremental option
+      perform_full_refresh(view_name)
+    else
+      Logger.debug("Skipping refresh of #{view_name} - recently refreshed")
+      {:ok, 0, %{rows_updated: 0, skipped: true}}
+    end
+  end
 
-        {:error, error} ->
-          Logger.error("Failed to refresh corporation_member_summary: #{inspect(error)}")
-          Repo.rollback(error)
+  defp perform_full_refresh(view_name) do
+    # Validate view_name against whitelist to prevent SQL injection
+    unless Map.has_key?(@materialized_views, view_name) do
+      raise ArgumentError,
+            "Unknown materialized view: #{inspect(view_name)}. " <>
+              "Only configured views are allowed: #{inspect(Map.keys(@materialized_views))}"
+    end
+
+    Logger.info("Performing full refresh for #{view_name}")
+    start_time = System.monotonic_time(:millisecond)
+
+    # Use a transaction with increased work_mem to avoid disk spills during sort
+    # The character_activity_summary view requires ~9MB for sorting, default is 4MB
+    result =
+      EveDmv.Repo.transaction(fn ->
+        SQL.query!(EveDmv.Repo, "SET LOCAL work_mem = '32MB'")
+        SQL.query!(EveDmv.Repo, "REFRESH MATERIALIZED VIEW CONCURRENTLY #{view_name}")
+      end)
+
+    case result do
+      {:ok, _query_result} ->
+        duration = System.monotonic_time(:millisecond) - start_time
+
+        # Note: REFRESH MATERIALIZED VIEW doesn't return a meaningful row count
+        update_refresh_tracking(view_name, "full", duration, 0)
+
+        Logger.info("Full refresh of #{view_name} completed in #{duration}ms")
+        {:ok, duration, %{rows_updated: 0}}
+
+      {:error, error} ->
+        Logger.error("Failed to fully refresh #{view_name}: #{inspect(error)}")
+        {:error, error}
+    end
+  end
+
+  # Helper functions
+
+  defp get_last_full_refresh_time(view_name) do
+    sql = """
+    SELECT last_full_refresh_time
+    FROM view_refresh_tracking
+    WHERE view_name = $1
+    """
+
+    case SQL.query(EveDmv.Repo, sql, [view_name]) do
+      {:ok, %{rows: [[timestamp]]}} when timestamp != nil -> timestamp
+      _ -> nil
+    end
+  end
+
+  defp update_refresh_tracking(view_name, refresh_type, duration_ms, rows_updated) do
+    now = DateTime.utc_now()
+
+    sql =
+      if refresh_type == "full" do
+        """
+        INSERT INTO view_refresh_tracking
+        (view_name, last_refresh_time, last_full_refresh_time, refresh_duration_ms, rows_updated, refresh_type)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT (view_name) DO UPDATE SET
+          last_refresh_time = EXCLUDED.last_refresh_time,
+          last_full_refresh_time = EXCLUDED.last_full_refresh_time,
+          refresh_duration_ms = EXCLUDED.refresh_duration_ms,
+          rows_updated = EXCLUDED.rows_updated,
+          refresh_type = EXCLUDED.refresh_type
+        """
+      else
+        """
+        INSERT INTO view_refresh_tracking
+        (view_name, last_refresh_time, refresh_duration_ms, rows_updated, refresh_type)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (view_name) DO UPDATE SET
+          last_refresh_time = EXCLUDED.last_refresh_time,
+          refresh_duration_ms = EXCLUDED.refresh_duration_ms,
+          rows_updated = EXCLUDED.rows_updated,
+          refresh_type = EXCLUDED.refresh_type
+        """
+      end
+
+    params =
+      if refresh_type == "full" do
+        [view_name, now, now, duration_ms, rows_updated, refresh_type]
+      else
+        [view_name, now, duration_ms, rows_updated, refresh_type]
+      end
+
+    SQL.query(EveDmv.Repo, sql, params)
+  end
+
+  defp refresh_single_view(view_name, opts) do
+    case Map.get(@materialized_views, view_name) do
+      nil ->
+        {:error, :unknown_view}
+
+      config ->
+        if Keyword.get(opts, :full, false) do
+          perform_full_refresh(view_name)
+        else
+          # Performs a full refresh if enough time has elapsed, otherwise skips.
+          # Note: PostgreSQL materialized views only support full refresh;
+          # there is no incremental refresh option available.
+          perform_view_refresh(view_name, config)
+        end
+    end
+  end
+
+  defp compile_refresh_status(state) do
+    sql = """
+    SELECT
+      view_name,
+      last_refresh_time,
+      last_full_refresh_time,
+      refresh_duration_ms,
+      rows_updated,
+    refresh_type
+    FROM view_refresh_tracking
+    ORDER BY view_name
+    """
+
+    case SQL.query(EveDmv.Repo, sql) do
+      {:ok, %{rows: rows}} ->
+        %{
+          views:
+            Enum.map(rows, fn [name, last, last_full, duration, rows, type] ->
+              %{
+                view_name: name,
+                last_refresh: last,
+                last_full_refresh: last_full,
+                last_duration_ms: duration,
+                last_rows_updated: rows,
+                last_refresh_type: type,
+                configured: Map.has_key?(@materialized_views, name)
+              }
+            end),
+          last_run: state.last_refresh,
+          stats: state.refresh_stats
+        }
+
+      {:error, _} ->
+        %{views: [], last_run: nil, stats: %{}}
+    end
+  end
+
+  defp update_refresh_stats(stats, results) do
+    Enum.reduce(results, stats, fn {view_name, result}, acc ->
+      case result do
+        {:ok, duration, _} ->
+          view_stats = Map.get(acc, view_name, %{total_refreshes: 0, total_duration: 0})
+
+          Map.put(acc, view_name, %{
+            total_refreshes: view_stats.total_refreshes + 1,
+            total_duration: view_stats.total_duration + duration,
+            avg_duration:
+              (view_stats.total_duration + duration) / (view_stats.total_refreshes + 1)
+          })
+
+        _ ->
+          acc
       end
     end)
-  rescue
-    e ->
-      {:error, e}
   end
 
-  defp schedule_next_refresh do
-    Process.send_after(self(), :refresh_views, @refresh_interval)
-  end
-
-  defp get_next_refresh_time do
-    # Calculate approximate time until next refresh
-    @refresh_interval
-  end
-
-  @doc """
-  Manually refresh a specific view. Useful for testing or targeted updates.
-  """
-  def refresh_view(:character_activity) do
-    Repo.query(@character_activity_refresh)
-  end
-
-  def refresh_view(:corporation_summary) do
-    Repo.query(@corporation_summary_refresh)
-  end
-
-  def refresh_view(:all) do
-    refresh_all_views()
+  defp schedule_refresh(interval) do
+    Process.send_after(self(), :refresh_views, interval)
   end
 end

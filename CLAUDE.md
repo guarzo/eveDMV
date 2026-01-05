@@ -301,6 +301,7 @@ WHEN security_status <= 0.0 THEN 'nullsec'    # ❌ This incorrectly classifies 
 - **API Authentication** - Separate API key system for programmatic access
 - **Admin Features** - Performance dashboard, user management
 - **Fleet Operations** - Basic composition analysis
+- **Historical Fetch** - 2-year killmail fetch with background processing (see below)
 
 ### ✅ Intelligence Features
 - **Character Intelligence** (`/character/:id`)
@@ -360,6 +361,70 @@ WHEN security_status <= 0.0 THEN 'nullsec'    # ❌ This incorrectly classifies 
 - **Deployment**: `docs/DEPLOYMENT_GUIDE.md` - Production deployment guide
 - **PRD**: `docs/EVE_DMV_PRD.md` - Product requirements document
 - **Operations**: `docs/OPERATIONS_RUNBOOK.md` - Operational procedures
+- **Historical Fetch**: `docs/HISTORICAL_FETCH_2YEAR_IMPLEMENTATION.md` - 2-year fetch implementation details
+
+## Historical Fetch Feature (2-Year Killmail Retrieval)
+
+The Historical Fetch feature extends killmail data retrieval from 90 days to 2 years using a two-phase approach:
+
+### Architecture Overview
+
+```
+Phase 1 (Immediate): 90-day fetch via wanderer-kills (synchronous)
+Phase 2 (Background): 91 days to 2 years via zkillboard API (asynchronous)
+```
+
+**Key Components:**
+- `HistoricalFetchStatus` - Ash resource tracking fetch progress (`lib/eve_dmv/contexts/killmail_processing/resources/historical_fetch_status.ex`)
+- `ExtendedHistoricalFetcher` - Service fetching from zkillboard API (`lib/eve_dmv/contexts/killmail_processing/domain/extended_historical_fetcher.ex`)
+- `HistoricalFetchWorker` - GenServer managing background fetch queue (`lib/eve_dmv/contexts/killmail_processing/domain/historical_fetch_worker.ex`)
+- `HistoricalFetchIndicator` - LiveView component displaying status (`lib/eve_dmv_web/components/historical_fetch_indicator.ex`)
+
+### Usage in LiveViews
+
+```elixir
+# Subscribe to status updates (in mount/3)
+KillmailProcessing.subscribe_to_historical_fetch(:character, character_id)
+
+# Get current status
+status = KillmailProcessing.get_historical_fetch_status(:character, character_id)
+
+# Render indicator in template
+<.historical_fetch_indicator
+  status={@historical_fetch_status}
+  entity_type={:character}
+  entity_id={@character_id}
+/>
+
+# Handle retry event
+def handle_event("retry_historical_fetch", %{"entity_type" => type, "entity_id" => id}, socket)
+```
+
+### Status States
+
+| Status | Description |
+|--------|-------------|
+| `pending` | Initial state, Phase 1 in progress |
+| `phase1_complete` | 90-day fetch done, Phase 2 queued |
+| `in_progress` | Phase 2 actively fetching |
+| `completed` | All 2 years of data fetched |
+| `failed` | Error occurred (can retry) |
+
+### API Functions
+
+```elixir
+# Queue entity for extended fetch
+KillmailProcessing.queue_extended_historical_fetch(:character, 12345)
+
+# Get status
+{:ok, status} = KillmailProcessing.get_historical_fetch_status(:character, 12345)
+
+# Subscribe to updates (PubSub)
+KillmailProcessing.subscribe_to_historical_fetch(:character, 12345)
+
+# Mark Phase 1 complete and queue Phase 2
+KillmailProcessing.complete_phase1_and_queue_phase2(:character, 12345)
+```
 
 ## Environment Configuration
 
@@ -382,6 +447,18 @@ MOCK_SSE_SERVER_ENABLED     # Use mock server for development (true/false)
 # Admin User Bootstrap (Production)
 ADMIN_BOOTSTRAP_CHARACTERS      # Comma-separated character names: "John Doe,Jane Smith"
 ADMIN_BOOTSTRAP_CHARACTER_IDS   # Comma-separated character IDs: "123456789,987654321"
+
+# Historical Fetch Configuration (2-Year Killmail Retrieval)
+HISTORICAL_FETCH_RATE_LIMIT     # Delay between zkillboard API calls in ms (default: 1000)
+HISTORICAL_FETCH_MAX_PAGES      # Max pages to fetch per entity (default: 100)
+HISTORICAL_FETCH_LOOKBACK_DAYS  # Days of history to fetch (default: 730, 2 years)
+HISTORICAL_FETCH_CHECK_INTERVAL # Worker queue check interval in ms (default: 30000)
+HISTORICAL_FETCH_ENABLED        # Enable/disable background fetching (default: true)
+
+# Query Migration Feature Flags
+EVE_DMV_QUERY_MIGRATION_USE_ASH_CHARACTER_STATS     # Use Ash for character stats (default: false)
+EVE_DMV_QUERY_MIGRATION_USE_ASH_CORPORATION_STATS   # Use Ash for corp stats (default: false)
+EVE_DMV_QUERY_MIGRATION_LOG_COMPARISON_MISMATCHES   # Log old/new query differences (default: false)
 ```
 
 ## Common Development Tasks

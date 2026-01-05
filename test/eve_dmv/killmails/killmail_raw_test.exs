@@ -267,21 +267,12 @@ defmodule EveDmv.Killmails.KillmailRawTest do
       assert killmail_with_age.age_in_hours <= 3
     end
 
-    # Skipped: flaky test - depends on exact timing and partition setup
-    @tag :skip
     test "is_recent identifies recent killmails" do
-      # Ensure June partition exists
-      SQL.query!(EveDmv.Repo, """
-        CREATE TABLE IF NOT EXISTS killmails_raw_2025_06 PARTITION OF killmails_raw
-        FOR VALUES FROM ('2025-06-01') TO ('2025-07-01')
-      """)
-
-      # Create a recent killmail (1 hour ago) - ensure it's in current month
+      # Create a recent killmail (1 hour ago)
       recent_time = DateTime.add(DateTime.utc_now(), -3600, :second)
 
-      # Create an old killmail - use June 30th and is > 24 hours ago
-      # June 30th, definitely > 24 hours ago
-      old_time = ~U[2025-06-30 00:00:00Z]
+      # Create an old killmail (48 hours ago - definitely not recent)
+      old_time = DateTime.add(DateTime.utc_now(), -48 * 3600, :second)
 
       recent_data = TestDataGenerator.generate_sample_killmail(timestamp: recent_time)
       old_data = TestDataGenerator.generate_sample_killmail(timestamp: old_time)

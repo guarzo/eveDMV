@@ -6,6 +6,8 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   ship preferences, activity patterns, and affiliations.
   """
 
+  alias EveDmv.Calculations.Helpers, as: CalcHelpers
+  alias EveDmv.Contexts.CharacterIntelligence.Resources.CharacterStats
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Platform.Cache.QueryCache
   alias EveDmv.Platform.Database.CharacterQueries
@@ -135,13 +137,24 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   @spec get_killmail_stats(integer(), DateTime.t()) ::
           {:ok, killmail_stats()} | {:error, Ash.Error.t()}
   def get_killmail_stats(character_id, since_date) do
-    # Get character stats using optimized query
+    # Get character stats using Ash-based CharacterStats resource
     stats =
       QueryPerformance.tracked_query(
         "character_stats",
-        fn -> CharacterQueries.get_character_stats(character_id, since_date) end,
+        fn -> CharacterStats.calculate_for_character(character_id, since_date) end,
         metadata: %{character_id: character_id}
       )
+
+    # Extract stats from result tuple
+    {kills, deaths, kd_ratio} =
+      case stats do
+        {:ok, char_stats} ->
+          {char_stats.kills, char_stats.deaths,
+           CalcHelpers.kd_ratio(char_stats.kills, char_stats.deaths)}
+
+        {:error, _} ->
+          {0, 0, 0.0}
+      end
 
     # Get ISK efficiency (QueryCache.get_or_compute returns {:ok, value} or {:error, reason})
     {:ok, isk_stats} = calculate_isk_efficiency(character_id, since_date)
@@ -151,9 +164,9 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
 
     {:ok,
      %{
-       total_kills: stats.kills,
-       total_deaths: stats.deaths,
-       kd_ratio: stats.kd_ratio,
+       total_kills: kills,
+       total_deaths: deaths,
+       kd_ratio: kd_ratio,
        isk_destroyed: isk_stats.destroyed,
        isk_lost: isk_stats.lost,
        isk_efficiency: isk_stats.efficiency,

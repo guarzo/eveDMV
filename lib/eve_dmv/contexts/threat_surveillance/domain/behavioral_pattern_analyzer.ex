@@ -147,7 +147,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
     # Get killmails where character was victim
     victim_query =
       from(k in KillmailRaw,
-        where: fragment("?->>'character_id' = ?", k.victim, ^to_string(entity_id)),
+        where: k.victim_character_id == ^entity_id,
         where: k.killmail_time > ^since,
         order_by: [desc: k.killmail_time],
         limit: 1000
@@ -169,7 +169,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
     # Get killmails where corporation members were victims
     victim_query =
       from(k in KillmailRaw,
-        where: fragment("?->>'corporation_id' = ?", k.victim, ^to_string(entity_id)),
+        where: k.victim_corporation_id == ^entity_id,
         where: k.killmail_time > ^since,
         order_by: [desc: k.killmail_time],
         limit: 1000
@@ -443,21 +443,20 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
   defp calculate_average_ship_value(killmails) do
     values =
       killmails
-      |> Enum.map(&(&1.zkb_total_value || 0))
+      |> Enum.map(&get_killmail_value/1)
+      |> Enum.map(&to_float/1)
       |> Enum.filter(&(&1 > 0))
 
     if Enum.empty?(values) do
-      0
+      0.0
     else
-      values_length = length(values)
-
-      if values_length > 0 do
-        Enum.sum(values) / values_length
-      else
-        0.0
-      end
+      Enum.sum(values) / length(values)
     end
   end
+
+  defp to_float(%Decimal{} = d), do: Decimal.to_float(d)
+  defp to_float(n) when is_number(n), do: n * 1.0
+  defp to_float(_), do: 0.0
 
   defp safe_percentage(count, total) when total > 0 do
     if total > 0 do
@@ -522,7 +521,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
         cv = std_dev / mean
 
         # Convert to 0-1 score where 1 = highly consistent
-        consistency = max(0, 1 - cv)
+        consistency = max(0.0, 1.0 - cv)
         Float.round(consistency, 3)
       end
     end
@@ -593,12 +592,12 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
 
   defp detect_system_anomaly(baseline, recent, anomalies) do
     baseline_systems =
-      get_in(baseline, [:system_patterns, :top_systems])
+      (get_in(baseline, [:system_patterns, :top_systems]) || [])
       |> Enum.map(fn {sys_id, _} -> sys_id end)
       |> Enum.take(20)
 
     recent_systems =
-      get_in(recent, [:system_patterns, :top_systems])
+      (get_in(recent, [:system_patterns, :top_systems]) || [])
       |> Enum.map(fn {sys_id, _} -> sys_id end)
 
     if not Enum.empty?(recent_systems) and not Enum.empty?(baseline_systems) do
@@ -754,4 +753,9 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
       _ -> 1
     end
   end
+
+  # Extract value from killmail, handling both struct and map forms
+  defp get_killmail_value(%{total_value: value}) when not is_nil(value), do: value
+  defp get_killmail_value(%{"total_value" => value}) when not is_nil(value), do: value
+  defp get_killmail_value(_), do: 0
 end

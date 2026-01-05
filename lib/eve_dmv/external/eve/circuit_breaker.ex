@@ -322,7 +322,7 @@ defmodule EveDmv.Eve.CircuitBreaker do
   defp handle_exception_result(exception, state) do
     # Exceptions always count as failures (infrastructure issues)
     new_state = handle_failure(state, exception)
-    {:reply, {:error, {:error, exception}}, new_state}
+    {:reply, {:error, {:exception, exception}}, new_state}
   end
 
   defp handle_caught_result(kind, reason, state) do

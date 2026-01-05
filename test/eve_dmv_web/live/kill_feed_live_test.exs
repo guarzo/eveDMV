@@ -203,13 +203,11 @@ defmodule EveDmvWeb.KillFeedLiveTest do
   end
 
   describe "display formatting" do
-    # Skip: Test depends on factories that need to be updated for current schema
-    @tag :skip
     test "formats ISK values correctly", %{conn: conn} do
-      # Create kill with specific value
+      # Create kill with specific value (1.234 billion ISK)
       create(:killmail_enriched, %{
         killmail_id: 95_000_001,
-        total_value: 1_234_567_890,
+        total_value: Decimal.new(1_234_567_890),
         killmail_time: DateTime.utc_now()
       })
 

@@ -9,6 +9,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
   import Ash.Expr
 
   alias EveDmv.Contexts.KillmailProcessing.Domain
+  alias EveDmv.Contexts.KillmailProcessing.Resources.HistoricalFetchStatus
   alias EveDmv.Result
   alias EveDmv.SharedKernel.ValueObjects.CharacterId
   alias EveDmv.SharedKernel.ValueObjects.SolarSystemId
@@ -329,6 +330,166 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
   end
 
   defp validate_character_ids(_), do: {:error, :invalid_character_ids_format}
+
+  # ============================================================================
+  # Historical Fetch Status API
+  # ============================================================================
+
+  @doc """
+  Get the historical fetch status for an entity.
+
+  Returns the current status of the 2-year historical fetch for the given entity.
+
+  ## Examples
+
+      iex> get_historical_fetch_status(:character, 12345)
+      {:ok, %{status: :completed, killmails_fetched: 150}}
+
+      iex> get_historical_fetch_status(:character, 99999)
+      {:error, :not_found}
+  """
+  @spec get_historical_fetch_status(atom(), integer()) ::
+          {:ok, map()} | {:error, :not_found}
+  def get_historical_fetch_status(entity_type, entity_id)
+      when entity_type in [:character, :corporation, :system, :alliance] and is_integer(entity_id) do
+    Domain.HistoricalFetchWorker.get_status(entity_type, entity_id)
+  end
+
+  def get_historical_fetch_status(_, _), do: {:error, :not_found}
+
+  @doc """
+  Subscribe to historical fetch status updates for an entity.
+
+  Subscribes the current process to PubSub updates for the given entity.
+  Updates are broadcast as `{:historical_fetch_update, entity_type, entity_id, update}`.
+
+  ## Examples
+
+      iex> subscribe_to_historical_fetch(:character, 12345)
+      :ok
+  """
+  @spec subscribe_to_historical_fetch(atom(), integer()) :: :ok
+  def subscribe_to_historical_fetch(entity_type, entity_id)
+      when entity_type in [:character, :corporation, :system, :alliance] and is_integer(entity_id) do
+    Domain.HistoricalFetchWorker.subscribe(entity_type, entity_id)
+  end
+
+  def subscribe_to_historical_fetch(_, _), do: :ok
+
+  @doc """
+  Unsubscribe from historical fetch status updates for an entity.
+
+  ## Examples
+
+      iex> unsubscribe_from_historical_fetch(:character, 12345)
+      :ok
+  """
+  @spec unsubscribe_from_historical_fetch(atom(), integer()) :: :ok
+  def unsubscribe_from_historical_fetch(entity_type, entity_id)
+      when entity_type in [:character, :corporation, :system, :alliance] and is_integer(entity_id) do
+    Domain.HistoricalFetchWorker.unsubscribe(entity_type, entity_id)
+  end
+
+  def unsubscribe_from_historical_fetch(_, _), do: :ok
+
+  @doc """
+  Queue an entity for 2-year historical fetch (Phase 2).
+
+  Creates or updates the historical fetch status and broadcasts the update.
+
+  ## Examples
+
+      iex> queue_extended_historical_fetch(:character, 12345)
+      {:ok, %{status: :phase1_complete, ...}}
+  """
+  @spec queue_extended_historical_fetch(atom(), integer()) :: Result.t(map())
+  def queue_extended_historical_fetch(entity_type, entity_id)
+      when entity_type in [:character, :corporation, :system, :alliance] and is_integer(entity_id) do
+    Domain.HistoricalFetchWorker.queue_fetch(entity_type, entity_id)
+  end
+
+  def queue_extended_historical_fetch(_, _), do: {:error, :invalid_entity}
+
+  @doc """
+  Mark Phase 1 complete and queue Phase 2 fetch.
+
+  Called after initial 90-day data is loaded to queue 2-year fetch.
+
+  ## Examples
+
+      iex> complete_phase1_and_queue_phase2(:character, 12345)
+      {:ok, %{status: :phase1_complete, ...}}
+  """
+  @spec complete_phase1_and_queue_phase2(atom(), integer()) :: Result.t(map())
+  def complete_phase1_and_queue_phase2(entity_type, entity_id)
+      when entity_type in [:character, :corporation, :system, :alliance] and is_integer(entity_id) do
+    # Get or create the fetch status record
+    case get_or_create_fetch_status(entity_type, entity_id) do
+      {:ok, status} ->
+        # Mark Phase 1 complete
+        case Ash.update(status, %{}, action: :mark_phase1_complete, domain: EveDmv.Api) do
+          {:ok, updated} ->
+            # Queue for Phase 2 processing via the worker
+            Domain.HistoricalFetchWorker.queue_fetch(entity_type, entity_id)
+            {:ok, status_to_map(updated)}
+
+          {:error, reason} ->
+            {:error, reason}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  def complete_phase1_and_queue_phase2(_, _), do: {:error, :invalid_entity}
+
+  @doc """
+  Check if the historical fetch worker is currently busy processing.
+  """
+  @spec historical_fetch_busy?() :: boolean()
+  def historical_fetch_busy? do
+    Domain.HistoricalFetchWorker.busy?()
+  end
+
+  # Private helpers for historical fetch
+
+  defp get_or_create_fetch_status(entity_type, entity_id) do
+    case HistoricalFetchStatus.get_by_entity(entity_type, entity_id) do
+      {:ok, [status]} ->
+        {:ok, status}
+
+      {:ok, []} ->
+        # Create new status
+        Ash.create(
+          HistoricalFetchStatus,
+          %{entity_type: entity_type, entity_id: entity_id},
+          action: :create,
+          domain: EveDmv.Api
+        )
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp status_to_map(status) do
+    %{
+      id: status.id,
+      entity_type: status.entity_type,
+      entity_id: status.entity_id,
+      status: status.status,
+      phase1_completed_at: status.phase1_completed_at,
+      phase2_started_at: status.phase2_started_at,
+      phase2_completed_at: status.phase2_completed_at,
+      oldest_killmail_date: status.oldest_killmail_date,
+      target_date: status.target_date,
+      killmails_fetched: status.killmails_fetched,
+      current_page: status.current_page,
+      last_error: status.last_error,
+      retry_count: status.retry_count
+    }
+  end
 
   # Helper functions
 

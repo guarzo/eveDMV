@@ -10,6 +10,7 @@ defmodule EveDmvWeb.SystemLive do
 
   on_mount({EveDmvWeb.AuthLive, :load_from_session_optional})
 
+  import EveDmvWeb.Components.HistoricalFetchIndicator
   import EveDmvWeb.FormatHelpers
 
   alias Ecto.Adapters.SQL
@@ -43,6 +44,14 @@ defmodule EveDmvWeb.SystemLive do
   def mount(%{"system_id" => system_id}, _session, socket) do
     system_id = String.to_integer(system_id)
 
+    # Subscribe to historical fetch updates when connected
+    if connected?(socket) do
+      subscribe_to_historical_fetch(:system, system_id)
+    end
+
+    # Get current historical fetch status
+    historical_status = get_historical_fetch_status(:system, system_id)
+
     # Load system info and activity data
     case load_system_data(system_id) do
       {:ok, system_data} ->
@@ -53,7 +62,8 @@ defmodule EveDmvWeb.SystemLive do
            system_data: system_data,
            loading: false,
            detail_panel: nil,
-           detail_type: nil
+           detail_type: nil,
+           historical_fetch_status: historical_status
          )}
 
       {:error, :not_found} ->
@@ -63,7 +73,8 @@ defmodule EveDmvWeb.SystemLive do
            system_id: system_id,
            system_data: nil,
            loading: false,
-           error: "System not found"
+           error: "System not found",
+           historical_fetch_status: nil
          )}
 
       {:error, reason} ->
@@ -73,7 +84,8 @@ defmodule EveDmvWeb.SystemLive do
            system_id: system_id,
            system_data: nil,
            loading: false,
-           error: "Failed to load system data: #{reason}"
+           error: "Failed to load system data: #{reason}",
+           historical_fetch_status: nil
          )}
     end
   end
@@ -94,6 +106,38 @@ defmodule EveDmvWeb.SystemLive do
     end
   end
 
+  # Handle historical fetch status updates via PubSub
+  def handle_info({:historical_fetch_update, :system, _entity_id, update}, socket) do
+    system_id = socket.assigns.system_id
+
+    case update do
+      {:progress, _progress} ->
+        status = get_historical_fetch_status(:system, system_id)
+        {:noreply, assign(socket, :historical_fetch_status, status)}
+
+      {:completed, _result} ->
+        status = get_historical_fetch_status(:system, system_id)
+        # Reload data to include new historical killmails
+        case load_system_data(system_id) do
+          {:ok, system_data} ->
+            {:noreply,
+             socket
+             |> assign(:historical_fetch_status, status)
+             |> assign(:system_data, system_data)}
+
+          {:error, _} ->
+            {:noreply, assign(socket, :historical_fetch_status, status)}
+        end
+
+      {:failed, _reason} ->
+        status = get_historical_fetch_status(:system, system_id)
+        {:noreply, assign(socket, :historical_fetch_status, status)}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
   @impl Phoenix.LiveView
   def handle_event("show_kills", _params, socket) do
     {:noreply, assign(socket, detail_panel: :kills, detail_type: :kills)}
@@ -109,6 +153,17 @@ defmodule EveDmvWeb.SystemLive do
 
   def handle_event("close_detail_panel", _params, socket) do
     {:noreply, assign(socket, detail_panel: nil, detail_type: nil)}
+  end
+
+  def handle_event(
+        "retry_historical_fetch",
+        %{"entity_type" => "system", "entity_id" => id},
+        socket
+      ) do
+    entity_id = String.to_integer(id)
+    queue_historical_fetch(:system, entity_id)
+    status = get_historical_fetch_status(:system, entity_id)
+    {:noreply, assign(socket, :historical_fetch_status, status)}
   end
 
   # Load comprehensive system data with caching
@@ -615,5 +670,59 @@ defmodule EveDmvWeb.SystemLive do
   # Uses @structure_group_names module attribute for consistency with SQL query
   defp structure_kill?(ship_group, _ship_name) do
     ship_group && ship_group in @structure_group_names
+  end
+
+  # Historical fetch helpers
+  # These functions integrate with the KillmailProcessing context for 2-year historical data.
+  # The backend API (Phase 4) provides the actual implementation; these are the LiveView wrappers.
+
+  defp get_historical_fetch_status(entity_type, entity_id) do
+    # Try to get status from KillmailProcessing API if available
+    # Returns nil if not found (component handles nil gracefully)
+    require Ash.Query
+    import Ash.Expr
+
+    entity_type_str = to_string(entity_type)
+
+    case EveDmv.Contexts.KillmailProcessing.Resources.HistoricalFetchStatus
+         |> Ash.Query.filter(expr(entity_type == ^entity_type_str and entity_id == ^entity_id))
+         |> Ash.read_one(domain: EveDmv.Api) do
+      {:ok, status} when not is_nil(status) ->
+        %{
+          status: String.to_existing_atom(status.status),
+          killmails_fetched: status.killmails_fetched,
+          oldest_killmail_date: status.oldest_killmail_date,
+          target_date: status.target_date
+        }
+
+      _ ->
+        nil
+    end
+  rescue
+    # Handle case where resource doesn't exist yet (Phase 1B not complete)
+    _ -> nil
+  end
+
+  defp subscribe_to_historical_fetch(entity_type, entity_id) do
+    # Subscribe to PubSub topic for historical fetch updates
+    topic = "historical_fetch:#{entity_type}:#{entity_id}"
+    Phoenix.PubSub.subscribe(EveDmv.PubSub, topic)
+  rescue
+    # Gracefully handle if PubSub not configured
+    _ -> :ok
+  end
+
+  defp queue_historical_fetch(entity_type, entity_id) do
+    # Queue a historical fetch via the worker (Phase 4B)
+    # This is a no-op if the worker isn't running yet
+    case Code.ensure_loaded(EveDmv.Contexts.KillmailProcessing.Domain.HistoricalFetchWorker) do
+      {:module, worker} ->
+        worker.queue_fetch(entity_type, entity_id)
+
+      _ ->
+        {:error, :worker_not_available}
+    end
+  rescue
+    _ -> {:error, :worker_not_available}
   end
 end

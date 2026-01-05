@@ -132,15 +132,15 @@ defmodule EveDmv.Platform.Database.Repository.TelemetryHelper do
   @dialyzer {:nowarn_function, get_performance_stats: 0}
   @spec get_performance_stats() :: map()
   def get_performance_stats do
-    # Get stats from ETS table if available
+    # Ensure ETS table exists (handle race conditions safely)
+    ensure_ets_table_exists()
+
+    # Gather stats if table exists, otherwise return defaults
     case :ets.info(:repo_performance_stats) do
       :undefined ->
-        # Create ETS table for tracking stats if it doesn't exist
-        :ets.new(:repo_performance_stats, [:named_table, :public, :set])
         get_default_stats()
 
       _ ->
-        # ETS table exists, gather current stats
         gather_current_stats()
     end
   end
@@ -224,14 +224,8 @@ defmodule EveDmv.Platform.Database.Repository.TelemetryHelper do
   end
 
   defp update_stats_from_telemetry(duration_ms, status) do
-    # Ensure ETS table exists
-    case :ets.info(:repo_performance_stats) do
-      :undefined ->
-        :ets.new(:repo_performance_stats, [:named_table, :public, :set])
-
-      _ ->
-        :ok
-    end
+    # Ensure ETS table exists (handle race conditions safely)
+    ensure_ets_table_exists()
 
     # Update counters
     increment_ets_counter(:total_queries)
@@ -243,6 +237,23 @@ defmodule EveDmv.Platform.Database.Repository.TelemetryHelper do
 
     if status == :error do
       increment_ets_counter(:error_count)
+    end
+  end
+
+  # Safely create the ETS table, handling race conditions where another
+  # process might create it between our check and creation attempt.
+  defp ensure_ets_table_exists do
+    case :ets.info(:repo_performance_stats) do
+      :undefined ->
+        try do
+          :ets.new(:repo_performance_stats, [:named_table, :public, :set])
+        rescue
+          # Table was created by another process between our check and create
+          ArgumentError -> :ok
+        end
+
+      _ ->
+        :ok
     end
   end
 end

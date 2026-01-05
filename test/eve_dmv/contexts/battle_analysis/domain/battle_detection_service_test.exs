@@ -89,10 +89,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
       assert battles == []
     end
 
-    # Skipping until max_time_gap option is fully implemented in battle detection
-    @tag :skip
     test "respects max_time_gap option" do
-      # Create killmails with large time gap
+      # Create killmails with large time gap and NO participant overlap
+      # to properly test the time gap logic
       {:ok, _killmail1} =
         create_killmail(%{
           killmail_id: 1,
@@ -108,27 +107,26 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.BattleDetectionServiceTest do
       {:ok, _killmail2} =
         create_killmail(%{
           killmail_id: 2,
-          # 40 minutes later
+          # 40 minutes later with DIFFERENT participants (no overlap)
           killmail_time: ~U[2024-01-01 10:40:00Z],
           solar_system_id: 30_002_765,
-          victim_character_id: 11_111,
+          victim_character_id: 22_222,
           raw_data: %{
-            "victim" => %{"character_id" => 11_111},
-            "attackers" => [%{"character_id" => 67_890}]
+            "victim" => %{"character_id" => 22_222},
+            "attackers" => [%{"character_id" => 33_333}]
           }
         })
 
       start_time = ~U[2024-01-01 09:00:00Z]
       end_time = ~U[2024-01-01 11:00:00Z]
 
-      # With default max_time_gap (30 minutes), should be separate battles
+      # With default max_time_gap (30 minutes) and no participant overlap,
+      # the 40-minute gap should result in separate battles
       assert {:ok, battles} = BattleDetectionService.detect_battles(start_time, end_time)
-
-      # Note: This test is skipped as the battle clustering algorithm may group these
-      # based on participant overlap even with time gaps
       assert length(battles) == 2
 
-      # With larger max_time_gap, should be same battle
+      # With larger max_time_gap (60 min), same system kills within that gap
+      # should be grouped together
       assert {:ok, battles} =
                BattleDetectionService.detect_battles(start_time, end_time, max_time_gap: 60)
 

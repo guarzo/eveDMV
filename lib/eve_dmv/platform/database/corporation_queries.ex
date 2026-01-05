@@ -3,99 +3,27 @@ defmodule EveDmv.Platform.Database.CorporationQueries do
   Optimized queries for corporation analysis.
 
   Uses efficient SQL queries to avoid expensive JSONB operations and N+1 query issues.
+
+  All functions accept either Date or DateTime for since_date parameters.
   """
 
-  alias EveDmv.Platform.Cache.QueryCache
   alias EveDmv.Repo
   require Logger
 
-  @doc """
-  Get kill and loss counts for a corporation using optimized queries.
-  Cached for performance.
-  """
-  def get_corporation_stats(corporation_id, since_date) do
-    cache_key = "corp_stats:#{corporation_id}:#{Date.to_iso8601(since_date)}"
-
-    QueryCache.get_or_compute(
-      cache_key,
-      fn ->
-        # Use materialized views for better performance (Sprint 15A optimization)
-        stats_query = """
-        SELECT
-          SUM(kills) as kill_count,
-          SUM(losses) as loss_count,
-          SUM(isk_destroyed) as isk_destroyed,
-          SUM(isk_lost) as isk_lost,
-          COUNT(DISTINCT character_id) as active_members
-        FROM corporation_member_summary
-        WHERE corporation_id = $1
-          AND last_seen >= $2
-        """
-
-        case Repo.query(stats_query, [corporation_id, since_date]) do
-          {:ok, %{rows: [[kills, losses, isk_destroyed, isk_lost, active_members]]}} ->
-            %{
-              kills: kills || 0,
-              losses: losses || 0,
-              isk_destroyed: safe_decimal_to_float(isk_destroyed),
-              isk_lost: safe_decimal_to_float(isk_lost),
-              active_members: active_members || 0,
-              efficiency: calculate_efficiency(kills || 0, losses || 0),
-              isk_efficiency: calculate_isk_efficiency(isk_destroyed || 0, isk_lost || 0)
-            }
-
-          {:error, _} ->
-            # Fallback to direct query if materialized view isn't ready
-            Logger.warning("Materialized view not available, falling back to direct query")
-            get_corporation_stats_direct(corporation_id, since_date)
-        end
-      end,
-      ttl: :timer.hours(1)
-    )
-  end
-
-  # Fallback method using direct queries
-  defp get_corporation_stats_direct(corporation_id, since_date) do
-    # Losses are straightforward
-    losses_query = """
-    SELECT COUNT(*) as loss_count
-    FROM killmails_raw
-    WHERE victim_corporation_id = $1
-      AND killmail_time >= $2
-    """
-
-    # For kills, we need to check attackers but with better indexing
-    kills_query = """
-    WITH corp_kills AS (
-      SELECT DISTINCT k.killmail_id
-      FROM killmails_raw k
-      WHERE k.killmail_time >= $2
-        AND EXISTS (
-          SELECT 1
-          FROM jsonb_array_elements(k.raw_data->'attackers') AS attacker
-          WHERE (attacker->>'corporation_id')::integer = $1
-        )
-      LIMIT 5000
-    )
-    SELECT COUNT(*) as kill_count FROM corp_kills
-    """
-
-    # Run queries
-    {:ok, %{rows: [[loss_count]]}} = Repo.query(losses_query, [corporation_id, since_date])
-    {:ok, %{rows: [[kill_count]]}} = Repo.query(kills_query, [corporation_id, since_date])
-
-    %{
-      kills: kill_count,
-      losses: loss_count,
-      efficiency: calculate_efficiency(kill_count, loss_count)
-    }
-  end
+  # Convert Date or DateTime to DateTime for SQL queries
+  defp to_datetime(%Date{} = date), do: DateTime.new!(date, ~T[00:00:00], "Etc/UTC")
+  defp to_datetime(%DateTime{} = datetime), do: datetime
+  defp to_datetime(%NaiveDateTime{} = ndt), do: DateTime.from_naive!(ndt, "Etc/UTC")
 
   @doc """
   Get top active members without expensive N+1 queries.
   Uses materialized view for Sprint 15A performance optimization.
+
+  Accepts either Date or DateTime for since_date parameter.
   """
   def get_top_active_members(corporation_id, limit \\ 10, since_date) do
+    since_datetime = to_datetime(since_date)
+
     # Use materialized view for instant results
     query = """
     SELECT
@@ -122,7 +50,7 @@ defmodule EveDmv.Platform.Database.CorporationQueries do
     LIMIT $2
     """
 
-    case Repo.query(query, [corporation_id, limit, since_date]) do
+    case Repo.query(query, [corporation_id, limit, since_datetime]) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [
                             character_id,
@@ -159,12 +87,12 @@ defmodule EveDmv.Platform.Database.CorporationQueries do
       {:error, _} ->
         # Fallback to direct query
         Logger.warning("Materialized view not available, falling back to direct query")
-        get_top_active_members_direct(corporation_id, limit, since_date)
+        get_top_active_members_direct(corporation_id, limit, since_datetime)
     end
   end
 
-  # Fallback method using direct queries
-  defp get_top_active_members_direct(corporation_id, limit, since_date) do
+  # Fallback method using direct queries (expects DateTime)
+  defp get_top_active_members_direct(corporation_id, limit, since_datetime) do
     query = """
     WITH member_activity AS (
       -- Members who died
@@ -221,7 +149,7 @@ defmodule EveDmv.Platform.Database.CorporationQueries do
     LIMIT $2
     """
 
-    case Repo.query(query, [corporation_id, limit, since_date]) do
+    case Repo.query(query, [corporation_id, limit, since_datetime]) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [char_id, char_name, activity, kills, losses, kd] ->
           %{
@@ -242,8 +170,12 @@ defmodule EveDmv.Platform.Database.CorporationQueries do
 
   @doc """
   Get corporation activity by timezone efficiently.
+
+  Accepts either Date or DateTime for since_date parameter.
   """
   def get_timezone_activity(corporation_id, since_date) do
+    since_datetime = to_datetime(since_date)
+
     query = """
     WITH hourly_activity AS (
     SELECT
@@ -278,7 +210,7 @@ defmodule EveDmv.Platform.Database.CorporationQueries do
     ORDER BY hour
     """
 
-    case Repo.query(query, [corporation_id, since_date]) do
+    case Repo.query(query, [corporation_id, since_datetime]) do
       {:ok, %{rows: rows}} ->
         # Convert to map for easy lookup
         activity_map =
@@ -303,8 +235,12 @@ defmodule EveDmv.Platform.Database.CorporationQueries do
 
   @doc """
   Get ship usage statistics for the corporation.
+
+  Accepts either Date or DateTime for since_date parameter.
   """
   def get_ship_usage_stats(corporation_id, since_date, limit \\ 20) do
+    since_datetime = to_datetime(since_date)
+
     query = """
     WITH ship_usage AS (
       -- Ships lost by corp members
@@ -343,7 +279,7 @@ defmodule EveDmv.Platform.Database.CorporationQueries do
     LIMIT $3
     """
 
-    case Repo.query(query, [corporation_id, since_date, limit]) do
+    case Repo.query(query, [corporation_id, since_datetime, limit]) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [ship_id, usage, isk_lost] ->
           %{
@@ -477,17 +413,6 @@ defmodule EveDmv.Platform.Database.CorporationQueries do
           alliance_id: nil
         }
     end
-  end
-
-  defp calculate_efficiency(kills, losses) when losses > 0 do
-    Float.round(kills / (kills + losses) * 100, 2)
-  end
-
-  defp calculate_efficiency(_kills, _losses), do: 100.0
-
-  defp calculate_isk_efficiency(destroyed, lost) do
-    total = destroyed + lost
-    if total > 0, do: Float.round(destroyed / total * 100, 2), else: 50.0
   end
 
   # Safely convert Decimal or nil to float

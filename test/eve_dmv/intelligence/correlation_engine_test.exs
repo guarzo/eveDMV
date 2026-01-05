@@ -77,31 +77,6 @@ defmodule EveDmv.Intelligence.CorrelationEngineTest do
     end
   end
 
-  describe "analyze_corporation_intelligence_patterns/1" do
-    # Skipping until corporation intelligence patterns are fully implemented
-    @tag :skip
-    test "analyzes corporation-wide intelligence patterns" do
-      _corporation_id = 98_388_312
-
-      # Function not yet implemented
-      # result = CorrelationEngine.analyze_corporation_intelligence_patterns(corporation_id)
-
-      # Should return corporation analysis or error for missing data
-      # assert match?({:ok, %{recruitment_patterns: _, activity_coordination: _}}, result) or
-      #          match?({:error, _}, result)
-      assert true
-    end
-
-    # Skipping until corporation intelligence patterns are fully implemented
-    @tag :skip
-    test "handles invalid corporation ID" do
-      # Function not yet implemented
-      # result = CorrelationEngine.analyze_corporation_intelligence_patterns(nil)
-      # assert {:error, _reason} = result
-      assert true
-    end
-  end
-
   # Helper function tests
   describe "private correlation functions" do
     test "threat correlation logic" do

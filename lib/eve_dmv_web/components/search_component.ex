@@ -261,10 +261,11 @@ defmodule EveDmvWeb.SearchComponent do
 
     # Combine results in a single list with type information
     # Sort by relevance and take top 10
-    []
-    |> Kernel.++(Enum.map(systems, &Map.put(&1, :type, "system")))
-    |> Kernel.++(Enum.map(characters, &Map.put(&1, :type, "character")))
-    |> Kernel.++(Enum.map(corporations, &Map.put(&1, :type, "corporation")))
+    Enum.concat([
+      Enum.map(systems, &Map.put(&1, :type, "system")),
+      Enum.map(characters, &Map.put(&1, :type, "character")),
+      Enum.map(corporations, &Map.put(&1, :type, "corporation"))
+    ])
     |> Enum.sort_by(fn result ->
       # Simple relevance scoring - exact matches first
       if String.downcase(result.name) == String.downcase(query) do

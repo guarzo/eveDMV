@@ -893,17 +893,27 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   defp assess_role_clarity(performance) do
     # How clearly defined was this ship's role?
     role = performance.ship_instance.estimated_fitting.estimated_role
-    appropriateness = performance.role_effectiveness.role_appropriateness
+
+    appropriateness =
+      case Map.get(performance, :role_effectiveness) do
+        nil -> :unknown
+        re -> Map.get(re, :role_appropriateness, :unknown)
+      end
 
     case {role, appropriateness} do
       {role, :optimal} when role != :unknown -> :clear
       {_role, :optimal} -> :somewhat_clear
       {_role, :suboptimal} -> :unclear
+      {_role, :unknown} -> :unclear
     end
   end
 
   defp assess_role_execution(performance) do
-    effectiveness = performance.role_effectiveness.effectiveness_score
+    effectiveness =
+      case Map.get(performance, :role_effectiveness) do
+        nil -> 0.0
+        re -> Map.get(re, :effectiveness_score, 0.0)
+      end
 
     cond do
       effectiveness >= 0.8 -> :excellent
@@ -1728,11 +1738,14 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp calculate_application_efficiency(expected, actual) do
     # Calculate actual application efficiency from real data
+    # Use dps.total from expected stats (returned by calculate_expected_stats)
+    expected_dps = get_in(expected, [:dps, :total]) || 0
+
     hit_percentage =
-      if expected.expected_dps > 0 do
+      if expected_dps > 0 do
         min(
           100.0,
-          actual.damage_dealt.total / (expected.expected_dps * actual.time_on_field) * 100.0
+          actual.damage_dealt.total / (expected_dps * actual.time_on_field) * 100.0
         )
       else
         0.0

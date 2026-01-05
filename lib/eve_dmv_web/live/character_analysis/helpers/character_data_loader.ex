@@ -15,6 +15,7 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
   """
 
   alias EveDmv.Contexts.CharacterIntelligence
+  alias EveDmv.Contexts.CharacterIntelligence.Resources.CharacterStats
   alias EveDmv.Contexts.CombatIntelligence
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Platform.Database.CharacterQueries
@@ -36,20 +37,24 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
   def analyze_character(character_id) do
     Logger.info("Starting analysis for character #{character_id}")
 
-    # Use optimized queries from CharacterQueries module
     ninety_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
 
-    # Get character stats using optimized query
-    # CharacterQueries.get_character_stats returns {:ok, value} or {:error, reason}
-    # (uses QueryCache internally for caching)
+    # Get character stats using Ash-native CharacterStats resource
     stats =
       case QueryPerformance.tracked_query(
              "character_stats",
-             fn -> CharacterQueries.get_character_stats(character_id, ninety_days_ago) end,
+             fn -> CharacterStats.calculate_for_character(character_id, ninety_days_ago) end,
              metadata: %{character_id: character_id}
            ) do
-        {:ok, value} -> value
-        {:error, _} -> %{kills: 0, deaths: 0, kd_ratio: 0}
+        {:ok, char_stats} ->
+          %{
+            kills: char_stats.kills,
+            deaths: char_stats.deaths,
+            kd_ratio: EveDmv.Calculations.Helpers.kd_ratio(char_stats.kills, char_stats.deaths)
+          }
+
+        {:error, _} ->
+          %{kills: 0, deaths: 0, kd_ratio: 0.0}
       end
 
     # Get character name from killmail data

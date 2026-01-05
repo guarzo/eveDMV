@@ -64,6 +64,10 @@ defmodule EveDmv.Contexts.Surveillance.Api do
   """
   def delete_profile(profile_id) do
     case ProfileManager.delete_profile(profile_id) do
+      :ok ->
+        Logger.info("Deleted surveillance profile: #{profile_id}")
+        :ok
+
       {:ok, _} ->
         Logger.info("Deleted surveillance profile: #{profile_id}")
         :ok

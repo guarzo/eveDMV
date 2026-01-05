@@ -109,6 +109,18 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.AlertManagementService do
   end
 
   @impl GenServer
+  def handle_call({:get_metrics, _options}, _from, state) do
+    # Options parameter reserved for future filtering (e.g., time range)
+    metrics = %{
+      alerts_processed: state.alerts_processed,
+      notifications_sent: state.notifications_sent,
+      active_configurations: map_size(state.alert_configurations)
+    }
+
+    {:reply, metrics, state}
+  end
+
+  @impl GenServer
   def handle_call(:health_check, _from, state) do
     {:reply, :ok, state}
   end

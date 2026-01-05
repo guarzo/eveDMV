@@ -178,7 +178,7 @@ defmodule EveDmvWeb.Api.ApiKeysController do
       permissions: api_key.permissions,
       last_used_at: api_key.last_used_at,
       expires_at: api_key.expires_at,
-      created_at: api_key.created_at,
+      created_at: api_key.inserted_at,
       is_active: api_key.is_active
       # Note: Never include the actual API key in responses
     }

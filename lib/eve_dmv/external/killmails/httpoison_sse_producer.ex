@@ -343,9 +343,6 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
     # Handle batch events with per-killmail deduplication
     case Jason.decode(payload) do
       {:ok, killmails} when is_list(killmails) ->
-        # Extract all killmail IDs from the batch
-        all_ids = Enum.map(killmails, & &1["killmail_id"]) |> Enum.reject(&is_nil/1)
-
         # Filter to only unseen killmails
         unseen_killmails =
           Enum.filter(killmails, fn km ->
@@ -363,7 +360,8 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
 
         case unseen_killmails do
           [] ->
-            # All killmails in batch were duplicates
+            # All killmails in batch were duplicates - compute IDs only when needed
+            all_ids = Enum.map(killmails, & &1["killmail_id"]) |> Enum.reject(&is_nil/1)
             {:duplicate, all_ids, seen_killmails}
 
           _ ->
@@ -402,12 +400,6 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
           case to_broadway_message(event) do
             nil ->
               {:skip, seen_killmails}
-
-            {:batch, _} = batch ->
-              # For batch returned from non-batch event (shouldn't happen normally)
-              batch_ids = extract_batch_killmail_ids(batch)
-              updated_seen = add_ids_to_seen(seen_killmails, batch_ids)
-              {:ok, batch, updated_seen}
 
             message ->
               updated_seen = add_to_seen(seen_killmails, killmail_id)
@@ -466,13 +458,6 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
     else
       seen
     end
-  end
-
-  # Extract all killmail IDs from a batch, filtering out nils
-  defp extract_batch_killmail_ids({:batch, messages}) do
-    messages
-    |> Enum.map(fn %Message{data: data} -> data["killmail_id"] end)
-    |> Enum.reject(&is_nil/1)
   end
 
   defp to_broadway_message(%{event: "killmail", data: payload}) do

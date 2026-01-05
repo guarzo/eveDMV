@@ -5,46 +5,9 @@ defmodule EveDmv.Platform.Database.CharacterQueries do
   Uses materialized views and efficient indexing to avoid expensive JSONB operations.
   """
 
-  alias EveDmv.Core.Utils.NumericUtils
-  alias EveDmv.Platform.Cache.QueryCache
   alias EveDmv.Platform.Database.Pagination
   alias EveDmv.Repo
   require Logger
-
-  @doc """
-  Get kill and death counts for a character using optimized queries.
-  Cached for performance.
-  """
-  def get_character_stats(character_id, since_date) do
-    cache_key = "char_stats:#{character_id}:#{Date.to_iso8601(since_date)}"
-
-    QueryCache.get_or_compute(
-      cache_key,
-      fn ->
-        # Use participants table for fast indexed lookup
-        # This replaces the slow JSONB containment query
-        # Uses idx_participants_character_activity index on (character_id, killmail_time)
-        stats_query = """
-        SELECT
-          COUNT(CASE WHEN p.is_victim = false THEN 1 END) as kill_count,
-          COUNT(CASE WHEN p.is_victim = true THEN 1 END) as death_count
-        FROM participants p
-        WHERE p.character_id = $1
-          AND p.killmail_time >= $2
-        """
-
-        {:ok, %{rows: [[kill_count, death_count]]}} =
-          Repo.query(stats_query, [character_id, since_date])
-
-        %{
-          kills: kill_count || 0,
-          deaths: death_count || 0,
-          kd_ratio: NumericUtils.calculate_kd_ratio(kill_count || 0, death_count || 0)
-        }
-      end,
-      ttl: :timer.hours(1)
-    )
-  end
 
   @doc """
   Get character's recent activity without expensive JSONB operations.

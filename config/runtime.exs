@@ -134,6 +134,24 @@ unless config_env() == :test do
     price_cache_ttl_hours:
       ConfigHelper.safe_string_to_integer(System.get_env("PRICE_CACHE_TTL_HOURS"), 24)
 
+  # Historical Fetch Configuration (Phase 2 - 2-year killmail fetch)
+  # See HISTORICAL_FETCH_2YEAR_IMPLEMENTATION.md for details
+  config :eve_dmv, EveDmv.Contexts.KillmailProcessing.Domain.ExtendedHistoricalFetcher,
+    rate_limit_delay:
+      ConfigHelper.safe_string_to_integer(System.get_env("HISTORICAL_FETCH_RATE_LIMIT"), 1_000),
+    max_pages:
+      ConfigHelper.safe_string_to_integer(System.get_env("HISTORICAL_FETCH_MAX_PAGES"), 100),
+    lookback_days:
+      ConfigHelper.safe_string_to_integer(System.get_env("HISTORICAL_FETCH_LOOKBACK_DAYS"), 730)
+
+  config :eve_dmv, EveDmv.Contexts.KillmailProcessing.Domain.HistoricalFetchWorker,
+    check_interval:
+      ConfigHelper.safe_string_to_integer(
+        System.get_env("HISTORICAL_FETCH_CHECK_INTERVAL"),
+        30_000
+      ),
+    enabled: System.get_env("HISTORICAL_FETCH_ENABLED", "true") == "true"
+
   # External API configurations
   for {api_name, api_config} <- ConfigHelper.configure_external_apis() do
     config :eve_dmv, api_name, api_config
@@ -157,6 +175,9 @@ if config_env() == :test do
   config :eve_dmv,
     pipeline_enabled: false,
     mock_sse_server_enabled: false
+
+  # Disable historical fetch worker in tests
+  config :eve_dmv, EveDmv.Contexts.KillmailProcessing.Domain.HistoricalFetchWorker, enabled: false
 end
 
 if System.get_env("PHX_SERVER") do
