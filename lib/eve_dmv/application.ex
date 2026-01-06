@@ -19,8 +19,19 @@ defmodule EveDmv.Application do
     ensure_ets_table(:battle_fitting_cache, [:set, :public, :named_table])
 
     # Initialize ETS tables for StaticData cache (used by threat scoring)
-    ensure_ets_table(:static_data_type_cache, [:set, :named_table, :public, {:read_concurrency, true}])
-    ensure_ets_table(:static_data_system_cache, [:set, :named_table, :public, {:read_concurrency, true}])
+    ensure_ets_table(:static_data_type_cache, [
+      :set,
+      :named_table,
+      :public,
+      {:read_concurrency, true}
+    ])
+
+    ensure_ets_table(:static_data_system_cache, [
+      :set,
+      :named_table,
+      :public,
+      {:read_concurrency, true}
+    ])
 
     # Initialize EVE name resolver cache
     # NameResolver.start_cache()
