@@ -57,6 +57,17 @@ defmodule EveDmv.Contexts.Corporation.Resources.Alliance do
         )
       )
     end
+
+    read :get_by_ids do
+      description("Get multiple alliances by their IDs")
+
+      argument :ids, {:array, :integer} do
+        allow_nil?(false)
+        description("List of alliance IDs to fetch")
+      end
+
+      filter(expr(alliance_id in ^arg(:ids)))
+    end
   end
 
   attributes do
@@ -136,5 +147,6 @@ defmodule EveDmv.Contexts.Corporation.Resources.Alliance do
     define(:get_by_alliance_id, action: :by_alliance_id, args: [:alliance_id])
     define(:search_alliances, action: :search)
     define(:list_all, action: :read)
+    define(:get_by_ids, action: :get_by_ids, args: [:ids])
   end
 end

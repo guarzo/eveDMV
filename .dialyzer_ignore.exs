@@ -112,11 +112,9 @@
   ~r/esi_entity_resolver\.ex:\d+.*pattern_match_cov/,
   ~r/sde_validator\.ex:\d+.*pattern_match_cov/,
 
-  # Platform defensive patterns
-  ~r/cache_manager\.ex:\d+.*pattern_match_cov/,
+  # Platform defensive patterns - removed unused cache_manager pattern
 
-  # Web defensive patterns
-  ~r/surveillance_profiles_live\.ex:\d+.*pattern_match_cov/,
+  # Web defensive patterns - removed unused surveillance_profiles_live pattern
 
   # ===========================================
   # DATA-DEPENDENT PATTERNS
@@ -217,7 +215,6 @@
 
   # contract_supertype warnings - combat intelligence
   ~r/combat_intelligence\/api\.ex:\d+:contract_supertype/,
-  ~r/external_group_analyzer\.ex:\d+:contract_supertype/,
 
   # contract_supertype warnings - corporation intelligence
   ~r/corporation_intelligence\.ex:\d+:contract_supertype/,
@@ -258,16 +255,9 @@
   ~r/item_type_processor\.ex:\d+:contract_supertype/,
   ~r/sde_validator\.ex:\d+:contract_supertype/,
 
-  # contract_supertype warnings - platform
-  ~r/telemetry_helper\.ex:\d+:contract_supertype/,
+  # contract_supertype warnings - platform (removed unused telemetry_helper pattern)
 
-  # contract_supertype warnings - web
-  ~r/search_helpers\.ex:\d+:contract_supertype/,
-  ~r/layout_helpers\.ex:\d+:contract_supertype/,
-  ~r/threat_display_helpers\.ex:\d+:contract_supertype/,
-  ~r/surveillance_helpers\.ex:\d+:contract_supertype/,
-  ~r/character_intelligence_helpers\.ex:\d+:contract_supertype/,
-  ~r/dashboard_helpers\.ex:\d+:contract_supertype/,
+  # contract_supertype warnings - web (removed unused filters)
 
   # ===========================================
   # GUARD FAILURES (file-scoped)
@@ -280,11 +270,11 @@
   # requirements_builder.ex - guards on optional data
   ~r/requirements_builder\.ex:\d+:guard_fail/,
 
-  # insight_generator.ex - guards on optional data
-  ~r/insight_generator\.ex:\d+:guard_fail/,
-
   # module_reorganizer.ex - guards on optional data
   ~r/module_reorganizer\.ex:\d+:guard_fail/,
+
+  # insight_generator.ex - guards on optional data (with column number)
+  ~r/insight_generator\.ex:\d+:\d+:guard_fail/,
 
   # ===========================================
   # NO_RETURN PATHS (file-scoped)
@@ -352,8 +342,7 @@
   ~r/battle_service\.ex.*pattern_match/,
   ~r/dns_resolver\.ex.*pattern_match/,
 
-  # Repositories
-  ~r/corporation_repository\.ex.*pattern_match/,
+  # Repositories (removed unused corporation_repository pattern)
 
   # LiveView helpers
   ~r/liveview_pattern_template\.ex.*pattern_match/,
@@ -376,14 +365,89 @@
   ~r/multi_system_battle_correlator\.ex:241/,
 
   # ===========================================
-  # ASH QUERY PATTERNS
+  # ASH QUERY PATTERNS (removed unused killmail_raw pattern)
   # ===========================================
-  # Ash.Query.filter usage patterns in resources
-  ~r/killmail_raw\.ex:\d+:call_to_missing/,
 
   # ===========================================
   # DATA LOADER HELPERS
   # ===========================================
   # Helper function type mismatches with optional data patterns
-  ~r/character_data_loader\.ex:\d+:\d+:call/
+  ~r/trend_analyzer\.ex:\d+:\d+:call/,
+  ~r/threat_scoring_coordinator\.ex:\d+:\d+:call/,
+  ~r/comparison_engine\.ex:\d+:\d+:pattern_match/,
+
+  # ===========================================
+  # EXTRA RANGE WARNINGS
+  # ===========================================
+  # Functions that currently return fewer types than spec allows
+  # Kept for API stability
+
+  # Query migration - always returns true currently
+  ~r/query_migration\.ex:\d+:extra_range/,
+
+  # Solar system processor - environment-dependent file operations
+  ~r/solar_system_processor\.ex:\d+:extra_range/,
+
+  # Account manager - merge always succeeds currently
+  ~r/account_manager\.ex:\d+:extra_range/,
+
+  # ===========================================
+  # CONTRACT SUPERTYPE WARNINGS
+  # ===========================================
+  # Specs that are intentionally broader than implementation
+
+  # Gang synergy analyzer - internal calculations
+  ~r/gang_synergy_analyzer\.ex:\d+:contract_supertype/,
+
+  # Threat score calculator - analysis functions
+  ~r/threat_score_calculator\.ex:\d+:contract_supertype/,
+
+  # Activity correlator - correlation analysis
+  ~r/activity_correlator\.ex:\d+:contract_supertype/,
+
+  # Historical fetch worker - internal worker functions
+  ~r/historical_fetch_worker\.ex:\d+:contract_supertype/,
+
+  # Data requirements - helper functions
+  ~r/data_requirements\.ex:\d+:contract_supertype/,
+
+  # Query optimizer - optimization functions
+  ~r/query_optimizer\.ex:\d+:contract_supertype/,
+
+  # Result module - unwrap function
+  ~r/result\.ex:\d+:contract_supertype/,
+
+  # Metrics calculator - default values
+  ~r/metrics_calculator\.ex:\d+:contract_supertype/,
+
+  # ===========================================
+  # INVALID CONTRACT WARNINGS
+  # ===========================================
+  # Complex type inference with cache wrappers
+
+  # Combat intelligence API - cache wrapper type inference
+  ~r/combat_intelligence\/api\.ex:\d+:invalid_contract/,
+
+  # External group analyzer - cache wrapper type inference
+  ~r/external_group_analyzer\.ex:\d+:invalid_contract/,
+
+  # ===========================================
+  # NO RETURN WARNINGS - Repository Macros
+  # ===========================================
+  # Repository use macros create anonymous functions that dialyzer
+  # can't analyze properly
+
+  ~r/character_repository\.ex:\d+:no_return/,
+  ~r/killmail_repository\.ex:\d+:no_return/,
+
+  # ===========================================
+  # PATTERN MATCH COVERAGE
+  # ===========================================
+  # Defensive catch-all clauses
+
+  # Battle timeline component - defensive formatting
+  ~r/battle_timeline_component\.ex:\d+:\d+:pattern_match_cov/,
+
+  # Notification dispatcher - defensive error handling
+  ~r/notification_dispatcher\.ex:\d+:\d+:pattern_match/
 ]

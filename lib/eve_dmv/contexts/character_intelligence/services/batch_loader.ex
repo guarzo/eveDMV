@@ -58,8 +58,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Services.BatchLoader do
 
   Returns %{kills: n, deaths: n} for the last 90 days.
   """
-  @spec load_single_character_stats(integer()) :: map()
-  def load_single_character_stats(char_id) do
+  @spec load_single_character_stats(integer() | nil) :: map()
+  def load_single_character_stats(nil), do: %{kills: 0, deaths: 0}
+
+  def load_single_character_stats(char_id) when is_integer(char_id) do
     since_date = DateTime.add(DateTime.utc_now(), -90, :day)
 
     kills =

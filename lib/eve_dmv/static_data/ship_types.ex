@@ -33,7 +33,6 @@ defmodule EveDmv.StaticData.ShipTypes do
           | :supercapital
           | :industrial
           | :mining
-          | :logistics
           | :structure
           | :unknown
   @spec classify_ship_type(integer() | any()) :: ship_class()

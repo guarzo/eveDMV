@@ -7,6 +7,7 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
   and require more frequent cache updates.
   """
 
+  alias EveDmv.Contexts.Corporation.Resources.Alliance
   alias EveDmv.Eve.EsiClient
   alias EveDmv.Eve.NameResolver.BatchProcessor
   alias EveDmv.Eve.NameResolver.CacheManager
@@ -230,13 +231,11 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
 
   # Private helper functions
 
-  # Database lookups for cached entity names
+  # Database lookups for cached entity names using Ash resources
   defp fetch_from_database(:alliance, alliance_id) do
-    query = "SELECT alliance_name FROM alliances WHERE alliance_id = $1 LIMIT 1"
-
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [alliance_id]) do
-      {:ok, %{rows: [[name]]}} when is_binary(name) -> {:ok, name}
-      _ -> {:error, :not_found}
+    case Alliance.get_by_alliance_id(alliance_id) do
+      {:ok, alliance} -> {:ok, alliance.alliance_name}
+      {:error, _} -> {:error, :not_found}
     end
   rescue
     error ->
@@ -246,20 +245,18 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
 
   defp fetch_from_database(_type, _id), do: {:error, :not_supported}
 
-  # Bulk database lookup for alliances
+  # Bulk database lookup for alliances using Ash resources
   defp fetch_alliances_from_database(alliance_ids) when is_list(alliance_ids) do
     if Enum.empty?(alliance_ids) do
       %{}
     else
-      query = "SELECT alliance_id, alliance_name FROM alliances WHERE alliance_id = ANY($1)"
+      case Alliance.get_by_ids(alliance_ids) do
+        {:ok, alliances} ->
+          alliances
+          |> Enum.filter(fn a -> is_binary(a.alliance_name) end)
+          |> Map.new(fn a -> {a.alliance_id, a.alliance_name} end)
 
-      case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [alliance_ids]) do
-        {:ok, %{rows: rows}} ->
-          rows
-          |> Enum.map(fn [id, name] -> {id, name} end)
-          |> Map.new()
-
-        _ ->
+        {:error, _} ->
           %{}
       end
     end
@@ -305,7 +302,7 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
       {:error, :esi_error}
   end
 
-  # Save discovered alliance to database for future lookups
+  # Save discovered alliance to database for future lookups using Ash resources
   # Note: The alliances.ticker column allows NULLs (see Alliance resource definition).
   # ESI may return nil for ticker, which is acceptable.
   defp save_alliance_to_database(alliance_id, alliance_name, ticker) do
@@ -317,20 +314,22 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
         _ -> nil
       end
 
-    query = """
-    INSERT INTO alliances (alliance_id, alliance_name, ticker, inserted_at, updated_at)
-    VALUES ($1, $2, $3, NOW(), NOW())
-    ON CONFLICT (alliance_id) DO UPDATE SET
-      alliance_name = EXCLUDED.alliance_name,
-      ticker = COALESCE(EXCLUDED.ticker, alliances.ticker),
-      updated_at = NOW()
-    """
+    attrs = %{
+      alliance_id: alliance_id,
+      alliance_name: alliance_name,
+      ticker: sanitized_ticker
+    }
 
-    Ecto.Adapters.SQL.query(EveDmv.Repo, query, [alliance_id, alliance_name, sanitized_ticker])
+    case Alliance.get_by_alliance_id(alliance_id) do
+      {:ok, existing} ->
+        Alliance.update_alliance(existing, attrs)
+
+      {:error, _} ->
+        Alliance.create_alliance(attrs)
+    end
   rescue
     error ->
       Logger.warning("Failed to save alliance #{alliance_id} to database: #{inspect(error)}")
-
       {:error, error}
   end
 end

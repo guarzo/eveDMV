@@ -48,6 +48,8 @@ defmodule EveDmv.Killmails.Participant do
     define(:attackers_only, args: [:killmail_id, :killmail_time])
     define(:victims_only, args: [:killmail_id, :killmail_time])
     define(:character_activity_summary, args: [:character_id])
+    define(:search_characters_by_name, args: [:query])
+    define(:search_corporations_by_name, args: [:query])
   end
 
   # Attributes
@@ -362,6 +364,76 @@ defmodule EveDmv.Killmails.Participant do
 
       filter(expr(alliance_id == ^arg(:alliance_id)))
       prepare(build(sort: [killmail_time: :desc]))
+    end
+
+    read :search_characters_by_name do
+      description("Search for characters by name with ILIKE matching")
+
+      argument :query, :string do
+        allow_nil?(false)
+        description("Search query to match against character names")
+      end
+
+      argument :limit, :integer do
+        allow_nil?(false)
+        default(10)
+        description("Maximum number of results to return")
+      end
+
+      filter(expr(not is_nil(character_id) and not is_nil(character_name)))
+
+      prepare(fn query, context ->
+        search_pattern = "%#{context.arguments.query}%"
+
+        query
+        |> Ash.Query.filter_input(%{character_name: %{ilike: search_pattern}})
+        |> Ash.Query.sort(killmail_time: :desc)
+        |> Ash.Query.distinct([:character_id])
+        |> Ash.Query.limit(context.arguments.limit)
+        |> Ash.Query.select([
+          :character_id,
+          :character_name,
+          :corporation_id,
+          :corporation_name,
+          :alliance_id,
+          :alliance_name,
+          :killmail_time
+        ])
+      end)
+    end
+
+    read :search_corporations_by_name do
+      description("Search for corporations by name with ILIKE matching")
+
+      argument :query, :string do
+        allow_nil?(false)
+        description("Search query to match against corporation names")
+      end
+
+      argument :limit, :integer do
+        allow_nil?(false)
+        default(10)
+        description("Maximum number of results to return")
+      end
+
+      filter(expr(not is_nil(corporation_id) and not is_nil(corporation_name)))
+
+      prepare(fn query, context ->
+        search_pattern = "%#{context.arguments.query}%"
+
+        query
+        |> Ash.Query.filter_input(%{corporation_name: %{ilike: search_pattern}})
+        |> Ash.Query.sort(killmail_time: :desc)
+        |> Ash.Query.distinct([:corporation_id])
+        |> Ash.Query.limit(context.arguments.limit)
+        |> Ash.Query.select([
+          :corporation_id,
+          :corporation_name,
+          :alliance_id,
+          :alliance_name,
+          :killmail_time
+        ])
+      end)
     end
 
     read :character_activity_summary do

@@ -8,7 +8,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.Battle do
   use Ash.Resource,
     domain: EveDmv.Contexts.BattleAnalysis.Api,
     data_layer: AshPostgres.DataLayer,
-    extensions: [AshJsonApi.Resource]
+    extensions: [AshJsonApi.Resource],
+    authorizers: [Ash.Policy.Authorizer],
+    notifiers: [
+      EveDmv.Ash.Notifiers.PubSubNotifier,
+      EveDmv.Ash.Notifiers.TelemetryNotifier
+    ]
 
   resource do
     description("Persistent battle entities that group related killmails")
@@ -164,5 +169,26 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.Battle do
     define(:update)
     define(:read)
     define(:destroy)
+  end
+
+  policies do
+    # Battles are public EVE intel
+    policy action_type(:read) do
+      description("Battles are publicly readable")
+      authorize_if(always())
+    end
+
+    # Only internal systems/admins can create/update battles
+    policy action_type([:create, :update]) do
+      description("Only system or admin can create/update battles")
+      authorize_if(actor_attribute_equals(:role, :system))
+      authorize_if(actor_attribute_equals(:role, :admin))
+    end
+
+    # Never delete battle history
+    policy action_type(:destroy) do
+      description("Battle history should not be deleted")
+      forbid_if(always())
+    end
   end
 end

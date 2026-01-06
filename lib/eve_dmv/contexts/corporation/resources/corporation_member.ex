@@ -8,7 +8,8 @@ defmodule EveDmv.Contexts.Corporation.Resources.CorporationMember do
 
   use Ash.Resource,
     domain: EveDmv.Api,
-    data_layer: AshPostgres.DataLayer
+    data_layer: AshPostgres.DataLayer,
+    authorizers: [Ash.Policy.Authorizer]
 
   postgres do
     table("corporation_members")
@@ -178,6 +179,40 @@ defmodule EveDmv.Contexts.Corporation.Resources.CorporationMember do
       accept([:roles])
     end
 
+    create :upsert do
+      description("Create or update a corporation member record")
+
+      accept([
+        :corporation_id,
+        :character_id,
+        :character_name,
+        :last_seen,
+        :status,
+        :roles,
+        :title,
+        :total_kills,
+        :total_losses,
+        :isk_destroyed,
+        :isk_lost
+      ])
+
+      upsert?(true)
+      upsert_identity(:unique_corp_character)
+
+      # Fields to update on conflict - excludes corporation_id and character_id (identity fields)
+      upsert_fields([
+        :character_name,
+        :last_seen,
+        :status,
+        :roles,
+        :title,
+        :total_kills,
+        :total_losses,
+        :isk_destroyed,
+        :isk_lost
+      ])
+    end
+
     read :by_corporation do
       argument(:corporation_id, :integer, allow_nil?: false)
       filter(expr(corporation_id == ^arg(:corporation_id)))
@@ -309,6 +344,7 @@ defmodule EveDmv.Contexts.Corporation.Resources.CorporationMember do
     define(:update)
     define(:read)
     define(:destroy)
+    define(:upsert, action: :upsert)
     define(:get_by_character, action: :by_character, args: [:character_id])
     define(:list_by_corporation, action: :by_corporation, args: [:corporation_id])
     define(:list_active_members, action: :active_members)
@@ -321,5 +357,20 @@ defmodule EveDmv.Contexts.Corporation.Resources.CorporationMember do
     define(:update_performance)
     define(:update_risk_assessment)
     define(:assign_roles)
+  end
+
+  policies do
+    # Corporation member data is derived from public killmail data
+    policy action_type(:read) do
+      description("Corporation member data is publicly readable")
+      authorize_if(always())
+    end
+
+    # Only internal systems/admins can modify member data
+    policy action_type([:create, :update, :destroy]) do
+      description("Only system or admin can modify corporation member data")
+      authorize_if(actor_attribute_equals(:role, :system))
+      authorize_if(actor_attribute_equals(:role, :admin))
+    end
   end
 end

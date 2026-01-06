@@ -61,7 +61,7 @@ defmodule EveDmv.Ash.Notifiers.PubSubNotifier do
 
       PubSubNotifier.subscribe_all(:profile)
   """
-  @spec subscribe_all(atom()) :: :ok | {:error, term()}
+  @spec subscribe_all(atom()) :: :ok
   def subscribe_all(resource_name) when is_atom(resource_name) do
     PubSub.subscribe(@pubsub, "#{resource_name}:all")
   end
@@ -73,7 +73,7 @@ defmodule EveDmv.Ash.Notifiers.PubSubNotifier do
 
       PubSubNotifier.subscribe(:profile, "abc-123-uuid")
   """
-  @spec subscribe(atom(), term()) :: :ok | {:error, term()}
+  @spec subscribe(atom(), term()) :: :ok
   def subscribe(resource_name, id) when is_atom(resource_name) do
     PubSub.subscribe(@pubsub, "#{resource_name}:#{id}")
   end

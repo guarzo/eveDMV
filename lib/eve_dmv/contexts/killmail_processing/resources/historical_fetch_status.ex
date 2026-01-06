@@ -22,6 +22,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Resources.HistoricalFetchStatus do
   use Ash.Resource,
     domain: EveDmv.Api,
     data_layer: AshPostgres.DataLayer,
+    authorizers: [Ash.Policy.Authorizer],
     notifiers: [
       EveDmv.Ash.Notifiers.PubSubNotifier,
       EveDmv.Ash.Notifiers.TelemetryNotifier
@@ -244,5 +245,20 @@ defmodule EveDmv.Contexts.KillmailProcessing.Resources.HistoricalFetchStatus do
     define(:update_progress)
     define(:mark_completed)
     define(:mark_failed)
+  end
+
+  policies do
+    # Historical fetch status is publicly readable for transparency
+    policy action_type(:read) do
+      description("Historical fetch status is publicly readable")
+      authorize_if(always())
+    end
+
+    # Only internal systems/admins can modify fetch status
+    policy action_type([:create, :update, :destroy]) do
+      description("Only system or admin can modify fetch status")
+      authorize_if(actor_attribute_equals(:role, :system))
+      authorize_if(actor_attribute_equals(:role, :admin))
+    end
   end
 end

@@ -8,7 +8,8 @@ defmodule EveDmv.Contexts.Corporation.Resources.Corporation do
 
   use Ash.Resource,
     domain: EveDmv.Api,
-    data_layer: AshPostgres.DataLayer
+    data_layer: AshPostgres.DataLayer,
+    authorizers: [Ash.Policy.Authorizer]
 
   postgres do
     table("corporations")
@@ -258,5 +259,20 @@ defmodule EveDmv.Contexts.Corporation.Resources.Corporation do
     define(:list_by_activity_rank, action: :by_activity_rank, args: [:min_rank, :max_rank])
     define(:update_activity_metrics)
     define(:update_cached_analytics)
+  end
+
+  policies do
+    # Corporation data is public EVE intel derived from killmails
+    policy action_type(:read) do
+      description("Corporation data is publicly readable")
+      authorize_if(always())
+    end
+
+    # Only internal systems/admins can modify corporation data
+    policy action_type([:create, :update, :destroy]) do
+      description("Only system or admin can modify corporation data")
+      authorize_if(actor_attribute_equals(:role, :system))
+      authorize_if(actor_attribute_equals(:role, :admin))
+    end
   end
 end

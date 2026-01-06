@@ -117,12 +117,14 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
 
     case KillmailRepository.get_by_character(character_id, start_date: start_date, limit: 1000) do
       {:ok, killmails} when is_list(killmails) -> {:ok, killmails}
+      {:error, reason} -> {:error, reason}
     end
   end
 
   defp get_activity_data(character_id) do
     case CharacterRepository.get_character_stats(character_id) do
       {:ok, stats} -> {:ok, stats}
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -214,21 +216,10 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
     }
   end
 
-  defp calculate_average(list) when is_list(list) do
-    if list == [] do
-      0.0
-    else
-      list_length = length(list)
-
-      if list_length > 0 do
-        Enum.sum(list) / list_length
-      else
-        0.0
-      end
-    end
-  end
-
-  defp calculate_average(_), do: 0
+  # Pattern matching in function heads instead of nested if statements
+  defp calculate_average([]), do: 0.0
+  defp calculate_average(list) when is_list(list), do: Enum.sum(list) / length(list)
+  defp calculate_average(_), do: 0.0
 
   defp calculate_session_regularity(sessions) do
     if Enum.count(sessions) < 2 do
@@ -270,23 +261,14 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
     end
   end
 
-  defp calculate_variance(values, mean) do
-    if values == [] do
-      0
-    else
-      values_length = length(values)
+  # Pattern matching in function heads instead of nested if statements
+  defp calculate_variance([], _mean), do: 0.0
 
-      if values_length > 0 do
-        sum_squares =
-          values
-          |> Enum.map(fn v -> :math.pow(v - mean, 2) end)
-          |> Enum.sum()
-
-        sum_squares / values_length
-      else
-        0
-      end
-    end
+  defp calculate_variance(values, mean) when is_list(values) do
+    values
+    |> Enum.map(fn v -> :math.pow(v - mean, 2) end)
+    |> Enum.sum()
+    |> Kernel./(length(values))
   end
 
   defp estimate_timezone(killmails) do

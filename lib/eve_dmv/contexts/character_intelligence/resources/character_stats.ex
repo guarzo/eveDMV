@@ -158,9 +158,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Resources.CharacterStats do
     # Run queries in parallel for better performance
     kills_task = Task.async(fn -> count_participants(kills_query) end)
     deaths_task = Task.async(fn -> count_participants(deaths_query) end)
+    isk_destroyed_task = Task.async(fn -> calculate_isk_destroyed(char_id, since_date) end)
+    isk_lost_task = Task.async(fn -> calculate_isk_lost(char_id, since_date) end)
 
     kills = Task.await(kills_task)
     deaths = Task.await(deaths_task)
+    isk_destroyed = Task.await(isk_destroyed_task)
+    isk_lost = Task.await(isk_lost_task)
 
     period_days = Date.diff(Date.utc_today(), DateTime.to_date(since_date))
 
@@ -168,12 +172,47 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Resources.CharacterStats do
       kills: kills,
       deaths: deaths,
       period_days: period_days,
-      # ISK tracking requires joining with killmail_raw for total_value
-      # This is a simplified implementation that returns zeros for now
-      # Full ISK tracking will be added in a future enhancement
-      isk_destroyed: Decimal.new("0"),
-      isk_lost: Decimal.new("0")
+      isk_destroyed: isk_destroyed,
+      isk_lost: isk_lost
     }
+  end
+
+  # Calculate total ISK destroyed by character (as attacker)
+  # Uses raw SQL for performance - aggregating ISK across participant joins
+  defp calculate_isk_destroyed(char_id, since_date) do
+    query = """
+    SELECT COALESCE(SUM(k.total_value), 0)
+    FROM participants p
+    INNER JOIN killmails_raw k ON p.killmail_id = k.killmail_id AND p.killmail_time = k.killmail_time
+    WHERE p.character_id = $1
+      AND p.killmail_time >= $2
+      AND p.is_victim = false
+    """
+
+    case EveDmv.Repo.query(query, [char_id, since_date]) do
+      {:ok, %{rows: [[nil]]}} -> Decimal.new("0")
+      {:ok, %{rows: [[value]]}} when is_number(value) -> Decimal.new(value)
+      {:ok, %{rows: [[%Decimal{} = value]]}} -> value
+      {:error, _} -> Decimal.new("0")
+    end
+  end
+
+  # Calculate total ISK lost by character (as victim)
+  # Queries killmails where the character was the victim
+  defp calculate_isk_lost(char_id, since_date) do
+    query = """
+    SELECT COALESCE(SUM(total_value), 0)
+    FROM killmails_raw
+    WHERE victim_character_id = $1
+      AND killmail_time >= $2
+    """
+
+    case EveDmv.Repo.query(query, [char_id, since_date]) do
+      {:ok, %{rows: [[nil]]}} -> Decimal.new("0")
+      {:ok, %{rows: [[value]]}} when is_number(value) -> Decimal.new(value)
+      {:ok, %{rows: [[%Decimal{} = value]]}} -> value
+      {:error, _} -> Decimal.new("0")
+    end
   end
 
   defp count_participants(query) do

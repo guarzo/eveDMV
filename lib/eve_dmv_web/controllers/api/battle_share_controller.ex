@@ -55,11 +55,6 @@ defmodule EveDmvWeb.Api.BattleShareController do
         |> put_status(:unprocessable_entity)
         |> json(%{error: %{message: "Failed to reconstruct battle timeline"}})
 
-      {:error, reason} when is_binary(reason) ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> json(%{error: %{message: reason}})
-
       {:error, _reason} ->
         conn
         |> put_status(:internal_server_error)

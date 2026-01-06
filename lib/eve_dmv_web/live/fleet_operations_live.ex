@@ -194,25 +194,26 @@ defmodule EveDmvWeb.FleetOperationsLive do
   end
 
   defp analyze_fleet_effectiveness(fleet_data) do
-    participant_data = Map.get(fleet_data, :fleet_participants, %{})
-    participants = Map.get(participant_data, fleet_data.fleet_id, [])
+    # Use CompositionAnalyzer with fleet_id and base_data
+    case CompositionAnalyzer.analyze(fleet_data.fleet_id, fleet_data) do
+      {:ok, fleet_analysis} ->
+        effectiveness = calculate_fleet_effectiveness_metrics(fleet_analysis)
+        improvements = generate_fleet_improvements(fleet_analysis, effectiveness)
 
-    # Use CompositionAnalyzer instead of removed WhFleetAnalyzer
-    fleet_analysis = CompositionAnalyzer.analyze(participants)
-    effectiveness = calculate_fleet_effectiveness_metrics(fleet_analysis)
+        %{
+          type: "effectiveness",
+          success: true,
+          data: %{
+            fleet_analysis: fleet_analysis,
+            effectiveness: effectiveness,
+            improvements: improvements
+          },
+          summary: generate_effectiveness_summary(effectiveness)
+        }
 
-    improvements = generate_fleet_improvements(fleet_analysis, effectiveness)
-
-    %{
-      type: "effectiveness",
-      success: true,
-      data: %{
-        fleet_analysis: fleet_analysis,
-        effectiveness: effectiveness,
-        improvements: improvements
-      },
-      summary: generate_effectiveness_summary(effectiveness)
-    }
+      {:error, reason} ->
+        %{type: "effectiveness", success: false, error: "Analysis failed: #{inspect(reason)}"}
+    end
   rescue
     error ->
       %{type: "effectiveness", success: false, error: "Analysis failed: #{inspect(error)}"}

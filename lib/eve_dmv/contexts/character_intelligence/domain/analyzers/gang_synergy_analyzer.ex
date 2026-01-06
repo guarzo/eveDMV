@@ -92,10 +92,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnal
       []
   end
 
-  @spec calculate_coordination_score([map()], [Types.character_id()]) :: float()
-  defp calculate_coordination_score([], _character_ids), do: 0.0
-
-  defp calculate_coordination_score(kills, character_ids) when is_list(kills) do
+  @spec calculate_coordination_score([map(), ...], [Types.character_id()]) :: float()
+  defp calculate_coordination_score(kills, character_ids) when is_list(kills) and kills != [] do
     # Analyze how well coordinated the attacks were
     coordination_metrics =
       Enum.map(kills, fn kill ->
@@ -211,9 +209,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnal
 
   defp classify_ship_role(_), do: :unknown
 
-  defp analyze_role_compatibility([], _character_ids), do: 0.5
-
-  defp analyze_role_compatibility(kills, character_ids) when is_list(kills) do
+  defp analyze_role_compatibility(kills, character_ids) when is_list(kills) and kills != [] do
     # Analyze ship roles used by each character across kills
     role_usage =
       Enum.reduce(kills, %{}, fn kill, acc ->
@@ -280,16 +276,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnal
     diversity_score * 0.6 + essential_score * 0.4
   end
 
-  defp calculate_success_metrics([]) do
-    %{
-      total_kills: 0,
-      avg_isk_per_kill: 0,
-      kill_rate_per_day: 0,
-      high_value_kills: 0
-    }
-  end
-
-  defp calculate_success_metrics(kills) when is_list(kills) do
+  defp calculate_success_metrics(kills) when is_list(kills) and kills != [] do
     total_kills = length(kills)
 
     # Calculate ISK destroyed
@@ -377,15 +364,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnal
     Float.round(concentration, 3)
   end
 
-  defp analyze_engagement_patterns([], _character_ids) do
-    %{
-      avg_attackers_per_kill: 0,
-      character_participation_rates: %{},
-      preferred_targets: []
-    }
-  end
-
-  defp analyze_engagement_patterns(kills, character_ids) when is_list(kills) do
+  defp analyze_engagement_patterns(kills, character_ids) when is_list(kills) and kills != [] do
     # Average number of attackers per kill
     avg_attackers = calculate_average_attackers(kills)
 
@@ -402,9 +381,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnal
     }
   end
 
-  defp calculate_average_attackers([]), do: 0.0
-
-  defp calculate_average_attackers(kills) when is_list(kills) do
+  defp calculate_average_attackers(kills) when is_list(kills) and kills != [] do
     attacker_counts =
       Enum.map(kills, fn kill ->
         case kill.raw_data do
@@ -416,9 +393,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnal
     Enum.sum(attacker_counts) / length(attacker_counts)
   end
 
-  defp calculate_participation_rates([], _character_ids), do: %{}
-
-  defp calculate_participation_rates(kills, character_ids) when is_list(kills) do
+  defp calculate_participation_rates(kills, character_ids) when is_list(kills) and kills != [] do
     total_kills = length(kills)
 
     character_ids
@@ -453,24 +428,21 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnal
     end)
   end
 
+  # Removed unnecessary variable binding - return pipeline result directly
   defp analyze_preferred_targets(kills) do
-    # Group by victim ship type
-    ship_frequencies =
-      kills
-      |> Enum.map(& &1.victim_ship_type_id)
-      |> Enum.filter(&(&1 != nil))
-      |> Enum.frequencies()
-      |> Enum.sort_by(fn {_, count} -> count end, :desc)
-      |> Enum.take(5)
-      |> Enum.map(fn {ship_type_id, count} ->
-        %{
-          ship_type_id: ship_type_id,
-          count: count,
-          percentage: Float.round(count / length(kills) * 100, 1)
-        }
-      end)
-
-    ship_frequencies
+    kills
+    |> Enum.map(& &1.victim_ship_type_id)
+    |> Enum.filter(&(&1 != nil))
+    |> Enum.frequencies()
+    |> Enum.sort_by(fn {_, count} -> count end, :desc)
+    |> Enum.take(5)
+    |> Enum.map(fn {ship_type_id, count} ->
+      %{
+        ship_type_id: ship_type_id,
+        count: count,
+        percentage: Float.round(count / length(kills) * 100, 1)
+      }
+    end)
   end
 
   defp average_metric([], _key), do: 0.0

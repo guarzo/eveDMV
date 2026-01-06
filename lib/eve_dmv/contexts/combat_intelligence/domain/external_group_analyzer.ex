@@ -11,7 +11,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ExternalGroupAnalyzer do
   @doc """
   Analyze external groups for a character within a given time range.
   """
-  @spec analyze(integer(), DateTime.t()) :: {:ok, list(map())} | {:error, term()}
+  @spec analyze(integer(), DateTime.t()) :: {:ok, list(map())}
   def analyze(character_id, since_date) do
     # Delegate to PlayerRepository which contains the consolidated external groups logic.
     # PlayerRepository.get_external_groups returns a plain list, so we wrap it in {:ok, result}
@@ -180,12 +180,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ExternalGroupAnalyzer do
     }
   end
 
+  # Pattern matching in function heads instead of if statement
+  defp calculate_days_since_last(nil), do: nil
+
   defp calculate_days_since_last(last_seen) do
-    if last_seen do
-      Date.diff(Date.utc_today(), Date.from_iso8601!(Date.to_iso8601(last_seen)))
-    else
-      nil
-    end
+    Date.diff(Date.utc_today(), Date.from_iso8601!(Date.to_iso8601(last_seen)))
   end
 
   defp calculate_collaboration_strength(kills_together, unique_pilots, systems_active) do

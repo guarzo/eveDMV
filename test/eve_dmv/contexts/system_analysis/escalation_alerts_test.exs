@@ -97,7 +97,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.EscalationAlertsTest do
           solar_system_id: 30_000_145,
           killmail_time: current_time,
           # 5B ISK each - very high value to ensure capital engagement detection
-          zkb_total_value: Decimal.new(5_000_000_000)
+          total_value: Decimal.new(5_000_000_000)
         )
       end
 

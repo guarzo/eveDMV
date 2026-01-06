@@ -13,11 +13,13 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
   on_mount({EveDmvWeb.AuthLive, :load_from_session_optional})
 
+  alias EveDmv.Ash.Notifiers.PubSubNotifier
   alias EveDmv.Contexts.Surveillance.Api, as: SurveillanceApi
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.WandererClient
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Search.SearchSuggestionService
+  alias EveDmv.Surveillance.Profile
 
   require Logger
 
@@ -26,8 +28,8 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     if connected?(socket) do
-      # Subscribe to real-time updates
-      Phoenix.PubSub.subscribe(EveDmv.PubSub, "surveillance:profiles")
+      # Subscribe to real-time updates via Ash notifier
+      PubSubNotifier.subscribe_all(:profile)
       Phoenix.PubSub.subscribe(EveDmv.PubSub, "wanderer:chain_updates")
     end
 
@@ -36,6 +38,7 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
       |> assign(:page_title, "Surveillance Profiles")
       |> assign(:profiles, [])
       |> assign(:editing_profile, nil)
+      |> assign(:form, nil)
       |> assign(:filter_preview, %{matches: [], count: 0, testing: false})
       |> assign(:preview_killmail_limit, @preview_killmail_limit)
       |> assign(:chain_status, check_chain_status())
@@ -48,14 +51,39 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
   def handle_params(params, _url, socket) do
     case params do
       %{"action" => "new"} ->
-        {:noreply, assign(socket, :editing_profile, new_profile())}
+        user_id = get_current_user_id(socket)
+        form = create_profile_form(user_id)
+
+        socket =
+          socket
+          |> assign(:editing_profile, new_profile())
+          |> assign(:form, form)
+
+        {:noreply, socket}
 
       %{"action" => "edit", "id" => id} ->
         profile = find_profile(socket.assigns.profiles, id)
-        {:noreply, assign(socket, :editing_profile, profile)}
+
+        if profile do
+          form = update_profile_form(profile)
+
+          socket =
+            socket
+            |> assign(:editing_profile, profile)
+            |> assign(:form, form)
+
+          {:noreply, socket}
+        else
+          {:noreply, assign(socket, :editing_profile, nil)}
+        end
 
       _ ->
-        {:noreply, assign(socket, :editing_profile, nil)}
+        socket =
+          socket
+          |> assign(:editing_profile, nil)
+          |> assign(:form, nil)
+
+        {:noreply, socket}
     end
   end
 
@@ -450,9 +478,16 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
     {:noreply, socket}
   end
 
-  # PubSub handlers
+  # Ash Notifier PubSub handlers
+  # Handle profile changes from PubSubNotifier (create, update, destroy)
   @impl Phoenix.LiveView
-  def handle_info({:profile_updated, _profile}, socket) do
+  def handle_info({:resource_event, _action_type, :profile, _data}, socket) do
+    {:noreply, load_profiles(socket)}
+  end
+
+  # Handle profile changes when resource_name comes as a string
+  @impl Phoenix.LiveView
+  def handle_info({:resource_event, _action_type, "profile", _data}, socket) do
     {:noreply, load_profiles(socket)}
   end
 
@@ -508,6 +543,224 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
       }
     }
   end
+
+  # AshPhoenix.Form helpers
+
+  defp create_profile_form(user_id) do
+    Profile
+    |> AshPhoenix.Form.for_create(:create,
+      as: "form",
+      actor: %{id: user_id},
+      prepare_params: fn params, _context ->
+        # Ensure filter_tree has a default value
+        Map.put_new(params, "filter_tree", %{"condition" => "and", "rules" => []})
+      end
+    )
+    |> to_form()
+  end
+
+  defp update_profile_form(profile) do
+    # For updating, we create a form with profile data pre-populated
+    Profile
+    |> AshPhoenix.Form.for_create(:create,
+      as: "form",
+      params: %{
+        "name" => profile.name || "",
+        "description" => profile.description || "",
+        "is_active" => profile.enabled,
+        "filter_tree" => criteria_to_filter_tree(profile.criteria)
+      }
+    )
+    |> to_form()
+  end
+
+  @doc """
+  Transform LiveView criteria format to Ash resource filter_tree format.
+
+  The LiveView uses:
+    %{logic_operator: :and, conditions: [...]}
+
+  The Ash resource expects:
+    %{"condition" => "and", "rules" => [...]}
+  """
+  def criteria_to_filter_tree(criteria) when is_map(criteria) do
+    logic_operator = Map.get(criteria, :logic_operator, :and) |> to_string()
+    conditions = Map.get(criteria, :conditions, [])
+
+    rules = Enum.map(conditions, &condition_to_rule/1)
+
+    %{
+      "condition" => logic_operator,
+      "rules" => rules
+    }
+  end
+
+  def criteria_to_filter_tree(_), do: %{"condition" => "and", "rules" => []}
+
+  defp condition_to_rule(condition) when is_map(condition) do
+    type = Map.get(condition, :type)
+    field = Map.get(condition, :field)
+    operator = Map.get(condition, :operator, :equals) |> to_string()
+    value = Map.get(condition, :value)
+
+    base_rule = %{
+      "type" => to_string(type),
+      "field" => field,
+      "operator" => operator,
+      "value" => serialize_value(value)
+    }
+
+    # Handle entity ID fields
+    base_rule
+    |> maybe_add_entity_ids(condition, :character_ids)
+    |> maybe_add_entity_ids(condition, :corporation_ids)
+    |> maybe_add_entity_ids(condition, :alliance_ids)
+    |> maybe_add_entity_ids(condition, :system_ids)
+    |> maybe_add_entity_ids(condition, :ship_type_ids)
+    |> maybe_add_nested_conditions(condition)
+  end
+
+  defp condition_to_rule(_), do: %{}
+
+  defp maybe_add_entity_ids(rule, condition, key) do
+    case Map.get(condition, key) do
+      ids when is_list(ids) and ids != [] ->
+        Map.put(rule, to_string(key), ids)
+
+      _ ->
+        rule
+    end
+  end
+
+  defp maybe_add_nested_conditions(rule, condition) do
+    case Map.get(condition, :nested_conditions) do
+      nested when is_list(nested) and nested != [] ->
+        nested_rules = Enum.map(nested, &condition_to_rule/1)
+        logic = Map.get(condition, :logic_operator, :and) |> to_string()
+
+        rule
+        |> Map.put("nested_condition", logic)
+        |> Map.put("nested_rules", nested_rules)
+
+      _ ->
+        rule
+    end
+  end
+
+  defp serialize_value(value) when is_tuple(value) do
+    # Range values like {min, max}
+    Tuple.to_list(value)
+  end
+
+  defp serialize_value(value) when is_list(value), do: value
+
+  defp serialize_value(value) when is_map(value) do
+    # Convert atom keys to string keys
+    Map.new(value, fn {k, v} -> {to_string(k), v} end)
+  end
+
+  defp serialize_value(value), do: value
+
+  @doc """
+  Transform Ash resource filter_tree format back to LiveView criteria format.
+
+  Used when loading profiles for editing.
+  """
+  def filter_tree_to_criteria(filter_tree) when is_map(filter_tree) do
+    condition = Map.get(filter_tree, "condition", "and")
+    rules = Map.get(filter_tree, "rules", [])
+
+    logic_operator =
+      case condition do
+        "and" -> :and
+        "or" -> :or
+        _ -> :and
+      end
+
+    conditions = Enum.map(rules, &rule_to_condition/1)
+
+    %{
+      type: :custom_criteria,
+      logic_operator: logic_operator,
+      conditions: conditions
+    }
+  end
+
+  def filter_tree_to_criteria(_),
+    do: %{type: :custom_criteria, logic_operator: :and, conditions: []}
+
+  defp rule_to_condition(rule) when is_map(rule) do
+    type = Map.get(rule, "type", "simple") |> String.to_existing_atom()
+    field = Map.get(rule, "field")
+    operator = Map.get(rule, "operator", "equals") |> safe_to_atom()
+    value = deserialize_value(Map.get(rule, "value"))
+
+    base_condition = %{
+      type: type,
+      field: field,
+      operator: operator,
+      value: value
+    }
+
+    # Restore entity ID fields
+    base_condition
+    |> maybe_restore_entity_ids(rule, "character_ids", :character_ids)
+    |> maybe_restore_entity_ids(rule, "corporation_ids", :corporation_ids)
+    |> maybe_restore_entity_ids(rule, "alliance_ids", :alliance_ids)
+    |> maybe_restore_entity_ids(rule, "system_ids", :system_ids)
+    |> maybe_restore_entity_ids(rule, "ship_type_ids", :ship_type_ids)
+    |> maybe_restore_nested_conditions(rule)
+  end
+
+  defp rule_to_condition(_), do: %{type: :simple, field: nil, operator: :equals, value: nil}
+
+  defp maybe_restore_entity_ids(condition, rule, string_key, atom_key) do
+    case Map.get(rule, string_key) do
+      ids when is_list(ids) -> Map.put(condition, atom_key, ids)
+      _ -> condition
+    end
+  end
+
+  defp maybe_restore_nested_conditions(condition, rule) do
+    case Map.get(rule, "nested_rules") do
+      nested when is_list(nested) and nested != [] ->
+        nested_conditions = Enum.map(nested, &rule_to_condition/1)
+        logic = Map.get(rule, "nested_condition", "and") |> safe_to_atom()
+
+        condition
+        |> Map.put(:logic_operator, logic)
+        |> Map.put(:nested_conditions, nested_conditions)
+
+      _ ->
+        condition
+    end
+  end
+
+  defp deserialize_value(value) when is_list(value) do
+    # Could be a range [min, max] or just a list
+    case value do
+      [min, max] when is_number(min) and is_number(max) -> {min, max}
+      _ -> value
+    end
+  end
+
+  defp deserialize_value(value) when is_map(value) do
+    # Convert string keys to atom keys
+    Map.new(value, fn {k, v} -> {String.to_existing_atom(k), v} end)
+  rescue
+    _ -> value
+  end
+
+  defp deserialize_value(value), do: value
+
+  defp safe_to_atom(string) when is_binary(string) do
+    String.to_existing_atom(string)
+  rescue
+    _ -> String.to_atom(string)
+  end
+
+  defp safe_to_atom(atom) when is_atom(atom), do: atom
+  defp safe_to_atom(_), do: :equals
 
   defp check_chain_status do
     map_slug = get_default_map_slug()
@@ -764,18 +1017,13 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
     end
   end
 
+  # List comprehension replaces chained Enum.map + Enum.reject
   defp parse_id_list(value) when is_binary(value) do
-    value
-    |> String.split(",")
-    |> Enum.map(&String.trim/1)
-    |> Enum.reject(&(&1 == ""))
-    |> Enum.map(fn id_str ->
-      case Integer.parse(id_str) do
-        {id, _} -> id
-        :error -> nil
-      end
-    end)
-    |> Enum.reject(&is_nil/1)
+    for id_str <- String.split(value, ","),
+        trimmed = String.trim(id_str),
+        trimmed != "",
+        {id, _} <- [Integer.parse(trimmed)],
+        do: id
   end
 
   defp parse_id_list(_), do: []
@@ -913,21 +1161,11 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
     }
   end
 
-  defp get_current_user_id(socket) do
-    # Get user ID from socket assigns if available
-    case socket.assigns do
-      %{current_user: %{id: user_id}} ->
-        user_id
-
-      %{user_id: user_id} when is_integer(user_id) ->
-        user_id
-
-      _ ->
-        # Default to user ID 1 if not authenticated
-        # In production, this would redirect to login
-        1
-    end
-  end
+  # Pattern matching in function heads for get_current_user_id
+  defp get_current_user_id(%{assigns: %{current_user: %{id: user_id}}}), do: user_id
+  defp get_current_user_id(%{assigns: %{user_id: user_id}}) when is_integer(user_id), do: user_id
+  # Default to user ID 1 if not authenticated - in production, this would redirect to login
+  defp get_current_user_id(_socket), do: 1
 
   defp search_entity_suggestions(field, query) do
     # Use real database search for entity suggestions
@@ -1063,17 +1301,14 @@ defmodule EveDmvWeb.SurveillanceProfilesLive do
 
   def format_isk(value) when is_number(value) do
     # Format with thousand separators
-    formatted =
-      value
-      |> round()
-      |> Integer.to_string()
-      |> String.graphemes()
-      |> Enum.reverse()
-      |> Enum.chunk_every(3)
-      |> Enum.join(",")
-      |> String.reverse()
-
-    formatted
+    value
+    |> round()
+    |> Integer.to_string()
+    |> String.graphemes()
+    |> Enum.reverse()
+    |> Enum.chunk_every(3)
+    |> Enum.join(",")
+    |> String.reverse()
   end
 
   def format_isk(_), do: "0"

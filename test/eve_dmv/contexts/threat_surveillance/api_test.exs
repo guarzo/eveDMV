@@ -141,12 +141,10 @@ defmodule EveDmv.Contexts.ThreatSurveillance.ApiTest do
         Api.assess_character_threat(character_id)
       rescue
         # GenServer not available is expected in test env
-        e in [RuntimeError, ArgumentError] ->
-          refute match?(%FunctionClauseError{}, e)
-
-        # Exit from GenServer.call is also acceptable
-        :exit ->
-          :ok
+        # RuntimeError or ArgumentError are acceptable - they indicate
+        # delegation worked but GenServer isn't running
+        RuntimeError -> :ok
+        ArgumentError -> :ok
       catch
         :exit, _ -> :ok
       end
@@ -159,8 +157,10 @@ defmodule EveDmv.Contexts.ThreatSurveillance.ApiTest do
       try do
         Api.assess_corporation_threat(corp_id)
       rescue
-        e in [RuntimeError, ArgumentError] ->
-          refute match?(%FunctionClauseError{}, e)
+        # RuntimeError or ArgumentError are acceptable - they indicate
+        # delegation worked but GenServer isn't running
+        RuntimeError -> :ok
+        ArgumentError -> :ok
       catch
         :exit, _ -> :ok
       end

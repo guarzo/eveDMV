@@ -492,7 +492,7 @@ defmodule EveDmv.Shared.Strategic.RecommendationEngineTest do
       result = RecommendationEngine.generate_long_term_recommendations(trend_analysis)
 
       assert is_map(result)
-      assert result.strategic_goals != []
+      assert Enum.any?(result.strategic_goals)
     end
 
     test "generates stable presence goals for neutral trend" do
@@ -766,7 +766,7 @@ defmodule EveDmv.Shared.Strategic.RecommendationEngineTest do
       recovery = result.contingency_planning.recovery_procedures
       assert is_list(recovery)
 
-      if recovery != [] do
+      if Enum.any?(recovery) do
         phase = hd(recovery)
         assert Map.has_key?(phase, :phase)
         assert Map.has_key?(phase, :actions)

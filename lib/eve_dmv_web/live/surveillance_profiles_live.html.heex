@@ -37,45 +37,63 @@
         <%= if @editing_profile.id, do: "Edit Profile", else: "Create Profile" %>
       </h2>
       
-      <form phx-submit="save_profile">
+      <.form :let={f} for={@form} phx-submit="save_profile" phx-change="validate">
+        <!-- Form-level errors -->
+        <%= if @form && @form.errors != [] do %>
+          <div class="mb-4 p-4 bg-red-900/50 border border-red-700 rounded-lg">
+            <p class="text-sm font-medium text-red-400">Please correct the following errors:</p>
+            <ul class="mt-2 text-sm text-red-300 list-disc list-inside">
+              <%= for {field, {msg, _opts}} <- @form.errors do %>
+                <li><%= Phoenix.Naming.humanize(field) %>: <%= msg %></li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+
         <!-- Basic Profile Info -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Profile Name</label>
+            <label for={f[:name].id} class="block text-sm font-medium text-gray-300 mb-1">Profile Name</label>
             <input
               type="text"
-              name="profile[name]"
-              value={@editing_profile.name}
+              name={f[:name].name}
+              id={f[:name].id}
+              value={f[:name].value || @editing_profile.name}
               phx-blur="update_profile_field"
               phx-value-field="name"
               placeholder="e.g., High Value Targets"
-              class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              class={"w-full px-3 py-2 bg-gray-700 border rounded-md text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 #{if f[:name].errors != [], do: "border-red-500", else: "border-gray-600"}"}
               required
             />
+            <%= if f[:name].errors != [] do %>
+              <p class="mt-1 text-sm text-red-400"><%= Enum.map_join(f[:name].errors, ", ", fn {msg, _} -> msg end) %></p>
+            <% end %>
           </div>
-          
+
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Status</label>
+            <label for={f[:is_active].id} class="block text-sm font-medium text-gray-300 mb-1">Status</label>
             <select
-              name="profile[enabled]"
+              name={f[:is_active].name}
+              id={f[:is_active].id}
               class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="true" selected={@editing_profile.enabled}>Active</option>
-              <option value="false" selected={!@editing_profile.enabled}>Inactive</option>
+              <option value="true" selected={f[:is_active].value == true || f[:is_active].value == "true" || @editing_profile.enabled}>Active</option>
+              <option value="false" selected={f[:is_active].value == false || f[:is_active].value == "false" || !@editing_profile.enabled}>Inactive</option>
             </select>
           </div>
         </div>
 
         <div class="mb-6">
-          <label class="block text-sm font-medium text-gray-300 mb-1">Description (Optional)</label>
+          <label for={f[:description].id} class="block text-sm font-medium text-gray-300 mb-1">Description (Optional)</label>
           <textarea
-            name="profile[description]"
+            name={f[:description].name}
+            id={f[:description].id}
             phx-blur="update_profile_field"
             phx-value-field="description"
             rows="2"
             placeholder="Brief description of what this profile monitors..."
             class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          ><%= @editing_profile.description %></textarea>
+          ><%= f[:description].value || @editing_profile.description %></textarea>
         </div>
 
         <!-- Filter Builder -->
@@ -228,7 +246,7 @@
             <%= if @editing_profile.id, do: "Update Profile", else: "Create Profile" %>
           </button>
         </div>
-      </form>
+      </.form>
     </div>
   <% else %>
     <!-- Profile List -->

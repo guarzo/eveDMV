@@ -6,7 +6,8 @@ defmodule EveDmv.Contexts.Intelligence.Resources.CharacterProfile do
 
   use Ash.Resource,
     domain: EveDmv.Api,
-    data_layer: AshPostgres.DataLayer
+    data_layer: AshPostgres.DataLayer,
+    authorizers: [Ash.Policy.Authorizer]
 
   postgres do
     table("character_profiles")
@@ -344,6 +345,21 @@ defmodule EveDmv.Contexts.Intelligence.Resources.CharacterProfile do
     define(:destroy)
     define(:update_analysis)
     define(:update_stats)
+  end
+
+  policies do
+    # Character intelligence profiles are public EVE intel
+    policy action_type(:read) do
+      description("Character profiles are publicly readable")
+      authorize_if(always())
+    end
+
+    # Only internal systems/admins can modify character profiles
+    policy action_type([:create, :update, :destroy]) do
+      description("Only system or admin can modify character profiles")
+      authorize_if(actor_attribute_equals(:role, :system))
+      authorize_if(actor_attribute_equals(:role, :admin))
+    end
   end
 
   # Custom calculations

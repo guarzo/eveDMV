@@ -6,6 +6,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrend
 
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.Platform.Database.Queries.AnalyticsQueries
   require Logger
 
   # Ship class classification ranges
@@ -78,34 +79,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrend
   # Private functions
 
   defp get_historical_killmails(character_id, months) do
-    cutoff_date = DateTime.add(DateTime.utc_now(), -months * 30 * 86_400, :second)
-
-    # Optimized: Use participants table first to find killmail_ids via indexed lookup,
-    # then fetch full killmail data. This avoids slow jsonb_array_elements scan.
-    # Uses idx_participants_character_activity index on (character_id, killmail_time)
-    query = """
-    SELECT DISTINCT
-      k.killmail_id,
-      k.killmail_time,
-      k.solar_system_id,
-      k.victim_character_id,
-      k.victim_ship_type_id,
-      k.raw_data,
-      k.total_value
-    FROM participants p
-    INNER JOIN killmails_raw k ON k.killmail_id = p.killmail_id AND k.killmail_time = p.killmail_time
-    WHERE p.character_id = $1
-      AND p.killmail_time > $2
-    ORDER BY k.killmail_time DESC
-    """
-
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [character_id, cutoff_date]) do
-      {:ok, %{rows: rows, columns: columns}} ->
-        columns = Enum.map(columns, &String.to_atom/1)
-
-        Enum.map(rows, fn row ->
-          map = Map.new(Enum.zip(columns, row))
-          struct(KillmailRaw, map)
+    # Use AnalyticsQueries module for optimized historical killmail retrieval
+    case AnalyticsQueries.get_historical_killmails(character_id, months) do
+      {:ok, killmails} ->
+        # Convert map results to KillmailRaw structs for compatibility
+        Enum.map(killmails, fn km ->
+          struct(KillmailRaw, km)
         end)
 
       {:error, error} ->
