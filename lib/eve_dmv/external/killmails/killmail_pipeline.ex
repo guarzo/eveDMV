@@ -190,11 +190,7 @@ defmodule EveDmv.Killmails.KillmailPipeline do
     result =
       with_error_handling(
         fn ->
-          # Insert all database records using DatabaseInserter
           DatabaseInserter.insert_raw_killmails(raw_changesets)
-
-          # REMOVED: Enriched table provides no value - see /docs/architecture/enriched-raw-analysis.md
-          # DatabaseInserter.insert_enriched_killmails(enriched_changesets)
           DatabaseInserter.insert_participants(participants_lists)
           :ok
         end,

@@ -24,22 +24,47 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceValidators do
     :awox_risk_score
   ]
 
+  @typedoc "Valid analysis types"
+  @type analysis_type :: :full | :quick | :threat_only | :activity_only
+
+  @typedoc "Valid threat contexts"
+  @type threat_context :: :general | :recruitment | :wormhole_operations | :fleet_operations
+
+  @typedoc "Valid scoring types"
+  @type scoring_type ::
+          :danger_rating
+          | :hunter_score
+          | :fleet_commander_score
+          | :solo_pilot_score
+          | :awox_risk_score
+
+  @typedoc "Validation error types for analysis options"
+  @type analysis_options_error ::
+          :invalid_options_format
+          | :invalid_analysis_type
+          | :invalid_time_range
+          | :invalid_cache_ttl
+          | {:invalid_boolean_option, :include_associates | :include_patterns}
+
+  @typedoc "Error types for character IDs validation"
+  @type character_ids_error :: :invalid_character_ids | :invalid_character_ids_format
+
   @doc """
   Returns the list of valid analysis types.
   """
-  @spec analysis_types() :: [atom()]
+  @spec analysis_types() :: [analysis_type(), ...]
   def analysis_types, do: @analysis_types
 
   @doc """
   Returns the list of valid threat contexts.
   """
-  @spec threat_contexts() :: [atom()]
+  @spec threat_contexts() :: [threat_context(), ...]
   def threat_contexts, do: @threat_contexts
 
   @doc """
   Returns the list of valid scoring types.
   """
-  @spec scoring_types() :: [atom()]
+  @spec scoring_types() :: [scoring_type(), ...]
   def scoring_types, do: @scoring_types
 
   @doc """
@@ -63,7 +88,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceValidators do
       iex> validate_analysis_options("not a list")
       {:error, :invalid_options_format}
   """
-  @spec validate_analysis_options(any()) :: :ok | {:error, atom() | {atom(), atom()}}
+  @spec validate_analysis_options(any()) :: :ok | {:error, analysis_options_error()}
   def validate_analysis_options(opts) when is_list(opts) do
     with :ok <- do_validate_analysis_type(Keyword.get(opts, :analysis_type)),
          :ok <- do_validate_time_range_option(Keyword.get(opts, :time_range)),
@@ -165,7 +190,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceValidators do
       iex> validate_character_ids([123, -1])
       {:error, :invalid_character_ids}
   """
-  @spec validate_character_ids(any()) :: :ok | {:error, atom()}
+  @spec validate_character_ids(any()) :: :ok | {:error, character_ids_error()}
   def validate_character_ids(character_ids) do
     case validate_integer_list(:character_ids, character_ids, min: 1) do
       :ok -> :ok

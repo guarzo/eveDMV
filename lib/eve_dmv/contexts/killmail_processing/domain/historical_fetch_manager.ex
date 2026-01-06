@@ -6,6 +6,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.HistoricalFetchManager do
   status records for the 2-year killmail fetch feature.
   """
 
+  alias EveDmv.Contexts.KillmailProcessing.Domain.HistoricalFetchWorker
   alias EveDmv.Contexts.KillmailProcessing.Resources.HistoricalFetchStatus
 
   @doc """
@@ -71,5 +72,35 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.HistoricalFetchManager do
       last_error: status.last_error,
       retry_count: status.retry_count
     }
+  end
+
+  @doc """
+  Completes Phase 1 and queues Phase 2 processing for an entity.
+
+  Marks the 90-day fetch as complete and queues the entity for 2-year fetch.
+
+  ## Parameters
+  - `entity_type` - The type of entity (:character, :corporation, :system, :alliance)
+  - `entity_id` - The entity's EVE Online ID
+
+  ## Returns
+  - `{:ok, status_map}` - The updated status as a plain map
+  - `{:error, reason}` - If the operation fails
+  """
+  @spec complete_phase1_and_queue_phase2(atom(), integer()) ::
+          {:ok, map()} | {:error, term()}
+  def complete_phase1_and_queue_phase2(entity_type, entity_id)
+      when entity_type in [:character, :corporation, :system, :alliance] and is_integer(entity_id) do
+    with {:ok, status} <- get_or_create_fetch_status(entity_type, entity_id),
+         {:ok, updated} <- mark_phase1_complete(status) do
+      HistoricalFetchWorker.queue_fetch(entity_type, entity_id)
+      {:ok, status_to_map(updated)}
+    end
+  end
+
+  def complete_phase1_and_queue_phase2(_, _), do: {:error, :invalid_entity}
+
+  defp mark_phase1_complete(status) do
+    Ash.update(status, %{}, action: :mark_phase1_complete, domain: EveDmv.Api)
   end
 end

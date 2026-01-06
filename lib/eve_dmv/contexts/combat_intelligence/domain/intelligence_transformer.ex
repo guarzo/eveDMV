@@ -6,6 +6,28 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceTransformer do
   public API format expected by consumers.
   """
 
+  @typedoc "Character analysis result structure"
+  @type character_analysis_result :: %{
+          character_id: term(),
+          character_name: term(),
+          threat_level: term(),
+          analysis_summary: %{combat_effectiveness: term(), analyzed_at: term()},
+          detailed_metrics: map(),
+          recommendations: [],
+          last_updated: term()
+        }
+
+  @typedoc "Corporation analysis result structure"
+  @type corporation_analysis_result :: %{
+          corporation_id: term(),
+          corporation_name: term(),
+          member_count: term(),
+          activity_patterns: term(),
+          threat_distribution: term(),
+          coordination_metrics: term(),
+          last_updated: term()
+        }
+
   @doc """
   Transforms character analysis results into the public API structure.
 
@@ -22,7 +44,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceTransformer do
   - `:recommendations` - List of recommendations (empty by default)
   - `:last_updated` - Timestamp of analysis
   """
-  @spec transform_character_analysis(map()) :: map()
+  @spec transform_character_analysis(map()) :: character_analysis_result()
   def transform_character_analysis(analysis_result) do
     %{
       character_id: analysis_result.character_id,
@@ -61,7 +83,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceTransformer do
   - `:coordination_metrics` - Coordination metrics
   - `:last_updated` - Timestamp of analysis
   """
-  @spec transform_corporation_analysis(map()) :: map()
+  @spec transform_corporation_analysis(map()) :: corporation_analysis_result()
   def transform_corporation_analysis(analysis_result) do
     %{
       corporation_id: analysis_result.corporation_id,

@@ -40,7 +40,7 @@ EVE DMV is a real-time PvP intelligence platform for EVE Online players that:
 - **Language**: Elixir 1.19+
 - **Framework**: Phoenix 1.8 with LiveView
 - **Resource Layer**: Ash Framework 3.7 (replaces traditional Ecto schemas)
-- **Database**: PostgreSQL 16 with partitioning
+- **Database**: PostgreSQL 18 with partitioning
 - **Streaming**: Broadway for data pipelines
 - **Authentication**: EVE SSO OAuth2
 - **Caching**: ETS and Cachex
@@ -85,10 +85,8 @@ lib/eve_dmv/
 │   ├── battle_sharing/          # Battle report sharing
 │   ├── character_intelligence/  # Character threat scoring
 │   ├── combat/                  # Combat analysis and metrics
-│   ├── combat_analysis/         # Combat statistics
 │   ├── combat_intelligence/     # Combat intelligence gathering
 │   ├── corporation/             # Corporation analysis
-│   ├── corporation_analysis/    # Corp analytics
 │   ├── corporation_intelligence/# Corp intelligence
 │   ├── fleet_operations/        # Fleet composition analysis
 │   ├── intelligence/            # Intelligence engine

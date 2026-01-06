@@ -10,6 +10,17 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.KillmailValidators do
 
   alias EveDmv.SharedKernel.ValueObjects.TimeRange
 
+  @typedoc "Error types for killmail options validation"
+  @type killmail_options_error ::
+          :invalid_options_format
+          | :invalid_limit
+          | :invalid_offset
+          | :invalid_value_range
+          | :invalid_time_range
+
+  @typedoc "Error types for character IDs validation"
+  @type character_ids_error :: :invalid_character_ids | :invalid_character_ids_format
+
   @doc """
   Validates a raw killmail has required structure and fields.
 
@@ -67,7 +78,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.KillmailValidators do
       iex> validate_killmail_options("not a list")
       {:error, :invalid_options_format}
   """
-  @spec validate_killmail_options(any()) :: :ok | {:error, atom()}
+  @spec validate_killmail_options(any()) :: :ok | {:error, killmail_options_error()}
   def validate_killmail_options(opts) when is_list(opts) do
     with :ok <- do_validate_limit(Keyword.get(opts, :limit)),
          :ok <- do_validate_offset(Keyword.get(opts, :offset)),
@@ -94,7 +105,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.KillmailValidators do
       iex> validate_character_ids("not a list")
       {:error, :invalid_character_ids_format}
   """
-  @spec validate_character_ids(any()) :: :ok | {:error, atom()}
+  @spec validate_character_ids(any()) :: :ok | {:error, character_ids_error()}
   def validate_character_ids(character_ids) do
     case validate_integer_list(:character_ids, character_ids, min: 1) do
       :ok -> :ok

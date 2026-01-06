@@ -273,11 +273,8 @@ defmodule EveDmvWeb.CorporationLive do
     # Load all data using the optimized data loader
     data = DataLoader.load_corporation_data(corporation_id)
 
-    # Load additional data that isn't in the optimized loader yet
-    # (these can be migrated to the data loader later)
-    # Temporary placeholder
+    # Placeholder: location_stats and victim_stats need dedicated loader functions
     {:ok, location_stats} = DataLoader.load_corporation_info(corporation_id)
-    # Temporary placeholder
     {:ok, victim_stats} = DataLoader.load_corporation_info(corporation_id)
 
     # Load intelligence data

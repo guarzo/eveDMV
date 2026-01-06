@@ -148,26 +148,6 @@ defmodule EveDmvWeb.ProfileLive do
     _ -> {:error, "Failed to compile export data"}
   end
 
-  # defp format_isk(amount) when amount >= 1_000_000_000 do
-  #   "#{Float.round(amount / 1_000_000_000, 1)}B ISK"
-  # end
-
-  # defp format_isk(amount) when amount >= 1_000_000 do
-  #   "#{Float.round(amount / 1_000_000, 1)}M ISK"
-  # end
-
-  # defp format_isk(amount) when amount >= 1_000 do
-  #   "#{Float.round(amount / 1_000, 1)}K ISK"
-  # end
-
-  # defp format_isk(amount), do: "#{amount} ISK"
-
-  # defp expertise_level_color(:expert), do: "text-purple-400"
-  # defp expertise_level_color(:experienced), do: "text-blue-400"
-  # defp expertise_level_color(:competent), do: "text-green-400"
-  # defp expertise_level_color(:novice), do: "text-yellow-400"
-  # defp expertise_level_color(_), do: "text-gray-400"
-
   @impl Phoenix.LiveView
   def handle_event("refresh_token", _params, socket) do
     current_user = socket.assigns.current_user

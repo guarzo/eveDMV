@@ -10,13 +10,68 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.DoctrineManager do
 
   use EveDmv.Core.Errors.ErrorHandler
 
+  alias EveDmv.Contexts.FleetOperations.Domain.FleetValidationService
   alias EveDmv.StaticData
 
   require Logger
 
   # Note: Doctrine types and mass categories are defined inline where needed
 
-  # Public API
+  # Public API - Validated entry points
+
+  @doc """
+  Validate and create a new doctrine.
+  """
+  def create_doctrine_validated(doctrine_data) do
+    with {:ok, validated_data} <- FleetValidationService.validate_doctrine_data(doctrine_data),
+         {:ok, doctrine} <- create_doctrine(validated_data) do
+      Logger.info("Created fleet doctrine: #{doctrine.name}")
+      {:ok, doctrine}
+    else
+      {:error, reason} ->
+        Logger.warning("Failed to create doctrine: #{inspect(reason)}")
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Validate and update an existing doctrine.
+  """
+  def update_doctrine_validated(doctrine_id, updates) do
+    with {:ok, validated_updates} <- FleetValidationService.validate_doctrine_updates(updates),
+         {:ok, doctrine} <- update_doctrine(doctrine_id, validated_updates) do
+      Logger.info("Updated doctrine: #{doctrine_id}")
+      {:ok, doctrine}
+    else
+      {:error, reason} ->
+        Logger.warning("Failed to update doctrine #{doctrine_id}: #{inspect(reason)}")
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Validate fleet data and check doctrine compliance by name.
+  """
+  def check_compliance_validated(fleet_data, doctrine_name) do
+    with {:ok, validated_data} <- FleetValidationService.validate_fleet_data(fleet_data),
+         {:ok, doctrine} <- get_doctrine_by_name(doctrine_name),
+         {:ok, compliance} <- check_compliance(validated_data, doctrine) do
+      {:ok, compliance}
+    end
+  end
+
+  @doc """
+  Validate and check fleet composition against a doctrine by ID.
+  """
+  def validate_fleet_composition_validated(fleet_data, doctrine_id) do
+    with {:ok, validated_fleet} <- FleetValidationService.validate_fleet_data(fleet_data),
+         {:ok, doctrine} <- get_doctrine(doctrine_id),
+         {:ok, validation_result} <- validate_fleet_composition(validated_fleet, doctrine) do
+      {:ok, validation_result}
+    end
+  end
+
+  # Public API - Internal
 
   @doc """
   Create a new fleet doctrine.

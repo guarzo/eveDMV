@@ -6,6 +6,67 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.KillmailPresenter do
   optimized for LiveView rendering and API responses.
   """
 
+  alias EveDmv.Contexts.KillmailProcessing.Domain.KillmailQueryService
+  alias EveDmv.Contexts.KillmailProcessing.Domain.KillmailValidators
+  alias EveDmv.Result
+
+  @typedoc "Display-formatted killmail structure"
+  @type display_killmail :: %{
+          id: term(),
+          killmail_time: term(),
+          solar_system_id: term(),
+          victim: %{
+            character_id: term(),
+            corporation_id: term(),
+            alliance_id: term(),
+            ship_type_id: term()
+          },
+          total_value: term(),
+          participant_count: term(),
+          location: %{
+            solar_system_id: term(),
+            region_id: term(),
+            constellation_id: term()
+          }
+        }
+
+  @doc """
+  Build display data for the web interface.
+
+  Retrieves recent killmails and formats them for LiveView display.
+
+  ## Parameters
+  - `opts` - Query options (limit, offset, etc.)
+
+  ## Returns
+  - `{:ok, display_data}` with formatted killmails and metadata
+  - `{:error, reason}` on failure
+  """
+  @spec build_display_data(keyword()) :: Result.t(map())
+  def build_display_data(opts \\ []) do
+    case KillmailValidators.validate_killmail_options(opts) do
+      :ok ->
+        case KillmailQueryService.get_recent(opts) do
+          {:ok, killmails} ->
+            {:ok, assemble_display_data(killmails)}
+
+          {:error, reason} ->
+            {:error, reason}
+        end
+
+      error ->
+        error
+    end
+  end
+
+  defp assemble_display_data(killmails) do
+    %{
+      killmails: Enum.map(killmails, &format_for_display/1),
+      total_count: length(killmails),
+      last_updated: DateTime.utc_now()
+    }
+  end
+
   @doc """
   Formats a killmail for display in the kill feed.
 
@@ -25,7 +86,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.KillmailPresenter do
   - `:participant_count` - Number of participants
   - `:location` - Location information map
   """
-  @spec format_for_display(map()) :: map()
+  @spec format_for_display(map()) :: display_killmail()
   def format_for_display(killmail) do
     %{
       id: killmail.killmail_id,

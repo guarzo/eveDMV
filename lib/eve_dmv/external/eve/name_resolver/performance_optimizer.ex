@@ -319,26 +319,22 @@ defmodule EveDmv.Eve.NameResolver.PerformanceOptimizer do
   # Performance monitoring helpers
 
   defp calculate_cache_hit_rate do
-    # Would calculate actual hit rate from cache statistics
-    # Placeholder
+    # Placeholder - would calculate actual hit rate from cache statistics
     0.85
   end
 
   defp get_most_requested_items do
-    # Would return actual statistics
-    # Placeholder
+    # Placeholder - would return actual statistics
     []
   end
 
   defp get_cache_size do
-    # Would return actual cache size
-    # Placeholder
+    # Placeholder - would return actual cache size
     0
   end
 
   defp generate_cache_recommendations do
-    # Would generate actual recommendations based on usage patterns
-    # Placeholder
+    # Placeholder - would generate actual recommendations based on usage patterns
     []
   end
 end

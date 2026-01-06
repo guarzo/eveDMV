@@ -17,7 +17,6 @@ defmodule EveDmv.Killmails.DataProcessor do
 
   @typep processed_data :: %{
            raw_changeset: map(),
-           # REMOVED: enriched_changeset - see /docs/architecture/enriched-raw-analysis.md
            participants: list(),
            original_data: map()
          }
@@ -37,7 +36,6 @@ defmodule EveDmv.Killmails.DataProcessor do
     # Single pass through the data to create all required formats
     processed = %{
       raw_changeset: KillmailDataTransformer.build_raw_changeset(enriched_with_names),
-      # REMOVED: enriched_changeset - see /docs/architecture/enriched-raw-analysis.md
       participants: ParticipantBuilder.build_participants(enriched_with_names),
       original_data: enriched_with_names
     }
@@ -57,7 +55,6 @@ defmodule EveDmv.Killmails.DataProcessor do
   def extract_database_changesets(processed_data) do
     {
       [processed_data.raw_changeset],
-      # REMOVED: enriched_changeset - see /docs/architecture/enriched-raw-analysis.md
       [processed_data.participants]
     }
   end

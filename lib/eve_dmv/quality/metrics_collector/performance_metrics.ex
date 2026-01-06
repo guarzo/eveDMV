@@ -101,14 +101,12 @@ defmodule EveDmv.Quality.MetricsCollector.PerformanceMetrics do
   end
 
   defp measure_average_test_time do
-    # This would parse test output for timing information
-    # Placeholder for now
+    # Placeholder - would parse test output for timing information
     0
   end
 
   defp identify_slow_tests do
-    # This would identify tests taking > 1 second
-    # Placeholder for now
+    # Placeholder - would identify tests taking > 1 second
     []
   end
 
@@ -135,8 +133,7 @@ defmodule EveDmv.Quality.MetricsCollector.PerformanceMetrics do
   end
 
   defp load_last_benchmark_results do
-    # This would load results from benchee output files
-    # Placeholder for now
+    # Placeholder - would load results from benchee output files
     %{
       last_run: nil,
       fastest_operations: [],
@@ -162,14 +159,12 @@ defmodule EveDmv.Quality.MetricsCollector.PerformanceMetrics do
   end
 
   defp measure_average_query_time do
-    # This would query telemetry metrics or database logs
-    # Placeholder for now
+    # Placeholder - would query telemetry metrics or database logs
     0
   end
 
   defp identify_slow_queries do
-    # This would analyze database logs for slow queries
-    # Placeholder for now
+    # Placeholder - would analyze database logs for slow queries
     []
   end
 

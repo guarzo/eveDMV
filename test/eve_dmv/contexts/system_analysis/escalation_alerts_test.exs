@@ -1,5 +1,5 @@
 defmodule EveDmv.Contexts.SystemAnalysis.EscalationAlertsTest do
-  use EveDmvWeb.ConnCase, async: true
+  use EveDmv.DataCase, async: true
   import EveDmv.Factories
 
   alias EveDmv.Contexts.SystemAnalysis
@@ -12,7 +12,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.EscalationAlertsTest do
       create(:killmail_raw,
         solar_system_id: 30_000_142,
         killmail_time: baseline_time,
-        zkb_total_value: Decimal.new(50_000_000)
+        total_value: Decimal.new(50_000_000)
       )
 
       # Create current escalation (high activity)
@@ -22,7 +22,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.EscalationAlertsTest do
         create(:killmail_raw,
           solar_system_id: 30_000_142,
           killmail_time: current_time,
-          zkb_total_value: Decimal.new(Enum.random(100_000_000..500_000_000))
+          total_value: Decimal.new(Enum.random(100_000_000..500_000_000))
         )
       end
 
@@ -46,7 +46,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.EscalationAlertsTest do
         create(:killmail_raw,
           solar_system_id: 30_000_143,
           killmail_time: current_time,
-          zkb_total_value: Decimal.new(200_000_000)
+          total_value: Decimal.new(200_000_000)
         )
       end
 
@@ -73,7 +73,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.EscalationAlertsTest do
         create(:killmail_raw,
           solar_system_id: 30_000_144,
           killmail_time: current_time,
-          zkb_total_value: Decimal.new(100_000_000)
+          total_value: Decimal.new(100_000_000)
         )
       end
 
@@ -127,7 +127,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.EscalationAlertsTest do
       create(:killmail_raw,
         solar_system_id: 30_000_146,
         killmail_time: baseline_time,
-        zkb_total_value: Decimal.new(50_000_000)
+        total_value: Decimal.new(50_000_000)
       )
 
       # Current activity (5x increase)
@@ -137,7 +137,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.EscalationAlertsTest do
         create(:killmail_raw,
           solar_system_id: 30_000_146,
           killmail_time: current_time,
-          zkb_total_value: Decimal.new(100_000_000)
+          total_value: Decimal.new(100_000_000)
         )
       end
 

@@ -387,33 +387,27 @@ defmodule EveDmv.Workers.CacheWarmingWorker do
   # Helper functions for identifying data to warm
 
   defp get_critical_character_ids(limit) do
-    # Get most frequently accessed character IDs
-    # This would typically query analytics or cache hit statistics
-    # Placeholder
+    # Placeholder - would query analytics or cache hit statistics for frequently accessed character IDs
     Enum.to_list(1..limit)
   end
 
   defp get_critical_system_ids(limit) do
-    # Get most active system IDs
-    # Placeholder
+    # Placeholder - would get most active system IDs
     Enum.to_list(1..limit)
   end
 
   defp get_priority_alliance_ids(limit) do
-    # Get recently active alliance IDs
-    # Placeholder
+    # Placeholder - would get recently active alliance IDs
     Enum.to_list(1..limit)
   end
 
   defp get_priority_item_ids(limit) do
-    # Get frequently traded item IDs
-    # Placeholder
+    # Placeholder - would get frequently traded item IDs
     Enum.to_list(1..limit)
   end
 
   defp get_random_character_ids(limit) do
-    # Get random sampling of character IDs
-    # Placeholder
+    # Placeholder - would get random sampling of character IDs
     Enum.to_list(1..limit)
   end
 

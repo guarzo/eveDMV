@@ -630,20 +630,46 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   defp format_error({:api_error, status}), do: "zkillboard API error (#{status})"
   defp format_error(_error), do: "Import failed"
 
-  # Dialyzer indicates reason is always a binary string, never an atom
-  defp format_error_reason("curator_unavailable"),
+  # Handle known atom error reasons with specific messages
+  defp format_error_reason(:curator_unavailable),
     do: "Battle curator service is temporarily unavailable"
 
-  defp format_error_reason("report_not_found"), do: "Battle report not found"
+  defp format_error_reason(:report_not_found), do: "Battle report not found"
 
-  defp format_error_reason("permission_denied"),
+  defp format_error_reason(:permission_denied),
     do: "You don't have permission to perform this action"
 
+  defp format_error_reason(:rating_must_be_number),
+    do: "Rating must be a number"
+
+  defp format_error_reason(:categories_must_be_map),
+    do: "Categories must be a map"
+
+  # Handle tuple error reasons (e.g., {:invalid_rating, :out_of_range})
+  defp format_error_reason({:invalid_rating, :out_of_range}),
+    do: "Rating must be between 1 and 10"
+
+  defp format_error_reason({error_type, detail}) when is_atom(error_type) and is_atom(detail) do
+    "#{error_type |> Atom.to_string() |> String.replace("_", " ") |> String.capitalize()}: #{detail |> Atom.to_string() |> String.replace("_", " ")}"
+  end
+
+  # Handle other atom error reasons
+  defp format_error_reason(reason) when is_atom(reason) do
+    reason
+    |> Atom.to_string()
+    |> String.replace("_", " ")
+    |> String.capitalize()
+  end
+
+  # Handle binary error reasons (fallback for any string errors)
   defp format_error_reason(reason) when is_binary(reason) do
     reason
     |> String.replace("_", " ")
     |> String.capitalize()
   end
+
+  # Catch-all for any other type
+  defp format_error_reason(other), do: inspect(other)
 
   # View helpers (these should be in the template but included here for completeness)
 

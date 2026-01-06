@@ -39,6 +39,16 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.KillmailOrchestrator do
     GenServer.call(__MODULE__, :get_metrics)
   end
 
+  @doc """
+  Get metrics wrapped in an ok tuple.
+
+  Used for consistent API response format.
+  """
+  @spec get_metrics_ok() :: {:ok, map()}
+  def get_metrics_ok do
+    {:ok, get_metrics()}
+  end
+
   def process_killmail(raw_killmail) do
     GenServer.call(__MODULE__, {:process_killmail, raw_killmail})
   end

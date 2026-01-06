@@ -85,6 +85,26 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
 
   Returns previously analyzed intelligence data if available,
   or triggers a new analysis if cache is stale.
+
+  ## Parameters
+
+  - `character_id` - EVE Online character ID
+
+  ## Returns
+
+  - `{:ok, intelligence_result}` - Intelligence data including:
+    - `:character_id` - Character identifier
+    - `:character_name` - Character name
+    - `:threat_level` - Assessed threat level
+    - `:analysis_summary` - High-level analysis summary
+    - `:detailed_metrics` - Combat and activity metrics
+    - `:recommendations` - Tactical recommendations
+    - `:last_updated` - When analysis was last performed
+
+  ## Examples
+
+      iex> get_character_intelligence(123456789)
+      {:ok, %{character_id: 123456789, threat_level: :medium, ...}}
   """
   @spec get_character_intelligence(Types.character_id()) :: {:ok, intelligence_result()}
   def get_character_intelligence(character_id) do
@@ -99,6 +119,28 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
 
   Provides insights into corporation member activity, timezone coverage,
   and overall combat effectiveness.
+
+  ## Parameters
+
+  - `corporation_id` - EVE Online corporation ID
+  - `opts` - Analysis options (same as `analyze_character/2`)
+
+  ## Returns
+
+  - `{:ok, corporation_intelligence_result}` - Corporation intelligence data including:
+    - `:corporation_id` - Corporation identifier
+    - `:corporation_name` - Corporation name
+    - `:member_count` - Number of tracked members
+    - `:activity_patterns` - Timezone and activity analysis
+    - `:threat_distribution` - Threat levels of members
+    - `:coordination_metrics` - Fleet coordination effectiveness
+    - `:last_updated` - When analysis was performed
+  - `{:error, reason}` - Analysis failure
+
+  ## Examples
+
+      iex> analyze_corporation(98000001, analysis_type: :full)
+      {:ok, %{corporation_id: 98000001, activity_patterns: %{...}, ...}}
   """
   @spec analyze_corporation(integer(), analysis_options()) ::
           {:ok, corporation_intelligence_result()} | {:error, intelligence_api_error() | term()}
@@ -113,6 +155,23 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
 
   @doc """
   Get cached corporation intelligence data.
+
+  Returns previously analyzed corporation intelligence if available,
+  or triggers a new analysis if cache is stale.
+
+  ## Parameters
+
+  - `corporation_id` - EVE Online corporation ID
+
+  ## Returns
+
+  - `{:ok, corporation_intelligence_result}` - Corporation intelligence data
+    (see `analyze_corporation/2` for structure details)
+
+  ## Examples
+
+      iex> get_corporation_intelligence(98000001)
+      {:ok, %{corporation_id: 98000001, member_count: 150, ...}}
   """
   @spec get_corporation_intelligence(integer()) :: {:ok, corporation_intelligence_result()}
   def get_corporation_intelligence(corporation_id) do
@@ -150,6 +209,27 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
 
   @doc """
   Get cached threat assessment data.
+
+  Returns the most recent threat assessment for a character.
+  Assessment includes threat level, contributing factors, and recommendations.
+
+  ## Parameters
+
+  - `character_id` - EVE Online character ID
+
+  ## Returns
+
+  - `{:ok, assessment}` - Threat assessment data including:
+    - `:threat_level` - Overall threat level (`:low`, `:medium`, `:high`, `:critical`)
+    - `:score` - Numeric threat score (0.0 to 1.0)
+    - `:factors` - Contributing factors to the threat level
+    - `:recommendations` - Suggested actions
+    - `:assessed_at` - When assessment was performed
+
+  ## Examples
+
+      iex> get_threat_assessment(123456789)
+      {:ok, %{threat_level: :high, score: 0.85, factors: [...], ...}}
   """
   @spec get_threat_assessment(integer()) :: {:ok, map()}
   def get_threat_assessment(character_id) do
@@ -179,7 +259,26 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   Get tactical recommendations for dealing with a specific character.
 
   Returns actionable intelligence based on the character's patterns,
-  strengths, and weaknesses.
+  strengths, and weaknesses. Recommendations are tailored for different
+  engagement scenarios.
+
+  ## Parameters
+
+  - `character_id` - EVE Online character ID
+
+  ## Returns
+
+  - `{:ok, recommendations}` - List of recommendation maps, each containing:
+    - `:type` - Recommendation type (`:engagement`, `:avoidance`, `:counter`)
+    - `:priority` - Priority level (`:high`, `:medium`, `:low`)
+    - `:description` - Human-readable recommendation
+    - `:rationale` - Why this recommendation was generated
+    - `:applicable_scenarios` - When this recommendation applies
+
+  ## Examples
+
+      iex> get_character_recommendations(123456789)
+      {:ok, [%{type: :engagement, priority: :high, description: "Target is weakest in frigates", ...}]}
   """
   @spec get_character_recommendations(integer()) :: {:ok, [map()]}
   def get_character_recommendations(character_id) do
@@ -215,6 +314,28 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   Get detailed activity patterns for a character over a time range.
 
   Returns temporal activity patterns, timezone preferences, and behavioral trends.
+  Useful for predicting when a character will be active.
+
+  ## Parameters
+
+  - `character_id` - EVE Online character ID
+  - `opts` - Analysis options:
+    - `:time_range` - Time range for analysis (default: last 90 days)
+    - `:granularity` - Time granularity (`:hourly`, `:daily`, `:weekly`)
+
+  ## Returns
+
+  - `{:ok, patterns}` - Activity pattern data including:
+    - `:timezone` - Estimated primary timezone
+    - `:peak_hours` - Most active hours (UTC)
+    - `:weekly_distribution` - Activity by day of week
+    - `:monthly_trend` - Activity trend over time
+  - `{:error, :analysis_failed}` - Insufficient data or analysis error
+
+  ## Examples
+
+      iex> get_activity_patterns(123456789, granularity: :hourly)
+      {:ok, %{timezone: "US/Eastern", peak_hours: [22, 23, 0, 1], ...}}
   """
   @spec get_activity_patterns(integer(), keyword()) :: {:error, :analysis_failed}
   def get_activity_patterns(character_id, opts \\ []) do
@@ -225,7 +346,28 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   Compare multiple characters across key intelligence metrics.
 
   Useful for recruitment decisions or identifying the most dangerous
-  opponents in a group.
+  opponents in a group. Provides side-by-side comparison of key metrics.
+
+  ## Parameters
+
+  - `character_ids` - List of EVE Online character IDs to compare (2-10 characters)
+
+  ## Returns
+
+  - `{:ok, comparison}` - Comparison data including:
+    - `:characters` - List of character summaries
+    - `:rankings` - Characters ranked by various metrics
+    - `:threat_comparison` - Threat level comparison
+    - `:skill_comparison` - Combat skill comparison
+    - `:activity_comparison` - Activity level comparison
+  - `{:error, :invalid_character_ids}` - Invalid character ID list
+  - `{:error, :too_few_characters}` - Need at least 2 characters
+  - `{:error, :too_many_characters}` - Maximum 10 characters
+
+  ## Examples
+
+      iex> compare_characters([123456789, 987654321])
+      {:ok, %{rankings: %{threat: [987654321, 123456789], ...}, ...}}
   """
   @spec compare_characters([integer()]) :: {:ok, map()} | {:error, atom()}
   def compare_characters(character_ids) when is_list(character_ids) do
@@ -241,6 +383,25 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
 
   @doc """
   Get cache statistics for monitoring and debugging.
+
+  Returns statistics about the intelligence cache, useful for
+  monitoring cache effectiveness and debugging performance issues.
+
+  ## Returns
+
+  A map containing:
+  - `:hit_count` - Number of cache hits
+  - `:miss_count` - Number of cache misses
+  - `:hit_rate` - Cache hit rate percentage
+  - `:entry_count` - Current number of cached entries
+  - `:memory_usage` - Estimated memory usage in bytes
+  - `:oldest_entry` - Timestamp of oldest cache entry
+  - `:newest_entry` - Timestamp of newest cache entry
+
+  ## Examples
+
+      iex> get_intelligence_cache_stats()
+      %{hit_count: 1500, miss_count: 200, hit_rate: 0.88, ...}
   """
   @spec get_intelligence_cache_stats() :: map()
   def get_intelligence_cache_stats do
@@ -253,6 +414,27 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
 
   Returns corporations and alliances the character has flown with but are not part of their own.
   Useful for understanding social connections and potential allies.
+
+  ## Parameters
+
+  - `character_id` - EVE Online character ID
+  - `since_date` - Only analyze collaborations after this date
+
+  ## Returns
+
+  A list of maps, each containing:
+  - `:group_type` - Type of group (`:corporation` or `:alliance`)
+  - `:group_id` - EVE Online ID of the group
+  - `:group_name` - Name of the group
+  - `:collaboration_count` - Number of killmails together
+  - `:first_seen` - First collaboration timestamp
+  - `:last_seen` - Most recent collaboration timestamp
+  - `:relationship_strength` - Estimated relationship strength (0.0-1.0)
+
+  ## Examples
+
+      iex> get_external_groups(123456789, ~U[2024-01-01 00:00:00Z])
+      [%{group_type: :corporation, group_id: 98000001, collaboration_count: 25, ...}]
   """
   @spec get_external_groups(integer(), DateTime.t()) :: list(map())
   def get_external_groups(character_id, since_date) do

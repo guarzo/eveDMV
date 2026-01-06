@@ -16,6 +16,18 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.IngestionService do
   require Logger
 
   @doc """
+  Validate and ingest a raw killmail through the complete processing pipeline.
+
+  This is the public entry point that validates input before processing.
+  """
+  @spec ingest_validated(map()) :: Result.t(map())
+  def ingest_validated(raw_killmail) do
+    with :ok <- Domain.KillmailValidators.validate_raw_killmail(raw_killmail) do
+      ingest(raw_killmail)
+    end
+  end
+
+  @doc """
   Ingest a raw killmail through the complete processing pipeline.
 
   Steps:

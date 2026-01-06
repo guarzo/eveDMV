@@ -77,9 +77,6 @@ defmodule EveDmv.Killmails.DisplayService do
     NameResolver.system_securities(system_ids)
   end
 
-  # REMOVED: build_killmail_from_enriched function
-  # Enriched table provides no value - see /docs/architecture/enriched-raw-analysis.md
-
   def build_killmail_display(killmail_data) do
     # Handle both wanderer-kills formats:
     # 1. Separate victim/attackers fields

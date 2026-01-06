@@ -41,7 +41,6 @@ defmodule EveDmv.Api do
 
     # Primary killmail data
     resource(EveDmv.Killmails.KillmailRaw)
-    # REMOVED: KillmailEnriched - see /docs/architecture/enriched-raw-analysis.md
     resource(EveDmv.Killmails.Participant)
 
     # Battle analysis resources moved to dedicated domain

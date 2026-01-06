@@ -18,13 +18,6 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService do
   use GenServer
   use EveDmv.Core.Errors.ErrorHandler
 
-  # get_in/2 is automatically imported from Kernel
-
-  # alias EveDmv.Contexts.CombatIntelligence.Infrastructure.BattleCache
-  # alias EveDmv.Contexts.CombatIntelligence.Infrastructure.KillmailRepository
-  # alias EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer
-  # alias EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer
-
   alias EveDmv.Contexts.Combat.Core.FleetCompositionAnalyzer
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Analyzers.BattlePhaseAnalyzer
   alias EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleComparisonEngine

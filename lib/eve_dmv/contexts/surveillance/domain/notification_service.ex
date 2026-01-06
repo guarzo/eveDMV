@@ -8,6 +8,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
 
   use GenServer
   use EveDmv.Core.Errors.ErrorHandler
+  alias EveDmv.Contexts.Surveillance.Domain.ProfileValidationService
   alias EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository
   alias EveDmv.Core.Utils.DateTimeUtils
 
@@ -23,6 +24,45 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
   @status_sent "sent"
   @status_failed "failed"
   @status_rate_limited "rate_limited"
+
+  # Public API - Validated entry points
+
+  @doc """
+  Validate and configure notifications for a profile.
+  """
+  def configure_notifications_validated(profile_id, notification_config) do
+    with {:ok, validated_config} <-
+           ProfileValidationService.validate_notification_config(notification_config),
+         {:ok, config} <- configure_notifications(profile_id, validated_config) do
+      Logger.info("Updated notification config for profile: #{profile_id}")
+      {:ok, config}
+    else
+      {:error, reason} ->
+        Logger.warning(
+          "Failed to configure notifications for profile #{profile_id}: #{inspect(reason)}"
+        )
+
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Test notification delivery with logging.
+  """
+  def test_notification_delivery_logged(profile_id) do
+    case test_notification_delivery(profile_id) do
+      {:ok, result} ->
+        Logger.info("Test notification sent for profile: #{profile_id}")
+        {:ok, result}
+
+      {:error, reason} ->
+        Logger.warning(
+          "Failed to send test notification for profile #{profile_id}: #{inspect(reason)}"
+        )
+
+        {:error, reason}
+    end
+  end
 
   # Public API
 

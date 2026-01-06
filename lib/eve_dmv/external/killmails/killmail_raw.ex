@@ -308,9 +308,6 @@ defmodule EveDmv.Killmails.KillmailRaw do
       destination_attribute(:system_id)
       description("Solar system where the kill occurred")
     end
-
-    # REMOVED: enriched_data relationship
-    # Enriched table provides no value - see /docs/architecture/enriched-raw-analysis.md
   end
 
   # Authorization policies

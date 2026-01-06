@@ -37,7 +37,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Shared.BattleAnalysisUtils do
       victim_id = get_in(km.victim, ["character_id"]) || get_in(km, [:victim_character_id])
 
       attacker_ids =
-        (get_attackers(km) || [])
+        get_attackers(km)
         |> Enum.map(&get_in(&1, ["character_id"]))
         |> Enum.reject(&is_nil/1)
 
@@ -68,7 +68,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Shared.BattleAnalysisUtils do
         get_in(km.victim, ["corporation_id"]) || get_in(km, [:victim_corporation_id])
 
       attacker_corps =
-        (get_attackers(km) || [])
+        get_attackers(km)
         |> Enum.map(&get_in(&1, ["corporation_id"]))
         |> Enum.reject(&is_nil/1)
 
@@ -98,7 +98,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Shared.BattleAnalysisUtils do
       victim_alliance = get_in(km.victim, ["alliance_id"])
 
       attacker_alliances =
-        (get_attackers(km) || [])
+        get_attackers(km)
         |> Enum.map(&get_in(&1, ["alliance_id"]))
         |> Enum.reject(&is_nil/1)
 
@@ -125,7 +125,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Shared.BattleAnalysisUtils do
   def calculate_average_on_kill(killmails) do
     total_attackers =
       Enum.reduce(killmails, 0, fn km, acc ->
-        acc + length(get_attackers(km) || [])
+        acc + length(get_attackers(km))
       end)
 
     Float.round(total_attackers / length(killmails), 1)

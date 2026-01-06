@@ -29,7 +29,7 @@ mix ecto.reset         # Drop, create, and migrate
 
 # Testing and Quality
 mix test               # Run tests
-mix test --cover       # Run with coverage (70% minimum)
+mix test --cover       # Run with coverage (40% minimum)
 mix credo --strict     # Static analysis
 mix format             # Format code
 mix dialyzer           # Type checking
@@ -143,7 +143,7 @@ end
 ```
 
 ### Real-time Pipeline Architecture
-The killmail ingestion pipeline (`lib/eve_dmv/killmails/killmail_pipeline.ex`) uses Broadway:
+The killmail ingestion pipeline (`lib/eve_dmv/external/killmails/killmail_pipeline.ex`) uses Broadway:
 1. **SSE Producer** connects to wanderer-kills feed
 2. **Processor** validates and transforms killmails
 3. **Batch Handler** bulk inserts using `Ash.bulk_create`
@@ -358,10 +358,9 @@ WHEN security_status <= 0.0 THEN 'nullsec'    # ❌ This incorrectly classifies 
 
 ### 📋 Key Documentation
 - **Architecture**: `docs/ARCHITECTURE.md` - System design and patterns
-- **Deployment**: `docs/DEPLOYMENT_GUIDE.md` - Production deployment guide
 - **PRD**: `docs/EVE_DMV_PRD.md` - Product requirements document
-- **Operations**: `docs/OPERATIONS_RUNBOOK.md` - Operational procedures
-- **Historical Fetch**: `docs/HISTORICAL_FETCH_2YEAR_IMPLEMENTATION.md` - 2-year fetch implementation details
+- **Style Guide**: `docs/TEAM_STYLE_GUIDE.md` - Team coding standards
+- **Manual Test Plan**: `docs/MANUAL_TEST_PLAN.md` - Manual testing procedures
 
 ## Historical Fetch Feature (2-Year Killmail Retrieval)
 
@@ -489,7 +488,7 @@ mix format --check-formatted      # Check code formatting
 mix credo --strict                 # Static analysis
 mix dialyzer                      # Type checking (or use mix dialyzer.fast)
 mix deps.audit                    # Security audit
-mix test --cover                  # Tests with coverage (70% minimum)
+mix test --cover                  # Tests with coverage (40% minimum)
 ```
 
 ### Adding New LiveView Pages
@@ -498,7 +497,7 @@ mix test --cover                  # Tests with coverage (70% minimum)
 3. Use `on_mount: {EveDmvWeb.AuthLive, :load_from_session}` for authenticated routes
 
 ### Working with the Pipeline
-- Pipeline modules in `lib/eve_dmv/killmails/`
+- Pipeline modules in `lib/eve_dmv/external/killmails/`
 - Toggle with `PIPELINE_ENABLED=true/false` environment variable
 - ✅ **Broadway pipeline working** - SSE producer properly creates Broadway.Message structs
 - ✅ **SSE Integration complete** - Connected to `http://host.docker.internal:4004/api/v1/kills/stream`
@@ -516,7 +515,7 @@ mix test --cover                  # Tests with coverage (70% minimum)
 - **Quality Gates**: Format, Credo, Dialyzer, security audit, test coverage
 - **Docker**: Multi-stage builds with Alpine base for production
 - **Security**: Trivy vulnerability scanning, dependency auditing
-- **Coverage**: ExCoveralls with 70% minimum threshold
+- **Coverage**: ExCoveralls with 40% minimum threshold
 
 ## Key Files and Modules
 

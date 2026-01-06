@@ -415,8 +415,7 @@ defmodule EveDmv.Shared.Intelligence.FusionEngine do
     Float.round(min(1.0, adjusted), 3)
   end
 
-  # Stub implementations for remaining helper functions
-  # These would be fully implemented in production
+  # Stub implementations - would be fully implemented in production
 
   defp extract_entity_data(_sources), do: []
   defp determine_entity_type(_observations), do: :pilot
@@ -464,8 +463,7 @@ defmodule EveDmv.Shared.Intelligence.FusionEngine do
   defp detect_anomalies(_sources), do: []
 
   defp calculate_processing_time(_processed_intelligence) do
-    # Return a fixed placeholder time until actual processing time tracking is implemented
-    # This should be replaced with actual timing measurements
+    # Placeholder - needs actual timing measurements
     0
   end
 
