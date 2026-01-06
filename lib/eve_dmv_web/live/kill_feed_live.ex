@@ -20,6 +20,7 @@ defmodule EveDmvWeb.KillFeedLive do
   # Load current user from session on mount (optional for public pages)
   on_mount({EveDmvWeb.AuthLive, :load_from_session_optional})
 
+  @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     # Subscribe to kill feed updates
     if connected?(socket) do
@@ -48,6 +49,7 @@ defmodule EveDmvWeb.KillFeedLive do
     {:ok, socket}
   end
 
+  @impl Phoenix.LiveView
   def handle_info(
         %Phoenix.Socket.Broadcast{topic: "kill_feed", event: "new_kill", payload: killmail_data},
         socket
@@ -73,10 +75,12 @@ defmodule EveDmvWeb.KillFeedLive do
     {:noreply, socket}
   end
 
+  @impl Phoenix.LiveView
   def handle_info(_msg, socket) do
     {:noreply, socket}
   end
 
+  @impl Phoenix.LiveView
   def handle_event("refresh_feed", _params, socket) do
     # Refresh with current filters, reset to first page
     page_data = DisplayService.load_killmails_page(@feed_limit, socket.assigns.filters, 0)

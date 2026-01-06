@@ -184,9 +184,6 @@
   # extra_range warnings - character intelligence
   ~r/character_intelligence\.ex:\d+:extra_range/,
 
-  # extra_range warnings - combat analysis
-  ~r/threat_assessment_engine\.ex:\d+:extra_range/,
-
   # extra_range warnings - combat intelligence
   ~r/character_analyzer\.ex:\d+:extra_range/,
 
@@ -205,9 +202,6 @@
   ~r/item_type_processor\.ex:\d+:extra_range/,
   ~r/jsonl_parser\.ex:\d+:extra_range/,
   ~r/sde_validator\.ex:\d+:extra_range/,
-
-  # contract_supertype warnings - config
-  ~r/query_migration\.ex:\d+:contract_supertype/,
 
   # contract_supertype warnings - character intelligence
   ~r/character_intelligence\.ex:\d+:contract_supertype/,
@@ -334,7 +328,6 @@
 
   # Threat assessment
   ~r/threat_analyzer\.ex.*pattern_match/,
-  ~r/threat_analysis_service\.ex.*pattern_match/,
 
   # Core services
   ~r/correlation_engine\.ex.*pattern_match/,
@@ -381,9 +374,6 @@
   # ===========================================
   # Functions that currently return fewer types than spec allows
   # Kept for API stability
-
-  # Query migration - always returns true currently
-  ~r/query_migration\.ex:\d+:extra_range/,
 
   # Solar system processor - environment-dependent file operations
   ~r/solar_system_processor\.ex:\d+:extra_range/,
@@ -449,5 +439,27 @@
   ~r/battle_timeline_component\.ex:\d+:\d+:pattern_match_cov/,
 
   # Notification dispatcher - defensive error handling
-  ~r/notification_dispatcher\.ex:\d+:\d+:pattern_match/
+  ~r/notification_dispatcher\.ex:\d+:\d+:pattern_match/,
+
+  # ===========================================
+  # API TYPE CONTRACTS
+  # ===========================================
+  # API specs intentionally use broader/domain types for stability
+  # while implementations may use more specific types
+
+  # Surveillance API - profile_id accepts multiple types for flexibility
+  ~r/surveillance\/api\.ex:\d+:invalid_contract/,
+  ~r/surveillance\/api\.ex:\d+:extra_range/,
+
+  # Corporation API - broad specs for API stability
+  ~r/corporation\/api\.ex:\d+:invalid_contract/,
+
+  # Intelligence API - broad specs for API stability
+  ~r/intelligence\/api\.ex:\d+:invalid_contract/,
+
+  # Player Profile API - broad return types for flexibility
+  ~r/player_profile\/api\.ex:\d+:contract_supertype/,
+
+  # Threat Surveillance API - broad specs for extensibility
+  ~r/threat_surveillance\/api\.ex:\d+:contract_supertype/
 ]

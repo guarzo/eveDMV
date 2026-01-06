@@ -5,6 +5,19 @@ defmodule EveDmv.IntelligenceMigrationAdapter do
   This adapter provides backwards compatibility during the migration period,
   redirecting calls from the old IntelligenceEngine API to the new bounded
   context implementations.
+
+  ## TODO: Migration Cleanup
+
+  This adapter is temporary migration infrastructure. Once all callers have been
+  updated to use the bounded context APIs directly, this module should be removed.
+
+  **Current callers (Phase 8 audit):**
+  - `EveDmv.IntelligenceEngine` (lib/eve_dmv/intelligence_engine.ex)
+  - `EveDmv.IntelligenceEngine.Pipeline` (lib/eve_dmv/intelligence_engine/pipeline.ex)
+  - `EveDmv.PlayerProfile.StatsGenerator` (lib/eve_dmv/player_profile/stats_generator.ex)
+  - `EveDmv.Platform.Database.CacheWarmer` (lib/eve_dmv/platform/database/cache_warmer.ex)
+
+  **Target removal:** After all callers migrate to bounded context APIs
   """
 
   alias EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache

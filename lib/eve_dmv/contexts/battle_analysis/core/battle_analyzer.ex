@@ -21,6 +21,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
   import Ecto.Query
 
   alias EveDmv.Contexts.BattleAnalysis.Resources.Battle
+  alias EveDmv.Contexts.BattleAnalysis.Shared.BattleAnalysisUtils
   alias EveDmv.Contexts.Combat.Core.FleetCompositionAnalyzer
   alias EveDmv.Contexts.Combat.Core.ParticipantAnalyzer
   alias EveDmv.Contexts.Combat.Core.PerformanceCalculator
@@ -206,51 +207,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
   end
 
   defp count_unique_participants(killmails) do
-    killmails
-    |> Enum.flat_map(fn km ->
-      victim_id = get_in(km.victim, ["character_id"])
-
-      attacker_ids =
-        (km.attackers || [])
-        |> Enum.map(&get_in(&1, ["character_id"]))
-        |> Enum.reject(&is_nil/1)
-
-      [victim_id | attacker_ids] |> Enum.reject(&is_nil/1)
-    end)
-    |> Enum.uniq()
-    |> length()
+    BattleAnalysisUtils.count_unique_participants(killmails)
   end
 
   defp count_unique_corporations(killmails) do
-    killmails
-    |> Enum.flat_map(fn km ->
-      victim_corp = get_in(km.victim, ["corporation_id"])
-
-      attacker_corps =
-        (km.attackers || [])
-        |> Enum.map(&get_in(&1, ["corporation_id"]))
-        |> Enum.reject(&is_nil/1)
-
-      [victim_corp | attacker_corps] |> Enum.reject(&is_nil/1)
-    end)
-    |> Enum.uniq()
-    |> length()
+    BattleAnalysisUtils.count_unique_corporations(killmails)
   end
 
   defp count_unique_alliances(killmails) do
-    killmails
-    |> Enum.flat_map(fn km ->
-      victim_alliance = get_in(km.victim, ["alliance_id"])
-
-      attacker_alliances =
-        (km.attackers || [])
-        |> Enum.map(&get_in(&1, ["alliance_id"]))
-        |> Enum.reject(&is_nil/1)
-
-      [victim_alliance | attacker_alliances] |> Enum.reject(&is_nil/1)
-    end)
-    |> Enum.uniq()
-    |> length()
+    BattleAnalysisUtils.count_unique_alliances(killmails)
   end
 
   defp calculate_kill_rate(killmails) do
@@ -597,17 +562,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.BattleAnalyzer do
   end
 
   defp calculate_average_on_kill(killmails) do
-    # Calculate average number of attackers per kill
-    total_attackers =
-      Enum.reduce(killmails, 0, fn km, acc ->
-        acc + length(km.attackers || [])
-      end)
-
-    if killmails == [] do
-      0.0
-    else
-      Float.round(total_attackers / length(killmails), 1)
-    end
+    BattleAnalysisUtils.calculate_average_on_kill(killmails)
   end
 
   defp generate_headline(analysis) do

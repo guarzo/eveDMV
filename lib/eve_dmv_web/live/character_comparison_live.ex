@@ -15,6 +15,7 @@ defmodule EveDmvWeb.CharacterComparisonLive do
   # Load current user from session (require auth for this analytical feature)
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
+  @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     socket =
       socket
@@ -31,6 +32,7 @@ defmodule EveDmvWeb.CharacterComparisonLive do
     {:ok, socket}
   end
 
+  @impl Phoenix.LiveView
   def handle_event("change_comparison_mode", %{"mode" => mode}, socket) do
     mode_atom = String.to_existing_atom(mode)
 

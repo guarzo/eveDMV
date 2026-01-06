@@ -16,7 +16,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAnalysisService do
 
   import Ecto.Query
 
-  alias EveDmv.Contexts.CombatAnalysis.Domain.ThreatAssessmentEngine
+  alias EveDmv.Contexts.ThreatAssessment.Domain.ThreatAnalyzer, as: ThreatAssessmentEngine
   alias EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.CharacterStats

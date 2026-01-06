@@ -518,19 +518,22 @@ defmodule EveDmv.Contexts.BattleAnalysis do
   def get_battle_intelligence_summary(battle_id) do
     with {:ok, battle} <- get_battle_by_id(battle_id),
          {:ok, intelligence} <- analyze_battle_with_intelligence(battle) do
-      # Timeline reconstruction is not yet implemented, so we skip it
-      case reconstruct_battle_timeline(battle) do
-        {:error, _} ->
-          summary = generate_intelligence_summary(battle, intelligence, nil)
+      # Timeline reconstruction may succeed or fail
+      timeline =
+        case reconstruct_battle_timeline(battle) do
+          {:ok, t} -> t
+          {:error, _} -> nil
+        end
 
-          {:ok,
-           %{
-             battle: battle,
-             intelligence: intelligence,
-             timeline: nil,
-             summary: summary
-           }}
-      end
+      summary = generate_intelligence_summary(battle, intelligence, timeline)
+
+      {:ok,
+       %{
+         battle: battle,
+         intelligence: intelligence,
+         timeline: timeline,
+         summary: summary
+       }}
     else
       {:error, reason} -> {:error, reason}
     end

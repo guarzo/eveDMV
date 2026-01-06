@@ -150,19 +150,16 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainDataSync do
   # Private helper functions
 
   defp mark_all_departed(chain_topology_id) do
-    {:ok, inhabitants} =
-      SystemInhabitant
-      |> Ash.Query.filter(chain_topology_id == ^chain_topology_id and present == true)
-      |> Ash.read(domain: EveDmv.Api)
-
-    # Bulk update all inhabitants to mark as departed
     departure_time = DateTime.utc_now()
 
-    Enum.each(inhabitants, fn inhabitant ->
-      Ash.update(inhabitant, %{present: false, departure_time: departure_time},
-        domain: EveDmv.Api
-      )
-    end)
+    # Use bulk_update to avoid N+1 query pattern
+    SystemInhabitant
+    |> Ash.Query.filter(chain_topology_id == ^chain_topology_id and present == true)
+    |> Ash.bulk_update(:update, %{present: false, departure_time: departure_time},
+      domain: Api,
+      return_records?: false,
+      return_errors?: false
+    )
   end
 
   defp bulk_update_or_create_inhabitants(chain_topology_id, inhabitants_data) do
@@ -177,7 +174,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainDataSync do
         {inhabitant.character_id, inhabitant}
       end)
 
-    # Prepare bulk data
+    # Prepare bulk data - store records directly to avoid N+1 re-fetch
     {updates, creates} =
       Enum.reduce(inhabitants_data, {[], []}, fn inhabitant_data, {updates, creates} ->
         character_id = Map.get(inhabitant_data, "character_id")
@@ -200,11 +197,11 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainDataSync do
             # New inhabitant - add to creates
             {updates, [attrs | creates]}
 
-          existing ->
+          existing_record ->
             # Existing inhabitant - add to updates if changed
-            if existing.system_id != system_id or not existing.present do
-              update_attrs = Map.put(attrs, :id, existing.id)
-              {[update_attrs | updates], creates}
+            # Store the record itself to avoid N+1 Ash.get calls
+            if existing_record.system_id != system_id or not existing_record.present do
+              {[{existing_record, attrs} | updates], creates}
             else
               {updates, creates}
             end
@@ -222,19 +219,10 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainDataSync do
       )
     end
 
-    if updates != [] do
-      Enum.each(updates, fn update_attrs ->
-        case Ash.get(SystemInhabitant, update_attrs.id, domain: EveDmv.Api) do
-          {:ok, record} ->
-            update_data = Map.delete(update_attrs, :id)
-            Ash.update(record, update_data, domain: EveDmv.Api)
-
-          {:error, _} ->
-            # Record not found, skip
-            :ok
-        end
-      end)
-    end
+    # Update existing records - we already have them, no need to re-fetch
+    Enum.each(updates, fn {record, update_data} ->
+      Ash.update(record, update_data, domain: EveDmv.Api)
+    end)
 
     :ok
   end
@@ -251,7 +239,7 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainDataSync do
         {"#{connection.source_system_id}-#{connection.target_system_id}", connection}
       end)
 
-    # Prepare bulk data
+    # Prepare bulk data - store records directly to avoid N+1 re-fetch
     {updates, creates} =
       Enum.reduce(connections_data, {[], []}, fn connection_data, {updates, creates} ->
         source_id = Map.get(connection_data, "source_system_id")
@@ -273,10 +261,9 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainDataSync do
             # New connection - add to creates
             {updates, [attrs | creates]}
 
-          existing ->
-            # Existing connection - add to updates if changed
-            update_attrs = Map.put(attrs, :id, existing.id)
-            {[update_attrs | updates], creates}
+          existing_record ->
+            # Existing connection - store the record itself to avoid N+1 Ash.get calls
+            {[{existing_record, attrs} | updates], creates}
         end
       end)
 
@@ -291,19 +278,10 @@ defmodule EveDmv.Intelligence.ChainAnalysis.ChainDataSync do
       )
     end
 
-    if updates != [] do
-      Enum.each(updates, fn update_attrs ->
-        case Ash.get(ChainConnection, update_attrs.id, domain: EveDmv.Api) do
-          {:ok, record} ->
-            update_data = Map.delete(update_attrs, :id)
-            Ash.update(record, update_data, domain: EveDmv.Api)
-
-          {:error, _} ->
-            # Record not found, skip
-            :ok
-        end
-      end)
-    end
+    # Update existing records - we already have them, no need to re-fetch
+    Enum.each(updates, fn {record, update_data} ->
+      Ash.update(record, update_data, domain: EveDmv.Api)
+    end)
 
     :ok
   end

@@ -79,28 +79,28 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
     Logger.info("Analyzing battle #{battle_id}")
 
     # Fetch battle data from database
-    battle_data = fetch_battle_data(battle_id)
+    case fetch_battle_data(battle_id) do
+      nil ->
+        {:reply, {:error, :battle_not_found}, state}
 
-    if battle_data == nil do
-      {:reply, {:error, :battle_not_found}, state}
-    else
-      # Run comprehensive battle analysis using phase analyzers
-      analysis = perform_comprehensive_battle_analysis(battle_data, opts)
+      battle_data ->
+        # Run comprehensive battle analysis using phase analyzers
+        analysis = perform_comprehensive_battle_analysis(battle_data, opts)
 
-      # Cache the analysis results
-      updated_state = cache_analysis_result(state, battle_id, analysis)
+        # Cache the analysis results
+        updated_state = cache_analysis_result(state, battle_id, analysis)
 
-      # Broadcast analysis complete event
-      EventBus.publish(%BattleAnalysisComplete{
-        battle_id: battle_id,
-        battle_type: determine_battle_type(analysis),
-        participant_count: length(analysis.participants),
-        isk_destroyed: analysis.isk_destroyed,
-        analysis_results: analysis,
-        timestamp: DateTime.utc_now()
-      })
+        # Broadcast analysis complete event
+        EventBus.publish(%BattleAnalysisComplete{
+          battle_id: battle_id,
+          battle_type: determine_battle_type(analysis),
+          participant_count: length(analysis.participants),
+          isk_destroyed: analysis.isk_destroyed,
+          analysis_results: analysis,
+          timestamp: DateTime.utc_now()
+        })
 
-      {:reply, {:ok, analysis}, updated_state}
+        {:reply, {:ok, analysis}, updated_state}
     end
   rescue
     error ->

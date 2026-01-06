@@ -82,6 +82,16 @@ defmodule EveDmv.Types do
   @type ship_class ::
           :frigate | :destroyer | :cruiser | :battlecruiser | :battleship | :capital | :unknown
 
+  # Value types
+  @typedoc "ISK currency amount (non-negative integer)"
+  @type isk_amount :: non_neg_integer()
+
+  @typedoc "System security status (float between -1.0 and 1.0)"
+  @type security_status :: float()
+
+  @typedoc "Damage amount in hit points"
+  @type damage_amount :: non_neg_integer()
+
   # Common return types
   @typedoc "Success result wrapper"
   @type ok_result(t) :: {:ok, t}
@@ -91,6 +101,32 @@ defmodule EveDmv.Types do
 
   @typedoc "Standard result type"
   @type result(t) :: ok_result(t) | error_result()
+
+  @typedoc "Result with no success value (just :ok on success)"
+  @type void_result :: :ok | error_result()
+
+  @typedoc "Optional value that may be nil"
+  @type maybe(t) :: t | nil
+
+  @typedoc "Generic options keyword list"
+  @type opts :: keyword()
+
+  @typedoc "Pagination options"
+  @type pagination_opts :: %{
+          optional(:page) => pos_integer(),
+          optional(:page_size) => pos_integer(),
+          optional(:offset) => non_neg_integer(),
+          optional(:limit) => pos_integer()
+        }
+
+  @typedoc "Time range specification"
+  @type time_range ::
+          :last_hour
+          | :last_24h
+          | :last_7d
+          | :last_30d
+          | :last_90d
+          | {DateTime.t(), DateTime.t()}
 
   # Combat and threat statistics
   @typedoc "Basic combat statistics"
@@ -211,4 +247,94 @@ defmodule EveDmv.Types do
           analysis_period_days: pos_integer(),
           total_killmails: non_neg_integer()
         }
+
+  # Battle analysis types
+  @typedoc "Battle identifier (UUID string)"
+  @type battle_id :: String.t()
+
+  @typedoc "Ship identifier for performance tracking"
+  @type ship_id :: pos_integer()
+
+  # Fleet operations types
+  @typedoc "Fleet participant data"
+  @type participant :: %{
+          required(:character_id) => pos_integer(),
+          required(:ship_type_id) => pos_integer(),
+          optional(:role) => atom()
+        }
+
+  @typedoc "Fleet data for analysis"
+  @type fleet_data :: %{
+          required(:participants) => [participant()],
+          optional(:engagement_context) => atom(),
+          optional(:doctrine_target) => String.t()
+        }
+
+  @typedoc "Fleet engagement data including killmails"
+  @type engagement_data :: %{
+          required(:engagement_id) => String.t(),
+          required(:participants) => [participant()],
+          required(:killmails) => [map()]
+        }
+
+  @typedoc "Doctrine identifier (UUID string)"
+  @type doctrine_id :: String.t()
+
+  @typedoc "Fleet doctrine definition"
+  @type doctrine :: %{
+          required(:id) => doctrine_id(),
+          required(:name) => String.t(),
+          optional(:description) => String.t(),
+          optional(:ship_requirements) => map(),
+          optional(:role_requirements) => map(),
+          optional(:optional_ships) => [pos_integer()],
+          optional(:mass_limits) => map(),
+          optional(:is_active) => boolean()
+        }
+
+  # Surveillance types
+  @typedoc "User identifier"
+  @type user_id :: pos_integer()
+
+  @typedoc "Surveillance profile identifier (UUID string)"
+  @type profile_id :: String.t()
+
+  @typedoc "Surveillance profile data"
+  @type surveillance_profile :: %{
+          required(:id) => profile_id(),
+          required(:user_id) => user_id(),
+          required(:name) => String.t(),
+          optional(:criteria) => map(),
+          optional(:is_active) => boolean()
+        }
+
+  @typedoc "Surveillance match data"
+  @type surveillance_match :: %{
+          required(:profile_id) => profile_id(),
+          required(:matched_entity_id) => pos_integer(),
+          required(:matched_at) => DateTime.t(),
+          optional(:match_details) => map()
+        }
+
+  # Analysis result type alias for common patterns
+  @typedoc "Standard analysis result with map data"
+  @type analysis_result :: result(map())
+
+  @typedoc "Standard list result"
+  @type list_result(t) :: result([t])
+
+  # Cache and monitoring types
+  @typedoc "Cache statistics"
+  @type cache_stats :: %{
+          optional(:hit_count) => non_neg_integer(),
+          optional(:miss_count) => non_neg_integer(),
+          optional(:hit_rate) => float(),
+          optional(:size) => non_neg_integer()
+        }
+
+  @typedoc "Health check result"
+  @type health_check_result :: {:ok, map()} | {:error, term()}
+
+  @typedoc "Side in a fleet engagement"
+  @type fleet_side :: :attackers | :defenders | :all
 end

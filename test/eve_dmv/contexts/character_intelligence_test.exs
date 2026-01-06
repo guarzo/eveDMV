@@ -421,6 +421,9 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
 
   describe "get_character_intelligence_report/1" do
     setup do
+      # Use unique base for parallel test safety
+      unique_base = System.unique_integer([:positive]) * 1000
+
       # Create test character data
       character = %{
         character_id: 95_456_789,
@@ -436,9 +439,9 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
           Ash.create(
             KillmailRaw,
             %{
-              killmail_id: 105_000_000 + i,
+              killmail_id: 105_000_000 + unique_base + i,
               killmail_time: DateTime.add(recent_time, i, :day),
-              killmail_hash: "test_hash_10500000#{i}",
+              killmail_hash: "test_hash_#{unique_base}_#{i}",
               solar_system_id: 30_000_142,
               victim_character_id: 96_100_000 + i,
               victim_ship_type_id: 587,
@@ -476,6 +479,9 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
 
   describe "ship intelligence integration" do
     setup do
+      # Use unique base for parallel test safety
+      unique_base = System.unique_integer([:positive]) * 1000
+
       # Create test character data
       character = %{
         character_id: 95_567_890,
@@ -492,9 +498,9 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
           Ash.create(
             KillmailRaw,
             %{
-              killmail_id: 105_000_000 + i,
+              killmail_id: 106_000_000 + unique_base + i,
               killmail_time: DateTime.utc_now() |> DateTime.add(-7, :day),
-              killmail_hash: "test_hash_#{105_000_000 + i}",
+              killmail_hash: "test_hash_ship_#{unique_base}_#{i}",
               solar_system_id: 30_000_142,
               victim_character_id: 95_600_000 + i,
               victim_ship_type_id: 587,

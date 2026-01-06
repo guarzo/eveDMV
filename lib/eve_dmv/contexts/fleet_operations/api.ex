@@ -9,6 +9,7 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
 
   use EveDmv.Core.Errors.ErrorHandler
   alias EveDmv.Core.Utils.ValidationUtils
+  alias EveDmv.Types
 
   alias EveDmv.Contexts.FleetOperations.Domain.DoctrineManager
   alias EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator
@@ -31,6 +32,7 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
   - {:ok, analysis} with composition breakdown, effectiveness score, and recommendations
   - {:error, reason} on failure
   """
+  @spec analyze_fleet_composition(map()) :: Types.analysis_result()
   def analyze_fleet_composition(fleet_data) do
     with {:ok, validated_data} <- validate_fleet_data(fleet_data),
          {:ok, analysis} <- FleetAnalyzer.analyze_composition(validated_data) do
@@ -51,6 +53,7 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
 
   Provides detailed analysis of fleet performance, losses, and effectiveness.
   """
+  @spec analyze_fleet_engagement(map()) :: Types.analysis_result()
   def analyze_fleet_engagement(engagement_data) do
     with {:ok, validated_data} <- validate_engagement_data(engagement_data),
          {:ok, analysis} <- FleetAnalyzer.analyze_engagement(validated_data) do
@@ -64,17 +67,9 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
   end
 
   @doc """
-  Get comprehensive fleet statistics over a time range.
-
-  Currently returns minimal statistics as fleet engagement tracking is not fully implemented.
-  """
-  def get_fleet_statistics(_fleet_id, _time_range \\ :last_30d) do
-    {:ok, %{total_engagements: 0, avg_effectiveness: 0.0}}
-  end
-
-  @doc """
   Check doctrine compliance for a fleet composition.
   """
+  @spec get_doctrine_compliance(map(), String.t()) :: Types.analysis_result()
   def get_doctrine_compliance(fleet_data, doctrine_name) do
     with {:ok, validated_data} <- validate_fleet_data(fleet_data),
          {:ok, doctrine} <- DoctrineManager.get_doctrine_by_name(doctrine_name),
@@ -88,6 +83,7 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
 
   Includes damage efficiency, survival rates, objective completion, and coordination scores.
   """
+  @spec get_fleet_effectiveness_metrics(String.t()) :: Types.analysis_result()
   def get_fleet_effectiveness_metrics(fleet_id) do
     EffectivenessCalculator.calculate_fleet_effectiveness(fleet_id)
   end
@@ -106,6 +102,7 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
     - optional_ships: Ships that can fill gaps
     - mass_limits: Wormhole mass constraints
   """
+  @spec create_doctrine(map()) :: Types.result(map())
   def create_doctrine(doctrine_data) do
     with {:ok, validated_data} <- validate_doctrine_data(doctrine_data),
          {:ok, doctrine} <- DoctrineManager.create_doctrine(validated_data) do
@@ -121,6 +118,7 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
   @doc """
   Update an existing fleet doctrine.
   """
+  @spec update_doctrine(Types.doctrine_id(), map()) :: Types.result(map())
   def update_doctrine(doctrine_id, updates) do
     with {:ok, validated_updates} <- validate_doctrine_updates(updates),
          {:ok, doctrine} <- DoctrineManager.update_doctrine(doctrine_id, validated_updates) do
@@ -136,6 +134,7 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
   @doc """
   Get a doctrine by ID.
   """
+  @spec get_doctrine(Types.doctrine_id()) :: Types.result(map())
   def get_doctrine(doctrine_id) do
     DoctrineManager.get_doctrine(doctrine_id)
   end
@@ -149,6 +148,7 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
   - active_only: Only return active doctrines
   - mass_category: Filter by wormhole mass category
   """
+  @spec list_doctrines(Types.opts()) :: Types.result([map()])
   def list_doctrines(opts \\ []) do
     DoctrineManager.list_doctrines(opts)
   end
@@ -156,6 +156,7 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
   @doc """
   Validate a fleet composition against a specific doctrine.
   """
+  @spec validate_fleet_against_doctrine(map(), Types.doctrine_id()) :: Types.analysis_result()
   def validate_fleet_against_doctrine(fleet_data, doctrine_id) do
     with {:ok, validated_fleet} <- validate_fleet_data(fleet_data),
          {:ok, doctrine} <- DoctrineManager.get_doctrine(doctrine_id),
@@ -168,33 +169,10 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
   # Fleet Operations Intelligence API
 
   @doc """
-  Get fleet engagements with filtering and pagination.
-
-  Currently returns empty list as fleet engagement tracking is not fully implemented.
-
-  ## Options
-  - corporation_id: Filter by corporation
-  - since: Return engagements since this timestamp
-  - engagement_type: Filter by engagement type
-  - min_participants: Minimum fleet size
-  - limit: Maximum results to return
-  """
-  def get_fleet_engagements(_opts \\ []) do
-    {:ok, []}
-  end
-
-  @doc """
-  Get detailed information about a specific fleet engagement.
-
-  Currently returns empty data as fleet engagement tracking is not fully implemented.
-  """
-  def get_engagement_details(_engagement_id) do
-    {:ok, %{}}
-  end
-
-  @doc """
   Analyze fleet performance trends for a corporation.
   """
+  @spec get_fleet_performance_trends(Types.corporation_id(), Types.time_range()) ::
+          Types.analysis_result()
   def get_fleet_performance_trends(corporation_id, time_range \\ :last_90d) do
     EffectivenessCalculator.calculate_performance_trends(corporation_id, time_range)
   end
@@ -204,6 +182,7 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
 
   Provides total mass, wormhole class compatibility, and mass optimization suggestions.
   """
+  @spec get_mass_analysis(map()) :: Types.analysis_result()
   def get_mass_analysis(fleet_data) do
     with {:ok, validated_data} <- validate_fleet_data(fleet_data),
          {:ok, mass_analysis} <- FleetAnalyzer.calculate_mass_analysis(validated_data) do
@@ -218,6 +197,7 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
 
   Analyzes current composition and suggests optimizations for effectiveness.
   """
+  @spec recommend_fleet_improvements(map()) :: Types.analysis_result()
   def recommend_fleet_improvements(fleet_data) do
     with {:ok, validated_data} <- validate_fleet_data(fleet_data),
          {:ok, recommendations} <-
@@ -229,6 +209,8 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
   @doc """
   Calculate optimal fleet composition for a doctrine and pilot count.
   """
+  @spec get_optimal_fleet_composition(Types.doctrine_id(), pos_integer()) ::
+          Types.analysis_result()
   def get_optimal_fleet_composition(doctrine_id, pilot_count) do
     with {:ok, doctrine} <- DoctrineManager.get_doctrine(doctrine_id),
          {:ok, composition} <- FleetAnalyzer.calculate_optimal_composition(doctrine, pilot_count) do
@@ -239,6 +221,7 @@ defmodule EveDmv.Contexts.FleetOperations.Api do
   @doc """
   Analyze fleet losses and identify improvement areas.
   """
+  @spec analyze_fleet_losses(map()) :: Types.analysis_result()
   def analyze_fleet_losses(fleet_data) do
     with {:ok, validated_data} <- validate_fleet_data(fleet_data),
          {:ok, loss_analysis} <- EffectivenessCalculator.analyze_fleet_losses(validated_data) do

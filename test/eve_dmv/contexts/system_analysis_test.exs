@@ -519,6 +519,9 @@ defmodule EveDmv.Contexts.SystemAnalysisTest do
 
   describe "identify_hot_zones/1" do
     setup do
+      # Use unique base for parallel test safety
+      unique_base = System.unique_integer([:positive]) * 10_000
+
       # Create systems with varying activity levels
       hot_zone = 30_000_142
       warm_zone = 30_000_143
@@ -532,7 +535,7 @@ defmodule EveDmv.Contexts.SystemAnalysisTest do
           Ash.create(
             KillmailRaw,
             Map.merge(killmail_attrs, %{
-              killmail_id: 960_000_000 + i,
+              killmail_id: 960_000_000 + unique_base + i,
               killmail_time: DateTime.utc_now() |> DateTime.add(-rem(i, 24), :hour),
               solar_system_id: hot_zone,
               victim_character_id: 90_000_000 + i,
@@ -562,7 +565,7 @@ defmodule EveDmv.Contexts.SystemAnalysisTest do
           Ash.create(
             KillmailRaw,
             Map.merge(killmail_attrs, %{
-              killmail_id: 961_000_000 + i,
+              killmail_id: 961_000_000 + unique_base + i,
               killmail_time: DateTime.utc_now() |> DateTime.add(-rem(i * 2, 48), :hour),
               solar_system_id: warm_zone,
               victim_character_id: 90_200_000 + i,
@@ -592,7 +595,7 @@ defmodule EveDmv.Contexts.SystemAnalysisTest do
           Ash.create(
             KillmailRaw,
             Map.merge(killmail_attrs, %{
-              killmail_id: 962_000_000 + i,
+              killmail_id: 962_000_000 + unique_base + i,
               killmail_time: DateTime.utc_now() |> DateTime.add(-i * 8, :hour),
               solar_system_id: cold_zone,
               victim_character_id: 90_400_000 + i,

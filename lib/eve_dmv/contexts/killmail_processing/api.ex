@@ -7,10 +7,11 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
   """
 
   import Ash.Expr
-  import EveDmv.Core.Validation.Validators
 
   alias EveDmv.Contexts.KillmailProcessing.Domain
-  alias EveDmv.Contexts.KillmailProcessing.Resources.HistoricalFetchStatus
+  alias EveDmv.Contexts.KillmailProcessing.Domain.HistoricalFetchManager
+  alias EveDmv.Contexts.KillmailProcessing.Domain.KillmailPresenter
+  alias EveDmv.Contexts.KillmailProcessing.Domain.KillmailValidators
   alias EveDmv.Result
   alias EveDmv.SharedKernel.ValueObjects.CharacterId
   alias EveDmv.SharedKernel.ValueObjects.SolarSystemId
@@ -39,7 +40,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
   """
   @spec ingest_killmail(map()) :: Result.t(map())
   def ingest_killmail(raw_killmail) do
-    with :ok <- validate_raw_killmail(raw_killmail),
+    with :ok <- KillmailValidators.validate_raw_killmail(raw_killmail),
          {:ok, result} <- Domain.IngestionService.ingest(raw_killmail) do
       {:ok, result}
     end
@@ -64,7 +65,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
   """
   @spec get_recent_killmails(killmail_options()) :: Result.t([map()])
   def get_recent_killmails(opts \\ []) do
-    with :ok <- validate_killmail_options(opts) do
+    with :ok <- KillmailValidators.validate_killmail_options(opts) do
       limit = Keyword.get(opts, :limit, 100)
 
       EveDmv.Killmails.KillmailEnriched
@@ -125,7 +126,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
   @spec get_killmails_by_system(integer(), killmail_options()) :: Result.t([map()])
   def get_killmails_by_system(system_id, opts \\ []) do
     with {:ok, _system_id_vo} <- SolarSystemId.new(system_id),
-         :ok <- validate_killmail_options(opts) do
+         :ok <- KillmailValidators.validate_killmail_options(opts) do
       limit = Keyword.get(opts, :limit, 100)
 
       EveDmv.Killmails.KillmailEnriched
@@ -147,7 +148,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
   @spec get_killmails_by_character(integer(), killmail_options()) :: Result.t([map()])
   def get_killmails_by_character(character_id, opts \\ []) do
     with {:ok, _character_id_vo} <- CharacterId.new(character_id),
-         :ok <- validate_killmail_options(opts) do
+         :ok <- KillmailValidators.validate_killmail_options(opts) do
       limit = Keyword.get(opts, :limit, 100)
 
       EveDmv.Killmails.KillmailEnriched
@@ -172,7 +173,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
     # 1B ISK default
     opts_with_defaults = Keyword.put_new(opts, :min_value, 1_000_000_000)
 
-    with :ok <- validate_killmail_options(opts_with_defaults) do
+    with :ok <- KillmailValidators.validate_killmail_options(opts_with_defaults) do
       limit = Keyword.get(opts_with_defaults, :limit, 100)
       min_value = Keyword.get(opts_with_defaults, :min_value, 1_000_000_000)
 
@@ -202,7 +203,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
   """
   @spec fetch_historical_killmails([integer()], keyword()) :: Result.t(map())
   def fetch_historical_killmails(character_ids, opts \\ []) do
-    with :ok <- validate_character_ids(character_ids) do
+    with :ok <- KillmailValidators.validate_character_ids(character_ids) do
       # Start historical fetching task using the domain service
       case Domain.HistoricalService.start_fetch_task(character_ids, opts) do
         {:ok, task_info} ->
@@ -257,12 +258,12 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
   """
   @spec get_display_data(killmail_options()) :: Result.t(map())
   def get_display_data(opts \\ []) do
-    with :ok <- validate_killmail_options(opts) do
+    with :ok <- KillmailValidators.validate_killmail_options(opts) do
       # Get real killmail display data from enriched killmails
       case get_recent_killmails(opts) do
         {:ok, killmails} ->
           display_data = %{
-            killmails: Enum.map(killmails, &format_for_display/1),
+            killmails: Enum.map(killmails, &KillmailPresenter.format_for_display/1),
             total_count: length(killmails),
             last_updated: DateTime.utc_now()
           }
@@ -272,94 +273,6 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
         {:error, reason} ->
           {:error, reason}
       end
-    end
-  end
-
-  # Private validation functions
-  #
-  # Uses centralized validators from EveDmv.Core.Validation.Validators
-
-  defp validate_raw_killmail(killmail) do
-    case validate_map(:killmail, killmail) do
-      :ok ->
-        required_fields = [:killmail_id, :killmail_time, :victim, :attackers]
-
-        case validate_required_keys(:killmail, killmail, required_fields) do
-          :ok -> :ok
-          {:error, {:killmail, {:missing_keys, [field | _]}}} -> {:error, {:missing_field, field}}
-        end
-
-      {:error, _} ->
-        {:error, :invalid_killmail_format}
-    end
-  end
-
-  defp validate_killmail_options(opts) when is_list(opts) do
-    with :ok <- do_validate_limit(Keyword.get(opts, :limit)),
-         :ok <- do_validate_offset(Keyword.get(opts, :offset)),
-         :ok <-
-           do_validate_value_range(Keyword.get(opts, :min_value), Keyword.get(opts, :max_value)),
-         :ok <- do_validate_time_range(Keyword.get(opts, :time_range)) do
-      :ok
-    end
-  end
-
-  defp validate_killmail_options(_), do: {:error, :invalid_options_format}
-
-  defp do_validate_limit(nil), do: :ok
-
-  defp do_validate_limit(limit) do
-    case validate_in_range(:limit, limit, min: 1, max: 500) do
-      :ok -> :ok
-      {:error, _} -> {:error, :invalid_limit}
-    end
-  end
-
-  defp do_validate_offset(nil), do: :ok
-
-  defp do_validate_offset(offset) do
-    case validate_non_negative_integer(:offset, offset) do
-      :ok -> :ok
-      {:error, _} -> {:error, :invalid_offset}
-    end
-  end
-
-  defp do_validate_value_range(nil, nil), do: :ok
-
-  defp do_validate_value_range(min, nil) do
-    case validate_non_negative_integer(:min_value, min) do
-      :ok -> :ok
-      {:error, _} -> {:error, :invalid_value_range}
-    end
-  end
-
-  defp do_validate_value_range(nil, max) do
-    case validate_non_negative_integer(:max_value, max) do
-      :ok -> :ok
-      {:error, _} -> {:error, :invalid_value_range}
-    end
-  end
-
-  defp do_validate_value_range(min, max) do
-    with :ok <- validate_non_negative_integer(:min_value, min),
-         :ok <- validate_non_negative_integer(:max_value, max) do
-      if min <= max, do: :ok, else: {:error, :invalid_value_range}
-    else
-      {:error, _} -> {:error, :invalid_value_range}
-    end
-  end
-
-  defp do_validate_time_range(nil), do: :ok
-  defp do_validate_time_range(%TimeRange{}), do: :ok
-  defp do_validate_time_range(_), do: {:error, :invalid_time_range}
-
-  defp validate_character_ids(character_ids) do
-    case validate_integer_list(:character_ids, character_ids, min: 1) do
-      :ok -> :ok
-      {:error, {:character_ids, :invalid_type}} -> {:error, :invalid_character_ids_format}
-      {:error, {:character_ids, :required}} -> {:error, :invalid_character_ids_format}
-      {:error, {:character_ids, :too_few_items}} -> {:error, :invalid_character_ids}
-      {:error, {:character_ids, :invalid_items}} -> {:error, :invalid_character_ids}
     end
   end
 
@@ -456,14 +369,14 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
   def complete_phase1_and_queue_phase2(entity_type, entity_id)
       when entity_type in [:character, :corporation, :system, :alliance] and is_integer(entity_id) do
     # Get or create the fetch status record
-    case get_or_create_fetch_status(entity_type, entity_id) do
+    case HistoricalFetchManager.get_or_create_fetch_status(entity_type, entity_id) do
       {:ok, status} ->
         # Mark Phase 1 complete
         case Ash.update(status, %{}, action: :mark_phase1_complete, domain: EveDmv.Api) do
           {:ok, updated} ->
             # Queue for Phase 2 processing via the worker
             Domain.HistoricalFetchWorker.queue_fetch(entity_type, entity_id)
-            {:ok, status_to_map(updated)}
+            {:ok, HistoricalFetchManager.status_to_map(updated)}
 
           {:error, reason} ->
             {:error, reason}
@@ -482,68 +395,5 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
   @spec historical_fetch_busy?() :: boolean()
   def historical_fetch_busy? do
     Domain.HistoricalFetchWorker.busy?()
-  end
-
-  # Private helpers for historical fetch
-
-  defp get_or_create_fetch_status(entity_type, entity_id) do
-    case HistoricalFetchStatus.get_by_entity(entity_type, entity_id) do
-      {:ok, [status]} ->
-        {:ok, status}
-
-      {:ok, []} ->
-        # Create new status
-        Ash.create(
-          HistoricalFetchStatus,
-          %{entity_type: entity_type, entity_id: entity_id},
-          action: :create,
-          domain: EveDmv.Api
-        )
-
-      {:error, reason} ->
-        {:error, reason}
-    end
-  end
-
-  defp status_to_map(status) do
-    %{
-      id: status.id,
-      entity_type: status.entity_type,
-      entity_id: status.entity_id,
-      status: status.status,
-      phase1_completed_at: status.phase1_completed_at,
-      phase2_started_at: status.phase2_started_at,
-      phase2_completed_at: status.phase2_completed_at,
-      oldest_killmail_date: status.oldest_killmail_date,
-      target_date: status.target_date,
-      killmails_fetched: status.killmails_fetched,
-      current_page: status.current_page,
-      last_error: status.last_error,
-      retry_count: status.retry_count
-    }
-  end
-
-  # Helper functions
-
-  defp format_for_display(killmail) do
-    %{
-      id: killmail.killmail_id,
-      killmail_time: killmail.killmail_time,
-      solar_system_id: killmail.solar_system_id,
-      victim: %{
-        character_id: killmail.victim_character_id,
-        corporation_id: killmail.victim_corporation_id,
-        alliance_id: killmail.victim_alliance_id,
-        ship_type_id: killmail.victim_ship_type_id
-      },
-      total_value: Map.get(killmail, :total_value, 0),
-      participant_count: Map.get(killmail, :participant_count, 0),
-      location: %{
-        solar_system_id: killmail.solar_system_id,
-        # Add region/constellation if available
-        region_id: Map.get(killmail, :region_id),
-        constellation_id: Map.get(killmail, :constellation_id)
-      }
-    }
   end
 end

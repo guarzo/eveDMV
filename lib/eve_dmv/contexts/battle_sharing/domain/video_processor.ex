@@ -107,7 +107,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoProcessor do
              }}
 
           {:error, reason} ->
-            {:error, "Invalid video ID: #{reason}"}
+            {:error, {:invalid_video_id, reason}}
         end
 
       {:error, reason} ->
@@ -129,7 +129,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoProcessor do
 
     case platform do
       {platform_name, _config} -> {:ok, platform_name}
-      nil -> {:error, "Unsupported video platform"}
+      nil -> {:error, :unsupported_video_platform}
     end
   end
 
@@ -141,11 +141,11 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoProcessor do
       %{regex: regex} ->
         case Regex.run(regex, url) do
           [_, video_id | _] -> {:ok, video_id}
-          _ -> {:error, "Could not extract video ID"}
+          _ -> {:error, :could_not_extract_video_id}
         end
 
       nil ->
-        {:error, "Unsupported platform: #{platform}"}
+        {:error, {:unsupported_platform, platform}}
     end
   end
 

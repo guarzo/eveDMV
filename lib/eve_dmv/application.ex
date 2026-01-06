@@ -77,7 +77,7 @@ defmodule EveDmv.Application do
       # Start the simple memory monitor
       EveDmv.MemoryMonitor,
       # Start the corporation analyzer service
-      EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer,
+      EveDmv.Contexts.Corporation.Core.CorporationAnalyzer,
       # Start the battle analysis service for combat intelligence
       EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService,
       # Start the streaming battle analyzer for large dataset processing
@@ -94,8 +94,6 @@ defmodule EveDmv.Application do
       EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient,
       # Start the unified threat surveillance context
       maybe_start_threat_surveillance_context(),
-      # Start the unified combat analysis context
-      maybe_start_combat_analysis_context(),
       # Conditionally start database-dependent processes
       maybe_start_database_processes(),
       # Start the Wanderer API client for chain intelligence
@@ -243,18 +241,6 @@ defmodule EveDmv.Application do
     else
       %{
         id: EveDmv.Contexts.ThreatSurveillance,
-        start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}
-      }
-    end
-  end
-
-  # Conditionally start unified combat analysis context
-  defp maybe_start_combat_analysis_context do
-    if Application.get_env(:eve_dmv, :environment, :prod) != :test do
-      EveDmv.Contexts.CombatAnalysis
-    else
-      %{
-        id: EveDmv.Contexts.CombatAnalysis,
         start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}
       }
     end

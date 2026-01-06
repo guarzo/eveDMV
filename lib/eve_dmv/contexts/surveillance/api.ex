@@ -17,6 +17,18 @@ defmodule EveDmv.Contexts.Surveillance.Api do
 
   require Logger
 
+  # Type definitions
+  @type profile_id :: String.t()
+  @type match_id :: String.t()
+  @type user_id :: pos_integer()
+  @type profile_data :: map()
+  @type profile :: map()
+  @type match :: map()
+  @type notification_config :: map()
+  @type time_range :: :last_24h | :last_7d | :last_30d | {DateTime.t(), DateTime.t()}
+  @type opts :: keyword()
+  @type result(t) :: {:ok, t} | {:error, term()}
+
   # Profile Management API
 
   @doc """
@@ -33,6 +45,7 @@ defmodule EveDmv.Contexts.Surveillance.Api do
   - {:ok, profile} on success
   - {:error, reason} on failure
   """
+  @spec create_profile(profile_data()) :: result(profile())
   def create_profile(profile_data) do
     with {:ok, validated_data} <- validate_profile_data(profile_data),
          {:ok, profile} <- ProfileManager.create_profile(validated_data) do
@@ -48,6 +61,7 @@ defmodule EveDmv.Contexts.Surveillance.Api do
   @doc """
   Update an existing surveillance profile.
   """
+  @spec update_profile(profile_id(), map()) :: result(profile())
   def update_profile(profile_id, updates) do
     with {:ok, validated_updates} <- validate_profile_updates(updates),
          {:ok, profile} <- ProfileManager.update_profile(profile_id, validated_updates) do
@@ -63,6 +77,7 @@ defmodule EveDmv.Contexts.Surveillance.Api do
   @doc """
   Delete a surveillance profile.
   """
+  @spec delete_profile(profile_id()) :: :ok | {:error, term()}
   def delete_profile(profile_id) do
     case ProfileManager.delete_profile(profile_id) do
       :ok ->
@@ -82,6 +97,7 @@ defmodule EveDmv.Contexts.Surveillance.Api do
   @doc """
   Get a surveillance profile by ID.
   """
+  @spec get_profile(profile_id()) :: result(profile())
   def get_profile(profile_id) do
     ProfileManager.get_profile(profile_id)
   end
@@ -95,6 +111,7 @@ defmodule EveDmv.Contexts.Surveillance.Api do
   - limit: Maximum number of profiles to return
   - offset: Pagination offset
   """
+  @spec list_profiles(opts()) :: result([profile()])
   def list_profiles(opts \\ []) do
     ProfileManager.list_profiles(opts)
   end
@@ -102,6 +119,7 @@ defmodule EveDmv.Contexts.Surveillance.Api do
   @doc """
   Enable a surveillance profile.
   """
+  @spec enable_profile(profile_id()) :: result(profile())
   def enable_profile(profile_id) do
     case ProfileManager.enable_profile(profile_id) do
       {:ok, profile} ->
@@ -117,6 +135,7 @@ defmodule EveDmv.Contexts.Surveillance.Api do
   @doc """
   Disable a surveillance profile.
   """
+  @spec disable_profile(profile_id()) :: result(profile())
   def disable_profile(profile_id) do
     case ProfileManager.disable_profile(profile_id) do
       {:ok, profile} ->
@@ -139,6 +158,7 @@ defmodule EveDmv.Contexts.Surveillance.Api do
   - since: Return matches since this timestamp
   - profile_id: Filter by specific profile
   """
+  @spec get_recent_matches(opts()) :: result([match()])
   def get_recent_matches(opts \\ []) do
     MatchingEngine.get_recent_matches(opts)
   end
@@ -146,6 +166,7 @@ defmodule EveDmv.Contexts.Surveillance.Api do
   @doc """
   Get matches for a specific profile.
   """
+  @spec get_matches_for_profile(profile_id(), opts()) :: result([match()])
   def get_matches_for_profile(profile_id, opts \\ []) do
     MatchingEngine.get_matches_for_profile(profile_id, opts)
   end
@@ -153,6 +174,7 @@ defmodule EveDmv.Contexts.Surveillance.Api do
   @doc """
   Get detailed information about a specific match.
   """
+  @spec get_match_details(match_id()) :: result(match())
   def get_match_details(match_id) do
     MatchingEngine.get_match_details(match_id)
   end
@@ -171,6 +193,7 @@ defmodule EveDmv.Contexts.Surveillance.Api do
   - Top matching criteria
   - Geographic distribution
   """
+  @spec get_match_statistics(profile_id(), time_range()) :: result(map())
   def get_match_statistics(profile_id, time_range \\ :last_30d) do
     MatchingEngine.get_match_statistics(profile_id, time_range)
   end
@@ -182,6 +205,7 @@ defmodule EveDmv.Contexts.Surveillance.Api do
 
   This allows users to validate their profile criteria before activation.
   """
+  @spec test_profile_criteria(profile_id(), map()) :: result(map())
   def test_profile_criteria(profile_id, test_data) do
     with {:ok, profile} <- ProfileManager.get_profile(profile_id),
          {:ok, validated_test_data} <- validate_test_data(test_data) do
@@ -194,6 +218,7 @@ defmodule EveDmv.Contexts.Surveillance.Api do
 
   Checks that criteria are properly formatted and logically consistent.
   """
+  @spec validate_profile_criteria(map()) :: :ok | {:error, term()}
   def validate_profile_criteria(criteria) do
     MatchingEngine.validate_criteria(criteria)
   end
@@ -209,6 +234,7 @@ defmodule EveDmv.Contexts.Surveillance.Api do
   - in_app: In-app notification preferences
   - frequency: Notification frequency limits
   """
+  @spec configure_notifications(profile_id(), notification_config()) :: result(map())
   def configure_notifications(profile_id, notification_config) do
     with {:ok, validated_config} <- validate_notification_config(notification_config),
          {:ok, config} <-
@@ -228,6 +254,7 @@ defmodule EveDmv.Contexts.Surveillance.Api do
   @doc """
   Get notification history for a profile.
   """
+  @spec get_notification_history(profile_id(), opts()) :: result([map()])
   def get_notification_history(profile_id, opts \\ []) do
     NotificationService.get_notification_history(profile_id, opts)
   end
@@ -237,6 +264,7 @@ defmodule EveDmv.Contexts.Surveillance.Api do
 
   Sends a test notification to verify delivery configuration.
   """
+  @spec test_notification_delivery(profile_id()) :: result(map())
   def test_notification_delivery(profile_id) do
     case NotificationService.test_notification_delivery(profile_id) do
       {:ok, result} ->

@@ -23,6 +23,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Services.BatchLoader do
   require Ash.Query
   require Logger
 
+  @typedoc "Basic character kill/death stats"
+  @type character_stats :: %{kills: non_neg_integer(), deaths: non_neg_integer()}
+
   @doc """
   Batch load basic stats for multiple characters.
 
@@ -58,7 +61,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Services.BatchLoader do
 
   Returns %{kills: n, deaths: n} for the last 90 days.
   """
-  @spec load_single_character_stats(integer() | nil) :: map()
+  @spec load_single_character_stats(integer() | nil) :: character_stats()
   def load_single_character_stats(nil), do: %{kills: 0, deaths: 0}
 
   def load_single_character_stats(char_id) when is_integer(char_id) do

@@ -7,6 +7,19 @@ ExUnit.start(
 
 require Logger
 
+# Ensure support modules are loaded before use
+# Use Code.ensure_loaded! to load from compiled beam files if available,
+# falling back to require_file if compilation hasn't happened yet
+try do
+  Code.ensure_loaded!(EveDmv.Test.PartitionHelper)
+  Code.ensure_loaded!(EveDmv.Test.PartitionHelpers)
+rescue
+  ArgumentError ->
+    # Modules not compiled yet, load from source
+    Code.require_file("support/partition_helper.ex", __DIR__)
+    Code.require_file("support/partition_helpers.ex", __DIR__)
+end
+
 # Helper function for waiting on repo readiness and connection management
 defmodule TestHelper do
   @moduledoc false

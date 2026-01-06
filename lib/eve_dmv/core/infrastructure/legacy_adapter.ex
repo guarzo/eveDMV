@@ -5,6 +5,17 @@ defmodule EveDmv.Intelligence.LegacyAdapter do
   This module provides backward compatibility by wrapping the new Intelligence Engine
   plugin system with the old analyzer interfaces. This allows existing code to continue
   working while we migrate to the new system.
+
+  ## TODO: Migration Cleanup
+
+  This adapter is temporary migration infrastructure. Once all callers have been
+  updated to use the bounded context APIs directly, this module should be removed.
+
+  **Current callers (Phase 8 audit):**
+  - `EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.CharacterAnalyzer`
+    (lib/eve_dmv/contexts/character_intelligence/domain/analyzers/character_analyzer.ex)
+
+  **Target removal:** After CharacterAnalyzer is updated to use bounded context APIs directly
   """
 
   alias EveDmv.IntelligenceEngine

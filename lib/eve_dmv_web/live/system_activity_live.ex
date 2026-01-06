@@ -19,6 +19,7 @@ defmodule EveDmvWeb.SystemActivityLive do
   # Load current user from session (require auth for this analytical feature)
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
+  @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     if connected?(socket) do
       Phoenix.PubSub.subscribe(EveDmv.PubSub, @topic)
@@ -43,6 +44,7 @@ defmodule EveDmvWeb.SystemActivityLive do
     {:ok, socket}
   end
 
+  @impl Phoenix.LiveView
   def handle_event("change_timeframe", %{"timeframe" => timeframe}, socket) do
     timeframe_atom = String.to_existing_atom(timeframe)
 
@@ -125,6 +127,7 @@ defmodule EveDmvWeb.SystemActivityLive do
     end
   end
 
+  @impl Phoenix.LiveView
   def handle_info(%Phoenix.Socket.Broadcast{topic: "system_activity", event: "update"}, socket) do
     # Refresh data when new killmails arrive
     socket = load_data_for_current_view(socket)

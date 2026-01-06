@@ -33,7 +33,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Generators.
           "Failed to compare threats for #{length(character_ids)} characters: #{inspect(error)}"
         )
 
-        {:error, "Failed to compare threats: #{inspect(error)}"}
+        {:error, {:threat_comparison_failed, error}}
     end
   end
 
@@ -55,14 +55,14 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Generators.
       |> Enum.map(&elem(&1, 1))
 
     if Enum.empty?(threat_assessments) do
-      {:error, "No valid threat assessments could be generated"}
+      {:error, :no_valid_threat_assessments}
     else
       {:ok, threat_assessments}
     end
   rescue
     error ->
       Logger.error("Error during threat assessment collection: #{inspect(error)}")
-      {:error, "Assessment collection failed"}
+      {:error, :assessment_collection_failed}
   end
 
   # Generate comprehensive comparison analysis
@@ -84,7 +84,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Generators.
   rescue
     error ->
       Logger.error("Error generating comparison analysis: #{inspect(error)}")
-      {:error, "Analysis generation failed"}
+      {:error, :analysis_generation_failed}
   end
 
   # Analyze distribution of threat levels

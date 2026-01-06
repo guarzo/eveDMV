@@ -28,12 +28,20 @@ defmodule EveDmv.Surveillance.Profile do
     end
   end
 
+  # Identity constraints
+  identities do
+    identity :unique_user_profile, [:user_id, :name] do
+      description("Each user can only have one profile with the same name")
+    end
+  end
+
   # Resource configuration
   code_interface do
     domain(EveDmv.Api.SurveillanceApi)
     define(:read, action: :read)
     define(:create, action: :create)
     define(:update, action: :update)
+    define(:update_profile, action: :update_profile)
     define(:destroy, action: :destroy)
     define(:active_profiles, action: :active_profiles)
     define(:user_profiles, args: [:user_id])
@@ -70,10 +78,16 @@ defmodule EveDmv.Surveillance.Profile do
       description("Whether this profile is actively matching killmails")
     end
 
-    # Filter configuration (JSON)
+    # Simplified filter configuration using embedded resources
+    attribute :filters, {:array, EveDmv.Surveillance.SimpleFilter} do
+      default([])
+      description("List of filter conditions combined with AND logic")
+    end
+
+    # Legacy filter configuration (deprecated - kept for migration)
     attribute :filter_tree, :map do
-      allow_nil?(false)
-      description("JSON filter tree defining match conditions")
+      allow_nil?(true)
+      description("Deprecated: Use filters instead. Legacy JSON filter tree.")
     end
 
     # Notification settings
@@ -134,17 +148,39 @@ defmodule EveDmv.Surveillance.Profile do
         :description,
         :user_id,
         :is_active,
+        :filters,
         :filter_tree,
         :notification_settings
       ])
 
       validate(present(:name))
       validate(present(:user_id))
-      validate(present(:filter_tree))
 
+      # Validate that at least one filter is present (either new or legacy format)
+      validate(fn changeset, _context ->
+        filters = Ash.Changeset.get_attribute(changeset, :filters) || []
+        filter_tree = Ash.Changeset.get_attribute(changeset, :filter_tree)
+
+        cond do
+          not Enum.empty?(filters) ->
+            :ok
+
+          is_map(filter_tree) and map_size(filter_tree) > 0 ->
+            # Legacy format - still valid
+            :ok
+
+          true ->
+            {:error, field: :filters, message: "at least one filter is required"}
+        end
+      end)
+
+      # Validate legacy filter_tree if present
       change(fn changeset, _context ->
-        case changeset.attributes[:filter_tree] do
-          %{} = filter_tree ->
+        case Ash.Changeset.get_attribute(changeset, :filter_tree) do
+          nil ->
+            changeset
+
+          %{} = filter_tree when map_size(filter_tree) > 0 ->
             case validate_filter_tree(filter_tree) do
               :ok ->
                 changeset
@@ -154,10 +190,7 @@ defmodule EveDmv.Surveillance.Profile do
             end
 
           _ ->
-            Ash.Changeset.add_error(changeset,
-              field: :filter_tree,
-              message: "must be a valid filter tree"
-            )
+            changeset
         end
       end)
     end
@@ -182,6 +215,18 @@ defmodule EveDmv.Surveillance.Profile do
     end
 
     # Update actions
+    update :update_profile do
+      description("Update a surveillance profile")
+
+      accept([
+        :name,
+        :description,
+        :is_active,
+        :filters,
+        :notification_settings
+      ])
+    end
+
     update :toggle_active do
       description("Toggle the active status of a profile")
       change(atomic_update(:is_active, expr(not is_active)))
@@ -198,7 +243,8 @@ defmodule EveDmv.Surveillance.Profile do
   validations do
     validate(present(:name), message: "Name is required")
     validate(present(:user_id), message: "User ID is required")
-    validate(present(:filter_tree), message: "Filter tree is required")
+    # Note: filter validation is handled in the create action
+    # to support both new (filters) and legacy (filter_tree) formats
   end
 
   # Authorization policies
@@ -321,4 +367,46 @@ defmodule EveDmv.Surveillance.Profile do
   end
 
   defp validate_value_for_operator(_, _), do: :ok
+
+  # Public API functions
+
+  @doc """
+  Check if a killmail matches this profile's filters.
+
+  All filters must match (AND logic). Returns true if the killmail
+  matches all configured filters, or if no filters are configured.
+  """
+  def matches_killmail?(%{__struct__: __MODULE__, filters: filters}, killmail)
+      when is_list(filters) do
+    if Enum.empty?(filters) do
+      false
+    else
+      Enum.all?(filters, fn filter ->
+        EveDmv.Surveillance.SimpleFilter.matches?(filter, killmail)
+      end)
+    end
+  end
+
+  def matches_killmail?(_, _), do: false
+
+  @doc """
+  Get a human-readable summary of the profile's filters.
+  """
+  def filter_summary(%{__struct__: __MODULE__, filters: filters}) when is_list(filters) do
+    count = length(filters)
+
+    if count == 0 do
+      "No filters configured"
+    else
+      filter_types =
+        filters
+        |> Enum.map(& &1.filter_type)
+        |> Enum.uniq()
+        |> Enum.map_join(", ", &EveDmv.Surveillance.SimpleFilter.filter_type_display/1)
+
+      "#{count} filter#{if count == 1, do: "", else: "s"}: #{filter_types}"
+    end
+  end
+
+  def filter_summary(_), do: "No filters configured"
 end

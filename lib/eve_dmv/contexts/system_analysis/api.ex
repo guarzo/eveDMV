@@ -8,6 +8,11 @@ defmodule EveDmv.Contexts.SystemAnalysis.Api do
   alias EveDmv.Contexts.SystemAnalysis.Domain.EscalationDetector
   alias EveDmv.Contexts.SystemAnalysis.Domain.HeatmapGenerator
   alias EveDmv.Contexts.SystemAnalysis.Domain.RegionalCorrelationAnalyzer
+  alias EveDmv.Types
+
+  # Type definitions - using centralized types from EveDmv.Types
+  @type analysis_opts :: Types.opts()
+  @type analysis_result :: Types.result(map())
 
   # Heatmap Generation
 
@@ -15,6 +20,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.Api do
   Generates heatmap data for a region within a timeframe.
   Returns system coordinates with activity intensity.
   """
+  @spec generate_region_heatmap(Types.region_id(), analysis_opts()) :: analysis_result()
   def generate_region_heatmap(region_id, opts \\ []) do
     HeatmapGenerator.generate_heatmap_data(region_id, opts)
   end
@@ -22,6 +28,8 @@ defmodule EveDmv.Contexts.SystemAnalysis.Api do
   @doc """
   Generates detailed constellation-level heatmap.
   """
+  @spec generate_constellation_heatmap(Types.constellation_id(), analysis_opts()) ::
+          analysis_result()
   def generate_constellation_heatmap(constellation_id, opts \\ []) do
     HeatmapGenerator.generate_constellation_heatmap(constellation_id, opts)
   end
@@ -31,6 +39,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.Api do
   @doc """
   Calculates comprehensive intensity score for a system.
   """
+  @spec calculate_system_intensity(Types.system_id(), analysis_opts()) :: analysis_result()
   def calculate_system_intensity(system_id, opts \\ []) do
     ActivityIntensityCalculator.calculate_intensity(system_id, opts)
   end
@@ -38,6 +47,8 @@ defmodule EveDmv.Contexts.SystemAnalysis.Api do
   @doc """
   Calculates relative intensity compared to neighboring systems.
   """
+  @spec calculate_relative_intensity(Types.system_id(), [Types.system_id()], analysis_opts()) ::
+          analysis_result()
   def calculate_relative_intensity(system_id, neighbor_ids, opts \\ []) do
     ActivityIntensityCalculator.calculate_relative_intensity(system_id, neighbor_ids, opts)
   end
@@ -48,6 +59,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.Api do
   Analyzes activity correlations across a region.
   Identifies patterns, clusters, and escalation chains.
   """
+  @spec analyze_regional_correlations(Types.region_id(), analysis_opts()) :: analysis_result()
   def analyze_regional_correlations(region_id, opts \\ []) do
     RegionalCorrelationAnalyzer.analyze_regional_correlations(region_id, opts)
   end
@@ -55,6 +67,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.Api do
   @doc """
   Detects activity spillover between systems.
   """
+  @spec analyze_activity_spillover(Types.system_id(), analysis_opts()) :: analysis_result()
   def analyze_activity_spillover(source_system_id, opts \\ []) do
     RegionalCorrelationAnalyzer.analyze_activity_spillover(source_system_id, opts)
   end
@@ -64,6 +77,11 @@ defmodule EveDmv.Contexts.SystemAnalysis.Api do
   @doc """
   Detects escalation patterns in a system or region.
   """
+  @spec detect_escalations(
+          {:system, Types.system_id()} | {:region, Types.region_id()},
+          analysis_opts()
+        ) ::
+          analysis_result()
   def detect_escalations(scope, opts \\ []) do
     EscalationDetector.detect_escalations(scope, opts)
   end
@@ -71,6 +89,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.Api do
   @doc """
   Real-time escalation monitoring for a system.
   """
+  @spec monitor_escalation(Types.system_id(), pos_integer()) :: analysis_result()
   def monitor_escalation(system_id, window_minutes \\ 30) do
     EscalationDetector.monitor_escalation(system_id, window_minutes)
   end
@@ -81,6 +100,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.Api do
   Comprehensive system analysis combining all analysis types.
   Returns a complete picture of system activity, intensity, correlations, and escalation risk.
   """
+  @spec comprehensive_system_analysis(Types.system_id(), analysis_opts()) :: analysis_result()
   def comprehensive_system_analysis(system_id, opts \\ []) do
     timeframe_opts = Keyword.take(opts, [:hours, :days])
 
@@ -105,6 +125,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.Api do
   @doc """
   Regional dashboard data combining heatmaps with correlation analysis.
   """
+  @spec regional_dashboard(Types.region_id(), analysis_opts()) :: analysis_result()
   def regional_dashboard(region_id, opts \\ []) do
     timeframe_opts = Keyword.take(opts, [:hours, :days])
 
@@ -127,6 +148,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.Api do
   Activity spillover analysis for multiple systems.
   Useful for understanding activity propagation patterns.
   """
+  @spec multi_system_spillover_analysis([Types.system_id()], analysis_opts()) :: analysis_result()
   def multi_system_spillover_analysis(source_systems, opts \\ []) when is_list(source_systems) do
     timeframe_opts = Keyword.take(opts, [:hours, :days])
 

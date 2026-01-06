@@ -140,9 +140,7 @@ config :eve_dmv,
     EveDmv.Api.SurveillanceApi,
     EveDmv.Api.AnalyticsApi,
     EveDmv.Api.BattleAnalysisApi,
-    EveDmv.Domains.Analytics,
     EveDmv.Domains.Intelligence,
-    EveDmv.Domains.Surveillance,
     EveDmv.Contexts.BattleAnalysis.Api,
     EveDmv.Contexts.FleetOperations.Domain
   ]
@@ -170,21 +168,6 @@ config :eve_dmv,
   # SDE defaults (overridden by environment variables)
   sde_auto_update: true,
   static_data_load_delay: 5000
-
-# Query Migration Feature Flags
-# Controls gradual migration from raw SQL to Ash-native queries.
-# Note: Character and corporation stats migrations are complete - Ash implementations are now the only path.
-config :eve_dmv, :query_migration,
-  # Enable Ash-based killmail queries (uses KillmailRaw aggregates/calculations)
-  use_ash_killmail_queries: false,
-  # Enable Ash-based participant queries (uses Participant actions)
-  use_ash_participant_queries: false,
-  # Log mismatches between old and new implementations (for validation)
-  log_comparison_mismatches: false,
-  # Run new implementation in shadow mode (execute but don't use results)
-  shadow_mode: false,
-  # Sample rate for comparison logging (0.0 to 1.0)
-  comparison_sample_rate: 1.0
 
 # Name Resolver Cache Warming Configuration
 config :eve_dmv, :name_resolver_cache_warming,
