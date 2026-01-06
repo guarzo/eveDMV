@@ -15,12 +15,12 @@ defmodule EveDmv.Application do
 
   @impl Application
   def start(_type, _args) do
-    # Initialize ETS table for fitting cache
-    :ets.new(:battle_fitting_cache, [:set, :public, :named_table])
+    # Initialize ETS table for fitting cache (guard against existing tables)
+    ensure_ets_table(:battle_fitting_cache, [:set, :public, :named_table])
 
     # Initialize ETS tables for StaticData cache (used by threat scoring)
-    :ets.new(:static_data_type_cache, [:set, :named_table, :public, {:read_concurrency, true}])
-    :ets.new(:static_data_system_cache, [:set, :named_table, :public, {:read_concurrency, true}])
+    ensure_ets_table(:static_data_type_cache, [:set, :named_table, :public, {:read_concurrency, true}])
+    ensure_ets_table(:static_data_system_cache, [:set, :named_table, :public, {:read_concurrency, true}])
 
     # Initialize EVE name resolver cache
     # NameResolver.start_cache()
@@ -417,5 +417,17 @@ defmodule EveDmv.Application do
     end
   rescue
     error -> {:error, inspect(error)}
+  end
+
+  # Safely create an ETS table, handling the case where it already exists
+  defp ensure_ets_table(name, opts) do
+    case :ets.info(name) do
+      :undefined ->
+        :ets.new(name, opts)
+
+      _info ->
+        Logger.debug("ETS table #{name} already exists, skipping creation")
+        name
+    end
   end
 end

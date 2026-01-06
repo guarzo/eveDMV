@@ -51,7 +51,7 @@
   ~r/cross_system_coordinator\.ex:\d+.*call_without_opaque/,
 
   # Also handle call_with_opaque for libgraph interactions
-  ~r/multi_system_battle_correlator\.ex:241.*call_with_opaque/,
+  ~r/multi_system_battle_correlator\.ex:\d+.*call_with_opaque/,
 
   # ===========================================
   # DEFENSIVE PATTERN MATCHING (file-scoped)
@@ -166,13 +166,13 @@
   ~r/user\.ex.*pattern_match/,
 
   # Platform utilities
-  ~r/monitoring\/facade\.ex/,
+  ~r/monitoring\/facade\.ex.*pattern_match/,
   ~r/performance_optimizer\.ex.*pattern_match/,
-  ~r/materialized_view_manager.*view_lifecycle\.ex/,
+  ~r/materialized_view_manager.*view_lifecycle\.ex.*pattern_match/,
   ~r/api_auth\.ex.*pattern_match/,
 
   # Graceful shutdown
-  ~r/graceful_shutdown\.ex/,
+  ~r/graceful_shutdown\.ex.*no_return/,
 
   # ===========================================
   # INTENTIONALLY BROAD SPECS (file-scoped)
@@ -335,7 +335,7 @@
   # CALL TYPE MISMATCHES
   # ===========================================
   ~r/api\.ex:\d+:\d+:call/,
-  ~r/_repository\.ex:\d+:call/,
+  ~r/_repository\.ex:\d+:\d+:call/,
   ~r/jsonl_parser\.ex:\d+:\d+:call/,
   ~r/sde_validator\.ex:\d+:\d+:call/,
   ~r/background_task_supervisor\.ex:\d+:\d+:call/,
@@ -346,7 +346,7 @@
   # OPAQUE TERM IN FUNCTION CALLS
   # ===========================================
   # Legacy dialyzer warning about opaque terms in function calls
-  ~r/multi_system_battle_correlator\.ex:241/,
+  ~r/multi_system_battle_correlator\.ex:\d+.*opaque/,
 
   # ===========================================
   # ASH QUERY PATTERNS (removed unused killmail_raw pattern)

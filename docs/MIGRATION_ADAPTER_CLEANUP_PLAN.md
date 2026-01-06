@@ -30,6 +30,7 @@ Two migration adapters exist to provide backward compatibility during the transi
 - `get_comprehensive_character_analysis/1` - Full character analysis
 
 **Current callers:**
+
 | File | Usage |
 |------|-------|
 | `lib/eve_dmv/contexts/character_intelligence/domain/analyzers/character_analyzer.ex` | `analyze_character/1`, `analyze_characters/1`, `get_comprehensive_character_analysis/1`, `invalidate_character_cache/1` |
@@ -46,6 +47,7 @@ Two migration adapters exist to provide backward compatibility during the transi
 - `get_migration_status/0` - Status reporting
 
 **Current callers:**
+
 | File | Usage |
 |------|-------|
 | `lib/eve_dmv/intelligence_engine.ex:20` | `analyze/3` |
@@ -66,12 +68,12 @@ Two migration adapters exist to provide backward compatibility during the transi
 
 The `LegacyAdapter` currently routes to `IntelligenceEngine.analyze/3`. The target bounded context APIs are:
 
-| LegacyAdapter Function | Target Bounded Context API |
-|------------------------|---------------------------|
-| `analyze_character/1` | `EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer.analyze_character/2` |
-| `analyze_characters/1` | Batch wrapper around `PlayerAnalyzer.analyze_character/2` |
-| `get_comprehensive_character_analysis/1` | `PlayerAnalyzer.analyze_character/2` with `scope: :full` |
-| `invalidate_character_cache/1` | `EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache` + `EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache` |
+| IntelligenceMigrationAdapter Function | Target Bounded Context API |
+|---------------------------------------|---------------------------|
+| `analyze/3` | Routes to context-specific analyzers based on domain parameter |
+| `batch_analyze/3` | Batch wrapper around context-specific analyzers |
+| `analyze_character/2` (private, `scope: :full`) | `PlayerAnalyzer.analyze_character/2` with `scope: :full` |
+| `invalidate_cache/2` | Dispatches to `invalidate_character_cache/1` → `EveDmv.Contexts.CombatIntelligence.Infrastructure.AnalysisCache` + `EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache` |
 
 #### Step 1.2: Update CharacterAnalyzer
 
@@ -134,10 +136,13 @@ After all callers are updated:
 
 **File:** `lib/eve_dmv/intelligence_engine.ex`
 
-**Option A: Remove entirely** (Recommended if no external consumers)
+#### Option A: Remove entirely
+
+(Recommended if no external consumers)
+
 - Delete the module and update all callers to use bounded context APIs directly
 
-**Option B: Make it a thin facade**
+#### Option B: Make it a thin facade
 - Keep `IntelligenceEngine` but have it call bounded contexts directly without the adapter
 
 ```elixir
@@ -306,11 +311,13 @@ EveDmv.Contexts.ThreatAssessment.Infrastructure.ThreatCache
 ## Risk Assessment
 
 ### Low Risk
+
 - Format transformation logic is well-documented in adapters
 - Bounded context APIs already exist and are tested
 - Migration can be done incrementally
 
 ### Medium Risk
+
 - Some callers may depend on specific legacy format fields
 - Cache invalidation may need coordination across contexts
 

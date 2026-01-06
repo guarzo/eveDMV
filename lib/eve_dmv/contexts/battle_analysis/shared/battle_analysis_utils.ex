@@ -200,6 +200,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Shared.BattleAnalysisUtils do
     max(0.0, 1.0 - variance / (mean * mean + 1))
   end
 
+  # Maximum expected ship classes in a coherent doctrine
+  # Based on EVE fleet doctrines which typically use 5-10 distinct ship classes
+  @max_ship_classes 10.0
+
   @doc """
   Calculates doctrine coherence based on ship classes.
 
@@ -218,8 +222,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Shared.BattleAnalysisUtils do
 
   def calculate_doctrine_coherence(ship_classes) when is_map(ship_classes) do
     class_count = map_size(ship_classes)
-    # Higher coherence with fewer ship classes (max 10 classes expected)
-    max(0.0, 1.0 - class_count / 10.0)
+    # Higher coherence with fewer ship classes
+    max(0.0, 1.0 - class_count / @max_ship_classes)
   end
 
   def calculate_doctrine_coherence(participants) when is_list(participants) do
@@ -229,7 +233,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Shared.BattleAnalysisUtils do
 
     if total > 0 do
       # Lower diversity = higher coherence
-      max(0.0, 1.0 - unique_types / max(total, 1))
+      max(0.0, 1.0 - unique_types / total)
     else
       0.0
     end

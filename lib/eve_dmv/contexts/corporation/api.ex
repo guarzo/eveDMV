@@ -54,10 +54,10 @@ defmodule EveDmv.Contexts.Corporation.Api do
   defdelegate analyze_member_trends(corporation_id, time_period), to: MemberActivityAnalyzer
 
   @spec get_inactive_members(Types.corporation_id(), pos_integer()) :: Types.result([map()])
-  defdelegate get_inactive_members(corporation_id, threshold), to: MemberActivityAnalyzer
+  defdelegate get_inactive_members(corporation_id, threshold \\ 30), to: ParticipationAnalyzer
 
   @spec get_top_performers(Types.corporation_id(), pos_integer()) :: Types.result([map()])
-  defdelegate get_top_performers(corporation_id, limit \\ 10), to: MemberActivityAnalyzer
+  defdelegate get_top_performers(corporation_id, limit \\ 10), to: ParticipationAnalyzer
 
   # ===========================================================================
   # Member Risk Assessment

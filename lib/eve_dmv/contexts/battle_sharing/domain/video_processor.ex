@@ -107,7 +107,7 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.VideoProcessor do
              }}
 
           {:error, reason} ->
-            {:error, {:invalid_video_id, reason}}
+            {:error, reason}
         end
 
       {:error, reason} ->

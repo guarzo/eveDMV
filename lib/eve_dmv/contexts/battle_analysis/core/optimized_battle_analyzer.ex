@@ -601,10 +601,57 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.OptimizedBattleAnalyzer do
 
   # Helper functions for get_battle_summary
 
-  defp generate_summary_headline(_analysis), do: "Battle Summary"
-  defp extract_summary_key_stats(_analysis), do: []
-  defp determine_battle_winner(_analysis), do: :unknown
-  defp find_battle_mvp(_analysis), do: nil
-  defp identify_battle_turning_point(_analysis), do: nil
-  defp find_battle_notable_kills(_analysis), do: []
+  defp generate_summary_headline(analysis) do
+    scale = get_in(analysis, [:summary, :scale]) || :unknown
+    total_kills = get_in(analysis, [:metrics, :total_kills]) || 0
+    duration = get_in(analysis, [:metrics, :duration_minutes]) || 0
+
+    scale_text =
+      case scale do
+        :fleet_battle -> "Fleet Battle"
+        :large_gang -> "Large Gang Fight"
+        :medium_gang -> "Medium Gang Fight"
+        :small_gang -> "Small Gang Skirmish"
+        _ -> "Engagement"
+      end
+
+    "#{scale_text}: #{total_kills} kills over #{duration} minutes"
+  end
+
+  defp extract_summary_key_stats(analysis) do
+    [
+      %{label: "Total Kills", value: get_in(analysis, [:metrics, :total_kills]) || 0},
+      %{label: "Duration", value: "#{get_in(analysis, [:metrics, :duration_minutes]) || 0} min"},
+      %{label: "ISK Destroyed", value: get_in(analysis, [:summary, :total_isk_destroyed]) || 0},
+      %{label: "Kills/Min", value: get_in(analysis, [:metrics, :kills_per_minute]) || 0}
+    ]
+  end
+
+  defp determine_battle_winner(analysis) do
+    case get_in(analysis, [:performance_metrics, :side_comparison]) do
+      %{winner: winner} when not is_nil(winner) -> winner
+      _ -> :unknown
+    end
+  end
+
+  defp find_battle_mvp(analysis) do
+    case get_in(analysis, [:performance_metrics, :top_performers]) do
+      [top | _] -> top
+      _ -> nil
+    end
+  end
+
+  defp identify_battle_turning_point(analysis) do
+    case get_in(analysis, [:tactical_patterns, :momentum_shifts]) do
+      [shift | _] -> shift
+      _ -> nil
+    end
+  end
+
+  defp find_battle_notable_kills(analysis) do
+    case get_in(analysis, [:performance_metrics, :notable_kills]) do
+      kills when is_list(kills) -> Enum.take(kills, 5)
+      _ -> []
+    end
+  end
 end

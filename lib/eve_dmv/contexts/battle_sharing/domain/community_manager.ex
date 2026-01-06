@@ -81,9 +81,9 @@ defmodule EveDmv.Contexts.BattleSharing.Domain.CommunityManager do
 
   defp validate_rating(rating, categories) do
     cond do
-      not is_number(rating) -> {:error, :rating_must_be_number}
+      not is_number(rating) -> {:error, {:invalid_rating, :must_be_number}}
       rating < 1 or rating > 10 -> {:error, {:invalid_rating, :out_of_range}}
-      not is_map(categories) -> {:error, :categories_must_be_map}
+      not is_map(categories) -> {:error, {:invalid_categories, :must_be_map}}
       true -> {:ok, %{overall: rating, categories: categories}}
     end
   end

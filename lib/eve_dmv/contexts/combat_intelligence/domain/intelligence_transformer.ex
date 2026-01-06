@@ -32,7 +32,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceTransformer do
   Transforms character analysis results into the public API structure.
 
   ## Parameters
-  - `analysis_result` - Raw analysis result from CharacterAnalyzer
+  - `analysis_result` - Raw analysis result from CharacterAnalyzer (must contain :character_id)
 
   ## Returns
   A standardized map with:
@@ -45,14 +45,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceTransformer do
   - `:last_updated` - Timestamp of analysis
   """
   @spec transform_character_analysis(map()) :: character_analysis_result()
-  def transform_character_analysis(analysis_result) do
+  def transform_character_analysis(%{character_id: character_id} = analysis_result) do
+    now = DateTime.utc_now()
+    analyzed_at = Map.get(analysis_result, :analyzed_at, now)
+
     %{
-      character_id: analysis_result.character_id,
+      character_id: character_id,
       character_name: Map.get(analysis_result, :character_name, "Unknown"),
       threat_level: Map.get(analysis_result, :threat_level, :unknown),
       analysis_summary: %{
         combat_effectiveness: Map.get(analysis_result, :combat_effectiveness, 0.0),
-        analyzed_at: Map.get(analysis_result, :analyzed_at, DateTime.utc_now())
+        analyzed_at: analyzed_at
       },
       detailed_metrics:
         Map.drop(analysis_result, [
@@ -63,7 +66,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceTransformer do
           :analyzed_at
         ]),
       recommendations: [],
-      last_updated: Map.get(analysis_result, :analyzed_at, DateTime.utc_now())
+      last_updated: analyzed_at
     }
   end
 
@@ -71,7 +74,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceTransformer do
   Transforms corporation analysis results into the public API structure.
 
   ## Parameters
-  - `analysis_result` - Raw analysis result from CorporationAnalyzer
+  - `analysis_result` - Raw analysis result from CorporationAnalyzer (must contain :corporation_id)
 
   ## Returns
   A standardized map with:
@@ -84,15 +87,17 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceTransformer do
   - `:last_updated` - Timestamp of analysis
   """
   @spec transform_corporation_analysis(map()) :: corporation_analysis_result()
-  def transform_corporation_analysis(analysis_result) do
+  def transform_corporation_analysis(%{corporation_id: corporation_id} = analysis_result) do
+    now = DateTime.utc_now()
+
     %{
-      corporation_id: analysis_result.corporation_id,
+      corporation_id: corporation_id,
       corporation_name: Map.get(analysis_result, :corporation_name, "Unknown"),
       member_count: Map.get(analysis_result, :member_count, 0),
       activity_patterns: Map.get(analysis_result, :activity_patterns, %{}),
       threat_distribution: Map.get(analysis_result, :threat_distribution, %{}),
       coordination_metrics: Map.get(analysis_result, :coordination_metrics, %{}),
-      last_updated: Map.get(analysis_result, :analysis_timestamp, DateTime.utc_now())
+      last_updated: Map.get(analysis_result, :analysis_timestamp, now)
     }
   end
 end
