@@ -10,10 +10,10 @@ defmodule EveDmv.Platform.Database.CacheWarmer do
   use GenServer
 
   alias EveDmv.Api
+  alias EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer
   alias EveDmv.Eve.ItemType
   alias EveDmv.Eve.SolarSystem
   alias EveDmv.Intelligence.CharacterStats
-  alias EveDmv.IntelligenceMigrationAdapter
   alias EveDmv.Killmails.KillmailEnriched
   alias EveDmv.Platform.Cache.QueryCache
 
@@ -330,9 +330,7 @@ defmodule EveDmv.Platform.Database.CacheWarmer do
         case QueryCache.get_or_compute(
                cache_key,
                fn ->
-                 case IntelligenceMigrationAdapter.analyze(:character, character_id,
-                        scope: :basic
-                      ) do
+                 case PlayerAnalyzer.analyze_character(character_id, scope: :basic) do
                    {:ok, analysis} -> analysis
                    _ -> nil
                  end
@@ -386,7 +384,7 @@ defmodule EveDmv.Platform.Database.CacheWarmer do
         QueryCache.get_or_compute(
           cache_key,
           fn ->
-            case IntelligenceMigrationAdapter.analyze(:character, character_id, scope: :basic) do
+            case PlayerAnalyzer.analyze_character(character_id, scope: :basic) do
               {:ok, analysis} -> analysis
               _ -> nil
             end

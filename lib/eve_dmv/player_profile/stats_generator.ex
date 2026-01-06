@@ -9,7 +9,7 @@ defmodule EveDmv.PlayerProfile.StatsGenerator do
 
   alias EveDmv.Analytics.PlayerStats
   alias EveDmv.Api
-  alias EveDmv.IntelligenceMigrationAdapter
+  alias EveDmv.Contexts.PlayerProfile.Domain.PlayerAnalyzer
 
   require Logger
 
@@ -19,8 +19,8 @@ defmodule EveDmv.PlayerProfile.StatsGenerator do
   Analyzes character and converts intelligence data to player stats format.
   """
   def create_player_stats(character_id) do
-    # Analyze the character using Migration Adapter (bounded contexts)
-    case IntelligenceMigrationAdapter.analyze(:character, character_id, scope: :standard) do
+    # Analyze the character using PlayerProfile bounded context
+    case PlayerAnalyzer.analyze_character(character_id, scope: :standard) do
       {:ok, analysis} ->
         create_player_stats_from_analysis(character_id, analysis)
 

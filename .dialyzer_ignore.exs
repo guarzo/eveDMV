@@ -155,7 +155,6 @@
 
   # Intelligence and analysis
   ~r/network_analysis_engine\.ex.*pattern_match/,
-  ~r/combat_stats\.ex.*pattern_match/,
 
   # External services
   ~r/wanderer_client\.ex.*pattern_match/,
@@ -283,14 +282,6 @@
 
   # player_profile/api.ex - delegation functions no return
   ~r/player_profile\/api\.ex:\d+.*no_return/,
-
-  # ===========================================
-  # CALLBACK TYPE MISMATCHES (file-scoped)
-  # ===========================================
-  # Plugin callback implementations with acceptable type differences
-
-  # combat_stats.ex - plugin callback implementations
-  ~r/intelligence_engine\/plugins\/character\/combat_stats\.ex:\d+.*callback_type_mismatch/,
 
   # ===========================================
   # CALL ERRORS

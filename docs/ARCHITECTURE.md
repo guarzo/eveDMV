@@ -123,7 +123,7 @@ lib/eve_dmv/
 ├── api/                   # Ash API domain definitions
 ├── static_data/           # EVE static data (ships, systems)
 ├── users/                 # User and authentication resources
-└── intelligence_engine/   # Plugin-based intelligence system
+└── intelligence_engine.ex # Thin facade routing to bounded contexts
 ```
 
 ### Key Directory Conventions
@@ -282,15 +282,33 @@ ExtendedHistoricalFetcher # zkillboard API integration
 
 ### 5. Intelligence Engine
 
+The `IntelligenceEngine` is a thin facade that routes analysis requests to the appropriate bounded contexts:
+
 ```elixir
-# Multi-dimensional analysis system
-IntelligenceEngine
-├── ThreatScoringEngine     # Character threat assessment
-├── ThreatConfig            # Documented configuration constants
-├── BattleDetector          # Clustering algorithm
-├── FleetAnalyzer           # Composition analysis
-└── PatternDetector         # Behavioral patterns
+# Thin facade routing to bounded contexts
+IntelligenceEngine.analyze(:character, id, opts)
+  → PlayerProfile.Domain.PlayerAnalyzer.analyze_character/2
+
+IntelligenceEngine.analyze(:corporation, id, opts)
+  → Corporation.Core.CorporationAnalyzer.analyze_corporation/2
+
+IntelligenceEngine.analyze(:fleet, id, opts)
+  → FleetOperations.Domain.FleetAnalyzer.analyze_composition/1
+
+IntelligenceEngine.analyze(:threat, id, opts)
+  → ThreatAssessment.Domain.ThreatAnalyzer.assess_threat/3
 ```
+
+The actual analysis implementations live in their respective bounded contexts:
+
+| Domain | Bounded Context | Module |
+|--------|----------------|--------|
+| Character | `PlayerProfile` | `PlayerAnalyzer` |
+| Corporation | `Corporation` | `CorporationAnalyzer` |
+| Fleet | `FleetOperations` | `FleetAnalyzer` |
+| Threat | `ThreatAssessment` | `ThreatAnalyzer` |
+| Character Intelligence | `CharacterIntelligence` | `ThreatScoringEngine`, `ThreatConfig` |
+| Battle Detection | `BattleAnalysis` | `BattleDetector` |
 
 ### 6. Configuration Patterns
 
