@@ -349,8 +349,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
   end
 
   defp analyze_killmails_for_battle(killmails) do
-    # Use BattleDetector to analyze killmails
-    case BattleDetector.detect_battles(killmails) do
+    # Convert Ash KillmailRaw resources to the raw API format expected by BattleDetector.
+    # BattleDetector expects .victim, .attackers, and .zkb fields at the top level,
+    # but KillmailRaw stores this data in the raw_data map.
+    converted_killmails = Enum.map(killmails, &convert_to_detector_format/1)
+
+    case BattleDetector.detect_battles(converted_killmails) do
       {:ok, battles} ->
         # Return first detected battle
         {:ok, List.first(battles) || %{}}
@@ -358,6 +362,40 @@ defmodule EveDmv.Contexts.BattleAnalysis.Services.BattleService do
       error ->
         error
     end
+  end
+
+  # Convert Ash KillmailRaw resource to the format expected by BattleDetector.
+  # The detector expects .victim, .attackers, and .zkb at the top level.
+  defp convert_to_detector_format(%KillmailRaw{} = killmail) do
+    raw = killmail.raw_data || %{}
+
+    %{
+      killmail_id: killmail.killmail_id,
+      killmail_time: killmail.killmail_time,
+      solar_system_id: killmail.solar_system_id,
+      total_value: killmail.total_value,
+      # Extract victim and attackers from raw_data
+      victim: raw["victim"] || %{},
+      attackers: raw["attackers"] || [],
+      # Extract zkb data for value calculations
+      zkb: raw["zkb"] || %{}
+    }
+  end
+
+  # Handle already-converted maps (e.g., from tests or other sources)
+  defp convert_to_detector_format(%{victim: _, attackers: _} = killmail), do: killmail
+
+  # Handle raw maps that might be passed directly
+  defp convert_to_detector_format(%{} = killmail) do
+    %{
+      killmail_id: killmail[:killmail_id] || killmail["killmail_id"],
+      killmail_time: killmail[:killmail_time] || killmail["killmail_time"],
+      solar_system_id: killmail[:solar_system_id] || killmail["solar_system_id"],
+      total_value: killmail[:total_value] || killmail["total_value"],
+      victim: killmail[:victim] || killmail["victim"] || %{},
+      attackers: killmail[:attackers] || killmail["attackers"] || [],
+      zkb: killmail[:zkb] || killmail["zkb"] || %{}
+    }
   end
 
   defp link_killmails_to_battle(battle_id, killmail_ids) do

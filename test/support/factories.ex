@@ -382,6 +382,9 @@ defmodule EveDmv.Factories do
       attacker_count:
         Map.get(killmail_attrs, :attacker_count) ||
           length(Map.get(killmail_data, "attackers", [])),
+      total_value:
+        Map.get(killmail_attrs, :total_value) ||
+          Decimal.new(get_in(killmail_data, ["zkb", "totalValue"]) || 0),
       raw_data: killmail_data,
       source: Map.get(killmail_attrs, :source, "test")
     }

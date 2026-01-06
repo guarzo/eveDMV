@@ -9,13 +9,11 @@ defmodule EveDmv.Contexts.CorporationAnalysis.ApiTest do
 
   # Helper to safely call functions that may require GenServers not running in test
   defp safe_call(fun) do
-    try do
-      fun.()
-    rescue
-      _ -> {:error, :service_unavailable}
-    catch
-      :exit, _ -> {:error, :service_unavailable}
-    end
+    fun.()
+  rescue
+    _ -> {:error, :service_unavailable}
+  catch
+    :exit, _ -> {:error, :service_unavailable}
   end
 
   describe "analyze_member_activity/2" do

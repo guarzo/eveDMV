@@ -302,4 +302,24 @@ defmodule EveDmv.Contexts.Corporation.Resources.CorporationMember do
 
     validate(numericality(:total_losses, greater_than_or_equal_to: 0))
   end
+
+  code_interface do
+    domain(EveDmv.Api)
+    define(:create)
+    define(:update)
+    define(:read)
+    define(:destroy)
+    define(:get_by_character, action: :by_character, args: [:character_id])
+    define(:list_by_corporation, action: :by_corporation, args: [:corporation_id])
+    define(:list_active_members, action: :active_members)
+    define(:list_by_role, action: :by_role, args: [:role])
+    define(:list_high_activity, action: :high_activity, args: [:min_score])
+    define(:list_flight_risks, action: :flight_risks, args: [:min_risk_score])
+    define(:list_new_members, action: :new_members, args: [:days])
+    define(:list_inactive_members, action: :inactive_members, args: [:days])
+    define(:update_activity)
+    define(:update_performance)
+    define(:update_risk_assessment)
+    define(:assign_roles)
+  end
 end

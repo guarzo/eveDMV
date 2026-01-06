@@ -15,6 +15,8 @@ defmodule EveDmv.Killmails.KillmailRaw do
   alias EveDmv.Ash.Preparations.QuerySafety
   alias EveDmv.Core.Utils.DateTimeUtils
 
+  require Ash.Query
+
   postgres do
     table("killmails_raw")
     repo(EveDmv.Repo)
@@ -301,6 +303,12 @@ defmodule EveDmv.Killmails.KillmailRaw do
       description("All participants (attackers and victim) in this killmail")
     end
 
+    belongs_to :solar_system, EveDmv.Eve.SolarSystem do
+      source_attribute(:solar_system_id)
+      destination_attribute(:system_id)
+      description("Solar system where the kill occurred")
+    end
+
     # REMOVED: enriched_data relationship
     # Enriched table provides no value - see /docs/architecture/enriched-raw-analysis.md
   end
@@ -384,11 +392,81 @@ defmodule EveDmv.Killmails.KillmailRaw do
         end)
       end)
     end
+
+    calculate :time_of_day_bucket, :atom do
+      description(
+        "Time bucket based on UTC hour: :morning (6-11), :afternoon (12-17), :evening (18-21), :night (22-5)"
+      )
+
+      calculation(fn records, _context ->
+        Enum.map(records, fn killmail ->
+          hour = killmail.killmail_time.hour
+
+          cond do
+            hour >= 6 and hour < 12 -> :morning
+            hour >= 12 and hour < 18 -> :afternoon
+            hour >= 18 and hour < 22 -> :evening
+            true -> :night
+          end
+        end)
+      end)
+    end
+
+    calculate :day_of_week, :atom do
+      description("Day of week: :monday through :sunday")
+
+      calculation(fn records, _context ->
+        Enum.map(records, fn killmail ->
+          killmail.killmail_time
+          |> DateTime.to_date()
+          |> Date.day_of_week()
+          |> day_number_to_atom()
+        end)
+      end)
+    end
+
+    calculate :security_class, :string do
+      description(
+        "Security classification from solar system (highsec, lowsec, nullsec, wormhole)"
+      )
+
+      load([:solar_system])
+
+      calculation(fn records, _context ->
+        Enum.map(records, fn killmail ->
+          case killmail.solar_system do
+            nil -> "unknown"
+            sys -> sys.security_class || "unknown"
+          end
+        end)
+      end)
+    end
+
+    calculate :is_wormhole_kill, :boolean do
+      description("Whether this kill occurred in wormhole space")
+      load([:solar_system])
+
+      calculation(fn records, _context ->
+        Enum.map(records, fn killmail ->
+          case killmail.solar_system do
+            nil -> false
+            sys -> sys.security_class == "wormhole"
+          end
+        end)
+      end)
+    end
   end
 
-  # Helper functions for read actions
+  # Helper function for day_of_week calculation
+  defp day_number_to_atom(1), do: :monday
+  defp day_number_to_atom(2), do: :tuesday
+  defp day_number_to_atom(3), do: :wednesday
+  defp day_number_to_atom(4), do: :thursday
+  defp day_number_to_atom(5), do: :friday
+  defp day_number_to_atom(6), do: :saturday
+  defp day_number_to_atom(7), do: :sunday
 
-  require Ash.Query
+  # Helper functions for read actions
 
   @doc false
   defp apply_corporation_filter(query, corp_id, :all) do

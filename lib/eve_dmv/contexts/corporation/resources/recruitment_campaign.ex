@@ -167,4 +167,16 @@ defmodule EveDmv.Contexts.Corporation.Resources.RecruitmentCampaign do
 
     validate(numericality(:applications_received, greater_than_or_equal_to: 0))
   end
+
+  code_interface do
+    domain(EveDmv.Api)
+    define(:create)
+    define(:update)
+    define(:read)
+    define(:destroy)
+    define(:list_by_corporation, action: :by_corporation, args: [:corporation_id])
+    define(:list_active_campaigns, action: :active_campaigns)
+    define(:list_by_status, action: :by_status, args: [:status])
+    define(:update_metrics)
+  end
 end

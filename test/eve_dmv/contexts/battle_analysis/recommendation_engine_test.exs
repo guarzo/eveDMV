@@ -105,7 +105,7 @@ defmodule EveDmv.Shared.Strategic.RecommendationEngineTest do
 
       assert is_list(result.immediate_actions)
 
-      if length(result.immediate_actions) > 0 do
+      if result.immediate_actions != [] do
         action = hd(result.immediate_actions)
         assert Map.has_key?(action, :action)
         assert Map.has_key?(action, :urgency)
@@ -230,7 +230,7 @@ defmodule EveDmv.Shared.Strategic.RecommendationEngineTest do
         RecommendationEngine.generate_immediate_recommendations(pattern_analysis, trend_analysis)
 
       assert is_list(recommendations)
-      assert length(recommendations) > 0
+      assert recommendations != []
 
       # Should have defensive-related recommendations
       actions = Enum.map(recommendations, & &1.action)
@@ -253,7 +253,7 @@ defmodule EveDmv.Shared.Strategic.RecommendationEngineTest do
         RecommendationEngine.generate_immediate_recommendations(pattern_analysis, trend_analysis)
 
       assert is_list(recommendations)
-      assert length(recommendations) > 0
+      assert recommendations != []
     end
 
     test "generates momentum-based recommendations for strong positive momentum" do
@@ -270,7 +270,7 @@ defmodule EveDmv.Shared.Strategic.RecommendationEngineTest do
 
       assert is_list(recommendations)
 
-      if length(recommendations) > 0 do
+      if recommendations != [] do
         actions = Enum.map(recommendations, & &1.action)
 
         assert Enum.any?(actions, fn action ->
@@ -297,7 +297,7 @@ defmodule EveDmv.Shared.Strategic.RecommendationEngineTest do
 
       assert is_list(recommendations)
 
-      if length(recommendations) > 0 do
+      if recommendations != [] do
         # Should have critical urgency actions
         urgencies = Enum.map(recommendations, & &1.urgency)
         assert Enum.any?(urgencies, &(&1 == :critical))
@@ -354,7 +354,7 @@ defmodule EveDmv.Shared.Strategic.RecommendationEngineTest do
       recommendations =
         RecommendationEngine.generate_immediate_recommendations(pattern_analysis, trend_analysis)
 
-      if length(recommendations) > 0 do
+      if recommendations != [] do
         action = hd(recommendations)
         assert Map.has_key?(action, :expected_timeline)
         assert is_binary(action.expected_timeline)
@@ -492,7 +492,7 @@ defmodule EveDmv.Shared.Strategic.RecommendationEngineTest do
       result = RecommendationEngine.generate_long_term_recommendations(trend_analysis)
 
       assert is_map(result)
-      assert length(result.strategic_goals) > 0
+      assert result.strategic_goals != []
     end
 
     test "generates stable presence goals for neutral trend" do
@@ -541,7 +541,7 @@ defmodule EveDmv.Shared.Strategic.RecommendationEngineTest do
       assert Map.has_key?(result, :milestone_planning)
       assert is_list(result.milestone_planning)
 
-      if length(result.milestone_planning) > 0 do
+      if result.milestone_planning != [] do
         milestone = hd(result.milestone_planning)
         assert Map.has_key?(milestone, :goal)
         assert Map.has_key?(milestone, :milestones)
@@ -591,7 +591,7 @@ defmodule EveDmv.Shared.Strategic.RecommendationEngineTest do
       risks = result.risk_assessment.identified_risks
       assert is_list(risks)
 
-      if length(risks) > 0 do
+      if risks != [] do
         risk = hd(risks)
         assert Map.has_key?(risk, :risk)
         assert Map.has_key?(risk, :probability)
@@ -701,7 +701,7 @@ defmodule EveDmv.Shared.Strategic.RecommendationEngineTest do
       contingencies = result.contingency_planning
       assert Map.has_key?(contingencies, :plans)
 
-      if length(contingencies.plans) > 0 do
+      if contingencies.plans != [] do
         plan = hd(contingencies.plans)
         assert Map.has_key?(plan, :risk_scenario)
         assert Map.has_key?(plan, :contingency_plan)
@@ -766,7 +766,7 @@ defmodule EveDmv.Shared.Strategic.RecommendationEngineTest do
       recovery = result.contingency_planning.recovery_procedures
       assert is_list(recovery)
 
-      if length(recovery) > 0 do
+      if recovery != [] do
         phase = hd(recovery)
         assert Map.has_key?(phase, :phase)
         assert Map.has_key?(phase, :actions)

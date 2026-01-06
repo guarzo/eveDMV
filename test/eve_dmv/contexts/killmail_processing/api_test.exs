@@ -181,11 +181,11 @@ defmodule EveDmv.Contexts.KillmailProcessing.ApiTest do
   end
 
   describe "fetch_historical_killmails/2 validation" do
-    test "accepts empty character list (starts with 0 characters)" do
+    test "rejects empty character list" do
       result = Api.fetch_historical_killmails([])
 
-      # The API accepts an empty list and returns a task
-      assert {:ok, %{character_count: 0}} = result
+      # The API requires at least one character ID
+      assert {:error, :invalid_character_ids} = result
     end
 
     test "rejects non-list input" do

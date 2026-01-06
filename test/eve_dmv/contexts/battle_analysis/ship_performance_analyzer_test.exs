@@ -172,7 +172,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzerTest do
       assert {:ok, analysis} = ShipPerformanceAnalyzer.analyze_battle_performance(battle)
 
       # Should have analyzed ships from all killmails
-      assert length(analysis.ship_performances) >= 1
+      assert analysis.ship_performances != []
     end
 
     test "includes attacker instances in analysis" do
@@ -203,7 +203,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzerTest do
       assert {:ok, analysis} = ShipPerformanceAnalyzer.analyze_battle_performance(battle)
 
       # Should have victim + attackers
-      assert length(analysis.ship_performances) >= 1
+      assert analysis.ship_performances != []
     end
   end
 
@@ -235,7 +235,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzerTest do
     test "returns ship info with character details" do
       ship_data =
         build_ship_data(%{
-          character_id: 12345,
+          character_id: 12_345,
           character_name: "Test Pilot",
           ship_type_id: 620
         })
@@ -245,7 +245,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzerTest do
       assert {:ok, result} =
                ShipPerformanceAnalyzer.analyze_ship_performance(ship_data, battle_data)
 
-      assert result.ship_info.character_id == 12345
+      assert result.ship_info.character_id == 12_345
       assert result.ship_info.ship_type_id == 620
     end
   end
@@ -369,7 +369,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzerTest do
     end
 
     test "handles empty battle data" do
-      ship_data = %{character_id: 12345, ship_type_id: 620}
+      ship_data = %{character_id: 12_345, ship_type_id: 620}
       battle_data = %{killmails: [], combat_logs: []}
 
       assert {:ok, performance} =
@@ -394,12 +394,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzerTest do
     test "calculates DPS efficiency" do
       expected = %{
         dps: %{total: 500},
-        ehp: %{total: 10000},
+        ehp: %{total: 10_000},
         expected_dps: 500
       }
 
       actual = %{
-        damage_dealt: %{total: 15000},
+        damage_dealt: %{total: 15_000},
         damage_taken: %{total: 5000},
         time_on_field: 60
       }
@@ -415,7 +415,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzerTest do
     test "handles zero time on field" do
       expected = %{
         dps: %{total: 500},
-        ehp: %{total: 10000},
+        ehp: %{total: 10_000},
         expected_dps: 500
       }
 
@@ -554,7 +554,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzerTest do
 
     test "handles killmail with nil raw_data fields" do
       killmail = %{
-        killmail_id: 12345,
+        killmail_id: 12_345,
         killmail_time: DateTime.utc_now(),
         solar_system_id: 30_000_142,
         victim_character_id: 90_000_001,
@@ -599,7 +599,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzerTest do
 
       assert {:ok, analysis} = ShipPerformanceAnalyzer.analyze_battle_performance(battle)
       assert is_map(analysis)
-      assert length(analysis.ship_performances) >= 1
+      assert analysis.ship_performances != []
     end
 
     test "handles battle with mixed participation types" do

@@ -38,6 +38,13 @@ defmodule EveDmv.Killmails.CorporationNameBackfill do
 
   @batch_size 100
 
+  @typep raw_data_summary :: %{
+           victim_updates: non_neg_integer(),
+           attacker_updates: non_neg_integer(),
+           victim_errors: non_neg_integer(),
+           attacker_errors: non_neg_integer()
+         }
+
   @doc """
   Starts the corporation name backfill worker.
 
@@ -171,13 +178,6 @@ defmodule EveDmv.Killmails.CorporationNameBackfill do
         {:error, error}
     end
   end
-
-  @typep raw_data_summary :: %{
-           victim_updates: non_neg_integer(),
-           attacker_updates: non_neg_integer(),
-           victim_errors: non_neg_integer(),
-           attacker_errors: non_neg_integer()
-         }
 
   defp log_raw_data_summary({:ok, summary}) do
     Logger.info(

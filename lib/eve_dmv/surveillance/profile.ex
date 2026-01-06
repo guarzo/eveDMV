@@ -11,7 +11,11 @@ defmodule EveDmv.Surveillance.Profile do
     otp_app: :eve_dmv,
     domain: EveDmv.Api.SurveillanceApi,
     data_layer: AshPostgres.DataLayer,
-    authorizers: [Ash.Policy.Authorizer]
+    authorizers: [Ash.Policy.Authorizer],
+    notifiers: [
+      EveDmv.Ash.Notifiers.PubSubNotifier,
+      EveDmv.Ash.Notifiers.TelemetryNotifier
+    ]
 
   postgres do
     table("surveillance_profiles")

@@ -33,11 +33,16 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
   def character_name(nil), do: "Unknown Character"
 
   def character_name(character_id) when is_integer(character_id) do
-    case CacheManager.get_cached_or_fetch(:character, character_id, fn ->
-           fetch_from_esi(:character, character_id)
-         end) do
-      {:ok, name} -> name
-      {:error, _} -> "Unknown Character (#{character_id})"
+    # Skip ESI calls in test environment to avoid timeouts
+    if Application.get_env(:eve_dmv, :environment) == :test do
+      "Character #{character_id}"
+    else
+      case CacheManager.get_cached_or_fetch(:character, character_id, fn ->
+             fetch_from_esi(:character, character_id)
+           end) do
+        {:ok, name} -> name
+        {:error, _} -> "Unknown Character (#{character_id})"
+      end
     end
   end
 
@@ -54,11 +59,16 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
   """
   @spec corporation_name(integer()) :: String.t()
   def corporation_name(corporation_id) when is_integer(corporation_id) do
-    case CacheManager.get_cached_or_fetch(:corporation, corporation_id, fn ->
-           fetch_from_esi(:corporation, corporation_id)
-         end) do
-      {:ok, name} -> name
-      {:error, _} -> "Unknown Corporation (#{corporation_id})"
+    # Skip ESI calls in test environment to avoid timeouts
+    if Application.get_env(:eve_dmv, :environment) == :test do
+      "Corporation #{corporation_id}"
+    else
+      case CacheManager.get_cached_or_fetch(:corporation, corporation_id, fn ->
+             fetch_from_esi(:corporation, corporation_id)
+           end) do
+        {:ok, name} -> name
+        {:error, _} -> "Unknown Corporation (#{corporation_id})"
+      end
     end
   end
 
@@ -77,15 +87,28 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
   def alliance_name(nil), do: nil
 
   def alliance_name(alliance_id) when is_integer(alliance_id) do
-    case CacheManager.get_cached_or_fetch(:alliance, alliance_id, fn ->
-           # First try database lookup, then fall back to ESI
-           case fetch_from_database(:alliance, alliance_id) do
-             {:ok, name} -> {:ok, name}
-             {:error, _} -> fetch_from_esi(:alliance, alliance_id)
-           end
-         end) do
+    # Skip ESI calls in test environment to avoid timeouts
+    if Application.get_env(:eve_dmv, :environment) == :test do
+      "Alliance #{alliance_id}"
+    else
+      resolve_alliance_name(alliance_id)
+    end
+  end
+
+  defp resolve_alliance_name(alliance_id) do
+    fetch_fn = fn -> fetch_alliance_with_fallback(alliance_id) end
+
+    case CacheManager.get_cached_or_fetch(:alliance, alliance_id, fetch_fn) do
       {:ok, name} -> name
       {:error, _} -> "Unknown Alliance (#{alliance_id})"
+    end
+  end
+
+  defp fetch_alliance_with_fallback(alliance_id) do
+    # First try database lookup, then fall back to ESI
+    case fetch_from_database(:alliance, alliance_id) do
+      {:ok, name} -> {:ok, name}
+      {:error, _} -> fetch_from_esi(:alliance, alliance_id)
     end
   end
 

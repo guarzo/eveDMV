@@ -150,4 +150,16 @@ defmodule EveDmv.Contexts.Corporation.Resources.MemberActivityLog do
 
     validate(numericality(:duration_minutes, greater_than_or_equal_to: 0))
   end
+
+  code_interface do
+    domain(EveDmv.Api)
+    define(:create)
+    define(:read)
+    define(:destroy)
+    define(:list_by_character, action: :by_character, args: [:character_id])
+    define(:list_by_corporation, action: :by_corporation, args: [:corporation_id])
+    define(:list_by_activity_type, action: :by_activity_type, args: [:activity_type])
+    define(:list_by_date_range, action: :by_date_range, args: [:start_date, :end_date])
+    define(:list_recent_activity, action: :recent_activity, args: [:character_id, :days])
+  end
 end

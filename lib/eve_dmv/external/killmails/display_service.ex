@@ -244,7 +244,7 @@ defmodule EveDmv.Killmails.DisplayService do
       security_class: system_security.class,
       security_color: system_security.color,
       security_status: system_security.status,
-      total_value: extract_total_value(raw.raw_data),
+      total_value: get_total_value(raw),
       ship_value: extract_ship_value(raw.raw_data),
       attacker_count: raw.attacker_count,
       final_blow_character_id: get_in(final_blow, ["character_id"]),
@@ -330,6 +330,15 @@ defmodule EveDmv.Killmails.DisplayService do
 
   defp extract_solar_system_id(killmail_data) do
     killmail_data["solar_system_id"] || killmail_data["system_id"] || 30_000_142
+  end
+
+  # Use the resource's total_value attribute if available, otherwise extract from raw_data
+  defp get_total_value(raw) do
+    if raw.total_value && Decimal.compare(raw.total_value, Decimal.new(0)) != :eq do
+      raw.total_value
+    else
+      extract_total_value(raw.raw_data)
+    end
   end
 
   defp extract_total_value(killmail_data) do

@@ -147,21 +147,19 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtili
   Efficiency is normalized to 0.0-1.0 where 1.0 means excellent damage contribution.
   """
   @spec calculate_damage_efficiency(list()) :: {:ok, float()} | {:error, :insufficient_data}
-  def calculate_damage_efficiency(attacker_killmails) do
-    if Enum.empty?(attacker_killmails) do
-      {:error, :insufficient_data}
-    else
-      total_damage_contribution =
-        attacker_killmails
-        |> Enum.map(&extract_damage_contribution/1)
-        |> Enum.sum()
+  def calculate_damage_efficiency([]), do: {:error, :insufficient_data}
 
-      average_contribution = total_damage_contribution / length(attacker_killmails)
+  def calculate_damage_efficiency(attacker_killmails) when is_list(attacker_killmails) do
+    total_damage_contribution =
+      attacker_killmails
+      |> Enum.map(&extract_damage_contribution/1)
+      |> Enum.sum()
 
-      # Normalize damage contribution (higher is better)
-      # Use ThreatConfig for the normalization constant
-      {:ok, min(1.0, average_contribution / ThreatConfig.damage_contribution_excellent())}
-    end
+    average_contribution = total_damage_contribution / length(attacker_killmails)
+
+    # Normalize damage contribution (higher is better)
+    # Use ThreatConfig for the normalization constant
+    {:ok, min(1.0, average_contribution / ThreatConfig.damage_contribution_excellent())}
   end
 
   @doc """
@@ -356,26 +354,24 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtili
   @doc """
   Calculates ship diversity index using Shannon entropy.
   """
-  def calculate_ship_diversity_index(ship_types_map) do
-    if map_size(ship_types_map) == 0 do
-      0.0
-    else
-      total_uses = Map.values(ship_types_map) |> Enum.sum()
-      unique_ships = map_size(ship_types_map)
+  def calculate_ship_diversity_index(ship_types_map) when map_size(ship_types_map) == 0, do: 0.0
 
-      # Shannon diversity index adapted for ship usage
-      shannon_diversity =
-        ship_types_map
-        |> Enum.map(fn {_ship, uses} ->
-          proportion = uses / total_uses
-          -proportion * :math.log(proportion)
-        end)
-        |> Enum.sum()
+  def calculate_ship_diversity_index(ship_types_map) when is_map(ship_types_map) do
+    total_uses = Map.values(ship_types_map) |> Enum.sum()
+    unique_ships = map_size(ship_types_map)
 
-      # Normalize to 0-1 scale
-      max_diversity = :math.log(unique_ships)
-      if max_diversity > 0, do: shannon_diversity / max_diversity, else: 0.0
-    end
+    # Shannon diversity index adapted for ship usage
+    shannon_diversity =
+      ship_types_map
+      |> Enum.map(fn {_ship, uses} ->
+        proportion = uses / total_uses
+        -proportion * :math.log(proportion)
+      end)
+      |> Enum.sum()
+
+    # Normalize to 0-1 scale
+    max_diversity = :math.log(unique_ships)
+    if max_diversity > 0, do: shannon_diversity / max_diversity, else: 0.0
   end
 
   @doc """
@@ -403,14 +399,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtili
   @doc """
   Calculates variance from a list of numbers.
   """
-  def calculate_variance(values) do
-    if length(values) <= 1 do
-      0.0
-    else
-      mean_val = average(values)
-      variance_sum = values |> Enum.map(&:math.pow(&1 - mean_val, 2)) |> Enum.sum()
-      variance_sum / length(values)
-    end
+  def calculate_variance([]), do: 0.0
+  def calculate_variance([_single]), do: 0.0
+
+  def calculate_variance(values) when is_list(values) do
+    mean_val = average(values)
+    variance_sum = values |> Enum.map(&:math.pow(&1 - mean_val, 2)) |> Enum.sum()
+    variance_sum / length(values)
   end
 
   @doc """

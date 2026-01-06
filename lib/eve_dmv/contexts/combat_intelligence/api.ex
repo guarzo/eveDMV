@@ -6,9 +6,22 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   threat assessment, and tactical decision support.
   """
 
+  import EveDmv.Core.Validation.Validators
+
   alias EveDmv.Contexts.CombatIntelligence.Domain
   alias EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer
   alias EveDmv.Contexts.CombatIntelligence.Domain.CorporationAnalyzer
+
+  # Validation constants (used by centralized validators)
+  @analysis_types [:full, :quick, :threat_only, :activity_only]
+  @threat_contexts [:general, :recruitment, :wormhole_operations, :fleet_operations]
+  @scoring_types [
+    :danger_rating,
+    :hunter_score,
+    :fleet_commander_score,
+    :solo_pilot_score,
+    :awox_risk_score
+  ]
 
   @type analysis_options :: [
           analysis_type: :full | :quick | :threat_only | :activity_only,
@@ -323,73 +336,87 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   end
 
   # Private validation functions
+  #
+  # Uses centralized validators from EveDmv.Core.Validation.Validators
 
   defp validate_analysis_options(opts) when is_list(opts) do
-    with :ok <- validate_analysis_type(Keyword.get(opts, :analysis_type)),
-         :ok <- validate_time_range_option(Keyword.get(opts, :time_range)),
-         :ok <- validate_boolean_option(opts, :include_associates),
-         :ok <- validate_boolean_option(opts, :include_patterns),
-         :ok <- validate_cache_ttl(Keyword.get(opts, :cache_ttl)) do
+    with :ok <- do_validate_analysis_type(Keyword.get(opts, :analysis_type)),
+         :ok <- do_validate_time_range_option(Keyword.get(opts, :time_range)),
+         :ok <-
+           do_validate_boolean_option(:include_associates, Keyword.get(opts, :include_associates)),
+         :ok <-
+           do_validate_boolean_option(:include_patterns, Keyword.get(opts, :include_patterns)),
+         :ok <- do_validate_cache_ttl(Keyword.get(opts, :cache_ttl)) do
       :ok
     end
   end
 
   defp validate_analysis_options(_), do: {:error, :invalid_options_format}
 
-  defp validate_analysis_type(nil), do: :ok
+  defp do_validate_analysis_type(nil), do: :ok
 
-  defp validate_analysis_type(type) when type in [:full, :quick, :threat_only, :activity_only],
-    do: :ok
-
-  defp validate_analysis_type(_), do: {:error, :invalid_analysis_type}
-
-  defp validate_time_range_option(nil), do: :ok
-  defp validate_time_range_option(time_range) when is_map(time_range), do: :ok
-  defp validate_time_range_option(_), do: {:error, :invalid_time_range}
-
-  defp validate_boolean_option(opts, key) do
-    case Keyword.get(opts, key) do
-      nil -> :ok
-      value when is_boolean(value) -> :ok
-      _ -> {:error, {:invalid_boolean_option, key}}
+  defp do_validate_analysis_type(type) do
+    case validate_enum(:analysis_type, type, @analysis_types) do
+      :ok -> :ok
+      {:error, _} -> {:error, :invalid_analysis_type}
     end
   end
 
-  defp validate_cache_ttl(nil), do: :ok
-  defp validate_cache_ttl(ttl) when is_integer(ttl) and ttl > 0, do: :ok
-  defp validate_cache_ttl(_), do: {:error, :invalid_cache_ttl}
+  defp do_validate_time_range_option(nil), do: :ok
 
-  defp validate_threat_context(context)
-       when context in [:general, :recruitment, :wormhole_operations, :fleet_operations],
-       do: :ok
-
-  defp validate_threat_context(_), do: {:error, :invalid_threat_context}
-
-  defp validate_scoring_type(type)
-       when type in [
-              :danger_rating,
-              :hunter_score,
-              :fleet_commander_score,
-              :solo_pilot_score,
-              :awox_risk_score
-            ],
-       do: :ok
-
-  defp validate_scoring_type(_), do: {:error, :invalid_scoring_type}
-
-  defp validate_search_criteria(criteria) when is_map(criteria) and map_size(criteria) > 0,
-    do: :ok
-
-  defp validate_search_criteria(_), do: {:error, :invalid_search_criteria}
-
-  defp validate_character_ids(character_ids)
-       when is_list(character_ids) and character_ids != [] do
-    if Enum.all?(character_ids, &(is_integer(&1) and &1 > 0)) do
-      :ok
-    else
-      {:error, :invalid_character_ids}
+  defp do_validate_time_range_option(time_range) do
+    case validate_map(:time_range, time_range) do
+      :ok -> :ok
+      {:error, _} -> {:error, :invalid_time_range}
     end
   end
 
-  defp validate_character_ids(_), do: {:error, :invalid_character_ids_format}
+  defp do_validate_boolean_option(_key, nil), do: :ok
+
+  defp do_validate_boolean_option(key, value) do
+    case validate_boolean(key, value) do
+      :ok -> :ok
+      {:error, _} -> {:error, {:invalid_boolean_option, key}}
+    end
+  end
+
+  defp do_validate_cache_ttl(nil), do: :ok
+
+  defp do_validate_cache_ttl(ttl) do
+    case validate_positive_integer(:cache_ttl, ttl) do
+      :ok -> :ok
+      {:error, _} -> {:error, :invalid_cache_ttl}
+    end
+  end
+
+  defp validate_threat_context(context) do
+    case validate_enum(:context, context, @threat_contexts) do
+      :ok -> :ok
+      {:error, _} -> {:error, :invalid_threat_context}
+    end
+  end
+
+  defp validate_scoring_type(type) do
+    case validate_enum(:scoring_type, type, @scoring_types) do
+      :ok -> :ok
+      {:error, _} -> {:error, :invalid_scoring_type}
+    end
+  end
+
+  defp validate_search_criteria(criteria) do
+    case validate_map(:criteria, criteria, allow_empty: false) do
+      :ok -> :ok
+      {:error, _} -> {:error, :invalid_search_criteria}
+    end
+  end
+
+  defp validate_character_ids(character_ids) do
+    case validate_integer_list(:character_ids, character_ids, min: 1) do
+      :ok -> :ok
+      {:error, {:character_ids, :invalid_type}} -> {:error, :invalid_character_ids_format}
+      {:error, {:character_ids, :required}} -> {:error, :invalid_character_ids_format}
+      {:error, {:character_ids, :too_few_items}} -> {:error, :invalid_character_ids_format}
+      {:error, {:character_ids, :invalid_items}} -> {:error, :invalid_character_ids}
+    end
+  end
 end

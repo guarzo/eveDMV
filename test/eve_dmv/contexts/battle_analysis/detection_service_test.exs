@@ -48,7 +48,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.Services.DetectionServiceTest do
 
       result = DetectionService.detect_character_battles(character_id, 10)
 
-      if length(result) > 0 do
+      if result != [] do
         battle = hd(result)
         assert Map.has_key?(battle, :battle_id)
         assert Map.has_key?(battle, :battle_time)
@@ -86,7 +86,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.Services.DetectionServiceTest do
 
       result = DetectionService.detect_corporation_battles(corporation_id, 10)
 
-      if length(result) > 0 do
+      if result != [] do
         battle = hd(result)
         assert Map.has_key?(battle, :coordination_level)
         assert Map.has_key?(battle, :fleet_discipline)
@@ -159,7 +159,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.Services.DetectionServiceTest do
 
       result = DetectionService.detect_system_battles(@test_system_id, 10)
 
-      if length(result) > 0 do
+      if result != [] do
         battle = hd(result)
         assert Map.has_key?(battle, :strategic_importance)
         assert Map.has_key?(battle, :escalation_pattern)
@@ -223,7 +223,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.Services.DetectionServiceTest do
 
       assert is_list(result)
 
-      if length(result) > 0 do
+      if result != [] do
         doctrine = hd(result)
         assert Map.has_key?(doctrine, :ship_type)
         assert Map.has_key?(doctrine, :usage_count)

@@ -143,7 +143,7 @@ defmodule EveDmv.Integration.SurveillanceFlowTest do
     test "rejects profile with missing required fields", %{user_id: _user_id} do
       # Missing name
       profile_data = %{
-        criteria: %{type: :character_watch, character_ids: [12345]},
+        criteria: %{type: :character_watch, character_ids: [12_345]},
         user_id: 1
       }
 
@@ -153,7 +153,7 @@ defmodule EveDmv.Integration.SurveillanceFlowTest do
     test "rejects profile with invalid name (too short)", %{user_id: user_id} do
       profile_data = %{
         name: "AB",
-        criteria: %{type: :character_watch, character_ids: [12345]},
+        criteria: %{type: :character_watch, character_ids: [12_345]},
         user_id: user_id
       }
 
@@ -165,7 +165,7 @@ defmodule EveDmv.Integration.SurveillanceFlowTest do
 
       profile_data = %{
         name: long_name,
-        criteria: %{type: :character_watch, character_ids: [12345]},
+        criteria: %{type: :character_watch, character_ids: [12_345]},
         user_id: user_id
       }
 
@@ -175,7 +175,7 @@ defmodule EveDmv.Integration.SurveillanceFlowTest do
     test "rejects profile with invalid user_id", %{user_id: _user_id} do
       profile_data = %{
         name: "Valid Name",
-        criteria: %{type: :character_watch, character_ids: [12345]},
+        criteria: %{type: :character_watch, character_ids: [12_345]},
         user_id: -1
       }
 
@@ -185,7 +185,7 @@ defmodule EveDmv.Integration.SurveillanceFlowTest do
     test "enables and disables a profile", %{user_id: user_id} do
       profile_data = %{
         name: "Toggle Test #{System.unique_integer([:positive])}",
-        criteria: %{type: :character_watch, character_ids: [12345]},
+        criteria: %{type: :character_watch, character_ids: [12_345]},
         user_id: user_id
       }
 
@@ -204,25 +204,25 @@ defmodule EveDmv.Integration.SurveillanceFlowTest do
     test "updates profile criteria", %{user_id: user_id} do
       profile_data = %{
         name: "Update Test #{System.unique_integer([:positive])}",
-        criteria: %{type: :character_watch, character_ids: [12345]},
+        criteria: %{type: :character_watch, character_ids: [12_345]},
         user_id: user_id
       }
 
       {:ok, profile} = SurveillanceApi.create_profile(profile_data)
 
       # Update criteria to watch additional characters
-      new_criteria = %{type: :character_watch, character_ids: [12345, 67890]}
+      new_criteria = %{type: :character_watch, character_ids: [12_345, 67_890]}
 
       {:ok, updated_profile} =
         SurveillanceApi.update_profile(profile.id, %{criteria: new_criteria})
 
-      assert updated_profile.criteria.character_ids == [12345, 67890]
+      assert updated_profile.criteria.character_ids == [12_345, 67_890]
     end
 
     test "deletes a profile", %{user_id: user_id} do
       profile_data = %{
         name: "Delete Test #{System.unique_integer([:positive])}",
-        criteria: %{type: :character_watch, character_ids: [12345]},
+        criteria: %{type: :character_watch, character_ids: [12_345]},
         user_id: user_id
       }
 
@@ -241,7 +241,7 @@ defmodule EveDmv.Integration.SurveillanceFlowTest do
         for i <- 1..3 do
           profile_data = %{
             name: "List Test #{i} - #{System.unique_integer([:positive])}",
-            criteria: %{type: :character_watch, character_ids: [12345 + i]},
+            criteria: %{type: :character_watch, character_ids: [12_345 + i]},
             user_id: user_id
           }
 
@@ -431,7 +431,7 @@ defmodule EveDmv.Integration.SurveillanceFlowTest do
     end
 
     test "validates criteria configuration", %{user_id: _user_id} do
-      valid_criteria = %{type: :character_watch, character_ids: [12345]}
+      valid_criteria = %{type: :character_watch, character_ids: [12_345]}
       assert {:ok, :valid} = MatchingEngine.validate_criteria(valid_criteria)
 
       invalid_criteria = %{type: :character_watch, character_ids: []}
@@ -444,13 +444,13 @@ defmodule EveDmv.Integration.SurveillanceFlowTest do
     end
 
     test "tests criteria against sample data", %{user_id: _user_id} do
-      criteria = %{type: :character_watch, character_ids: [12345]}
+      criteria = %{type: :character_watch, character_ids: [12_345]}
 
       test_data = %{
         killmail_id: 1,
         solar_system_id: 30_000_142,
         killmail_time: DateTime.utc_now(),
-        victim: %{character_id: 12345, corporation_id: 1, ship_type_id: 587},
+        victim: %{character_id: 12_345, corporation_id: 1, ship_type_id: 587},
         attackers: [],
         zkb_total_value: 1_000_000
       }
@@ -470,7 +470,7 @@ defmodule EveDmv.Integration.SurveillanceFlowTest do
     test "configures email notifications for a profile", %{user_id: user_id} do
       profile_data = %{
         name: "Notification Config Test #{System.unique_integer([:positive])}",
-        criteria: %{type: :character_watch, character_ids: [12345]},
+        criteria: %{type: :character_watch, character_ids: [12_345]},
         user_id: user_id
       }
 
@@ -492,7 +492,7 @@ defmodule EveDmv.Integration.SurveillanceFlowTest do
     test "configures webhook notifications for a profile", %{user_id: user_id} do
       profile_data = %{
         name: "Webhook Config Test #{System.unique_integer([:positive])}",
-        criteria: %{type: :character_watch, character_ids: [12345]},
+        criteria: %{type: :character_watch, character_ids: [12_345]},
         user_id: user_id
       }
 
@@ -511,7 +511,7 @@ defmodule EveDmv.Integration.SurveillanceFlowTest do
     test "rejects notification config with missing email address", %{user_id: user_id} do
       profile_data = %{
         name: "Bad Notification Config #{System.unique_integer([:positive])}",
-        criteria: %{type: :character_watch, character_ids: [12345]},
+        criteria: %{type: :character_watch, character_ids: [12_345]},
         user_id: user_id
       }
 
@@ -529,7 +529,7 @@ defmodule EveDmv.Integration.SurveillanceFlowTest do
     test "rejects notification config with missing webhook URL", %{user_id: user_id} do
       profile_data = %{
         name: "Bad Webhook Config #{System.unique_integer([:positive])}",
-        criteria: %{type: :character_watch, character_ids: [12345]},
+        criteria: %{type: :character_watch, character_ids: [12_345]},
         user_id: user_id
       }
 
@@ -547,7 +547,7 @@ defmodule EveDmv.Integration.SurveillanceFlowTest do
     test "tests notification delivery for a profile", %{user_id: user_id} do
       profile_data = %{
         name: "Test Delivery Profile #{System.unique_integer([:positive])}",
-        criteria: %{type: :character_watch, character_ids: [12345]},
+        criteria: %{type: :character_watch, character_ids: [12_345]},
         user_id: user_id
       }
 
@@ -569,7 +569,7 @@ defmodule EveDmv.Integration.SurveillanceFlowTest do
     test "retrieves notification history for a profile", %{user_id: user_id} do
       profile_data = %{
         name: "History Test Profile #{System.unique_integer([:positive])}",
-        criteria: %{type: :character_watch, character_ids: [12345]},
+        criteria: %{type: :character_watch, character_ids: [12_345]},
         user_id: user_id
       }
 
@@ -583,7 +583,7 @@ defmodule EveDmv.Integration.SurveillanceFlowTest do
     test "dispatches alert notification through NotificationService", %{user_id: user_id} do
       profile_data = %{
         name: "Dispatch Test Profile #{System.unique_integer([:positive])}",
-        criteria: %{type: :character_watch, character_ids: [12345]},
+        criteria: %{type: :character_watch, character_ids: [12_345]},
         user_id: user_id
       }
 
@@ -603,7 +603,7 @@ defmodule EveDmv.Integration.SurveillanceFlowTest do
         priority: 2,
         alert_type: :target_killed,
         confidence_score: 0.95,
-        matched_criteria: [%{type: :character, character_id: 12345}],
+        matched_criteria: [%{type: :character, character_id: 12_345}],
         created_at: DateTime.utc_now()
       }
 
@@ -632,7 +632,7 @@ defmodule EveDmv.Integration.SurveillanceFlowTest do
     test "receives PubSub notification when in-app alert is delivered", %{user_id: user_id} do
       profile_data = %{
         name: "PubSub Test Profile #{System.unique_integer([:positive])}",
-        criteria: %{type: :character_watch, character_ids: [12345]},
+        criteria: %{type: :character_watch, character_ids: [12_345]},
         user_id: user_id
       }
 
@@ -652,7 +652,7 @@ defmodule EveDmv.Integration.SurveillanceFlowTest do
         priority: 1,
         alert_type: :target_active,
         confidence_score: 0.99,
-        matched_criteria: [%{type: :character, character_id: 12345}],
+        matched_criteria: [%{type: :character, character_id: 12_345}],
         created_at: DateTime.utc_now()
       }
 
@@ -671,7 +671,7 @@ defmodule EveDmv.Integration.SurveillanceFlowTest do
 
       profile_data = %{
         name: "Broadcast Test Profile #{System.unique_integer([:positive])}",
-        criteria: %{type: :character_watch, character_ids: [12345]},
+        criteria: %{type: :character_watch, character_ids: [12_345]},
         user_id: user_id
       }
 
@@ -789,7 +789,7 @@ defmodule EveDmv.Integration.SurveillanceFlowTest do
           _ -> false
         end)
 
-      assert length(matching_results) >= 1
+      assert not Enum.empty?(matching_results)
     end
 
     test "get_recent_matches returns result", %{user_id: _user_id} do
@@ -833,8 +833,8 @@ defmodule EveDmv.Integration.SurveillanceFlowTest do
         user_id: user_id
       }
 
-      {:ok, profile} = SurveillanceApi.create_profile(profile_data)
-      {:ok, profile} = SurveillanceApi.enable_profile(profile.id)
+      {:ok, created_profile} = SurveillanceApi.create_profile(profile_data)
+      {:ok, profile} = SurveillanceApi.enable_profile(created_profile.id)
 
       # Configure notifications using string keys
       notification_config = %{

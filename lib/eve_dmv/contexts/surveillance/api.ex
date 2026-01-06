@@ -8,7 +8,8 @@ defmodule EveDmv.Contexts.Surveillance.Api do
   """
 
   use EveDmv.Core.Errors.ErrorHandler
-  alias EveDmv.Core.Utils.ValidationUtils
+
+  import EveDmv.Core.Validation.Validators
 
   alias EveDmv.Contexts.Surveillance.Domain.MatchingEngine
   alias EveDmv.Contexts.Surveillance.Domain.NotificationService
@@ -252,15 +253,18 @@ defmodule EveDmv.Contexts.Surveillance.Api do
   end
 
   # Private validation functions
+  #
+  # Uses centralized validators from EveDmv.Core.Validation.Validators
 
   defp validate_profile_data(profile_data) do
-    required_fields = [:name, :criteria, :user_id]
-
-    with :ok <- ValidationUtils.validate_required_fields(profile_data, required_fields),
+    with :ok <- validate_required_keys(:profile_data, profile_data, [:name, :criteria, :user_id]),
          :ok <- validate_profile_name(profile_data[:name]),
          :ok <- validate_criteria_structure(profile_data[:criteria]),
-         :ok <- validate_user_id(profile_data[:user_id]) do
+         :ok <- validate_positive_integer(:user_id, profile_data[:user_id]) do
       {:ok, profile_data}
+    else
+      {:error, {:user_id, _}} -> {:error, :invalid_user_id}
+      {:error, other} -> {:error, other}
     end
   end
 
@@ -275,30 +279,36 @@ defmodule EveDmv.Contexts.Surveillance.Api do
     end
   end
 
-  defp validate_profile_name(name) when is_binary(name) do
-    cond do
-      String.length(name) < 3 -> {:error, :name_too_short}
-      String.length(name) > 100 -> {:error, :name_too_long}
-      String.trim(name) == "" -> {:error, :name_empty}
-      true -> :ok
+  defp validate_profile_name(name) do
+    case validate_string(:name, name, min: 3, max: 100) do
+      :ok -> :ok
+      {:error, {:name, :required}} -> {:error, :invalid_name_type}
+      {:error, {:name, :invalid_type}} -> {:error, :invalid_name_type}
+      {:error, {:name, :too_short}} -> {:error, :name_too_short}
+      {:error, {:name, :too_long}} -> {:error, :name_too_long}
+      {:error, {:name, :empty}} -> {:error, :name_empty}
     end
   end
 
-  defp validate_profile_name(_), do: {:error, :invalid_name_type}
-
-  defp validate_criteria_structure(criteria) when is_map(criteria) do
+  defp validate_criteria_structure(criteria) do
     # Basic structure validation - more detailed validation in MatchingEngine
-    required_criteria_fields = [:type]
+    case validate_map(:criteria, criteria, allow_empty: false) do
+      :ok ->
+        case validate_required_keys(:criteria, criteria, [:type]) do
+          :ok -> :ok
+          {:error, {:criteria, {:missing_keys, _}}} -> {:error, {:missing_fields, [:type]}}
+        end
 
-    with :ok <- ValidationUtils.validate_required_fields(criteria, required_criteria_fields) do
-      :ok
+      {:error, {:criteria, :invalid_type}} ->
+        {:error, :invalid_criteria_type}
+
+      {:error, {:criteria, :required}} ->
+        {:error, :invalid_criteria_type}
+
+      {:error, {:criteria, :empty}} ->
+        {:error, {:missing_fields, [:type]}}
     end
   end
-
-  defp validate_criteria_structure(_), do: {:error, :invalid_criteria_type}
-
-  defp validate_user_id(user_id) when is_integer(user_id) and user_id > 0, do: :ok
-  defp validate_user_id(_), do: {:error, :invalid_user_id}
 
   defp validate_update_fields(updates) do
     # Validate each field that's being updated
@@ -312,33 +322,56 @@ defmodule EveDmv.Contexts.Surveillance.Api do
 
   defp validate_update_field(:name, name), do: validate_profile_name(name)
   defp validate_update_field(:criteria, criteria), do: validate_criteria_structure(criteria)
-  defp validate_update_field(:is_active, active) when is_boolean(active), do: :ok
-  defp validate_update_field(:notification_config, config) when is_map(config), do: :ok
-  defp validate_update_field(field, _value), do: {:error, {:invalid_field, field}}
 
-  defp validate_test_data(test_data) when is_map(test_data) do
-    # Test data should contain killmail-like structure
-    required_fields = [:character_id, :corporation_id, :ship_type_id]
-
-    with :ok <- ValidationUtils.validate_required_fields(test_data, required_fields) do
-      {:ok, test_data}
+  defp validate_update_field(:is_active, active) do
+    case validate_boolean(:is_active, active) do
+      :ok -> :ok
+      {:error, _} -> {:error, :invalid_type}
     end
   end
 
-  defp validate_test_data(_), do: {:error, :invalid_test_data_type}
+  defp validate_update_field(:notification_config, config) do
+    case validate_map(:notification_config, config) do
+      :ok -> :ok
+      {:error, _} -> {:error, :invalid_type}
+    end
+  end
 
-  defp validate_notification_config(config) when is_map(config) do
+  defp validate_update_field(field, _value), do: {:error, {:invalid_field, field}}
+
+  defp validate_test_data(test_data) do
+    # Test data should contain killmail-like structure
+    with :ok <- validate_map(:test_data, test_data),
+         :ok <-
+           validate_required_keys(:test_data, test_data, [
+             :character_id,
+             :corporation_id,
+             :ship_type_id
+           ]) do
+      {:ok, test_data}
+    else
+      {:error, {:test_data, :invalid_type}} -> {:error, :invalid_test_data_type}
+      {:error, {:test_data, :required}} -> {:error, :invalid_test_data_type}
+      {:error, {:test_data, {:missing_keys, keys}}} -> {:error, {:missing_fields, keys}}
+    end
+  end
+
+  defp validate_notification_config(config) do
     # Validate notification configuration structure
     allowed_types = [:email, :webhook, :in_app]
 
-    config_keys = Map.keys(config)
-    invalid_keys = Enum.reject(config_keys, fn key -> key in allowed_types end)
+    case validate_map(:notification_config, config) do
+      :ok ->
+        config_keys = Map.keys(config)
+        invalid_keys = Enum.reject(config_keys, fn key -> key in allowed_types end)
 
-    case invalid_keys do
-      [] -> {:ok, config}
-      keys -> {:error, {:invalid_notification_types, keys}}
+        case invalid_keys do
+          [] -> {:ok, config}
+          keys -> {:error, {:invalid_notification_types, keys}}
+        end
+
+      {:error, _} ->
+        {:error, :invalid_notification_config_type}
     end
   end
-
-  defp validate_notification_config(_), do: {:error, :invalid_notification_config_type}
 end

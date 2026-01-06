@@ -21,7 +21,11 @@ defmodule EveDmv.Contexts.KillmailProcessing.Resources.HistoricalFetchStatus do
 
   use Ash.Resource,
     domain: EveDmv.Api,
-    data_layer: AshPostgres.DataLayer
+    data_layer: AshPostgres.DataLayer,
+    notifiers: [
+      EveDmv.Ash.Notifiers.PubSubNotifier,
+      EveDmv.Ash.Notifiers.TelemetryNotifier
+    ]
 
   postgres do
     table("historical_fetch_status")

@@ -493,11 +493,6 @@ defmodule EveDmv.Integration.BattleAnalysisFlowTest do
       :ok
     end
 
-    # TODO: Fix BattleService.analyze_killmails_for_battle to convert Ash resources
-    # to raw API format before passing to BattleDetector.detect_battles.
-    # The BattleDetector expects .victim and .attackers fields at the top level,
-    # but receives Ash KillmailRaw resources with data in raw_data map.
-    @tag :skip
     test "battle service creates battle from killmail IDs" do
       system_id = @jita_system_id
       base_time = DateTime.utc_now()

@@ -54,8 +54,9 @@ defmodule EveDmv.DataCase do
   setup tags do
     setup_sandbox(tags)
 
-    # Seed common test ships if needed
-    if tags[:seed_ships] != false do
+    # Only seed test ships if explicitly requested via @tag seed_ships: true
+    # Ship data is already loaded from SDE - only use this for tests that need specific test ships
+    if tags[:seed_ships] == true do
       EveDmv.TestDataHelpers.seed_test_ships()
     end
 

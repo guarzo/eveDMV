@@ -10,13 +10,11 @@ defmodule EveDmv.Contexts.Combat.ApiTest do
 
   # Helper to safely call functions that may require GenServers not running in test
   defp safe_call(fun) do
-    try do
-      fun.()
-    rescue
-      _ -> {:error, :service_unavailable}
-    catch
-      :exit, _ -> {:error, :service_unavailable}
-    end
+    fun.()
+  rescue
+    _ -> {:error, :service_unavailable}
+  catch
+    :exit, _ -> {:error, :service_unavailable}
   end
 
   describe "detect_battles/2" do
@@ -45,7 +43,7 @@ defmodule EveDmv.Contexts.Combat.ApiTest do
 
   describe "detect_battles_in_timeframe/3" do
     test "detects battles within time range" do
-      start_time = DateTime.add(DateTime.utc_now(), -86400, :second)
+      start_time = DateTime.add(DateTime.utc_now(), -86_400, :second)
       end_time = DateTime.utc_now()
 
       result = safe_call(fn -> Api.detect_battles_in_timeframe(start_time, end_time) end)
@@ -54,7 +52,7 @@ defmodule EveDmv.Contexts.Combat.ApiTest do
     end
 
     test "accepts options keyword list" do
-      start_time = DateTime.add(DateTime.utc_now(), -86400, :second)
+      start_time = DateTime.add(DateTime.utc_now(), -86_400, :second)
       end_time = DateTime.utc_now()
 
       result =

@@ -9,13 +9,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.ApiTest do
 
   # Helper to safely call functions that may require resources or changesets
   defp safe_call(fun) do
-    try do
-      fun.()
-    rescue
-      _ -> {:error, :invalid_argument}
-    catch
-      :exit, _ -> {:error, :service_unavailable}
-    end
+    fun.()
+  rescue
+    _ -> {:error, :invalid_argument}
+  catch
+    :exit, _ -> {:error, :service_unavailable}
   end
 
   describe "read/1" do

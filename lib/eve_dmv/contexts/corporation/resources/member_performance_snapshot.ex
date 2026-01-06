@@ -230,4 +230,22 @@ defmodule EveDmv.Contexts.Corporation.Resources.MemberPerformanceSnapshot do
       )
     )
   end
+
+  code_interface do
+    domain(EveDmv.Api)
+    define(:create)
+    define(:update)
+    define(:read)
+    define(:destroy)
+    define(:list_by_character, action: :by_character, args: [:character_id])
+    define(:list_by_corporation, action: :by_corporation, args: [:corporation_id])
+    define(:list_by_date_range, action: :by_date_range, args: [:start_date, :end_date])
+
+    define(:list_top_performers,
+      action: :top_performers,
+      args: [:corporation_id, :metric, :limit]
+    )
+
+    define(:list_recent_snapshots, action: :recent_snapshots, args: [:character_id, :days])
+  end
 end

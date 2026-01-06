@@ -5,11 +5,15 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Calculators.PredictiveCal
   Analyzes historical threat data to predict future threat levels and identify trends.
   """
 
+  alias EveDmv.Types
+
   require Logger
 
   @doc """
   Predict threat evolution over a specified time period.
   """
+  @spec predict_threat_evolution([Types.historical_score()], keyword()) ::
+          Types.result(Types.threat_evolution())
   def predict_threat_evolution(historical_scores, opts \\ [])
 
   def predict_threat_evolution([], _opts) do
@@ -49,6 +53,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Calculators.PredictiveCal
   @doc """
   Calculate predictive threat score based on historical data.
   """
+  @spec calculate_predictive_threat([Types.historical_score()], keyword()) ::
+          Types.threat_evolution()
   def calculate_predictive_threat(historical_scores, options \\ []) do
     Logger.debug(
       "Calculating predictive threat for #{length(historical_scores)} historical scores"
@@ -73,6 +79,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Calculators.PredictiveCal
   @doc """
   Analyze threat trend patterns.
   """
+  @spec analyze_threat_trends([Types.historical_score()]) :: map()
   def analyze_threat_trends(historical_scores) do
     Logger.debug("Analyzing threat trends for #{length(historical_scores)} data points")
 
@@ -100,6 +107,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Calculators.PredictiveCal
   @doc """
   Calculate threat score momentum.
   """
+  @spec calculate_momentum([Types.historical_score()], pos_integer()) ::
+          Types.result(Types.momentum_analysis())
   def calculate_momentum(historical_scores, window_size \\ 7)
 
   def calculate_momentum(historical_scores, _window_size) when length(historical_scores) < 2 do
@@ -161,6 +170,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Calculators.PredictiveCal
   @doc """
   Generate recommendations based on threat analysis.
   """
+  @spec generate_recommendations([Types.historical_score()], Types.prediction()) :: [String.t()]
   def generate_recommendations(historical_scores, prediction) do
     trend = analyze_trend(historical_scores)
     generate_predictive_recommendations(trend, prediction)

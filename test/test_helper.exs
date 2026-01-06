@@ -7,9 +7,38 @@ ExUnit.start(
 
 require Logger
 
-# Helper function for waiting on repo readiness
+# Helper function for waiting on repo readiness and connection management
 defmodule TestHelper do
-  def wait_for_repo_ready(attempts \\ 0, max_attempts \\ 20) do
+  @moduledoc false
+
+  def drain_connections do
+    # Terminate any orphaned connections from previous test runs
+    drain_query = """
+    SELECT pg_terminate_backend(pid)
+    FROM pg_stat_activity
+    WHERE datname LIKE 'eve_dmv_test%'
+      AND state = 'idle'
+      AND query_start < NOW() - INTERVAL '30 seconds';
+    """
+
+    # Connect directly to postgres database to run cleanup
+    case Postgrex.start_link(
+           hostname: System.get_env("DB_HOST", "db"),
+           username: System.get_env("DB_USER", "postgres"),
+           password: System.get_env("DB_PASS", "postgres"),
+           database: "postgres"
+         ) do
+      {:ok, conn} ->
+        Postgrex.query(conn, drain_query, [])
+        GenServer.stop(conn)
+        Logger.info("Drained orphaned test connections")
+
+      {:error, reason} ->
+        Logger.warning("Could not drain connections: #{inspect(reason)}")
+    end
+  end
+
+  def wait_for_repo_ready(attempts \\ 0, max_attempts \\ 30) do
     if attempts >= max_attempts do
       Logger.warning("Repo readiness check timeout after #{max_attempts} attempts")
     else
@@ -66,9 +95,11 @@ if pool_class != Ecto.Adapters.SQL.Sandbox do
     database: "eve_dmv_test#{System.get_env("MIX_TEST_PARTITION")}",
     port: 5432,
     pool: Ecto.Adapters.SQL.Sandbox,
-    pool_size: System.schedulers_online() * 2,
-    ownership_timeout: 60_000,
-    timeout: 60_000
+    pool_size: 15,
+    ownership_timeout: 120_000,
+    timeout: 60_000,
+    queue_target: 5000,
+    queue_interval: 1000
   ]
 
   Application.put_env(:eve_dmv, EveDmv.Repo, test_config)

@@ -4,7 +4,8 @@ defmodule EveDmv.StaticData.ShipTypesTest do
 
   Tests ship classification, role detection, and fleet composition utilities.
   """
-  use EveDmv.DataCase, async: false
+  # Async: true - this test only reads from static data tables (SDE)
+  use EveDmv.DataCase, async: true
 
   alias EveDmv.StaticData.ShipTypes
 

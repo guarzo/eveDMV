@@ -422,6 +422,49 @@ defmodule EveDmv.Killmails.Participant do
         end)
       end)
     end
+
+    calculate :threat_level, :atom do
+      description(
+        "Calculated threat level based on damage and role: :low, :medium, :high, :extreme"
+      )
+
+      calculation(fn records, _context ->
+        Enum.map(records, fn participant ->
+          cond do
+            participant.is_victim -> :none
+            participant.final_blow and participant.damage_done > 10_000 -> :extreme
+            participant.final_blow -> :high
+            participant.damage_done > 5_000 -> :medium
+            true -> :low
+          end
+        end)
+      end)
+    end
+
+    calculate :ship_category, :string do
+      description("Ship category from EVE SDE group classification")
+      load([:ship_type])
+
+      calculation(fn records, _context ->
+        Enum.map(records, fn participant ->
+          case participant.ship_type do
+            nil -> "Unknown"
+            ship -> ship.group_name || "Unknown"
+          end
+        end)
+      end)
+    end
+
+    calculate :significant_contribution?, :boolean do
+      description("True if damage >= 10% of total killmail damage or landed final blow")
+
+      calculation(fn records, _context ->
+        Enum.map(records, fn participant ->
+          participant.final_blow == true or
+            (is_number(participant.damage_done) and participant.damage_done >= 1000)
+        end)
+      end)
+    end
   end
 
   # Authorization policies

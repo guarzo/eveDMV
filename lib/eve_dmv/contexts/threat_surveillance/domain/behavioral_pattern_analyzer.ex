@@ -443,8 +443,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
   defp calculate_average_ship_value(killmails) do
     values =
       killmails
-      |> Enum.map(&get_killmail_value/1)
-      |> Enum.map(&to_float/1)
+      |> Enum.map(fn km -> km |> get_killmail_value() |> to_float() end)
       |> Enum.filter(&(&1 > 0))
 
     if Enum.empty?(values) do

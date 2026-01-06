@@ -21,6 +21,7 @@ defmodule EveDmvWeb.CorporationLive do
 
   alias EveDmv.Contexts.BattleAnalysis.Domain.Services.DetectionService, as: BattleDetector
   alias EveDmv.Contexts.CorporationIntelligence
+  alias EveDmv.Contexts.KillmailProcessing
   alias EveDmv.Pagination.CursorPaginator
   alias EveDmv.Platform.Cache.AnalysisCache
   alias EveDmvWeb.CorporationLive.DataLoader
@@ -450,8 +451,6 @@ defmodule EveDmvWeb.CorporationLive do
   # Historical fetch helpers
   # These functions integrate with the KillmailProcessing context for 2-year historical data.
   # Uses the KillmailProcessing.Api for the actual implementation.
-
-  alias EveDmv.Contexts.KillmailProcessing
 
   defp get_historical_fetch_status(entity_type, entity_id) do
     case KillmailProcessing.Api.get_historical_fetch_status(entity_type, entity_id) do

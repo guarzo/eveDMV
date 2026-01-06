@@ -428,7 +428,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.ApiTest do
 
       result = Api.get_external_groups(character_id, since_date)
 
-      assert is_list(result)
+      assert {:ok, groups} = result
+      assert is_list(groups)
     end
 
     test "returns empty list when no groups found" do
@@ -437,7 +438,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.ApiTest do
 
       result = Api.get_external_groups(character_id, since_date)
 
-      assert is_list(result)
+      assert {:ok, groups} = result
+      assert is_list(groups)
     end
   end
 

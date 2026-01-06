@@ -7,6 +7,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
   """
 
   import Ash.Expr
+  import EveDmv.Core.Validation.Validators
 
   alias EveDmv.Contexts.KillmailProcessing.Domain
   alias EveDmv.Contexts.KillmailProcessing.Resources.HistoricalFetchStatus
@@ -275,61 +276,92 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
   end
 
   # Private validation functions
+  #
+  # Uses centralized validators from EveDmv.Core.Validation.Validators
 
-  defp validate_raw_killmail(killmail) when is_map(killmail) do
-    required_fields = [:killmail_id, :killmail_time, :victim, :attackers]
+  defp validate_raw_killmail(killmail) do
+    case validate_map(:killmail, killmail) do
+      :ok ->
+        required_fields = [:killmail_id, :killmail_time, :victim, :attackers]
 
-    case Enum.find(required_fields, fn field -> not Map.has_key?(killmail, field) end) do
-      nil -> :ok
-      missing_field -> {:error, {:missing_field, missing_field}}
+        case validate_required_keys(:killmail, killmail, required_fields) do
+          :ok -> :ok
+          {:error, {:killmail, {:missing_keys, [field | _]}}} -> {:error, {:missing_field, field}}
+        end
+
+      {:error, _} ->
+        {:error, :invalid_killmail_format}
     end
   end
 
-  defp validate_raw_killmail(_), do: {:error, :invalid_killmail_format}
-
   defp validate_killmail_options(opts) when is_list(opts) do
-    with :ok <- validate_limit(Keyword.get(opts, :limit)),
-         :ok <- validate_offset(Keyword.get(opts, :offset)),
+    with :ok <- do_validate_limit(Keyword.get(opts, :limit)),
+         :ok <- do_validate_offset(Keyword.get(opts, :offset)),
          :ok <-
-           validate_value_range(Keyword.get(opts, :min_value), Keyword.get(opts, :max_value)),
-         :ok <- validate_time_range(Keyword.get(opts, :time_range)) do
+           do_validate_value_range(Keyword.get(opts, :min_value), Keyword.get(opts, :max_value)),
+         :ok <- do_validate_time_range(Keyword.get(opts, :time_range)) do
       :ok
     end
   end
 
   defp validate_killmail_options(_), do: {:error, :invalid_options_format}
 
-  defp validate_limit(nil), do: :ok
-  defp validate_limit(limit) when is_integer(limit) and limit > 0 and limit <= 500, do: :ok
-  defp validate_limit(_), do: {:error, :invalid_limit}
+  defp do_validate_limit(nil), do: :ok
 
-  defp validate_offset(nil), do: :ok
-  defp validate_offset(offset) when is_integer(offset) and offset >= 0, do: :ok
-  defp validate_offset(_), do: {:error, :invalid_offset}
-
-  defp validate_value_range(nil, nil), do: :ok
-  defp validate_value_range(min, nil) when is_integer(min) and min >= 0, do: :ok
-  defp validate_value_range(nil, max) when is_integer(max) and max >= 0, do: :ok
-
-  defp validate_value_range(min, max)
-       when is_integer(min) and is_integer(max) and min <= max and min >= 0,
-       do: :ok
-
-  defp validate_value_range(_, _), do: {:error, :invalid_value_range}
-
-  defp validate_time_range(nil), do: :ok
-  defp validate_time_range(%TimeRange{}), do: :ok
-  defp validate_time_range(_), do: {:error, :invalid_time_range}
-
-  defp validate_character_ids(character_ids) when is_list(character_ids) do
-    if Enum.all?(character_ids, &(is_integer(&1) and &1 > 0)) do
-      :ok
-    else
-      {:error, :invalid_character_ids}
+  defp do_validate_limit(limit) do
+    case validate_in_range(:limit, limit, min: 1, max: 500) do
+      :ok -> :ok
+      {:error, _} -> {:error, :invalid_limit}
     end
   end
 
-  defp validate_character_ids(_), do: {:error, :invalid_character_ids_format}
+  defp do_validate_offset(nil), do: :ok
+
+  defp do_validate_offset(offset) do
+    case validate_non_negative_integer(:offset, offset) do
+      :ok -> :ok
+      {:error, _} -> {:error, :invalid_offset}
+    end
+  end
+
+  defp do_validate_value_range(nil, nil), do: :ok
+
+  defp do_validate_value_range(min, nil) do
+    case validate_non_negative_integer(:min_value, min) do
+      :ok -> :ok
+      {:error, _} -> {:error, :invalid_value_range}
+    end
+  end
+
+  defp do_validate_value_range(nil, max) do
+    case validate_non_negative_integer(:max_value, max) do
+      :ok -> :ok
+      {:error, _} -> {:error, :invalid_value_range}
+    end
+  end
+
+  defp do_validate_value_range(min, max) do
+    with :ok <- validate_non_negative_integer(:min_value, min),
+         :ok <- validate_non_negative_integer(:max_value, max) do
+      if min <= max, do: :ok, else: {:error, :invalid_value_range}
+    else
+      {:error, _} -> {:error, :invalid_value_range}
+    end
+  end
+
+  defp do_validate_time_range(nil), do: :ok
+  defp do_validate_time_range(%TimeRange{}), do: :ok
+  defp do_validate_time_range(_), do: {:error, :invalid_time_range}
+
+  defp validate_character_ids(character_ids) do
+    case validate_integer_list(:character_ids, character_ids, min: 1) do
+      :ok -> :ok
+      {:error, {:character_ids, :invalid_type}} -> {:error, :invalid_character_ids_format}
+      {:error, {:character_ids, :required}} -> {:error, :invalid_character_ids_format}
+      {:error, {:character_ids, :too_few_items}} -> {:error, :invalid_character_ids}
+      {:error, {:character_ids, :invalid_items}} -> {:error, :invalid_character_ids}
+    end
+  end
 
   # ============================================================================
   # Historical Fetch Status API

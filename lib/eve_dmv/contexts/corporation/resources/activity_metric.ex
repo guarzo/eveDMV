@@ -200,4 +200,21 @@ defmodule EveDmv.Contexts.Corporation.Resources.ActivityMetric do
       )
     )
   end
+
+  code_interface do
+    domain(EveDmv.Api)
+    define(:create)
+    define(:update)
+    define(:read)
+    define(:destroy)
+    define(:list_by_corporation, action: :by_corporation, args: [:corporation_id])
+
+    define(:list_by_date_range,
+      action: :by_date_range,
+      args: [:corporation_id, :start_date, :end_date]
+    )
+
+    define(:list_by_metric_type, action: :by_metric_type, args: [:metric_type])
+    define(:list_recent_metrics, action: :recent_metrics, args: [:corporation_id, :days])
+  end
 end
