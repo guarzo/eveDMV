@@ -17,6 +17,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Shared.BattleAnalysisUtils do
 
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
 
+  # Maximum expected ship classes in a coherent doctrine
+  # Based on EVE fleet doctrines which typically use 5-10 distinct ship classes
+  @max_ship_classes 10.0
+
   @doc """
   Counts unique character participants from killmail data.
 
@@ -199,10 +203,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Shared.BattleAnalysisUtils do
     # Higher balance when variance is lower
     max(0.0, 1.0 - variance / (mean * mean + 1))
   end
-
-  # Maximum expected ship classes in a coherent doctrine
-  # Based on EVE fleet doctrines which typically use 5-10 distinct ship classes
-  @max_ship_classes 10.0
 
   @doc """
   Calculates doctrine coherence based on ship classes.

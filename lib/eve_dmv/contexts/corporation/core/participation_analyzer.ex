@@ -80,7 +80,114 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
     end
   end
 
+  @doc """
+  Get inactive members who haven't participated in the given number of days.
+
+  ## Parameters
+    - corporation_id: The corporation ID to analyze
+    - threshold: Number of days of inactivity (default: 30)
+
+  ## Returns
+    - `{:ok, [member_data]}` - List of inactive members with last activity info
+  """
+  @spec get_inactive_members(integer(), pos_integer()) :: {:ok, [map()]} | {:error, atom()}
+  def get_inactive_members(corporation_id, threshold \\ 30) do
+    case analyze_participation(corporation_id) do
+      {:ok, analysis} ->
+        inactive_members =
+          analysis.member_participation_profiles
+          |> Enum.filter(fn member ->
+            member.total_activities == 0 or
+              days_since_last_activity(member) >= threshold
+          end)
+          |> Enum.map(fn member ->
+            %{
+              character_id: member.character_id,
+              character_name: member.character_name,
+              last_seen: member.last_seen,
+              days_inactive: days_since_last_activity(member),
+              total_activities: member.total_activities
+            }
+          end)
+          |> Enum.sort_by(& &1.days_inactive, :desc)
+
+        {:ok, inactive_members}
+
+      error ->
+        error
+    end
+  end
+
+  @doc """
+  Get top performing members by activity and participation metrics.
+
+  ## Parameters
+    - corporation_id: The corporation ID to analyze
+    - limit: Number of top performers to return (default: 10)
+
+  ## Returns
+    - `{:ok, [member_data]}` - List of top performers with their metrics
+  """
+  @spec get_top_performers(integer(), pos_integer()) :: {:ok, [map()]} | {:error, atom()}
+  def get_top_performers(corporation_id, limit \\ 10) do
+    case analyze_participation(corporation_id) do
+      {:ok, analysis} ->
+        top_performers =
+          analysis.member_participation_profiles
+          |> Enum.filter(fn member -> member.total_activities > 0 end)
+          |> Enum.map(fn member ->
+            # Calculate composite performance score
+            performance_score = calculate_performance_score(member)
+
+            %{
+              character_id: member.character_id,
+              character_name: member.character_name,
+              total_activities: member.total_activities,
+              fleet_activities: member.fleet_activities,
+              participation_consistency: member.participation_consistency,
+              engagement_depth: member.engagement_depth.depth_score,
+              fleet_effectiveness: Map.get(member.fleet_effectiveness, :effectiveness_score, 0),
+              performance_score: performance_score
+            }
+          end)
+          |> Enum.sort_by(& &1.performance_score, :desc)
+          |> Enum.take(limit)
+
+        {:ok, top_performers}
+
+      error ->
+        error
+    end
+  end
+
   # Private Functions
+
+  defp days_since_last_activity(%{last_seen: nil}), do: 999
+
+  defp days_since_last_activity(%{last_seen: last_seen}) do
+    DateTime.diff(DateTime.utc_now(), last_seen, :day)
+  end
+
+  defp calculate_performance_score(member) do
+    # Weighted composite score:
+    # - Activity volume: 30%
+    # - Fleet participation: 25%
+    # - Consistency: 20%
+    # - Engagement depth: 15%
+    # - Fleet effectiveness: 10%
+    activity_score = min(member.total_activities / 50, 1.0) * 30
+    fleet_score = min(member.fleet_activities / 20, 1.0) * 25
+    consistency_score = member.participation_consistency / 100 * 20
+    engagement_score = member.engagement_depth.depth_score / 10 * 15
+
+    effectiveness_score =
+      Map.get(member.fleet_effectiveness, :effectiveness_score, 0) / 100 * 10
+
+    Float.round(
+      activity_score + fleet_score + consistency_score + engagement_score + effectiveness_score,
+      1
+    )
+  end
 
   defp perform_participation_analysis(corporation_id, opts) do
     Logger.info("Analyzing participation for corporation #{corporation_id}")
