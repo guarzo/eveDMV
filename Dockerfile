@@ -35,9 +35,8 @@ COPY config/ ./config/
 COPY priv/ ./priv/
 COPY lib/ ./lib/
 
-# Skip asset building if assets directory doesn't exist
-# The priv/static/assets already contains compiled assets
-# RUN mix assets.deploy
+# Digest static assets (creates cache_manifest.json for production)
+RUN mix phx.digest
 
 # Compile the project
 RUN mix compile
@@ -69,11 +68,8 @@ RUN addgroup -g 1000 -S appgroup && \
 # Create app directory
 WORKDIR /app
 
-# Copy the release from builder stage
+# Copy the release from builder stage (includes digested static assets)
 COPY --from=builder --chown=appuser:appgroup /app/_build/prod/rel/eve_dmv ./
-
-# Copy the digested static assets (includes cache_manifest.json)
-COPY --from=builder --chown=appuser:appgroup /app/priv/static ./priv/static
 
 # Copy entrypoint script
 COPY --chown=appuser:appgroup entrypoint.sh ./
