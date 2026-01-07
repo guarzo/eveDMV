@@ -133,7 +133,12 @@ config :eve_dmv, EveDmv.Repo,
   queue_interval: 1000,
   timeout: 15_000,
   ownership_timeout: 20_000,
-  pool_timeout: 5_000
+  pool_timeout: 5_000,
+  # Statement timeout to prevent runaway queries (30 seconds)
+  # This should match production for consistency
+  parameters: [
+    statement_timeout: "30000"
+  ]
 
 # Development-specific configuration is handled in runtime.exs for consistency
 # This eliminates duplication and ensures all environments use the same patterns
