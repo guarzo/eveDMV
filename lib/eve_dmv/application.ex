@@ -267,18 +267,24 @@ defmodule EveDmv.Application do
   end
 
   # Conditionally start the mock SSE server in development
+  # Never start in test environment regardless of env var
   defp maybe_start_mock_sse_server do
-    # Check both application config and environment variable directly
-    # since .env loading might happen after application config
-    enabled =
-      Application.get_env(:eve_dmv, :mock_sse_server_enabled, false) or
-        System.get_env("MOCK_SSE_SERVER_ENABLED", "false") == "true"
-
-    if enabled do
-      EveDmv.Killmails.MockSSEServer
-    else
-      # Return a no-op process if mock server is disabled
+    # In test environment, never start the mock SSE server
+    # Tests should mock at the HTTP level if needed
+    if Application.get_env(:eve_dmv, :environment, :prod) == :test do
       %{id: :noop_mock_server, start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}}
+    else
+      # Check both application config and environment variable directly
+      # since .env loading might happen after application config
+      enabled =
+        Application.get_env(:eve_dmv, :mock_sse_server_enabled, false) or
+          System.get_env("MOCK_SSE_SERVER_ENABLED", "false") == "true"
+
+      if enabled do
+        EveDmv.Killmails.MockSSEServer
+      else
+        %{id: :noop_mock_server, start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}}
+      end
     end
   end
 

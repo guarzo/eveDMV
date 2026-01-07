@@ -74,7 +74,7 @@ defmodule EveDmv.DataCase do
     # Wait for repo to be fully registered before starting sandbox owner
     wait_for_repo_registration()
 
-    pid = Sandbox.start_owner!(EveDmv.Repo, shared: not tags[:async])
+    pid = start_sandbox_owner_with_retry(tags, 0, 5)
 
     on_exit(fn ->
       # Give time for any pending operations to complete before stopping sandbox
@@ -82,6 +82,29 @@ defmodule EveDmv.DataCase do
       Process.sleep(50)
       Sandbox.stop_owner(pid)
     end)
+  end
+
+  # Start sandbox owner with retry logic for connection pool issues
+  defp start_sandbox_owner_with_retry(tags, attempt, max_attempts) do
+    Sandbox.start_owner!(EveDmv.Repo, shared: not tags[:async])
+  rescue
+    error in [MatchError, DBConnection.ConnectionError] ->
+      if attempt < max_attempts do
+        # Wait and retry - connection pool might be temporarily exhausted
+        Process.sleep(100 * (attempt + 1))
+        start_sandbox_owner_with_retry(tags, attempt + 1, max_attempts)
+      else
+        reraise error, __STACKTRACE__
+      end
+  catch
+    :exit, reason ->
+      if attempt < max_attempts do
+        # Handle {:shutdown, ...} and other exit reasons
+        Process.sleep(100 * (attempt + 1))
+        start_sandbox_owner_with_retry(tags, attempt + 1, max_attempts)
+      else
+        exit(reason)
+      end
   end
 
   @doc """
@@ -146,36 +169,28 @@ defmodule EveDmv.DataCase do
 
   # Wait for repo to be properly registered in the Ecto registry
   # In CI environments under heavy load, the repo may take longer to become available
-  # This function now attempts recovery if the repo is not available
   defp wait_for_repo_registration(attempts \\ 0, max_attempts \\ 100) do
     if attempts >= max_attempts do
       # Log diagnostic info before raising
       repo_pid = GenServer.whereis(EveDmv.Repo)
-
-      app_started =
-        Application.started_applications() |> Enum.any?(fn {app, _, _} -> app == :eve_dmv end)
+      supervisor_pid = Process.whereis(EveDmv.Supervisor)
 
       raise "Repo registration timeout after #{max_attempts} attempts (#{max_attempts * 100}ms). " <>
               "Repo PID: #{inspect(repo_pid)}. " <>
-              "App started: #{app_started}. " <>
+              "Supervisor PID: #{inspect(supervisor_pid)}. " <>
               "This may indicate database connection issues or resource exhaustion in CI."
     end
 
     case GenServer.whereis(EveDmv.Repo) do
       nil ->
-        # Attempt recovery every 10 attempts (1 second) if repo is missing
-        if rem(attempts, 10) == 9 do
-          attempt_repo_recovery()
-        end
-
+        # Repo not registered - wait and retry
+        # The supervisor should restart the repo if it crashed
         Process.sleep(100)
         wait_for_repo_registration(attempts + 1, max_attempts)
 
       pid ->
         # Verify the repo process is alive and responsive
         if Process.alive?(pid) do
-          # Use a simple GenServer call to verify the process is responsive
-          # This is lighter weight than running a SQL query
           case verify_repo_responsive(pid) do
             :ok ->
               :ok
@@ -185,31 +200,11 @@ defmodule EveDmv.DataCase do
               wait_for_repo_registration(attempts + 1, max_attempts)
           end
         else
-          # Process registered but not alive - attempt recovery
-          attempt_repo_recovery()
+          # Process registered but not alive - wait for supervisor to restart it
           Process.sleep(100)
           wait_for_repo_registration(attempts + 1, max_attempts)
         end
     end
-  end
-
-  # Attempt to recover the repo if it's not available
-  # This handles cases where the repo crashes during test execution
-  defp attempt_repo_recovery do
-    # First check if the application supervisor is running
-    case Process.whereis(EveDmv.Supervisor) do
-      nil ->
-        # Application supervisor not running, try to restart the app
-        Application.ensure_all_started(:eve_dmv)
-
-      supervisor_pid when is_pid(supervisor_pid) ->
-        # Supervisor is running but repo is not - this shouldn't happen with one_for_one
-        # The repo should auto-restart, so just wait
-        :ok
-    end
-  rescue
-    # Don't crash if recovery fails - the main loop will retry
-    _ -> :ok
   end
 
   # Verify the repo process is responsive by checking if it can handle messages
