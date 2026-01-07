@@ -332,12 +332,22 @@ defmodule EveDmv.Contexts.Combat.Services.CombatLogParser do
 
   defp save_combat_log(parsed_data, opts) do
     pilot_name = Keyword.get(opts, :pilot_name, "Unknown Pilot")
-    encoded_content = encode_events(parsed_data.events)
 
+    # JSON encode events for storage
+    json_content = encode_events(parsed_data.events)
+
+    # Compute content_hash from uncompressed JSON for deduplication
     content_hash =
-      encoded_content
+      json_content
       |> :crypto.hash(:sha256)
       |> Base.encode16(case: :lower)
+
+    # Compress and base64-encode for storage
+    # This matches the format expected by CombatLog.raw_content and :upload action
+    raw_content =
+      json_content
+      |> :zlib.compress()
+      |> Base.encode64()
 
     # Calculate end_time from start_time + duration
     end_time =
@@ -352,7 +362,7 @@ defmodule EveDmv.Contexts.Combat.Services.CombatLogParser do
       start_time: parsed_data.time_span.start,
       end_time: end_time,
       event_count: length(parsed_data.events),
-      raw_content: encoded_content,
+      raw_content: raw_content,
       content_hash: content_hash,
       parse_status: :completed,
       parsed_data: %{

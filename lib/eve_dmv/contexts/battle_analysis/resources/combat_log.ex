@@ -1,12 +1,28 @@
 defmodule EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
   @moduledoc """
   Resource for storing uploaded combat logs and their parsed data.
+
+  ## Raw Content Format
+
+  The `raw_content` attribute stores combat log data in a compressed, base64-encoded format:
+
+  1. Original content (text or JSON) is compressed using `:zlib.compress/1`
+  2. The compressed binary is then base64-encoded using `Base.encode64/1`
+
+  To decode raw_content:
+
+      compressed = Base.decode64!(log.raw_content)
+      content = :zlib.uncompress(compressed)
+
+  All actions that set raw_content (:create, :upload) expect this format.
+  The CombatLogParser.save_combat_log/2 function handles this encoding automatically.
   """
 
   use Ash.Resource,
     domain: EveDmv.Contexts.BattleAnalysis.Api,
     data_layer: AshPostgres.DataLayer
 
+  alias EveDmv.Ash.Changes.SetUploadedAt
   alias EveDmv.Contexts.BattleAnalysis.Domain.CombatLogHelper
 
   require Logger
@@ -76,9 +92,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
         :battle_id
       ])
 
-      change(fn changeset, _ ->
-        Ash.Changeset.change_attribute(changeset, :uploaded_at, DateTime.utc_now())
-      end)
+      # raw_content must be pre-compressed and base64-encoded
+      # See CombatLogParser.save_combat_log/2 for encoding details
+      change({SetUploadedAt, []})
     end
 
     update :update do
@@ -102,6 +118,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
       argument(:pilot_name, :string, allow_nil?: false)
       argument(:battle_id, :string)
 
+      # Set uploaded_at using shared change module
+      change({SetUploadedAt, []})
+
       change(fn changeset, _ ->
         file = Ash.Changeset.get_argument(changeset, :file_upload)
 
@@ -119,7 +138,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
         |> Ash.Changeset.change_attribute(:content_hash, content_hash)
         |> Ash.Changeset.change_attribute(:file_name, file.filename)
         |> Ash.Changeset.change_attribute(:file_size, byte_size(content))
-        |> Ash.Changeset.change_attribute(:uploaded_at, DateTime.utc_now())
         |> Ash.Changeset.change_attribute(
           :pilot_name,
           Ash.Changeset.get_argument(changeset, :pilot_name)
