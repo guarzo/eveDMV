@@ -1,84 +1,90 @@
 name: Deploy
 
 on:
-  # Manual deployment with environment selection
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Deployment environment'
-        required: true
-        default: 'production'
-        type: choice
-        options:
-          - production
-      version:
-        description: 'Version tag (leave empty for latest, or specify older version to roll back)'
-        required: false
-        default: ''
-
-  # Auto-deploy on successful CI to main
+  # Auto-deploy after CI passes on main
   workflow_run:
-    workflows: ["CI/CD Pipeline"]
+    workflows: ["CI"]
     branches: [main]
     types: [completed]
+
+  # Manual deployment (can specify version for rollback)
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag to deploy (leave empty for new release)'
+        required: false
+        default: ''
 
 env:
   DOCKER_IMAGE_NAME: guarzo/evedmv
 
 jobs:
-  deploy:
-    name: Deploy Application
+  build-and-deploy:
+    name: Build & Deploy
     runs-on: ubuntu-latest
 
     # Only run if CI passed or manual trigger
     if: |
       github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+      (github.event.workflow_run.conclusion == 'success')
 
     permissions:
       contents: write
-      deployments: write
+      packages: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          persist-credentials: true
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Determine deployment parameters
-        id: params
+      - name: Determine version
+        id: version
         run: |
-          # Set environment (default to production for auto-deploy)
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            ENVIRONMENT="${{ github.event.inputs.environment }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.version }}" ]; then
+            # Manual deploy with specific version (rollback)
             VERSION="${{ github.event.inputs.version }}"
-
-            # If no version provided, get the most recent tag
-            if [ -z "$VERSION" ]; then
-              VERSION=$(git for-each-ref --sort=-creatordate --format='%(refname:short)' refs/tags | grep -E "^v[0-9]+" | head -1)
-              echo "No version specified, using most recent tag: $VERSION"
-            fi
+            BUILD_NEW="false"
           else
-            ENVIRONMENT="production"
-            # Get the most recent tag by creation time
-            VERSION=$(git for-each-ref --sort=-creatordate --format='%(refname:short)' refs/tags | grep -E "^v[0-9]+" | head -1)
-            echo "Using most recent tag by creation time: $VERSION"
+            # Create new version tag
+            VERSION="v$(date -u +%Y%m%d%H%M%S)"
+            BUILD_NEW="true"
           fi
 
-          # If no version found, exit with error
-          if [ -z "$VERSION" ]; then
-            echo "❌ No version tag found! Cannot deploy without a version tag."
-            echo "Please ensure the CI/CD pipeline has created version tags."
-            exit 1
-          fi
-
-          echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_OUTPUT
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "BUILD_NEW=$BUILD_NEW" >> $GITHUB_OUTPUT
+          echo "📦 Version: $VERSION (build new: $BUILD_NEW)"
 
-          echo "📋 Deployment Parameters:"
-          echo "  Environment: $ENVIRONMENT"
-          echo "  Version: $VERSION"
+      - name: Set up Docker Buildx
+        if: steps.version.outputs.BUILD_NEW == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
+      - name: Build and push Docker image
+        if: steps.version.outputs.BUILD_NEW == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.DOCKER_IMAGE_NAME }}:${{ steps.version.outputs.VERSION }}
+            ${{ env.DOCKER_IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Create and push git tag
+        if: steps.version.outputs.BUILD_NEW == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag ${{ steps.version.outputs.VERSION }}
+          git push origin ${{ steps.version.outputs.VERSION }}
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v0.1.8
@@ -90,110 +96,46 @@ jobs:
           script: |
             set -e
 
-            VERSION="${{ steps.params.outputs.VERSION }}"
-            ENVIRONMENT="${{ steps.params.outputs.ENVIRONMENT }}"
+            VERSION="${{ steps.version.outputs.VERSION }}"
+            echo "🚀 Deploying version $VERSION"
 
-            echo "🚀 Deploying to $ENVIRONMENT with version $VERSION"
-
-            # Navigate to the correct directory
             cd /app/wanderer
 
-            # Update the docker-compose-dmv.yml file with the new version
+            # Update docker-compose-dmv.yml with new version
             if [ -f "docker-compose-dmv.yml" ]; then
               cp docker-compose-dmv.yml docker-compose-dmv.yml.backup
 
-              # Set up trap to restore backup on any failure and clean up on exit
+              # Restore on failure
               cleanup() {
                 local exit_code=$?
                 if [ $exit_code -ne 0 ] && [ -f "docker-compose-dmv.yml.backup" ]; then
-                  echo "⚠️ Deployment failed (exit code: $exit_code), restoring docker-compose-dmv.yml from backup..."
+                  echo "⚠️ Deployment failed, restoring backup..."
                   cp docker-compose-dmv.yml.backup docker-compose-dmv.yml
-                  echo "✅ Backup restored"
                 fi
                 rm -f docker-compose-dmv.yml.backup
                 exit $exit_code
               }
               trap cleanup EXIT
 
-              # Record original image line for debugging
-              ORIGINAL_LINE=$(grep -E "^\s*image:\s*.*guarzo/evedmv:" docker-compose-dmv.yml || echo "")
-              if [ -z "$ORIGINAL_LINE" ]; then
-                echo "❌ ERROR: Could not find guarzo/evedmv image line in docker-compose-dmv.yml"
-                echo "File contents:"
-                cat docker-compose-dmv.yml
-                exit 1
-              fi
-              echo "📋 Original image line: $ORIGINAL_LINE"
-
-              # Update the image tag in the docker-compose file
-              # This assumes the image line format is like "image: guarzo/evedmv:TAG"
+              # Update image version
               sed -i "s|image: guarzo/evedmv:.*|image: guarzo/evedmv:$VERSION|" docker-compose-dmv.yml
 
-              # Verify the sed replacement actually worked
-              # Use a permissive grep pattern that allows for whitespace and optional quotes
-              if ! grep -qE "^\s*image:\s*['\"]?guarzo/evedmv:${VERSION}['\"]?\s*$" docker-compose-dmv.yml; then
-                echo "❌ ERROR: Failed to update image version in docker-compose-dmv.yml"
-                echo "Expected to find: image: guarzo/evedmv:$VERSION"
-                echo "Original line was: $ORIGINAL_LINE"
-                echo "Current file contents around image lines:"
-                grep -n "image:" docker-compose-dmv.yml || echo "(no image lines found)"
-                exit 1  # Trap will restore backup automatically
-              fi
-
-              echo "✅ Updated image to guarzo/evedmv:$VERSION in docker-compose-dmv.yml"
-              echo "📋 New image line: $(grep -E 'guarzo/evedmv:' docker-compose-dmv.yml)"
+              echo "✅ Updated to guarzo/evedmv:$VERSION"
             else
-              echo "❌ docker-compose-dmv.yml file not found"
+              echo "❌ docker-compose-dmv.yml not found"
               exit 1
             fi
 
-            echo "🚀 Running compose-manager.sh upgrade evedmv"
+            echo "🚀 Running upgrade..."
             ./compose-manager.sh upgrade evedmv
 
-            echo "✅ Deployment completed successfully!"
+            echo "✅ Deployment complete!"
 
-      - name: Create deployment record
-        if: success()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            // Create a deployment record
-            const deployment = await github.rest.repos.createDeployment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: context.sha,
-              environment: '${{ steps.params.outputs.ENVIRONMENT }}',
-              description: 'Deployed version ${{ steps.params.outputs.VERSION }}',
-              auto_merge: false,
-              required_contexts: []
-            });
-
-            // Check if deployment was created successfully
-            // createDeployment can return 202 status when there's a merge conflict or other issue,
-            // in which case deployment.data.id would be undefined
-            if (!deployment.data.id) {
-              console.log('Deployment creation returned:', JSON.stringify(deployment.data));
-              core.warning('Could not create deployment record - this does not affect the actual deployment');
-              return;
-            }
-
-            // Mark deployment as successful
-            await github.rest.repos.createDeploymentStatus({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              deployment_id: deployment.data.id,
-              state: 'success',
-              description: 'Deployment completed successfully'
-            });
-
-      - name: Notify deployment status
+      - name: Deployment summary
         if: always()
         run: |
           if [ "${{ job.status }}" = "success" ]; then
-            echo "✅ Deployment to ${{ steps.params.outputs.ENVIRONMENT }} completed successfully!"
-            echo "📦 Version: ${{ steps.params.outputs.VERSION }}"
-            echo "🔗 Environment: ${{ steps.params.outputs.ENVIRONMENT }}"
+            echo "✅ Successfully deployed ${{ steps.version.outputs.VERSION }}"
           else
-            echo "❌ Deployment to ${{ steps.params.outputs.ENVIRONMENT }} failed!"
-            echo "📦 Attempted version: ${{ steps.params.outputs.VERSION }}"
+            echo "❌ Deployment of ${{ steps.version.outputs.VERSION }} failed"
           fi

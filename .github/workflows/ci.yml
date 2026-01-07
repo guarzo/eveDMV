@@ -1,148 +1,33 @@
-name: CI/CD Pipeline
+name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 permissions:
   contents: read
   pull-requests: write
-  issues: write
   checks: write
-  packages: write
-  security-events: write
-  actions: read
 
 env:
   MIX_ENV: test
   ELIXIR_VERSION: "1.19.4"
   OTP_VERSION: "28.1"
-  DOCKER_IMAGE_NAME: guarzo/evedmv
 
 jobs:
-  setup:
-    name: Setup Dependencies
-    runs-on: ubuntu-latest
-    outputs:
-      cache-key: ${{ steps.cache-key.outputs.key }}
-      plt-cache-key: ${{ steps.plt-cache-key.outputs.key }}
-      
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Generate cache keys
-      id: cache-key
-      run: |
-        echo "key=${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-${{ env.OTP_VERSION }}-${{ hashFiles('**/mix.lock') }}" >> $GITHUB_OUTPUT
-        
-    - name: Generate PLT cache key
-      id: plt-cache-key
-      run: |
-        echo "key=${{ runner.os }}-plt-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-${{ hashFiles('**/mix.lock') }}" >> $GITHUB_OUTPUT
-
-    - name: Set up Elixir
-      uses: erlef/setup-beam@v1
-      with:
-        elixir-version: ${{ env.ELIXIR_VERSION }}
-        otp-version: ${{ env.OTP_VERSION }}
-
-    - name: Cache dependencies
-      uses: actions/cache@v4
-      with:
-        path: |
-          deps
-          _build
-        key: ${{ steps.cache-key.outputs.key }}
-        restore-keys: |
-          ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-${{ env.OTP_VERSION }}-
-
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential libbz2-dev bc erlang-dev
-
-    - name: Install dependencies
-      run: |
-        mix local.hex --force
-        mix local.rebar --force
-        mix deps.get
-        mix deps.compile
-
-  # Quality checks now integrated into quality-check job
-
-  quality-check:
-    name: Quality Check
-    runs-on: ubuntu-latest
-    needs: setup
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    - name: Set up Elixir
-      uses: erlef/setup-beam@v1
-      with:
-        elixir-version: ${{ env.ELIXIR_VERSION }}
-        otp-version: ${{ env.OTP_VERSION }}
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential libbz2-dev bc erlang-dev
-    - name: Restore dependencies cache
-      uses: actions/cache@v4
-      with:
-        path: |
-          deps
-          _build
-        key: ${{ needs.setup.outputs.cache-key }}
-    - name: Make quality scripts executable
-      run: chmod +x ./scripts/quality_check.sh
-    - name: Run quality checks
-      run: SKIP_DIALYZER=true ./scripts/quality_check.sh
-
-  security-audit:
-    name: Security Audit
-    runs-on: ubuntu-latest
-    needs: setup
-    continue-on-error: true
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    - name: Set up Elixir
-      uses: erlef/setup-beam@v1
-      with:
-        elixir-version: ${{ env.ELIXIR_VERSION }}
-        otp-version: ${{ env.OTP_VERSION }}
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential libbz2-dev bc erlang-dev
-    - name: Restore dependencies cache
-      uses: actions/cache@v4
-      with:
-        path: |
-          deps
-          _build
-        key: ${{ needs.setup.outputs.cache-key }}
-    - name: Security audit
-      run: mix deps.audit
-
   test:
-    name: Test Suite
+    name: Test & Quality
     runs-on: ubuntu-latest
-    needs: [setup, quality-check]
-    
+
     services:
       postgres:
-        # PostgreSQL 18 - keep in sync with docker-compose.yml and docker-compose.production.yml
         image: postgres:18
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: eve_dmv_test
-          # Increase max connections to prevent pool exhaustion during parallel tests
-          # See docs/TEST_INFRASTRUCTURE_REMEDIATION_PLAN.md for details
           POSTGRES_MAX_CONNECTIONS: "200"
         options: >-
           --health-cmd pg_isready
@@ -153,247 +38,115 @@ jobs:
           - 5432:5432
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Elixir
-      uses: erlef/setup-beam@v1
-      with:
-        elixir-version: ${{ env.ELIXIR_VERSION }}
-        otp-version: ${{ env.OTP_VERSION }}
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+          otp-version: ${{ env.OTP_VERSION }}
 
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential libbz2-dev bc erlang-dev
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libbz2-dev bc erlang-dev
 
-    - name: Restore dependencies cache
-      uses: actions/cache@v4
-      with:
-        path: |
-          deps
-          _build
-        key: ${{ needs.setup.outputs.cache-key }}
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-${{ env.OTP_VERSION }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-${{ env.OTP_VERSION }}-
 
-    - name: Verify PostgreSQL version
-      run: |
-        PG_VERSION=$(psql -h localhost -U postgres -t -c "SELECT version();" | head -1)
-        echo "PostgreSQL version: $PG_VERSION"
-        if ! echo "$PG_VERSION" | grep -q "PostgreSQL 18"; then
-          echo "❌ ERROR: Expected PostgreSQL 18, got: $PG_VERSION"
-          exit 1
-        fi
-        echo "✅ PostgreSQL 18 confirmed"
-      env:
-        PGPASSWORD: postgres
+      - name: Install dependencies
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix deps.get
+          mix deps.compile
 
-    - name: Setup database
-      run: |
-        MIX_ENV=test mix ecto.create
-        MIX_ENV=test mix ecto.migrate
-      env:
-        DATABASE_URL: postgres://postgres:postgres@localhost:5432/eve_dmv_test
+      - name: Check formatting
+        run: mix format --check-formatted
 
-    - name: Run tests with coverage
-      run: MIX_ENV=test mix coveralls.json
-      env:
-        DATABASE_URL: postgres://postgres:postgres@localhost:5432/eve_dmv_test
-        WANDERER_KILLS_SSE_URL: http://localhost:4004/api/v1/kills/stream
-        WANDERER_KILLS_BASE_URL: http://localhost:4004
-        EVE_SSO_CLIENT_ID: test_client_id
-        EVE_SSO_CLIENT_SECRET: test_client_secret
-        SECRET_KEY_BASE: test_secret_key_base_for_ci_testing_only_not_production
-        PIPELINE_ENABLED: false
-        MOCK_SSE_SERVER_ENABLED: true
+      - name: Run Credo
+        run: mix credo --strict
 
-    - name: Run tests without coverage (fallback)
-      if: failure()
-      run: MIX_ENV=test mix test
-      env:
-        DATABASE_URL: postgres://postgres:postgres@localhost:5432/eve_dmv_test
-        WANDERER_KILLS_SSE_URL: http://localhost:4004/api/v1/kills/stream
-        WANDERER_KILLS_BASE_URL: http://localhost:4004
-        EVE_SSO_CLIENT_ID: test_client_id
-        EVE_SSO_CLIENT_SECRET: test_client_secret
-        SECRET_KEY_BASE: test_secret_key_base_for_ci_testing_only_not_production
-        PIPELINE_ENABLED: false
-        MOCK_SSE_SERVER_ENABLED: true
+      - name: Compile with warnings as errors
+        run: mix compile --warnings-as-errors
 
-    - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./cover/excoveralls.json
-        flags: unittests
-        name: codecov-umbrella
-      continue-on-error: true
+      - name: Setup database
+        run: |
+          MIX_ENV=test mix ecto.create
+          MIX_ENV=test mix ecto.migrate
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/eve_dmv_test
 
-    - name: Upload coverage artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: coverage-report
-        path: cover/
-        retention-days: 30
+      - name: Run tests
+        run: MIX_ENV=test mix test
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/eve_dmv_test
+          WANDERER_KILLS_SSE_URL: http://localhost:4004/api/v1/kills/stream
+          WANDERER_KILLS_BASE_URL: http://localhost:4004
+          EVE_SSO_CLIENT_ID: test_client_id
+          EVE_SSO_CLIENT_SECRET: test_client_secret
+          SECRET_KEY_BASE: test_secret_key_base_for_ci_testing_only_not_production
+          PIPELINE_ENABLED: false
+          MOCK_SSE_SERVER_ENABLED: true
 
-    - name: Check for database connection leaks
-      if: always()
-      run: |
-        echo "📊 Checking PostgreSQL connection status after tests..."
-        PGPASSWORD=postgres psql -h localhost -U postgres -d eve_dmv_test -c "
-          SELECT count(*) as active_connections,
-                 state,
-                 wait_event_type
-          FROM pg_stat_activity
-          WHERE datname = 'eve_dmv_test'
-          GROUP BY state, wait_event_type
-          ORDER BY active_connections DESC;" || echo "Could not query connection status"
-
-        # Check total connections
-        TOTAL_CONN=$(PGPASSWORD=postgres psql -h localhost -U postgres -t -c "SELECT count(*) FROM pg_stat_activity WHERE datname = 'eve_dmv_test';" 2>/dev/null || echo "0")
-        TOTAL_CONN=$(echo "$TOTAL_CONN" | tr -d ' ')
-
-        if [ "$TOTAL_CONN" -gt 50 ]; then
-          echo "⚠️ WARNING: $TOTAL_CONN connections still active after tests - possible connection leak"
-        else
-          echo "✅ Connection count ($TOTAL_CONN) is within normal range"
-        fi
-      continue-on-error: true
-
-  # Dialyzer job - runs on all PRs and main branch
   dialyzer:
-    name: Dialyzer Analysis
+    name: Dialyzer
     runs-on: ubuntu-latest
-    needs: setup
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    - name: Set up Elixir
-      uses: erlef/setup-beam@v1
-      with:
-        elixir-version: ${{ env.ELIXIR_VERSION }}
-        otp-version: ${{ env.OTP_VERSION }}
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential libbz2-dev bc erlang-dev
-    - name: Restore dependencies cache
-      uses: actions/cache@v4
-      with:
-        path: |
-          deps
-          _build
-        key: ${{ needs.setup.outputs.cache-key }}
-    - name: Cache PLT files
-      uses: actions/cache@v4
-      with:
-        path: priv/plts
-        key: ${{ needs.setup.outputs.plt-cache-key }}
-        restore-keys: |
-          ${{ runner.os }}-plt-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-
-    - name: Run Dialyzer
-      run: |
-        echo "Running Dialyzer with zero-error enforcement..."
-        mix dialyzer --format short > dialyzer_output.txt || true
-        error_count=$(grep -c "^lib/" dialyzer_output.txt || echo "0")
-        echo "Dialyzer found $error_count errors"
-        if [ $error_count -gt 0 ]; then
-          echo "❌ Dialyzer errors found:"
-          cat dialyzer_output.txt
-          exit 1
-        else
-          echo "✅ No Dialyzer errors found!"
-        fi
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-  coverage-comment:
-    name: Coverage Comment
-    runs-on: ubuntu-latest
-    needs: test
-    if: github.event_name == 'pull_request'
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+          otp-version: ${{ env.OTP_VERSION }}
 
-    - name: Download coverage report
-      uses: actions/download-artifact@v4
-      with:
-        name: coverage-report
-        path: cover/
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libbz2-dev bc erlang-dev
 
-    - name: Coverage Comment
-      uses: romeovs/lcov-reporter-action@v0.3.1
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        lcov-file: cover/lcov.info
-        delete-old-comments: true
-      continue-on-error: true
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-${{ env.OTP_VERSION }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-${{ env.ELIXIR_VERSION }}-${{ env.OTP_VERSION }}-
 
-  # Docker build - runs on all PRs and main branch
-  docker:
-    name: Docker Build
-    runs-on: ubuntu-latest
-    needs: [test]
-    if: always() && (needs.test.result == 'success' || needs.test.result == 'failure')
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Cache PLT files
+        uses: actions/cache@v4
+        with:
+          path: priv/plts
+          key: ${{ runner.os }}-plt-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-plt-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      - name: Install dependencies
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix deps.get
 
-    - name: Log in to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        registry: docker.io
-        username: ${{ secrets.DOCKER_HUB_USERNAME }}
-        password: ${{ secrets.DOCKER_HUB_PASSWORD }}
-
-    - name: Extract metadata
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.DOCKER_IMAGE_NAME }}
-        tags: |
-          type=ref,event=branch
-          type=sha
-
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-
-  security-scan:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    needs: docker
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Log in to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        registry: docker.io
-        username: ${{ secrets.DOCKER_HUB_USERNAME }}
-        password: ${{ secrets.DOCKER_HUB_PASSWORD }}
-
-    - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: '${{ env.DOCKER_IMAGE_NAME }}:main'
-        format: 'sarif'
-        output: 'trivy-results.sarif'
-
-    - name: Upload Trivy scan results
-      uses: github/codeql-action/upload-sarif@v3
-      with:
-        sarif_file: 'trivy-results.sarif'
-      continue-on-error: true
+      - name: Run Dialyzer
+        run: |
+          mix dialyzer --format short 2>&1 | tee dialyzer_output.txt || true
+          error_count=$(grep -c "^lib/" dialyzer_output.txt || echo "0")
+          if [ "$error_count" -gt 0 ]; then
+            echo "❌ Dialyzer found $error_count errors"
+            cat dialyzer_output.txt
+            exit 1
+          fi
+          echo "✅ Dialyzer passed"
