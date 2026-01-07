@@ -14,7 +14,13 @@ defmodule EveDmv.Repo.Migrations.FixCharacterActivitySummaryUniqueConstraint do
 
   use Ecto.Migration
 
+  # Disable migration lock timeout for long-running operations
+  @disable_migration_lock true
+  @disable_ddl_transaction true
+
   def up do
+    # Disable statement timeout for this migration (materialized view creation on large tables)
+    execute "SET statement_timeout = 0;"
     # Drop existing indexes first
     execute """
     DROP INDEX IF EXISTS character_activity_summary_character_id_idx;
@@ -33,8 +39,13 @@ defmodule EveDmv.Repo.Migrations.FixCharacterActivitySummaryUniqueConstraint do
     """
 
     # Drop and recreate the materialized view with correct grouping
+    # Also drop orphaned type if a previous creation was interrupted
     execute """
     DROP MATERIALIZED VIEW IF EXISTS character_activity_summary;
+    """
+
+    execute """
+    DROP TYPE IF EXISTS character_activity_summary CASCADE;
     """
 
     # Recreate with GROUP BY only on character_id
@@ -72,9 +83,14 @@ defmodule EveDmv.Repo.Migrations.FixCharacterActivitySummaryUniqueConstraint do
     CREATE INDEX character_activity_summary_last_activity_idx
     ON character_activity_summary (last_activity DESC);
     """
+
+    # Reset statement timeout
+    execute "RESET statement_timeout;"
   end
 
   def down do
+    # Disable statement timeout for this migration
+    execute "SET statement_timeout = 0;"
     # Drop indexes
     execute "DROP INDEX IF EXISTS character_activity_summary_last_activity_idx;"
     execute "DROP INDEX IF EXISTS character_activity_summary_total_kills_idx;"
@@ -104,5 +120,8 @@ defmodule EveDmv.Repo.Migrations.FixCharacterActivitySummaryUniqueConstraint do
     execute "CREATE INDEX character_activity_summary_character_id_idx ON character_activity_summary (character_id);"
     execute "CREATE INDEX character_activity_summary_total_kills_idx ON character_activity_summary (total_kills DESC);"
     execute "CREATE INDEX character_activity_summary_last_activity_idx ON character_activity_summary (last_activity DESC);"
+
+    # Reset statement timeout
+    execute "RESET statement_timeout;"
   end
 end
