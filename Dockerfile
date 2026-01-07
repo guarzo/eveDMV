@@ -35,12 +35,11 @@ COPY config/ ./config/
 COPY priv/ ./priv/
 COPY lib/ ./lib/
 
-# Skip asset building if assets directory doesn't exist
-# The priv/static/assets already contains compiled assets
-# RUN mix assets.deploy
-
 # Compile the project
 RUN mix compile
+
+# Digest static assets (creates cache_manifest.json for production)
+RUN mix phx.digest
 
 # Build the release
 RUN mix release
@@ -72,8 +71,10 @@ WORKDIR /app
 # Copy the release from builder stage
 COPY --from=builder --chown=appuser:appgroup /app/_build/prod/rel/eve_dmv ./
 
-# Copy the digested static assets (includes cache_manifest.json)
-COPY --from=builder --chown=appuser:appgroup /app/priv/static ./priv/static
+# Copy digested static assets to the release's lib directory
+# Find the eve_dmv lib directory dynamically and copy static files there
+COPY --from=builder --chown=appuser:appgroup /app/priv/static /tmp/static
+RUN cp -r /tmp/static/* lib/eve_dmv-*/priv/static/ && rm -rf /tmp/static
 
 # Copy entrypoint script
 COPY --chown=appuser:appgroup entrypoint.sh ./
