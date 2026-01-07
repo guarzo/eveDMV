@@ -22,10 +22,19 @@ defmodule EveDmv.Platform.Database.MaterializedViewOptimizer do
     :active_refreshes
   ]
 
+  # Statement timeout for view refresh (2 minutes max)
+  @refresh_statement_timeout_ms 120_000
+  # Maximum concurrent refreshes to prevent connection pool exhaustion
+  @max_concurrent_refreshes 1
+
+  # Note: MaterializedViewRefresher also manages some of these views.
+  # These intervals are intentionally longer to avoid over-refreshing.
+  # The views take 15-30+ seconds to refresh, so aggressive intervals cause pool exhaustion.
   @views [
     %{
       name: "character_activity_summary",
-      refresh_interval: :timer.minutes(10),
+      # Was 10 minutes - way too aggressive for a 15+ second refresh
+      refresh_interval: :timer.hours(4),
       priority: :high,
       concurrent: true,
       dependencies: [],
@@ -38,7 +47,8 @@ defmodule EveDmv.Platform.Database.MaterializedViewOptimizer do
     },
     %{
       name: "ship_type_usage",
-      refresh_interval: :timer.minutes(30),
+      # Was 30 minutes - still too aggressive
+      refresh_interval: :timer.hours(6),
       priority: :medium,
       concurrent: true,
       dependencies: [],
@@ -50,7 +60,8 @@ defmodule EveDmv.Platform.Database.MaterializedViewOptimizer do
     },
     %{
       name: "system_activity_heatmap",
-      refresh_interval: :timer.minutes(5),
+      # Was 5 minutes - way too aggressive
+      refresh_interval: :timer.hours(2),
       priority: :high,
       concurrent: true,
       dependencies: [],
@@ -62,7 +73,7 @@ defmodule EveDmv.Platform.Database.MaterializedViewOptimizer do
     },
     %{
       name: "fleet_composition_summary",
-      refresh_interval: :timer.hours(1),
+      refresh_interval: :timer.hours(6),
       priority: :low,
       concurrent: true,
       dependencies: ["killmails_raw"],
@@ -74,7 +85,7 @@ defmodule EveDmv.Platform.Database.MaterializedViewOptimizer do
     },
     %{
       name: "high_value_targets",
-      refresh_interval: :timer.hours(6),
+      refresh_interval: :timer.hours(12),
       priority: :low,
       concurrent: true,
       dependencies: ["killmails_raw"],
@@ -86,7 +97,7 @@ defmodule EveDmv.Platform.Database.MaterializedViewOptimizer do
     },
     %{
       name: "timezone_activity_patterns",
-      refresh_interval: :timer.hours(2),
+      refresh_interval: :timer.hours(6),
       priority: :medium,
       concurrent: true,
       dependencies: ["killmails_raw"],
@@ -178,18 +189,31 @@ defmodule EveDmv.Platform.Database.MaterializedViewOptimizer do
 
   @impl GenServer
   def handle_cast({:refresh_view, view_name}, state) do
-    if MapSet.member?(state.active_refreshes, view_name) do
-      Logger.warning("View #{view_name} is already being refreshed")
-      {:noreply, state}
-    else
-      new_state = %{state | active_refreshes: MapSet.put(state.active_refreshes, view_name)}
+    cond do
+      MapSet.member?(state.active_refreshes, view_name) ->
+        Logger.warning("View #{view_name} is already being refreshed, skipping")
+        {:noreply, state}
 
-      Task.start(fn ->
-        result = refresh_view(view_name)
-        GenServer.cast(__MODULE__, {:refresh_complete, view_name, result})
-      end)
+      MapSet.size(state.active_refreshes) >= @max_concurrent_refreshes ->
+        Logger.warning(
+          "Too many concurrent refreshes (#{MapSet.size(state.active_refreshes)}), skipping #{view_name}"
+        )
 
-      {:noreply, new_state}
+        {:noreply, state}
+
+      not pool_available?() ->
+        Logger.warning("Connection pool under pressure, skipping refresh of #{view_name}")
+        {:noreply, state}
+
+      true ->
+        new_state = %{state | active_refreshes: MapSet.put(state.active_refreshes, view_name)}
+
+        Task.start(fn ->
+          result = refresh_view(view_name)
+          GenServer.cast(__MODULE__, {:refresh_complete, view_name, result})
+        end)
+
+        {:noreply, new_state}
     end
   end
 
@@ -233,6 +257,17 @@ defmodule EveDmv.Platform.Database.MaterializedViewOptimizer do
 
   ## Private Helper Functions
 
+  defp pool_available? do
+    try do
+      metrics = EveDmv.Platform.Database.ConnectionPoolMonitor.get_current_metrics()
+      Map.get(metrics, :pool_health, :healthy) != :stressed
+    rescue
+      _ -> true
+    catch
+      :exit, _ -> true
+    end
+  end
+
   defp schedule_all_refreshes do
     Enum.each(@views, fn view_config ->
       # Schedule first refresh with some initial delay to avoid thundering herd
@@ -275,22 +310,36 @@ defmodule EveDmv.Platform.Database.MaterializedViewOptimizer do
       end
 
     Logger.info("Refreshing materialized view: #{name} (concurrent: #{concurrent})")
+    start_time = System.monotonic_time(:millisecond)
 
-    # Use transaction with increased work_mem to avoid disk spills during sort
+    # Use transaction with increased work_mem and statement timeout to avoid:
+    # 1. Disk spills during sort (work_mem)
+    # 2. Long-running queries blocking connection pool (statement_timeout)
     result =
-      Repo.transaction(fn ->
-        Ecto.Adapters.SQL.query!(Repo, "SET LOCAL work_mem = '32MB'")
-        Ecto.Adapters.SQL.query!(Repo, query, [])
-      end)
+      Repo.transaction(
+        fn ->
+          Ecto.Adapters.SQL.query!(Repo, "SET LOCAL work_mem = '32MB'")
+
+          Ecto.Adapters.SQL.query!(
+            Repo,
+            "SET LOCAL statement_timeout = '#{@refresh_statement_timeout_ms}'"
+          )
+
+          Ecto.Adapters.SQL.query!(Repo, query, [])
+        end,
+        timeout: @refresh_statement_timeout_ms + 5_000
+      )
+
+    duration = System.monotonic_time(:millisecond) - start_time
 
     case result do
       {:ok, _} ->
-        Logger.info("Successfully refreshed #{name}")
+        Logger.info("Successfully refreshed #{name} in #{duration}ms")
         update_refresh_tracking(name)
         :ok
 
       {:error, error} ->
-        Logger.error("Failed to refresh #{name}: #{inspect(error)}")
+        Logger.error("Failed to refresh #{name} after #{duration}ms: #{inspect(error)}")
         {:error, error}
     end
   end

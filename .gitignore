@@ -26,7 +26,8 @@ erl_crash.dump
 eve_dmv-*.tar
 
 # Ignore assets that are produced by build tools.
-/priv/static/assets/
+# Note: priv/static/assets/ is committed for production builds
+# /priv/static/assets/
 /priv/static_data/ccp_sde/
 
 # Ignore digested assets cache.

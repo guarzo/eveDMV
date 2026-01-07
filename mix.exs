@@ -12,6 +12,12 @@ defmodule EveDmv.MixProject do
       listeners: [Phoenix.CodeReloader],
       aliases: aliases(),
       deps: deps(),
+      releases: [
+        eve_dmv: [
+          include_executables_for: [:unix],
+          applications: [runtime_tools: :permanent]
+        ]
+      ],
       # Test coverage
       test_coverage: [tool: ExCoveralls],
       preferred_cli_env: [
