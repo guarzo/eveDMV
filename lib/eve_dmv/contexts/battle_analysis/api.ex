@@ -20,11 +20,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Api do
     # Combat log and fitting analysis
     resource(EveDmv.Contexts.BattleAnalysis.Resources.CombatLog)
     resource(EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting)
-    # Combat context resources that use this domain
-    resource(EveDmv.Contexts.Combat.Resources.Battle)
-    resource(EveDmv.Contexts.Combat.Resources.BattleKillmail)
-    resource(EveDmv.Contexts.Combat.Resources.CombatLog)
-    resource(EveDmv.Contexts.Combat.Resources.ShipFitting)
   end
 
   # Authorization configuration

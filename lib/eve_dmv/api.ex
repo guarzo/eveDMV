@@ -16,7 +16,7 @@ defmodule EveDmv.Api do
   ## Sub-domains
   - EveDmv.Api.SurveillanceApi - Surveillance resources
   - EveDmv.Api.AnalyticsApi - Analytics resources
-  - EveDmv.Api.BattleAnalysisApi - Battle analysis resources
+  - EveDmv.Contexts.BattleAnalysis.Api - Battle analysis resources
 
   ## Error Handling
   All functions return standardized `{:ok, result}` or `{:error, reason}` tuples

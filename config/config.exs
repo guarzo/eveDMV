@@ -139,7 +139,6 @@ config :eve_dmv,
     EveDmv.Api,
     EveDmv.Api.SurveillanceApi,
     EveDmv.Api.AnalyticsApi,
-    EveDmv.Api.BattleAnalysisApi,
     EveDmv.Domains.Intelligence,
     EveDmv.Contexts.BattleAnalysis.Api,
     EveDmv.Contexts.FleetOperations.Domain

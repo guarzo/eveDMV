@@ -185,18 +185,16 @@ defmodule EveDmv.DataCase do
 
   # Verify the repo process is responsive by checking if it can handle messages
   defp verify_repo_responsive(pid) do
-    try do
-      # Use a short timeout call to verify the process is responsive
-      # We use __info__ which is a standard GenServer callback
-      case :sys.get_state(pid, 1_000) do
-        _state -> :ok
-      end
-    rescue
-      _ -> :retry
-    catch
-      :exit, {:timeout, _} -> :retry
-      :exit, _ -> :retry
+    # Use a short timeout call to verify the process is responsive
+    # We use __info__ which is a standard GenServer callback
+    case :sys.get_state(pid, 1_000) do
+      _state -> :ok
     end
+  rescue
+    _ -> :retry
+  catch
+    :exit, {:timeout, _} -> :retry
+    :exit, _ -> :retry
   end
 
   @doc """

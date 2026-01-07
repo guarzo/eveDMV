@@ -139,19 +139,28 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
       {:ok, analysis} ->
         top_performers =
           analysis.member_participation_profiles
-          |> Enum.filter(fn member -> member.total_activities > 0 end)
+          |> Enum.filter(fn member -> (member[:total_activities] || 0) > 0 end)
           |> Enum.map(fn member ->
             # Calculate composite performance score
             performance_score = calculate_performance_score(member)
 
+            # Defensively access nested engagement_depth.depth_score
+            engagement_depth_score =
+              case Map.get(member, :engagement_depth) do
+                nil -> 0
+                %{depth_score: score} when is_number(score) -> score
+                _ -> 0
+              end
+
             %{
               character_id: member.character_id,
               character_name: member.character_name,
-              total_activities: member.total_activities,
-              fleet_activities: member.fleet_activities,
-              participation_consistency: member.participation_consistency,
-              engagement_depth: member.engagement_depth.depth_score,
-              fleet_effectiveness: Map.get(member.fleet_effectiveness, :effectiveness_score, 0),
+              total_activities: member[:total_activities] || 0,
+              fleet_activities: member[:fleet_activities] || 0,
+              participation_consistency: member[:participation_consistency] || 0,
+              engagement_depth: engagement_depth_score,
+              fleet_effectiveness:
+                Map.get(member.fleet_effectiveness || %{}, :effectiveness_score, 0),
               performance_score: performance_score
             }
           end)
@@ -180,13 +189,30 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
     # - Consistency: 20%
     # - Engagement depth: 15%
     # - Fleet effectiveness: 10%
-    activity_score = min(member.total_activities / 50, 1.0) * 30
-    fleet_score = min(member.fleet_activities / 20, 1.0) * 25
-    consistency_score = member.participation_consistency / 100 * 20
-    engagement_score = member.engagement_depth.depth_score / 10 * 15
 
-    effectiveness_score =
-      Map.get(member.fleet_effectiveness, :effectiveness_score, 0) / 100 * 10
+    # Defensive nil guards for all fields
+    total_activities = member[:total_activities] || member.total_activities || 0
+    fleet_activities = member[:fleet_activities] || member.fleet_activities || 0
+    participation_consistency = member[:participation_consistency] || 0
+
+    engagement_depth_score =
+      case member[:engagement_depth] || Map.get(member, :engagement_depth) do
+        nil -> 0
+        %{depth_score: score} when is_number(score) -> score
+        _ -> 0
+      end
+
+    fleet_effectiveness_score =
+      member
+      |> Map.get(:fleet_effectiveness, %{})
+      |> Map.get(:effectiveness_score, 0)
+      |> then(fn score -> if is_number(score), do: score, else: 0 end)
+
+    activity_score = min(total_activities / 50, 1.0) * 30
+    fleet_score = min(fleet_activities / 20, 1.0) * 25
+    consistency_score = participation_consistency / 100 * 20
+    engagement_score = engagement_depth_score / 10 * 15
+    effectiveness_score = fleet_effectiveness_score / 100 * 10
 
     Float.round(
       activity_score + fleet_score + consistency_score + engagement_score + effectiveness_score,

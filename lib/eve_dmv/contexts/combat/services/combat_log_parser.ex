@@ -10,7 +10,7 @@ defmodule EveDmv.Contexts.Combat.Services.CombatLogParser do
   """
 
   alias EveDmv.Contexts.BattleAnalysis.Core.BattleDetector
-  alias EveDmv.Contexts.Combat.Resources.CombatLog
+  alias EveDmv.Contexts.BattleAnalysis.Resources.CombatLog
   alias EveDmv.Contexts.Combat.Services.BattleService
   alias EveDmv.Core.Utils.DateTimeUtils
 
