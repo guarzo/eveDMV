@@ -24,6 +24,13 @@ defmodule EveDmv.Surveillance.ProfileMatch do
     end
   end
 
+  # Identity constraints
+  identities do
+    identity :unique_profile_match, [:profile_id, :killmail_id, :killmail_time] do
+      description("Prevent duplicate match records for the same profile and killmail")
+    end
+  end
+
   # Resource configuration
   code_interface do
     domain(EveDmv.Api.SurveillanceApi)

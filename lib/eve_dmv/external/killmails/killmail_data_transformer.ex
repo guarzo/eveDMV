@@ -31,17 +31,6 @@ defmodule EveDmv.Killmails.KillmailDataTransformer do
     }
   end
 
-  # REMOVED: build_enriched_changeset function
-  # Enriched table provides no value - see /docs/architecture/enriched-raw-analysis.md
-
-  # REMOVED: Functions only used by enriched changeset building
-  # - calculate_price_values
-  # - extract_victim_data
-  # - extract_system_data
-  # See /docs/architecture/enriched-raw-analysis.md
-
-  # Helper functions for data extraction
-
   defp parse_timestamp(nil), do: DateTime.utc_now()
 
   defp parse_timestamp(timestamp) when is_binary(timestamp) do
@@ -92,16 +81,4 @@ defmodule EveDmv.Killmails.KillmailDataTransformer do
       _ -> 1
     end
   end
-
-  # REMOVED: Helper functions only used by enriched changeset building
-  # - get_final_blow_character_id
-  # - get_final_blow_character_name
-  # - determine_kill_category
-  # - determine_ship_category
-  # - pod_kill?
-  # - structure_kill?
-  # - capital_kill?
-  # - wormhole_kill?
-  # - parse_decimal
-  # See /docs/architecture/enriched-raw-analysis.md
 end

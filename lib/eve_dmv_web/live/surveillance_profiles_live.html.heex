@@ -9,73 +9,66 @@
     </button>
   </div>
 
-  <!-- Chain Status -->
-  <div class="mb-6 p-4 rounded-lg border" class={
-    if @chain_status.connected, do: "bg-green-900 border-green-700", else: "bg-red-900 border-red-700"
-  }>
-    <div class="flex items-center">
-      <div class={
-        "w-3 h-3 rounded-full mr-3 " <>
-        if @chain_status.connected, do: "bg-green-400", else: "bg-red-400"
-      }></div>
-      <span class="font-medium text-gray-200">
-        Chain Status: 
-        <%= if @chain_status.connected do %>
-          <span class="text-green-400">Connected to <%= @chain_status.map_slug %></span>
-          <span class="text-gray-400">(<%= @chain_status.system_count %> systems)</span>
-        <% else %>
-          <span class="text-red-400">Disconnected from <%= @chain_status.map_slug %></span>
-        <% end %>
-      </span>
-    </div>
-  </div>
-
-  <%= if @editing_profile do %>
+  <%= if @editing do %>
     <!-- Profile Editor -->
     <div class="bg-gray-800 rounded-lg shadow-sm border border-gray-700 p-6 mb-6">
       <h2 class="text-xl font-semibold mb-4 text-gray-200">
-        <%= if @editing_profile.id, do: "Edit Profile", else: "Create Profile" %>
+        <%= if @profile_id, do: "Edit Profile", else: "Create Profile" %>
       </h2>
-      
-      <form phx-submit="save_profile">
+
+      <.form :let={f} for={@form} phx-submit="save" phx-change="validate">
+        <!-- Form-level errors -->
+        <%= if @form.errors != [] do %>
+          <div class="mb-4 p-4 bg-red-900/50 border border-red-700 rounded-lg">
+            <p class="text-sm font-medium text-red-400">Please correct the following errors:</p>
+            <ul class="mt-2 text-sm text-red-300 list-disc list-inside">
+              <%= for {field, {msg, _opts}} <- @form.errors do %>
+                <li><%= Phoenix.Naming.humanize(field) %>: <%= msg %></li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+
         <!-- Basic Profile Info -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Profile Name</label>
+            <label for={f[:name].id} class="block text-sm font-medium text-gray-300 mb-1">Profile Name</label>
             <input
               type="text"
-              name="profile[name]"
-              value={@editing_profile.name}
-              phx-blur="update_profile_field"
-              phx-value-field="name"
+              name={f[:name].name}
+              id={f[:name].id}
+              value={f[:name].value}
               placeholder="e.g., High Value Targets"
-              class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              class={"w-full px-3 py-2 bg-gray-700 border rounded-md text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 #{if f[:name].errors != [], do: "border-red-500", else: "border-gray-600"}"}
               required
             />
+            <%= if f[:name].errors != [] do %>
+              <p class="mt-1 text-sm text-red-400"><%= Enum.map_join(f[:name].errors, ", ", fn {msg, _} -> msg end) %></p>
+            <% end %>
           </div>
-          
+
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Status</label>
+            <label for={f[:is_active].id} class="block text-sm font-medium text-gray-300 mb-1">Status</label>
             <select
-              name="profile[enabled]"
+              name={f[:is_active].name}
+              id={f[:is_active].id}
               class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="true" selected={@editing_profile.enabled}>Active</option>
-              <option value="false" selected={!@editing_profile.enabled}>Inactive</option>
+              <option value="true" selected={f[:is_active].value in [true, "true"]}>Active</option>
+              <option value="false" selected={f[:is_active].value in [false, "false"]}>Inactive</option>
             </select>
           </div>
         </div>
 
         <div class="mb-6">
-          <label class="block text-sm font-medium text-gray-300 mb-1">Description (Optional)</label>
+          <label for={f[:description].id} class="block text-sm font-medium text-gray-300 mb-1">Description (Optional)</label>
           <textarea
-            name="profile[description]"
-            phx-blur="update_profile_field"
-            phx-value-field="description"
+            name={f[:description].name}
+            id={f[:description].id}
             rows="2"
             placeholder="Brief description of what this profile monitors..."
             class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          ><%= @editing_profile.description %></textarea>
+          ><%= f[:description].value %></textarea>
         </div>
 
         <!-- Filter Builder -->
@@ -83,72 +76,200 @@
           <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-medium text-gray-200">Filters</h3>
             <div class="flex items-center space-x-4">
-              <!-- Logic Operator -->
-              <div class="flex items-center space-x-2">
-                <span class="text-sm text-gray-400">Logic:</span>
-                <select
-                  phx-change="update_logic_operator"
-                  name="operator"
-                  class="px-2 py-1 bg-gray-700 border border-gray-600 rounded text-sm text-gray-100"
-                >
-                  <option value="and" selected={@editing_profile.criteria.logic_operator == :and}>ALL (AND)</option>
-                  <option value="or" selected={@editing_profile.criteria.logic_operator == :or}>ANY (OR)</option>
-                </select>
-              </div>
-              
+              <span class="text-sm text-gray-400">All filters must match (AND logic)</span>
+
               <!-- Add Filter Dropdown -->
-              <div class="relative">
-                <select
-                  phx-change="add_filter"
-                  name="type"
-                  class="px-3 py-1 bg-blue-700 border border-blue-600 rounded text-sm text-gray-100"
-                >
-                  <option value="">+ Add Filter</option>
-                  <optgroup label="Basic Filters">
-                    <option value="character">Character</option>
-                    <option value="corporation">Corporation</option>
-                    <option value="alliance">Alliance</option>
-                    <option value="system">System</option>
-                    <option value="ship_type">Ship Type</option>
-                  </optgroup>
-                  <optgroup label="Advanced Filters">
-                    <option value="isk_range">ISK Value Range</option>
-                    <option value="participant_count">Participant Count</option>
-                    <option value="time_range">Time of Day</option>
-                    <option value="system_distance">System Distance</option>
-                    <option value="chain">Chain Proximity</option>
-                  </optgroup>
-                  <optgroup label="Logic Groups">
-                    <option value="nested_group">Nested Condition Group</option>
-                  </optgroup>
-                </select>
-              </div>
+              <select
+                phx-change="add_filter"
+                name="type"
+                class="px-3 py-1 bg-blue-700 border border-blue-600 rounded text-sm text-gray-100"
+              >
+                <option value="">+ Add Filter</option>
+                <optgroup label="Entity Filters">
+                  <option value="character">Character</option>
+                  <option value="corporation">Corporation</option>
+                  <option value="alliance">Alliance</option>
+                  <option value="system">Solar System</option>
+                  <option value="ship">Ship Type</option>
+                </optgroup>
+                <optgroup label="Value Filters">
+                  <option value="isk_range">ISK Value Range</option>
+                </optgroup>
+                <optgroup label="Time Filters">
+                  <option value="active_hours">Active Hours (UTC)</option>
+                </optgroup>
+              </select>
             </div>
           </div>
 
-          <!-- Filter List -->
+          <!-- Filter List using inputs_for -->
           <div class="space-y-4">
-            <%= for {condition, index} <- Enum.with_index(@editing_profile.criteria.conditions || []) do %>
+            <.inputs_for :let={filter} field={f[:filters]}>
               <div class="p-4 border border-gray-600 rounded-lg bg-gray-700">
                 <div class="flex justify-between items-start mb-3">
-                  <span class="text-sm font-medium text-gray-300 capitalize">
-                    <%= format_filter_type(condition.type) %>
+                  <span class="text-sm font-medium text-gray-300">
+                    <%= filter_type_display(filter[:filter_type].value) %>
                   </span>
                   <button
                     type="button"
                     phx-click="remove_filter"
-                    phx-value-index={index}
+                    phx-value-index={filter.index}
                     class="text-red-400 hover:text-red-300 text-sm"
                   >
                     Remove
                   </button>
                 </div>
-                
-                <%= render_filter_inputs(%{condition: condition, index: index}) %>
+
+                <!-- Hidden filter type -->
+                <input type="hidden" name={filter[:filter_type].name} value={filter[:filter_type].value} />
+
+                <!-- Entity Filter Inputs -->
+                <%= if is_entity_filter?(filter[:filter_type].value) do %>
+                  <div class="space-y-3">
+                    <!-- Entity IDs display and management -->
+                    <div>
+                      <label class="block text-xs text-gray-400 mb-1">Selected IDs</label>
+                      <div class="flex flex-wrap gap-2 min-h-[32px] p-2 bg-gray-800 rounded border border-gray-600">
+                        <%= for id <- (filter[:entity_ids].value || []) do %>
+                          <span class="inline-flex items-center px-2 py-1 bg-blue-900 text-blue-200 text-xs rounded">
+                            <%= id %>
+                            <button
+                              type="button"
+                              phx-click="remove_entity_id"
+                              phx-value-index={filter.index}
+                              phx-value-id={id}
+                              class="ml-1 text-blue-400 hover:text-red-400"
+                            >
+                              &times;
+                            </button>
+                          </span>
+                        <% end %>
+                        <%= if Enum.empty?(filter[:entity_ids].value || []) do %>
+                          <span class="text-gray-500 text-xs">No IDs selected</span>
+                        <% end %>
+                      </div>
+                      <!-- Hidden input to preserve entity_ids in form -->
+                      <%= for id <- (filter[:entity_ids].value || []) do %>
+                        <input type="hidden" name={"#{filter[:entity_ids].name}[]"} value={id} />
+                      <% end %>
+                    </div>
+
+                    <!-- Search input -->
+                    <div>
+                      <label class="block text-xs text-gray-400 mb-1">Search to add</label>
+                      <input
+                        type="text"
+                        phx-keyup="search_autocomplete"
+                        phx-debounce="300"
+                        phx-value-filter_type={filter[:filter_type].value}
+                        placeholder={"Search for #{filter[:filter_type].value}..."}
+                        class="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-md text-gray-100 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        autocomplete="off"
+                      />
+                      <!-- Autocomplete suggestions -->
+                      <%= if @autocomplete_field == to_string(filter[:filter_type].value) && @autocomplete_suggestions != [] do %>
+                        <div class="absolute z-10 mt-1 w-full bg-gray-700 border border-gray-600 rounded-md shadow-lg max-h-48 overflow-auto">
+                          <%= for suggestion <- @autocomplete_suggestions do %>
+                            <button
+                              type="button"
+                              phx-click="add_entity_id"
+                              phx-value-index={filter.index}
+                              phx-value-id={suggestion.id}
+                              class="w-full text-left px-3 py-2 hover:bg-gray-600 text-gray-200 text-sm"
+                            >
+                              <%= suggestion.name %> <span class="text-gray-500">(ID: <%= suggestion.id %>)</span>
+                            </button>
+                          <% end %>
+                        </div>
+                      <% end %>
+                    </div>
+
+                    <!-- Match options -->
+                    <div class="flex space-x-4">
+                      <label class="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          name={filter[:match_victim].name}
+                          value="true"
+                          checked={filter[:match_victim].value in [true, "true"]}
+                          class="rounded bg-gray-600 border-gray-500 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span class="text-sm text-gray-300">Match Victim</span>
+                      </label>
+                      <label class="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          name={filter[:match_attacker].name}
+                          value="true"
+                          checked={filter[:match_attacker].value in [true, "true"]}
+                          class="rounded bg-gray-600 border-gray-500 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span class="text-sm text-gray-300">Match Attacker</span>
+                      </label>
+                    </div>
+                  </div>
+                <% end %>
+
+                <!-- ISK Range Filter Inputs -->
+                <%= if filter[:filter_type].value in [:isk_range, "isk_range"] do %>
+                  <div class="grid grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-xs text-gray-400 mb-1">Min ISK Value</label>
+                      <input
+                        type="number"
+                        name={filter[:min_value].name}
+                        value={filter[:min_value].value}
+                        placeholder="e.g., 10000000"
+                        class="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-md text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label class="block text-xs text-gray-400 mb-1">Max ISK Value (leave empty for no limit)</label>
+                      <input
+                        type="number"
+                        name={filter[:max_value].name}
+                        value={filter[:max_value].value}
+                        placeholder="e.g., 1000000000"
+                        class="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-md text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                <% end %>
+
+                <!-- Active Hours Filter Inputs -->
+                <%= if filter[:filter_type].value in [:active_hours, "active_hours"] do %>
+                  <div class="grid grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-xs text-gray-400 mb-1">Start Hour (UTC, 0-23)</label>
+                      <input
+                        type="number"
+                        name={filter[:hour_start].name}
+                        value={filter[:hour_start].value}
+                        min="0"
+                        max="23"
+                        class="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-md text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label class="block text-xs text-gray-400 mb-1">End Hour (UTC, 0-23)</label>
+                      <input
+                        type="number"
+                        name={filter[:hour_end].name}
+                        value={filter[:hour_end].value}
+                        min="0"
+                        max="23"
+                        class="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-md text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <p class="mt-2 text-xs text-gray-500">
+                    Matches killmails occurring between these hours. Supports wrap-around (e.g., 22:00 to 02:00).
+                  </p>
+                <% end %>
               </div>
-            <% end %>
-            
-            <%= if length(@editing_profile.criteria.conditions || []) == 0 do %>
+            </.inputs_for>
+
+            <%= if Enum.empty?(f[:filters].value || []) do %>
               <div class="text-center py-8 text-gray-500">
                 <p>No filters added yet. Use the "+ Add Filter" dropdown above to get started.</p>
               </div>
@@ -157,10 +278,10 @@
         </div>
 
         <!-- Preview Section -->
-        <%= if length(@editing_profile.criteria.conditions || []) > 0 do %>
+        <%= if not Enum.empty?(f[:filters].value || []) do %>
           <div class="mb-6 p-4 bg-gray-700 rounded-lg border border-gray-600">
             <h4 class="font-medium text-gray-200 mb-3">Preview</h4>
-            
+
             <%= if @filter_preview.testing do %>
               <div class="flex items-center text-blue-400">
                 <div class="animate-spin w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full mr-2"></div>
@@ -182,20 +303,21 @@
                     </span>
                   <% end %>
                 </div>
-                
+
                 <%= if @filter_preview.count > 0 do %>
                   <div class="space-y-2">
                     <%= for match <- Enum.take(@filter_preview.matches, 5) do %>
                       <div class="text-sm bg-gray-800 p-2 rounded border border-gray-600">
                         <span class="font-medium text-gray-200"><%= match.victim_name %></span>
-                        <span class="text-gray-400">lost a</span> <span class="text-blue-400"><%= match.victim_ship %></span>
+                        <span class="text-gray-400">lost a</span>
+                        <span class="text-blue-400"><%= match.victim_ship %></span>
                         <span class="text-green-400">(<%= format_isk(match.isk_value) %> ISK)</span>
                         <span class="text-gray-500 text-xs ml-2">
                           <%= format_timestamp(match.timestamp) %>
                         </span>
                       </div>
                     <% end %>
-                    
+
                     <%= if @filter_preview.count > 5 do %>
                       <div class="text-sm text-gray-400">
                         + <%= @filter_preview.count - 5 %> more matches...
@@ -216,7 +338,7 @@
         <div class="flex justify-end space-x-3">
           <button
             type="button"
-            phx-click="cancel_edit"
+            phx-click="cancel"
             class="px-4 py-2 border border-gray-600 rounded-md text-gray-300 hover:bg-gray-700"
           >
             Cancel
@@ -225,10 +347,10 @@
             type="submit"
             class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
-            <%= if @editing_profile.id, do: "Update Profile", else: "Create Profile" %>
+            <%= if @profile_id, do: "Update Profile", else: "Create Profile" %>
           </button>
         </div>
-      </form>
+      </.form>
     </div>
   <% else %>
     <!-- Profile List -->
@@ -240,25 +362,25 @@
             <div class="flex items-center">
               <div class={
                 "w-2 h-2 rounded-full mr-2 " <>
-                if profile.enabled, do: "bg-green-400", else: "bg-gray-500"
+                if profile.is_active, do: "bg-green-400", else: "bg-gray-500"
               }></div>
               <span class={
                 "text-xs font-medium " <>
-                if profile.enabled, do: "text-green-400", else: "text-gray-500"
+                if profile.is_active, do: "text-green-400", else: "text-gray-500"
               }>
-                <%= if profile.enabled, do: "Active", else: "Inactive" %>
+                <%= if profile.is_active, do: "Active", else: "Inactive" %>
               </span>
             </div>
           </div>
-          
+
           <%= if profile.description && profile.description != "" do %>
             <p class="text-sm text-gray-400 mb-4"><%= profile.description %></p>
           <% end %>
-          
+
           <div class="text-xs text-gray-500 mb-4">
-            <%= format_filter_summary(profile.criteria) %>
+            <%= filter_summary(profile.filters || []) %>
           </div>
-          
+
           <div class="flex justify-between items-center">
             <div class="flex space-x-2">
               <button
@@ -273,7 +395,7 @@
                 phx-value-id={profile.id}
                 class="text-xs text-gray-400 hover:text-gray-300"
               >
-                <%= if profile.enabled, do: "Disable", else: "Enable" %>
+                <%= if profile.is_active, do: "Disable", else: "Enable" %>
               </button>
               <button
                 phx-click="delete_profile"
@@ -287,7 +409,7 @@
           </div>
         </div>
       <% end %>
-      
+
       <%= if length(@profiles) == 0 do %>
         <div class="col-span-full text-center py-12">
           <div class="text-gray-400 mb-4">
@@ -308,119 +430,3 @@
     </div>
   <% end %>
 </div>
-
-<script>
-// Global autocomplete event handlers
-window.addEventListener("phx:show_autocomplete", (e) => {
-  console.log('🔍 show_autocomplete event received:', e.detail);
-  const { input_id, suggestions } = e.detail;
-  const suggestionsContainer = document.getElementById(`${input_id}_suggestions`);
-  
-  console.log('📦 Suggestions container found:', suggestionsContainer);
-  console.log('📝 Number of suggestions:', suggestions.length);
-  
-  if (suggestions.length > 0) {
-    const html = suggestions.map(suggestion => 
-      `<div class="px-3 py-2 hover:bg-gray-600 cursor-pointer text-gray-200 text-sm suggestion-item" 
-           data-id="${suggestion.id}"
-           data-name="${suggestion.name}">
-         ${suggestion.name} (${suggestion.id})
-       </div>`
-    ).join('');
-    
-    console.log('🎨 Generated HTML:', html);
-    suggestionsContainer.innerHTML = html;
-    suggestionsContainer.classList.remove('hidden');
-    
-    console.log('✅ Suggestions displayed, checking suggestion items:');
-    const items = suggestionsContainer.querySelectorAll('.suggestion-item');
-    console.log('🎯 Found suggestion items:', items.length);
-    items.forEach((item, index) => {
-      console.log(`  Item ${index}:`, {
-        id: item.dataset.id,
-        name: item.dataset.name,
-        text: item.textContent,
-        classes: item.className
-      });
-    });
-  } else {
-    console.log('❌ No suggestions, hiding container');
-    suggestionsContainer.classList.add('hidden');
-  }
-});
-
-window.addEventListener("phx:hide_autocomplete", (e) => {
-  console.log('🙈 hide_autocomplete event received');
-  document.querySelectorAll('[id$="_suggestions"]').forEach(el => {
-    console.log('🙈 Hiding suggestions container:', el.id);
-    el.classList.add('hidden');
-  });
-});
-
-// Add global click listener to debug clicks anywhere
-document.addEventListener('click', (e) => {
-  console.log('🖱️ GLOBAL CLICK detected on:', e.target);
-  
-  if (e.target.closest('[id$="_suggestions"]')) {
-    console.log('🖱️ GLOBAL CLICK on suggestions area detected!');
-    console.log('🎯 Click target:', e.target);
-    console.log('🏷️ Target classes:', e.target.className);
-    console.log('📍 Target tagName:', e.target.tagName);
-    console.log('🔍 Closest suggestion-item:', e.target.closest('.suggestion-item'));
-    
-    const suggestionItem = e.target.closest('.suggestion-item');
-    if (suggestionItem) {
-      console.log('✅ Found suggestion item data:', {
-        id: suggestionItem.dataset.id,
-        name: suggestionItem.dataset.name
-      });
-      
-      // Prevent default to stop any interference
-      e.preventDefault();
-      e.stopPropagation();
-      
-      // Find the hook and trigger the selection manually
-      const hookContainer = suggestionItem.closest('[phx-hook="AutocompleteInput"]');
-      if (hookContainer && window.liveSocket) {
-        console.log('🔧 Found hook container, triggering manual selection');
-        const hooks = window.liveSocket.getHookCallbacks(hookContainer.id);
-        console.log('🔧 Available hooks:', hooks);
-      }
-    }
-  }
-});
-
-// Add mutation observer to detect when suggestions are removed
-const observeContainer = (containerId) => {
-  const container = document.getElementById(containerId);
-  if (container && !container._observed) {
-    container._observed = true;
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.type === 'childList') {
-          console.log('🔄 Suggestions container content changed:', {
-            added: mutation.addedNodes.length,
-            removed: mutation.removedNodes.length,
-            target: mutation.target.id
-          });
-        }
-      });
-    });
-    
-    observer.observe(container, { 
-      childList: true, 
-      subtree: true 
-    });
-    console.log('👀 Started observing container:', containerId);
-  }
-};
-
-// Start observing when autocomplete is shown
-const originalShowHandler = window.addEventListener;
-setTimeout(() => {
-  const containers = document.querySelectorAll('[id$="_suggestions"]');
-  containers.forEach(container => {
-    observeContainer(container.id);
-  });
-}, 1000);
-</script>

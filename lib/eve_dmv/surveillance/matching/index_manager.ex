@@ -21,18 +21,35 @@ defmodule EveDmv.Surveillance.Matching.IndexManager do
 
   @doc """
   Create all ETS tables needed for surveillance matching.
+
+  This function is idempotent - it will skip creating tables that already exist.
+  This ensures the GenServer can restart safely without crashing on `:ets.new`.
   """
   def create_ets_tables do
-    # Create ETS tables for compiled profiles and indexes
-    :ets.new(@compiled_profiles, [:set, :public, :named_table])
-    :ets.new(@index_by_tag, [:bag, :public, :named_table])
-    :ets.new(@index_by_system, [:bag, :public, :named_table])
-    :ets.new(@index_by_isk, [:bag, :public, :named_table])
-    :ets.new(@index_by_ship, [:bag, :public, :named_table])
-    :ets.new(@profile_metadata, [:set, :public, :named_table])
-    :ets.new(@match_cache, [:set, :public, :named_table])
+    # Create ETS tables for compiled profiles and indexes (idempotent)
+    create_table_if_not_exists(@compiled_profiles, [:set, :public, :named_table])
+    create_table_if_not_exists(@index_by_tag, [:bag, :public, :named_table])
+    create_table_if_not_exists(@index_by_system, [:bag, :public, :named_table])
+    create_table_if_not_exists(@index_by_isk, [:bag, :public, :named_table])
+    create_table_if_not_exists(@index_by_ship, [:bag, :public, :named_table])
+    create_table_if_not_exists(@profile_metadata, [:set, :public, :named_table])
+    create_table_if_not_exists(@match_cache, [:set, :public, :named_table])
 
-    Logger.debug("Created ETS tables for surveillance engine")
+    Logger.debug("ETS tables for surveillance engine are ready")
+    :ok
+  end
+
+  # Creates an ETS table if it doesn't already exist
+  defp create_table_if_not_exists(table_name, options) do
+    case :ets.whereis(table_name) do
+      :undefined ->
+        :ets.new(table_name, options)
+        :created
+
+      _tid ->
+        # Table already exists, skip creation
+        :exists
+    end
   end
 
   @doc """

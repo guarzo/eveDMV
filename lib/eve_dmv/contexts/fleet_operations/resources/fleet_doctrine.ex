@@ -148,6 +148,13 @@ defmodule EveDmv.Contexts.FleetOperations.Resources.FleetDoctrine do
     end
   end
 
+  # Validations
+  validations do
+    validate(present(:name), message: "Doctrine name is required")
+    validate(present(:created_by), message: "Creator character ID is required")
+    validate(string_length(:name, min: 1, max: 255), message: "Name must be 1-255 characters")
+  end
+
   actions do
     defaults([:read, :destroy])
 

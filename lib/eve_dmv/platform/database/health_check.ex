@@ -145,11 +145,9 @@ defmodule EveDmv.Platform.Database.HealthCheck do
       {:ok, %{rows: unused_indexes}} ->
         unused_count = length(unused_indexes)
 
-        cond do
-          unused_count == 0 -> :healthy
-          unused_count <= 5 -> :warning
-          true -> :critical
-        end
+        # Unused indexes are not critical - just informational
+        # Only return warning at most since this doesn't affect database functionality
+        if unused_count == 0, do: :healthy, else: :warning
 
       {:error, reason} ->
         Logger.error("Index usage check failed: #{inspect(reason)}")
@@ -208,6 +206,20 @@ defmodule EveDmv.Platform.Database.HealthCheck do
   end
 
   defp check_connection_pool do
+    # Check if we're using SQL Sandbox (test environment)
+    # SQL Sandbox doesn't support get_connection_metrics and calling it crashes the repo
+    pool_config = Application.get_env(:eve_dmv, EveDmv.Repo, [])
+    pool_class = Keyword.get(pool_config, :pool)
+
+    if pool_class == Ecto.Adapters.SQL.Sandbox or pool_class == DBConnection.Ownership do
+      # In test environment, fall back to basic connection check
+      check_connection_pool_via_query()
+    else
+      check_connection_pool_via_metrics(pool_config)
+    end
+  end
+
+  defp check_connection_pool_via_metrics(pool_config) do
     pool_info = DBConnection.get_connection_metrics(EveDmv.Repo)
 
     # pool_info is a list of connection metrics, extract relevant data
@@ -222,7 +234,6 @@ defmodule EveDmv.Platform.Database.HealthCheck do
       |> Enum.sum()
 
     # Get pool size from config since it's not in the metrics
-    pool_config = Application.get_env(:eve_dmv, EveDmv.Repo, [])
     pool_size = Keyword.get(pool_config, :pool_size, 10)
 
     checked_out = pool_size - total_ready_connections
@@ -235,15 +246,32 @@ defmodule EveDmv.Platform.Database.HealthCheck do
     end
   rescue
     _ ->
-      # Fallback check using ETS if available
-      case :ets.info(EveDmv.Repo.Pool) do
-        :undefined ->
-          :warning
+      check_connection_pool_via_query()
+  end
 
-        info ->
-          size = Keyword.get(info, :size, 0)
-          if size > 0, do: :healthy, else: :warning
-      end
+  defp check_connection_pool_via_query do
+    # Fallback: Check connection pool health via a simple query
+    query = """
+    SELECT count(*) as total_connections
+    FROM pg_stat_activity
+    WHERE datname = current_database()
+    """
+
+    case SQL.query(EveDmv.Repo, query) do
+      {:ok, %{rows: [[count]]}} when is_integer(count) ->
+        pool_config = Application.get_env(:eve_dmv, EveDmv.Repo, [])
+        pool_size = Keyword.get(pool_config, :pool_size, 10)
+
+        if count <= pool_size * 2, do: :healthy, else: :warning
+
+      {:ok, _} ->
+        :healthy
+
+      {:error, _} ->
+        :warning
+    end
+  rescue
+    _ -> :warning
   end
 
   defp check_table_stats do
@@ -263,7 +291,8 @@ defmodule EveDmv.Platform.Database.HealthCheck do
     case SQL.query(EveDmv.Repo, query) do
       {:ok, %{rows: rows}} when rows != [] -> :healthy
       {:ok, %{rows: []}} -> :warning
-      {:error, _} -> :critical
+      # Table stats query failing is not critical - just informational
+      {:error, _} -> :warning
     end
   rescue
     _ -> :warning

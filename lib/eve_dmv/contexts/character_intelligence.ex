@@ -1,5 +1,4 @@
 defmodule EveDmv.Contexts.CharacterIntelligence do
-  @compile {:nowarn_unused_function}
   @moduledoc """
   Context module for character intelligence and threat analysis.
 
@@ -12,6 +11,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   alias EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnalyzer
   alias EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.HistoricalTrendAnalyzer
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine
+  alias EveDmv.Eve.EsiCharacterClient
+  alias EveDmv.Eve.EsiCorporationClient
   alias EveDmv.Integrations.ShipIntelligenceBridge
 
   require Ash.Query
@@ -221,20 +222,354 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   """
   @spec get_character_intelligence_report(integer()) :: {:ok, map()} | {:error, atom()}
   def get_character_intelligence_report(character_id) do
-    case analyze_character_threat(character_id) do
-      {:ok, threat_data} ->
-        {:ok,
-         %{
-           character_id: character_id,
-           threat_analysis: threat_data,
-           # Not yet implemented
-           behavioral_patterns: nil,
-           report_generated_at: DateTime.utc_now()
-         }}
+    with {:ok, threat_data} <- analyze_character_threat(character_id),
+         {:ok, character_info} <- fetch_character_info(character_id) do
+      # Build the complete report structure expected by the template
+      report = build_intelligence_report(character_id, threat_data, character_info)
+      {:ok, report}
+    else
+      {:error, :insufficient_data} ->
+        # Return a minimal report for characters with no killmail data
+        {:ok, build_minimal_report(character_id)}
 
       {:error, reason} ->
         {:error, reason}
     end
+  end
+
+  defp fetch_character_info(character_id) do
+    case EsiCharacterClient.get_character(character_id) do
+      {:ok, character} when is_map(character) ->
+        extract_character_info(character)
+
+      {:error, reason} ->
+        Logger.warning("Failed to fetch character info for #{character_id}: #{inspect(reason)}")
+        # Return a minimal character info structure
+        {:ok,
+         %{
+           name: "Unknown Pilot",
+           corporation_id: nil,
+           corporation_name: "Unknown Corporation",
+           alliance_id: nil,
+           alliance_name: nil
+         }}
+    end
+  end
+
+  defp extract_character_info(character) when is_map(character) do
+    # Handle both atom and string keys
+    name = Map.get(character, :name) || Map.get(character, "name") || "Unknown Pilot"
+    corporation_id = Map.get(character, :corporation_id) || Map.get(character, "corporation_id")
+    alliance_id = Map.get(character, :alliance_id) || Map.get(character, "alliance_id")
+
+    # Sequential fetch for corporation and alliance names is intentional:
+    # Both EsiCorporationClient.get_corporation/1 and EsiUniverseClient.get_alliance/1
+    # consult a cache layer, so cache hits are common and fast. Parallelizing with
+    # Task.async would add complexity only to benefit the cache-miss case.
+    corp_name =
+      if corporation_id do
+        case EsiCorporationClient.get_corporation(corporation_id) do
+          {:ok, corp} when is_map(corp) ->
+            Map.get(corp, :name) || Map.get(corp, "name") || "Unknown Corporation"
+
+          _ ->
+            "Unknown Corporation"
+        end
+      else
+        "Unknown Corporation"
+      end
+
+    # Fetch alliance name if applicable
+    alliance_name =
+      if alliance_id do
+        case EveDmv.Eve.EsiUniverseClient.get_alliance(alliance_id) do
+          {:ok, alliance} when is_map(alliance) ->
+            Map.get(alliance, :name) || Map.get(alliance, "name")
+
+          _ ->
+            nil
+        end
+      else
+        nil
+      end
+
+    {:ok,
+     %{
+       name: name,
+       corporation_id: corporation_id,
+       corporation_name: corp_name,
+       alliance_id: alliance_id,
+       alliance_name: alliance_name
+     }}
+  end
+
+  defp extract_character_info(_),
+    do:
+      {:ok,
+       %{
+         name: "Unknown Pilot",
+         corporation_id: nil,
+         corporation_name: "Unknown",
+         alliance_id: nil,
+         alliance_name: nil
+       }}
+
+  defp build_intelligence_report(character_id, threat_data, character_info) do
+    # Extract dimensions from threat_data, converting to template format
+    dimensions = build_dimensions_map(threat_data)
+
+    # Build behavioral patterns from threat data insights
+    behavioral_patterns = build_behavioral_patterns(threat_data)
+
+    # Build combat stats from the detailed breakdown
+    combat_stats = build_combat_stats(threat_data)
+
+    # Build threat trends
+    threat_trends = build_threat_trends(threat_data)
+
+    # Build summary
+    summary = build_summary(threat_data)
+
+    %{
+      character_id: character_id,
+      character: character_info,
+      threat_analysis: %{
+        threat_score: round(threat_data.overall_score * 10),
+        threat_level: threat_data.threat_level,
+        dimensions: dimensions,
+        behavioral_pattern: threat_data[:threat_classification]
+      },
+      behavioral_patterns: behavioral_patterns,
+      combat_stats: combat_stats,
+      threat_trends: threat_trends,
+      summary: summary,
+      report_generated_at: DateTime.utc_now()
+    }
+  end
+
+  defp build_dimensions_map(threat_data) do
+    case threat_data[:detailed_breakdown] do
+      nil ->
+        %{
+          combat_skill: 50,
+          ship_mastery: 50,
+          gang_effectiveness: 50,
+          unpredictability: 50,
+          recent_activity: 50
+        }
+
+      breakdown ->
+        %{
+          combat_skill: round((get_in(breakdown, [:combat_skill, :normalized_score]) || 0) * 10),
+          ship_mastery: round((get_in(breakdown, [:ship_mastery, :normalized_score]) || 0) * 10),
+          gang_effectiveness:
+            round((get_in(breakdown, [:gang_effectiveness, :normalized_score]) || 0) * 10),
+          unpredictability:
+            round((get_in(breakdown, [:unpredictability, :normalized_score]) || 0) * 10),
+          recent_activity:
+            round((get_in(breakdown, [:recent_activity, :normalized_score]) || 0) * 10)
+        }
+    end
+  end
+
+  defp build_behavioral_patterns(threat_data) do
+    breakdown = threat_data[:detailed_breakdown]
+
+    # Determine primary pattern from the data
+    primary_pattern =
+      cond do
+        threat_data[:threat_classification] == :combat_specialist -> :skilled_combatant
+        threat_data[:threat_classification] == :ship_master -> :ship_specialist
+        threat_data[:threat_classification] == :fleet_commander -> :fleet_anchor
+        threat_data[:threat_classification] == :unpredictable_wildcard -> :opportunist
+        true -> :solo_hunter
+      end
+
+    # Build patterns map with confidence scores
+    patterns =
+      if breakdown do
+        %{
+          solo_hunter: (get_in(breakdown, [:unpredictability, :normalized_score]) || 0) / 10,
+          fleet_anchor: (get_in(breakdown, [:gang_effectiveness, :normalized_score]) || 0) / 10,
+          specialist: (get_in(breakdown, [:ship_mastery, :normalized_score]) || 0) / 10,
+          opportunist: (get_in(breakdown, [:combat_skill, :normalized_score]) || 0) / 10
+        }
+      else
+        %{
+          solo_hunter: 0.5,
+          fleet_anchor: 0.5,
+          specialist: 0.5,
+          opportunist: 0.5
+        }
+      end
+
+    # Extract characteristics from insights
+    characteristics =
+      (threat_data[:key_strengths] || []) ++
+        (get_insights_from_breakdown(breakdown) |> Enum.take(3))
+
+    %{
+      primary_pattern: primary_pattern,
+      patterns: patterns,
+      characteristics: characteristics
+    }
+  end
+
+  defp get_insights_from_breakdown(nil), do: []
+
+  defp get_insights_from_breakdown(breakdown) do
+    # Collect insights from all dimensions using safe access
+    combat_insights = get_in(breakdown, [:combat_skill, :insights]) || []
+    ship_insights = get_in(breakdown, [:ship_mastery, :insights]) || []
+    gang_insights = get_in(breakdown, [:gang_effectiveness, :insights]) || []
+    unpred_insights = get_in(breakdown, [:unpredictability, :insights]) || []
+    recent_insights = get_in(breakdown, [:recent_activity, :insights]) || []
+
+    (combat_insights ++ ship_insights ++ gang_insights ++ unpred_insights ++ recent_insights)
+    |> Enum.filter(&is_binary/1)
+    |> Enum.uniq()
+  end
+
+  defp build_combat_stats(threat_data) do
+    breakdown = threat_data[:detailed_breakdown]
+    metadata = threat_data[:metadata] || %{}
+
+    # Extract combat components from the detailed breakdown
+    combat_components =
+      if breakdown && breakdown.combat_skill[:components] do
+        breakdown.combat_skill.components
+      else
+        %{}
+      end
+
+    # Ensure we have floats for Float.round
+    raw_kd = (combat_components[:kd_ratio] || 1.0) * 1.0
+    kd_ratio = Float.round(raw_kd, 1)
+
+    raw_isk_eff = (combat_components[:isk_efficiency] || 1.0) * 1.0
+    isk_efficiency = round(raw_isk_eff / 2 * 100) |> min(100)
+
+    # Estimate total kills/losses from metadata
+    killmails_analyzed = metadata[:killmails_analyzed] || 0
+    survival_rate = combat_components[:survival_rate] || 0.5
+
+    total_kills = round(killmails_analyzed * survival_rate)
+    total_losses = killmails_analyzed - total_kills
+
+    # Build recent activity from recent_activity dimension
+    recent_stats =
+      if breakdown && breakdown.recent_activity[:recent_stats] do
+        breakdown.recent_activity.recent_stats
+      else
+        %{}
+      end
+
+    %{
+      total_kills: max(total_kills, 0),
+      total_losses: max(total_losses, 0),
+      kill_death_ratio: kd_ratio,
+      isk_efficiency: round(isk_efficiency),
+      isk_destroyed: round((combat_components[:isk_efficiency] || 1.0) * 1_000_000_000),
+      isk_lost: round(1_000_000_000 / max(combat_components[:isk_efficiency] || 1.0, 0.1)),
+      recent_activity: %{
+        last_7_days: recent_stats[:kills] || round(killmails_analyzed * 0.1),
+        last_30_days: recent_stats[:total_engagements] || round(killmails_analyzed * 0.3)
+      }
+    }
+  end
+
+  defp build_threat_trends(threat_data) do
+    # Build trend data from the threat analysis
+    overall_score = threat_data.overall_score
+
+    %{
+      trend_data: [
+        %{
+          period: "Recent (30 days)",
+          days: 30,
+          threat_score: round(overall_score * 10),
+          data_points: threat_data[:metadata][:killmails_analyzed] || 0
+        }
+      ],
+      trend_direction: :stable,
+      improvement_rate: 0.0,
+      volatility: 0.0,
+      predictions: []
+    }
+  end
+
+  defp build_summary(threat_data) do
+    # Build key strengths with proper format
+    key_strengths =
+      (threat_data[:key_strengths] || [])
+      |> Enum.map(fn strength ->
+        %{
+          dimension: strength,
+          score: 80
+        }
+      end)
+      |> Enum.take(3)
+
+    # Use tactical recommendations
+    recommendations = threat_data[:tactical_recommendations] || []
+
+    # Generate summary text
+    summary_text =
+      case threat_data.threat_level do
+        :extreme -> "Extremely dangerous pilot requiring maximum caution"
+        :very_high -> "Highly skilled and dangerous combatant"
+        :high -> "Skilled pilot with significant combat experience"
+        :moderate -> "Competent pilot with reasonable combat skills"
+        :low -> "Limited combat experience or activity"
+        :minimal -> "Minimal threat - low combat activity"
+        _ -> "Combat profile under analysis"
+      end
+
+    %{
+      threat_level: threat_data.threat_level,
+      summary: summary_text,
+      key_strengths: key_strengths,
+      recommendations: recommendations
+    }
+  end
+
+  defp build_minimal_report(character_id) do
+    # Fetch character info even for minimal reports
+    character_info =
+      case fetch_character_info(character_id) do
+        {:ok, info} -> info
+        _ -> %{name: "Unknown Pilot", corporation_name: "Unknown", alliance_name: nil}
+      end
+
+    %{
+      character_id: character_id,
+      character: character_info,
+      threat_analysis: %{
+        threat_score: 0,
+        threat_level: :minimal,
+        dimensions: %{
+          combat_skill: 0,
+          ship_mastery: 0,
+          gang_effectiveness: 0,
+          unpredictability: 0,
+          recent_activity: 0
+        }
+      },
+      behavioral_patterns: %{
+        primary_pattern: :unknown,
+        patterns: %{},
+        characteristics: ["Insufficient data for analysis"]
+      },
+      combat_stats: nil,
+      threat_trends: nil,
+      summary: %{
+        threat_level: :minimal,
+        summary: "Insufficient killmail data for analysis",
+        key_strengths: [],
+        recommendations: ["No combat data available for this character"]
+      },
+      report_generated_at: DateTime.utc_now()
+    }
   end
 
   ## Ship Intelligence Integration
@@ -276,6 +611,91 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
           {:ok, map()} | {:error, atom()}
   def get_weapon_preferences(character_id, since_date) do
     CharacterIntelligenceAnalyzer.analyze_weapon_preferences(
+      character_id,
+      since_date
+    )
+  end
+
+  @doc """
+  Get ship loadouts for a character - weapons grouped by ship.
+  Returns only actual data from killmails, no inference.
+  """
+  @spec get_ship_loadouts(integer(), Date.t() | DateTime.t()) ::
+          {:ok, map()} | {:error, atom()}
+  def get_ship_loadouts(character_id, since_date) do
+    CharacterIntelligenceAnalyzer.analyze_ship_loadouts(
+      character_id,
+      since_date
+    )
+  end
+
+  @doc """
+  Get known associates - pilots who frequently fly with this character.
+  """
+  @spec get_known_associates(integer(), Date.t() | DateTime.t()) ::
+          {:ok, map()} | {:error, atom()}
+  def get_known_associates(character_id, since_date) do
+    CharacterIntelligenceAnalyzer.analyze_known_associates(
+      character_id,
+      since_date
+    )
+  end
+
+  @doc """
+  Get hunting grounds - systems where this character is most active.
+  """
+  @spec get_hunting_grounds(integer(), Date.t() | DateTime.t()) ::
+          {:ok, map()} | {:error, atom()}
+  def get_hunting_grounds(character_id, since_date) do
+    CharacterIntelligenceAnalyzer.analyze_hunting_grounds(
+      character_id,
+      since_date
+    )
+  end
+
+  @doc """
+  Get target selection patterns - what types of ships does this character hunt.
+  """
+  @spec get_target_selection(integer(), Date.t() | DateTime.t()) ::
+          {:ok, map()} | {:error, atom()}
+  def get_target_selection(character_id, since_date) do
+    CharacterIntelligenceAnalyzer.analyze_target_selection(
+      character_id,
+      since_date
+    )
+  end
+
+  @doc """
+  Get activity timeline - daily activity over recent period.
+  """
+  @spec get_activity_timeline(integer(), Date.t() | DateTime.t()) ::
+          {:ok, map()} | {:error, atom()}
+  def get_activity_timeline(character_id, since_date) do
+    CharacterIntelligenceAnalyzer.analyze_activity_timeline(
+      character_id,
+      since_date
+    )
+  end
+
+  @doc """
+  Get corporation context - how active is their corp.
+  """
+  @spec get_corp_context(integer(), Date.t() | DateTime.t()) ::
+          {:ok, map()} | {:error, atom()}
+  def get_corp_context(character_id, since_date) do
+    CharacterIntelligenceAnalyzer.analyze_corp_context(
+      character_id,
+      since_date
+    )
+  end
+
+  @doc """
+  Get bait indicators - is this pilot likely bait?
+  """
+  @spec get_bait_indicators(integer(), Date.t() | DateTime.t()) ::
+          {:ok, map()} | {:error, atom()}
+  def get_bait_indicators(character_id, since_date) do
+    CharacterIntelligenceAnalyzer.analyze_bait_indicators(
       character_id,
       since_date
     )

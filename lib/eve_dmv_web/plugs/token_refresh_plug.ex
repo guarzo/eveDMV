@@ -19,38 +19,50 @@ defmodule EveDmvWeb.TokenRefreshPlug do
         conn
 
       user ->
-        # Check if token needs refresh
         if TokenRefreshService.token_needs_refresh?(user) do
-          Logger.debug(
-            "🔄 User #{user.eve_character_name} token needs refresh, refreshing automatically"
-          )
-
-          case TokenRefreshService.refresh_user_token(user.id) do
-            {:ok, updated_user} ->
-              Logger.debug("✅ Token refreshed successfully for #{user.eve_character_name}")
-
-              # Update the session with the refreshed user data
-              conn
-              |> put_session(:current_user_id, updated_user.id)
-              |> assign(:current_user, updated_user)
-
-            {:error, reason} ->
-              Logger.warning(
-                "❌ Failed to refresh token for #{user.eve_character_name}: #{inspect(reason)}"
-              )
-
-              # If token refresh fails, we could either:
-              # 1. Continue with the expired token (current approach)
-              # 2. Force logout and redirect to login
-              # 3. Show a warning message
-
-              # For now, continue with expired token but log the issue
-              conn
-          end
+          refresh_user_token(conn, user)
         else
-          # Token is still valid, continue normally
           conn
         end
+    end
+  end
+
+  # Refreshes the user's token and updates the session, handling errors gracefully
+  defp refresh_user_token(conn, user) do
+    Logger.debug(
+      "🔄 User #{user.eve_character_name} token needs refresh, refreshing automatically"
+    )
+
+    try do
+      case TokenRefreshService.refresh_user_token(user.id) do
+        {:ok, updated_user} ->
+          Logger.debug("✅ Token refreshed successfully for #{user.eve_character_name}")
+
+          conn
+          |> put_session(:current_user_id, updated_user.id)
+          |> assign(:current_user, updated_user)
+
+        {:error, reason} ->
+          Logger.warning(
+            "❌ Failed to refresh token for #{user.eve_character_name}: #{inspect(reason)}"
+          )
+
+          conn
+      end
+    catch
+      :exit, {:timeout, _} ->
+        Logger.warning(
+          "⏱️ Token refresh timed out for #{user.eve_character_name}, continuing with existing token"
+        )
+
+        conn
+
+      :exit, reason ->
+        Logger.warning(
+          "❌ Token refresh failed with exit for #{user.eve_character_name}: #{inspect(reason)}"
+        )
+
+        conn
     end
   end
 

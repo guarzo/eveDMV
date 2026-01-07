@@ -9,6 +9,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
   """
 
   use EveDmv.Core.Errors.ErrorHandler
+  alias EveDmv.Contexts.FleetOperations.Domain.FleetValidationService
   alias EveDmv.DomainEvents.FleetAnalysisComplete
   alias EveDmv.Infrastructure.EventBus
   alias EveDmv.StaticData
@@ -25,7 +26,71 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
     c6: 1_800_000_000
   }
 
-  # Public API
+  # Public API - Validated entry points
+
+  @doc """
+  Validate and analyze fleet composition.
+  """
+  def analyze_composition_validated(fleet_data) do
+    with {:ok, validated_data} <- FleetValidationService.validate_fleet_data(fleet_data),
+         {:ok, analysis} <- analyze_composition(validated_data) do
+      Logger.info(
+        "Analyzed fleet composition with #{length(validated_data.participants)} participants"
+      )
+
+      {:ok, analysis}
+    else
+      {:error, reason} ->
+        Logger.warning("Failed to analyze fleet composition: #{inspect(reason)}")
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Validate and analyze a fleet engagement.
+  """
+  def analyze_engagement_validated(engagement_data) do
+    with {:ok, validated_data} <- FleetValidationService.validate_engagement_data(engagement_data),
+         {:ok, analysis} <- analyze_engagement(validated_data) do
+      Logger.info("Analyzed fleet engagement: #{engagement_data.engagement_id}")
+      {:ok, analysis}
+    else
+      {:error, reason} ->
+        Logger.warning("Failed to analyze fleet engagement: #{inspect(reason)}")
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Validate and calculate mass analysis.
+  """
+  def calculate_mass_analysis_validated(fleet_data) do
+    with {:ok, validated_data} <- FleetValidationService.validate_fleet_data(fleet_data) do
+      calculate_mass_analysis(validated_data)
+    end
+  end
+
+  @doc """
+  Validate and generate improvement recommendations.
+  """
+  def generate_improvement_recommendations_validated(fleet_data) do
+    with {:ok, validated_data} <- FleetValidationService.validate_fleet_data(fleet_data) do
+      generate_improvement_recommendations(validated_data)
+    end
+  end
+
+  @doc """
+  Calculate optimal composition with doctrine validation.
+  """
+  def calculate_optimal_composition_validated(doctrine_id, pilot_count) do
+    alias EveDmv.Contexts.FleetOperations.Domain.DoctrineManager
+
+    with {:ok, doctrine} <- DoctrineManager.get_doctrine(doctrine_id) do
+      calculate_optimal_composition(doctrine, pilot_count)
+    end
+  end
+
+  # Public API - Internal
 
   @doc """
   Analyze fleet composition for effectiveness and optimization.
@@ -488,8 +553,6 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.FleetAnalyzer do
       {:ok, result}
     end
   end
-
-  # defp estimate_fleet_dps - removed as unused
 
   defp categorize_participants(participants, killmails) do
     # Determine friendly vs hostile based on killmail analysis

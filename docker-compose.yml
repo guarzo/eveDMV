@@ -17,6 +17,8 @@ services:
       -c pg_stat_statements.track=all
       -c pg_stat_statements.max=10000
       -c cron.database_name=eve_tracker_dev
+      -c max_connections=200
+      -c shared_buffers=256MB
     volumes:
       # PostgreSQL 18+ requires mount at /var/lib/postgresql (not /data)
       # This allows pg_upgrade to work properly with version-specific subdirectories

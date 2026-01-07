@@ -63,6 +63,9 @@ defmodule EveDmv.Eve.EsiCharacterClientTest do
       assert result == {:error, :invalid_character_id}
     end
 
+    # Skipped: Requires network access to ESI API
+    @tag :skip
+    @tag timeout: 5_000
     test "accepts integer character_id" do
       # This will attempt a network call, but validates the input is accepted
       result = EsiCharacterClient.get_character(12_345_678)
@@ -77,8 +80,10 @@ defmodule EveDmv.Eve.EsiCharacterClientTest do
       assert result == {:ok, %{}}
     end
 
+    # Skipped: Requires network access to ESI API
+    @tag :skip
+    @tag timeout: 5_000
     test "accepts list of integers" do
-      # Will attempt network call
       result = EsiCharacterClient.get_characters([12_345_678])
 
       assert match?({:ok, _}, result) or match?({:ok, _, :partial}, result) or

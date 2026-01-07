@@ -16,7 +16,7 @@ defmodule EveDmv.Api do
   ## Sub-domains
   - EveDmv.Api.SurveillanceApi - Surveillance resources
   - EveDmv.Api.AnalyticsApi - Analytics resources
-  - EveDmv.Api.BattleAnalysisApi - Battle analysis resources
+  - EveDmv.Contexts.BattleAnalysis.Api - Battle analysis resources
 
   ## Error Handling
   All functions return standardized `{:ok, result}` or `{:error, reason}` tuples
@@ -41,7 +41,6 @@ defmodule EveDmv.Api do
 
     # Primary killmail data
     resource(EveDmv.Killmails.KillmailRaw)
-    # REMOVED: KillmailEnriched - see /docs/architecture/enriched-raw-analysis.md
     resource(EveDmv.Killmails.Participant)
 
     # Battle analysis resources moved to dedicated domain
@@ -64,6 +63,9 @@ defmodule EveDmv.Api do
     resource(EveDmv.Contexts.Corporation.Resources.MemberPerformanceSnapshot)
     resource(EveDmv.Contexts.Corporation.Resources.MemberActivityLog)
     resource(EveDmv.Contexts.Corporation.Resources.RecruitmentCampaign)
+
+    # Killmail processing resources
+    resource(EveDmv.Contexts.KillmailProcessing.Resources.HistoricalFetchStatus)
   end
 
   # Authorization configuration

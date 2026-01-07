@@ -10,7 +10,7 @@ defmodule EveDmv.Contexts.Combat.Services.CombatLogParser do
   """
 
   alias EveDmv.Contexts.BattleAnalysis.Core.BattleDetector
-  alias EveDmv.Contexts.Combat.Resources.CombatLog
+  alias EveDmv.Contexts.BattleAnalysis.Resources.CombatLog
   alias EveDmv.Contexts.Combat.Services.BattleService
   alias EveDmv.Core.Utils.DateTimeUtils
 
@@ -331,20 +331,51 @@ defmodule EveDmv.Contexts.Combat.Services.CombatLogParser do
   end
 
   defp save_combat_log(parsed_data, opts) do
-    character_id = Keyword.get(opts, :character_id)
+    pilot_name = Keyword.get(opts, :pilot_name, "Unknown Pilot")
+
+    # JSON encode events for storage
+    json_content = encode_events(parsed_data.events)
+
+    # Compute content_hash from uncompressed JSON for deduplication
+    content_hash =
+      json_content
+      |> :crypto.hash(:sha256)
+      |> Base.encode16(case: :lower)
+
+    # Compress and base64-encode for storage
+    # This matches the format expected by CombatLog.raw_content and :upload action
+    raw_content =
+      json_content
+      |> :zlib.compress()
+      |> Base.encode64()
+
+    # Calculate end_time from start_time + duration
+    end_time =
+      if parsed_data.time_span.start && parsed_data.time_span.duration > 0 do
+        DateTime.add(parsed_data.time_span.start, parsed_data.time_span.duration, :second)
+      else
+        parsed_data.time_span.start
+      end
 
     log_data = %{
-      character_id: character_id,
-      log_timestamp: parsed_data.time_span.start,
-      duration_seconds: parsed_data.time_span.duration,
+      pilot_name: pilot_name,
+      start_time: parsed_data.time_span.start,
+      end_time: end_time,
       event_count: length(parsed_data.events),
-      participant_count: length(parsed_data.participants.all),
-      metadata: %{
-        weapons: Map.new(parsed_data.weapons_used),
+      raw_content: raw_content,
+      content_hash: content_hash,
+      parse_status: :completed,
+      parsed_data: %{
+        events: parsed_data.events,
+        damage_events: parsed_data.damage_events,
+        participants: parsed_data.participants,
+        weapons_used: Map.new(parsed_data.weapons_used),
         sessions: parsed_data.sessions
       },
-      content: encode_events(parsed_data.events),
-      created_at: DateTime.utc_now()
+      summary: %{
+        participant_count: length(parsed_data.participants.all),
+        duration_seconds: parsed_data.time_span.duration
+      }
     }
 
     CombatLog

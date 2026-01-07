@@ -40,7 +40,7 @@ EVE DMV is a real-time PvP intelligence platform for EVE Online players that:
 - **Language**: Elixir 1.19+
 - **Framework**: Phoenix 1.8 with LiveView
 - **Resource Layer**: Ash Framework 3.7 (replaces traditional Ecto schemas)
-- **Database**: PostgreSQL 16 with partitioning
+- **Database**: PostgreSQL 18 with partitioning
 - **Streaming**: Broadway for data pipelines
 - **Authentication**: EVE SSO OAuth2
 - **Caching**: ETS and Cachex
@@ -85,10 +85,8 @@ lib/eve_dmv/
 │   ├── battle_sharing/          # Battle report sharing
 │   ├── character_intelligence/  # Character threat scoring
 │   ├── combat/                  # Combat analysis and metrics
-│   ├── combat_analysis/         # Combat statistics
 │   ├── combat_intelligence/     # Combat intelligence gathering
 │   ├── corporation/             # Corporation analysis
-│   ├── corporation_analysis/    # Corp analytics
 │   ├── corporation_intelligence/# Corp intelligence
 │   ├── fleet_operations/        # Fleet composition analysis
 │   ├── intelligence/            # Intelligence engine
@@ -125,7 +123,7 @@ lib/eve_dmv/
 ├── api/                   # Ash API domain definitions
 ├── static_data/           # EVE static data (ships, systems)
 ├── users/                 # User and authentication resources
-└── intelligence_engine/   # Plugin-based intelligence system
+└── intelligence_engine.ex # Thin facade routing to bounded contexts
 ```
 
 ### Key Directory Conventions
@@ -234,19 +232,85 @@ EveDmvWeb.Live/
 └── battle_analysis_live.ex
 ```
 
-### 4. Intelligence Engine
+### 4. Historical Fetch System
 
-```elixir
-# Multi-dimensional analysis system
-IntelligenceEngine
-├── ThreatScoringEngine     # Character threat assessment
-├── ThreatConfig            # Documented configuration constants
-├── BattleDetector          # Clustering algorithm
-├── FleetAnalyzer           # Composition analysis
-└── PatternDetector         # Behavioral patterns
+Two-phase killmail retrieval extending data from 90 days to 2 years:
+
+```
+Phase 1 (Synchronous): 90 days via wanderer-kills SSE
+Phase 2 (Background):  91 days to 2 years via zkillboard API
 ```
 
-### 5. Configuration Patterns
+**Architecture:**
+
+```elixir
+# Key components
+HistoricalFetchStatus     # Ash resource tracking fetch state
+├── entity_type           # :character, :corporation, :system, :alliance
+├── entity_id             # EVE entity ID
+├── status                # :pending, :phase1_complete, :in_progress, :completed, :failed
+├── killmails_fetched     # Count of kills retrieved
+└── progress_percentage   # Calculated progress (0-100)
+
+HistoricalFetchWorker     # GenServer managing background queue
+├── queue_fetch/2         # Add entity to queue
+├── get_status/2          # Check current status
+├── subscribe/2           # PubSub subscription for updates
+└── unsubscribe/2         # Remove subscription
+
+ExtendedHistoricalFetcher # zkillboard API integration
+├── fetch_extended_history/3  # Main entry point
+├── Rate limiting             # 1 second between requests
+├── Pagination                # Up to 100 pages (20,000 kills)
+└── Error handling            # Automatic retry with backoff
+```
+
+**PubSub Integration:**
+
+```elixir
+# Topic format
+"historical_fetch_updates:#{entity_type}:#{entity_id}"
+
+# Message format
+{:historical_fetch_update, entity_type, entity_id, update}
+# where update is:
+#   :started
+#   {:progress, %{killmails_fetched: n, oldest_date: date}}
+#   {:completed, %{killmails_fetched: n}}
+#   {:failed, reason}
+```
+
+### 5. Intelligence Engine
+
+The `IntelligenceEngine` is a thin facade that routes analysis requests to the appropriate bounded contexts:
+
+```elixir
+# Thin facade routing to bounded contexts
+IntelligenceEngine.analyze(:character, id, opts)
+  → PlayerProfile.Domain.PlayerAnalyzer.analyze_character/2
+
+IntelligenceEngine.analyze(:corporation, id, opts)
+  → Corporation.Core.CorporationAnalyzer.analyze_corporation/2
+
+IntelligenceEngine.analyze(:fleet, id, opts)
+  → FleetOperations.Domain.FleetAnalyzer.analyze_composition/1
+
+IntelligenceEngine.analyze(:threat, id, opts)
+  → ThreatAssessment.Domain.ThreatAnalyzer.assess_threat/3
+```
+
+The actual analysis implementations live in their respective bounded contexts:
+
+| Domain | Bounded Context | Module |
+|--------|----------------|--------|
+| Character | `PlayerProfile` | `PlayerAnalyzer` |
+| Corporation | `Corporation` | `CorporationAnalyzer` |
+| Fleet | `FleetOperations` | `FleetAnalyzer` |
+| Threat | `ThreatAssessment` | `ThreatAnalyzer` |
+| Character Intelligence | `CharacterIntelligence` | `ThreatScoringEngine`, `ThreatConfig` |
+| Battle Detection | `BattleAnalysis` | `BattleDetector` |
+
+### 6. Configuration Patterns
 
 The codebase uses dedicated configuration modules with documented rationale for algorithm parameters:
 
@@ -275,7 +339,107 @@ Key principles:
 - **Centralize constants**: Related thresholds live in one configuration module
 - **Public API**: Expose values via documented functions with `@spec`
 
-### 6. Canonical Analyzers
+### 7. Ash Migration Patterns
+
+The codebase is undergoing a gradual migration from raw SQL queries to Ash-native approaches. This section documents the patterns and infrastructure supporting this migration.
+
+#### Calculation Helpers
+
+Shared calculation utilities are centralized in `lib/eve_dmv/calculations/`:
+
+```elixir
+# lib/eve_dmv/calculations/helpers.ex
+defmodule EveDmv.Calculations.Helpers do
+  @moduledoc "Pure functions for common mathematical operations."
+
+  # Safe division with zero handling
+  def safe_divide(10, 2)  # => 5.0
+  def safe_divide(10, 0)  # => 0.0 (default)
+
+  # K/D ratio with infinite handling
+  def kd_ratio(10, 5)     # => 2.0
+  def kd_ratio(10, 0)     # => 10.0 (no deaths)
+
+  # ISK efficiency percentage
+  def isk_efficiency(100_000_000, 50_000_000)  # => 66.67
+
+  # Normalization to 0.0-1.0 scale
+  def normalize(5, 10)    # => 0.5
+end
+```
+
+Use `EveDmv.Calculations.Base` as a base module for Ash calculations:
+
+```elixir
+defmodule MyCalculation do
+  use EveDmv.Calculations.Base
+  # Automatically imports Helpers functions
+end
+```
+
+#### Query Migration Feature Flags
+
+The `EveDmv.Config.QueryMigration` module provides feature flags for gradual rollout:
+
+```elixir
+# Check if Ash-based queries should be used
+if QueryMigration.use_ash_character_stats?() do
+  CharacterStats.calculate_for_character(character_id, since_date)
+else
+  CharacterQueries.get_character_stats(character_id, since_date)
+end
+
+# Available flags
+QueryMigration.use_ash_character_stats?()
+QueryMigration.use_ash_corporation_stats?()
+QueryMigration.use_ash_killmail_queries?()
+QueryMigration.log_comparison_mismatches?()  # For validation
+QueryMigration.shadow_mode?()                 # Test without affecting users
+```
+
+#### Virtual Resources for Statistics
+
+Statistics are computed via virtual Ash resources (`:embedded` data layer):
+
+```elixir
+defmodule EveDmv.Contexts.CharacterIntelligence.Resources.CharacterStats do
+  use Ash.Resource,
+    domain: EveDmv.Api,
+    data_layer: :embedded
+
+  attributes do
+    attribute :character_id, :integer, primary_key?: true
+    attribute :kills, :integer, default: 0
+    attribute :deaths, :integer, default: 0
+  end
+
+  calculations do
+    calculate :kd_ratio, :float, expr(
+      if deaths > 0, do: kills / deaths, else: kills * 1.0
+    )
+  end
+
+  actions do
+    action :calculate, :struct do
+      argument :character_id, :integer, allow_nil?: false
+      run fn input, _context ->
+        # Compute from Participant records
+      end
+    end
+  end
+end
+```
+
+#### Migration Strategy
+
+1. **Create Ash implementation** alongside existing SQL
+2. **Enable comparison logging** to validate correctness
+3. **Use shadow mode** to test without affecting users
+4. **Gradually enable** via feature flags
+5. **Add deprecation warnings** to old functions
+6. **Remove old implementation** once validated
+
+### 8. Canonical Analyzers
 
 The following are the authoritative implementations for each analysis type.
 Other implementations with similar names are deprecated and delegate to these:
@@ -323,10 +487,28 @@ graph LR
 
 ```elixir
 # PubSub topics
-"killmail:new"           # New killmail received
-"battle:detected"        # Battle identified
-"surveillance:match"     # Profile match found
-"character:#{id}"        # Character-specific updates
+"killmail:new"                              # New killmail received
+"battle:detected"                           # Battle identified
+"surveillance:match"                        # Profile match found
+"character:#{id}"                           # Character-specific updates
+"historical_fetch_updates:#{type}:#{id}"    # Historical fetch progress
+```
+
+### 4. Historical Fetch Flow
+
+```mermaid
+graph LR
+    A[Profile Page Visit] --> B{Check Status}
+    B -->|Not Started| C[Phase 1: 90 Days]
+    B -->|In Progress| D[Show Progress]
+    B -->|Complete| E[Show Complete]
+    C --> F[Queue Phase 2]
+    F --> G[HistoricalFetchWorker]
+    G --> H[ExtendedHistoricalFetcher]
+    H --> I[zkillboard API]
+    I --> J[(Database)]
+    G --> K[PubSub Updates]
+    K --> L[LiveView Updates]
 ```
 
 ## Database Design

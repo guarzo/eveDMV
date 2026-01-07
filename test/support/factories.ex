@@ -112,6 +112,7 @@ defmodule EveDmv.Factories do
       victim_alliance_id: get_in(killmail_data, ["victim", "alliance_id"]),
       victim_ship_type_id: get_in(killmail_data, ["victim", "ship_type_id"]),
       attacker_count: length(Map.get(killmail_data, "attackers", [])),
+      total_value: Decimal.new(Enum.random(5_000_000..500_000_000)),
       raw_data: killmail_data,
       source: "wanderer-kills"
     }
@@ -201,6 +202,7 @@ defmodule EveDmv.Factories do
       victim_alliance_id: victim_alliance_id,
       victim_ship_type_id: victim_ship_type_id,
       attacker_count: attacker_count,
+      total_value: Decimal.new(Enum.random(5_000_000..500_000_000)),
       raw_data: updated_raw_data,
       source: "test"
     }
@@ -321,6 +323,37 @@ defmodule EveDmv.Factories do
   # No longer needed since KillmailEnriched was removed
   # defp insert_into_database(%{_enriched_marker: true} = enriched_attrs) do
 
+  # NOTE: Participant clause must come BEFORE killmail clause because it's more specific
+  # (participants have both killmail_id and is_victim, while killmails only have killmail_id)
+  defp insert_into_database(%{killmail_id: _, is_victim: _} = participant_attrs) do
+    # Insert participant data using Ash
+    alias EveDmv.Killmails.Participant
+
+    # Ensure we have all required fields
+    attrs = %{
+      killmail_id: participant_attrs.killmail_id,
+      killmail_time: participant_attrs.killmail_time,
+      character_id: participant_attrs.character_id,
+      character_name: Map.get(participant_attrs, :character_name),
+      corporation_id: participant_attrs.corporation_id,
+      corporation_name: Map.get(participant_attrs, :corporation_name),
+      alliance_id: Map.get(participant_attrs, :alliance_id),
+      alliance_name: Map.get(participant_attrs, :alliance_name),
+      ship_type_id: participant_attrs.ship_type_id,
+      ship_name: Map.get(participant_attrs, :ship_name),
+      weapon_type_id: Map.get(participant_attrs, :weapon_type_id),
+      weapon_name: Map.get(participant_attrs, :weapon_name),
+      damage_done: Map.get(participant_attrs, :damage_done, 0),
+      security_status: Map.get(participant_attrs, :security_status),
+      is_victim: participant_attrs.is_victim,
+      final_blow: Map.get(participant_attrs, :final_blow, false),
+      is_npc: Map.get(participant_attrs, :is_npc, false),
+      solar_system_id: participant_attrs.solar_system_id
+    }
+
+    Ash.create!(Participant, attrs, domain: Api)
+  end
+
   defp insert_into_database(%{killmail_id: _} = killmail_attrs) do
     # Extract required fields for KillmailRaw resource
     # Support both old 'killmail_data' and new 'raw_data' attribute names
@@ -349,6 +382,9 @@ defmodule EveDmv.Factories do
       attacker_count:
         Map.get(killmail_attrs, :attacker_count) ||
           length(Map.get(killmail_data, "attackers", [])),
+      total_value:
+        Map.get(killmail_attrs, :total_value) ||
+          Decimal.new(get_in(killmail_data, ["zkb", "totalValue"]) || 0),
       raw_data: killmail_data,
       source: Map.get(killmail_attrs, :source, "test")
     }
@@ -689,5 +725,82 @@ defmodule EveDmv.Factories do
   @spec corporation_id() :: integer()
   def corporation_id do
     Enum.random(1_000_000..2_000_000)
+  end
+
+  # Convenience functions for direct insertion (aligns with sprint plan patterns)
+
+  @doc """
+  Build and insert a killmail_raw record in one step.
+  Returns the created Ash resource.
+  """
+  @spec insert_killmail_raw!(map()) :: KillmailRaw.t()
+  def insert_killmail_raw!(attrs \\ %{}) do
+    create(:killmail_raw, attrs)
+  end
+
+  @doc """
+  Build and insert a participant record in one step.
+  Returns the created Ash resource.
+  """
+  @spec insert_participant!(map()) :: EveDmv.Killmails.Participant.t()
+  def insert_participant!(attrs \\ %{}) do
+    create(:participant, attrs)
+  end
+
+  @doc """
+  Build and insert a user record in one step.
+  Returns the created Ash resource.
+  """
+  @spec insert_user!(map()) :: User.t()
+  def insert_user!(attrs \\ %{}) do
+    create(:user, attrs)
+  end
+
+  @doc """
+  Create a killmail with participants in one step.
+  Useful for testing scenarios that need both killmail and participant data.
+  """
+  @spec create_killmail_with_participants!(map(), keyword()) ::
+          {KillmailRaw.t(), [EveDmv.Killmails.Participant.t()]}
+  def create_killmail_with_participants!(killmail_attrs \\ %{}, opts \\ []) do
+    attacker_count = Keyword.get(opts, :attacker_count, 1)
+
+    killmail = insert_killmail_raw!(killmail_attrs)
+
+    # Create victim participant
+    victim =
+      insert_participant!(%{
+        killmail_id: killmail.killmail_id,
+        killmail_time: killmail.killmail_time,
+        character_id: killmail.victim_character_id,
+        corporation_id: killmail.victim_corporation_id,
+        alliance_id: killmail.victim_alliance_id,
+        ship_type_id: killmail.victim_ship_type_id,
+        solar_system_id: killmail.solar_system_id,
+        is_victim: true,
+        damage_done: 0
+      })
+
+    # Create attacker participants (handle attacker_count = 0 case)
+    attackers =
+      if attacker_count > 0 do
+        for i <- 1..attacker_count do
+          insert_participant!(%{
+            killmail_id: killmail.killmail_id,
+            killmail_time: killmail.killmail_time,
+            character_id: Enum.random(90_000_000..99_999_999),
+            corporation_id: Enum.random(98_000_000..98_999_999),
+            ship_type_id: random_ship_by_role(:cruiser),
+            solar_system_id: killmail.solar_system_id,
+            is_victim: false,
+            final_blow: i == 1,
+            damage_done: Enum.random(100..10_000)
+          })
+        end
+      else
+        []
+      end
+
+    {killmail, [victim | attackers]}
   end
 end

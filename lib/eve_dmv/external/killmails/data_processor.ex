@@ -4,8 +4,12 @@ defmodule EveDmv.Killmails.DataProcessor do
 
   This module consolidates the transformation logic to reduce coupling
   between pipeline stages and provide a single point of data processing.
+
+  Corporation, alliance, and character names are resolved during ingestion
+  to avoid expensive ESI calls at display time.
   """
 
+  alias EveDmv.Eve.NameResolver
   alias EveDmv.Killmails.KillmailDataTransformer
   alias EveDmv.Killmails.ParticipantBuilder
 
@@ -13,7 +17,6 @@ defmodule EveDmv.Killmails.DataProcessor do
 
   @typep processed_data :: %{
            raw_changeset: map(),
-           # REMOVED: enriched_changeset - see /docs/architecture/enriched-raw-analysis.md
            participants: list(),
            original_data: map()
          }
@@ -27,12 +30,14 @@ defmodule EveDmv.Killmails.DataProcessor do
   @dialyzer {:nowarn_function, process_killmail: 1}
   @spec process_killmail(map()) :: {:ok, processed_data()} | {:error, term()}
   def process_killmail(enriched_data) when is_map(enriched_data) do
+    # Enrich with corporation/alliance names before building participants
+    enriched_with_names = enrich_entity_names(enriched_data)
+
     # Single pass through the data to create all required formats
     processed = %{
-      raw_changeset: KillmailDataTransformer.build_raw_changeset(enriched_data),
-      # REMOVED: enriched_changeset - see /docs/architecture/enriched-raw-analysis.md
-      participants: ParticipantBuilder.build_participants(enriched_data),
-      original_data: enriched_data
+      raw_changeset: KillmailDataTransformer.build_raw_changeset(enriched_with_names),
+      participants: ParticipantBuilder.build_participants(enriched_with_names),
+      original_data: enriched_with_names
     }
 
     {:ok, processed}
@@ -50,7 +55,6 @@ defmodule EveDmv.Killmails.DataProcessor do
   def extract_database_changesets(processed_data) do
     {
       [processed_data.raw_changeset],
-      # REMOVED: enriched_changeset - see /docs/architecture/enriched-raw-analysis.md
       [processed_data.participants]
     }
   end
@@ -119,5 +123,100 @@ defmodule EveDmv.Killmails.DataProcessor do
       end
 
     {victim_name, system_name}
+  end
+
+  # ============================================================================
+  # Entity Name Enrichment
+  # ============================================================================
+
+  @doc """
+  Enriches killmail data with corporation and alliance names from ESI.
+
+  This is called during ingestion so names are stored in the database and
+  don't need to be resolved at display time (which would be slow).
+  """
+  @spec enrich_entity_names(map()) :: map()
+  def enrich_entity_names(killmail_data) do
+    # Extract all unique corporation and alliance IDs
+    {corp_ids, alliance_ids} = extract_entity_ids(killmail_data)
+
+    # Batch resolve corporation names
+    corp_names =
+      if Enum.empty?(corp_ids) do
+        %{}
+      else
+        NameResolver.corporation_names(corp_ids)
+      end
+
+    # Batch resolve alliance names
+    alliance_names =
+      if Enum.empty?(alliance_ids) do
+        %{}
+      else
+        NameResolver.alliance_names(alliance_ids)
+      end
+
+    # Inject names back into the data
+    inject_entity_names(killmail_data, corp_names, alliance_names)
+  end
+
+  defp extract_entity_ids(killmail_data) do
+    corp_ids = extract_ids(killmail_data, "corporation_id", "corporation_name")
+    alliance_ids = extract_ids(killmail_data, "alliance_id", "alliance_name")
+
+    {corp_ids, alliance_ids}
+  end
+
+  # Extracts unique IDs from victim and attackers where the ID is present but name is missing
+  defp extract_ids(killmail_data, id_key, name_key) do
+    victim = killmail_data["victim"] || %{}
+    attackers = killmail_data["attackers"] || []
+
+    [victim | attackers]
+    |> Enum.filter(fn p ->
+      p[id_key] != nil and (p[name_key] == nil or p[name_key] == "")
+    end)
+    |> Enum.map(& &1[id_key])
+    |> Enum.uniq()
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp inject_entity_names(killmail_data, corp_names, alliance_names) do
+    # Update victim
+    victim = killmail_data["victim"] || %{}
+
+    updated_victim =
+      victim
+      |> maybe_add_entity_name(corp_names, "corporation_id", "corporation_name")
+      |> maybe_add_entity_name(alliance_names, "alliance_id", "alliance_name")
+
+    # Update attackers
+    attackers = killmail_data["attackers"] || []
+
+    updated_attackers =
+      Enum.map(attackers, fn attacker ->
+        attacker
+        |> maybe_add_entity_name(corp_names, "corporation_id", "corporation_name")
+        |> maybe_add_entity_name(alliance_names, "alliance_id", "alliance_name")
+      end)
+
+    killmail_data
+    |> Map.put("victim", updated_victim)
+    |> Map.put("attackers", updated_attackers)
+  end
+
+  defp maybe_add_entity_name(participant, names_map, id_field, name_field) do
+    existing_name = participant[name_field]
+
+    cond do
+      is_binary(existing_name) and existing_name != "" ->
+        participant
+
+      participant[id_field] != nil and Map.has_key?(names_map, participant[id_field]) ->
+        Map.put(participant, name_field, names_map[participant[id_field]])
+
+      true ->
+        participant
+    end
   end
 end

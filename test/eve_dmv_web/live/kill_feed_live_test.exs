@@ -203,20 +203,48 @@ defmodule EveDmvWeb.KillFeedLiveTest do
   end
 
   describe "display formatting" do
-    # Skip: Test depends on factories that need to be updated for current schema
-    @tag :skip
     test "formats ISK values correctly", %{conn: conn} do
-      # Create kill with specific value
+      # Create kill with specific value (1.234 billion ISK)
+      # The value must be in raw_data.zkb.totalValue for DisplayService to read it
+      raw_data = %{
+        "killmail_id" => 95_000_001,
+        "killmail_time" => DateTime.to_iso8601(DateTime.utc_now()),
+        "solar_system_id" => 30_000_142,
+        "victim" => %{
+          "character_id" => 90_000_001,
+          "corporation_id" => 98_000_001,
+          "ship_type_id" => 587
+        },
+        "attackers" => [
+          %{
+            "character_id" => 90_000_002,
+            "corporation_id" => 98_000_002,
+            "ship_type_id" => 620,
+            "final_blow" => true,
+            "damage_done" => 5000
+          }
+        ],
+        "zkb" => %{
+          "totalValue" => 1_234_567_890,
+          "fittedValue" => 1_000_000_000,
+          "hash" => "test_hash_isk"
+        }
+      }
+
       create(:killmail_enriched, %{
         killmail_id: 95_000_001,
-        total_value: 1_234_567_890,
-        killmail_time: DateTime.utc_now()
+        total_value: Decimal.new(1_234_567_890),
+        killmail_time: DateTime.utc_now(),
+        raw_data: raw_data
       })
 
-      {:ok, _view, html} = live(conn, ~p"/feed")
+      {:ok, view, _html} = live(conn, ~p"/feed")
 
-      # Should format as "1.23B ISK"
-      assert html =~ "1.23B"
+      # Render after mount to ensure stream is populated
+      html = render(view)
+
+      # Should format as "1.2B ISK" (Float.round with 1 decimal place)
+      assert html =~ "1.2B ISK"
     end
 
     test "shows relative timestamps", %{conn: conn} do

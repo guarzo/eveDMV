@@ -8,6 +8,7 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
 
   use EveDmv.Core.Errors.ErrorHandler
 
+  alias EveDmv.Contexts.FleetOperations.Domain.FleetValidationService
   alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
@@ -38,6 +39,15 @@ defmodule EveDmv.Contexts.FleetOperations.Domain.EffectivenessCalculator do
   """
   def calculate_performance_trends(_corporation_id, _time_range \\ :last_90d) do
     {:error, :no_engagement_data}
+  end
+
+  @doc """
+  Validate and analyze fleet losses.
+  """
+  def analyze_fleet_losses_validated(fleet_data) do
+    with {:ok, validated_data} <- FleetValidationService.validate_fleet_data(fleet_data) do
+      analyze_fleet_losses(validated_data)
+    end
   end
 
   @doc """

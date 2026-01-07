@@ -192,7 +192,7 @@ defmodule EveDmv.Http.UnifiedClient do
     additional_headers = Keyword.get(opts, :headers, [])
     is_form_encoded = has_form_content_type?(additional_headers)
 
-    base_middlewares = [
+    core_middlewares = [
       {Tesla.Middleware.FollowRedirects, max_redirects: 3},
       {Tesla.Middleware.Timeout, timeout: Keyword.get(opts, :timeout, 30_000)},
       {Tesla.Middleware.Logger, debug: false},
@@ -207,28 +207,29 @@ defmodule EveDmv.Http.UnifiedClient do
        end}
     ]
 
-    # Only add JSON middleware for non-form-encoded requests
-    base_middlewares =
+    # Add appropriate encoding middleware based on content type
+    encoding_middlewares =
       if is_form_encoded do
-        base_middlewares
+        # Use FormUrlencoded middleware for form-encoded requests
+        [Tesla.Middleware.FormUrlencoded | core_middlewares]
       else
-        [Tesla.Middleware.JSON | base_middlewares]
+        [Tesla.Middleware.JSON | core_middlewares]
       end
 
     # Add authentication if provided
     middlewares =
       case Keyword.get(opts, :auth) do
         {:bearer, token} ->
-          [{Tesla.Middleware.BearerAuth, token: token} | base_middlewares]
+          [{Tesla.Middleware.BearerAuth, token: token} | encoding_middlewares]
 
         {:basic, {username, password}} ->
           [
             {Tesla.Middleware.BasicAuth, username: username, password: password}
-            | base_middlewares
+            | encoding_middlewares
           ]
 
         _ ->
-          base_middlewares
+          encoding_middlewares
       end
 
     Tesla.client(middlewares)

@@ -5,7 +5,8 @@ defmodule EveDmv.Contexts.Corporation.Resources.MemberActivityLog do
 
   use Ash.Resource,
     domain: EveDmv.Api,
-    data_layer: AshPostgres.DataLayer
+    data_layer: AshPostgres.DataLayer,
+    authorizers: [Ash.Policy.Authorizer]
 
   postgres do
     table("member_activity_logs")
@@ -149,5 +150,32 @@ defmodule EveDmv.Contexts.Corporation.Resources.MemberActivityLog do
     validate(present(:activity_type))
 
     validate(numericality(:duration_minutes, greater_than_or_equal_to: 0))
+  end
+
+  code_interface do
+    domain(EveDmv.Api)
+    define(:create)
+    define(:read)
+    define(:destroy)
+    define(:list_by_character, action: :by_character, args: [:character_id])
+    define(:list_by_corporation, action: :by_corporation, args: [:corporation_id])
+    define(:list_by_activity_type, action: :by_activity_type, args: [:activity_type])
+    define(:list_by_date_range, action: :by_date_range, args: [:start_date, :end_date])
+    define(:list_recent_activity, action: :recent_activity, args: [:character_id, :days])
+  end
+
+  policies do
+    # Activity logs are derived from public killmail data
+    policy action_type(:read) do
+      description("Member activity logs are publicly readable")
+      authorize_if(always())
+    end
+
+    # Only internal systems/admins can create/destroy activity logs
+    policy action_type([:create, :destroy]) do
+      description("Only system or admin can modify activity logs")
+      authorize_if(actor_attribute_equals(:role, :system))
+      authorize_if(actor_attribute_equals(:role, :admin))
+    end
   end
 end

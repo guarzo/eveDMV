@@ -7,7 +7,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedCache do
   - ThreatAssessment.Infrastructure.ThreatCache
   - CombatIntelligence.Infrastructure.AnalysisCache
   - Surveillance.Infrastructure.MatchCache
-  - CorporationAnalysis.Infrastructure.AnalysisCache
+  - Corporation.Infrastructure.AnalysisCache
 
   Provides:
   - Unified ETS-based caching with configurable TTL

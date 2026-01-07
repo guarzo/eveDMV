@@ -9,10 +9,28 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.StatisticsService do
   alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailEnriched
+  alias EveDmv.SharedKernel.ValueObjects.SolarSystemId
   alias EveDmv.SharedKernel.ValueObjects.TimeRange
 
   require Logger
   require Ash.Query
+
+  @doc """
+  Validate and calculate system statistics.
+
+  Public entry point that validates the system ID before calculating.
+  """
+  @spec calculate_system_statistics_validated(integer(), TimeRange.t()) ::
+          {:ok, map()} | {:error, term()}
+  def calculate_system_statistics_validated(system_id, time_range) do
+    case SolarSystemId.new(system_id) do
+      {:ok, system_id_vo} ->
+        calculate_system_statistics(system_id_vo.value, time_range)
+
+      {:error, _} = error ->
+        error
+    end
+  end
 
   @doc """
   Calculate comprehensive statistics for a solar system over a time period.

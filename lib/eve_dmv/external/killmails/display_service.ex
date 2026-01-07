@@ -77,13 +77,12 @@ defmodule EveDmv.Killmails.DisplayService do
     NameResolver.system_securities(system_ids)
   end
 
-  # REMOVED: build_killmail_from_enriched function
-  # Enriched table provides no value - see /docs/architecture/enriched-raw-analysis.md
-
   def build_killmail_display(killmail_data) do
-    # Handle wanderer-kills format with separate victim and attackers
-    victim = killmail_data["victim"] || %{}
-    attackers = killmail_data["attackers"] || []
+    # Handle both wanderer-kills formats:
+    # 1. Separate victim/attackers fields
+    # 2. Participants array with is_victim flag
+    victim = find_victim_in_raw(killmail_data)
+    attackers = find_attackers_in_raw(killmail_data)
     final_blow = Enum.find(attackers, & &1["final_blow"])
 
     system_id = extract_solar_system_id(killmail_data)
@@ -103,6 +102,14 @@ defmodule EveDmv.Killmails.DisplayService do
         fn -> NameResolver.system_name(system_id) end
       )
 
+    # Corporation names are resolved at ingestion time - no dynamic lookup available
+    victim_corporation_name =
+      resolve_name_if_unknown(
+        victim["corporation_name"],
+        ["Unknown Corp"],
+        fn -> "Unknown Corp" end
+      )
+
     system_security = NameResolver.system_security(system_id)
 
     %{
@@ -111,7 +118,7 @@ defmodule EveDmv.Killmails.DisplayService do
       killmail_time: parse_killmail_timestamp(killmail_data),
       victim_character_id: victim["character_id"],
       victim_character_name: victim["character_name"] || "Unknown Pilot",
-      victim_corporation_name: victim["corporation_name"] || "Unknown Corp",
+      victim_corporation_name: victim_corporation_name,
       victim_alliance_name: victim["alliance_name"],
       victim_ship_name: victim_ship_name,
       solar_system_id: system_id,
@@ -180,11 +187,10 @@ defmodule EveDmv.Killmails.DisplayService do
       |> Enum.reject(&is_nil/1)
       |> Enum.uniq()
 
-    # Bulk preload all names into cache
+    # Bulk preload static data (ships, systems)
+    # Corporation names are resolved at ingestion time in DataProcessor.enrich_entity_names/1
     NameResolver.ship_names(ship_type_ids)
     NameResolver.system_names(system_ids)
-
-    # Preload system security data using batch function
     NameResolver.system_securities(system_ids)
   end
 
@@ -211,6 +217,14 @@ defmodule EveDmv.Killmails.DisplayService do
         fn -> NameResolver.system_name(raw.solar_system_id) end
       )
 
+    # Corporation names are resolved at ingestion time - no dynamic lookup available
+    victim_corporation_name =
+      resolve_name_if_unknown(
+        get_in(victim, ["corporation_name"]),
+        ["Unknown Corp"],
+        fn -> "Unknown Corp" end
+      )
+
     system_security = NameResolver.system_security(raw.solar_system_id)
 
     %{
@@ -219,7 +233,7 @@ defmodule EveDmv.Killmails.DisplayService do
       killmail_time: raw.killmail_time,
       victim_character_id: get_in(victim, ["character_id"]) || raw.victim_character_id,
       victim_character_name: get_in(victim, ["character_name"]) || "Unknown Pilot",
-      victim_corporation_name: get_in(victim, ["corporation_name"]) || "Unknown Corp",
+      victim_corporation_name: victim_corporation_name,
       victim_alliance_name: get_in(victim, ["alliance_name"]),
       victim_ship_name: victim_ship_name,
       solar_system_id: raw.solar_system_id,
@@ -227,7 +241,7 @@ defmodule EveDmv.Killmails.DisplayService do
       security_class: system_security.class,
       security_color: system_security.color,
       security_status: system_security.status,
-      total_value: extract_total_value(raw.raw_data),
+      total_value: get_total_value(raw),
       ship_value: extract_ship_value(raw.raw_data),
       attacker_count: raw.attacker_count,
       final_blow_character_id: get_in(final_blow, ["character_id"]),
@@ -242,10 +256,25 @@ defmodule EveDmv.Killmails.DisplayService do
     case raw_data["victim"] do
       nil ->
         # Fallback to old participants format
-        Enum.find(raw_data["participants"] || [], & &1["is_victim"])
+        Enum.find(raw_data["participants"] || [], & &1["is_victim"]) || %{}
 
       victim ->
         victim
+    end
+  end
+
+  defp find_attackers_in_raw(raw_data) do
+    # Handle wanderer-kills format with separate attackers field
+    case raw_data["attackers"] do
+      nil ->
+        # Fallback to old participants format
+        Enum.filter(raw_data["participants"] || [], &(!&1["is_victim"]))
+
+      attackers when is_list(attackers) ->
+        attackers
+
+      _ ->
+        []
     end
   end
 
@@ -298,6 +327,15 @@ defmodule EveDmv.Killmails.DisplayService do
 
   defp extract_solar_system_id(killmail_data) do
     killmail_data["solar_system_id"] || killmail_data["system_id"] || 30_000_142
+  end
+
+  # Use the resource's total_value attribute if available, otherwise extract from raw_data
+  defp get_total_value(raw) do
+    if raw.total_value && Decimal.compare(raw.total_value, Decimal.new(0)) != :eq do
+      raw.total_value
+    else
+      extract_total_value(raw.raw_data)
+    end
   end
 
   defp extract_total_value(killmail_data) do

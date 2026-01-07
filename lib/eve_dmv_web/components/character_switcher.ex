@@ -8,7 +8,6 @@ defmodule EveDmvWeb.Components.CharacterSwitcher do
 
   use Phoenix.Component
 
-  alias EveDmv.Users.AccountManager
   alias Phoenix.LiveView.JS
 
   @doc """
@@ -24,7 +23,7 @@ defmodule EveDmvWeb.Components.CharacterSwitcher do
 
   def character_switcher(assigns) do
     ~H"""
-    <div id={@id} class="relative" phx-hook="CharacterSwitcher">
+    <div id={@id} class="relative">
       <button
         type="button"
         class="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white transition-colors"
@@ -61,7 +60,7 @@ defmodule EveDmvWeb.Components.CharacterSwitcher do
           </div>
 
           <div class="space-y-1 max-h-64 overflow-y-auto">
-            <%= for character <- get_account_characters(@current_account) do %>
+            <%= for character <- @current_account.characters do %>
               <a
                 href={"/auth/switch/#{character.id}"}
                 class={"flex items-center gap-3 p-2 rounded hover:bg-gray-700 transition-colors #{if character.id == @current_user.id, do: "bg-gray-700 ring-1 ring-gray-600"}"}
@@ -91,7 +90,7 @@ defmodule EveDmvWeb.Components.CharacterSwitcher do
 
           <div class="mt-4 pt-4 border-t border-gray-700 space-y-3">
             <a
-              href="/auth/eve_sso?link_to_account=true"
+              href="/auth/user/eve_sso?link_to_account=true"
               class="flex items-center justify-center gap-2 w-full px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -113,20 +112,12 @@ defmodule EveDmvWeb.Components.CharacterSwitcher do
           </div>
 
           <div class="mt-3 text-xs text-center text-gray-500">
-            <%= character_count(@current_account) %> of <%= max_characters() %> characters
+            <%= @current_account.total_characters %> of <%= max_characters() %> characters
           </div>
         </div>
       </div>
     </div>
     """
-  end
-
-  defp get_account_characters(account) do
-    AccountManager.get_account_characters(account.id)
-  end
-
-  defp character_count(account) do
-    length(get_account_characters(account))
   end
 
   defp max_characters do

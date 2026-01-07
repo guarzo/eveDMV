@@ -9,11 +9,9 @@ defmodule EveDmv.Domains.Intelligence do
     otp_app: :eve_dmv
 
   resources do
-    # Advanced intelligence data
     resource(EveDmv.Intelligence.ChainAnalysis.ChainTopology)
     resource(EveDmv.Intelligence.SystemInhabitant)
     resource(EveDmv.Intelligence.ChainAnalysis.ChainConnection)
-    # resource(EveDmv.Intelligence.HomeDefenseAnalytics) - REMOVED IN PHASE 1
     resource(EveDmv.Intelligence.MemberActivityIntelligence)
   end
 

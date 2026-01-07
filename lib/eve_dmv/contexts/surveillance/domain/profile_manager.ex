@@ -9,10 +9,73 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ProfileManager do
   use EveDmv.Core.Errors.ErrorHandler
 
   alias EveDmv.Contexts.Surveillance.Domain.MatchingEngine
+  alias EveDmv.Contexts.Surveillance.Domain.ProfileValidationService
   alias EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository
   alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
+
+  # Public API - Validated entry points
+
+  @doc """
+  Validate and create a new profile.
+  """
+  def create_profile_validated(profile_data) do
+    with {:ok, validated_data} <- ProfileValidationService.validate_profile_data(profile_data),
+         {:ok, profile} <- create_profile(validated_data) do
+      Logger.info("Created surveillance profile: #{profile.name}")
+      {:ok, profile}
+    else
+      {:error, reason} ->
+        Logger.warning("Failed to create surveillance profile: #{inspect(reason)}")
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Validate and update an existing profile.
+  """
+  def update_profile_validated(profile_id, updates) do
+    with {:ok, validated_updates} <- ProfileValidationService.validate_profile_updates(updates),
+         {:ok, profile} <- update_profile(profile_id, validated_updates) do
+      Logger.info("Updated surveillance profile: #{profile_id}")
+      {:ok, profile}
+    else
+      {:error, reason} ->
+        Logger.warning("Failed to update surveillance profile #{profile_id}: #{inspect(reason)}")
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Enable a profile with logging.
+  """
+  def enable_profile_logged(profile_id) do
+    case enable_profile(profile_id) do
+      {:ok, profile} ->
+        Logger.info("Enabled surveillance profile: #{profile_id}")
+        {:ok, profile}
+
+      {:error, reason} ->
+        Logger.warning("Failed to enable surveillance profile #{profile_id}: #{inspect(reason)}")
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Disable a profile with logging.
+  """
+  def disable_profile_logged(profile_id) do
+    case disable_profile(profile_id) do
+      {:ok, profile} ->
+        Logger.info("Disabled surveillance profile: #{profile_id}")
+        {:ok, profile}
+
+      {:error, reason} ->
+        Logger.warning("Failed to disable surveillance profile #{profile_id}: #{inspect(reason)}")
+        {:error, reason}
+    end
+  end
 
   # Profile CRUD operations
 

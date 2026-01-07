@@ -38,11 +38,15 @@ test_database_url = System.get_env("TEST_DATABASE_URL")
 ci_database_url = System.get_env("DATABASE_URL")
 
 # Common pool configuration for all test environments
+# Fixed pool size prevents connection exhaustion (FATAL 53300 errors)
+# Dynamic pool_size (System.schedulers_online() * 2) could create 16-32 connections
 common_pool_config = [
   pool: Ecto.Adapters.SQL.Sandbox,
-  pool_size: System.schedulers_online() * 2,
-  ownership_timeout: 60_000,
-  timeout: 60_000
+  pool_size: 15,
+  ownership_timeout: 120_000,
+  timeout: 60_000,
+  queue_target: 5000,
+  queue_interval: 1000
 ]
 
 cond do

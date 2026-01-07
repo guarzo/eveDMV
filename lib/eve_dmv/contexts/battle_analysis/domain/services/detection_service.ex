@@ -1,4 +1,4 @@
-defmodule EveDmv.Analytics.BattleDetector do
+defmodule EveDmv.Contexts.BattleAnalysis.Domain.Services.DetectionService do
   @moduledoc """
   Detects and analyzes multi-participant battles from killmail data.
 
@@ -7,6 +7,7 @@ defmodule EveDmv.Analytics.BattleDetector do
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Core.Utils.NumericUtils
   alias EveDmv.Repo
   require Logger
 
@@ -22,30 +23,37 @@ defmodule EveDmv.Analytics.BattleDetector do
     # Find killmails involving this character with multiple participants
     thirty_days_ago = thirty_days_ago()
 
+    # Optimized query: Use participants table for indexed lookups instead of JSONB extraction
+    # Uses idx_participants_character_activity on (character_id, killmail_time)
     query = """
-    WITH character_killmails AS (
-    SELECT
+    WITH character_participation AS (
+      -- Fast indexed lookup via participants table
+      SELECT DISTINCT
+        p.killmail_id,
+        p.killmail_time,
+        p.is_victim
+      FROM participants p
+      WHERE p.character_id = $1
+        AND p.killmail_time >= $2
+    ),
+    character_killmails AS (
+      SELECT
         k.killmail_id,
         k.killmail_time,
         k.solar_system_id,
-        k.solar_system_name,
+        k.raw_data->'victim'->>'solar_system_name' as solar_system_name,
         k.victim_character_id,
         k.victim_ship_type_id,
-        k.victim_ship_type_name,
+        k.raw_data->'victim'->>'ship_type_name' as victim_ship_type_name,
         k.total_value,
-        k.attackers_character_ids,
-        k.attackers_corporation_ids,
-        k.attackers_alliance_ids,
-        array_length(k.attackers_character_ids, 1) as attacker_count,
-    CASE
-          WHEN k.victim_character_id = $1 THEN 'loss'
-          WHEN $1 = ANY(k.attackers_character_ids) THEN 'kill'
-          ELSE 'unknown'
+        k.attacker_count,
+        CASE
+          WHEN cp.is_victim THEN 'loss'
+          ELSE 'kill'
         END as participation_type
-      FROM killmails_raw k
-      WHERE k.killmail_time >= $2
-        AND (k.victim_character_id = $1 OR $1 = ANY(k.attackers_character_ids))
-        AND array_length(k.attackers_character_ids, 1) >= 5  -- Multi-pilot engagements
+      FROM character_participation cp
+      JOIN killmails_raw k ON k.killmail_id = cp.killmail_id AND k.killmail_time = cp.killmail_time
+      WHERE k.attacker_count >= 5  -- Multi-pilot engagements
     ),
     battle_clusters AS (
     SELECT
@@ -58,7 +66,17 @@ defmodule EveDmv.Analytics.BattleDetector do
       FROM character_killmails cm
     )
     SELECT
-      bc.*,
+      bc.killmail_id,
+      bc.killmail_time,
+      bc.solar_system_id,
+      bc.solar_system_name,
+      bc.victim_character_id,
+      bc.victim_ship_type_id,
+      bc.victim_ship_type_name,
+      bc.total_value,
+      bc.attacker_count,
+      bc.participation_type,
+      bc.system_hour_activity,
     CASE
         WHEN bc.system_hour_activity >= 10 THEN 'major_battle'
         WHEN bc.system_hour_activity >= 5 THEN 'skirmish'
@@ -99,40 +117,55 @@ defmodule EveDmv.Analytics.BattleDetector do
 
     thirty_days_ago = thirty_days_ago()
 
+    # Optimized query: Use participants table for indexed lookups instead of JSONB extraction
+    # Uses idx_participants_corporation_id on (corporation_id)
     query = """
-    WITH corp_killmails AS (
-    SELECT
+    WITH corp_participation AS (
+      -- Fast indexed lookup via participants table
+      SELECT DISTINCT
+        p.killmail_id,
+        p.killmail_time,
+        p.is_victim
+      FROM participants p
+      WHERE p.corporation_id = $1
+        AND p.killmail_time >= $2
+    ),
+    corp_member_counts AS (
+      -- Count corp members involved per killmail using indexed table
+      SELECT
+        p.killmail_id,
+        p.killmail_time,
+        COUNT(*) as corp_members_involved
+      FROM participants p
+      WHERE p.corporation_id = $1
+        AND p.killmail_time >= $2
+        AND p.is_victim = false
+      GROUP BY p.killmail_id, p.killmail_time
+    ),
+    corp_killmails AS (
+      SELECT
         k.killmail_id,
         k.killmail_time,
         k.solar_system_id,
-        k.solar_system_name,
+        k.raw_data->'victim'->>'solar_system_name' as solar_system_name,
         k.victim_character_id,
         k.victim_corporation_id,
         k.victim_ship_type_id,
-        k.victim_ship_type_name,
+        k.raw_data->'victim'->>'ship_type_name' as victim_ship_type_name,
         k.total_value,
-        k.attackers_character_ids,
-        k.attackers_corporation_ids,
-        k.attackers_alliance_ids,
-        array_length(k.attackers_character_ids, 1) as attacker_count,
-    CASE
-          WHEN k.victim_corporation_id = $1 THEN 'loss'
-          WHEN $1 = ANY(k.attackers_corporation_ids) THEN 'kill'
-          ELSE 'unknown'
+        k.attacker_count,
+        CASE
+          WHEN cp.is_victim THEN 'loss'
+          ELSE 'kill'
         END as participation_type,
-        -- Count corp members involved
-        (
-          SELECT COUNT(*)
-          FROM unnest(k.attackers_corporation_ids) AS corp_id
-          WHERE corp_id = $1
-        ) as corp_members_involved
-      FROM killmails_raw k
-      WHERE k.killmail_time >= $2
-        AND (k.victim_corporation_id = $1 OR $1 = ANY(k.attackers_corporation_ids))
-        AND array_length(k.attackers_character_ids, 1) >= 5  -- Multi-pilot engagements
+        COALESCE(cmc.corp_members_involved, 0) as corp_members_involved
+      FROM corp_participation cp
+      JOIN killmails_raw k ON k.killmail_id = cp.killmail_id AND k.killmail_time = cp.killmail_time
+      LEFT JOIN corp_member_counts cmc ON cmc.killmail_id = cp.killmail_id AND cmc.killmail_time = cp.killmail_time
+      WHERE k.attacker_count >= 5  -- Multi-pilot engagements
     ),
     battle_clusters AS (
-    SELECT
+      SELECT
         cm.*,
         -- Group killmails that are close in time and space
         COUNT(*) OVER (
@@ -142,8 +175,20 @@ defmodule EveDmv.Analytics.BattleDetector do
       FROM corp_killmails cm
     )
     SELECT
-      bc.*,
-    CASE
+      bc.killmail_id,
+      bc.killmail_time,
+      bc.solar_system_id,
+      bc.solar_system_name,
+      bc.victim_character_id,
+      bc.victim_corporation_id,
+      bc.victim_ship_type_id,
+      bc.victim_ship_type_name,
+      bc.total_value,
+      bc.attacker_count,
+      bc.participation_type,
+      bc.corp_members_involved,
+      bc.system_hour_activity,
+      CASE
         WHEN bc.system_hour_activity >= 10 THEN 'major_battle'
         WHEN bc.system_hour_activity >= 5 THEN 'skirmish'
         WHEN bc.attacker_count >= 20 THEN 'fleet_engagement'
@@ -185,22 +230,31 @@ defmodule EveDmv.Analytics.BattleDetector do
         k.killmail_time,
         k.total_value,
         k.solar_system_id,
-        array_length(k.attackers_character_ids, 1) as fleet_size,
+        k.attacker_count as fleet_size,
     CASE
           WHEN k.victim_corporation_id = $1 THEN 'loss'
-          WHEN $1 = ANY(k.attackers_corporation_ids) THEN 'kill'
+          WHEN EXISTS (
+            SELECT 1 FROM jsonb_array_elements(k.raw_data->'attackers') a
+            WHERE (a->>'corporation_id')::bigint = $1
+          ) THEN 'kill'
           ELSE 'unknown'
         END as participation_type,
         -- Count corp members involved in this killmail
         (
           SELECT COUNT(*)
-          FROM unnest(k.attackers_corporation_ids) AS corp_id
-          WHERE corp_id = $1
+          FROM jsonb_array_elements(k.raw_data->'attackers') a
+          WHERE (a->>'corporation_id')::bigint = $1
         ) as corp_members_involved
       FROM killmails_raw k
       WHERE k.killmail_time >= $2
-        AND (k.victim_corporation_id = $1 OR $1 = ANY(k.attackers_corporation_ids))
-        AND array_length(k.attackers_character_ids, 1) >= 5
+        AND (
+          k.victim_corporation_id = $1
+          OR EXISTS (
+            SELECT 1 FROM jsonb_array_elements(k.raw_data->'attackers') a
+            WHERE (a->>'corporation_id')::bigint = $1
+          )
+        )
+        AND k.attacker_count >= 5
     )
     SELECT
       COUNT(*) as total_battles,
@@ -227,8 +281,8 @@ defmodule EveDmv.Analytics.BattleDetector do
           battles_won: won || 0,
           battles_lost: lost || 0,
           battle_efficiency: calculate_battle_efficiency(won || 0, lost || 0),
-          avg_fleet_size: if(avg_fleet, do: Float.round(avg_fleet, 1), else: 0.0),
-          avg_corp_participation: if(avg_corp, do: Float.round(avg_corp, 1), else: 0.0),
+          avg_fleet_size: NumericUtils.decimal_to_rounded_float(avg_fleet, 1),
+          avg_corp_participation: NumericUtils.decimal_to_rounded_float(avg_corp, 1),
           isk_destroyed_in_battles: isk_destroyed || 0,
           isk_lost_in_battles: isk_lost || 0,
           systems_fought_in: systems || 0,
@@ -272,21 +326,18 @@ defmodule EveDmv.Analytics.BattleDetector do
         k.killmail_id,
         k.killmail_time,
         k.solar_system_id,
-        k.solar_system_name,
+        k.raw_data->'victim'->>'solar_system_name' as solar_system_name,
         k.victim_character_id,
         k.victim_corporation_id,
         k.victim_alliance_id,
         k.victim_ship_type_id,
-        k.victim_ship_type_name,
-        k.total_value,
-        k.attackers_character_ids,
-        k.attackers_corporation_ids,
-        k.attackers_alliance_ids,
-        array_length(k.attackers_character_ids, 1) as attacker_count
+        k.raw_data->'victim'->>'ship_type_name' as victim_ship_type_name,
+        COALESCE(k.total_value, (k.raw_data->'zkb'->>'totalValue')::numeric, 0) as total_value,
+        k.attacker_count
       FROM killmails_raw k
       WHERE k.solar_system_id = $1
         AND k.killmail_time >= $2
-        AND array_length(k.attackers_character_ids, 1) >= 5  -- Multi-pilot engagements
+        AND k.attacker_count >= 5  -- Multi-pilot engagements
     ),
     battle_clusters AS (
     SELECT
@@ -298,7 +349,18 @@ defmodule EveDmv.Analytics.BattleDetector do
       FROM system_killmails km
     )
     SELECT
-      bc.*,
+      bc.killmail_id,
+      bc.killmail_time,
+      bc.solar_system_id,
+      bc.solar_system_name,
+      bc.victim_character_id,
+      bc.victim_corporation_id,
+      bc.victim_alliance_id,
+      bc.victim_ship_type_id,
+      bc.victim_ship_type_name,
+      bc.total_value,
+      bc.attacker_count,
+      bc.hour_activity,
     CASE
         WHEN bc.hour_activity >= 15 THEN 'major_battle'
         WHEN bc.hour_activity >= 8 THEN 'fleet_engagement'
@@ -340,10 +402,20 @@ defmodule EveDmv.Analytics.BattleDetector do
     SELECT
         k.killmail_id,
         k.killmail_time,
-        k.total_value,
-        array_length(k.attackers_character_ids, 1) as fleet_size,
-        array_length(k.attackers_corporation_ids, 1) as corp_count,
-        array_length(k.attackers_alliance_ids, 1) as alliance_count,
+        COALESCE(k.total_value, (k.raw_data->'zkb'->>'totalValue')::numeric, 0) as total_value,
+        k.attacker_count as fleet_size,
+        -- Count distinct corporations from attackers JSONB
+        (
+          SELECT COUNT(DISTINCT a->>'corporation_id')
+          FROM jsonb_array_elements(k.raw_data->'attackers') a
+          WHERE a->>'corporation_id' IS NOT NULL
+        ) as corp_count,
+        -- Count distinct alliances from attackers JSONB
+        (
+          SELECT COUNT(DISTINCT a->>'alliance_id')
+          FROM jsonb_array_elements(k.raw_data->'attackers') a
+          WHERE a->>'alliance_id' IS NOT NULL
+        ) as alliance_count,
         -- Battle intensity based on time clustering
         COUNT(*) OVER (
           PARTITION BY date_trunc('hour', k.killmail_time)
@@ -351,7 +423,7 @@ defmodule EveDmv.Analytics.BattleDetector do
       FROM killmails_raw k
       WHERE k.solar_system_id = $1
         AND k.killmail_time >= $2
-        AND array_length(k.attackers_character_ids, 1) >= 5
+        AND k.attacker_count >= 5
     )
     SELECT
       COUNT(*) as total_battles,
@@ -387,10 +459,9 @@ defmodule EveDmv.Analytics.BattleDetector do
        }} ->
         %{
           total_battles: total || 0,
-          avg_fleet_size: if(avg_fleet, do: Float.round(avg_fleet, 1), else: 0.0),
-          avg_corp_participation: if(avg_corp, do: Float.round(avg_corp, 1), else: 0.0),
-          avg_alliance_participation:
-            if(avg_alliance, do: Float.round(avg_alliance, 1), else: 0.0),
+          avg_fleet_size: NumericUtils.decimal_to_rounded_float(avg_fleet, 1),
+          avg_corp_participation: NumericUtils.decimal_to_rounded_float(avg_corp, 1),
+          avg_alliance_participation: NumericUtils.decimal_to_rounded_float(avg_alliance, 1),
           max_fleet_size: max_fleet || 0,
           max_hourly_intensity: max_intensity || 0,
           battle_days: battle_days || 0,
@@ -398,8 +469,9 @@ defmodule EveDmv.Analytics.BattleDetector do
           major_battle_count: major_count || 0,
           medium_battle_count: medium_count || 0,
           small_battle_count: (total || 0) - (major_count || 0) - (medium_count || 0),
-          battle_frequency: calculate_battle_frequency(total, battle_days),
-          threat_level: calculate_system_threat_level(total, max_intensity, battle_days)
+          battle_frequency: calculate_battle_frequency(total || 0, battle_days || 0),
+          threat_level:
+            calculate_system_threat_level(total || 0, max_intensity || 0, battle_days || 0)
         }
 
       {:error, reason} ->
@@ -431,16 +503,19 @@ defmodule EveDmv.Analytics.BattleDetector do
 
     query = """
     SELECT
-      k.victim_ship_type_name as ship_type,
+      k.raw_data->'victim'->>'ship_type_name' as ship_type,
       COUNT(*) as usage_count,
-      AVG(array_length(k.attackers_character_ids, 1)) as avg_fleet_size,
+      AVG(k.attacker_count) as avg_fleet_size,
       SUM(k.total_value) as total_isk_involved
     FROM killmails_raw k
     WHERE k.killmail_time >= $2
-      AND $1 = ANY(k.attackers_corporation_ids)
-      AND array_length(k.attackers_character_ids, 1) >= 5
-      AND k.victim_ship_type_name IS NOT NULL
-    GROUP BY k.victim_ship_type_name
+      AND EXISTS (
+        SELECT 1 FROM jsonb_array_elements(k.raw_data->'attackers') a
+        WHERE (a->>'corporation_id')::bigint = $1
+      )
+      AND k.attacker_count >= 5
+      AND k.raw_data->'victim'->>'ship_type_name' IS NOT NULL
+    GROUP BY k.raw_data->'victim'->>'ship_type_name'
     HAVING COUNT(*) >= 2  -- At least 2 occurrences
     ORDER BY usage_count DESC
     LIMIT 10
@@ -452,7 +527,7 @@ defmodule EveDmv.Analytics.BattleDetector do
           %{
             ship_type: ship_type,
             usage_count: count,
-            avg_fleet_size: if(avg_fleet, do: Float.round(avg_fleet, 1), else: 0.0),
+            avg_fleet_size: NumericUtils.decimal_to_rounded_float(avg_fleet, 1),
             total_isk_involved: total_isk || 0,
             doctrine_preference: classify_doctrine_preference(ship_type, count, avg_fleet)
           }
@@ -470,18 +545,38 @@ defmodule EveDmv.Analytics.BattleDetector do
   def get_character_battle_stats(character_id) do
     thirty_days_ago = thirty_days_ago()
 
+    # Optimized query using the indexed participants table instead of JSONB extraction
+    # Uses idx_participants_character_activity on (character_id, killmail_time)
     query = """
+    WITH character_participation AS (
+      -- Find all killmails where this character participated using indexed participants table
+      SELECT DISTINCT
+        p.killmail_id,
+        p.killmail_time,
+        p.is_victim
+      FROM participants p
+      WHERE p.character_id = $1
+        AND p.killmail_time >= $2
+    ),
+    character_battles AS (
+      SELECT
+        k.killmail_id,
+        k.total_value,
+        k.attacker_count,
+        k.victim_character_id,
+        NOT cp.is_victim as is_attacker  -- If not victim in participants, they were an attacker
+      FROM character_participation cp
+      JOIN killmails_raw k ON k.killmail_id = cp.killmail_id AND k.killmail_time = cp.killmail_time
+      WHERE k.attacker_count >= 5  -- Multi-pilot engagements
+    )
     SELECT
       COUNT(*) as total_battles,
-      COUNT(*) FILTER (WHERE $1 = ANY(k.attackers_character_ids)) as battles_won,
-      COUNT(*) FILTER (WHERE k.victim_character_id = $1) as battles_lost,
-      AVG(array_length(k.attackers_character_ids, 1)) as avg_fleet_size,
-      SUM(k.total_value) FILTER (WHERE $1 = ANY(k.attackers_character_ids)) as isk_destroyed_in_battles,
-      SUM(k.total_value) FILTER (WHERE k.victim_character_id = $1) as isk_lost_in_battles
-    FROM killmails_raw k
-    WHERE k.killmail_time >= $2
-      AND (k.victim_character_id = $1 OR $1 = ANY(k.attackers_character_ids))
-      AND array_length(k.attackers_character_ids, 1) >= 5
+      COUNT(*) FILTER (WHERE is_attacker) as battles_won,
+      COUNT(*) FILTER (WHERE victim_character_id = $1) as battles_lost,
+      AVG(attacker_count) as avg_fleet_size,
+      SUM(total_value) FILTER (WHERE is_attacker) as isk_destroyed_in_battles,
+      SUM(total_value) FILTER (WHERE victim_character_id = $1) as isk_lost_in_battles
+    FROM character_battles
     """
 
     case Repo.query(query, [character_id, thirty_days_ago]) do
@@ -491,7 +586,7 @@ defmodule EveDmv.Analytics.BattleDetector do
           battles_won: won || 0,
           battles_lost: lost || 0,
           battle_efficiency: calculate_battle_efficiency(won || 0, lost || 0),
-          avg_fleet_size: if(avg_fleet, do: Float.round(avg_fleet, 1), else: 0.0),
+          avg_fleet_size: NumericUtils.decimal_to_rounded_float(avg_fleet, 1),
           isk_destroyed_in_battles: isk_destroyed || 0,
           isk_lost_in_battles: isk_lost || 0
         }
@@ -552,19 +647,32 @@ defmodule EveDmv.Analytics.BattleDetector do
 
     total_isk =
       killmails
-      |> Enum.map(&(Map.get(&1, "total_value") || 0))
+      |> Enum.map(fn km ->
+        value = Map.get(km, "total_value")
+        NumericUtils.decimal_to_rounded_float(value, 2)
+      end)
       |> Enum.sum()
 
+    # Estimate participants using attacker_count from each killmail plus victims
+    # Note: attackers_character_ids is not available in the query results,
+    # so we use attacker_count as a proxy for participant estimation
     participants =
       killmails
-      |> Enum.flat_map(fn km ->
-        attackers = Map.get(km, "attackers_character_ids") || []
-        victim = [Map.get(km, "victim_character_id")]
-        attackers ++ victim
+      |> Enum.reduce({0, MapSet.new()}, fn km, {attacker_sum, victim_set} ->
+        attacker_count = Map.get(km, "attacker_count") || 0
+        victim_id = Map.get(km, "victim_character_id")
+        new_victims = if victim_id, do: MapSet.put(victim_set, victim_id), else: victim_set
+        {attacker_sum + attacker_count, new_victims}
       end)
-      |> Enum.filter(& &1)
-      |> Enum.uniq()
-      |> Kernel.length()
+      |> then(fn {attacker_sum, victim_set} ->
+        # Rough estimate: average attacker count across killmails + unique victims
+        killmail_count = length(killmails)
+
+        avg_attackers =
+          if killmail_count > 0, do: div(attacker_sum, killmail_count), else: 0
+
+        avg_attackers + MapSet.size(victim_set)
+      end)
 
     %{
       battle_id: generate_battle_id(killmails),
@@ -583,11 +691,14 @@ defmodule EveDmv.Analytics.BattleDetector do
   defp enhance_with_battle_context(battles) do
     # Add additional context like alliance involvement, ship types, etc.
     Enum.map(battles, fn battle ->
+      # Calculate intensity first since recommend_analysis_type needs it
+      intensity = calculate_intensity(battle.total_isk_destroyed, battle.total_participants)
+      battle_with_intensity = Map.put(battle, :intensity_level, intensity)
+
       Map.merge(battle, %{
         duration_estimate: estimate_battle_duration(battle.killmail_count),
-        intensity_level:
-          calculate_intensity(battle.total_isk_destroyed, battle.total_participants),
-        recommended_analysis: recommend_analysis_type(battle)
+        intensity_level: intensity,
+        recommended_analysis: recommend_analysis_type(battle_with_intensity)
       })
     end)
   end
@@ -597,12 +708,52 @@ defmodule EveDmv.Analytics.BattleDetector do
     time = Map.get(first_km, "killmail_time")
     system = Map.get(first_km, "solar_system_id")
 
-    hash_input = "#{time}_#{system}_#{length(killmails)}"
+    # Generate deterministic battle ID in format: "battle_SYSTEMID_YYYYMMDDHHMMSS"
+    # This format is expected by BattleAnalysis.get_battle_with_timeline
+    timestamp = format_battle_timestamp(time) || current_utc_timestamp()
 
-    hash_input
-    |> then(&:crypto.hash(:md5, &1))
-    |> Base.encode16()
-    |> String.slice(0, 8)
+    "battle_#{system || 0}_#{timestamp}"
+  end
+
+  # Format timestamp to exactly 14 characters: YYYYMMDDHHMMSS
+  # Returns a 14-character digit string, or nil if the input cannot be parsed
+  # into a valid timestamp with at least 14 digits. Callers should handle nil
+  # by providing a fallback (e.g., current UTC time).
+  @spec format_battle_timestamp(DateTime.t() | NaiveDateTime.t() | String.t() | nil | term()) ::
+          String.t() | nil
+  defp format_battle_timestamp(nil), do: nil
+
+  defp format_battle_timestamp(%DateTime{} = dt) do
+    Calendar.strftime(dt, "%Y%m%d%H%M%S")
+  end
+
+  defp format_battle_timestamp(%NaiveDateTime{} = ndt) do
+    Calendar.strftime(ndt, "%Y%m%d%H%M%S")
+  end
+
+  defp format_battle_timestamp(binary) when is_binary(binary) do
+    case DateTime.from_iso8601(binary) do
+      {:ok, dt, _offset} ->
+        Calendar.strftime(dt, "%Y%m%d%H%M%S")
+
+      _ ->
+        # Fallback: strip all non-digit characters and validate we have enough digits
+        digits = Regex.replace(~r/[^\d]/, binary, "")
+
+        if String.length(digits) >= 14 do
+          String.slice(digits, 0, 14)
+        else
+          nil
+        end
+    end
+  end
+
+  defp format_battle_timestamp(_), do: nil
+
+  # Returns current UTC time formatted as a 14-character timestamp string
+  @spec current_utc_timestamp() :: String.t()
+  defp current_utc_timestamp do
+    Calendar.strftime(DateTime.utc_now(), "%Y%m%d%H%M%S")
   end
 
   defp parse_datetime(nil), do: DateTime.utc_now()

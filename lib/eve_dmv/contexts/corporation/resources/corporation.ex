@@ -8,7 +8,8 @@ defmodule EveDmv.Contexts.Corporation.Resources.Corporation do
 
   use Ash.Resource,
     domain: EveDmv.Api,
-    data_layer: AshPostgres.DataLayer
+    data_layer: AshPostgres.DataLayer,
+    authorizers: [Ash.Policy.Authorizer]
 
   postgres do
     table("corporations")
@@ -162,6 +163,44 @@ defmodule EveDmv.Contexts.Corporation.Resources.Corporation do
     end
   end
 
+  aggregates do
+    count :total_member_count, :members do
+      description("Total number of corporation members tracked in the system")
+    end
+
+    count :active_members_count, :members do
+      description("Members who have been seen in the last 30 days")
+      filter(expr(last_seen >= ago(30, :day)))
+    end
+
+    count :pvp_active_members_count, :members do
+      description("Members with at least one kill tracked")
+      filter(expr(total_kills > 0))
+    end
+
+    sum :total_corp_kills, :members, :total_kills do
+      description("Sum of all kills across all members")
+    end
+
+    sum :total_corp_losses, :members, :total_losses do
+      description("Sum of all losses across all members")
+    end
+
+    sum :total_corp_isk_destroyed, :members, :isk_destroyed do
+      description("Total ISK destroyed by all members")
+    end
+
+    first :top_killer_character_id, :members, :character_id do
+      description("Character ID of the member with most kills")
+      sort([{:total_kills, :desc}])
+    end
+
+    first :top_killer_name, :members, :character_name do
+      description("Name of the member with most kills")
+      sort([{:total_kills, :desc}])
+    end
+  end
+
   calculations do
     calculate(:member_activity_score, :float, expr(avg_activity_score || 0.0))
 
@@ -178,6 +217,19 @@ defmodule EveDmv.Contexts.Corporation.Resources.Corporation do
       :integer,
       expr(fragment("EXTRACT(EPOCH FROM (? - ?)) / 3600", now(), analytics_updated_at))
     )
+
+    calculate :corp_kill_death_ratio, :float do
+      description("Corporation-wide kill/death ratio from tracked members")
+
+      calculation(fn records, _context ->
+        Enum.map(records, fn corp ->
+          kills = corp.total_corp_kills || 0
+          losses = corp.total_corp_losses || 0
+
+          if losses > 0, do: Float.round(kills / losses, 2), else: kills * 1.0
+        end)
+      end)
+    end
   end
 
   identities do
@@ -193,5 +245,34 @@ defmodule EveDmv.Contexts.Corporation.Resources.Corporation do
     validate(numericality(:member_count, greater_than_or_equal_to: 0))
 
     validate(numericality(:tax_rate, greater_than_or_equal_to: 0.0, less_than_or_equal_to: 100.0))
+  end
+
+  code_interface do
+    domain(EveDmv.Api)
+    define(:create)
+    define(:update)
+    define(:read)
+    define(:destroy)
+    define(:get_by_corporation_id, action: :by_corporation_id, args: [:corporation_id])
+    define(:list_by_alliance, action: :by_alliance, args: [:alliance_id])
+    define(:list_active_recruitment, action: :active_recruitment)
+    define(:list_by_activity_rank, action: :by_activity_rank, args: [:min_rank, :max_rank])
+    define(:update_activity_metrics)
+    define(:update_cached_analytics)
+  end
+
+  policies do
+    # Corporation data is public EVE intel derived from killmails
+    policy action_type(:read) do
+      description("Corporation data is publicly readable")
+      authorize_if(always())
+    end
+
+    # Only internal systems/admins can modify corporation data
+    policy action_type([:create, :update, :destroy]) do
+      description("Only system or admin can modify corporation data")
+      authorize_if(actor_attribute_equals(:role, :system))
+      authorize_if(actor_attribute_equals(:role, :admin))
+    end
   end
 end

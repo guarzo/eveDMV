@@ -9,6 +9,19 @@ defmodule EveDmvWeb.SurveillanceStatsComponent do
   use EveDmvWeb, :live_component
 
   @doc """
+  Ensures @engine_stats and @recent_matches are always safe to access.
+  """
+  @impl Phoenix.LiveComponent
+  def update(assigns, socket) do
+    assigns_with_defaults =
+      assigns
+      |> Map.put_new(:engine_stats, %{})
+      |> Map.put_new(:recent_matches, [])
+
+    {:ok, assign(socket, assigns_with_defaults)}
+  end
+
+  @doc """
   Renders the surveillance stats sidebar with engine statistics and recent matches.
   """
   @impl Phoenix.LiveComponent
@@ -21,24 +34,24 @@ defmodule EveDmvWeb.SurveillanceStatsComponent do
         <div class="space-y-3">
           <div class="flex justify-between">
             <span class="text-gray-400">Connection Status:</span>
-            <span class={"#{connection_status_class(@engine_stats.connection_status)} font-mono"}>
-              <span class={"inline-block w-2 h-2 #{connection_status_dot_class(@engine_stats.connection_status)} rounded-full mr-1"}></span>
-              {connection_status_text(@engine_stats.connection_status)}
+            <span class={"#{connection_status_class(@engine_stats[:connection_status])} font-mono"}>
+              <span class={"inline-block w-2 h-2 #{connection_status_dot_class(@engine_stats[:connection_status])} rounded-full mr-1"}></span>
+              {connection_status_text(@engine_stats[:connection_status])}
             </span>
           </div>
           <div class="flex justify-between">
             <span class="text-gray-400">Active Profiles:</span>
-            <span class="text-green-400 font-mono">{@engine_stats.profiles_loaded || 0}</span>
+            <span class="text-green-400 font-mono">{@engine_stats[:profiles_loaded] || 0}</span>
           </div>
           <div class="flex justify-between">
             <span class="text-gray-400">Matches Processed:</span>
-            <span class="text-blue-400 font-mono">{@engine_stats.matches_processed || 0}</span>
+            <span class="text-blue-400 font-mono">{@engine_stats[:matches_processed] || 0}</span>
           </div>
           <%= if @engine_stats[:last_reload] do %>
             <div class="flex justify-between">
               <span class="text-gray-400">Last Reload:</span>
               <span class="text-yellow-400 text-xs">
-                {format_datetime(@engine_stats.last_reload)}
+                {format_datetime(@engine_stats[:last_reload])}
               </span>
             </div>
           <% end %>

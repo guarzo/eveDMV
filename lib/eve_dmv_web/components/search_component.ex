@@ -8,6 +8,8 @@ defmodule EveDmvWeb.SearchComponent do
 
   alias Ecto.Adapters.SQL
 
+  require Logger
+
   @impl Phoenix.LiveComponent
   def mount(socket) do
     {:ok,
@@ -59,11 +61,10 @@ defmodule EveDmvWeb.SearchComponent do
         _ -> "/"
       end
 
-    # Use JavaScript to navigate since we can't push_navigate from a component
     {:noreply,
      socket
      |> assign(show_dropdown: false, query: "")
-     |> push_event("navigate", %{path: path})}
+     |> push_navigate(to: path)}
   end
 
   @impl Phoenix.LiveComponent
@@ -199,25 +200,72 @@ defmodule EveDmvWeb.SearchComponent do
   defp placeholder_text(:corporations), do: "Search corporations..."
   defp placeholder_text(_), do: "Search..."
 
+  # Wraps a search function with proper exception logging
+  defp safe_search(search_type, query, search_fn) do
+    search_fn.(query)
+  rescue
+    error ->
+      Logger.error(
+        "Search failed: type=#{search_type} query=#{inspect(query)} error=#{Exception.message(error)}\n#{Exception.format_stacktrace(__STACKTRACE__)}"
+      )
+
+      []
+  end
+
   defp perform_universal_search(query) do
-    # Perform parallel searches across all types
+    # Perform parallel searches across all types with error handling
+    # Each search is wrapped with proper error logging for debugging
+    search_timeout = 5_000
+
     tasks = [
-      Task.async(fn -> search_systems(query) end),
-      Task.async(fn -> search_characters(query) end),
-      Task.async(fn -> search_corporations(query) end)
+      Task.async(fn -> {:systems, safe_search(:systems, query, &search_systems/1)} end),
+      Task.async(fn -> {:characters, safe_search(:characters, query, &search_characters/1)} end),
+      Task.async(fn ->
+        {:corporations, safe_search(:corporations, query, &search_corporations/1)}
+      end)
     ]
 
-    [systems, characters, corporations] = Task.await_many(tasks, 5000)
+    # Use Task.yield_many with explicit timeout handling
+    results = Task.yield_many(tasks, timeout: search_timeout)
+
+    # Process results, handling timeouts and exits with proper logging
+    {systems, characters, corporations} =
+      Enum.reduce(results, {[], [], []}, fn {task, result}, {sys, chars, corps} ->
+        case result do
+          {:ok, {:systems, data}} ->
+            {data, chars, corps}
+
+          {:ok, {:characters, data}} ->
+            {sys, data, corps}
+
+          {:ok, {:corporations, data}} ->
+            {sys, chars, data}
+
+          {:exit, reason} ->
+            # Log the exit reason with context
+            Logger.error("Search task exited: query=#{inspect(query)} reason=#{inspect(reason)}")
+
+            Task.shutdown(task, :brutal_kill)
+            {sys, chars, corps}
+
+          nil ->
+            # Task timed out
+            Logger.warning(
+              "Search task timed out: query=#{inspect(query)} timeout_ms=#{search_timeout}"
+            )
+
+            Task.shutdown(task, :brutal_kill)
+            {sys, chars, corps}
+        end
+      end)
 
     # Combine results in a single list with type information
-    results =
-      []
-      |> Kernel.++(Enum.map(systems, &Map.put(&1, :type, "system")))
-      |> Kernel.++(Enum.map(characters, &Map.put(&1, :type, "character")))
-      |> Kernel.++(Enum.map(corporations, &Map.put(&1, :type, "corporation")))
-
     # Sort by relevance and take top 10
-    results
+    Enum.concat([
+      Enum.map(systems, &Map.put(&1, :type, "system")),
+      Enum.map(characters, &Map.put(&1, :type, "character")),
+      Enum.map(corporations, &Map.put(&1, :type, "corporation"))
+    ])
     |> Enum.sort_by(fn result ->
       # Simple relevance scoring - exact matches first
       if String.downcase(result.name) == String.downcase(query) do
@@ -232,8 +280,9 @@ defmodule EveDmvWeb.SearchComponent do
   defp search_systems(query) do
     alias EveDmv.Eve.SolarSystem
 
+    # Try the Ash search first
     case SolarSystem.search_by_name(name_pattern: query, similarity_threshold: 0.2) do
-      {:ok, systems} ->
+      {:ok, systems} when systems != [] ->
         systems
         |> Enum.take(3)
         |> Enum.map(fn system ->
@@ -241,6 +290,43 @@ defmodule EveDmvWeb.SearchComponent do
             id: system.system_id,
             name: system.system_name,
             subtitle: "#{system.constellation_name} • #{system.region_name}",
+            security_class: system.security_class,
+            type_label: "System"
+          }
+        end)
+
+      # Fallback to direct SQL search if Ash search fails or returns no results
+      _ ->
+        fallback_system_search(query)
+    end
+  end
+
+  defp fallback_system_search(query) do
+    search_pattern = "%#{query}%"
+
+    system_query = """
+    SELECT
+      system_id,
+      system_name,
+      constellation_name,
+      region_name,
+      security_class
+    FROM eve_solar_systems
+    WHERE system_name ILIKE $1
+    ORDER BY
+      CASE WHEN system_name ILIKE $1 THEN 0 ELSE 1 END,
+      system_name
+    LIMIT 3
+    """
+
+    case SQL.query(EveDmv.Repo, system_query, [search_pattern]) do
+      {:ok, %{rows: rows}} ->
+        Enum.map(rows, fn [sys_id, sys_name, const_name, reg_name, sec_class] ->
+          %{
+            id: sys_id,
+            name: sys_name,
+            subtitle: "#{const_name || "Unknown"} • #{reg_name || "Unknown"}",
+            security_class: sec_class,
             type_label: "System"
           }
         end)

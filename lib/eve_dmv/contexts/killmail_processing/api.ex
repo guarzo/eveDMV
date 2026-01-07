@@ -4,17 +4,35 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
 
   This module defines the external interface that other contexts
   and the web layer can use to interact with killmail data.
+  All business logic is delegated to domain services.
   """
 
-  import Ash.Expr
-
   alias EveDmv.Contexts.KillmailProcessing.Domain
+  alias EveDmv.Contexts.KillmailProcessing.Domain.HistoricalFetchManager
+  alias EveDmv.Contexts.KillmailProcessing.Domain.KillmailPresenter
+  alias EveDmv.Contexts.KillmailProcessing.Domain.KillmailQueryService
   alias EveDmv.Result
-  alias EveDmv.SharedKernel.ValueObjects.CharacterId
-  alias EveDmv.SharedKernel.ValueObjects.SolarSystemId
   alias EveDmv.SharedKernel.ValueObjects.TimeRange
 
-  require Ash.Query
+  @typedoc "Entity types supported for historical fetch"
+  @type entity_type :: :character | :corporation | :alliance | :system
+
+  @typedoc "Historical fetch status structure"
+  @type historical_fetch_status :: %{
+          id: term(),
+          entity_type: term(),
+          entity_id: term(),
+          status: term(),
+          current_page: term(),
+          killmails_fetched: term(),
+          oldest_killmail_date: term(),
+          target_date: term(),
+          last_error: term(),
+          retry_count: term(),
+          phase1_completed_at: term(),
+          phase2_started_at: term(),
+          phase2_completed_at: term()
+        }
 
   @type killmail_options :: [
           limit: integer(),
@@ -23,6 +41,10 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
           max_value: integer(),
           time_range: TimeRange.t()
         ]
+
+  # ============================================================================
+  # Killmail Ingestion
+  # ============================================================================
 
   @doc """
   Ingest a raw killmail from an external source.
@@ -36,12 +58,11 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
       {:ok, %{raw_inserted: true, enriched_inserted: true, events_published: 2}}
   """
   @spec ingest_killmail(map()) :: Result.t(map())
-  def ingest_killmail(raw_killmail) do
-    with :ok <- validate_raw_killmail(raw_killmail),
-         {:ok, result} <- Domain.IngestionService.ingest(raw_killmail) do
-      {:ok, result}
-    end
-  end
+  defdelegate ingest_killmail(raw_killmail), to: Domain.IngestionService, as: :ingest_validated
+
+  # ============================================================================
+  # Killmail Queries
+  # ============================================================================
 
   @doc """
   Get recent killmails with optional filtering.
@@ -61,16 +82,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
       {:ok, [%EnrichedKillmail{}, ...]}
   """
   @spec get_recent_killmails(killmail_options()) :: Result.t([map()])
-  def get_recent_killmails(opts \\ []) do
-    with :ok <- validate_killmail_options(opts) do
-      limit = Keyword.get(opts, :limit, 100)
-
-      EveDmv.Killmails.KillmailEnriched
-      |> Ash.Query.limit(limit)
-      |> Ash.Query.sort(killmail_time: :desc)
-      |> Ash.read()
-    end
-  end
+  defdelegate get_recent_killmails(opts \\ []), to: KillmailQueryService, as: :get_recent
 
   @doc """
   Get a specific killmail by its ID.
@@ -79,38 +91,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
   """
   @spec get_killmail_by_id(integer()) ::
           Result.t(map()) | {:error, :not_found | :invalid_killmail_id}
-  def get_killmail_by_id(killmail_id) when is_integer(killmail_id) and killmail_id > 0 do
-    # Try to get enriched killmail first, fall back to raw if needed
-    case Ash.get(EveDmv.Killmails.KillmailEnriched, killmail_id, domain: EveDmv.Api) do
-      {:ok, enriched} ->
-        {:ok,
-         %{
-           killmail: enriched,
-           type: :enriched,
-           found_at: DateTime.utc_now()
-         }}
-
-      {:error, %Ash.Error.Invalid{}} ->
-        # Try raw killmail if enriched not found
-        case Ash.get(EveDmv.Killmails.KillmailRaw, killmail_id, domain: EveDmv.Api) do
-          {:ok, raw} ->
-            {:ok,
-             %{
-               killmail: raw,
-               type: :raw,
-               found_at: DateTime.utc_now()
-             }}
-
-          {:error, _} ->
-            {:error, :not_found}
-        end
-
-      {:error, _} ->
-        {:error, :not_found}
-    end
-  end
-
-  def get_killmail_by_id(_), do: {:error, :invalid_killmail_id}
+  defdelegate get_killmail_by_id(killmail_id), to: KillmailQueryService, as: :get_by_id
 
   @doc """
   Get killmails that occurred in a specific solar system.
@@ -121,18 +102,9 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
       {:ok, [%EnrichedKillmail{}, ...]}
   """
   @spec get_killmails_by_system(integer(), killmail_options()) :: Result.t([map()])
-  def get_killmails_by_system(system_id, opts \\ []) do
-    with {:ok, _system_id_vo} <- SolarSystemId.new(system_id),
-         :ok <- validate_killmail_options(opts) do
-      limit = Keyword.get(opts, :limit, 100)
-
-      EveDmv.Killmails.KillmailEnriched
-      |> Ash.Query.filter(solar_system_id: system_id)
-      |> Ash.Query.limit(limit)
-      |> Ash.Query.sort(killmail_time: :desc)
-      |> Ash.read()
-    end
-  end
+  defdelegate get_killmails_by_system(system_id, opts \\ []),
+    to: KillmailQueryService,
+    as: :get_by_system
 
   @doc """
   Get killmails involving a specific character (as victim or attacker).
@@ -143,18 +115,9 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
       {:ok, [%EnrichedKillmail{}, ...]}
   """
   @spec get_killmails_by_character(integer(), killmail_options()) :: Result.t([map()])
-  def get_killmails_by_character(character_id, opts \\ []) do
-    with {:ok, _character_id_vo} <- CharacterId.new(character_id),
-         :ok <- validate_killmail_options(opts) do
-      limit = Keyword.get(opts, :limit, 100)
-
-      EveDmv.Killmails.KillmailEnriched
-      |> Ash.Query.filter(victim_character_id: character_id)
-      |> Ash.Query.limit(limit)
-      |> Ash.Query.sort(killmail_time: :desc)
-      |> Ash.read()
-    end
-  end
+  defdelegate get_killmails_by_character(character_id, opts \\ []),
+    to: KillmailQueryService,
+    as: :get_by_character
 
   @doc """
   Get high-value killmails above a specified ISK threshold.
@@ -165,22 +128,11 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
       {:ok, [%EnrichedKillmail{}, ...]}
   """
   @spec get_high_value_killmails(killmail_options()) :: Result.t([map()])
-  def get_high_value_killmails(opts \\ []) do
-    # Set default minimum value for high-value killmails
-    # 1B ISK default
-    opts_with_defaults = Keyword.put_new(opts, :min_value, 1_000_000_000)
+  defdelegate get_high_value_killmails(opts \\ []), to: KillmailQueryService, as: :get_high_value
 
-    with :ok <- validate_killmail_options(opts_with_defaults) do
-      limit = Keyword.get(opts_with_defaults, :limit, 100)
-      min_value = Keyword.get(opts_with_defaults, :min_value, 1_000_000_000)
-
-      EveDmv.Killmails.KillmailEnriched
-      |> Ash.Query.filter(expr(total_value >= ^min_value))
-      |> Ash.Query.limit(limit)
-      |> Ash.Query.sort(total_value: :desc)
-      |> Ash.read()
-    end
-  end
+  # ============================================================================
+  # Historical Fetching
+  # ============================================================================
 
   @doc """
   Fetch historical killmail data for specific characters.
@@ -199,18 +151,13 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
       {:ok, %{task_ref: #Reference<>, character_count: 3}}
   """
   @spec fetch_historical_killmails([integer()], keyword()) :: Result.t(map())
-  def fetch_historical_killmails(character_ids, opts \\ []) do
-    with :ok <- validate_character_ids(character_ids) do
-      # Start historical fetching task using the domain service
-      case Domain.HistoricalService.start_fetch_task(character_ids, opts) do
-        {:ok, task_info} ->
-          {:ok, task_info}
+  defdelegate fetch_historical_killmails(character_ids, opts \\ []),
+    to: Domain.HistoricalService,
+    as: :start_fetch_validated
 
-        {:error, reason} ->
-          {:error, reason}
-      end
-    end
-  end
+  # ============================================================================
+  # Statistics
+  # ============================================================================
 
   @doc """
   Get aggregated statistics for a solar system over a time period.
@@ -224,18 +171,9 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
       {:ok, %{kill_count: 1500, total_value: 45_000_000_000, top_ships: [...]}}
   """
   @spec get_system_statistics(integer(), TimeRange.t()) :: Result.t(map())
-  def get_system_statistics(system_id, time_range) do
-    with {:ok, system_id_vo} <- SolarSystemId.new(system_id) do
-      # Calculate real statistics from killmail data
-      case Domain.StatisticsService.calculate_system_statistics(system_id_vo.value, time_range) do
-        {:ok, statistics} ->
-          {:ok, statistics}
-
-        {:error, reason} ->
-          {:error, reason}
-      end
-    end
-  end
+  defdelegate get_system_statistics(system_id, time_range),
+    to: Domain.StatisticsService,
+    as: :calculate_system_statistics_validated
 
   @doc """
   Get processing pipeline metrics and status.
@@ -243,10 +181,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
   Returns information about pipeline performance, error rates, and throughput.
   """
   @spec get_pipeline_metrics() :: Result.t(map())
-  def get_pipeline_metrics do
-    metrics = Domain.KillmailOrchestrator.get_metrics()
-    {:ok, metrics}
-  end
+  defdelegate get_pipeline_metrics(), to: Domain.KillmailOrchestrator, as: :get_metrics_ok
 
   @doc """
   Get cached killmail display data for the web interface.
@@ -254,103 +189,92 @@ defmodule EveDmv.Contexts.KillmailProcessing.Api do
   This is optimized for the LiveView kill feed display.
   """
   @spec get_display_data(killmail_options()) :: Result.t(map())
-  def get_display_data(opts \\ []) do
-    with :ok <- validate_killmail_options(opts) do
-      # Get real killmail display data from enriched killmails
-      case get_recent_killmails(opts) do
-        {:ok, killmails} ->
-          display_data = %{
-            killmails: Enum.map(killmails, &format_for_display/1),
-            total_count: length(killmails),
-            last_updated: DateTime.utc_now()
-          }
+  defdelegate get_display_data(opts \\ []), to: KillmailPresenter, as: :build_display_data
 
-          {:ok, display_data}
+  # ============================================================================
+  # Historical Fetch Status API
+  # ============================================================================
 
-        {:error, reason} ->
-          {:error, reason}
-      end
-    end
-  end
+  @doc """
+  Get the historical fetch status for an entity.
 
-  # Private validation functions
+  Returns the current status of the 2-year historical fetch for the given entity.
 
-  defp validate_raw_killmail(killmail) when is_map(killmail) do
-    required_fields = [:killmail_id, :killmail_time, :victim, :attackers]
+  ## Examples
 
-    case Enum.find(required_fields, fn field -> not Map.has_key?(killmail, field) end) do
-      nil -> :ok
-      missing_field -> {:error, {:missing_field, missing_field}}
-    end
-  end
+      iex> get_historical_fetch_status(:character, 12345)
+      {:ok, %{status: :completed, killmails_fetched: 150}}
 
-  defp validate_raw_killmail(_), do: {:error, :invalid_killmail_format}
+      iex> get_historical_fetch_status(:character, 99999)
+      {:error, :not_found}
+  """
+  @spec get_historical_fetch_status(entity_type(), integer()) ::
+          {:ok, historical_fetch_status()} | {:error, :not_found}
+  defdelegate get_historical_fetch_status(entity_type, entity_id),
+    to: Domain.HistoricalFetchWorker,
+    as: :get_status
 
-  defp validate_killmail_options(opts) when is_list(opts) do
-    with :ok <- validate_limit(Keyword.get(opts, :limit)),
-         :ok <- validate_offset(Keyword.get(opts, :offset)),
-         :ok <-
-           validate_value_range(Keyword.get(opts, :min_value), Keyword.get(opts, :max_value)),
-         :ok <- validate_time_range(Keyword.get(opts, :time_range)) do
+  @doc """
+  Subscribe to historical fetch status updates for an entity.
+
+  Subscribes the current process to PubSub updates for the given entity.
+  Updates are broadcast as `{:historical_fetch_update, entity_type, entity_id, update}`.
+
+  ## Examples
+
+      iex> subscribe_to_historical_fetch(:character, 12345)
       :ok
-    end
-  end
+  """
+  @spec subscribe_to_historical_fetch(entity_type(), integer()) :: :ok
+  defdelegate subscribe_to_historical_fetch(entity_type, entity_id),
+    to: Domain.HistoricalFetchWorker,
+    as: :subscribe
 
-  defp validate_killmail_options(_), do: {:error, :invalid_options_format}
+  @doc """
+  Unsubscribe from historical fetch status updates for an entity.
 
-  defp validate_limit(nil), do: :ok
-  defp validate_limit(limit) when is_integer(limit) and limit > 0 and limit <= 500, do: :ok
-  defp validate_limit(_), do: {:error, :invalid_limit}
+  ## Examples
 
-  defp validate_offset(nil), do: :ok
-  defp validate_offset(offset) when is_integer(offset) and offset >= 0, do: :ok
-  defp validate_offset(_), do: {:error, :invalid_offset}
-
-  defp validate_value_range(nil, nil), do: :ok
-  defp validate_value_range(min, nil) when is_integer(min) and min >= 0, do: :ok
-  defp validate_value_range(nil, max) when is_integer(max) and max >= 0, do: :ok
-
-  defp validate_value_range(min, max)
-       when is_integer(min) and is_integer(max) and min <= max and min >= 0,
-       do: :ok
-
-  defp validate_value_range(_, _), do: {:error, :invalid_value_range}
-
-  defp validate_time_range(nil), do: :ok
-  defp validate_time_range(%TimeRange{}), do: :ok
-  defp validate_time_range(_), do: {:error, :invalid_time_range}
-
-  defp validate_character_ids(character_ids) when is_list(character_ids) do
-    if Enum.all?(character_ids, &(is_integer(&1) and &1 > 0)) do
+      iex> unsubscribe_from_historical_fetch(:character, 12345)
       :ok
-    else
-      {:error, :invalid_character_ids}
-    end
-  end
+  """
+  @spec unsubscribe_from_historical_fetch(entity_type(), integer()) :: :ok
+  defdelegate unsubscribe_from_historical_fetch(entity_type, entity_id),
+    to: Domain.HistoricalFetchWorker,
+    as: :unsubscribe
 
-  defp validate_character_ids(_), do: {:error, :invalid_character_ids_format}
+  @doc """
+  Queue an entity for 2-year historical fetch (Phase 2).
 
-  # Helper functions
+  Creates or updates the historical fetch status and broadcasts the update.
 
-  defp format_for_display(killmail) do
-    %{
-      id: killmail.killmail_id,
-      killmail_time: killmail.killmail_time,
-      solar_system_id: killmail.solar_system_id,
-      victim: %{
-        character_id: killmail.victim_character_id,
-        corporation_id: killmail.victim_corporation_id,
-        alliance_id: killmail.victim_alliance_id,
-        ship_type_id: killmail.victim_ship_type_id
-      },
-      total_value: Map.get(killmail, :total_value, 0),
-      participant_count: Map.get(killmail, :participant_count, 0),
-      location: %{
-        solar_system_id: killmail.solar_system_id,
-        # Add region/constellation if available
-        region_id: Map.get(killmail, :region_id),
-        constellation_id: Map.get(killmail, :constellation_id)
-      }
-    }
-  end
+  ## Examples
+
+      iex> queue_extended_historical_fetch(:character, 12345)
+      {:ok, %{status: :phase1_complete, ...}}
+  """
+  @spec queue_extended_historical_fetch(atom(), integer()) :: Result.t(map())
+  defdelegate queue_extended_historical_fetch(entity_type, entity_id),
+    to: Domain.HistoricalFetchWorker,
+    as: :queue_fetch
+
+  @doc """
+  Mark Phase 1 complete and queue Phase 2 fetch.
+
+  Called after initial 90-day data is loaded to queue 2-year fetch.
+
+  ## Examples
+
+      iex> complete_phase1_and_queue_phase2(:character, 12345)
+      {:ok, %{status: :phase1_complete, ...}}
+  """
+  @spec complete_phase1_and_queue_phase2(atom(), integer()) :: Result.t(map())
+  defdelegate complete_phase1_and_queue_phase2(entity_type, entity_id),
+    to: HistoricalFetchManager
+
+  @doc """
+  Check if the historical fetch worker is currently busy processing.
+  """
+  @spec historical_fetch_busy?() :: boolean()
+  defdelegate historical_fetch_busy?(), to: Domain.HistoricalFetchWorker, as: :busy?
 end

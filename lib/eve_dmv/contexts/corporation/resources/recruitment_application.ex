@@ -8,7 +8,8 @@ defmodule EveDmv.Contexts.Corporation.Resources.RecruitmentApplication do
 
   use Ash.Resource,
     domain: EveDmv.Api,
-    data_layer: AshPostgres.DataLayer
+    data_layer: AshPostgres.DataLayer,
+    authorizers: [Ash.Policy.Authorizer]
 
   postgres do
     table("recruitment_applications")
@@ -398,5 +399,35 @@ defmodule EveDmv.Contexts.Corporation.Resources.RecruitmentApplication do
     define(:list_by_character, action: :by_character, args: [:character_id])
     define(:list_pending_review, action: :pending_review, args: [:corporation_id])
     define(:list_recent_applications, action: :recent_applications, args: [:corporation_id])
+  end
+
+  policies do
+    # Read: Applicants see their own, corp recruiters see corp applications
+    policy action_type(:read) do
+      description("Applicants see own applications, corp members see corp applications")
+      authorize_if(expr(character_id == ^actor(:character_id)))
+      authorize_if(expr(corporation_id == ^actor(:corporation_id)))
+      authorize_if(actor_attribute_equals(:role, :admin))
+    end
+
+    # Create: Any authenticated user can submit an application
+    policy action_type(:create) do
+      description("Any authenticated user can submit applications")
+      authorize_if(actor_present())
+    end
+
+    # Update: Only corp recruiters can process applications
+    policy action_type(:update) do
+      description("Corporation recruiters can process applications")
+      authorize_if(expr(corporation_id == ^actor(:corporation_id)))
+      authorize_if(actor_attribute_equals(:role, :admin))
+      authorize_if(actor_attribute_equals(:role, :system))
+    end
+
+    # Destroy: Keep audit trail, only admin can delete
+    policy action_type(:destroy) do
+      description("Only admins can delete applications for audit compliance")
+      authorize_if(actor_attribute_equals(:role, :admin))
+    end
   end
 end

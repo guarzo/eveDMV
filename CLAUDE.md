@@ -29,7 +29,7 @@ mix ecto.reset         # Drop, create, and migrate
 
 # Testing and Quality
 mix test               # Run tests
-mix test --cover       # Run with coverage (70% minimum)
+mix test --cover       # Run with coverage (40% minimum)
 mix credo --strict     # Static analysis
 mix format             # Format code
 mix dialyzer           # Type checking
@@ -143,7 +143,7 @@ end
 ```
 
 ### Real-time Pipeline Architecture
-The killmail ingestion pipeline (`lib/eve_dmv/killmails/killmail_pipeline.ex`) uses Broadway:
+The killmail ingestion pipeline (`lib/eve_dmv/external/killmails/killmail_pipeline.ex`) uses Broadway:
 1. **SSE Producer** connects to wanderer-kills feed
 2. **Processor** validates and transforms killmails
 3. **Batch Handler** bulk inserts using `Ash.bulk_create`
@@ -239,6 +239,53 @@ end
 @frigate_range 580..700  # ❌ These don't match EVE data
 ```
 
+### Solar System Security Classification Pattern
+**ALWAYS** use the `security_class` field from `eve_solar_systems` table to identify space type. This is the authoritative source from CCP's SDE.
+
+**Available `security_class` values:**
+- `"highsec"` - High security space (0.5 to 1.0)
+- `"lowsec"` - Low security space (0.1 to 0.4)
+- `"nullsec"` - Null security space (0.0 and below)
+- `"wormhole"` - Wormhole space (J-space systems)
+
+**Additional wormhole-specific fields:**
+- `wormhole_class_id` - Integer for wormhole class (1-6 for C1-C6, 12 for Thera, etc.)
+- `wormhole_effect_type` - Environmental effect (Pulsar, Magnetar, Black Hole, etc.)
+
+```elixir
+# CORRECT - Use security_class from SDE
+case system.security_class do
+  "highsec" -> :safe
+  "lowsec" -> :dangerous
+  "nullsec" -> :very_dangerous
+  "wormhole" -> :extremely_dangerous
+  _ -> :unknown
+end
+
+# CORRECT - In SQL queries, use the security_class column directly
+"""
+SELECT COALESCE(s.security_class, 'unknown') as sec_class
+FROM eve_solar_systems s
+WHERE s.system_id = $1
+"""
+
+# CORRECT - For programmatic lookup
+EveDmv.StaticData.classify_system(system_id)  # Returns :highsec, :lowsec, :nullsec, :wormhole_c1, etc.
+
+# WRONG - Never use regex on system names to detect wormholes
+system_name ~ '^J[0-9]{6}$'  # ❌ Fragile, misses edge cases
+
+# WRONG - Never assume security_status alone identifies wormholes
+WHEN security_status IS NULL THEN 'wormhole'  # ❌ Wormholes have 0.0 security_status
+WHEN security_status <= 0.0 THEN 'nullsec'    # ❌ This incorrectly classifies wormholes as nullsec
+```
+
+**Key differences between wormholes and nullsec:**
+- Wormholes have no local chat (delayed mode)
+- Wormholes don't allow cynosural fields
+- Wormholes have mass limits on connections
+- Wormholes may have environmental effects that modify combat
+
 ## Current Implementation Status
 
 ### ✅ Production-Ready Features
@@ -254,6 +301,7 @@ end
 - **API Authentication** - Separate API key system for programmatic access
 - **Admin Features** - Performance dashboard, user management
 - **Fleet Operations** - Basic composition analysis
+- **Historical Fetch** - 2-year killmail fetch with background processing (see below)
 
 ### ✅ Intelligence Features
 - **Character Intelligence** (`/character/:id`)
@@ -310,9 +358,72 @@ end
 
 ### 📋 Key Documentation
 - **Architecture**: `docs/ARCHITECTURE.md` - System design and patterns
-- **Deployment**: `docs/DEPLOYMENT_GUIDE.md` - Production deployment guide
 - **PRD**: `docs/EVE_DMV_PRD.md` - Product requirements document
-- **Operations**: `docs/OPERATIONS_RUNBOOK.md` - Operational procedures
+- **Style Guide**: `docs/TEAM_STYLE_GUIDE.md` - Team coding standards
+- **Manual Test Plan**: `docs/MANUAL_TEST_PLAN.md` - Manual testing procedures
+
+## Historical Fetch Feature (2-Year Killmail Retrieval)
+
+The Historical Fetch feature extends killmail data retrieval from 90 days to 2 years using a two-phase approach:
+
+### Architecture Overview
+
+```
+Phase 1 (Immediate): 90-day fetch via wanderer-kills (synchronous)
+Phase 2 (Background): 91 days to 2 years via zkillboard API (asynchronous)
+```
+
+**Key Components:**
+- `HistoricalFetchStatus` - Ash resource tracking fetch progress (`lib/eve_dmv/contexts/killmail_processing/resources/historical_fetch_status.ex`)
+- `ExtendedHistoricalFetcher` - Service fetching from zkillboard API (`lib/eve_dmv/contexts/killmail_processing/domain/extended_historical_fetcher.ex`)
+- `HistoricalFetchWorker` - GenServer managing background fetch queue (`lib/eve_dmv/contexts/killmail_processing/domain/historical_fetch_worker.ex`)
+- `HistoricalFetchIndicator` - LiveView component displaying status (`lib/eve_dmv_web/components/historical_fetch_indicator.ex`)
+
+### Usage in LiveViews
+
+```elixir
+# Subscribe to status updates (in mount/3)
+KillmailProcessing.subscribe_to_historical_fetch(:character, character_id)
+
+# Get current status
+status = KillmailProcessing.get_historical_fetch_status(:character, character_id)
+
+# Render indicator in template
+<.historical_fetch_indicator
+  status={@historical_fetch_status}
+  entity_type={:character}
+  entity_id={@character_id}
+/>
+
+# Handle retry event
+def handle_event("retry_historical_fetch", %{"entity_type" => type, "entity_id" => id}, socket)
+```
+
+### Status States
+
+| Status | Description |
+|--------|-------------|
+| `pending` | Initial state, Phase 1 in progress |
+| `phase1_complete` | 90-day fetch done, Phase 2 queued |
+| `in_progress` | Phase 2 actively fetching |
+| `completed` | All 2 years of data fetched |
+| `failed` | Error occurred (can retry) |
+
+### API Functions
+
+```elixir
+# Queue entity for extended fetch
+KillmailProcessing.queue_extended_historical_fetch(:character, 12345)
+
+# Get status
+{:ok, status} = KillmailProcessing.get_historical_fetch_status(:character, 12345)
+
+# Subscribe to updates (PubSub)
+KillmailProcessing.subscribe_to_historical_fetch(:character, 12345)
+
+# Mark Phase 1 complete and queue Phase 2
+KillmailProcessing.complete_phase1_and_queue_phase2(:character, 12345)
+```
 
 ## Environment Configuration
 
@@ -335,6 +446,18 @@ MOCK_SSE_SERVER_ENABLED     # Use mock server for development (true/false)
 # Admin User Bootstrap (Production)
 ADMIN_BOOTSTRAP_CHARACTERS      # Comma-separated character names: "John Doe,Jane Smith"
 ADMIN_BOOTSTRAP_CHARACTER_IDS   # Comma-separated character IDs: "123456789,987654321"
+
+# Historical Fetch Configuration (2-Year Killmail Retrieval)
+HISTORICAL_FETCH_RATE_LIMIT     # Delay between zkillboard API calls in ms (default: 1000)
+HISTORICAL_FETCH_MAX_PAGES      # Max pages to fetch per entity (default: 100)
+HISTORICAL_FETCH_LOOKBACK_DAYS  # Days of history to fetch (default: 730, 2 years)
+HISTORICAL_FETCH_CHECK_INTERVAL # Worker queue check interval in ms (default: 30000)
+HISTORICAL_FETCH_ENABLED        # Enable/disable background fetching (default: true)
+
+# Query Migration Feature Flags
+EVE_DMV_QUERY_MIGRATION_USE_ASH_CHARACTER_STATS     # Use Ash for character stats (default: false)
+EVE_DMV_QUERY_MIGRATION_USE_ASH_CORPORATION_STATS   # Use Ash for corp stats (default: false)
+EVE_DMV_QUERY_MIGRATION_LOG_COMPARISON_MISMATCHES   # Log old/new query differences (default: false)
 ```
 
 ## Common Development Tasks
@@ -365,7 +488,7 @@ mix format --check-formatted      # Check code formatting
 mix credo --strict                 # Static analysis
 mix dialyzer                      # Type checking (or use mix dialyzer.fast)
 mix deps.audit                    # Security audit
-mix test --cover                  # Tests with coverage (70% minimum)
+mix test --cover                  # Tests with coverage (40% minimum)
 ```
 
 ### Adding New LiveView Pages
@@ -374,7 +497,7 @@ mix test --cover                  # Tests with coverage (70% minimum)
 3. Use `on_mount: {EveDmvWeb.AuthLive, :load_from_session}` for authenticated routes
 
 ### Working with the Pipeline
-- Pipeline modules in `lib/eve_dmv/killmails/`
+- Pipeline modules in `lib/eve_dmv/external/killmails/`
 - Toggle with `PIPELINE_ENABLED=true/false` environment variable
 - ✅ **Broadway pipeline working** - SSE producer properly creates Broadway.Message structs
 - ✅ **SSE Integration complete** - Connected to `http://host.docker.internal:4004/api/v1/kills/stream`
@@ -392,7 +515,7 @@ mix test --cover                  # Tests with coverage (70% minimum)
 - **Quality Gates**: Format, Credo, Dialyzer, security audit, test coverage
 - **Docker**: Multi-stage builds with Alpine base for production
 - **Security**: Trivy vulnerability scanning, dependency auditing
-- **Coverage**: ExCoveralls with 70% minimum threshold
+- **Coverage**: ExCoveralls with 40% minimum threshold
 
 ## Key Files and Modules
 

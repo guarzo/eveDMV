@@ -740,7 +740,8 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
       corporation_standing: full_analysis.corporation_standing,
       alliance_standing: full_analysis.alliance_standing,
       primary_risk_factors: Enum.take(full_analysis.risk_factors, 3),
-      confidence: full_analysis.threat_confidence
+      confidence: full_analysis.threat_confidence,
+      known_associates_count: full_analysis.known_associates_count
     }
   end
 
@@ -820,7 +821,9 @@ defmodule EveDmv.Contexts.ThreatAssessment.Analyzers.ThreatAnalyzer do
       %{coordination_detected: false, coordination_score: 0}
     else
       high_associate_pilots =
-        Enum.count(pilot_analyses, fn {_id, analysis} -> analysis.known_associates_count > 10 end)
+        Enum.count(pilot_analyses, fn {_id, analysis} ->
+          Map.get(analysis, :known_associates_count, 0) > 10
+        end)
 
       coordination_score = high_associate_pilots / map_size(pilot_analyses) * 100
 

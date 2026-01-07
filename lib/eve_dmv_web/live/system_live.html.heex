@@ -120,48 +120,63 @@
                 <%= @system_data.danger_assessment.danger_level %>
               </div>
             </div>
+
+          <!-- Historical Data Status -->
+          <div class="mt-4 border-t border-gray-700 pt-4">
+            <.historical_fetch_indicator
+              status={@historical_fetch_status}
+              entity_type={:system}
+              entity_id={@system_id}
+            />
+          </div>
           </div>
         </div>
 
-      <!-- Activity Statistics -->
+      <!-- Activity Statistics - Clickable Cards -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div class="group bg-gray-800 border border-gray-700 rounded-lg overflow-hidden hover:border-gray-600 transition-colors">
+        <button
+          phx-click="show_kills"
+          class="group bg-gray-800 border border-gray-700 rounded-lg overflow-hidden hover:border-blue-500 hover:bg-gray-750 transition-all cursor-pointer text-left"
+        >
           <div class="p-6">
             <div class="flex items-center justify-between">
               <div>
-                <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Kills</dt>
+                <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider group-hover:text-blue-400">Total Kills</dt>
                 <dd class="mt-2 text-2xl font-bold text-white">
                   <%= EveDmvWeb.FormatHelpers.format_number(@system_data.activity_stats.total_kills) %>
                 </dd>
-                <div class="mt-1 text-xs text-gray-400">Last 30 days</div>
+                <div class="mt-1 text-xs text-gray-400 group-hover:text-blue-300">Click to view kills</div>
               </div>
-              <div class="p-3 bg-red-900/20 rounded-lg">
+              <div class="p-3 bg-red-900/20 rounded-lg group-hover:bg-red-900/40">
                 <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
                 </svg>
               </div>
             </div>
           </div>
-        </div>
+        </button>
 
-        <div class="group bg-gray-800 border border-gray-700 rounded-lg overflow-hidden hover:border-gray-600 transition-colors">
+        <button
+          phx-click="show_pilots"
+          class="group bg-gray-800 border border-gray-700 rounded-lg overflow-hidden hover:border-blue-500 hover:bg-gray-750 transition-all cursor-pointer text-left"
+        >
           <div class="p-6">
             <div class="flex items-center justify-between">
               <div>
-                <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Unique Pilots</dt>
+                <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider group-hover:text-blue-400">Unique Pilots</dt>
                 <dd class="mt-2 text-2xl font-bold text-white">
                   <%= EveDmvWeb.FormatHelpers.format_number(@system_data.activity_stats.unique_pilots) %>
                 </dd>
-                <div class="mt-1 text-xs text-gray-400">Active participants</div>
+                <div class="mt-1 text-xs text-gray-400 group-hover:text-blue-300">Click to view pilots</div>
               </div>
-              <div class="p-3 bg-blue-900/20 rounded-lg">
+              <div class="p-3 bg-blue-900/20 rounded-lg group-hover:bg-blue-900/40">
                 <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
                 </svg>
               </div>
             </div>
           </div>
-        </div>
+        </button>
 
         <div class="group bg-gray-800 border border-gray-700 rounded-lg overflow-hidden hover:border-gray-600 transition-colors">
           <div class="p-6">
@@ -182,78 +197,263 @@
           </div>
         </div>
 
-        <div class="group bg-gray-800 border border-gray-700 rounded-lg overflow-hidden hover:border-gray-600 transition-colors">
+        <button
+          phx-click="show_corporations"
+          class="group bg-gray-800 border border-gray-700 rounded-lg overflow-hidden hover:border-blue-500 hover:bg-gray-750 transition-all cursor-pointer text-left"
+        >
           <div class="p-6">
             <div class="flex items-center justify-between">
               <div>
-                <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Corporations</dt>
+                <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider group-hover:text-blue-400">Corporations</dt>
                 <dd class="mt-2 text-2xl font-bold text-white">
                   <%= EveDmvWeb.FormatHelpers.format_number(@system_data.activity_stats.unique_corporations) %>
                 </dd>
-                <div class="mt-1 text-xs text-gray-400">Groups active</div>
+                <div class="mt-1 text-xs text-gray-400 group-hover:text-blue-300">Click to view corps</div>
               </div>
-              <div class="p-3 bg-purple-900/20 rounded-lg">
+              <div class="p-3 bg-purple-900/20 rounded-lg group-hover:bg-purple-900/40">
                 <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
                 </svg>
               </div>
             </div>
           </div>
-        </div>
+        </button>
       </div>
 
-      <!-- Activity Heatmap and Structure Kills -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <!-- Activity Heatmap -->
-        <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-          <h3 class="text-lg font-medium text-white mb-4">Activity Distribution (24h)</h3>
-          <div class="space-y-2">
-            <%= for hour_data <- @system_data.activity_heatmap do %>
-              <div class="flex items-center">
-                <div class="w-12 text-sm text-gray-400">
-                  <%= String.pad_leading(to_string(hour_data.hour), 2, "0") %>:00
-                </div>
-                <div class="flex-1 mx-2">
-                  <div class="bg-gray-700 rounded-full overflow-hidden" style="height: 20px;">
-                    <%= if hour_data.percentage > 0 do %>
-                      <div class="bg-blue-500 h-full transition-all duration-300"
-                           style={"width: #{hour_data.percentage}%"}></div>
-                    <% end %>
+      <!-- Recent Kills Section - Prominent Display -->
+      <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-medium text-white">Recent Kills</h3>
+          <span class="text-sm text-gray-400">Last 7 days</span>
+        </div>
+        <%= if @system_data.recent_kills && length(@system_data.recent_kills) > 0 do %>
+          <div class="space-y-3">
+            <%= for kill <- Enum.take(@system_data.recent_kills, 10) do %>
+              <div class="flex items-center justify-between py-3 px-4 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors">
+                <div class="flex items-center space-x-4">
+                  <!-- Ship Icon -->
+                  <%= if kill.victim_ship_type_id do %>
+                    <EveDmvWeb.EveImageComponents.ship_image
+                      type_id={kill.victim_ship_type_id}
+                      size={40}
+                      class="rounded" />
+                  <% else %>
+                    <div class="w-10 h-10 bg-gray-600 rounded flex items-center justify-center">
+                      <span class="text-gray-400 text-lg">💀</span>
+                    </div>
+                  <% end %>
+
+                  <div>
+                    <div class="flex items-center space-x-2">
+                      <%= if kill.victim_character_id do %>
+                        <.link
+                          navigate={~p"/character/#{kill.victim_character_id}"}
+                          class="text-sm font-medium text-gray-200 hover:text-blue-400 transition-colors"
+                        >
+                          <%= kill.victim_name %>
+                        </.link>
+                      <% else %>
+                        <span class="text-sm font-medium text-gray-200"><%= kill.victim_name %></span>
+                      <% end %>
+                      <span class="text-gray-500">•</span>
+                      <span class="text-sm text-gray-400"><%= kill.corporation_name %></span>
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      Lost <span class="text-red-400"><%= kill.ship_name %></span>
+                      • <%= kill.attacker_count %> attacker<%= if kill.attacker_count != 1, do: "s" %>
+                    </div>
                   </div>
                 </div>
-                <div class="w-12 text-sm text-gray-300 text-right">
-                  <%= hour_data.count %>
+
+                <div class="text-right">
+                  <div class="text-sm font-bold text-red-400">
+                    <%= EveDmvWeb.FormatHelpers.format_isk(kill.total_value) %>
+                  </div>
+                  <div class="text-xs text-gray-500">
+                    <%= EveDmvWeb.Helpers.TimeFormatter.format_relative_time(kill.killmail_time) %>
+                  </div>
                 </div>
               </div>
             <% end %>
           </div>
-        </div>
+        <% else %>
+          <div class="text-center py-8">
+            <div class="text-gray-400 mb-2">💀</div>
+            <div class="text-gray-400">No recent kills in this system</div>
+            <div class="text-xs text-gray-500 mt-1">Check back later for activity</div>
+          </div>
+        <% end %>
+      </div>
 
-        <!-- Structure Kills -->
-        <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-          <h3 class="text-lg font-medium text-white mb-4">Structure & Citadel Kills</h3>
-          <%= if Enum.any?(@system_data.structure_kills) do %>
-            <div class="space-y-3">
-              <%= for structure <- @system_data.structure_kills do %>
-                <div class="flex justify-between items-center py-2 border-b border-gray-600 last:border-b-0">
-                  <div>
-                    <div class="text-sm font-medium text-gray-200">
-                      <%= structure.type_name %>
-                    </div>
-                  </div>
-                  <div class="text-sm text-gray-400">
-                    <%= structure.kill_count %> kills
-                  </div>
-                </div>
-              <% end %>
-            </div>
-          <% else %>
-            <div class="text-center py-6">
-              <div class="text-gray-400">No structure kills in the last 30 days</div>
+      <!-- Activity Heatmap (Compact) -->
+      <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6">
+        <h3 class="text-lg font-medium text-white mb-4">Activity Distribution (24h)</h3>
+
+        <!-- Compact horizontal heatmap -->
+        <div class="flex items-end space-x-1 h-16 mb-2">
+          <%= for hour_data <- @system_data.activity_heatmap do %>
+            <div
+              class="flex-1 h-full flex items-end group relative cursor-pointer"
+              title={"#{String.pad_leading(to_string(hour_data.hour), 2, "0")}:00 - #{hour_data.count} kills"}
+            >
+              <div
+                class={[
+                  "w-full rounded-t transition-all",
+                  cond do
+                    hour_data.percentage >= 80 -> "bg-red-500"
+                    hour_data.percentage >= 60 -> "bg-orange-500"
+                    hour_data.percentage >= 40 -> "bg-yellow-500"
+                    hour_data.percentage >= 20 -> "bg-blue-500"
+                    hour_data.percentage > 0 -> "bg-blue-700"
+                    true -> "bg-gray-700"
+                  end
+                ]}
+                style={"height: #{Kernel.max(hour_data.percentage, 8)}%"}
+              ></div>
+              <!-- Tooltip -->
+              <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 border border-gray-600 rounded text-xs text-white opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-10 transition-opacity">
+                <%= String.pad_leading(to_string(hour_data.hour), 2, "0") %>:00 - <%= hour_data.count %> kills
+              </div>
             </div>
           <% end %>
         </div>
+
+        <!-- Hour labels -->
+        <div class="flex justify-between text-xs text-gray-500 px-1 mb-4">
+          <span>00:00</span>
+          <span>06:00</span>
+          <span>12:00</span>
+          <span>18:00</span>
+          <span>23:00</span>
+        </div>
+
+        <!-- Summary stats -->
+        <div class="flex items-center justify-between pt-4 border-t border-gray-700 text-sm">
+          <div class="text-gray-400">
+            Peak: <span class="text-white font-medium"><%= String.pad_leading(to_string(@system_data.peak_activity_hour), 2, "0") %>:00 EVE</span>
+            <span class="text-gray-500">(<%= @system_data.primary_timezone %>)</span>
+          </div>
+          <div class="text-gray-400">
+            Total: <span class="text-white font-medium"><%= Enum.sum(Enum.map(@system_data.activity_heatmap, & &1.count)) %></span> kills (30d)
+          </div>
+        </div>
       </div>
+
+      <!-- Detail Panel (shows when clicking on stats cards) -->
+      <%= if @detail_panel do %>
+        <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6">
+          <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-medium text-white">
+                <%= case @detail_type do %>
+                  <% :kills -> %>
+                    All Kills
+                  <% :pilots -> %>
+                    Active Pilots
+                  <% :corporations -> %>
+                    Active Corporations
+                  <% _ -> %>
+                    Details
+                <% end %>
+              </h3>
+              <button
+                phx-click="close_detail_panel"
+                class="text-gray-400 hover:text-white transition-colors"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+
+            <%= case @detail_type do %>
+              <% :kills -> %>
+                <div class="space-y-2 max-h-96 overflow-y-auto">
+                  <%= for kill <- @system_data.recent_kills do %>
+                    <div class="flex items-center justify-between py-2 px-3 bg-gray-700/50 rounded hover:bg-gray-700 transition-colors">
+                      <div class="flex items-center space-x-3">
+                        <%= if kill.victim_ship_type_id do %>
+                          <EveDmvWeb.EveImageComponents.ship_image type_id={kill.victim_ship_type_id} size={32} class="rounded" />
+                        <% end %>
+                        <div>
+                          <div class="text-sm text-gray-200"><%= kill.victim_name %></div>
+                          <div class="text-xs text-gray-500"><%= kill.ship_name %></div>
+                        </div>
+                      </div>
+                      <div class="text-sm text-red-400 font-medium">
+                        <%= EveDmvWeb.FormatHelpers.format_isk(kill.total_value) %>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+
+              <% :pilots -> %>
+                <div class="text-sm text-gray-400 mb-4">
+                  Top pilots with kills in this system
+                </div>
+                <div class="space-y-2 max-h-96 overflow-y-auto">
+                  <%= for pilot <- @system_data.recent_pilots do %>
+                    <div class="py-2 px-3 bg-gray-700/50 rounded hover:bg-gray-700 transition-colors">
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                          <%= if pilot.character_id do %>
+                            <EveDmvWeb.EveImageComponents.character_portrait character_id={pilot.character_id} size={32} class="rounded" />
+                          <% end %>
+                          <div>
+                            <%= if pilot.character_id do %>
+                              <.link navigate={~p"/character/#{pilot.character_id}"} class="text-sm text-blue-400 hover:text-blue-300">
+                                <%= pilot.character_name %>
+                              </.link>
+                            <% else %>
+                              <span class="text-sm text-gray-200"><%= pilot.character_name %></span>
+                            <% end %>
+                            <div class="text-xs text-gray-500"><%= pilot.corporation_name %></div>
+                          </div>
+                        </div>
+                        <div class="text-right">
+                          <div class="text-sm text-green-400"><%= pilot.kill_count %> kills</div>
+                          <div class="text-xs text-gray-500">Last: <%= pilot.last_ship %></div>
+                        </div>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+
+              <% :corporations -> %>
+                <div class="space-y-2 max-h-96 overflow-y-auto">
+                  <%= for corp <- @system_data.corp_presence do %>
+                    <div class="flex items-center justify-between py-2 px-3 bg-gray-700/50 rounded hover:bg-gray-700 transition-colors">
+                      <div class="flex items-center space-x-3">
+                        <%= if corp.corporation_id do %>
+                          <EveDmvWeb.EveImageComponents.corporation_logo corporation_id={corp.corporation_id} size={32} class="rounded" />
+                        <% end %>
+                        <div>
+                          <%= if corp.corporation_id do %>
+                            <.link navigate={~p"/corporation/#{corp.corporation_id}"} class="text-sm text-blue-400 hover:text-blue-300">
+                              <%= corp.corporation_name %>
+                            </.link>
+                          <% else %>
+                            <span class="text-sm text-gray-200"><%= corp.corporation_name %></span>
+                          <% end %>
+                          <%= if corp.alliance_name do %>
+                            <div class="text-xs text-gray-500"><%= corp.alliance_name %></div>
+                          <% end %>
+                        </div>
+                      </div>
+                      <div class="text-right">
+                        <div class="text-sm text-gray-300"><%= corp.kill_participation %> kills</div>
+                        <div class="text-xs text-gray-500"><%= corp.unique_pilots %> pilots</div>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+
+              <% _ -> %>
+                <div class="text-center py-6 text-gray-400">
+                  Click on a stat card to view details
+                </div>
+            <% end %>
+        </div>
+      <% end %>
 
       <!-- System Battle Activity -->
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6">
@@ -342,12 +542,13 @@
           <div class="space-y-4">
             <h4 class="text-sm font-medium text-gray-300 mb-3">Recent Major Engagements</h4>
             <%= for battle <- @system_data.recent_battles do %>
-              <div class="bg-gray-700 rounded-lg p-4 hover:bg-gray-600 transition-colors">
-                <div class="flex items-start justify-between">
-                  <div class="flex-1">
-                    <div class="flex items-center space-x-3 mb-2">
-                      <!-- Battle Type Badge -->
-                      <% {badge_text, badge_class} = case Map.get(battle, :battle_type, "unknown") do
+              <.link navigate={~p"/battle/#{Map.get(battle, :battle_id, "unknown")}"} class="block">
+                <div class="bg-gray-700 rounded-lg p-4 hover:bg-gray-600 transition-colors cursor-pointer">
+                  <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                      <div class="flex items-center space-x-3 mb-2">
+                        <!-- Battle Type Badge -->
+                        <% {badge_text, badge_class} = case Map.get(battle, :battle_type, "unknown") do
                         "major_battle" -> {"Major Battle", "bg-red-600 text-white"}
                         "fleet_engagement" -> {"Fleet Fight", "bg-orange-600 text-white"}
                         "skirmish" -> {"Skirmish", "bg-yellow-600 text-white"}
@@ -435,6 +636,7 @@
                   </div>
                 <% end %>
               </div>
+              </.link>
             <% end %>
           </div>
         <% else %>
@@ -531,7 +733,7 @@
       </div>
 
       <!-- Danger Assessment Details -->
-      <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+      <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6">
         <h3 class="text-lg font-medium text-white mb-4">Danger Assessment Details</h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
@@ -560,14 +762,67 @@
           </div>
         </div>
       </div>
+
+      <!-- Structure & Citadel Kills (at bottom) -->
+      <%= if Enum.any?(@system_data.structure_kills) || (@system_data.recent_structure_kills && length(@system_data.recent_structure_kills) > 0) do %>
+        <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          <h3 class="text-lg font-medium text-white mb-4">Structure & Citadel Activity</h3>
+          <p class="text-sm text-gray-400 mb-4">Infrastructure destruction in this system</p>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Structure Kill Types (from aggregated data) -->
+            <%= if Enum.any?(@system_data.structure_kills) do %>
+              <div>
+                <h4 class="text-sm font-medium text-gray-300 mb-3">Structure Types Destroyed</h4>
+                <div class="space-y-2">
+                  <%= for structure <- @system_data.structure_kills do %>
+                    <div class="flex justify-between items-center py-2 px-3 bg-gray-700/50 rounded">
+                      <div class="text-sm text-gray-200">
+                        <%= structure.type_name %>
+                      </div>
+                      <div class="text-sm text-orange-400 font-medium">
+                        <%= structure.kill_count %> <%= if structure.kill_count == 1, do: "kill", else: "kills" %>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+
+            <!-- Recent Structure Kills (from recent_kills data) -->
+            <%= if @system_data.recent_structure_kills && length(@system_data.recent_structure_kills) > 0 do %>
+              <div>
+                <h4 class="text-sm font-medium text-gray-300 mb-3">Recent Structure Kills</h4>
+                <div class="space-y-2">
+                  <%= for kill <- Enum.take(@system_data.recent_structure_kills, 5) do %>
+                    <div class="flex items-center justify-between py-2 px-3 bg-gray-700/50 rounded">
+                      <div class="flex items-center space-x-3">
+                        <%= if kill.victim_ship_type_id do %>
+                          <EveDmvWeb.EveImageComponents.ship_image type_id={kill.victim_ship_type_id} size={32} class="rounded" />
+                        <% end %>
+                        <div>
+                          <div class="text-sm text-gray-200"><%= kill.ship_name %></div>
+                          <div class="text-xs text-gray-500"><%= kill.corporation_name %></div>
+                        </div>
+                      </div>
+                      <div class="text-right">
+                        <div class="text-sm text-orange-400 font-medium">
+                          <%= EveDmvWeb.FormatHelpers.format_isk(kill.total_value) %>
+                        </div>
+                        <div class="text-xs text-gray-500">
+                          <%= EveDmvWeb.Helpers.TimeFormatter.format_relative_time(kill.killmail_time) %>
+                        </div>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
     <% end %>
   <% end %>
   </div>
 </div>
 
-<script>
-  // Optional: Add auto-refresh functionality
-  window.addEventListener("phx:page-loading-stop", () => {
-    // Page loaded successfully
-  });
-</script>

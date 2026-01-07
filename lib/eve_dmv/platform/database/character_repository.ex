@@ -14,8 +14,8 @@ defmodule EveDmv.Platform.Database.CharacterRepository do
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.Platform.Cache.Cache
+  alias EveDmv.Platform.Database.Queries.AnalyticsQueries
   alias EveDmv.Platform.Database.Repository.CacheHelper
-  alias EveDmv.Platform.Database.Repository.QueryBuilder
   alias EveDmv.Platform.Database.Repository.TelemetryHelper
   require Ash.Query
 
@@ -268,6 +268,7 @@ defmodule EveDmv.Platform.Database.CharacterRepository do
   Get ship usage data for a character.
 
   Returns a map of ship type IDs to usage counts from killmail data.
+  Uses the optimized participants table via AnalyticsQueries module.
 
   ## Examples
 
@@ -277,31 +278,7 @@ defmodule EveDmv.Platform.Database.CharacterRepository do
   @spec get_character_ship_usage(integer()) :: {:ok, map()} | {:error, term()}
   def get_character_ship_usage(character_id) do
     TelemetryHelper.measure_query("character_stats", :get_ship_usage, fn ->
-      # Query killmails to get ship usage counts
-      query = """
-      SELECT ship_type_id, COUNT(*) as usage_count
-      FROM killmails_raw
-      WHERE character_id = $1
-      AND (victim_character_id = $1 OR EXISTS (
-        SELECT 1 FROM jsonb_array_elements(attackers) AS attacker
-        WHERE (attacker->>'character_id')::bigint = $1
-      ))
-      GROUP BY ship_type_id
-      ORDER BY usage_count DESC
-      """
-
-      case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [character_id]) do
-        {:ok, %{rows: rows}} ->
-          usage_map =
-            rows
-            |> Enum.map(fn [ship_type_id, count] -> {ship_type_id, count} end)
-            |> Map.new()
-
-          {:ok, usage_map}
-
-        {:error, reason} ->
-          {:error, reason}
-      end
+      AnalyticsQueries.get_ship_usage(character_id)
     end)
   end
 
@@ -309,7 +286,8 @@ defmodule EveDmv.Platform.Database.CharacterRepository do
   Get ship performance statistics for a character.
 
   Returns detailed statistics per ship type including kill/death ratios,
-  average damage dealt, and ISK efficiency.
+  average damage dealt, and ISK efficiency. Uses the optimized participants
+  table via AnalyticsQueries module.
 
   ## Examples
 
@@ -318,83 +296,11 @@ defmodule EveDmv.Platform.Database.CharacterRepository do
   @spec get_character_ship_stats(integer()) :: {:ok, map()} | {:error, term()}
   def get_character_ship_stats(character_id) do
     TelemetryHelper.measure_query("character_stats", :get_ship_stats, fn ->
-      # Query to get ship-specific performance metrics
-      query = """
-      WITH ship_kills AS (
-        SELECT
-          a.ship_type_id,
-          COUNT(DISTINCT k.killmail_id) as kills,
-          AVG(COALESCE(a.damage_done, 0)) as avg_damage,
-          SUM(COALESCE(k.total_value, 0)) as total_kill_value
-        FROM killmails_raw k
-        CROSS JOIN LATERAL jsonb_to_recordset(k.attackers) AS a(
-          character_id bigint,
-          ship_type_id bigint,
-          damage_done integer
-        )
-        WHERE a.character_id = $1
-        GROUP BY a.ship_type_id
-      ),
-      ship_losses AS (
-        SELECT
-          k.ship_type_id,
-          COUNT(*) as losses,
-          SUM(COALESCE(k.total_value, 0)) as total_loss_value
-        FROM killmails_raw k
-        WHERE k.victim_character_id = $1
-        GROUP BY k.ship_type_id
-      )
-      SELECT
-        COALESCE(sk.ship_type_id, sl.ship_type_id) as ship_type_id,
-        COALESCE(sk.kills, 0) as kills,
-        COALESCE(sl.losses, 0) as losses,
-        COALESCE(sk.avg_damage, 0) as avg_damage,
-        COALESCE(sk.total_kill_value, 0) as kill_value,
-        COALESCE(sl.total_loss_value, 0) as loss_value
-      FROM ship_kills sk
-      FULL OUTER JOIN ship_losses sl ON sk.ship_type_id = sl.ship_type_id
-      ORDER BY (COALESCE(sk.kills, 0) + COALESCE(sl.losses, 0)) DESC
-      """
-
-      case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [character_id]) do
-        {:ok, %{rows: rows}} ->
-          stats_map = build_ship_stats_map(rows)
-          {:ok, stats_map}
-
-        {:error, reason} ->
-          {:error, reason}
-      end
+      AnalyticsQueries.get_ship_performance(character_id)
     end)
   end
 
   # Private helper functions
-
-  defp build_ship_stats_map(rows) do
-    rows
-    |> Enum.map(&build_ship_stat_entry/1)
-    |> Map.new()
-  end
-
-  defp build_ship_stat_entry([ship_type_id, kills, losses, avg_damage, kill_value, loss_value]) do
-    kd_ratio = if losses > 0, do: kills / losses, else: kills
-    isk_efficiency = calculate_isk_efficiency(kill_value, loss_value)
-
-    {ship_type_id,
-     %{
-       kills: kills,
-       losses: losses,
-       kd_ratio: Float.round(kd_ratio, 2),
-       avg_damage: round(avg_damage),
-       kill_value: kill_value,
-       loss_value: loss_value,
-       isk_efficiency: Float.round(isk_efficiency, 2)
-     }}
-  end
-
-  defp calculate_isk_efficiency(kill_value, loss_value) do
-    total_value = kill_value + loss_value
-    if total_value > 0, do: kill_value / total_value * 100, else: 0.0
-  end
 
   defp invalidate_character_caches(character_id) do
     # Invalidate specific character caches

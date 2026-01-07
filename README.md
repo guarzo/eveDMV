@@ -6,8 +6,8 @@ A real-time PvP activity tracking platform for EVE Online with intelligence feat
 
 - **[CLAUDE.md](./CLAUDE.md)** - Development guidelines and current implementation status
 - **[Architecture Guide](./docs/ARCHITECTURE.md)** - System design and patterns
-- **[Deployment Guide](./docs/DEPLOYMENT_GUIDE.md)** - Production deployment instructions
-- **[Documentation Index](./docs/README.md)** - Complete documentation listing
+- **[Product Requirements](./docs/EVE_DMV_PRD.md)** - Product requirements document
+- **[Style Guide](./docs/TEAM_STYLE_GUIDE.md)** - Team coding standards
 
 ## Features
 
@@ -43,7 +43,7 @@ A real-time PvP activity tracking platform for EVE Online with intelligence feat
 ### Prerequisites
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) and Docker Compose
-- OR: Elixir 1.19+, Node.js 20+, PostgreSQL 16+
+- OR: Elixir 1.19+, Node.js 20+, PostgreSQL 18+
 
 ### Setup Instructions
 
@@ -113,7 +113,7 @@ If you prefer not to use dev containers:
 1. **Install dependencies:**
    - Elixir 1.19+
    - Node.js 20+
-   - PostgreSQL 16+
+   - PostgreSQL 18+
 
 2. **Setup database:**
    ```bash
@@ -242,7 +242,7 @@ mix test --grep "surveillance"
 
 ## Deployment
 
-See [Deployment Guide](./docs/DEPLOYMENT_GUIDE.md) for detailed deployment instructions.
+See [Architecture Guide](./docs/ARCHITECTURE.md) for system design details.
 
 ### Docker Production Build
 
@@ -275,11 +275,10 @@ Before submitting a pull request:
 
 Project documentation is organized in the [`docs/`](./docs/) directory:
 
-- **[Documentation Index](./docs/README.md)** - Complete overview of all documentation
 - **[Architecture](./docs/ARCHITECTURE.md)** - System design and implementation details
-- **[Deployment Guide](./docs/DEPLOYMENT_GUIDE.md)** - Production deployment instructions
 - **[Product Requirements](./docs/EVE_DMV_PRD.md)** - Business requirements and user stories
-- **[Operations Runbook](./docs/OPERATIONS_RUNBOOK.md)** - Operational procedures and troubleshooting
+- **[Style Guide](./docs/TEAM_STYLE_GUIDE.md)** - Team coding standards and best practices
+- **[Manual Test Plan](./docs/MANUAL_TEST_PLAN.md)** - Manual testing procedures
 
 ## License
 

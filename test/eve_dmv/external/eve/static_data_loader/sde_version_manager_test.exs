@@ -89,6 +89,12 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManagerTest do
   end
 
   describe "public API" do
+    # Ensure module is loaded before checking function exports
+    setup do
+      Code.ensure_loaded!(SdeVersionManager)
+      :ok
+    end
+
     test "check_for_updates/0 exists" do
       assert function_exported?(SdeVersionManager, :check_for_updates, 0)
     end

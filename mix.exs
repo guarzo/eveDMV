@@ -4,7 +4,7 @@ defmodule EveDmv.MixProject do
   def project do
     [
       app: :eve_dmv,
-      version: "0.1.1",
+      version: "0.1.2",
       elixir: "~> 1.19",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -146,6 +146,13 @@ defmodule EveDmv.MixProject do
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
 
+  # Prepare test environment by clearing orphaned DB connections
+  defp prepare_test_env(_) do
+    if Mix.env() == :test do
+      Mix.shell().cmd("./scripts/reset_test_db_connections.sh", quiet: true)
+    end
+  end
+
   # Specifies your project dependencies.
   #
   # Type `mix help deps` for examples and options.
@@ -224,7 +231,8 @@ defmodule EveDmv.MixProject do
       setup: ["deps.get", "ecto.setup", "assets.setup", "assets.build"],
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
-      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
+      test: ["test.prepare", "ecto.create --quiet", "ecto.migrate --quiet", "test"],
+      "test.prepare": &prepare_test_env/1,
       "test.coverage": ["coveralls.html"],
       "test.coverage.console": ["coveralls"],
       "test.coverage.json": ["coveralls.json"],

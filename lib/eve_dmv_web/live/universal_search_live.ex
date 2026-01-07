@@ -10,7 +10,10 @@ defmodule EveDmvWeb.UniversalSearchLive do
 
   use EveDmvWeb, :live_view
 
+  on_mount({EveDmvWeb.AuthLive, :load_from_session_optional})
+
   alias EveDmv.Eve.SolarSystem
+  alias EveDmv.Killmails.Participant
   alias EveDmv.Platform.Cache.AnalysisCache
 
   @impl Phoenix.LiveView
@@ -180,35 +183,18 @@ defmodule EveDmvWeb.UniversalSearchLive do
   end
 
   defp search_characters(query) do
-    # Search in participants table for character names
-    character_query = """
-    SELECT DISTINCT
-      p.character_id,
-      p.character_name,
-      p.corporation_name,
-      p.alliance_name,
-      COUNT(*) as activity_count,
-      MAX(k.killmail_time) as last_seen
-    FROM participants p
-    JOIN killmails_raw k ON p.killmail_id = k.killmail_id
-    WHERE p.character_name ILIKE $1
-    GROUP BY p.character_id, p.character_name, p.corporation_name, p.alliance_name
-    ORDER BY activity_count DESC
-    LIMIT 5
-    """
-
-    search_pattern = "%#{query}%"
-
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, character_query, [search_pattern]) do
-      {:ok, %{rows: rows}} ->
-        Enum.map(rows, fn [char_id, char_name, corp_name, alliance_name, activity, last_seen] ->
+    # Search in participants table for character names using Ash resource
+    case Participant.search_characters_by_name(query, limit: 5) do
+      {:ok, participants} ->
+        participants
+        |> Enum.map(fn p ->
           %{
-            id: char_id,
-            name: char_name || "Unknown Character",
-            subtitle: format_character_subtitle(corp_name, alliance_name),
+            id: p.character_id,
+            name: p.character_name || "Unknown Character",
+            subtitle: format_character_subtitle(p.corporation_name, p.alliance_name),
             meta: %{
-              activity_count: activity,
-              last_seen: last_seen
+              activity_count: nil,
+              last_seen: p.killmail_time
             }
           }
         end)
@@ -219,37 +205,19 @@ defmodule EveDmvWeb.UniversalSearchLive do
   end
 
   defp search_corporations(query) do
-    # Search in participants table for corporation names
-    corp_query = """
-    SELECT DISTINCT
-      p.corporation_id,
-      p.corporation_name,
-      p.alliance_name,
-      COUNT(DISTINCT p.character_id) as member_count,
-      COUNT(*) as activity_count,
-      MAX(k.killmail_time) as last_seen
-    FROM participants p
-    JOIN killmails_raw k ON p.killmail_id = k.killmail_id
-    WHERE p.corporation_name ILIKE $1
-      AND p.corporation_id IS NOT NULL
-    GROUP BY p.corporation_id, p.corporation_name, p.alliance_name
-    ORDER BY activity_count DESC
-    LIMIT 5
-    """
-
-    search_pattern = "%#{query}%"
-
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, corp_query, [search_pattern]) do
-      {:ok, %{rows: rows}} ->
-        Enum.map(rows, fn [corp_id, corp_name, alliance_name, members, activity, last_seen] ->
+    # Search in participants table for corporation names using Ash resource
+    case Participant.search_corporations_by_name(query, limit: 5) do
+      {:ok, participants} ->
+        participants
+        |> Enum.map(fn p ->
           %{
-            id: corp_id,
-            name: corp_name || "Unknown Corporation",
-            subtitle: format_corporation_subtitle(alliance_name, members),
+            id: p.corporation_id,
+            name: p.corporation_name || "Unknown Corporation",
+            subtitle: format_corporation_subtitle(p.alliance_name, nil),
             meta: %{
-              member_count: members,
-              activity_count: activity,
-              last_seen: last_seen
+              member_count: nil,
+              activity_count: nil,
+              last_seen: p.killmail_time
             }
           }
         end)

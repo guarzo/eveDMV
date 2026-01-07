@@ -83,7 +83,8 @@ defmodule EveDmv.Surveillance.MatchingEngine do
   def init(_opts) do
     Logger.info("Starting surveillance matching engine")
 
-    # Create ETS IndexManager.create_ets_tables(tables)
+    # Create ETS tables for surveillance matching
+    IndexManager.create_ets_tables()
 
     # Load active profiles
     state = %{
@@ -184,7 +185,25 @@ defmodule EveDmv.Surveillance.MatchingEngine do
       IndexManager.update_profile_metadata(state.pending_matches)
     end
 
-    # Clean up expired cache IndexManager.cleanup_expired_cache(entries)
+    # Clean up expired cache entries
+    try do
+      cleaned_count = IndexManager.cleanup_expired_cache()
+
+      if cleaned_count > 0 do
+        Logger.debug("Cleaned up #{cleaned_count} expired cache entries")
+      end
+    rescue
+      error ->
+        Logger.error(
+          "Failed to cleanup expired cache: #{Exception.message(error)}\n#{Exception.format_stacktrace(__STACKTRACE__)}"
+        )
+
+        :telemetry.execute(
+          [:eve_dmv, :surveillance, :cache_cleanup_error],
+          %{count: 1},
+          %{error: inspect(error)}
+        )
+    end
 
     # Schedule next batch recording
     schedule_batch_recording()
@@ -253,7 +272,8 @@ defmodule EveDmv.Surveillance.MatchingEngine do
   end
 
   defp load_active_profiles do
-    # Clear existing IndexManager.clear_all_tables(data)
+    # Clear existing data from all tables
+    IndexManager.clear_all_tables()
 
     # Load active profiles from database
     case Ash.read(Profile,

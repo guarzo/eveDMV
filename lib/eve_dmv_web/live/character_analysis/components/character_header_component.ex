@@ -19,11 +19,11 @@ defmodule EveDmvWeb.CharacterAnalysis.Components.CharacterHeaderComponent do
           <div>
             <h2 class="text-2xl font-bold text-white"><%= @analysis.character_name || "Unknown Pilot" %></h2>
             <div class="text-gray-400 mt-1">
-              <%= if @intelligence && @intelligence.character && @intelligence.character.corporation_name do %>
+              <%= if @intelligence && @intelligence.character && @intelligence.character.corporation_name && @intelligence.character.corporation_id do %>
                 <.link navigate={~p"/corporation/#{@intelligence.character.corporation_id}"} class="text-lg hover:text-blue-400 transition-colors">
                   <%= @intelligence.character.corporation_name %>
                 </.link>
-                <%= if @intelligence.character.alliance_name do %>
+                <%= if @intelligence.character.alliance_name && @intelligence.character.alliance_id do %>
                   <.link navigate={~p"/alliance/#{@intelligence.character.alliance_id}"} class="text-sm text-gray-500 hover:text-blue-400 transition-colors">
                     [<%= @intelligence.character.alliance_name %>]
                   </.link>

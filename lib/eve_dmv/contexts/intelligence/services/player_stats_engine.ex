@@ -14,6 +14,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.PlayerStatsEngine do
   """
 
   alias EveDmv.Core.Utils.DateTimeUtils
+  alias EveDmv.Core.Utils.NumericUtils
   alias EveDmv.Intelligence.Cache.IntelligenceCache
   alias EveDmv.Platform.Database.CharacterRepository
 
@@ -568,10 +569,7 @@ defmodule EveDmv.Contexts.Intelligence.Services.PlayerStatsEngine do
   end
 
   defp calculate_kd_ratio(killmails, losses) do
-    kill_count = length(killmails)
-    # Avoid division by zero
-    loss_count = max(1, length(losses))
-    Float.round(kill_count / loss_count, 2)
+    NumericUtils.calculate_kd_ratio(length(killmails), length(losses))
   end
 
   defp calculate_isk_efficiency(killmails, losses) do

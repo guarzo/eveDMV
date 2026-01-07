@@ -14,6 +14,13 @@ defmodule EveDmv.Security.ApiAuthentication do
     repo(EveDmv.Repo)
   end
 
+  # Identity constraints
+  identities do
+    identity :unique_api_key, [:api_key] do
+      description("API keys must be unique")
+    end
+  end
+
   attributes do
     uuid_primary_key(:id)
 
@@ -45,6 +52,13 @@ defmodule EveDmv.Security.ApiAuthentication do
     attribute(:expires_at, :utc_datetime)
 
     timestamps()
+  end
+
+  # Validations
+  validations do
+    validate(present(:character_id), message: "Character ID is required")
+    validate(present(:name), message: "API key name is required")
+    validate(string_length(:name, min: 1, max: 255), message: "Name must be 1-255 characters")
   end
 
   # Resource configuration

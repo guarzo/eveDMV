@@ -22,6 +22,10 @@ defmodule EveDmvWeb.SurveillanceProfilesLive.Helpers do
     end
   end
 
+  def render_filter_inputs(%{condition: condition, index: index}) do
+    render_filter_inputs(condition, index)
+  end
+
   def render_filter_inputs(condition, index) do
     case condition.type do
       :character_watch ->

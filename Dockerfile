@@ -50,12 +50,17 @@ RUN mix release
 FROM alpine:3.21 AS runtime
 
 # Install runtime dependencies
+# OpenSSL must come from Alpine edge to match OTP 27.2+ which requires OpenSSL 3.4+
+# (EVP_PKEY_sign_message_init was added in OpenSSL 3.4.0)
 RUN apk add --no-cache \
     libgcc \
     libstdc++ \
     ncurses-libs \
+    libbz2 && \
+    apk add --no-cache --repository=https://dl-cdn.alpinelinux.org/alpine/edge/main \
     openssl \
-    libbz2
+    libcrypto3 \
+    libssl3
 
 # Create app user
 RUN addgroup -g 1000 -S appgroup && \

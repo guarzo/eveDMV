@@ -8,6 +8,19 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ki
 
   require Logger
 
+  # Wormhole system classification atoms from StaticData.classify_system/1
+  @wormhole_classes [
+    :wormhole_c1,
+    :wormhole_c2,
+    :wormhole_c3,
+    :wormhole_c4,
+    :wormhole_c5,
+    :wormhole_c6,
+    :wormhole_c13,
+    :wormhole_c14,
+    :wormhole_unknown
+  ]
+
   @doc """
   Extract victim details from killmail data.
   """
@@ -198,15 +211,43 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ki
   defp determine_tactical_role(_), do: :unknown
 
   defp determine_engagement_type(killmail) do
-    # For now, return basic engagement type
-    # Return basic engagement type based on available data
+    # Return engagement type based on available data
+    # Use SDE security_class for proper wormhole detection
 
-    cond do
-      killmail.war_id -> :war
-      killmail.security_status > 0.5 -> :highsec_gank
-      killmail.security_status > 0.0 -> :lowsec_pvp
-      killmail.security_status == 0.0 -> :nullsec_pvp
-      true -> :wormhole_pvp
+    # Normalize security_status at the start to handle nil/Decimal values
+    security_status = normalize_security_status(Map.get(killmail, :security_status))
+
+    if killmail.war_id do
+      :war
+    else
+      # Look up system classification from SDE data
+      system_class = EveDmv.StaticData.classify_system(killmail.solar_system_id)
+
+      case system_class do
+        :highsec ->
+          :highsec_gank
+
+        :lowsec ->
+          :lowsec_pvp
+
+        :nullsec ->
+          :nullsec_pvp
+
+        class when class in @wormhole_classes ->
+          :wormhole_pvp
+
+        _ ->
+          # Fallback to security_status for unknown systems
+          # Note: The three conditions cover all numeric cases:
+          # - > 0.5 covers highsec
+          # - > 0.0 and <= 0.5 covers lowsec
+          # - <= 0.0 covers nullsec (including wormholes that weren't matched above)
+          cond do
+            security_status > 0.5 -> :highsec_gank
+            security_status > 0.0 -> :lowsec_pvp
+            true -> :nullsec_pvp
+          end
+      end
     end
   end
 
@@ -223,17 +264,29 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.Extractors.Ki
   end
 
   defp extract_environmental_factors(killmail) do
-    # For now, return basic environmental factors
-    # Return basic environmental factors from killmail data
+    # Normalize security_status at the start to handle nil/Decimal values
+    security_status = normalize_security_status(Map.get(killmail, :security_status))
+
+    # Return environmental factors based on SDE system classification
+    system_class = EveDmv.StaticData.classify_system(killmail.solar_system_id)
+    is_wormhole = system_class in @wormhole_classes
 
     %{
-      gate_guns: killmail.security_status > 0.0,
-      concord_response: killmail.security_status >= 0.5,
+      # No gate guns or CONCORD in wormholes
+      gate_guns: not is_wormhole and security_status > 0.0,
+      concord_response: not is_wormhole and security_status >= 0.5,
       station_presence: false,
       pos_presence: false,
       citadel_presence: false
     }
   end
+
+  # Normalize security_status to a float, handling nil and Decimal values
+  defp normalize_security_status(nil), do: 0.0
+  defp normalize_security_status(value) when is_number(value), do: value + 0.0
+
+  defp normalize_security_status(value) when is_struct(value, Decimal),
+    do: Decimal.to_float(value)
 
   defp generate_fitting_hash(killmail) do
     # For now, return basic fitting hash

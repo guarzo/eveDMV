@@ -10,6 +10,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
 
   use GenServer
   use EveDmv.Core.Errors.ErrorHandler
+  alias EveDmv.Contexts.Surveillance.Domain.ProfileValidationService
   alias EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository
   alias EveDmv.DomainEvents.SurveillanceMatch
   alias EveDmv.Infrastructure.EventBus
@@ -17,6 +18,18 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
   alias EveDmv.Shared.Infrastructure.UnifiedCache
 
   require Logger
+
+  # Public API - Validated entry points
+
+  @doc """
+  Validate test data and test profile criteria.
+  """
+  def test_profile_criteria_validated(profile_id, test_data) do
+    with {:ok, profile} <- ProfileRepository.get_profile(profile_id),
+         {:ok, validated_test_data} <- ProfileValidationService.validate_test_data(test_data) do
+      test_criteria(profile.criteria, validated_test_data)
+    end
+  end
 
   # Public API
 
@@ -243,7 +256,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
   def handle_call(:get_metrics, _from, state) do
     avg_processing_time =
       case state.processing_times do
-        [] -> 0
+        [] -> 0.0
         times -> Enum.sum(times) / length(times)
       end
 
@@ -256,7 +269,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngine do
       matches_per_killmail:
         if(state.processed_killmails > 0,
           do: state.total_matches / state.processed_killmails,
-          else: 0
+          else: 0.0
         )
     }
 

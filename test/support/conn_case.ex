@@ -27,6 +27,8 @@ defmodule EveDmvWeb.ConnCase do
       import Plug.Conn
       import Phoenix.ConnTest
       import EveDmvWeb.ConnCase
+      import EveDmv.Factories
+      import EveDmv.ApiTestHelpers
     end
   end
 

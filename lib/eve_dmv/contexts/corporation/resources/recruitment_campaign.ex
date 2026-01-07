@@ -5,7 +5,8 @@ defmodule EveDmv.Contexts.Corporation.Resources.RecruitmentCampaign do
 
   use Ash.Resource,
     domain: EveDmv.Api,
-    data_layer: AshPostgres.DataLayer
+    data_layer: AshPostgres.DataLayer,
+    authorizers: [Ash.Policy.Authorizer]
 
   postgres do
     table("recruitment_campaigns")
@@ -166,5 +167,41 @@ defmodule EveDmv.Contexts.Corporation.Resources.RecruitmentCampaign do
     validate(numericality(:target_recruits, greater_than: 0))
 
     validate(numericality(:applications_received, greater_than_or_equal_to: 0))
+  end
+
+  code_interface do
+    domain(EveDmv.Api)
+    define(:create)
+    define(:update)
+    define(:read)
+    define(:destroy)
+    define(:list_by_corporation, action: :by_corporation, args: [:corporation_id])
+    define(:list_active_campaigns, action: :active_campaigns)
+    define(:list_by_status, action: :by_status, args: [:status])
+    define(:update_metrics)
+  end
+
+  policies do
+    # Read policies - active campaigns are public, others corp-scoped
+    policy action_type(:read) do
+      description("Active campaigns are public, others visible to corp members")
+      authorize_if(expr(status == :active))
+      authorize_if(expr(corporation_id == ^actor(:corporation_id)))
+      authorize_if(actor_attribute_equals(:role, :admin))
+    end
+
+    # Only corp recruiters/directors can create campaigns
+    policy action_type(:create) do
+      description("Corporation recruiters and directors can create campaigns")
+      authorize_if(actor_present())
+    end
+
+    # Only corp directors or system can update/delete campaigns
+    policy action_type([:update, :destroy]) do
+      description("Corporation directors can modify campaigns")
+      authorize_if(expr(corporation_id == ^actor(:corporation_id)))
+      authorize_if(actor_attribute_equals(:role, :admin))
+      authorize_if(actor_attribute_equals(:role, :system))
+    end
   end
 end

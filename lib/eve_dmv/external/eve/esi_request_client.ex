@@ -26,6 +26,15 @@ defmodule EveDmv.Eve.EsiRequestClient do
   @spec get_authenticated_request(String.t(), String.t(), map(), keyword()) ::
           {:ok, map()} | {:error, term()}
   def get_authenticated_request(path, auth_token, params \\ %{}, opts \\ []) do
+    # Skip ESI calls in test environment to avoid timeouts and external dependencies
+    if Application.get_env(:eve_dmv, :environment) == :test do
+      {:error, :service_unavailable}
+    else
+      get_authenticated_request_impl(path, auth_token, params, opts)
+    end
+  end
+
+  defp get_authenticated_request_impl(path, auth_token, params, opts) do
     operation_type = Keyword.get(opts, :operation_type, :default)
     cache_key = Keyword.get(opts, :cache_key)
 
@@ -102,6 +111,15 @@ defmodule EveDmv.Eve.EsiRequestClient do
   """
   @spec get_request(String.t(), map(), keyword()) :: {:ok, map()} | {:error, term()}
   def get_request(path, params \\ %{}, opts \\ []) do
+    # Skip ESI calls in test environment to avoid timeouts and external dependencies
+    if Application.get_env(:eve_dmv, :environment) == :test do
+      {:error, :service_unavailable}
+    else
+      get_request_impl(path, params, opts)
+    end
+  end
+
+  defp get_request_impl(path, params, opts) do
     operation_type = Keyword.get(opts, :operation_type, :default)
     cache_key = Keyword.get(opts, :cache_key)
 

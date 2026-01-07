@@ -8,10 +8,8 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
   """
 
   alias EveDmv.Api
-  # REMOVED: KillmailEnriched - see /docs/architecture/enriched-raw-analysis.md
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Killmails.Participant
-  # REMOVED: ParsingUtils - no longer needed
 
   require Logger
 
@@ -290,14 +288,10 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
   end
 
   defp store_killmail(enriched) do
-    # Reuse the same logic from the pipeline for consistency
     raw_changeset = build_raw_changeset(enriched)
-    # REMOVED: enriched_changeset - see /docs/architecture/enriched-raw-analysis.md
     participants = build_participants(enriched)
 
-    # Insert with error handling
     with :ok <- insert_raw_killmail(raw_changeset),
-         # REMOVED: insert_enriched_killmail - see /docs/architecture/enriched-raw-analysis.md
          :ok <- insert_participants(participants) do
       :ok
     else
@@ -324,9 +318,6 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
       source: "wanderer-kills-historical"
     }
   end
-
-  # REMOVED: build_enriched_changeset function
-  # Enriched table provides no value - see /docs/architecture/enriched-raw-analysis.md
 
   defp build_participants(enriched) do
     victim = enriched["victim"] || %{}
@@ -383,9 +374,6 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
     _ -> :ok
   end
 
-  # REMOVED: insert_enriched_killmail function
-  # Enriched table provides no value - see /docs/architecture/enriched-raw-analysis.md
-
   defp insert_participants(participants) do
     case Ash.bulk_create(participants, Participant, :create,
            domain: Api,
@@ -421,12 +409,4 @@ defmodule EveDmv.Killmails.HistoricalKillmailFetcher do
     hash = :crypto.hash(:sha256, "#{id}-#{timestamp}")
     Base.encode16(hash, case: :lower)
   end
-
-  # REMOVED: Helper functions only used by enriched changeset building
-  # - parse_decimal
-  # - get_final_blow_character_id
-  # - get_final_blow_character_name
-  # - find_final_blow_attacker
-  # - determine_kill_category
-  # See /docs/architecture/enriched-raw-analysis.md
 end

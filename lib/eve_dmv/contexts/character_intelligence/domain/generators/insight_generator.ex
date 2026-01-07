@@ -36,13 +36,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Generators.
           "Failed to generate insights for character #{character_id}: #{inspect(error)}"
         )
 
-        {:error, "Failed to generate insights: #{inspect(error)}"}
+        {:error, {:insight_generation_failed, error}}
     end
   end
 
   def generate_threat_insights(invalid_assessment) do
     Logger.error("Invalid threat assessment provided: #{inspect(invalid_assessment)}")
-    {:error, "Invalid threat assessment format"}
+    {:error, :invalid_threat_assessment_format}
   end
 
   # Fetch killmail activity from the last 30 days
@@ -82,7 +82,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Generators.
         "Error fetching recent activity for character #{character_id}: #{inspect(error)}"
       )
 
-      {:error, "Database query failed"}
+      {:error, :database_query_failed}
   end
 
   # Analyze patterns in killmail data to extract threat indicators
@@ -100,7 +100,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Generators.
   rescue
     error ->
       Logger.error("Error analyzing threat patterns: #{inspect(error)}")
-      {:error, "Pattern analysis failed"}
+      {:error, :pattern_analysis_failed}
   end
 
   # Compile human-readable insights from assessment and patterns
@@ -123,7 +123,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Generators.
   rescue
     error ->
       Logger.error("Error compiling insights: #{inspect(error)}")
-      {:error, "Insight compilation failed"}
+      {:error, :insight_compilation_failed}
   end
 
   # Calculate frequency of aggressive actions (as attacker)

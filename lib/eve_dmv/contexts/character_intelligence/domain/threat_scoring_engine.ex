@@ -180,39 +180,38 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     cutoff_date =
       DateTimeUtils.add(DateTime.utc_now(), -analysis_window_days * 24 * 60 * 60, :second)
 
-    # Fetch killmails where character was victim
+    # Fetch killmails where character was victim (deaths)
     victim_query =
       KillmailRaw
       |> Ash.Query.new()
       |> Ash.Query.filter(victim_character_id == ^character_id)
       |> Ash.Query.filter(killmail_time >= ^cutoff_date)
       |> Ash.Query.sort(killmail_time: :desc)
-      # Reasonable limit for analysis
       |> Ash.Query.limit(500)
 
-    # Fetch killmails where character was attacker
+    # Fetch killmails where character was attacker (kills)
+    # Use proper JSONB query to find attackers efficiently
+    attacker_killmail_ids = fetch_attacker_killmail_ids(character_id, cutoff_date)
+
     attacker_query =
-      KillmailRaw
-      |> Ash.Query.new()
-      |> Ash.Query.filter(killmail_time >= ^cutoff_date)
-      # Larger limit to search for attacker involvement
-      |> Ash.Query.limit(1000)
+      if Enum.empty?(attacker_killmail_ids) do
+        # No attacker killmails found
+        nil
+      else
+        KillmailRaw
+        |> Ash.Query.new()
+        |> Ash.Query.filter(killmail_id in ^attacker_killmail_ids)
+        |> Ash.Query.sort(killmail_time: :desc)
+      end
 
     with {:ok, victim_killmails} <- Ash.read(victim_query, domain: EveDmv.Api),
-         {:ok, potential_attacker_killmails} <- Ash.read(attacker_query, domain: EveDmv.Api) do
-      # Filter attacker killmails for this character
-      attacker_killmails =
-        Enum.filter(potential_attacker_killmails, fn km ->
-          case km.raw_data do
-            %{"attackers" => attackers} when is_list(attackers) ->
-              Enum.any?(attackers, &(&1["character_id"] == character_id))
-
-            _ ->
-              false
-          end
-        end)
-
+         {:ok, attacker_killmails} <- fetch_attacker_killmails(attacker_query) do
       all_killmails = Enum.uniq_by(victim_killmails ++ attacker_killmails, & &1.killmail_id)
+
+      Logger.debug(
+        "Fetched combat data for character #{character_id}: " <>
+          "#{length(attacker_killmails)} kills, #{length(victim_killmails)} deaths"
+      )
 
       if length(all_killmails) < @minimum_killmails_for_scoring do
         {:error, :insufficient_data}
@@ -229,6 +228,34 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
         {:ok, combat_data}
       end
     end
+  end
+
+  # Fetch killmail IDs where character was an attacker using efficient JSONB query
+  defp fetch_attacker_killmail_ids(character_id, cutoff_date) do
+    query = """
+    SELECT DISTINCT killmail_id
+    FROM killmails_raw,
+         jsonb_array_elements(raw_data->'attackers') as attacker
+    WHERE killmail_time >= $1
+      AND (attacker->>'character_id')::bigint = $2
+    ORDER BY killmail_id DESC
+    LIMIT 500
+    """
+
+    case EveDmv.Repo.query(query, [cutoff_date, character_id]) do
+      {:ok, %{rows: rows}} ->
+        Enum.map(rows, fn [id] -> id end)
+
+      {:error, error} ->
+        Logger.warning("Failed to fetch attacker killmail IDs: #{inspect(error)}")
+        []
+    end
+  end
+
+  defp fetch_attacker_killmails(nil), do: {:ok, []}
+
+  defp fetch_attacker_killmails(query) do
+    Ash.read(query, domain: EveDmv.Api)
   end
 
   defp calculate_dimensional_scores(combat_data, weight_recent) do
@@ -249,18 +276,20 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     victim_kms = combat_data.victim_killmails
     attacker_kms = combat_data.attacker_killmails
 
-    # Kill/Death ratio with sophisticated weighting
     kills = length(attacker_kms)
     deaths = length(victim_kms)
-    # Cap at 10 for pure killers
-    kd_ratio = if deaths > 0, do: kills / deaths, else: min(kills, 10.0)
+
+    # Enhanced K/D scoring - exceptional pilots get exceptional scores
+    # 0 deaths is a massive threat indicator
+    kd_score = calculate_kd_score(kills, deaths)
 
     # ISK efficiency (kills vs losses)
     isk_destroyed = calculate_total_isk_destroyed(attacker_kms)
     isk_lost = calculate_total_isk_lost(victim_kms)
 
-    isk_efficiency =
-      if isk_lost > 0, do: isk_destroyed / isk_lost, else: min(isk_destroyed / 1_000_000, 10.0)
+    # Enhanced ISK efficiency scoring
+    # 100% efficiency (no losses) is a major threat indicator
+    isk_efficiency_score = calculate_isk_efficiency_score(isk_destroyed, isk_lost)
 
     # Survival analysis
     survival_rate = calculate_survival_rate(combat_data)
@@ -268,29 +297,124 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     # Target selection quality (attacking valuable targets)
     target_quality = analyze_target_selection_quality(attacker_kms)
 
-    # Damage efficiency in fights
-    damage_efficiency = calculate_damage_efficiency(attacker_kms)
+    # Solo/small gang capability - individual danger assessment
+    solo_capability = calculate_solo_capability(attacker_kms)
 
-    # Weighted combat skill score
+    # Calculate K/D ratio for display (not for scoring)
+    kd_ratio = if deaths > 0, do: kills / deaths, else: kills * 1.0
+
+    # Calculate ISK efficiency percentage for display
+    isk_efficiency =
+      if isk_lost > 0, do: isk_destroyed / isk_lost, else: isk_destroyed / max(1_000_000, 1)
+
+    # Enhanced weighted combat skill score
+    # K/D and ISK efficiency are more heavily weighted for threat assessment
     raw_score =
-      normalize_score(kd_ratio, 0, 5) * 0.25 +
-        normalize_score(isk_efficiency, 0, 3) * 0.25 +
-        survival_rate * 0.20 +
+      kd_score * 0.30 +
+        isk_efficiency_score * 0.25 +
+        survival_rate * 0.15 +
         target_quality * 0.15 +
-        damage_efficiency * 0.15
+        solo_capability * 0.15
 
     %{
       raw_score: raw_score,
       normalized_score: normalize_to_10_scale(raw_score),
       components: %{
         kd_ratio: kd_ratio,
+        kd_score: kd_score,
         isk_efficiency: isk_efficiency,
+        isk_efficiency_score: isk_efficiency_score,
         survival_rate: survival_rate,
         target_quality: target_quality,
-        damage_efficiency: damage_efficiency
+        solo_capability: solo_capability
       },
       insights: generate_combat_skill_insights(raw_score, kd_ratio, isk_efficiency, survival_rate)
     }
+  end
+
+  # Enhanced K/D scoring that properly rewards exceptional pilots
+  # Returns score from 0.0 to 1.0
+  defp calculate_kd_score(kills, deaths) do
+    cond do
+      # No kills = no threat
+      kills == 0 ->
+        0.0
+
+      # Zero deaths is a massive threat indicator
+      # Scale by number of kills to distinguish between 1:0 and 50:0
+      deaths == 0 ->
+        # Base score of 0.8 for having 0 deaths, bonus up to 1.0 based on kill count
+        min(1.0, 0.8 + min(kills, 20) * 0.01)
+
+      # Normal K/D calculation with better scaling
+      true ->
+        kd_ratio = kills / deaths
+
+        cond do
+          kd_ratio >= 10.0 -> 0.95
+          kd_ratio >= 5.0 -> 0.85
+          kd_ratio >= 3.0 -> 0.70
+          kd_ratio >= 2.0 -> 0.55
+          kd_ratio >= 1.5 -> 0.45
+          kd_ratio >= 1.0 -> 0.35
+          kd_ratio >= 0.5 -> 0.20
+          true -> 0.10
+        end
+    end
+  end
+
+  # Enhanced ISK efficiency scoring
+  # Returns score from 0.0 to 1.0
+  defp calculate_isk_efficiency_score(isk_destroyed, isk_lost) do
+    # No activity
+    if isk_destroyed == 0 and isk_lost == 0 do
+      0.0
+    else
+      # Calculate efficiency percentage
+      total_isk = isk_destroyed + isk_lost
+      efficiency_pct = if total_isk > 0, do: isk_destroyed / total_isk * 100, else: 0
+
+      cond do
+        # 100% efficiency (no losses) - exceptional
+        efficiency_pct >= 99.9 -> 1.0
+        efficiency_pct >= 95.0 -> 0.90
+        efficiency_pct >= 90.0 -> 0.80
+        efficiency_pct >= 80.0 -> 0.65
+        efficiency_pct >= 70.0 -> 0.50
+        efficiency_pct >= 60.0 -> 0.40
+        efficiency_pct >= 50.0 -> 0.30
+        efficiency_pct >= 40.0 -> 0.20
+        true -> 0.10
+      end
+    end
+  end
+
+  # Calculate solo/small gang capability
+  # High solo kill percentage = individually dangerous
+  defp calculate_solo_capability(attacker_kms) do
+    if Enum.empty?(attacker_kms) do
+      0.0
+    else
+      solo_kills =
+        Enum.count(attacker_kms, fn km ->
+          attacker_count = km.attacker_count || 1
+          attacker_count <= 2
+        end)
+
+      small_gang_kills =
+        Enum.count(attacker_kms, fn km ->
+          attacker_count = km.attacker_count || 1
+          attacker_count >= 3 and attacker_count <= 5
+        end)
+
+      total = length(attacker_kms)
+
+      solo_pct = solo_kills / total
+      small_gang_pct = small_gang_kills / total
+
+      # Weight solo capability heavily - solo pilots are individually dangerous
+      solo_pct * 0.7 + small_gang_pct * 0.3
+    end
   end
 
   defp calculate_ship_mastery_score(combat_data) do
@@ -1247,10 +1371,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   end
 
   # Utility and normalization functions
-
-  defp normalize_score(value, min_val, max_val) do
-    SharedUtilities.normalize_score(value, min_val, max_val)
-  end
 
   defp normalize_to_10_scale(score) do
     SharedUtilities.normalize_to_10_scale(score)

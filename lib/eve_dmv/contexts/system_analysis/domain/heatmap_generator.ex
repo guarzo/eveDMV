@@ -6,6 +6,7 @@ defmodule EveDmv.Contexts.SystemAnalysis.Domain.HeatmapGenerator do
 
   import Ash.Query
 
+  alias EveDmv.Contexts.SystemAnalysis.SecurityConfig
   alias EveDmv.Eve.SolarSystem
   alias EveDmv.Killmails.KillmailRaw
 
@@ -278,16 +279,9 @@ defmodule EveDmv.Contexts.SystemAnalysis.Domain.HeatmapGenerator do
     # Factor in security status and activity type
     base_danger = calculate_intensity(activity) / 10.0
 
-    # Adjust for security status
-    sec_modifier =
-      cond do
-        # Highsec
-        system.security_status >= 0.5 -> 0.5
-        # Lowsec
-        system.security_status >= 0.0 -> 1.0
-        # Nullsec/Wormhole
-        true -> 1.5
-      end
+    # Use security_class from SDE for proper classification,
+    # falling back to security_status for systems without security_class
+    sec_modifier = SecurityConfig.danger_modifier(system.security_class, system.security_status)
 
     # Check for capital kills (high danger)
     capital_modifier = if has_capital_activity?(activity), do: 2.0, else: 1.0

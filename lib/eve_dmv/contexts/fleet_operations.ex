@@ -65,7 +65,6 @@ defmodule EveDmv.Contexts.FleetOperations do
   # Public API delegation
   defdelegate analyze_fleet_composition(fleet_data), to: Api
   defdelegate analyze_fleet_engagement(engagement_data), to: Api
-  defdelegate get_fleet_statistics(fleet_id, time_range), to: Api
   defdelegate get_doctrine_compliance(fleet_data, doctrine_name), to: Api
   defdelegate get_fleet_effectiveness_metrics(fleet_id), to: Api
 
@@ -75,8 +74,6 @@ defmodule EveDmv.Contexts.FleetOperations do
   defdelegate list_doctrines(opts), to: Api
   defdelegate validate_fleet_against_doctrine(fleet_data, doctrine_id), to: Api
 
-  defdelegate get_fleet_engagements(opts), to: Api
-  defdelegate get_engagement_details(engagement_id), to: Api
   defdelegate get_fleet_performance_trends(corporation_id, time_range), to: Api
   defdelegate get_mass_analysis(fleet_data), to: Api
 

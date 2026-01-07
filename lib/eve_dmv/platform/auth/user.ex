@@ -548,19 +548,9 @@ defmodule EveDmv.Users.User do
     end
   end
 
-  # Helper function to extract EVE SSO data from user_info and oauth_tokens
   defp extract_eve_sso_data(user_info, oauth_tokens) do
-    # Debug logging to understand the response format
-    Logger.error("EVE SSO DEBUG - user_info: #{inspect(user_info)}")
-    Logger.error("EVE SSO DEBUG - oauth_tokens keys: #{inspect(Map.keys(oauth_tokens))}")
-
-    # Extract character info from EVE SSO response
     character_id = Map.get(user_info, "CharacterID")
     character_name = Map.get(user_info, "CharacterName")
-
-    Logger.error(
-      "EVE SSO DEBUG - extracted character_id: #{inspect(character_id)}, name: #{inspect(character_name)}"
-    )
 
     # Extract token info
     access_token = Map.get(oauth_tokens, "access_token")

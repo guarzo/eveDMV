@@ -121,13 +121,15 @@ defmodule EveDmv.Users.TokenRefreshService do
 
   defp check_and_refresh_tokens(state) do
     # Find users with tokens that are about to expire
-    _threshold = DateTimeUtils.add(DateTime.utc_now(), @refresh_threshold_minutes * 60, :second)
+    threshold = DateTimeUtils.add(DateTime.utc_now(), @refresh_threshold_minutes * 60, :second)
 
     query =
       User
       |> new()
       |> filter(not is_nil(refresh_token))
       |> filter(not is_nil(token_expires_at))
+      # Only refresh tokens that are about to expire (within threshold)
+      |> filter(token_expires_at < ^threshold)
       |> select([:id, :eve_character_name, :token_expires_at, :refresh_token])
       # Process in batches to avoid overwhelming the system
       |> limit(50)
@@ -226,15 +228,14 @@ defmodule EveDmv.Users.TokenRefreshService do
 
       headers = [
         {"Authorization", "Basic #{auth_header}"},
-        {"Content-Type", "application/x-www-form-urlencoded"},
-        {"User-Agent", "EVE-DMV/1.0"}
+        {"Content-Type", "application/x-www-form-urlencoded"}
       ]
 
-      body =
-        URI.encode_query(%{
-          "grant_type" => "refresh_token",
-          "refresh_token" => refresh_token
-        })
+      # Pass as map - Tesla.Middleware.FormUrlencoded will encode it
+      body = %{
+        "grant_type" => "refresh_token",
+        "refresh_token" => refresh_token
+      }
 
       url = "https://login.eveonline.com/v2/oauth/token"
 
@@ -281,7 +282,7 @@ defmodule EveDmv.Users.TokenRefreshService do
     # Use the refresh_token action to update the user
     user
     |> Ash.Changeset.for_update(:refresh_token, new_tokens)
-    |> then(fn changeset -> Ash.update(changeset.data, changeset, domain: EveDmv.Api) end)
+    |> Ash.update(domain: EveDmv.Api)
   end
 
   @doc """

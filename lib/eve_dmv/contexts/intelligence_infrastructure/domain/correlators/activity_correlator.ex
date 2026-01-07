@@ -7,11 +7,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
 
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Repo
+  alias EveDmv.Types
+
   require Logger
 
   @doc """
   Correlate activity patterns across systems.
   """
+  @spec correlate_activities([Types.system_id()], keyword()) :: Types.activity_correlation()
   def correlate_activities(system_ids, _options) do
     Logger.debug("Correlating activities across #{length(system_ids)} systems")
 
@@ -23,6 +26,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     }
   end
 
+  @spec calculate_correlation_strength([Types.system_id()]) :: float()
   defp calculate_correlation_strength(system_ids) do
     Logger.debug("Calculating correlation strength for #{length(system_ids)} systems")
 
@@ -51,6 +55,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     end
   end
 
+  @spec identify_correlated_patterns([Types.system_id()]) :: map()
   defp identify_correlated_patterns(system_ids) do
     Logger.debug("Identifying correlated patterns for #{length(system_ids)} systems")
 
@@ -86,6 +91,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     end
   end
 
+  @spec analyze_temporal_correlations([Types.system_id()]) :: map()
   defp analyze_temporal_correlations(system_ids) do
     Logger.debug("Analyzing temporal correlations for #{length(system_ids)} systems")
 
@@ -126,6 +132,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     end
   end
 
+  @spec analyze_activity_synchronization([Types.system_id()]) :: map()
   defp analyze_activity_synchronization(system_ids) do
     # Analyze how synchronized activity is across systems
     if length(system_ids) < 2 do
@@ -245,6 +252,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     end
   end
 
+  @spec calculate_correlation_coefficient([map()], [map()]) :: Types.correlation_coefficient()
   defp calculate_correlation_coefficient(data1, data2) do
     # Calculate Pearson correlation coefficient
     if length(data1) < 3 or length(data2) < 3 do

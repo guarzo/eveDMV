@@ -16,6 +16,7 @@ defmodule EveDmv.MemoryMonitor do
     GenServer.start_link(__MODULE__, nil, name: __MODULE__)
   end
 
+  @impl GenServer
   def init(_) do
     Logger.info("MemoryMonitor init called")
 
@@ -31,6 +32,7 @@ defmodule EveDmv.MemoryMonitor do
     end
   end
 
+  @impl GenServer
   def handle_info(:check_memory, state) do
     check_and_log_memory()
 

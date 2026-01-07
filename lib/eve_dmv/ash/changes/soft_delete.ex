@@ -60,7 +60,6 @@ defmodule EveDmv.Ash.Changes.SoftDelete do
   ## Resources Using Soft Delete
 
   The following resources in EVE DMV use soft delete:
-  - `EveDmv.Contexts.Combat.Resources.Battle`
   - `EveDmv.Contexts.BattleAnalysis.Resources.Battle`
   - `EveDmv.Contexts.BattleAnalysis.Resources.BattleReport`
   - `EveDmv.Contexts.BattleAnalysis.Resources.BattleReportComment`

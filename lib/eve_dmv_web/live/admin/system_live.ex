@@ -5,6 +5,8 @@ defmodule EveDmvWeb.Admin.SystemLive do
 
   use EveDmvWeb, :live_view
 
+  require Logger
+
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     if connected?(socket) do
@@ -20,6 +22,23 @@ defmodule EveDmvWeb.Admin.SystemLive do
 
   @impl Phoenix.LiveView
   def handle_info(:refresh_stats, socket) do
+    {:noreply, load_system_stats(socket)}
+  end
+
+  @impl Phoenix.LiveView
+  def handle_info({:maintenance_complete, task, result}, socket) do
+    socket =
+      case result do
+        :ok ->
+          put_flash(socket, :info, "Maintenance task '#{task}' completed successfully")
+
+        {:ok, _} ->
+          put_flash(socket, :info, "Maintenance task '#{task}' completed successfully")
+
+        {:error, reason} ->
+          put_flash(socket, :error, "Maintenance task '#{task}' failed: #{inspect(reason)}")
+      end
+
     {:noreply, load_system_stats(socket)}
   end
 
@@ -53,7 +72,14 @@ defmodule EveDmvWeb.Admin.SystemLive do
 
   @impl Phoenix.LiveView
   def handle_event("run_maintenance", %{"task" => task}, socket) do
-    Task.start(fn -> run_maintenance_task(task) end)
+    liveview_pid = self()
+
+    # Use Task.start/1 for fire-and-forget behavior - we manually send the result
+    # via {:maintenance_complete, ...} so we don't need Task.async's {ref, result} messages
+    Task.start(fn ->
+      result = run_maintenance_task(task)
+      send(liveview_pid, {:maintenance_complete, task, result})
+    end)
 
     {:noreply, put_flash(socket, :info, "Maintenance task '#{task}' started")}
   end
@@ -194,19 +220,51 @@ defmodule EveDmvWeb.Admin.SystemLive do
   defp clear_cache(_), do: :error
 
   defp run_maintenance_task("vacuum") do
-    Ecto.Adapters.SQL.query(EveDmv.Repo, "VACUUM ANALYZE", [])
+    case Ecto.Adapters.SQL.query(EveDmv.Repo, "VACUUM ANALYZE", []) do
+      {:ok, _} ->
+        Logger.info("VACUUM ANALYZE completed successfully")
+        :ok
+
+      {:error, reason} ->
+        Logger.error("VACUUM ANALYZE failed: #{inspect(reason)}")
+        {:error, reason}
+    end
   end
 
   defp run_maintenance_task("reindex") do
-    Ecto.Adapters.SQL.query(EveDmv.Repo, "REINDEX DATABASE eve_dmv", [])
+    case Ecto.Adapters.SQL.query(EveDmv.Repo, "REINDEX DATABASE eve_dmv", []) do
+      {:ok, _} ->
+        Logger.info("REINDEX completed successfully")
+        :ok
+
+      {:error, reason} ->
+        Logger.error("REINDEX failed: #{inspect(reason)}")
+        {:error, reason}
+    end
   end
 
   defp run_maintenance_task("refresh_views") do
-    Ecto.Adapters.SQL.query(
-      EveDmv.Repo,
-      "REFRESH MATERIALIZED VIEW CONCURRENTLY character_stats",
-      []
-    )
+    # Use transaction with increased work_mem to avoid disk spills during sort
+    result =
+      EveDmv.Repo.transaction(fn ->
+        Ecto.Adapters.SQL.query!(EveDmv.Repo, "SET LOCAL work_mem = '32MB'")
+
+        Ecto.Adapters.SQL.query!(
+          EveDmv.Repo,
+          "REFRESH MATERIALIZED VIEW CONCURRENTLY character_stats",
+          []
+        )
+      end)
+
+    case result do
+      {:ok, _} ->
+        Logger.info("Materialized view refresh completed successfully")
+        :ok
+
+      {:error, reason} ->
+        Logger.error("Materialized view refresh failed: #{inspect(reason)}")
+        {:error, reason}
+    end
   end
 
   defp run_maintenance_task(_), do: :ok

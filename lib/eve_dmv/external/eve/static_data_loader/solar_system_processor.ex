@@ -10,7 +10,11 @@ defmodule EveDmv.Eve.StaticDataLoader.SolarSystemProcessor do
   require Logger
 
   @doc """
-  Classifies a system's security status.
+  Classifies a system's security status based on security value.
+
+  Note: This does NOT detect wormholes. Wormhole detection is handled during
+  SDE import by checking the region's wormhole_class_id field, which is the
+  authoritative source from CCP's SDE data.
   """
   def classify_security(security_status) when is_number(security_status) do
     cond do

@@ -75,6 +75,6 @@ mix ecto.rollback --to 20250719212136
 ## Notes
 
 - The partitioned `killmails_raw` table is created alongside the regular table
-- Materialized views should be refreshed periodically (see IncrementalViewRefresher)
+- Materialized views should be refreshed periodically (see MaterializedViewRefresher)
 - All indexes are created with CONCURRENTLY to avoid blocking
 - The base_filter on battles table is handled with proper SQL constraints

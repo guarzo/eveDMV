@@ -276,7 +276,14 @@ defmodule EveDmv.Platform.Database.MaterializedViewOptimizer do
 
     Logger.info("Refreshing materialized view: #{name} (concurrent: #{concurrent})")
 
-    case Ecto.Adapters.SQL.query(Repo, query, []) do
+    # Use transaction with increased work_mem to avoid disk spills during sort
+    result =
+      Repo.transaction(fn ->
+        Ecto.Adapters.SQL.query!(Repo, "SET LOCAL work_mem = '32MB'")
+        Ecto.Adapters.SQL.query!(Repo, query, [])
+      end)
+
+    case result do
       {:ok, _} ->
         Logger.info("Successfully refreshed #{name}")
         update_refresh_tracking(name)
@@ -529,12 +536,18 @@ defmodule EveDmv.Platform.Database.MaterializedViewOptimizer do
       remove_query = "SELECT cron.unschedule($1)"
       Ecto.Adapters.SQL.query(Repo, remove_query, [job_name])
 
-      # Create new job
+      # Create new job with increased work_mem to avoid disk spills during sort
       create_query = """
       SELECT cron.schedule($1, $2, $3)
       """
 
-      refresh_command = "REFRESH MATERIALIZED VIEW CONCURRENTLY #{view_name}"
+      # Use DO block to set work_mem before refresh
+      refresh_command = """
+      DO $$ BEGIN
+        SET LOCAL work_mem = '32MB';
+        REFRESH MATERIALIZED VIEW CONCURRENTLY #{view_name};
+      END $$
+      """
 
       case Ecto.Adapters.SQL.query(Repo, create_query, [job_name, schedule, refresh_command]) do
         {:ok, _} ->

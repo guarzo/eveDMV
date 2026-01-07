@@ -10,7 +10,7 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
   - Managing battle visibility and access
   """
 
-  alias EveDmv.Contexts.Combat.Core.BattleAnalyzer
+  alias EveDmv.Contexts.BattleAnalysis.Core.OptimizedBattleAnalyzer
   alias EveDmv.Contexts.Combat.Core.ParticipantAnalyzer
   alias EveDmv.Contexts.Combat.Services.BattleService
   alias EveDmv.Core.Utils.DateTimeUtils
@@ -50,7 +50,7 @@ defmodule EveDmv.Contexts.Combat.Services.BattleSharingService do
   """
   def create_battle_card(battle_id, card_options \\ %{}) do
     with {:ok, battle} <- BattleService.get_battle(battle_id),
-         {:ok, summary} <- BattleAnalyzer.get_battle_summary(battle_id) do
+         {:ok, summary} <- OptimizedBattleAnalyzer.get_battle_summary(battle_id) do
       card = %{
         title: build_battle_title(battle, summary),
         description: summary.headline,

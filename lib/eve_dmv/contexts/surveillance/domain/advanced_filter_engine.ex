@@ -483,7 +483,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AdvancedFilterEngine do
     if Enum.all?(required_fields, &Map.has_key?(criteria, &1)) do
       :ok
     else
-      {:error, "Missing required fields in criteria structure"}
+      {:error, :missing_required_criteria_fields}
     end
   end
 
@@ -498,7 +498,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AdvancedFilterEngine do
     if Enum.empty?(invalid_conditions) do
       :ok
     else
-      {:error, "Invalid condition types found"}
+      {:error, :invalid_condition_types}
     end
   end
 
@@ -509,7 +509,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AdvancedFilterEngine do
     if check_nesting_depth(conditions, 0) <= max_nesting_depth do
       :ok
     else
-      {:error, "Nesting depth exceeds maximum allowed (#{max_nesting_depth})"}
+      {:error, {:nesting_depth_exceeded, max_nesting_depth}}
     end
   end
 

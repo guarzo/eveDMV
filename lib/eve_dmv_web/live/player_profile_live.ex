@@ -8,13 +8,16 @@ defmodule EveDmvWeb.PlayerProfileLive do
 
   use EveDmvWeb, :live_view
 
+  import EveDmvWeb.Components.HistoricalFetchIndicator
+
   alias EveDmv.Analytics.AnalyticsEngine
   alias EveDmv.Analytics.PlayerStats
   alias EveDmv.Api
+  alias EveDmv.Contexts.KillmailProcessing
   alias EveDmv.Intelligence.CharacterStats
   alias EveDmv.PlayerProfile.DataLoader
   alias EveDmv.PlayerProfile.StatsGenerator
-  alias EveDmvWeb.CharacterInfoComponent
+  alias EveDmvWeb.Components.CharacterInfoComponent
   alias EveDmvWeb.NoDataComponent
   alias EveDmvWeb.PlayerStatsComponent
 
@@ -27,6 +30,14 @@ defmodule EveDmvWeb.PlayerProfileLive do
   def mount(%{"character_id" => character_id_str}, _session, socket) do
     case Integer.parse(character_id_str) do
       {character_id, ""} ->
+        # Subscribe to historical fetch updates when connected
+        if connected?(socket) do
+          KillmailProcessing.Api.subscribe_to_historical_fetch(:character, character_id)
+        end
+
+        # Get current historical fetch status
+        historical_status = get_historical_status(:character, character_id)
+
         socket =
           socket
           |> assign(:character_id, character_id)
@@ -36,6 +47,7 @@ defmodule EveDmvWeb.PlayerProfileLive do
           |> assign(:loading, true)
           |> assign(:error, nil)
           |> assign(:no_data, false)
+          |> assign(:historical_fetch_status, historical_status)
 
         # Load data asynchronously
         send(self(), {:load_character_data, character_id})
@@ -45,12 +57,18 @@ defmodule EveDmvWeb.PlayerProfileLive do
       _ ->
         socket =
           socket
+          |> assign(:character_id, nil)
           |> assign(:error, "Invalid character ID")
           |> assign(:loading, false)
+          |> assign(:historical_fetch_status, nil)
 
         {:ok, socket}
     end
   end
+
+  # ============================================================================
+  # handle_info callbacks (grouped together)
+  # ============================================================================
 
   @impl Phoenix.LiveView
   def handle_info({:load_character_data, character_id}, socket) do
@@ -72,7 +90,6 @@ defmodule EveDmvWeb.PlayerProfileLive do
     end
   end
 
-  @impl Phoenix.LiveView
   def handle_info({:character_esi_loaded, character_info, killmail_count}, socket) do
     character_id = socket.assigns.character_id
 
@@ -107,7 +124,6 @@ defmodule EveDmvWeb.PlayerProfileLive do
     end
   end
 
-  @impl Phoenix.LiveView
   def handle_info({:character_load_failed, reason}, socket) do
     error_msg =
       case reason do
@@ -122,6 +138,53 @@ defmodule EveDmvWeb.PlayerProfileLive do
      |> assign(:loading, false)
      |> assign(:error, error_msg)}
   end
+
+  def handle_info({:historical_fetch_update, :character, _entity_id, update}, socket) do
+    character_id = socket.assigns.character_id
+
+    case update do
+      {:progress, _progress} ->
+        # Refresh status
+        status = get_historical_status(:character, character_id)
+        {:noreply, assign(socket, :historical_fetch_status, status)}
+
+      {:completed, _result} ->
+        # Refresh status and reload data with new historical killmails
+        status = get_historical_status(:character, character_id)
+        send(self(), {:refresh_with_historical, character_id})
+        {:noreply, assign(socket, :historical_fetch_status, status)}
+
+      {:failed, _reason} ->
+        status = get_historical_status(:character, character_id)
+        {:noreply, assign(socket, :historical_fetch_status, status)}
+
+      {:queued, _status} ->
+        status = get_historical_status(:character, character_id)
+        {:noreply, assign(socket, :historical_fetch_status, status)}
+
+      {:phase1_complete, _status} ->
+        status = get_historical_status(:character, character_id)
+        {:noreply, assign(socket, :historical_fetch_status, status)}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_info({:refresh_with_historical, character_id}, socket) do
+    # Reload statistics with the new historical data
+    player_stats = load_player_stats(character_id)
+    character_intel = load_character_intel(character_id)
+
+    {:noreply,
+     socket
+     |> assign(:player_stats, player_stats)
+     |> assign(:character_intel, character_intel)}
+  end
+
+  # ============================================================================
+  # handle_event callbacks (grouped together)
+  # ============================================================================
 
   @impl Phoenix.LiveView
   def handle_event("refresh_stats", _params, socket) do
@@ -145,7 +208,6 @@ defmodule EveDmvWeb.PlayerProfileLive do
     {:noreply, socket}
   end
 
-  @impl Phoenix.LiveView
   def handle_event("generate_stats", _params, socket) do
     character_id = socket.assigns.character_id
 
@@ -167,7 +229,27 @@ defmodule EveDmvWeb.PlayerProfileLive do
     end
   end
 
+  def handle_event(
+        "retry_historical_fetch",
+        %{"entity_type" => "character", "entity_id" => id},
+        socket
+      ) do
+    entity_id = String.to_integer(id)
+    KillmailProcessing.Api.queue_extended_historical_fetch(:character, entity_id)
+    status = get_historical_status(:character, entity_id)
+    {:noreply, assign(socket, :historical_fetch_status, status)}
+  end
+
+  # ============================================================================
   # Private helper functions
+  # ============================================================================
+
+  defp get_historical_status(entity_type, entity_id) do
+    case KillmailProcessing.Api.get_historical_fetch_status(entity_type, entity_id) do
+      {:ok, status} -> status
+      {:error, :not_found} -> nil
+    end
+  end
 
   defp load_player_stats(character_id) do
     case Ash.get(PlayerStats, character_id: character_id, domain: Api) do
@@ -183,7 +265,9 @@ defmodule EveDmvWeb.PlayerProfileLive do
     end
   end
 
+  # ============================================================================
   # Template helper functions
+  # ============================================================================
 
   def generate_stats_button_html(nil, assigns) do
     ~H"""
@@ -191,7 +275,7 @@ defmodule EveDmvWeb.PlayerProfileLive do
       phx-click="generate_stats"
       class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
     >
-      📊 Generate Stats
+      Generate Stats
     </button>
     """
   end

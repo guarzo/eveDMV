@@ -5,7 +5,8 @@ defmodule EveDmv.Contexts.Corporation.Resources.MemberPerformanceSnapshot do
 
   use Ash.Resource,
     domain: EveDmv.Api,
-    data_layer: AshPostgres.DataLayer
+    data_layer: AshPostgres.DataLayer,
+    authorizers: [Ash.Policy.Authorizer]
 
   postgres do
     table("member_performance_snapshots")
@@ -229,5 +230,38 @@ defmodule EveDmv.Contexts.Corporation.Resources.MemberPerformanceSnapshot do
         less_than_or_equal_to: 100.0
       )
     )
+  end
+
+  code_interface do
+    domain(EveDmv.Api)
+    define(:create)
+    define(:update)
+    define(:read)
+    define(:destroy)
+    define(:list_by_character, action: :by_character, args: [:character_id])
+    define(:list_by_corporation, action: :by_corporation, args: [:corporation_id])
+    define(:list_by_date_range, action: :by_date_range, args: [:start_date, :end_date])
+
+    define(:list_top_performers,
+      action: :top_performers,
+      args: [:corporation_id, :metric, :limit]
+    )
+
+    define(:list_recent_snapshots, action: :recent_snapshots, args: [:character_id, :days])
+  end
+
+  policies do
+    # Performance snapshots are public analytics data
+    policy action_type(:read) do
+      description("Member performance snapshots are publicly readable")
+      authorize_if(always())
+    end
+
+    # Only internal systems/admins can modify performance snapshots
+    policy action_type([:create, :update, :destroy]) do
+      description("Only system or admin can modify performance snapshots")
+      authorize_if(actor_attribute_equals(:role, :system))
+      authorize_if(actor_attribute_equals(:role, :admin))
+    end
   end
 end

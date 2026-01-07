@@ -1,4 +1,11 @@
 defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngineTest do
+  @moduledoc """
+  Tests for the MatchingEngine surveillance module.
+
+  Note: Tests for module functions that don't require GenServer are run directly.
+  GenServer-specific tests are grouped separately and require the ProfileRepository
+  to be running.
+  """
   use ExUnit.Case, async: true
 
   alias EveDmv.Contexts.Surveillance.Domain.MatchingEngine
@@ -217,6 +224,235 @@ defmodule EveDmv.Contexts.Surveillance.Domain.MatchingEngineTest do
       assert {:ok, result} = MatchingEngine.test_criteria(criteria, test_data)
       assert result.matches == true
       assert length(result.matched_criteria) == 1
+    end
+  end
+
+  describe "match_killmail_against_profile/2" do
+    test "matches killmail against character watch profile" do
+      profile = %{
+        id: "profile-#{System.unique_integer()}",
+        criteria: %{
+          type: :character_watch,
+          character_ids: [123_456_789]
+        }
+      }
+
+      killmail_event = %{
+        killmail_id: System.unique_integer([:positive]),
+        solar_system_id: 30_000_142,
+        killmail_time: DateTime.utc_now(),
+        victim: %{
+          character_id: 123_456_789,
+          corporation_id: 98_000_001,
+          alliance_id: nil,
+          ship_type_id: 587
+        },
+        attackers: [],
+        zkb_total_value: 10_000_000
+      }
+
+      {:ok, result} = MatchingEngine.match_killmail_against_profile(killmail_event, profile)
+
+      assert result.matched == true
+      assert result.profile_id == profile.id
+      assert result.match_confidence == 1.0
+      assert Enum.any?(result.matched_criteria)
+    end
+
+    test "returns no match for non-matching killmail" do
+      profile = %{
+        id: "profile-#{System.unique_integer()}",
+        criteria: %{
+          type: :character_watch,
+          character_ids: [999_999_999]
+        }
+      }
+
+      killmail_event = %{
+        killmail_id: System.unique_integer([:positive]),
+        solar_system_id: 30_000_142,
+        killmail_time: DateTime.utc_now(),
+        victim: %{
+          character_id: 123_456_789,
+          corporation_id: 98_000_001,
+          alliance_id: nil,
+          ship_type_id: 587
+        },
+        attackers: [],
+        zkb_total_value: 10_000_000
+      }
+
+      {:ok, result} = MatchingEngine.match_killmail_against_profile(killmail_event, profile)
+
+      assert result.matched == false
+      assert result.reason == :no_criteria_matched
+    end
+  end
+
+  describe "system watch criteria" do
+    test "matches killmail in watched system" do
+      criteria = %{
+        type: :system_watch,
+        system_ids: [30_000_142]
+      }
+
+      test_data = %{
+        solar_system_id: 30_000_142,
+        victim: %{character_id: 123_456_789},
+        attackers: []
+      }
+
+      {:ok, result} = MatchingEngine.test_criteria(criteria, test_data)
+
+      assert result.matches == true
+      assert Enum.any?(result.matched_criteria, &(&1.type == :system))
+    end
+
+    test "does not match killmail in non-watched system" do
+      criteria = %{
+        type: :system_watch,
+        system_ids: [30_000_142]
+      }
+
+      test_data = %{
+        solar_system_id: 30_002_187,
+        victim: %{character_id: 123_456_789},
+        attackers: []
+      }
+
+      {:ok, result} = MatchingEngine.test_criteria(criteria, test_data)
+
+      assert result.matches == false
+    end
+  end
+
+  describe "ship type watch criteria" do
+    test "matches killmail with watched victim ship type" do
+      criteria = %{
+        type: :ship_type_watch,
+        ship_type_ids: [587, 588, 589]
+      }
+
+      test_data = %{
+        victim: %{
+          character_id: 123_456_789,
+          ship_type_id: 587
+        },
+        attackers: []
+      }
+
+      {:ok, result} = MatchingEngine.test_criteria(criteria, test_data)
+
+      assert result.matches == true
+      assert Enum.any?(result.matched_criteria, &(&1.type == :victim_ship))
+    end
+
+    test "matches killmail with watched attacker ship type" do
+      criteria = %{
+        type: :ship_type_watch,
+        ship_type_ids: [638, 639, 640]
+      }
+
+      test_data = %{
+        victim: %{
+          character_id: 123_456_789,
+          ship_type_id: 587
+        },
+        attackers: [
+          %{
+            character_id: 111_222_333,
+            corporation_id: 98_000_001,
+            alliance_id: nil,
+            ship_type_id: 638
+          }
+        ]
+      }
+
+      {:ok, result} = MatchingEngine.test_criteria(criteria, test_data)
+
+      assert result.matches == true
+      assert Enum.any?(result.matched_criteria, &(&1.type == :attacker_ship))
+    end
+  end
+
+  describe "alliance watch criteria" do
+    test "matches killmail with victim in watched alliance" do
+      criteria = %{
+        type: :alliance_watch,
+        alliance_ids: [99_000_001]
+      }
+
+      test_data = %{
+        victim: %{
+          character_id: 123_456_789,
+          corporation_id: 98_000_001,
+          alliance_id: 99_000_001,
+          ship_type_id: 587
+        },
+        attackers: []
+      }
+
+      {:ok, result} = MatchingEngine.test_criteria(criteria, test_data)
+
+      assert result.matches == true
+      assert Enum.any?(result.matched_criteria, &(&1.type == :victim_alliance))
+    end
+
+    test "matches killmail with attacker in watched alliance" do
+      criteria = %{
+        type: :alliance_watch,
+        alliance_ids: [99_000_002]
+      }
+
+      test_data = %{
+        victim: %{
+          character_id: 123_456_789,
+          corporation_id: 98_000_001,
+          # Victim not in any watched alliance
+          alliance_id: 99_000_999,
+          ship_type_id: 587
+        },
+        attackers: [
+          %{
+            character_id: 111_222_333,
+            corporation_id: 98_000_002,
+            # Attacker is in watched alliance
+            alliance_id: 99_000_002,
+            ship_type_id: 638
+          }
+        ]
+      }
+
+      {:ok, result} = MatchingEngine.test_criteria(criteria, test_data)
+
+      assert result.matches == true
+      assert Enum.any?(result.matched_criteria, &(&1.type == :attacker_alliance))
+    end
+  end
+
+  describe "module interface" do
+    test "exports expected public functions" do
+      # Ensure module is loaded
+      Code.ensure_loaded!(MatchingEngine)
+      # Verify the module exports the expected functions
+      assert function_exported?(MatchingEngine, :start_link, 1)
+      assert function_exported?(MatchingEngine, :process_killmail, 1)
+      assert function_exported?(MatchingEngine, :match_killmail_against_profile, 2)
+      assert function_exported?(MatchingEngine, :test_criteria, 2)
+      assert function_exported?(MatchingEngine, :validate_criteria, 1)
+      assert function_exported?(MatchingEngine, :get_metrics, 0)
+      assert function_exported?(MatchingEngine, :get_cache_stats, 0)
+      assert function_exported?(MatchingEngine, :get_matches_for_profile, 1)
+      assert function_exported?(MatchingEngine, :get_matches_for_profile, 2)
+      assert function_exported?(MatchingEngine, :get_recent_matches, 0)
+      assert function_exported?(MatchingEngine, :get_recent_matches, 1)
+    end
+
+    test "module has documentation" do
+      {:docs_v1, _, :elixir, _, module_doc, _, _} = Code.fetch_docs(MatchingEngine)
+
+      assert module_doc != :none
+      assert module_doc != :hidden
     end
   end
 end

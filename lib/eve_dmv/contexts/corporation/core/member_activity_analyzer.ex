@@ -80,58 +80,9 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer do
     end
   end
 
-  @doc """
-  Identify inactive members.
-  """
-  def get_inactive_members(corporation_id, threshold \\ 30) do
-    with {:ok, members} <- CorporationRepository.get_corporation_members(corporation_id) do
-      cutoff_date = DateTime.utc_now() |> DateTimeUtils.add(-threshold * 24 * 60 * 60, :second)
-
-      inactive_members =
-        members
-        |> Enum.filter(fn member ->
-          is_nil(member.last_seen) ||
-            DateTimeUtils.compare(member.last_seen, cutoff_date) == :lt
-        end)
-        |> Enum.map(fn member ->
-          %{
-            character_id: member.character_id,
-            character_name: member.character_name,
-            last_seen: member.last_seen,
-            days_inactive: calculate_days_inactive(member.last_seen),
-            join_date: member.join_date,
-            tenure: calculate_tenure(member.join_date)
-          }
-        end)
-        |> Enum.sort_by(& &1.days_inactive, :desc)
-
-      {:ok, inactive_members}
-    end
-  end
-
-  @doc """
-  Get top performing members.
-  """
-  def get_top_performers(corporation_id, limit \\ 10) do
-    with {:ok, analysis} <- analyze_member_activity(corporation_id) do
-      top_performers =
-        analysis.member_metrics
-        |> Enum.sort_by(& &1.activity_score, :desc)
-        |> Enum.take(limit)
-        |> Enum.map(fn member ->
-          %{
-            character_id: member.character_id,
-            character_name: member.character_name,
-            activity_score: member.activity_score,
-            participation_rate: member.participation_rate,
-            recent_kills: member.recent_kills,
-            contribution_rating: member.contribution_rating
-          }
-        end)
-
-      {:ok, top_performers}
-    end
-  end
+  # Note: get_inactive_members/2 and get_top_performers/2 are implemented in
+  # ParticipationAnalyzer and exposed via Corporation.Api.
+  # See EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer for the authoritative implementations.
 
   # Private Functions
 
@@ -806,17 +757,5 @@ defmodule EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer do
 
   defp analyze_engagement_trend(_historical_data) do
     :stable
-  end
-
-  defp calculate_days_inactive(nil), do: nil
-
-  defp calculate_days_inactive(last_seen) do
-    DateTimeUtils.diff(DateTime.utc_now(), last_seen, :day)
-  end
-
-  defp calculate_tenure(nil), do: 0
-
-  defp calculate_tenure(join_date) do
-    DateTimeUtils.diff(DateTime.utc_now(), join_date, :day)
   end
 end

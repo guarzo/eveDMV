@@ -15,11 +15,13 @@ defmodule EveDmvWeb.CorporationLive do
   import EveDmvWeb.Components.ThreatLevelComponent
   import EveDmvWeb.Components.ActivityOverviewComponent
   import EveDmvWeb.Components.IskStatsComponent
+  import EveDmvWeb.Components.HistoricalFetchIndicator
   import EveDmvWeb.EveImageComponents
   import EveDmvWeb.FormatHelpers
 
-  alias EveDmv.Analytics.BattleDetector
+  alias EveDmv.Contexts.BattleAnalysis.Domain.Services.DetectionService, as: BattleDetector
   alias EveDmv.Contexts.CorporationIntelligence
+  alias EveDmv.Contexts.KillmailProcessing
   alias EveDmv.Pagination.CursorPaginator
   alias EveDmv.Platform.Cache.AnalysisCache
   alias EveDmvWeb.CorporationLive.DataLoader
@@ -39,6 +41,14 @@ defmodule EveDmvWeb.CorporationLive do
   def mount(%{"corporation_id" => corp_id_str}, _session, socket) do
     case Integer.parse(corp_id_str) do
       {corporation_id, ""} ->
+        # Subscribe to historical fetch updates when connected
+        if connected?(socket) do
+          subscribe_to_historical_fetch(:corporation, corporation_id)
+        end
+
+        # Get current historical fetch status
+        historical_status = get_historical_fetch_status(:corporation, corporation_id)
+
         # Start with loading state
         socket =
           socket
@@ -46,6 +56,7 @@ defmodule EveDmvWeb.CorporationLive do
           |> assign(:corporation_id, corporation_id)
           |> assign(:error, nil)
           |> assign(:active_tab, "overview")
+          |> assign(:historical_fetch_status, historical_status)
 
         # Load data asynchronously
         send(self(), :load_corporation_data)
@@ -102,6 +113,30 @@ defmodule EveDmvWeb.CorporationLive do
           |> assign(:loading, false)
           |> assign(:error, "Failed to load corporation data")
 
+        {:noreply, socket}
+    end
+  end
+
+  # Handle historical fetch status updates via PubSub
+  def handle_info({:historical_fetch_update, :corporation, _entity_id, update}, socket) do
+    corporation_id = socket.assigns.corporation_id
+
+    case update do
+      {:progress, _progress} ->
+        status = get_historical_fetch_status(:corporation, corporation_id)
+        {:noreply, assign(socket, :historical_fetch_status, status)}
+
+      {:completed, _result} ->
+        status = get_historical_fetch_status(:corporation, corporation_id)
+        # Reload data to include new historical killmails
+        send(self(), :load_corporation_data)
+        {:noreply, assign(socket, :historical_fetch_status, status)}
+
+      {:failed, _reason} ->
+        status = get_historical_fetch_status(:corporation, corporation_id)
+        {:noreply, assign(socket, :historical_fetch_status, status)}
+
+      _ ->
         {:noreply, socket}
     end
   end
@@ -221,16 +256,25 @@ defmodule EveDmvWeb.CorporationLive do
     {:noreply, push_navigate(socket, to: ~p"/corporation/#{corporation_id}")}
   end
 
+  @impl Phoenix.LiveView
+  def handle_event(
+        "retry_historical_fetch",
+        %{"entity_type" => "corporation", "entity_id" => id},
+        socket
+      ) do
+    entity_id = String.to_integer(id)
+    queue_historical_fetch(:corporation, entity_id)
+    status = get_historical_fetch_status(:corporation, entity_id)
+    {:noreply, assign(socket, :historical_fetch_status, status)}
+  end
+
   # Private helper functions
   defp load_all_corporation_data(corporation_id) do
     # Load all data using the optimized data loader
     data = DataLoader.load_corporation_data(corporation_id)
 
-    # Load additional data that isn't in the optimized loader yet
-    # (these can be migrated to the data loader later)
-    # Temporary placeholder
+    # Placeholder: location_stats and victim_stats need dedicated loader functions
     {:ok, location_stats} = DataLoader.load_corporation_info(corporation_id)
-    # Temporary placeholder
     {:ok, victim_stats} = DataLoader.load_corporation_info(corporation_id)
 
     # Load intelligence data
@@ -400,4 +444,23 @@ defmodule EveDmvWeb.CorporationLive do
   def threat_level_color("Moderate"), do: "text-yellow-500"
   def threat_level_color("Low"), do: "text-blue-500"
   def threat_level_color(_), do: "text-green-500"
+
+  # Historical fetch helpers
+  # These functions integrate with the KillmailProcessing context for 2-year historical data.
+  # Uses the KillmailProcessing.Api for the actual implementation.
+
+  defp get_historical_fetch_status(entity_type, entity_id) do
+    case KillmailProcessing.Api.get_historical_fetch_status(entity_type, entity_id) do
+      {:ok, status} -> status
+      {:error, :not_found} -> nil
+    end
+  end
+
+  defp subscribe_to_historical_fetch(entity_type, entity_id) do
+    KillmailProcessing.Api.subscribe_to_historical_fetch(entity_type, entity_id)
+  end
+
+  defp queue_historical_fetch(entity_type, entity_id) do
+    KillmailProcessing.Api.queue_extended_historical_fetch(entity_type, entity_id)
+  end
 end

@@ -150,7 +150,7 @@
               
               <div class="text-center">
                 <p class="text-sm text-gray-400">
-                  💡 Try: <button type="button" class="text-indigo-400 hover:text-indigo-300 underline" onclick="document.getElementById('character-input').value='96_218_312'; document.getElementById('character-search-form').requestSubmit();">Johhny Maricadie</button> 
+                  💡 Try: <button type="button" class="text-indigo-400 hover:text-indigo-300 underline" data-example-character="96_218_312">Johhny Maricadie</button>
                   or search for any EVE pilot
                 </p>
               </div>
@@ -280,98 +280,75 @@
         </div>
       </div>
       
-<!-- Sprint Progress Section -->
+<!-- Platform Capabilities Section -->
       <div class="py-16 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="text-center mb-12">
-            <h2 class="text-3xl font-bold text-gray-900">Development Progress</h2>
+            <h2 class="text-3xl font-bold text-gray-900">Platform Capabilities</h2>
             <p class="mt-4 text-lg text-gray-600">
-              Sprint 2 Complete - PvP Analytics & Surveillance System (52/50 pts)
+              Comprehensive intelligence and analysis tools for EVE Online PvP
             </p>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <!-- Epic 1 -->
-            <div class="bg-green-50 border border-green-200 rounded-lg p-6">
+            <!-- Intelligence Analysis -->
+            <div class="bg-purple-50 border border-purple-200 rounded-lg p-6">
               <div class="flex items-center mb-4">
-                <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                  <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path
-                      fill-rule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clip-rule="evenodd"
-                    />
+                <div class="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
+                  <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                   </svg>
                 </div>
-                <h3 class="ml-3 text-lg font-medium text-green-900">
-                  Epic 1: Database Foundation
-                </h3>
+                <h3 class="ml-3 text-lg font-medium text-purple-900">Intelligence Analysis</h3>
               </div>
-              <p class="text-green-700 mb-2">✅ Completed (8 pts)</p>
-              <p class="text-sm text-green-600">
-                Ash Framework, schemas, and migrations implemented
+              <p class="text-sm text-purple-600">
+                Character threat scoring, corporation analysis, and system danger assessment
               </p>
             </div>
-            
-<!-- Epic 2 -->
-            <div class="bg-green-50 border border-green-200 rounded-lg p-6">
+
+            <!-- Real-time Feed -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
               <div class="flex items-center mb-4">
-                <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                  <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path
-                      fill-rule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clip-rule="evenodd"
-                    />
+                <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                  <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
                 </div>
-                <h3 class="ml-3 text-lg font-medium text-green-900">Epic 2: Authentication</h3>
+                <h3 class="ml-3 text-lg font-medium text-blue-900">Real-time Feed</h3>
               </div>
-              <p class="text-green-700 mb-2">✅ Completed (10 pts)</p>
-              <p class="text-green-600 text-sm">EVE SSO integration and user management</p>
-            </div>
-            
-<!-- Epic 3 -->
-            <div class="bg-green-50 border border-green-200 rounded-lg p-6">
-              <div class="flex items-center mb-4">
-                <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                  <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path
-                      fill-rule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clip-rule="evenodd"
-                    />
-                  </svg>
-                </div>
-                <h3 class="ml-3 text-lg font-medium text-green-900">Epic 3: Killmail Pipeline</h3>
-              </div>
-              <p class="text-green-700 mb-2">✅ Completed (12 pts)</p>
-              <p class="text-sm text-green-600">
-                Broadway ingestion and data processing with
-                <a href="/feed" class="underline">Live Feed</a>
+              <p class="text-sm text-blue-600">
+                Live killmail ingestion with <a href="/feed" class="underline">real-time updates</a>
               </p>
             </div>
-            
-<!-- Sprint 2 -->
+
+            <!-- Surveillance -->
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+              <div class="flex items-center mb-4">
+                <div class="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
+                  <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                </div>
+                <h3 class="ml-3 text-lg font-medium text-yellow-900">Surveillance</h3>
+              </div>
+              <p class="text-sm text-yellow-600">
+                <a href="/surveillance-profiles" class="underline">Tracking profiles</a> with real-time alerts
+              </p>
+            </div>
+
+            <!-- Battle Analysis -->
             <div class="bg-green-50 border border-green-200 rounded-lg p-6">
               <div class="flex items-center mb-4">
                 <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                  <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path
-                      fill-rule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clip-rule="evenodd"
-                    />
+                  <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
                 </div>
-                <h3 class="ml-3 text-lg font-medium text-green-900">
-                  Sprint 2: Analytics & Surveillance
-                </h3>
+                <h3 class="ml-3 text-lg font-medium text-green-900">Battle Analysis</h3>
               </div>
-              <p class="text-green-700 mb-2">✅ Completed (22 pts)</p>
               <p class="text-sm text-green-600">
-                Character intelligence, surveillance profiles, and
-                <a href="/surveillance" class="underline">real-time notifications</a>
+                <a href="/battle" class="underline">Battle detection</a> with timeline reconstruction
               </p>
             </div>
           </div>
@@ -396,12 +373,12 @@
       document.getElementById('character-search-form').addEventListener('submit', function(e) {
         e.preventDefault();
         const input = document.getElementById('character-input').value.trim();
-        
+
         if (!input) {
           alert('Please enter a character name or ID');
           return;
         }
-        
+
         // Check if input is a number (character ID)
         if (/^\d+$/.test(input)) {
           // Direct navigation to character analysis with ID
@@ -410,6 +387,14 @@
           // Character name - redirect to search for name resolution
           window.location.href = `/search?q=${encodeURIComponent(input)}&type=character`;
         }
+      });
+
+      // Handle example character buttons using event delegation
+      document.querySelectorAll('[data-example-character]').forEach(button => {
+        button.addEventListener('click', function() {
+          document.getElementById('character-input').value = this.dataset.exampleCharacter;
+          document.getElementById('character-search-form').requestSubmit();
+        });
       });
     </script>
   </body>

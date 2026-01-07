@@ -279,26 +279,29 @@ defmodule EveDmv.Contexts.CharacterIntelligenceSimpleTest do
 
   describe "gang synergy functions" do
     setup do
+      # Use unique character IDs for parallel test safety
+      unique_base = System.unique_integer([:positive])
+
       # Create actual User records for the characters
       {:ok, user1} =
         Ash.create(User, %{
-          character_id: 96_001_001,
+          character_id: 96_000_000 + unique_base * 10 + 1,
           character_name: "Gang Member 1",
-          owner_hash: "gang_test_1_#{System.unique_integer()}"
+          owner_hash: "gang_test_1_#{unique_base}"
         })
 
       {:ok, user2} =
         Ash.create(User, %{
-          character_id: 96_001_002,
+          character_id: 96_000_000 + unique_base * 10 + 2,
           character_name: "Gang Member 2",
-          owner_hash: "gang_test_2_#{System.unique_integer()}"
+          owner_hash: "gang_test_2_#{unique_base}"
         })
 
       {:ok, user3} =
         Ash.create(User, %{
-          character_id: 96_001_003,
+          character_id: 96_000_000 + unique_base * 10 + 3,
           character_name: "Gang Member 3",
-          owner_hash: "gang_test_3_#{System.unique_integer()}"
+          owner_hash: "gang_test_3_#{unique_base}"
         })
 
       character_ids = [user1.eve_character_id, user2.eve_character_id, user3.eve_character_id]
@@ -311,7 +314,7 @@ defmodule EveDmv.Contexts.CharacterIntelligenceSimpleTest do
           Ash.create(
             KillmailRaw,
             Map.merge(killmail_attrs, %{
-              killmail_id: 105_000_000 + i,
+              killmail_id: 105_000_000 + unique_base * 100 + i,
               killmail_time: DateTime.utc_now() |> DateTime.add(-7, :day),
               solar_system_id: 30_000_142,
               victim_character_id: 95_700_000 + i,

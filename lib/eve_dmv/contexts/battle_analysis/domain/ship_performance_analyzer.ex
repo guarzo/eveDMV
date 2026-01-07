@@ -678,8 +678,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp estimate_damage_dealt(instance) do
     # Heuristic: estimate damage based on ship type and survival time
-    base_dps = instance.theoretical_stats.base_dps
-    survival_seconds = instance.survivability_score.actual_survival_seconds
+    base_dps = get_in(instance, [:theoretical_stats, :base_dps]) || 100
+    survival_seconds = get_in(instance, [:survivability_score, :actual_survival_seconds]) || 60
 
     # Assume ship was dealing damage for 70% of survival time
     effective_combat_time = survival_seconds * 0.7
@@ -688,14 +688,14 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp estimate_combat_duration(instance) do
     # Estimate how long the ship was actively in combat
-    survival_time = instance.survivability_score.actual_survival_seconds
+    survival_time = get_in(instance, [:survivability_score, :actual_survival_seconds]) || 60
     # Minimum 30 seconds, 80% of survival time
     max(30, survival_time * 0.8)
   end
 
   defp calculate_tackle_effectiveness(instance) do
     # Effectiveness of tackle ships (simplified)
-    survival_time = instance.survivability_score.actual_survival_seconds
+    survival_time = get_in(instance, [:survivability_score, :actual_survival_seconds]) || 60
 
     # Tackle ships are effective if they survive long enough to matter
     if survival_time > 45 do
@@ -850,7 +850,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
         "Ship intelligence enhancement failed, falling back to basic analysis: #{inspect(error)}"
       )
 
-      # Fallback to original implementation
+      # Fallback to original implementation - ensure all required keys exist
       enhanced_data =
         Enum.map(performance_data, fn perf ->
           tactical_analysis = %{
@@ -860,7 +860,24 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
             adaptation_score: assess_tactical_adaptation(perf)
           }
 
-          Map.put(perf, :tactical_analysis, tactical_analysis)
+          # Add default values for keys that may be missing
+          perf
+          |> Map.put(:tactical_analysis, tactical_analysis)
+          |> Map.put_new(:role_effectiveness, %{
+            effectiveness_score: 0.5,
+            role_match: :unknown,
+            role_appropriateness: :unknown
+          })
+          |> Map.put_new(:tactical_contribution, %{
+            tactical_value: 0.5,
+            contribution_type: :unknown
+          })
+          |> Map.put_new(:threat_assessment, %{normalized_threat: 1.0, threat_level: :unknown})
+          |> Map.put_new(:survivability_score, %{
+            normalized_score: 0.5,
+            actual_survival_seconds: 60
+          })
+          |> Map.put_new(:dps_efficiency, %{efficiency_ratio: 0.5, actual_dps: 0.0})
         end)
 
       {:ok, enhanced_data}
@@ -893,17 +910,27 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   defp assess_role_clarity(performance) do
     # How clearly defined was this ship's role?
     role = performance.ship_instance.estimated_fitting.estimated_role
-    appropriateness = performance.role_effectiveness.role_appropriateness
+
+    appropriateness =
+      case Map.get(performance, :role_effectiveness) do
+        nil -> :unknown
+        re -> Map.get(re, :role_appropriateness, :unknown)
+      end
 
     case {role, appropriateness} do
       {role, :optimal} when role != :unknown -> :clear
       {_role, :optimal} -> :somewhat_clear
       {_role, :suboptimal} -> :unclear
+      {_role, :unknown} -> :unclear
     end
   end
 
   defp assess_role_execution(performance) do
-    effectiveness = performance.role_effectiveness.effectiveness_score
+    effectiveness =
+      case Map.get(performance, :role_effectiveness) do
+        nil -> 0.0
+        re -> Map.get(re, :effectiveness_score, 0.0)
+      end
 
     cond do
       effectiveness >= 0.8 -> :excellent
@@ -915,10 +942,10 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp assess_team_coordination(performance, battle) do
     # Simplified team coordination assessment
-    survival_time = performance.survivability_score.actual_survival_seconds
-    battle_duration_seconds = battle.metadata.duration_minutes * 60
+    survival_time = get_in(performance, [:survivability_score, :actual_survival_seconds]) || 60
+    battle_duration_seconds = (get_in(battle, [:metadata, :duration_minutes]) || 15) * 60
 
-    participation_ratio = survival_time / battle_duration_seconds
+    participation_ratio = survival_time / max(1, battle_duration_seconds)
 
     cond do
       participation_ratio >= 0.7 -> :high_coordination
@@ -929,8 +956,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp assess_tactical_adaptation(performance) do
     # How well did the ship adapt to changing battle conditions?
-    threat_score = performance.threat_assessment.normalized_threat
-    survival_score = performance.survivability_score.normalized_score
+    threat_score = get_in(performance, [:threat_assessment, :normalized_threat]) || 1.0
+    survival_score = get_in(performance, [:survivability_score, :normalized_score]) || 0.5
 
     adaptation = survival_score / max(0.1, threat_score / 10)
 
@@ -981,9 +1008,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
       fn perf ->
         # Composite score prioritizing effectiveness and tactical contribution
         # Reduce survivability weight since it only applies to ships that died
-        survivability = perf.survivability_score.normalized_score
-        effectiveness = perf.role_effectiveness.effectiveness_score
-        tactical_value = perf.tactical_contribution.tactical_value
+        survivability = get_in(perf, [:survivability_score, :normalized_score]) || 0.5
+        effectiveness = get_in(perf, [:role_effectiveness, :effectiveness_score]) || 0.5
+        tactical_value = get_in(perf, [:tactical_contribution, :tactical_value]) || 0.5
 
         # Higher weight on effectiveness and tactical value
         # Lower weight on survivability to avoid bias toward losses
@@ -993,10 +1020,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
     )
     |> Enum.take(5)
     |> Enum.map(fn perf ->
-      score =
-        perf.survivability_score.normalized_score * 0.15 +
-          perf.role_effectiveness.effectiveness_score * 0.5 +
-          perf.tactical_contribution.tactical_value * 0.35
+      survivability = get_in(perf, [:survivability_score, :normalized_score]) || 0.5
+      effectiveness = get_in(perf, [:role_effectiveness, :effectiveness_score]) || 0.5
+      tactical_value = get_in(perf, [:tactical_contribution, :tactical_value]) || 0.5
+
+      score = survivability * 0.15 + effectiveness * 0.5 + tactical_value * 0.35
 
       # Add a note if this was a ship loss vs survival
       status =
@@ -1007,14 +1035,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
         end
 
       %{
-        character_id: perf.ship_instance.character_id,
-        character_name: NameResolver.character_name(perf.ship_instance.character_id),
-        ship_type_id: perf.ship_instance.ship_type_id,
-        ship_name: NameResolver.ship_name(perf.ship_instance.ship_type_id),
+        character_id: get_in(perf, [:ship_instance, :character_id]),
+        character_name:
+          NameResolver.character_name(get_in(perf, [:ship_instance, :character_id])),
+        ship_type_id: get_in(perf, [:ship_instance, :ship_type_id]),
+        ship_name: NameResolver.ship_name(get_in(perf, [:ship_instance, :ship_type_id])),
         performance_score: round(score * 100),
-        role: perf.ship_instance.estimated_fitting.estimated_role,
-        survivability_score: round(perf.survivability_score.normalized_score * 100),
-        effectiveness_score: round(perf.role_effectiveness.effectiveness_score * 100),
+        role: get_in(perf, [:ship_instance, :estimated_fitting, :estimated_role]) || :unknown,
+        survivability_score: round(survivability * 100),
+        effectiveness_score: round(effectiveness * 100),
         battle_status: status
       }
     end)
@@ -1022,7 +1051,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp compare_by_role(performances) do
     performances
-    |> Enum.group_by(& &1.ship_instance.estimated_fitting.estimated_role)
+    |> Enum.group_by(
+      &(get_in(&1, [:ship_instance, :estimated_fitting, :estimated_role]) || :unknown)
+    )
     |> Enum.map(fn {role, role_performances} ->
       {role, calculate_role_statistics(role_performances)}
     end)
@@ -1036,31 +1067,44 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
       count = length(role_performances)
 
       avg_effectiveness =
-        average(Enum.map(role_performances, & &1.role_effectiveness.effectiveness_score))
+        average(
+          Enum.map(
+            role_performances,
+            &(get_in(&1, [:role_effectiveness, :effectiveness_score]) || 0.5)
+          )
+        )
 
       avg_survival =
-        average(Enum.map(role_performances, & &1.survivability_score.normalized_score))
+        average(
+          Enum.map(
+            role_performances,
+            &(get_in(&1, [:survivability_score, :normalized_score]) || 0.5)
+          )
+        )
 
       %{
         count: count,
         avg_effectiveness: avg_effectiveness,
         avg_survival: avg_survival,
         best_performer:
-          Enum.max_by(role_performances, & &1.role_effectiveness.effectiveness_score)
+          Enum.max_by(
+            role_performances,
+            &(get_in(&1, [:role_effectiveness, :effectiveness_score]) || 0.5)
+          )
       }
     end
   end
 
   defp rank_by_efficiency(performances) do
     performances
-    |> Enum.sort_by(& &1.dps_efficiency.efficiency_ratio, :desc)
+    |> Enum.sort_by(&(get_in(&1, [:dps_efficiency, :efficiency_ratio]) || 0.0), :desc)
     |> Enum.with_index(1)
     |> Enum.map(fn {perf, rank} -> {rank, perf} end)
   end
 
   defp rank_by_survivability(performances) do
     performances
-    |> Enum.sort_by(& &1.survivability_score.normalized_score, :desc)
+    |> Enum.sort_by(&(get_in(&1, [:survivability_score, :normalized_score]) || 0.5), :desc)
     |> Enum.with_index(1)
     |> Enum.map(fn {perf, rank} -> {rank, perf} end)
   end
@@ -1072,10 +1116,17 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
       %{total_ships: 0, avg_performance: 0.0, performance_distribution: %{}}
     else
       avg_effectiveness =
-        average(Enum.map(performances, & &1.role_effectiveness.effectiveness_score))
+        average(
+          Enum.map(
+            performances,
+            &(get_in(&1, [:role_effectiveness, :effectiveness_score]) || 0.5)
+          )
+        )
 
       avg_survivability =
-        average(Enum.map(performances, & &1.survivability_score.normalized_score))
+        average(
+          Enum.map(performances, &(get_in(&1, [:survivability_score, :normalized_score]) || 0.5))
+        )
 
       performance_distribution =
         performances
@@ -1094,8 +1145,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   end
 
   defp classify_overall_performance(performance) do
-    effectiveness = performance.role_effectiveness.effectiveness_score
-    survivability = performance.survivability_score.normalized_score
+    effectiveness = get_in(performance, [:role_effectiveness, :effectiveness_score]) || 0.5
+    survivability = get_in(performance, [:survivability_score, :normalized_score]) || 0.5
     overall_score = (effectiveness + survivability) / 2
 
     cond do
@@ -1111,9 +1162,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
       0.0
     else
       total_theoretical_dps =
-        Enum.sum(Enum.map(performances, & &1.ship_instance.theoretical_stats.base_dps))
+        Enum.sum(
+          Enum.map(
+            performances,
+            &(get_in(&1, [:ship_instance, :theoretical_stats, :base_dps]) || 100)
+          )
+        )
 
-      total_actual_dps = Enum.sum(Enum.map(performances, & &1.dps_efficiency.actual_dps))
+      total_actual_dps =
+        Enum.sum(Enum.map(performances, &(get_in(&1, [:dps_efficiency, :actual_dps]) || 0.0)))
 
       if total_theoretical_dps > 0 do
         total_actual_dps / total_theoretical_dps
@@ -1728,11 +1785,14 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
 
   defp calculate_application_efficiency(expected, actual) do
     # Calculate actual application efficiency from real data
+    # Use dps.total from expected stats (returned by calculate_expected_stats)
+    expected_dps = get_in(expected, [:dps, :total]) || 0
+
     hit_percentage =
-      if expected.expected_dps > 0 do
+      if expected_dps > 0 and actual.time_on_field > 0 do
         min(
           100.0,
-          actual.damage_dealt.total / (expected.expected_dps * actual.time_on_field) * 100.0
+          actual.damage_dealt.total / (expected_dps * actual.time_on_field) * 100.0
         )
       else
         0.0
@@ -1976,7 +2036,9 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
   defp calculate_avg_survivability([]), do: 0
 
   defp calculate_avg_survivability(ship_performances) do
-    survivabilities = Enum.map(ship_performances, & &1.survivability_score.normalized_score)
+    survivabilities =
+      Enum.map(ship_performances, &(get_in(&1, [:survivability_score, :normalized_score]) || 0.5))
+
     # Convert to percentage
     round(average(survivabilities) * 100)
   end
@@ -1987,8 +2049,8 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
     # Coordination score based on role effectiveness and tactical contribution
     scores =
       Enum.map(ship_performances, fn perf ->
-        role_score = perf.role_effectiveness.effectiveness_score
-        tactical_score = perf.tactical_contribution.tactical_value
+        role_score = get_in(perf, [:role_effectiveness, :effectiveness_score]) || 0.5
+        tactical_score = get_in(perf, [:tactical_contribution, :tactical_value]) || 0.5
         (role_score + tactical_score) / 2
       end)
 
@@ -2002,13 +2064,15 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
     # Diversity score based on unique roles and ship types
     unique_roles =
       ship_performances
-      |> Enum.map(& &1.ship_instance.estimated_fitting.estimated_role)
+      |> Enum.map(
+        &(get_in(&1, [:ship_instance, :estimated_fitting, :estimated_role]) || "Unknown")
+      )
       |> Enum.uniq()
       |> Enum.count()
 
     unique_ship_types =
       ship_performances
-      |> Enum.map(& &1.ship_instance.ship_type_id)
+      |> Enum.map(&(get_in(&1, [:ship_instance, :ship_type_id]) || 0))
       |> Enum.uniq()
       |> Enum.count()
 

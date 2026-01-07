@@ -7,6 +7,9 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Api do
   alias EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.OperationalPatternAnalyzer
   alias EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.PerformanceAnalyzer
   alias EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer
+  alias EveDmv.Contexts.CorporationIntelligence.Domain.CorporationComparator
+  alias EveDmv.Contexts.CorporationIntelligence.Domain.CorporationScorer
+  alias EveDmv.Contexts.CorporationIntelligence.Domain.HealthAssessor
   alias EveDmv.Intelligence.Analyzers.CorporationAnalyzer
   require Logger
 
@@ -175,12 +178,14 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Api do
       comparison = %{
         corporations: corporation_ids,
         comparison_date: DateTime.utc_now(),
-        member_comparison: compare_member_counts(corporations_data),
-        activity_comparison: compare_activity_levels(corporations_data),
-        performance_comparison: compare_performance_metrics(corporations_data),
-        timezone_comparison: compare_timezone_coverage(corporations_data),
-        operational_comparison: compare_operational_focus(corporations_data),
-        rankings: generate_rankings(corporations_data)
+        member_comparison: CorporationComparator.compare_member_counts(corporations_data),
+        activity_comparison: CorporationComparator.compare_activity_levels(corporations_data),
+        performance_comparison:
+          CorporationComparator.compare_performance_metrics(corporations_data),
+        timezone_comparison: CorporationComparator.compare_timezone_coverage(corporations_data),
+        operational_comparison:
+          CorporationComparator.compare_operational_focus(corporations_data),
+        rankings: CorporationScorer.generate_rankings(corporations_data)
       }
 
       {:ok, comparison}
@@ -197,16 +202,16 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Api do
     with {:ok, base} <- analyze_corporation(corporation_id, opts),
          performance <- analyze_performance(corporation_id, opts),
          patterns <- analyze_operational_patterns(corporation_id, opts) do
-      health_score = calculate_health_score(base, performance, patterns)
+      health_score = HealthAssessor.calculate_health_score(base, performance, patterns)
 
       assessment = %{
         corporation_id: corporation_id,
         health_score: health_score,
-        health_rating: categorize_health_score(health_score),
-        strengths: identify_strengths(base, performance, patterns),
-        weaknesses: identify_weaknesses(base, performance, patterns),
-        recommendations: generate_recommendations(base, performance, patterns),
-        risk_factors: identify_risk_factors(base, performance, patterns)
+        health_rating: HealthAssessor.categorize_health_score(health_score),
+        strengths: HealthAssessor.identify_strengths(base, performance, patterns),
+        weaknesses: HealthAssessor.identify_weaknesses(base, performance, patterns),
+        recommendations: HealthAssessor.generate_recommendations(base, performance, patterns),
+        risk_factors: HealthAssessor.identify_risk_factors(base, performance, patterns)
       }
 
       {:ok, assessment}
@@ -229,243 +234,4 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Api do
       growth_trajectory: performance[:growth_indicators][:growth_trajectory] || :unknown
     }
   end
-
-  defp compare_member_counts(corporations_data) do
-    corporations_data
-    |> Enum.map(fn {corp_id, data} ->
-      member_count = data.base_analysis[:member_count] || 0
-      {corp_id, member_count}
-    end)
-    |> Enum.sort_by(fn {_, count} -> count end, :desc)
-  end
-
-  defp compare_activity_levels(corporations_data) do
-    corporations_data
-    |> Enum.map(fn {corp_id, data} ->
-      activity = data.performance[:efficiency_metrics][:total_kills] || 0
-      {corp_id, activity}
-    end)
-    |> Enum.sort_by(fn {_, activity} -> activity end, :desc)
-  end
-
-  defp compare_performance_metrics(corporations_data) do
-    corporations_data
-    |> Enum.map(fn {corp_id, data} ->
-      metrics = data.performance[:efficiency_metrics] || %{}
-
-      {corp_id,
-       %{
-         kd_ratio: metrics[:kill_death_ratio] || 0,
-         isk_efficiency: metrics[:isk_efficiency] || 0,
-         rating: metrics[:efficiency_rating] || :unknown
-       }}
-    end)
-    |> Enum.sort_by(fn {_, metrics} -> metrics.isk_efficiency end, :desc)
-  end
-
-  defp compare_timezone_coverage(corporations_data) do
-    corporations_data
-    |> Enum.map(fn {corp_id, data} ->
-      timezone =
-        data.base_analysis[:activity_patterns][:primary_timezones][:primary_tz] || "Unknown"
-
-      coverage =
-        data.base_analysis[:activity_patterns][:primary_timezones][:coverage] || "Unknown"
-
-      {corp_id, %{primary_tz: timezone, coverage: coverage}}
-    end)
-  end
-
-  defp compare_operational_focus(corporations_data) do
-    corporations_data
-    |> Enum.map(fn {corp_id, data} ->
-      focus = data.base_analysis[:activity_patterns][:operational_focus][:focus] || "Unknown"
-      {corp_id, focus}
-    end)
-  end
-
-  defp generate_rankings(corporations_data) do
-    # Create composite rankings
-    corporations_data
-    |> Enum.map(fn {corp_id, data} ->
-      score = calculate_composite_score(data)
-      {corp_id, score}
-    end)
-    |> Enum.sort_by(fn {_, score} -> score end, :desc)
-    |> Enum.with_index(1)
-    |> Enum.map(fn {{corp_id, score}, rank} ->
-      %{rank: rank, corporation_id: corp_id, score: Float.round(score, 1)}
-    end)
-  end
-
-  defp calculate_composite_score(data) do
-    base_score =
-      if data.base_analysis do
-        coordination = data.base_analysis[:coordination_analysis][:coordination_score] || 0
-        members = min(data.base_analysis[:member_count] || 0, 100)
-        (coordination + members) / 2
-      else
-        0
-      end
-
-    performance_score =
-      if data.performance do
-        efficiency = data.performance[:efficiency_metrics][:isk_efficiency] || 0
-        kd_ratio = min((data.performance[:efficiency_metrics][:kill_death_ratio] || 0) * 20, 100)
-        (efficiency + kd_ratio) / 2
-      else
-        0
-      end
-
-    base_score * 0.4 + performance_score * 0.6
-  end
-
-  defp calculate_health_score(base, performance, _patterns) do
-    # Calculate overall health score (0-100)
-    member_score = min(base[:member_count] || 0, 100)
-    coordination_score = base[:coordination_analysis][:coordination_score] || 0
-    efficiency_score = performance[:efficiency_metrics][:isk_efficiency] || 0
-
-    growth_score =
-      case performance[:growth_indicators][:growth_trajectory] do
-        :rapid_growth -> 100
-        :steady_growth -> 80
-        :slow_growth -> 60
-        :stable -> 50
-        :declining -> 30
-        :rapid_decline -> 10
-        _ -> 40
-      end
-
-    consistency_score = performance[:performance_trends][:consistency_score] || 0
-
-    # Weighted average
-    total =
-      member_score * 0.15 +
-        coordination_score * 0.25 +
-        efficiency_score * 0.25 +
-        growth_score * 0.20 +
-        consistency_score * 0.15
-
-    Float.round(total, 1)
-  end
-
-  defp categorize_health_score(score) do
-    cond do
-      score >= 80 -> :excellent
-      score >= 60 -> :good
-      score >= 40 -> :fair
-      score >= 20 -> :poor
-      true -> :critical
-    end
-  end
-
-  defp identify_strengths(base, performance, patterns) do
-    []
-    |> add_if(
-      base[:coordination_analysis][:coordination_score] > 70,
-      "Excellent member coordination"
-    )
-    |> add_if(performance[:efficiency_metrics][:isk_efficiency] > 60, "High ISK efficiency")
-    |> add_growth_strength(performance[:growth_indicators][:growth_trajectory])
-    |> add_if(
-      patterns[:geographic_patterns][:operational_range][:classification] in [
-        :nomadic,
-        :wide_range
-      ],
-      "Wide operational range"
-    )
-    |> finalize_strengths()
-  end
-
-  defp add_if(list, condition, item) do
-    if condition, do: [item | list], else: list
-  end
-
-  defp add_growth_strength(list, trajectory) when trajectory in [:rapid_growth, :steady_growth] do
-    ["Positive growth trajectory" | list]
-  end
-
-  defp add_growth_strength(list, _), do: list
-
-  defp finalize_strengths([]), do: ["Established presence"]
-  defp finalize_strengths(list), do: Enum.reverse(list)
-
-  defp identify_weaknesses(base, performance, patterns) do
-    []
-    |> add_if(base[:member_count] < 10, "Low member count")
-    |> add_if(performance[:efficiency_metrics][:isk_efficiency] < 40, "Poor ISK efficiency")
-    |> add_if(
-      performance[:performance_trends][:consistency_score] < 30,
-      "Inconsistent performance"
-    )
-    |> add_if(
-      patterns[:temporal_patterns][:operational_tempo] in [:sporadic, :minimal],
-      "Low operational tempo"
-    )
-    |> finalize_weaknesses()
-  end
-
-  defp finalize_weaknesses([]), do: ["No significant weaknesses identified"]
-  defp finalize_weaknesses(list), do: Enum.reverse(list)
-
-  defp generate_recommendations(base, performance, patterns) do
-    []
-    |> add_if(base[:member_count] < 20, "Focus on recruitment to increase member base")
-    |> add_if(
-      performance[:efficiency_metrics][:kill_death_ratio] < 1.0,
-      "Improve combat tactics and target selection"
-    )
-    |> add_timezone_recommendation(base[:activity_patterns][:primary_timezones][:coverage])
-    |> add_if(
-      patterns[:geographic_patterns][:operational_range][:classification] in [:static, :local],
-      "Expand operational range to new systems"
-    )
-    |> finalize_recommendations()
-  end
-
-  defp add_timezone_recommendation(list, coverage) when coverage in [nil, ""], do: list
-
-  defp add_timezone_recommendation(list, coverage) do
-    if String.contains?(coverage, ["Limited", "Minimal"]) do
-      ["Expand timezone coverage for better operational flexibility" | list]
-    else
-      list
-    end
-  end
-
-  defp finalize_recommendations([]), do: ["Maintain current operational excellence"]
-  defp finalize_recommendations(list), do: Enum.reverse(list)
-
-  defp identify_risk_factors(base, performance, patterns) do
-    []
-    |> add_growth_risk(performance[:growth_indicators][:growth_trajectory])
-    |> add_if(
-      performance[:growth_indicators][:member_retention_rate] < 50,
-      "Low member retention rate"
-    )
-    |> add_concentration_risk(patterns[:geographic_patterns][:home_systems])
-    |> add_if(base[:coordination_analysis][:coordination_score] < 30, "Poor member coordination")
-    |> finalize_risks()
-  end
-
-  defp add_growth_risk(list, trajectory) when trajectory in [:declining, :rapid_decline] do
-    ["Declining activity levels" | list]
-  end
-
-  defp add_growth_risk(list, _), do: list
-
-  defp add_concentration_risk(list, nil), do: list
-  defp add_concentration_risk(list, []), do: list
-
-  defp add_concentration_risk(list, [first | _]) do
-    if first[:percentage] > 50 do
-      ["Over-concentrated in few systems" | list]
-    else
-      list
-    end
-  end
-
-  defp finalize_risks([]), do: ["No significant risks identified"]
-  defp finalize_risks(list), do: Enum.reverse(list)
 end

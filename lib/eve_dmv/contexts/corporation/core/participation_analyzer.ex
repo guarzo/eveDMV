@@ -17,6 +17,9 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
 
   @cache_ttl :timer.hours(3)
 
+  # Sentinel value for members with no last_seen date
+  @max_inactive_days 999
+
   @doc """
   Analyze participation patterns for a corporation.
 
@@ -80,7 +83,142 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
     end
   end
 
+  @doc """
+  Get inactive members who haven't participated in the given number of days.
+
+  ## Parameters
+    - corporation_id: The corporation ID to analyze
+    - threshold: Number of days of inactivity (default: 30)
+
+  ## Returns
+    - `{:ok, [member_data]}` - List of inactive members with last activity info
+  """
+  @spec get_inactive_members(integer(), pos_integer()) :: {:ok, [map()]} | {:error, atom()}
+  def get_inactive_members(corporation_id, threshold \\ 30) do
+    case analyze_participation(corporation_id) do
+      {:ok, analysis} ->
+        inactive_members =
+          analysis.member_participation_profiles
+          |> Enum.map(fn member ->
+            {member, days_since_last_activity(member)}
+          end)
+          |> Enum.filter(fn {member, days} ->
+            member.total_activities == 0 or days >= threshold
+          end)
+          |> Enum.map(fn {member, days} ->
+            %{
+              character_id: member.character_id,
+              character_name: member.character_name,
+              last_seen: member.last_seen,
+              days_inactive: days,
+              total_activities: member.total_activities
+            }
+          end)
+          |> Enum.sort_by(& &1.days_inactive, :desc)
+
+        {:ok, inactive_members}
+
+      error ->
+        error
+    end
+  end
+
+  @doc """
+  Get top performing members by activity and participation metrics.
+
+  ## Parameters
+    - corporation_id: The corporation ID to analyze
+    - limit: Number of top performers to return (default: 10)
+
+  ## Returns
+    - `{:ok, [member_data]}` - List of top performers with their metrics
+  """
+  @spec get_top_performers(integer(), pos_integer()) :: {:ok, [map()]} | {:error, atom()}
+  def get_top_performers(corporation_id, limit \\ 10) do
+    case analyze_participation(corporation_id) do
+      {:ok, analysis} ->
+        top_performers =
+          analysis.member_participation_profiles
+          |> Enum.filter(fn member -> Map.get(member, :total_activities, 0) > 0 end)
+          |> Enum.map(fn member ->
+            # Calculate composite performance score
+            performance_score = calculate_performance_score(member)
+
+            # Defensively access nested engagement_depth.depth_score
+            engagement_depth_score =
+              case Map.get(member, :engagement_depth) do
+                nil -> 0
+                %{depth_score: score} when is_number(score) -> score
+                _ -> 0
+              end
+
+            %{
+              character_id: Map.get(member, :character_id),
+              character_name: Map.get(member, :character_name),
+              total_activities: Map.get(member, :total_activities, 0),
+              fleet_activities: Map.get(member, :fleet_activities, 0),
+              participation_consistency: Map.get(member, :participation_consistency, 0),
+              engagement_depth: engagement_depth_score,
+              fleet_effectiveness:
+                Map.get(Map.get(member, :fleet_effectiveness, %{}), :effectiveness_score, 0),
+              performance_score: performance_score
+            }
+          end)
+          |> Enum.sort_by(& &1.performance_score, :desc)
+          |> Enum.take(limit)
+
+        {:ok, top_performers}
+
+      error ->
+        error
+    end
+  end
+
   # Private Functions
+
+  defp days_since_last_activity(%{last_seen: nil}), do: @max_inactive_days
+
+  defp days_since_last_activity(%{last_seen: last_seen}) do
+    DateTime.diff(DateTime.utc_now(), last_seen, :day)
+  end
+
+  defp calculate_performance_score(member) do
+    # Weighted composite score:
+    # - Activity volume: 30%
+    # - Fleet participation: 25%
+    # - Consistency: 20%
+    # - Engagement depth: 15%
+    # - Fleet effectiveness: 10%
+
+    # Defensive nil guards for all fields using consistent Map.get pattern
+    total_activities = Map.get(member, :total_activities, 0)
+    fleet_activities = Map.get(member, :fleet_activities, 0)
+    participation_consistency = Map.get(member, :participation_consistency, 0)
+
+    engagement_depth_score =
+      case Map.get(member, :engagement_depth) do
+        nil -> 0
+        %{depth_score: score} when is_number(score) -> score
+        _ -> 0
+      end
+
+    fleet_effectiveness_score =
+      member
+      |> Map.get(:fleet_effectiveness, %{})
+      |> Map.get(:effectiveness_score, 0)
+      |> then(fn score -> if is_number(score), do: score, else: 0 end)
+
+    activity_score = min(total_activities / 50, 1.0) * 30
+    fleet_score = min(fleet_activities / 20, 1.0) * 25
+    consistency_score = participation_consistency / 100 * 20
+    engagement_score = engagement_depth_score / 10 * 15
+    effectiveness_score = fleet_effectiveness_score / 100 * 10
+
+    Float.round(
+      activity_score + fleet_score + consistency_score + engagement_score + effectiveness_score,
+      1
+    )
+  end
 
   defp perform_participation_analysis(corporation_id, opts) do
     Logger.info("Analyzing participation for corporation #{corporation_id}")

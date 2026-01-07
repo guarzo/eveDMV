@@ -80,7 +80,17 @@ defmodule EveDmv.Platform.Database.MaterializedViewManager.ViewRefreshScheduler 
         _ -> "REFRESH MATERIALIZED VIEW #{view_name}"
       end
 
-    case SQL.query(Repo, sql, [], timeout: :timer.minutes(10)) do
+    # Use transaction with increased work_mem to avoid disk spills during sort
+    result =
+      Repo.transaction(
+        fn ->
+          SQL.query!(Repo, "SET LOCAL work_mem = '32MB'")
+          SQL.query!(Repo, sql, [])
+        end,
+        timeout: :timer.minutes(10)
+      )
+
+    case result do
       {:ok, _} ->
         refresh_time_ms = System.monotonic_time(:millisecond) - start_time
         Logger.debug("Refreshed materialized view #{view_name} in #{refresh_time_ms}ms")

@@ -17,6 +17,9 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
   # Sprint 15A: Memory optimization - prevent buffer overflow
   # 1MB buffer limit
   @max_buffer_size 1_048_576
+  # Deduplication: Track last N killmail IDs to prevent duplicate processing
+  # 1000 IDs should cover ~15-20 minutes of typical EVE activity
+  @dedup_cache_size 1000
 
   def init(opts) do
     url = Keyword.fetch!(opts, :url)
@@ -34,7 +37,10 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
       buffer: "",
       killmail_count: 0,
       last_summary_time: DateTimeUtils.utc_now(),
-      summary_timer: summary_timer
+      summary_timer: summary_timer,
+      # Deduplication cache: MapSet for O(1) lookups + FIFO queue for bounded eviction
+      seen_killmails: %{set: MapSet.new(), queue: :queue.new()},
+      duplicate_count: 0
     }
 
     {:producer, state,
@@ -114,22 +120,40 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
     # Process incoming SSE chunk
     {events, new_buffer} = parse_sse_data(combined_data)
 
-    # Convert events to Broadway messages and count killmails
+    # Convert events to Broadway messages with deduplication
     filtered_events = Enum.reject(events, &is_nil/1)
 
-    {broadway_messages, killmail_count} =
-      Enum.reduce(filtered_events, {[], 0}, fn event, {messages, count} ->
-        case to_broadway_message(event) do
-          {:batch, batch_messages} ->
-            {messages ++ batch_messages, count + length(batch_messages)}
+    {accumulated_messages, killmail_count, new_seen, dup_count} =
+      Enum.reduce(filtered_events, {[], 0, state.seen_killmails, 0}, fn event,
+                                                                        {messages, count, seen,
+                                                                         dups} ->
+        case to_broadway_message_with_dedup(event, seen) do
+          {:ok, {:batch, batch_messages}, updated_seen} ->
+            # Prepend each batch message (O(1) per element) - iterating in order
+            # results in reversed order in accumulator, restored by final reverse
+            new_messages =
+              Enum.reduce(batch_messages, messages, fn msg, acc -> [msg | acc] end)
 
-          message when is_struct(message, Message) ->
-            {[message | messages], count + 1}
+            {new_messages, count + length(batch_messages), updated_seen, dups}
 
-          nil ->
-            {messages, count}
+          {:ok, message, updated_seen} when is_struct(message, Message) ->
+            {[message | messages], count + 1, updated_seen, dups}
+
+          {:duplicate, _killmail_id, updated_seen} ->
+            {messages, count, updated_seen, dups + 1}
+
+          {:skip, updated_seen} ->
+            {messages, count, updated_seen, dups}
         end
       end)
+
+    # Reverse to restore intended chronological order (prepending builds reverse list)
+    broadway_messages = Enum.reverse(accumulated_messages)
+
+    # Log duplicates if any were found
+    if dup_count > 0 do
+      Logger.debug("Skipped #{dup_count} duplicate killmail(s) in chunk")
+    end
 
     # Only emit messages if we have demand
     {to_emit, remaining_demand} =
@@ -145,7 +169,9 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
        state
        | buffer: new_buffer,
          demand: remaining_demand,
-         killmail_count: state.killmail_count + killmail_count
+         killmail_count: state.killmail_count + killmail_count,
+         seen_killmails: new_seen,
+         duplicate_count: state.duplicate_count + dup_count
      }}
   end
 
@@ -182,15 +208,27 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
     connection_duration =
       if state.connected_at, do: DateTimeUtils.diff(now, state.connected_at, :second), else: 0
 
+    # Include duplicate stats if any were found
+    dup_info =
+      if state.duplicate_count > 0,
+        do: " | Duplicates filtered: #{state.duplicate_count}",
+        else: ""
+
     Logger.info(
-      "📊 EVE DMV Killmail Summary: #{state.killmail_count} kills received in last #{duration}s (#{rate}/min) | Status: #{connection_status} for #{connection_duration}s"
+      "📊 EVE DMV Killmail Summary: #{state.killmail_count} kills received in last #{duration}s (#{rate}/min) | Status: #{connection_status} for #{connection_duration}s#{dup_info}"
     )
 
     # Schedule next summary log
     summary_timer = Process.send_after(self(), :log_summary, 60_000)
 
     {:noreply, [],
-     %{state | killmail_count: 0, last_summary_time: now, summary_timer: summary_timer}}
+     %{
+       state
+       | killmail_count: 0,
+         last_summary_time: now,
+         summary_timer: summary_timer,
+         duplicate_count: 0
+     }}
   end
 
   def handle_info(:retry_connection, state) do
@@ -295,6 +333,130 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
     else
       # No complete events yet, keep everything in buffer
       {[], data}
+    end
+  end
+
+  # Deduplication wrapper for to_broadway_message
+  # Returns {:ok, message, updated_seen}, {:duplicate, killmail_id, seen}, or {:skip, seen}
+  # seen_killmails is %{set: MapSet.t(), queue: :queue.queue()} for O(1) lookups
+  defp to_broadway_message_with_dedup(%{event: "batch", data: payload} = _event, seen_killmails) do
+    # Handle batch events with per-killmail deduplication
+    case Jason.decode(payload) do
+      {:ok, killmails} when is_list(killmails) ->
+        # Filter to only unseen killmails
+        unseen_killmails =
+          Enum.filter(killmails, fn km ->
+            killmail_id = km["killmail_id"]
+            killmail_id != nil and not MapSet.member?(seen_killmails.set, killmail_id)
+          end)
+
+        seen_count = length(killmails) - length(unseen_killmails)
+
+        if seen_count > 0 do
+          Logger.debug(
+            "Filtered #{seen_count} duplicate killmails from batch of #{length(killmails)}"
+          )
+        end
+
+        case unseen_killmails do
+          [] ->
+            # All killmails in batch were duplicates - compute IDs only when needed
+            all_ids = Enum.map(killmails, & &1["killmail_id"]) |> Enum.reject(&is_nil/1)
+            {:duplicate, all_ids, seen_killmails}
+
+          _ ->
+            # Build batch with only unseen killmails
+            messages =
+              Enum.map(unseen_killmails, fn km ->
+                %Message{
+                  data: km,
+                  acknowledger: Broadway.NoopAcknowledger.init(),
+                  batcher: :db_insert
+                }
+              end)
+
+            # Track newly processed IDs
+            new_ids = Enum.map(unseen_killmails, & &1["killmail_id"]) |> Enum.reject(&is_nil/1)
+            updated_seen = add_ids_to_seen(seen_killmails, new_ids)
+
+            {:ok, {:batch, messages}, updated_seen}
+        end
+
+      _ ->
+        {:skip, seen_killmails}
+    end
+  end
+
+  defp to_broadway_message_with_dedup(%{data: payload} = event, seen_killmails) do
+    # Try to extract killmail_id for deduplication (single killmail events)
+    case extract_killmail_id(payload) do
+      {:ok, killmail_id} ->
+        if MapSet.member?(seen_killmails.set, killmail_id) do
+          # Already seen this killmail, skip it
+          Logger.debug("Skipping duplicate killmail #{killmail_id}")
+          {:duplicate, killmail_id, seen_killmails}
+        else
+          # New killmail, process and add to seen cache
+          case to_broadway_message(event) do
+            nil ->
+              {:skip, seen_killmails}
+
+            message ->
+              updated_seen = add_to_seen(seen_killmails, killmail_id)
+              {:ok, message, updated_seen}
+          end
+        end
+
+      :not_a_killmail ->
+        # Non-killmail events pass through without deduplication
+        case to_broadway_message(event) do
+          nil -> {:skip, seen_killmails}
+          message -> {:ok, message, seen_killmails}
+        end
+    end
+  end
+
+  # Extract killmail_id from payload for deduplication
+  defp extract_killmail_id(payload) when is_binary(payload) do
+    # Quick pattern match to extract killmail_id without full JSON parse
+    case Regex.run(~r/"killmail_id"\s*:\s*(\d+)/, payload) do
+      [_, id_str] -> {:ok, String.to_integer(id_str)}
+      nil -> :not_a_killmail
+    end
+  end
+
+  defp extract_killmail_id(_), do: :not_a_killmail
+
+  # Add killmail_id to dedup cache with O(1) lookup via MapSet + FIFO eviction via queue
+  # seen is %{set: MapSet.t(), queue: :queue.queue()}
+  defp add_to_seen(%{set: set, queue: queue} = _seen, killmail_id) do
+    # Add to both structures
+    new_set = MapSet.put(set, killmail_id)
+    new_queue = :queue.in(killmail_id, queue)
+
+    # Evict oldest entries if we exceed cache size
+    evict_if_needed(%{set: new_set, queue: new_queue})
+  end
+
+  # Add multiple killmail_ids to dedup cache, maintaining max size
+  defp add_ids_to_seen(seen, killmail_ids) when is_list(killmail_ids) do
+    Enum.reduce(killmail_ids, seen, &add_to_seen(&2, &1))
+  end
+
+  # Evict oldest entries from cache if size exceeds limit
+  defp evict_if_needed(%{set: set, queue: queue} = seen) do
+    if MapSet.size(set) > @dedup_cache_size do
+      # Pop oldest from queue and remove from set
+      case :queue.out(queue) do
+        {{:value, oldest_id}, new_queue} ->
+          evict_if_needed(%{set: MapSet.delete(set, oldest_id), queue: new_queue})
+
+        {:empty, _} ->
+          # Queue is empty but set is too large - should not happen, but handle gracefully
+          seen
+      end
+    else
+      seen
     end
   end
 

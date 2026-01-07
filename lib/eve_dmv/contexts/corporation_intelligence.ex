@@ -232,9 +232,9 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
                 %{
                   character_id: character_id,
                   character_name: character_name,
-                  threat_score: threat_data.threat_score,
+                  threat_score: threat_data.overall_score,
                   activity_count: activity_count,
-                  threat_level: categorize_threat_level(threat_data.threat_score)
+                  threat_level: categorize_threat_level(threat_data.overall_score)
                 }
 
               {:error, _reason} ->

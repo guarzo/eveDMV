@@ -20,11 +20,6 @@ defmodule EveDmv.Contexts.BattleAnalysis.Api do
     # Combat log and fitting analysis
     resource(EveDmv.Contexts.BattleAnalysis.Resources.CombatLog)
     resource(EveDmv.Contexts.BattleAnalysis.Resources.ShipFitting)
-    # Combat context resources that use this domain
-    resource(EveDmv.Contexts.Combat.Resources.Battle)
-    resource(EveDmv.Contexts.Combat.Resources.BattleKillmail)
-    resource(EveDmv.Contexts.Combat.Resources.CombatLog)
-    resource(EveDmv.Contexts.Combat.Resources.ShipFitting)
   end
 
   # Authorization configuration
@@ -35,6 +30,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Api do
   @doc """
   Executes a read query against this domain.
   """
+  @spec read(Ash.Query.t()) :: {:ok, list()} | {:error, Ash.Error.t()}
   def read(query) do
     Ash.read(query, domain: __MODULE__)
   end
@@ -42,6 +38,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Api do
   @doc """
   Creates a resource in this domain.
   """
+  @spec create(Ash.Changeset.t()) :: {:ok, Ash.Resource.record()} | {:error, Ash.Error.t()}
   def create(changeset) do
     Ash.create(changeset, domain: __MODULE__)
   end
@@ -49,6 +46,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Api do
   @doc """
   Updates a resource in this domain.
   """
+  @spec update(Ash.Changeset.t()) :: {:ok, Ash.Resource.record()} | {:error, Ash.Error.t()}
   def update(changeset) do
     Ash.update(changeset, domain: __MODULE__)
   end
@@ -56,6 +54,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Api do
   @doc """
   Destroys a resource in this domain.
   """
+  @spec destroy(Ash.Changeset.t() | Ash.Resource.record()) :: :ok | {:error, Ash.Error.t()}
   def destroy(changeset_or_record) do
     Ash.destroy(changeset_or_record, domain: __MODULE__)
   end

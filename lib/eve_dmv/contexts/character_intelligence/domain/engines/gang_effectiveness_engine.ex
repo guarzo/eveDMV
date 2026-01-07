@@ -8,11 +8,15 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
 
   alias EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnalyzer
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
+  alias EveDmv.Types
+
   require Logger
 
   @doc """
   Analyze synergy between multiple characters using real killmail data.
   """
+  @spec analyze_synergy([Types.character_id()]) ::
+          Types.result(Types.gang_synergy()) | {:error, :invalid_character_list}
   def analyze_synergy(character_ids) when is_list(character_ids) do
     GangSynergyAnalyzer.analyze_synergy(character_ids)
   end
@@ -20,6 +24,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
   @doc """
   Calculate gang effectiveness score based on combat data.
   """
+  @spec calculate_gang_effectiveness_score(Types.combat_data()) ::
+          Types.gang_effectiveness_score()
   def calculate_gang_effectiveness_score(combat_data) do
     Logger.debug("Calculating gang effectiveness score")
 
@@ -69,6 +75,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
   @doc """
   Analyze fleet role execution effectiveness.
   """
+  @spec analyze_fleet_role_execution(Types.combat_data()) :: float()
   def analyze_fleet_role_execution(combat_data) do
     Logger.debug("Analyzing fleet role execution")
 
@@ -102,6 +109,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
   @doc """
   Analyze leadership patterns in gangs.
   """
+  @spec analyze_leadership_patterns([map()]) :: float()
   def analyze_leadership_patterns(attacker_killmails) do
     Logger.debug("Analyzing leadership patterns for #{length(attacker_killmails)} killmails")
 
@@ -131,6 +139,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.Engines.Gan
   @doc """
   Analyze gang coordination patterns.
   """
+  @spec analyze_gang_patterns([map()]) :: map()
   def analyze_gang_patterns(killmails) do
     Logger.debug("Analyzing gang patterns for #{length(killmails)} killmails")
 

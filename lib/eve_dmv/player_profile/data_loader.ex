@@ -5,8 +5,13 @@ defmodule EveDmv.PlayerProfile.DataLoader do
   Handles ESI integration, character data fetching, corporation and alliance
   information retrieval, and historical killmail loading with proper error
   handling and timeout management.
+
+  Supports two-phase historical fetch:
+  - Phase 1: 90 days (synchronous, immediate)
+  - Phase 2: 2 years (asynchronous, background)
   """
 
+  alias EveDmv.Contexts.KillmailProcessing.Api, as: KillmailProcessing
   alias EveDmv.Eve.EsiClient
   alias EveDmv.Killmails.HistoricalKillmailFetcher
   require Logger
@@ -16,6 +21,9 @@ defmodule EveDmv.PlayerProfile.DataLoader do
 
   Fetches character, corporation, alliance data and historical killmails
   in a background task with proper error handling.
+
+  After Phase 1 (90-day fetch) completes, automatically queues Phase 2
+  (2-year extended fetch) as a background task.
   """
   def load_character_data(character_id, callback_pid) do
     Task.Supervisor.start_child(EveDmv.TaskSupervisor, fn ->
@@ -37,19 +45,24 @@ defmodule EveDmv.PlayerProfile.DataLoader do
           |> Map.put(:alliance_name, alliance_info[:name])
           |> Map.put(:alliance_ticker, alliance_info[:ticker])
 
-        # Fetch historical killmails
-        Logger.info("Fetching historical killmails for character #{character_id}")
+        # Phase 1: Fetch 90 days of historical killmails
+        Logger.info("Phase 1: Fetching 90-day historical killmails for character #{character_id}")
 
         case HistoricalKillmailFetcher.fetch_character_history(character_id) do
           {:ok, killmail_count} ->
             Logger.info(
-              "Fetched #{killmail_count} historical killmails for character #{character_id}"
+              "Phase 1 complete: #{killmail_count} killmails for character #{character_id}"
             )
+
+            # Queue Phase 2 (2-year fetch)
+            queue_phase2_fetch(:character, character_id)
 
             send(callback_pid, {:character_esi_loaded, enriched_info, killmail_count})
 
           {:error, reason} ->
             Logger.warning("Failed to fetch historical killmails: #{inspect(reason)}")
+            # Still queue Phase 2 even if Phase 1 failed
+            queue_phase2_fetch(:character, character_id)
             # Still show character info even if killmail fetch fails
             send(callback_pid, {:character_esi_loaded, enriched_info, 0})
         end
@@ -98,5 +111,14 @@ defmodule EveDmv.PlayerProfile.DataLoader do
     end
   rescue
     _ -> {:ok, %{name: "Unknown Alliance", ticker: "???"}}
+  end
+
+  # Queue Phase 2 (2-year) fetch in background
+  defp queue_phase2_fetch(entity_type, entity_id) do
+    Logger.info("Queueing Phase 2 (2-year) fetch for #{entity_type} #{entity_id}")
+    KillmailProcessing.complete_phase1_and_queue_phase2(entity_type, entity_id)
+  rescue
+    error ->
+      Logger.error("Failed to queue Phase 2 fetch: #{inspect(error)}")
   end
 end

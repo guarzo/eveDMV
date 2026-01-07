@@ -22,6 +22,7 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
 
   alias EveDmv.Contexts.Corporation.Core.MemberActivityAnalyzer
   alias EveDmv.Contexts.Corporation.Core.OrganizationalHealthAnalyzer
+  alias EveDmv.Contexts.Corporation.Services.StatsLoader
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Platform.Cache.Corporation.CorporationCache
   alias EveDmv.Platform.Database.CorporationRepository
@@ -56,7 +57,7 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
   def get_corporation_stats(corporation_id) do
     case CorporationCache.get({:corporation_stats, corporation_id}) do
       nil ->
-        CorporationRepository.get_corporation_stats(corporation_id)
+        StatsLoader.load_stats(corporation_id, days: 90)
 
       stats ->
         {:ok, stats}
@@ -301,14 +302,14 @@ defmodule EveDmv.Contexts.Corporation.Core.CorporationAnalyzer do
 
   defp gather_basic_corporation_data(corporation_id) do
     with {:ok, corp_info} <- CorporationRepository.get_corporation_info(corporation_id),
-         {:ok, corp_stats} <- CorporationRepository.get_corporation_stats(corporation_id) do
+         {:ok, corp_stats} <- StatsLoader.load_stats(corporation_id, days: 90) do
       basic_data = %{
         corporation_id: corporation_id,
         corporation_info: corp_info,
         corporation_stats: corp_stats,
-        member_count: Map.get(corp_stats, :member_count, 0),
-        total_kills: Map.get(corp_stats, :total_kills, 0),
-        total_losses: Map.get(corp_stats, :total_losses, 0),
+        member_count: Map.get(corp_stats, :active_members, 0),
+        total_kills: Map.get(corp_stats, :kills, 0),
+        total_losses: Map.get(corp_stats, :losses, 0),
         isk_efficiency: Map.get(corp_stats, :isk_efficiency, 0),
         avg_member_age: Map.get(corp_stats, :avg_member_age, 0)
       }

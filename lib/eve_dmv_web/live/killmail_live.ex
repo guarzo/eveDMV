@@ -5,6 +5,8 @@ defmodule EveDmvWeb.KillmailLive do
 
   use EveDmvWeb, :live_view
 
+  on_mount({EveDmvWeb.AuthLive, :load_from_session_optional})
+
   import Ash.Query
   alias EveDmv.Api
   alias EveDmv.Killmails.KillmailRaw

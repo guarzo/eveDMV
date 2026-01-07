@@ -5,7 +5,8 @@ defmodule EveDmv.Contexts.Corporation.Resources.ActivityMetric do
 
   use Ash.Resource,
     domain: EveDmv.Api,
-    data_layer: AshPostgres.DataLayer
+    data_layer: AshPostgres.DataLayer,
+    authorizers: [Ash.Policy.Authorizer]
 
   postgres do
     table("corporation_activity_metrics")
@@ -199,5 +200,37 @@ defmodule EveDmv.Contexts.Corporation.Resources.ActivityMetric do
         less_than_or_equal_to: 100.0
       )
     )
+  end
+
+  code_interface do
+    domain(EveDmv.Api)
+    define(:create)
+    define(:update)
+    define(:read)
+    define(:destroy)
+    define(:list_by_corporation, action: :by_corporation, args: [:corporation_id])
+
+    define(:list_by_date_range,
+      action: :by_date_range,
+      args: [:corporation_id, :start_date, :end_date]
+    )
+
+    define(:list_by_metric_type, action: :by_metric_type, args: [:metric_type])
+    define(:list_recent_metrics, action: :recent_metrics, args: [:corporation_id, :days])
+  end
+
+  policies do
+    # Activity metrics are public analytics data
+    policy action_type(:read) do
+      description("Activity metrics are publicly readable")
+      authorize_if(always())
+    end
+
+    # Only internal systems/admins can modify activity metrics
+    policy action_type([:create, :update, :destroy]) do
+      description("Only system or admin can modify activity metrics")
+      authorize_if(actor_attribute_equals(:role, :system))
+      authorize_if(actor_attribute_equals(:role, :admin))
+    end
   end
 end

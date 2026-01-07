@@ -3,6 +3,7 @@ defmodule EveDmvWeb.CorporationLive.DataLoader do
   Optimized data loading for corporation analysis using new query modules.
   """
 
+  alias EveDmv.Contexts.Corporation.Services.StatsLoader
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Eve.EsiCorporationClient
   alias EveDmv.Platform.Cache.AnalysisCache
@@ -43,17 +44,31 @@ defmodule EveDmvWeb.CorporationLive.DataLoader do
       |> Enum.map(&Task.await(&1, 30_000))
       |> Map.new()
 
-    # Combine all data
+    # Combine all data from both cache-backed functions (returning {:ok, data} tuples)
+    # and non-cache functions like load_top_members/2 and load_recent_activity/2
+    # (returning raw data via QueryPerformance.tracked_query/3). Unwraps tuple
+    # responses when present and passes through plain responses unchanged.
     %{
       corporation_id: corporation_id,
-      info: results["info"],
-      stats: results["stats"],
-      members: results["members"],
-      activity: results["activity"],
-      timezone: results["timezone"],
-      ships: results["ships"]
+      info: unwrap_result(results["info"]),
+      stats: unwrap_result(results["stats"]),
+      members: unwrap_result(results["members"]),
+      activity: unwrap_result(results["activity"]),
+      timezone: unwrap_result(results["timezone"]),
+      ships: unwrap_result(results["ships"])
     }
   end
+
+  # Unwrap {:ok, data} tuples from cache functions, handle errors with logging
+  defp unwrap_result({:ok, data}), do: data
+
+  defp unwrap_result({:error, reason}) do
+    Logger.error("Corporation data loading failed: #{inspect(reason)}, type=data_load_failure")
+
+    nil
+  end
+
+  defp unwrap_result(data), do: data
 
   @doc """
   Load corporation basic info (name, alliance, etc).
@@ -91,43 +106,45 @@ defmodule EveDmvWeb.CorporationLive.DataLoader do
 
   @doc """
   Load corporation statistics (kills, losses, efficiency).
+
+  Uses the Ash-based StatsLoader for efficient data loading.
   """
   def load_corporation_stats(corporation_id) do
-    ninety_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-90 * 24 * 60 * 60, :second)
-    thirty_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-30 * 24 * 60 * 60, :second)
-    seven_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-7 * 24 * 60 * 60, :second)
+    # StatsLoader has its own caching, so we can call it directly
+    # It returns {:ok, stats} or {:error, reason}
+    stats_90d_task = Task.async(fn -> StatsLoader.load_stats(corporation_id, days: 90) end)
+    stats_30d_task = Task.async(fn -> StatsLoader.load_stats(corporation_id, days: 30) end)
+    stats_7d_task = Task.async(fn -> StatsLoader.load_stats(corporation_id, days: 7) end)
 
-    AnalysisCache.get_or_compute(
-      "corp_stats:#{corporation_id}",
-      fn ->
-        # Get stats for different time periods
-        stats_90d =
-          QueryPerformance.tracked_query(
-            "corp_stats_90d",
-            fn -> CorporationQueries.get_corporation_stats(corporation_id, ninety_days_ago) end
-          )
+    stats_90d = unwrap_stats_result(Task.await(stats_90d_task, 30_000))
+    stats_30d = unwrap_stats_result(Task.await(stats_30d_task, 30_000))
+    stats_7d = unwrap_stats_result(Task.await(stats_7d_task, 30_000))
 
-        stats_30d =
-          QueryPerformance.tracked_query(
-            "corp_stats_30d",
-            fn -> CorporationQueries.get_corporation_stats(corporation_id, thirty_days_ago) end
-          )
+    {:ok,
+     %{
+       all_time: stats_90d,
+       last_30_days: stats_30d,
+       last_7_days: stats_7d
+     }}
+  end
 
-        stats_7d =
-          QueryPerformance.tracked_query(
-            "corp_stats_7d",
-            fn -> CorporationQueries.get_corporation_stats(corporation_id, seven_days_ago) end
-          )
+  defp unwrap_stats_result({:ok, stats}), do: stats
 
-        {:ok,
-         %{
-           all_time: stats_90d,
-           last_30_days: stats_30d,
-           last_7_days: stats_7d
-         }}
-      end,
-      :timer.hours(1)
-    )
+  defp unwrap_stats_result({:error, reason}) do
+    Logger.warning("Failed to load corporation stats via StatsLoader: #{inspect(reason)}")
+    default_stats()
+  end
+
+  defp default_stats do
+    %{
+      kills: 0,
+      losses: 0,
+      isk_destroyed: 0.0,
+      isk_lost: 0.0,
+      efficiency: 100.0,
+      isk_efficiency: 50.0,
+      active_members: 0
+    }
   end
 
   @doc """

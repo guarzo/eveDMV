@@ -48,6 +48,69 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.OptimizedBattleAnalyzer do
   end
 
   @doc """
+  Get battle metrics for a specific battle.
+
+  Returns metrics including:
+  - Duration in minutes
+  - Total kills
+  - Total ISK destroyed
+  - Unique participants
+  - Unique corporations and alliances
+  - Kill rate and average kill value
+  """
+  def get_battle_metrics(battle_id) do
+    with {:ok, battle} <- get_battle_with_killmails_optimized(battle_id) do
+      killmails = battle.killmails
+
+      metrics = %{
+        duration_minutes: calculate_duration(killmails),
+        total_kills: length(killmails),
+        total_isk_destroyed: calculate_total_isk(killmails),
+        unique_participants: count_unique_participants(killmails),
+        unique_corporations: count_unique_corporations(killmails),
+        unique_alliances: count_unique_alliances(killmails),
+        kills_per_minute: calculate_kill_rate(killmails),
+        average_kill_value: calculate_average_kill_value(killmails),
+        ship_classes_involved: get_ship_classes(killmails),
+        system_security: get_system_security(battle),
+        peak_activity_time: find_peak_activity(killmails)
+      }
+
+      {:ok, metrics}
+    end
+  end
+
+  @doc """
+  Generate a battle summary suitable for display.
+
+  Returns summary including:
+  - Headline
+  - Key stats
+  - Winning side
+  - MVP pilot
+  - Turning point
+  - Notable kills
+  """
+  def get_battle_summary(battle_id) do
+    case analyze_battle(battle_id) do
+      {:ok, analysis} ->
+        summary = %{
+          headline: generate_summary_headline(analysis),
+          key_stats: extract_summary_key_stats(analysis),
+          winning_side: determine_battle_winner(analysis),
+          mvp_pilot: find_battle_mvp(analysis),
+          turning_point: identify_battle_turning_point(analysis),
+          notable_kills: find_battle_notable_kills(analysis)
+        }
+
+        {:ok, summary}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @doc """
   Get battle details with all related data in a single query.
   Optimized version that preloads all necessary associations.
   """
@@ -460,5 +523,135 @@ defmodule EveDmv.Contexts.BattleAnalysis.Core.OptimizedBattleAnalyzer do
       system_name: data["system_name"],
       security_status: data["security_status"]
     }
+  end
+
+  # Helper functions for get_battle_metrics
+
+  defp calculate_total_isk(killmails) do
+    Enum.reduce(killmails, 0.0, fn km, acc ->
+      acc + (km.total_value || 0.0)
+    end)
+  end
+
+  defp count_unique_corporations(killmails) do
+    killmails
+    |> Enum.flat_map(fn km ->
+      victim_corp = km.victim_corporation_id
+      raw_data = Map.get(km, :raw_data) || Map.get(km, :data) || %{}
+
+      attacker_corps =
+        case raw_data do
+          %{"attackers" => attackers} when is_list(attackers) ->
+            Enum.map(attackers, & &1["corporation_id"])
+
+          _ ->
+            []
+        end
+
+      [victim_corp | attacker_corps] |> Enum.reject(&is_nil/1)
+    end)
+    |> Enum.uniq()
+    |> length()
+  end
+
+  defp count_unique_alliances(killmails) do
+    killmails
+    |> Enum.flat_map(fn km ->
+      victim_alliance = km.victim_alliance_id
+      raw_data = Map.get(km, :raw_data) || Map.get(km, :data) || %{}
+
+      attacker_alliances =
+        case raw_data do
+          %{"attackers" => attackers} when is_list(attackers) ->
+            Enum.map(attackers, & &1["alliance_id"])
+
+          _ ->
+            []
+        end
+
+      [victim_alliance | attacker_alliances] |> Enum.reject(&is_nil/1)
+    end)
+    |> Enum.uniq()
+    |> length()
+  end
+
+  defp get_ship_classes(killmails) do
+    killmails
+    |> Enum.map(& &1.victim_ship_type_id)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.map(&{&1, EveDmv.StaticData.ShipTypes.classify_ship_type(&1)})
+    |> Enum.group_by(fn {_type_id, class} -> class end)
+    |> Enum.map(fn {class, ships} -> {class, length(ships)} end)
+    |> Map.new()
+  end
+
+  defp get_system_security(battle) do
+    EveDmv.StaticData.SystemData.get_security_status(battle.system_id)
+  end
+
+  defp find_peak_activity(killmails) do
+    killmails
+    |> Enum.group_by(fn km ->
+      km.killmail_time
+      |> DateTimeUtils.truncate_to_minute()
+    end)
+    |> Enum.max_by(fn {_time, kms} -> length(kms) end, fn -> {nil, []} end)
+    |> elem(0)
+  end
+
+  # Helper functions for get_battle_summary
+
+  defp generate_summary_headline(analysis) do
+    scale = get_in(analysis, [:summary, :scale]) || :unknown
+    total_kills = get_in(analysis, [:metrics, :total_kills]) || 0
+    duration = get_in(analysis, [:metrics, :duration_minutes]) || 0
+
+    scale_text =
+      case scale do
+        :fleet_battle -> "Fleet Battle"
+        :large_gang -> "Large Gang Fight"
+        :medium_gang -> "Medium Gang Fight"
+        :small_gang -> "Small Gang Skirmish"
+        _ -> "Engagement"
+      end
+
+    "#{scale_text}: #{total_kills} kills over #{duration} minutes"
+  end
+
+  defp extract_summary_key_stats(analysis) do
+    [
+      %{label: "Total Kills", value: get_in(analysis, [:metrics, :total_kills]) || 0},
+      %{label: "Duration", value: "#{get_in(analysis, [:metrics, :duration_minutes]) || 0} min"},
+      %{label: "ISK Destroyed", value: get_in(analysis, [:summary, :total_isk_destroyed]) || 0},
+      %{label: "Kills/Min", value: get_in(analysis, [:metrics, :kills_per_minute]) || 0}
+    ]
+  end
+
+  defp determine_battle_winner(analysis) do
+    case get_in(analysis, [:performance_metrics, :side_comparison]) do
+      %{winner: winner} when not is_nil(winner) -> winner
+      _ -> :unknown
+    end
+  end
+
+  defp find_battle_mvp(analysis) do
+    case get_in(analysis, [:performance_metrics, :top_performers]) do
+      [top | _] -> top
+      _ -> nil
+    end
+  end
+
+  defp identify_battle_turning_point(analysis) do
+    case get_in(analysis, [:tactical_patterns, :momentum_shifts]) do
+      [shift | _] -> shift
+      _ -> nil
+    end
+  end
+
+  defp find_battle_notable_kills(analysis) do
+    case get_in(analysis, [:performance_metrics, :notable_kills]) do
+      kills when is_list(kills) -> Enum.take(kills, 5)
+      _ -> []
+    end
   end
 end

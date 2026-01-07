@@ -14,7 +14,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.BattleReport do
   use Ash.Resource,
     domain: EveDmv.Contexts.BattleAnalysis.Api,
     data_layer: AshPostgres.DataLayer,
-    extensions: [AshJsonApi.Resource]
+    extensions: [AshJsonApi.Resource],
+    authorizers: [Ash.Policy.Authorizer],
+    notifiers: [
+      EveDmv.Ash.Notifiers.PubSubNotifier,
+      EveDmv.Ash.Notifiers.TelemetryNotifier
+    ]
 
   resource do
     description("Community battle reports with ratings and highlights")
@@ -303,6 +308,37 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.BattleReport do
     define(:increment_views)
     define(:read)
     define(:destroy)
+  end
+
+  policies do
+    # Read: Public reports visible to all, private only to creator
+    policy action_type(:read) do
+      description("Public reports visible to all, private reports only to creator")
+      authorize_if(expr(visibility == :public))
+      authorize_if(expr(visibility == :unlisted))
+      authorize_if(expr(creator_character_id == ^actor(:character_id)))
+      authorize_if(actor_attribute_equals(:role, :admin))
+    end
+
+    # Create: Any authenticated user can create reports
+    policy action_type(:create) do
+      description("Any authenticated user can create battle reports")
+      authorize_if(actor_present())
+    end
+
+    # Update: Only creator or admin can update
+    policy action_type(:update) do
+      description("Only report creator or admin can update")
+      authorize_if(expr(creator_character_id == ^actor(:character_id)))
+      authorize_if(actor_attribute_equals(:role, :admin))
+    end
+
+    # Destroy: Only creator or admin can delete
+    policy action_type(:destroy) do
+      description("Only report creator or admin can delete")
+      authorize_if(expr(creator_character_id == ^actor(:character_id)))
+      authorize_if(actor_attribute_equals(:role, :admin))
+    end
   end
 
   # Helper functions

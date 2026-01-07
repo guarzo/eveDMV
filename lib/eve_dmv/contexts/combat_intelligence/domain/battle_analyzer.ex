@@ -13,6 +13,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
   The consolidation improves maintainability while preserving all real analysis functionality.
   """
 
+  alias EveDmv.Contexts.BattleAnalysis.Shared.BattleAnalysisUtils
   alias EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtilities
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.StaticData.ShipTypes
@@ -252,29 +253,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
   end
 
   defp calculate_role_balance(role_distribution) do
-    if Enum.empty?(role_distribution) do
-      %{score: 0.0, balance: 0.0}
-    else
-      # Check for key roles
-      has_dps = Map.has_key?(role_distribution, :dps)
-      has_logistics = Map.has_key?(role_distribution, :logistics)
-      has_tackle = Map.has_key?(role_distribution, :tackle)
-
-      base_score =
-        case {has_dps, has_logistics, has_tackle} do
-          {true, true, true} -> 0.8
-          {true, true, false} -> 0.6
-          {true, false, true} -> 0.6
-          {true, false, false} -> 0.4
-          _ -> 0.2
-        end
-
-      # Calculate distribution balance
-      role_counts = role_distribution |> Map.values() |> Enum.map(& &1.count)
-      balance = calculate_distribution_balance(role_counts)
-
-      %{score: base_score * balance, balance: balance}
-    end
+    BattleAnalysisUtils.calculate_role_balance(role_distribution)
   end
 
   defp calculate_doctrine_adherence(ship_classes, participants) do
@@ -737,22 +716,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalyzer do
     participant.corporation_id || :unknown
   end
 
-  defp calculate_distribution_balance(counts) do
-    if Enum.empty?(counts) do
-      0.0
-    else
-      mean = average(counts)
-      variance = calculate_variance(counts)
-      # Higher balance when variance is lower
-      max(0.0, 1.0 - variance / (mean * mean + 1))
-    end
-  end
-
   defp calculate_doctrine_coherence(ship_classes) do
-    # Simplified coherence calculation
-    class_count = map_size(ship_classes)
-    # Higher coherence with fewer ship classes
-    max(0.0, 1.0 - class_count / 10.0)
+    BattleAnalysisUtils.calculate_doctrine_coherence(ship_classes)
   end
 
   defp identify_doctrine_type(participants) do

@@ -7,6 +7,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnal
   import Ash.Query
 
   alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.Types
 
   require Logger
 
@@ -14,6 +15,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnal
   Analyzes synergy between multiple characters based on shared killmails.
   Returns actual metrics calculated from database.
   """
+  @spec analyze_synergy([Types.character_id()]) ::
+          Types.result(Types.gang_synergy()) | {:error, :invalid_character_list}
   def analyze_synergy(character_ids) when is_list(character_ids) and length(character_ids) > 1 do
     Logger.debug("Analyzing synergy for #{length(character_ids)} characters")
 
@@ -42,12 +45,15 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnal
   @doc """
   Get detailed synergy analysis for a character pair.
   """
+  @spec analyze_pair_synergy(Types.character_id(), Types.character_id()) ::
+          Types.result(Types.gang_synergy()) | {:error, :invalid_character_list}
   def analyze_pair_synergy(char1_id, char2_id) do
     analyze_synergy([char1_id, char2_id])
   end
 
   # Private functions
 
+  @spec get_shared_killmails([Types.character_id()]) :: [map()]
   defp get_shared_killmails(character_ids) do
     cutoff_date = DateTime.add(DateTime.utc_now(), -90 * 86_400, :second)
 
@@ -86,31 +92,28 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnal
       []
   end
 
-  defp calculate_coordination_score(kills, character_ids) do
-    if Enum.empty?(kills) do
-      0.0
-    else
-      # Analyze how well coordinated the attacks were
-      coordination_metrics =
-        Enum.map(kills, fn kill ->
-          attackers = get_character_attackers(kill, character_ids)
+  @spec calculate_coordination_score([map(), ...], [Types.character_id()]) :: float()
+  defp calculate_coordination_score(kills, character_ids) when is_list(kills) and kills != [] do
+    # Analyze how well coordinated the attacks were
+    coordination_metrics =
+      Enum.map(kills, fn kill ->
+        attackers = get_character_attackers(kill, character_ids)
 
-          %{
-            damage_distribution: calculate_damage_distribution(attackers),
-            timing_coordination: calculate_timing_coordination(attackers),
-            role_distribution: analyze_attacker_roles(attackers)
-          }
-        end)
+        %{
+          damage_distribution: calculate_damage_distribution(attackers),
+          timing_coordination: calculate_timing_coordination(attackers),
+          role_distribution: analyze_attacker_roles(attackers)
+        }
+      end)
 
-      # Average coordination across all shared kills
-      avg_damage_dist = average_metric(coordination_metrics, :damage_distribution)
-      avg_timing = average_metric(coordination_metrics, :timing_coordination)
-      avg_roles = average_metric(coordination_metrics, :role_distribution)
+    # Average coordination across all shared kills
+    avg_damage_dist = average_metric(coordination_metrics, :damage_distribution)
+    avg_timing = average_metric(coordination_metrics, :timing_coordination)
+    avg_roles = average_metric(coordination_metrics, :role_distribution)
 
-      # Weighted coordination score
-      score = avg_damage_dist * 0.3 + avg_timing * 0.4 + avg_roles * 0.3
-      Float.round(score, 3)
-    end
+    # Weighted coordination score
+    score = avg_damage_dist * 0.3 + avg_timing * 0.4 + avg_roles * 0.3
+    Float.round(score, 3)
   end
 
   defp get_character_attackers(kill, character_ids) do
@@ -128,35 +131,33 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnal
     end
   end
 
-  defp calculate_damage_distribution(attackers) do
-    if Enum.empty?(attackers) do
+  defp calculate_damage_distribution([]), do: 0.5
+
+  defp calculate_damage_distribution(attackers) when is_list(attackers) do
+    damages =
+      Enum.map(attackers, fn att ->
+        att["damage_done"] || 0
+      end)
+
+    total_damage = Enum.sum(damages)
+
+    if total_damage == 0 do
       0.5
     else
-      damages =
-        Enum.map(attackers, fn att ->
-          att["damage_done"] || 0
-        end)
+      # Calculate how evenly damage is distributed (good coordination = balanced damage)
+      avg_damage = total_damage / length(damages)
 
-      total_damage = Enum.sum(damages)
+      variance =
+        Enum.reduce(damages, 0, fn damage, acc ->
+          acc + :math.pow(damage - avg_damage, 2)
+        end) / length(damages)
 
-      if total_damage == 0 do
-        0.5
-      else
-        # Calculate how evenly damage is distributed (good coordination = balanced damage)
-        avg_damage = total_damage / length(damages)
+      # Convert variance to a 0-1 score (lower variance = better coordination)
+      std_dev = :math.sqrt(variance)
+      coefficient_of_variation = if avg_damage > 0, do: std_dev / avg_damage, else: 1.0
 
-        variance =
-          Enum.reduce(damages, 0, fn damage, acc ->
-            acc + :math.pow(damage - avg_damage, 2)
-          end) / length(damages)
-
-        # Convert variance to a 0-1 score (lower variance = better coordination)
-        std_dev = :math.sqrt(variance)
-        coefficient_of_variation = if avg_damage > 0, do: std_dev / avg_damage, else: 1.0
-
-        # Normalize: CV of 0 = perfect balance (1.0), CV > 1 = poor balance (0.0)
-        max(0.0, min(1.0, 1.0 - coefficient_of_variation))
-      end
+      # Normalize: CV of 0 = perfect balance (1.0), CV > 1 = poor balance (0.0)
+      max(0.0, min(1.0, 1.0 - coefficient_of_variation))
     end
   end
 
@@ -172,28 +173,27 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnal
     end
   end
 
-  defp analyze_attacker_roles(attackers) do
-    if Enum.empty?(attackers) do
-      0.5
-    else
-      # Analyze ship types for role diversity
-      ship_types =
-        attackers
-        |> Enum.map(fn att -> att["ship_type_id"] end)
-        |> Enum.filter(&(&1 != nil))
-        |> Enum.map(&classify_ship_role/1)
-        |> Enum.uniq()
+  defp analyze_attacker_roles([]), do: 0.5
 
-      # More diverse roles = better coordination
-      case length(ship_types) do
-        0 -> 0.5
-        1 -> 0.6
-        2 -> 0.8
-        _ -> 1.0
-      end
+  defp analyze_attacker_roles(attackers) when is_list(attackers) do
+    # Analyze ship types for role diversity
+    ship_types =
+      attackers
+      |> Enum.map(fn att -> att["ship_type_id"] end)
+      |> Enum.filter(&(&1 != nil))
+      |> Enum.map(&classify_ship_role/1)
+      |> Enum.uniq()
+
+    # More diverse roles = better coordination
+    case length(ship_types) do
+      0 -> 0.5
+      1 -> 0.6
+      2 -> 0.8
+      _ -> 1.0
     end
   end
 
+  @spec classify_ship_role(integer() | nil) :: Types.ship_role()
   defp classify_ship_role(ship_type_id) when is_integer(ship_type_id) do
     # Simplified ship role classification based on type ID ranges
     cond do
@@ -209,21 +209,17 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnal
 
   defp classify_ship_role(_), do: :unknown
 
-  defp analyze_role_compatibility(kills, character_ids) do
-    if Enum.empty?(kills) do
-      0.5
-    else
-      # Analyze ship roles used by each character across kills
-      role_usage =
-        Enum.reduce(kills, %{}, fn kill, acc ->
-          attackers = get_character_attackers(kill, character_ids)
+  defp analyze_role_compatibility(kills, character_ids) when is_list(kills) and kills != [] do
+    # Analyze ship roles used by each character across kills
+    role_usage =
+      Enum.reduce(kills, %{}, fn kill, acc ->
+        attackers = get_character_attackers(kill, character_ids)
 
-          process_attacker_roles(attackers, acc)
-        end)
+        process_attacker_roles(attackers, acc)
+      end)
 
-      # Calculate role diversity and complementarity
-      calculate_role_complementarity(role_usage)
-    end
+    # Calculate role diversity and complementarity
+    calculate_role_complementarity(role_usage)
   end
 
   defp process_attacker_roles(attackers, acc) do
@@ -280,131 +276,112 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnal
     diversity_score * 0.6 + essential_score * 0.4
   end
 
-  defp calculate_success_metrics(kills) do
+  defp calculate_success_metrics(kills) when is_list(kills) and kills != [] do
     total_kills = length(kills)
 
-    if total_kills == 0 do
-      %{
-        total_kills: 0,
-        avg_isk_per_kill: 0,
-        kill_rate_per_day: 0,
-        high_value_kills: 0
-      }
-    else
-      # Calculate ISK destroyed
-      total_isk =
-        Enum.reduce(kills, Decimal.new(0), fn kill, acc ->
-          value =
-            case kill.total_value do
-              nil -> Decimal.new(0)
-              %Decimal{} = decimal -> decimal
-              value when is_integer(value) -> Decimal.new(value)
-              _ -> Decimal.new(0)
-            end
-
-          Decimal.add(acc, value)
-        end)
-
-      # Calculate time span
-      kill_times = Enum.map(kills, & &1.killmail_time)
-      earliest = Enum.min(kill_times, DateTime)
-      latest = Enum.max(kill_times, DateTime)
-      days_span = max(1, div(DateTime.diff(latest, earliest), 86_400))
-
-      # Count high-value kills (> 100M ISK)
-      high_value =
-        Enum.count(kills, fn kill ->
+    # Calculate ISK destroyed
+    total_isk =
+      Enum.reduce(kills, Decimal.new(0), fn kill, acc ->
+        value =
           case kill.total_value do
-            nil -> false
-            %Decimal{} = decimal -> Decimal.compare(decimal, Decimal.new(100_000_000)) == :gt
-            value when is_integer(value) -> value > 100_000_000
-            _ -> false
+            nil -> Decimal.new(0)
+            %Decimal{} = decimal -> decimal
+            value when is_integer(value) -> Decimal.new(value)
+            _ -> Decimal.new(0)
           end
-        end)
 
-      %{
-        total_kills: total_kills,
-        avg_isk_per_kill: Float.round(Decimal.to_float(total_isk) / total_kills, 2),
-        kill_rate_per_day: Float.round(total_kills / days_span, 2),
-        high_value_kills: high_value,
-        total_isk_destroyed: Decimal.to_integer(total_isk)
-      }
-    end
+        Decimal.add(acc, value)
+      end)
+
+    # Calculate time span
+    kill_times = Enum.map(kills, & &1.killmail_time)
+    earliest = Enum.min(kill_times, DateTime)
+    latest = Enum.max(kill_times, DateTime)
+    days_span = max(1, div(DateTime.diff(latest, earliest), 86_400))
+
+    # Count high-value kills (> 100M ISK)
+    high_value =
+      Enum.count(kills, fn kill ->
+        case kill.total_value do
+          nil -> false
+          %Decimal{} = decimal -> Decimal.compare(decimal, Decimal.new(100_000_000)) == :gt
+          value when is_integer(value) -> value > 100_000_000
+          _ -> false
+        end
+      end)
+
+    %{
+      total_kills: total_kills,
+      avg_isk_per_kill: Float.round(Decimal.to_float(total_isk) / total_kills, 2),
+      kill_rate_per_day: Float.round(total_kills / days_span, 2),
+      high_value_kills: high_value,
+      total_isk_destroyed: Decimal.to_integer(total_isk)
+    }
   end
 
-  defp analyze_temporal_coordination(kills) do
-    if length(kills) < 2 do
-      %{
-        activity_overlap: 0.5,
-        peak_hours: [],
-        consistency_score: 0.5
-      }
-    else
-      # Analyze when the gang is active together
-      hourly_distribution =
-        Enum.frequencies_by(kills, fn kill ->
-          kill.killmail_time.hour
-        end)
-
-      # Find peak activity hours
-      peak_hours =
-        hourly_distribution
-        |> Enum.sort_by(fn {_hour, count} -> count end, :desc)
-        |> Enum.take(3)
-        |> Enum.map(fn {hour, count} ->
-          %{hour: hour, kill_count: count}
-        end)
-
-      # Calculate consistency (how concentrated activity is)
-      total_kills = length(kills)
-      max_hour_kills = hourly_distribution |> Map.values() |> Enum.max(fn -> 0 end)
-      consistency = if total_kills > 0, do: max_hour_kills / total_kills, else: 0
-
-      %{
-        activity_overlap: calculate_activity_overlap(hourly_distribution, total_kills),
-        peak_hours: peak_hours,
-        consistency_score: Float.round(consistency, 3)
-      }
-    end
+  defp analyze_temporal_coordination(kills) when length(kills) < 2 do
+    %{
+      activity_overlap: 0.5,
+      peak_hours: [],
+      consistency_score: 0.5
+    }
   end
 
-  defp calculate_activity_overlap(hourly_distribution, total_kills) do
-    if total_kills == 0 do
-      0.0
-    else
-      # Hours with activity / 24 hours (more concentrated = better coordination)
-      active_hours = map_size(hourly_distribution)
-      concentration = 1.0 - active_hours / 24.0
-      Float.round(concentration, 3)
-    end
+  defp analyze_temporal_coordination(kills) when is_list(kills) do
+    # Analyze when the gang is active together
+    hourly_distribution =
+      Enum.frequencies_by(kills, fn kill ->
+        kill.killmail_time.hour
+      end)
+
+    # Find peak activity hours
+    peak_hours =
+      hourly_distribution
+      |> Enum.sort_by(fn {_hour, count} -> count end, :desc)
+      |> Enum.take(3)
+      |> Enum.map(fn {hour, count} ->
+        %{hour: hour, kill_count: count}
+      end)
+
+    # Calculate consistency (how concentrated activity is)
+    total_kills = length(kills)
+    max_hour_kills = hourly_distribution |> Map.values() |> Enum.max(fn -> 0 end)
+    consistency = if total_kills > 0, do: max_hour_kills / total_kills, else: 0
+
+    %{
+      activity_overlap: calculate_activity_overlap(hourly_distribution, total_kills),
+      peak_hours: peak_hours,
+      consistency_score: Float.round(consistency, 3)
+    }
   end
 
-  defp analyze_engagement_patterns(kills, character_ids) do
-    if Enum.empty?(kills) do
-      %{
-        avg_attackers_per_kill: 0,
-        character_participation_rates: %{},
-        preferred_targets: []
-      }
-    else
-      # Average number of attackers per kill
-      avg_attackers = calculate_average_attackers(kills)
+  defp calculate_activity_overlap(_hourly_distribution, 0), do: 0.0
 
-      # Calculate how often each character participates
-      participation = calculate_participation_rates(kills, character_ids)
-
-      # Analyze preferred target types
-      targets = analyze_preferred_targets(kills)
-
-      %{
-        avg_attackers_per_kill: Float.round(avg_attackers, 1),
-        character_participation_rates: participation,
-        preferred_targets: targets
-      }
-    end
+  defp calculate_activity_overlap(hourly_distribution, total_kills) when total_kills > 0 do
+    # Hours with activity / 24 hours (more concentrated = better coordination)
+    active_hours = map_size(hourly_distribution)
+    concentration = 1.0 - active_hours / 24.0
+    Float.round(concentration, 3)
   end
 
-  defp calculate_average_attackers(kills) do
+  defp analyze_engagement_patterns(kills, character_ids) when is_list(kills) and kills != [] do
+    # Average number of attackers per kill
+    avg_attackers = calculate_average_attackers(kills)
+
+    # Calculate how often each character participates
+    participation = calculate_participation_rates(kills, character_ids)
+
+    # Analyze preferred target types
+    targets = analyze_preferred_targets(kills)
+
+    %{
+      avg_attackers_per_kill: Float.round(avg_attackers, 1),
+      character_participation_rates: participation,
+      preferred_targets: targets
+    }
+  end
+
+  defp calculate_average_attackers(kills) when is_list(kills) and kills != [] do
     attacker_counts =
       Enum.map(kills, fn kill ->
         case kill.raw_data do
@@ -413,23 +390,15 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnal
         end
       end)
 
-    if Enum.empty?(attacker_counts) do
-      0.0
-    else
-      Enum.sum(attacker_counts) / length(attacker_counts)
-    end
+    Enum.sum(attacker_counts) / length(attacker_counts)
   end
 
-  defp calculate_participation_rates(kills, character_ids) do
+  defp calculate_participation_rates(kills, character_ids) when is_list(kills) and kills != [] do
     total_kills = length(kills)
 
-    if total_kills == 0 do
-      %{}
-    else
-      character_ids
-      |> Enum.map(&calculate_single_participation_rate(&1, kills, total_kills))
-      |> Map.new()
-    end
+    character_ids
+    |> Enum.map(&calculate_single_participation_rate(&1, kills, total_kills))
+    |> Map.new()
   end
 
   defp calculate_single_participation_rate(char_id, kills, total_kills) do
@@ -459,33 +428,27 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnal
     end)
   end
 
+  # Removed unnecessary variable binding - return pipeline result directly
   defp analyze_preferred_targets(kills) do
-    # Group by victim ship type
-    ship_frequencies =
-      kills
-      |> Enum.map(& &1.victim_ship_type_id)
-      |> Enum.filter(&(&1 != nil))
-      |> Enum.frequencies()
-      |> Enum.sort_by(fn {_, count} -> count end, :desc)
-      |> Enum.take(5)
-      |> Enum.map(fn {ship_type_id, count} ->
-        %{
-          ship_type_id: ship_type_id,
-          count: count,
-          percentage: Float.round(count / length(kills) * 100, 1)
-        }
-      end)
-
-    ship_frequencies
+    kills
+    |> Enum.map(& &1.victim_ship_type_id)
+    |> Enum.filter(&(&1 != nil))
+    |> Enum.frequencies()
+    |> Enum.sort_by(fn {_, count} -> count end, :desc)
+    |> Enum.take(5)
+    |> Enum.map(fn {ship_type_id, count} ->
+      %{
+        ship_type_id: ship_type_id,
+        count: count,
+        percentage: Float.round(count / length(kills) * 100, 1)
+      }
+    end)
   end
 
-  defp average_metric(metrics, key) do
-    values = Enum.map(metrics, &Map.get(&1, key, 0))
+  defp average_metric([], _key), do: 0.0
 
-    if Enum.empty?(values) do
-      0.0
-    else
-      Enum.sum(values) / length(values)
-    end
+  defp average_metric(metrics, key) when is_list(metrics) do
+    values = Enum.map(metrics, &Map.get(&1, key, 0))
+    Enum.sum(values) / length(values)
   end
 end

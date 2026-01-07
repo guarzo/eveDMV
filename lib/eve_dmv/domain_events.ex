@@ -54,6 +54,11 @@ defmodule EveDmv.DomainEvents do
 
     defstruct [
       :killmail_id,
+      :killmail_time,
+      :solar_system_id,
+      :victim,
+      :attackers,
+      :zkb_total_value,
       :enriched_data,
       :enrichment_duration_ms,
       :timestamp
@@ -61,9 +66,14 @@ defmodule EveDmv.DomainEvents do
 
     @type t :: %__MODULE__{
             killmail_id: integer(),
-            enriched_data: map(),
+            killmail_time: DateTime.t() | nil,
+            solar_system_id: integer() | nil,
+            victim: map() | nil,
+            attackers: list(map()) | nil,
+            zkb_total_value: Decimal.t() | nil,
+            enriched_data: map() | nil,
             enrichment_duration_ms: integer() | nil,
-            timestamp: DateTime.t()
+            timestamp: DateTime.t() | nil
           }
   end
 

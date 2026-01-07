@@ -6,7 +6,21 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.HistoricalService do
   from external sources and integration with the main killmail processing pipeline.
   """
 
+  alias EveDmv.Contexts.KillmailProcessing.Domain.KillmailValidators
+
   require Logger
+
+  @doc """
+  Validate and start a task to fetch historical killmails.
+
+  This is the public entry point that validates character IDs before processing.
+  """
+  @spec start_fetch_validated([integer()], keyword()) :: {:ok, map()} | {:error, term()}
+  def start_fetch_validated(character_ids, opts \\ []) do
+    with :ok <- KillmailValidators.validate_character_ids(character_ids) do
+      start_fetch_task(character_ids, opts)
+    end
+  end
 
   @doc """
   Start a task to fetch historical killmails for the given character IDs.

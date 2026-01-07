@@ -5,61 +5,9 @@ defmodule EveDmv.Platform.Database.CharacterQueries do
   Uses materialized views and efficient indexing to avoid expensive JSONB operations.
   """
 
-  alias EveDmv.Platform.Cache.QueryCache
   alias EveDmv.Platform.Database.Pagination
   alias EveDmv.Repo
   require Logger
-
-  @doc """
-  Get kill and death counts for a character using optimized queries.
-  Cached for performance.
-  """
-  def get_character_stats(character_id, since_date) do
-    cache_key = "char_stats:#{character_id}:#{Date.to_iso8601(since_date)}"
-
-    QueryCache.get_or_compute(
-      cache_key,
-      fn ->
-        # Deaths are easy - we have a direct column
-        deaths_query = """
-        SELECT COUNT(*) as death_count
-        FROM killmails_raw
-        WHERE victim_character_id = $1
-          AND killmail_time >= $2
-        """
-
-        # For kills, we need to check the raw_data
-        # But we'll limit the search to recent killmails for performance
-        kills_query = """
-        WITH character_kills AS (
-          SELECT killmail_id
-          FROM killmails_raw
-          WHERE killmail_time >= $2
-            AND raw_data @> jsonb_build_object(
-              'attackers', jsonb_build_array(
-                jsonb_build_object('character_id', $1::text)
-              )
-            )
-          LIMIT 1000
-        )
-        SELECT COUNT(*) as kill_count FROM character_kills
-        """
-
-        # Run queries
-        {:ok, %{rows: [[death_count]]}} = Repo.query(deaths_query, [character_id, since_date])
-
-        {:ok, %{rows: [[kill_count]]}} =
-          Repo.query(kills_query, [to_string(character_id), since_date])
-
-        %{
-          kills: kill_count,
-          deaths: death_count,
-          kd_ratio: calculate_kd_ratio(kill_count, death_count)
-        }
-      end,
-      ttl: :timer.hours(1)
-    )
-  end
 
   @doc """
   Get character's recent activity without expensive JSONB operations.
@@ -239,10 +187,4 @@ defmodule EveDmv.Platform.Database.CharacterQueries do
         }
     end
   end
-
-  defp calculate_kd_ratio(kills, deaths) when deaths > 0 do
-    Float.round(kills / deaths, 2)
-  end
-
-  defp calculate_kd_ratio(kills, _deaths), do: kills
 end

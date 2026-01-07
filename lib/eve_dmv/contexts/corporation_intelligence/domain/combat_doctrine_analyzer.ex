@@ -1519,11 +1519,14 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
   defp maybe_analyze_members(combat_data, true) do
     active_members = combat_data.active_members || []
 
+    # Calculate participation from killmail data, not from member IDs
+    top_contributors = identify_top_contributors(combat_data)
+
     member_analysis = %{
       active_members: length(active_members),
-      top_contributors: identify_top_contributors(combat_data),
+      top_contributors: top_contributors,
       role_specialists: identify_role_specialists(combat_data),
-      participation_metrics: calculate_participation_metrics(active_members)
+      participation_metrics: calculate_participation_metrics_from_contributors(top_contributors)
     }
 
     {:ok, member_analysis}
@@ -1746,21 +1749,33 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
     end
   end
 
-  defp calculate_participation_metrics(members) do
-    total_members = length(members)
+  # Calculate participation metrics from contributor data (maps with :participation_count)
+  defp calculate_participation_metrics_from_contributors(contributors) do
+    # Filter out nil and non-map values
+    valid_contributors =
+      contributors
+      |> List.wrap()
+      |> Enum.reject(&is_nil/1)
+      |> Enum.filter(&is_map/1)
 
-    if total_members == 0 do
-      %{average_participation: 0, participation_variance: 0}
+    total_contributors = length(valid_contributors)
+
+    if total_contributors == 0 do
+      %{average_participation: 0, participation_variance: 0, total_engagements: 0}
     else
-      participations = Enum.map(members, &(&1[:participation_count] || 0))
-      avg = Enum.sum(participations) / total_members
+      participations =
+        Enum.map(valid_contributors, fn contributor ->
+          contributor[:participation_count] || contributor["participation_count"] || 0
+        end)
+
+      avg = Enum.sum(participations) / total_contributors
 
       variance =
-        if total_members > 1 do
+        if total_contributors > 1 do
           participations
           |> Enum.map(fn p -> :math.pow(p - avg, 2) end)
           |> Enum.sum()
-          |> Kernel./(total_members - 1)
+          |> Kernel./(total_contributors - 1)
         else
           0
         end

@@ -42,9 +42,18 @@
               </div>
             <% end %>
           </div>
+
+          <!-- Historical Data Status -->
+          <div class="mt-4 border-t border-gray-700 pt-4">
+            <.historical_fetch_indicator
+              status={@historical_fetch_status}
+              entity_type={:alliance}
+              entity_id={@alliance_id}
+            />
+          </div>
         </div>
       <% end %>
-      
+
 <!-- Alliance Statistics -->
       <.stats_grid :if={@alliance_stats} class="mb-8">
         <:stat icon="🏢" label="Corporations" format="custom">

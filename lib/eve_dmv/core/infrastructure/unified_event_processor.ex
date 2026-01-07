@@ -457,10 +457,6 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedEventProcessor do
     queue_event(event)
   end
 
-  ## Event Processing Retry Logic
-
-  # defp process_with_retry - removed as unused
-
   ## Health Check and Monitoring
 
   @doc """

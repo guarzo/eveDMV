@@ -15,8 +15,23 @@ defmodule EveDmv.Application do
 
   @impl Application
   def start(_type, _args) do
-    # Initialize ETS table for fitting cache
-    :ets.new(:battle_fitting_cache, [:set, :public, :named_table])
+    # Initialize ETS table for fitting cache (guard against existing tables)
+    ensure_ets_table(:battle_fitting_cache, [:set, :public, :named_table])
+
+    # Initialize ETS tables for StaticData cache (used by threat scoring)
+    ensure_ets_table(:static_data_type_cache, [
+      :set,
+      :named_table,
+      :public,
+      {:read_concurrency, true}
+    ])
+
+    ensure_ets_table(:static_data_system_cache, [
+      :set,
+      :named_table,
+      :public,
+      {:read_concurrency, true}
+    ])
 
     # Initialize EVE name resolver cache
     # NameResolver.start_cache()
@@ -66,12 +81,14 @@ defmodule EveDmv.Application do
       EveDmv.Platform.Cache.StaticDataCache,
       # Start the query cache for expensive database queries
       EveDmv.Platform.Cache.QueryCache,
+      # Start the analysis cache for character/corporation/system analysis
+      EveDmv.Platform.Cache.AnalysisCache,
       # Start the performance tracker
       EveDmv.Monitoring.PerformanceTracker,
       # Start the simple memory monitor
       EveDmv.MemoryMonitor,
       # Start the corporation analyzer service
-      EveDmv.Contexts.CorporationAnalysis.Domain.CorporationAnalyzer,
+      EveDmv.Contexts.Corporation.Core.CorporationAnalyzer,
       # Start the battle analysis service for combat intelligence
       EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysisService,
       # Start the streaming battle analyzer for large dataset processing
@@ -88,8 +105,6 @@ defmodule EveDmv.Application do
       EveDmv.Contexts.MarketIntelligence.Infrastructure.JaniceClient,
       # Start the unified threat surveillance context
       maybe_start_threat_surveillance_context(),
-      # Start the unified combat analysis context
-      maybe_start_combat_analysis_context(),
       # Conditionally start database-dependent processes
       maybe_start_database_processes(),
       # Start the Wanderer API client for chain intelligence
@@ -100,6 +115,8 @@ defmodule EveDmv.Application do
       maybe_start_process(EveDmv.Intelligence.ChainAnalysis.ChainMonitor),
       # Start mock SSE server in development
       maybe_start_mock_sse_server(),
+      # Start the surveillance matching engine (must start before pipeline)
+      maybe_start_surveillance_matching_engine(),
       # Start the killmail ingestion pipeline
       maybe_start_pipeline(),
       # Start background static data loader
@@ -201,7 +218,7 @@ defmodule EveDmv.Application do
         EveDmv.Platform.Database.ConnectionPoolMonitor,
         EveDmv.Platform.Database.PartitionManager,
         EveDmv.Platform.Database.MaterializedViewOptimizer,
-        EveDmv.Platform.Database.IncrementalViewRefresher,
+        EveDmv.Platform.Database.MaterializedViewRefresher,
         EveDmv.Platform.Database.CacheInvalidator,
         EveDmv.Platform.Database.CacheHashManager,
         EveDmv.Platform.Database.QueryPlanAnalyzer,
@@ -209,6 +226,8 @@ defmodule EveDmv.Application do
         EveDmv.Platform.Database.ArchiveManager,
         EveDmv.Enrichment.ReEnrichmentWorker,
         EveDmv.Enrichment.RealTimePriceUpdater,
+        # Corporation name backfill for existing data without names
+        EveDmv.Killmails.CorporationNameBackfill,
         # Ship role analysis worker for continuous fleet intelligence
         EveDmv.Workers.ShipRoleAnalysisWorker,
         # Intelligence analysis supervisor for managing analysis tasks
@@ -217,7 +236,9 @@ defmodule EveDmv.Application do
         EveDmv.Historical.ImportPipeline,
         EveDmv.Historical.ImportProgressMonitor,
         # Performance monitoring dashboard (Sprint 15A)
-        EveDmv.Platform.Monitoring.PerformanceDashboard
+        EveDmv.Platform.Monitoring.PerformanceDashboard,
+        # Historical fetch worker for 2-year killmail data (Phase 2)
+        EveDmv.Contexts.KillmailProcessing.Domain.HistoricalFetchWorker
       ]
     else
       []
@@ -236,18 +257,6 @@ defmodule EveDmv.Application do
     end
   end
 
-  # Conditionally start unified combat analysis context
-  defp maybe_start_combat_analysis_context do
-    if Application.get_env(:eve_dmv, :environment, :prod) != :test do
-      EveDmv.Contexts.CombatAnalysis
-    else
-      %{
-        id: EveDmv.Contexts.CombatAnalysis,
-        start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}
-      }
-    end
-  end
-
   # Conditionally start a process based on environment
   defp maybe_start_process(module) do
     if Application.get_env(:eve_dmv, :environment, :prod) != :test do
@@ -258,18 +267,37 @@ defmodule EveDmv.Application do
   end
 
   # Conditionally start the mock SSE server in development
+  # Never start in test environment regardless of env var
   defp maybe_start_mock_sse_server do
-    # Check both application config and environment variable directly
-    # since .env loading might happen after application config
-    enabled =
-      Application.get_env(:eve_dmv, :mock_sse_server_enabled, false) or
-        System.get_env("MOCK_SSE_SERVER_ENABLED", "false") == "true"
-
-    if enabled do
-      EveDmv.Killmails.MockSSEServer
-    else
-      # Return a no-op process if mock server is disabled
+    # In test environment, never start the mock SSE server
+    # Tests should mock at the HTTP level if needed
+    if Application.get_env(:eve_dmv, :environment, :prod) == :test do
       %{id: :noop_mock_server, start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}}
+    else
+      # Check both application config and environment variable directly
+      # since .env loading might happen after application config
+      enabled =
+        Application.get_env(:eve_dmv, :mock_sse_server_enabled, false) or
+          System.get_env("MOCK_SSE_SERVER_ENABLED", "false") == "true"
+
+      if enabled do
+        EveDmv.Killmails.MockSSEServer
+      else
+        %{id: :noop_mock_server, start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}}
+      end
+    end
+  end
+
+  # Conditionally start the surveillance matching engine
+  defp maybe_start_surveillance_matching_engine do
+    if Application.get_env(:eve_dmv, :environment, :prod) != :test do
+      EveDmv.Surveillance.MatchingEngine
+    else
+      # No-op process for tests
+      %{
+        id: :surveillance_matching_engine_noop,
+        start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}
+      }
     end
   end
 
@@ -406,5 +434,17 @@ defmodule EveDmv.Application do
     end
   rescue
     error -> {:error, inspect(error)}
+  end
+
+  # Safely create an ETS table, handling the case where it already exists
+  defp ensure_ets_table(name, opts) do
+    case :ets.info(name) do
+      :undefined ->
+        :ets.new(name, opts)
+
+      _info ->
+        Logger.debug("ETS table #{name} already exists, skipping creation")
+        name
+    end
   end
 end

@@ -47,6 +47,9 @@ defmodule EveDmv.Killmails.Participant do
     define(:by_corporation, args: [:corporation_id])
     define(:attackers_only, args: [:killmail_id, :killmail_time])
     define(:victims_only, args: [:killmail_id, :killmail_time])
+    define(:character_activity_summary, args: [:character_id])
+    define(:search_characters_by_name, args: [:query])
+    define(:search_corporations_by_name, args: [:query])
   end
 
   # Attributes
@@ -362,6 +365,102 @@ defmodule EveDmv.Killmails.Participant do
       filter(expr(alliance_id == ^arg(:alliance_id)))
       prepare(build(sort: [killmail_time: :desc]))
     end
+
+    read :search_characters_by_name do
+      description("Search for characters by name with ILIKE matching")
+
+      argument :query, :string do
+        allow_nil?(false)
+        description("Search query to match against character names")
+      end
+
+      argument :limit, :integer do
+        allow_nil?(false)
+        default(10)
+        description("Maximum number of results to return")
+      end
+
+      filter(expr(not is_nil(character_id) and not is_nil(character_name)))
+
+      prepare(fn query, context ->
+        search_pattern = "%#{context.arguments.query}%"
+
+        query
+        |> Ash.Query.filter_input(%{character_name: %{ilike: search_pattern}})
+        |> Ash.Query.sort(killmail_time: :desc)
+        |> Ash.Query.distinct([:character_id])
+        |> Ash.Query.limit(context.arguments.limit)
+        |> Ash.Query.select([
+          :character_id,
+          :character_name,
+          :corporation_id,
+          :corporation_name,
+          :alliance_id,
+          :alliance_name,
+          :killmail_time
+        ])
+      end)
+    end
+
+    read :search_corporations_by_name do
+      description("Search for corporations by name with ILIKE matching")
+
+      argument :query, :string do
+        allow_nil?(false)
+        description("Search query to match against corporation names")
+      end
+
+      argument :limit, :integer do
+        allow_nil?(false)
+        default(10)
+        description("Maximum number of results to return")
+      end
+
+      filter(expr(not is_nil(corporation_id) and not is_nil(corporation_name)))
+
+      prepare(fn query, context ->
+        search_pattern = "%#{context.arguments.query}%"
+
+        query
+        |> Ash.Query.filter_input(%{corporation_name: %{ilike: search_pattern}})
+        |> Ash.Query.sort(killmail_time: :desc)
+        |> Ash.Query.distinct([:corporation_id])
+        |> Ash.Query.limit(context.arguments.limit)
+        |> Ash.Query.select([
+          :corporation_id,
+          :corporation_name,
+          :alliance_id,
+          :alliance_name,
+          :killmail_time
+        ])
+      end)
+    end
+
+    read :character_activity_summary do
+      description("Get activity summary for a character with kill/loss breakdown")
+
+      argument :character_id, :integer do
+        allow_nil?(false)
+        description("Character ID to get activity summary for")
+      end
+
+      argument :since_days, :integer do
+        allow_nil?(false)
+        default(90)
+        description("Number of days to look back")
+      end
+
+      pagination do
+        offset?(true)
+        default_limit(50)
+        max_page_size(100)
+      end
+
+      filter(expr(character_id == ^arg(:character_id)))
+      filter(expr(killmail_time >= ago(^arg(:since_days), :day)))
+
+      prepare(build(sort: [killmail_time: :desc], load: [:ship_type, :participation_type]))
+    end
   end
 
   # Aggregates
@@ -392,6 +491,49 @@ defmodule EveDmv.Killmails.Participant do
             record.final_blow -> "final_blow"
             true -> "attacker"
           end
+        end)
+      end)
+    end
+
+    calculate :threat_level, :atom do
+      description(
+        "Calculated threat level based on damage and role: :low, :medium, :high, :extreme"
+      )
+
+      calculation(fn records, _context ->
+        Enum.map(records, fn participant ->
+          cond do
+            participant.is_victim -> :none
+            participant.final_blow and participant.damage_done > 10_000 -> :extreme
+            participant.final_blow -> :high
+            participant.damage_done > 5_000 -> :medium
+            true -> :low
+          end
+        end)
+      end)
+    end
+
+    calculate :ship_category, :string do
+      description("Ship category from EVE SDE group classification")
+      load([:ship_type])
+
+      calculation(fn records, _context ->
+        Enum.map(records, fn participant ->
+          case participant.ship_type do
+            nil -> "Unknown"
+            ship -> ship.group_name || "Unknown"
+          end
+        end)
+      end)
+    end
+
+    calculate :significant_contribution?, :boolean do
+      description("True if damage >= 10% of total killmail damage or landed final blow")
+
+      calculation(fn records, _context ->
+        Enum.map(records, fn participant ->
+          participant.final_blow == true or
+            (is_number(participant.damage_done) and participant.damage_done >= 1000)
         end)
       end)
     end

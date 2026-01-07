@@ -93,7 +93,6 @@ defmodule EveDmv.Killmails.KillmailProcessor do
   def build_changesets(structured_data) do
     %{
       raw: build_raw_changeset(structured_data)
-      # REMOVED: enriched - see /docs/architecture/enriched-raw-analysis.md
     }
   end
 
@@ -291,9 +290,6 @@ defmodule EveDmv.Killmails.KillmailProcessor do
     }
   end
 
-  # REMOVED: build_enriched_changeset function
-  # Enriched table provides no value - see /docs/architecture/enriched-raw-analysis.md
-
   defp build_victim_participant(structured_data) do
     victim = structured_data.victim
 
@@ -383,13 +379,6 @@ defmodule EveDmv.Killmails.KillmailProcessor do
   defp get_nested_id(data, path) do
     get_in(data, path)
   end
-
-  # REMOVED: Helper functions only used by enriched changeset building
-  # - get_final_blow_character_id
-  # - get_final_blow_character_name
-  # - determine_kill_category
-  # - determine_ship_category
-  # See /docs/architecture/enriched-raw-analysis.md
 
   defp npc_character?(character_id) when is_integer(character_id) do
     # NPC character IDs are typically below this threshold

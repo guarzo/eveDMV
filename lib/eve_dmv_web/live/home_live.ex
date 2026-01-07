@@ -78,6 +78,13 @@ defmodule EveDmvWeb.HomeLive do
   end
 
   @impl Phoenix.LiveView
+  def handle_info({:hide_dropdown, _component_id}, socket) do
+    # Delay hiding to allow click events to fire on dropdown items
+    Process.send_after(self(), :hide_search_dropdown, 200)
+    {:noreply, socket}
+  end
+
+  @impl Phoenix.LiveView
   def handle_info({:search_results, query, results}, socket) do
     if query == socket.assigns.search_query do
       {:noreply,

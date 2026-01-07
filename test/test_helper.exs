@@ -7,29 +7,106 @@ ExUnit.start(
 
 require Logger
 
-# Helper function for waiting on repo readiness
+# Ensure support modules are loaded before use
+# Use Code.ensure_loaded! to load from compiled beam files if available,
+# falling back to require_file if compilation hasn't happened yet
+try do
+  Code.ensure_loaded!(EveDmv.Test.PartitionHelper)
+  Code.ensure_loaded!(EveDmv.Test.PartitionHelpers)
+rescue
+  ArgumentError ->
+    # Modules not compiled yet, load from source
+    Code.require_file("support/partition_helper.ex", __DIR__)
+    Code.require_file("support/partition_helpers.ex", __DIR__)
+end
+
+# Helper function for waiting on repo readiness and connection management
 defmodule TestHelper do
-  def wait_for_repo_ready(attempts \\ 0, max_attempts \\ 20) do
-    if attempts >= max_attempts do
-      Logger.warning("Repo readiness check timeout after #{max_attempts} attempts")
-    else
-      case GenServer.whereis(EveDmv.Repo) do
-        nil ->
-          Process.sleep(100)
-          TestHelper.wait_for_repo_ready(attempts + 1, max_attempts)
+  @moduledoc false
 
-        _pid ->
-          # Test a simple query to ensure repo is fully functional
-          case Ecto.Adapters.SQL.query(EveDmv.Repo, "SELECT 1", []) do
-            {:ok, _} ->
-              Logger.info("Repo is ready for tests")
-              :ok
+  def drain_connections do
+    # Get database host from DATABASE_URL or fall back to defaults
+    db_host = get_database_host()
 
-            {:error, _} ->
-              Process.sleep(100)
-              TestHelper.wait_for_repo_ready(attempts + 1, max_attempts)
-          end
-      end
+    # Terminate any orphaned connections from previous test runs
+    drain_query = """
+    SELECT pg_terminate_backend(pid)
+    FROM pg_stat_activity
+    WHERE datname LIKE 'eve_dmv_test%'
+      AND state = 'idle'
+      AND query_start < NOW() - INTERVAL '30 seconds';
+    """
+
+    # Connect directly to postgres database to run cleanup
+    case Postgrex.start_link(
+           hostname: db_host,
+           username: System.get_env("DB_USER", "postgres"),
+           password: System.get_env("DB_PASS", "postgres"),
+           database: "postgres"
+         ) do
+      {:ok, conn} ->
+        Postgrex.query(conn, drain_query, [])
+        GenServer.stop(conn)
+        Logger.info("Drained orphaned test connections from #{db_host}")
+
+      {:error, reason} ->
+        Logger.warning("Could not drain connections from #{db_host}: #{inspect(reason)}")
+    end
+  end
+
+  # Extract database host from DATABASE_URL or use default
+  defp get_database_host do
+    case System.get_env("DATABASE_URL") do
+      nil ->
+        System.get_env("DB_HOST", "db")
+
+      url ->
+        # Parse host from DATABASE_URL (postgres://user:pass@host:port/db)
+        case URI.parse(url) do
+          %URI{host: host} when is_binary(host) -> host
+          _ -> System.get_env("DB_HOST", "db")
+        end
+    end
+  end
+
+  def wait_for_repo_ready(attempts \\ 0, max_attempts \\ 50) do
+    cond do
+      attempts >= max_attempts ->
+        Logger.error(
+          "Repo readiness check timeout after #{max_attempts} attempts (#{max_attempts * 100}ms)"
+        )
+
+        raise "Repo failed to become ready within #{max_attempts * 100}ms"
+
+      is_nil(GenServer.whereis(EveDmv.Repo)) ->
+        log_repo_not_registered(attempts)
+        Process.sleep(100)
+        TestHelper.wait_for_repo_ready(attempts + 1, max_attempts)
+
+      true ->
+        verify_repo_with_query(attempts, max_attempts)
+    end
+  end
+
+  defp log_repo_not_registered(attempts) do
+    if rem(attempts, 10) == 0 and attempts > 0 do
+      Logger.warning("Repo not registered after #{attempts * 100}ms, still waiting...")
+    end
+  end
+
+  defp verify_repo_with_query(attempts, max_attempts) do
+    case Ecto.Adapters.SQL.query(EveDmv.Repo, "SELECT 1", []) do
+      {:ok, _} ->
+        Logger.info("Repo is ready for tests")
+        :ok
+
+      {:error, reason} ->
+        if rem(attempts, 5) == 0 do
+          Logger.warning("Repo registered but query failed: #{inspect(reason)}")
+        end
+
+        Process.sleep(100)
+        TestHelper.wait_for_repo_ready(attempts + 1, max_attempts)
     end
   end
 end
@@ -49,30 +126,29 @@ Logger.info("Creating test partitions...")
 EveDmv.Test.PartitionHelper.ensure_test_partitions()
 Logger.info("Test partitions ready")
 
-# Ensure we're using the correct pool for testing
-# Force the pool to be Sandbox if it's not already set correctly
+# Verify we're using the correct pool for testing
+# If the pool is wrong at this point, the test.exs or runtime.exs configuration is incorrect
 repo_config = Application.get_env(:eve_dmv, EveDmv.Repo) || []
 pool_class = Keyword.get(repo_config, :pool)
 
 if pool_class != Ecto.Adapters.SQL.Sandbox do
-  Logger.warning("Test repository is not using SQL Sandbox pool: #{inspect(pool_class)}")
-  Logger.warning("Current repo config: #{inspect(repo_config)}")
+  Logger.error("""
+  CRITICAL: Test repository is not using SQL Sandbox pool!
+  Current pool: #{inspect(pool_class)}
+  Current repo config: #{inspect(repo_config)}
 
-  # Force the correct test configuration
-  test_config = [
-    username: "postgres",
-    password: "postgres",
-    hostname: "db",
-    database: "eve_dmv_test#{System.get_env("MIX_TEST_PARTITION")}",
-    port: 5432,
-    pool: Ecto.Adapters.SQL.Sandbox,
-    pool_size: System.schedulers_online() * 2,
-    ownership_timeout: 60_000,
-    timeout: 60_000
-  ]
+  This configuration error must be fixed in config/test.exs or config/runtime.exs.
+  Note: Changing the config after application start won't restart the repo.
 
-  Application.put_env(:eve_dmv, EveDmv.Repo, test_config)
-  Logger.info("Forced test database configuration with SQL Sandbox")
+  Environment:
+    MIX_ENV: #{System.get_env("MIX_ENV")}
+    DATABASE_URL: #{(System.get_env("DATABASE_URL") && "[SET]") || "[NOT SET]"}
+    TEST_DATABASE_URL: #{(System.get_env("TEST_DATABASE_URL") && "[SET]") || "[NOT SET]"}
+  """)
+
+  raise "Test environment requires SQL Sandbox pool. See error above for details."
+else
+  Logger.info("Test repository using correct SQL Sandbox pool")
 end
 
 # Set up the sandbox mode for testing

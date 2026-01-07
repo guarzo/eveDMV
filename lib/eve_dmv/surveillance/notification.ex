@@ -25,6 +25,17 @@ defmodule EveDmv.Surveillance.Notification do
       index([:notification_type], name: "notifications_type_idx")
       index([:profile_id], name: "notifications_profile_idx")
     end
+
+    identity_index_names(unique_profile_killmail_notification: "notifications_unique_match_idx")
+  end
+
+  # Identity constraints
+  identities do
+    identity(:unique_profile_killmail_notification, [:user_id, :profile_id, :killmail_id],
+      nils_distinct?: false,
+      where: expr(not is_nil(profile_id) and not is_nil(killmail_id)),
+      description: "Prevent duplicate notifications for the same profile/killmail match"
+    )
   end
 
   # Resource configuration

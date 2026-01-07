@@ -141,6 +141,9 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: eve_dmv_test
+          # Increase max connections to prevent pool exhaustion during parallel tests
+          # See docs/TEST_INFRASTRUCTURE_REMEDIATION_PLAN.md for details
+          POSTGRES_MAX_CONNECTIONS: "200"
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -230,6 +233,30 @@ jobs:
         name: coverage-report
         path: cover/
         retention-days: 30
+
+    - name: Check for database connection leaks
+      if: always()
+      run: |
+        echo "📊 Checking PostgreSQL connection status after tests..."
+        PGPASSWORD=postgres psql -h localhost -U postgres -d eve_dmv_test -c "
+          SELECT count(*) as active_connections,
+                 state,
+                 wait_event_type
+          FROM pg_stat_activity
+          WHERE datname = 'eve_dmv_test'
+          GROUP BY state, wait_event_type
+          ORDER BY active_connections DESC;" || echo "Could not query connection status"
+
+        # Check total connections
+        TOTAL_CONN=$(PGPASSWORD=postgres psql -h localhost -U postgres -t -c "SELECT count(*) FROM pg_stat_activity WHERE datname = 'eve_dmv_test';" 2>/dev/null || echo "0")
+        TOTAL_CONN=$(echo "$TOTAL_CONN" | tr -d ' ')
+
+        if [ "$TOTAL_CONN" -gt 50 ]; then
+          echo "⚠️ WARNING: $TOTAL_CONN connections still active after tests - possible connection leak"
+        else
+          echo "✅ Connection count ($TOTAL_CONN) is within normal range"
+        fi
+      continue-on-error: true
 
   # Dialyzer job - runs on all PRs and main branch
   dialyzer:

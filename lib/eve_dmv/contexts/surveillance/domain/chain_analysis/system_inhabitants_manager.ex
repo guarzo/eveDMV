@@ -211,19 +211,16 @@ defmodule EveDmv.Intelligence.ChainAnalysis.SystemInhabitantsManager do
   Used during full chain synchronization to reset presence status.
   """
   def mark_all_departed(chain_topology_id) do
-    {:ok, inhabitants} =
-      SystemInhabitant
-      |> Ash.Query.filter(chain_topology_id == ^chain_topology_id and present == true)
-      |> Ash.read(domain: EveDmv.Api)
-
-    # Bulk update all inhabitants to mark as departed
     departure_time = DateTime.utc_now()
 
-    Enum.each(inhabitants, fn inhabitant ->
-      Ash.update(inhabitant, %{present: false, departure_time: departure_time},
-        domain: EveDmv.Api
-      )
-    end)
+    # Use bulk_update to avoid N+1 query pattern
+    SystemInhabitant
+    |> Ash.Query.filter(chain_topology_id == ^chain_topology_id and present == true)
+    |> Ash.bulk_update(:update, %{present: false, departure_time: departure_time},
+      domain: Api,
+      return_records?: false,
+      return_errors?: false
+    )
   end
 
   @doc """

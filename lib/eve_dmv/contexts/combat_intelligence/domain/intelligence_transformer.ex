@@ -1,0 +1,103 @@
+defmodule EveDmv.Contexts.CombatIntelligence.Domain.IntelligenceTransformer do
+  @moduledoc """
+  Transforms analyzer results into standardized API response structures.
+
+  Provides consistent transformation of raw analysis data into the
+  public API format expected by consumers.
+  """
+
+  @typedoc "Character analysis result structure"
+  @type character_analysis_result :: %{
+          character_id: term(),
+          character_name: term(),
+          threat_level: term(),
+          analysis_summary: %{combat_effectiveness: term(), analyzed_at: term()},
+          detailed_metrics: map(),
+          recommendations: [],
+          last_updated: term()
+        }
+
+  @typedoc "Corporation analysis result structure"
+  @type corporation_analysis_result :: %{
+          corporation_id: term(),
+          corporation_name: term(),
+          member_count: term(),
+          activity_patterns: term(),
+          threat_distribution: term(),
+          coordination_metrics: term(),
+          last_updated: term()
+        }
+
+  @doc """
+  Transforms character analysis results into the public API structure.
+
+  ## Parameters
+  - `analysis_result` - Raw analysis result from CharacterAnalyzer (must contain :character_id)
+
+  ## Returns
+  A standardized map with:
+  - `:character_id` - The analyzed character's ID
+  - `:character_name` - Character name or "Unknown"
+  - `:threat_level` - Threat level assessment
+  - `:analysis_summary` - Summary metrics
+  - `:detailed_metrics` - All other analysis data
+  - `:recommendations` - List of recommendations (empty by default)
+  - `:last_updated` - Timestamp of analysis
+  """
+  @spec transform_character_analysis(map()) :: character_analysis_result()
+  def transform_character_analysis(%{character_id: character_id} = analysis_result) do
+    now = DateTime.utc_now()
+    analyzed_at = Map.get(analysis_result, :analyzed_at, now)
+
+    %{
+      character_id: character_id,
+      character_name: Map.get(analysis_result, :character_name, "Unknown"),
+      threat_level: Map.get(analysis_result, :threat_level, :unknown),
+      analysis_summary: %{
+        combat_effectiveness: Map.get(analysis_result, :combat_effectiveness, 0.0),
+        analyzed_at: analyzed_at
+      },
+      detailed_metrics:
+        Map.drop(analysis_result, [
+          :character_id,
+          :character_name,
+          :threat_level,
+          :combat_effectiveness,
+          :analyzed_at
+        ]),
+      recommendations: [],
+      last_updated: analyzed_at
+    }
+  end
+
+  @doc """
+  Transforms corporation analysis results into the public API structure.
+
+  ## Parameters
+  - `analysis_result` - Raw analysis result from CorporationAnalyzer (must contain :corporation_id)
+
+  ## Returns
+  A standardized map with:
+  - `:corporation_id` - The analyzed corporation's ID
+  - `:corporation_name` - Corporation name or "Unknown"
+  - `:member_count` - Number of members
+  - `:activity_patterns` - Activity pattern data
+  - `:threat_distribution` - Threat distribution across members
+  - `:coordination_metrics` - Coordination metrics
+  - `:last_updated` - Timestamp of analysis
+  """
+  @spec transform_corporation_analysis(map()) :: corporation_analysis_result()
+  def transform_corporation_analysis(%{corporation_id: corporation_id} = analysis_result) do
+    now = DateTime.utc_now()
+
+    %{
+      corporation_id: corporation_id,
+      corporation_name: Map.get(analysis_result, :corporation_name, "Unknown"),
+      member_count: Map.get(analysis_result, :member_count, 0),
+      activity_patterns: Map.get(analysis_result, :activity_patterns, %{}),
+      threat_distribution: Map.get(analysis_result, :threat_distribution, %{}),
+      coordination_metrics: Map.get(analysis_result, :coordination_metrics, %{}),
+      last_updated: Map.get(analysis_result, :analysis_timestamp, now)
+    }
+  end
+end

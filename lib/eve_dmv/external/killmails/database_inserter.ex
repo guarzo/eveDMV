@@ -7,7 +7,6 @@ defmodule EveDmv.Killmails.DatabaseInserter do
   """
 
   alias EveDmv.Api
-  # REMOVED: KillmailEnriched - see /docs/architecture/enriched-raw-analysis.md
   alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Killmails.Participant
 
@@ -55,9 +54,6 @@ defmodule EveDmv.Killmails.DatabaseInserter do
         :error
     end
   end
-
-  # REMOVED: insert_enriched_killmails function
-  # Enriched table provides no value - see /docs/architecture/enriched-raw-analysis.md
 
   @doc """
   Insert participant records using bulk operations.

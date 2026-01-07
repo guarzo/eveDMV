@@ -143,10 +143,8 @@ defmodule EveDmv.Eve.NameResolver.CacheManager do
   """
   @spec get_cache_stats() :: map()
   def get_cache_stats do
-    case EveDmv.Cache.stats(:hot_data) do
-      {:ok, stats} -> stats
-      _ -> %{cache_size: 0, hit_rate: 0.0, miss_rate: 0.0}
-    end
+    # EveDmv.Cache.stats/1 returns a map directly, not a tuple
+    EveDmv.Cache.stats(:hot_data)
   end
 
   @doc """

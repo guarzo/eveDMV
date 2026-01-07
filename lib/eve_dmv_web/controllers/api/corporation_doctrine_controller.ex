@@ -23,11 +23,13 @@ defmodule EveDmvWeb.Api.CorporationDoctrineController do
         json(conn, %{
           data: %{
             corporation_id: corporation_id,
-            primary_doctrine: analysis.primary_doctrine,
-            doctrine_confidence: analysis.doctrine_confidence,
-            secondary_doctrines: analysis.secondary_doctrines,
-            fleet_compositions: analysis.fleet_compositions,
-            tactical_preferences: analysis.tactical_preferences
+            primary_doctrine: analysis[:primary_doctrine],
+            doctrine_confidence: get_in(analysis, [:primary_doctrine, :confidence]),
+            secondary_doctrines: analysis[:secondary_doctrines],
+            fleet_compositions: analysis[:fleet_compositions],
+            tactical_preferences: analysis[:tactical_patterns],
+            threat_assessment: analysis[:threat_assessment],
+            member_analysis: analysis[:member_analysis]
           }
         })
 

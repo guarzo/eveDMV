@@ -15,6 +15,8 @@ defmodule EveDmv.Killmails.KillmailRaw do
   alias EveDmv.Ash.Preparations.QuerySafety
   alias EveDmv.Core.Utils.DateTimeUtils
 
+  require Ash.Query
+
   postgres do
     table("killmails_raw")
     repo(EveDmv.Repo)
@@ -211,6 +213,86 @@ defmodule EveDmv.Killmails.KillmailRaw do
       filter(expr(victim_character_id == ^arg(:character_id)))
       prepare(build(sort: [killmail_time: :desc]))
     end
+
+    read :by_character_involvement do
+      description("Find killmails where character was involved as attacker or victim")
+
+      argument :character_id, :integer do
+        allow_nil?(false)
+        description("Character ID to search for")
+      end
+
+      argument :since_days, :integer do
+        allow_nil?(true)
+        default(90)
+        description("Number of days to look back")
+      end
+
+      argument :limit, :integer do
+        allow_nil?(true)
+        default(100)
+        description("Maximum number of results")
+      end
+
+      prepare(fn query, context ->
+        import Ash.Expr
+        char_id = context.arguments.character_id
+        days = context.arguments.since_days || 90
+        result_limit = context.arguments.limit || 100
+        since_date = DateTime.add(DateTime.utc_now(), -days, :day)
+
+        query
+        |> Ash.Query.filter(expr(killmail_time >= ^since_date))
+        |> Ash.Query.filter(
+          expr(
+            victim_character_id == ^char_id or
+              fragment(
+                "EXISTS (SELECT 1 FROM participants p WHERE p.killmail_id = ? AND p.character_id = ? AND p.is_victim = false)",
+                killmail_id,
+                ^char_id
+              )
+          )
+        )
+        |> Ash.Query.sort(killmail_time: :desc)
+        |> Ash.Query.limit(result_limit)
+      end)
+    end
+
+    read :by_corporation_involvement do
+      description("Find killmails involving a corporation")
+
+      argument :corporation_id, :integer do
+        allow_nil?(false)
+        description("Corporation ID to search for")
+      end
+
+      argument :involvement_type, :atom do
+        allow_nil?(true)
+        default(:all)
+        constraints(one_of: [:all, :kills, :losses])
+        description("Filter by involvement type: all, kills, or losses")
+      end
+
+      argument :since_days, :integer do
+        allow_nil?(true)
+        default(90)
+        description("Number of days to look back")
+      end
+
+      prepare(fn query, context ->
+        import Ash.Expr
+        corp_id = context.arguments.corporation_id
+        involvement = context.arguments.involvement_type || :all
+        days = context.arguments.since_days || 90
+        since_date = DateTime.add(DateTime.utc_now(), -days, :day)
+
+        query
+        |> Ash.Query.filter(expr(killmail_time >= ^since_date))
+        |> apply_corporation_filter(corp_id, involvement)
+        |> Ash.Query.sort(killmail_time: :desc)
+        |> Ash.Query.limit(100)
+      end)
+    end
   end
 
   # Relationships
@@ -221,8 +303,11 @@ defmodule EveDmv.Killmails.KillmailRaw do
       description("All participants (attackers and victim) in this killmail")
     end
 
-    # REMOVED: enriched_data relationship
-    # Enriched table provides no value - see /docs/architecture/enriched-raw-analysis.md
+    belongs_to :solar_system, EveDmv.Eve.SolarSystem do
+      source_attribute(:solar_system_id)
+      destination_attribute(:system_id)
+      description("Solar system where the kill occurred")
+    end
   end
 
   # Authorization policies
@@ -249,6 +334,16 @@ defmodule EveDmv.Killmails.KillmailRaw do
     count :participant_count, :participants do
       description("Number of participants in this killmail")
     end
+
+    count :non_victim_count, :participants do
+      description("Number of non-victim participants (attackers)")
+      filter(expr(is_victim == false))
+    end
+
+    sum :total_attacker_damage, :participants, :damage_done do
+      description("Total damage dealt by all attackers")
+      filter(expr(is_victim == false))
+    end
   end
 
   # Preparations for query safety
@@ -273,6 +368,137 @@ defmodule EveDmv.Killmails.KillmailRaw do
     calculate(:is_recent, :boolean,
       description: "True if killmail is less than 24 hours old",
       calculation: expr(killmail_time > ago(24, :hour))
+    )
+
+    calculate(:is_solo_kill, :boolean,
+      description: "True if only one attacker was involved",
+      calculation: expr(non_victim_count == 1)
+    )
+
+    calculate(:is_high_value, :boolean,
+      description: "True if kill value exceeds 1 billion ISK",
+      calculation: expr(total_value > 1_000_000_000)
+    )
+
+    calculate :age_in_days, :integer do
+      description("Age of the killmail in days")
+
+      calculation(fn records, _context ->
+        Enum.map(records, fn record ->
+          DateTimeUtils.diff(DateTime.utc_now(), record.killmail_time, :day)
+        end)
+      end)
+    end
+
+    calculate :time_of_day_bucket, :atom do
+      description(
+        "Time bucket based on UTC hour: :morning (6-11), :afternoon (12-17), :evening (18-21), :night (22-5)"
+      )
+
+      calculation(fn records, _context ->
+        Enum.map(records, fn killmail ->
+          hour = killmail.killmail_time.hour
+
+          cond do
+            hour >= 6 and hour < 12 -> :morning
+            hour >= 12 and hour < 18 -> :afternoon
+            hour >= 18 and hour < 22 -> :evening
+            true -> :night
+          end
+        end)
+      end)
+    end
+
+    calculate :day_of_week, :atom do
+      description("Day of week: :monday through :sunday")
+
+      calculation(fn records, _context ->
+        Enum.map(records, fn killmail ->
+          killmail.killmail_time
+          |> DateTime.to_date()
+          |> Date.day_of_week()
+          |> day_number_to_atom()
+        end)
+      end)
+    end
+
+    calculate :security_class, :string do
+      description(
+        "Security classification from solar system (highsec, lowsec, nullsec, wormhole)"
+      )
+
+      load([:solar_system])
+
+      calculation(fn records, _context ->
+        Enum.map(records, fn killmail ->
+          case killmail.solar_system do
+            nil -> "unknown"
+            sys -> sys.security_class || "unknown"
+          end
+        end)
+      end)
+    end
+
+    calculate :is_wormhole_kill, :boolean do
+      description("Whether this kill occurred in wormhole space")
+      load([:solar_system])
+
+      calculation(fn records, _context ->
+        Enum.map(records, fn killmail ->
+          case killmail.solar_system do
+            nil -> false
+            sys -> sys.security_class == "wormhole"
+          end
+        end)
+      end)
+    end
+  end
+
+  # Helper function for day_of_week calculation
+  defp day_number_to_atom(1), do: :monday
+  defp day_number_to_atom(2), do: :tuesday
+  defp day_number_to_atom(3), do: :wednesday
+  defp day_number_to_atom(4), do: :thursday
+  defp day_number_to_atom(5), do: :friday
+  defp day_number_to_atom(6), do: :saturday
+  defp day_number_to_atom(7), do: :sunday
+
+  # Helper functions for read actions
+
+  @doc false
+  defp apply_corporation_filter(query, corp_id, :all) do
+    import Ash.Expr
+
+    Ash.Query.filter(
+      query,
+      expr(
+        victim_corporation_id == ^corp_id or
+          fragment(
+            "EXISTS (SELECT 1 FROM participants p WHERE p.killmail_id = ? AND p.corporation_id = ?)",
+            killmail_id,
+            ^corp_id
+          )
+      )
+    )
+  end
+
+  defp apply_corporation_filter(query, corp_id, :losses) do
+    import Ash.Expr
+    Ash.Query.filter(query, expr(victim_corporation_id == ^corp_id))
+  end
+
+  defp apply_corporation_filter(query, corp_id, :kills) do
+    import Ash.Expr
+
+    Ash.Query.filter(
+      query,
+      expr(
+        fragment(
+          "EXISTS (SELECT 1 FROM participants p WHERE p.killmail_id = ? AND p.corporation_id = ? AND p.is_victim = false)",
+          killmail_id,
+          ^corp_id
+        )
+      )
     )
   end
 end

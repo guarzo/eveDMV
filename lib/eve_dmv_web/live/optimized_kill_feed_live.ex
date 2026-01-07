@@ -12,6 +12,8 @@ defmodule EveDmvWeb.OptimizedKillFeedLive do
 
   use EveDmvWeb, :live_view
 
+  on_mount({EveDmvWeb.AuthLive, :load_from_session_optional})
+
   alias EveDmv.Platform.Cache.MultiLayerCache
   alias EveDmv.Streaming.KillmailStreamer
   alias Phoenix.LiveView.AsyncResult

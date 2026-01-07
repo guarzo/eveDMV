@@ -21,6 +21,17 @@
       </div>
     </div>
   </div>
+
+  <!-- Historical Fetch Status Indicator -->
+  <%= if @character_id do %>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+      <.historical_fetch_indicator
+        status={@historical_fetch_status}
+        entity_type={:character}
+        entity_id={@character_id}
+      />
+    </div>
+  <% end %>
   
 <!-- Error State -->
   <%= if @error do %>
@@ -37,7 +48,12 @@
         <.live_component module={PlayerStatsComponent} id="player-stats" player_stats={@player_stats} character_id={@character_id} />
       <% else %>
         <%= if @character_info do %>
-          <.live_component module={CharacterInfoComponent} id="character-info" character_info={@character_info} />
+          <CharacterInfoComponent.character_info
+            character_id={@character_id}
+            character_name={@character_info[:name] || @character_info["name"] || "Unknown"}
+            corporation_name={@character_info[:corporation_name] || @character_info["corporation_name"]}
+            alliance_name={@character_info[:alliance_name] || @character_info["alliance_name"]}
+          />
         <% else %>
           <.live_component module={NoDataComponent} id="no-data" character_intel={@character_intel} character_id={@character_id} />
         <% end %>
