@@ -12,7 +12,7 @@ defmodule EveDmv.Monitoring.ErrorRecoveryWorker do
   use GenServer
   alias EveDmv.Monitoring.ErrorTracker
   alias EveDmv.Monitoring.PipelineMonitor
-  alias KillmailPipeline
+  alias EveDmv.Killmails.KillmailPipeline
 
   require Logger
 
