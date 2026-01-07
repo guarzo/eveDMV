@@ -37,6 +37,12 @@ defmodule EveDmv.Killmails.CorporationNameBackfill do
   require Logger
 
   @batch_size 100
+  # Delay between individual corporation updates to prevent connection pool exhaustion
+  @update_delay_ms 200
+  # Statement timeout for individual queries (5 seconds max)
+  @statement_timeout_ms 5_000
+  # Delay before starting backfill (60 seconds to let app fully warm up)
+  @startup_delay_ms 60_000
 
   @typep raw_data_summary :: %{
            victim_updates: non_neg_integer(),
@@ -80,8 +86,9 @@ defmodule EveDmv.Killmails.CorporationNameBackfill do
 
   @impl GenServer
   def init(_opts) do
-    # Run backfill after a short delay to let the app fully start
-    Process.send_after(self(), :run_backfill, :timer.seconds(10))
+    # Run backfill after a longer delay to let the app fully warm up
+    # This prevents competing with initial killmail processing on startup
+    Process.send_after(self(), :run_backfill, @startup_delay_ms)
     {:ok, %{status: :pending, task_ref: nil}}
   end
 
@@ -211,14 +218,29 @@ defmodule EveDmv.Killmails.CorporationNameBackfill do
       attacker_errors: 0
     }
 
+    total_corps = map_size(corp_names)
+
     summary =
-      Enum.reduce(corp_names, initial_summary, fn {corp_id, corp_name}, acc ->
+      corp_names
+      |> Enum.with_index(1)
+      |> Enum.reduce(initial_summary, fn {{corp_id, corp_name}, idx}, acc ->
+        # Log progress every 50 corporations
+        if rem(idx, 50) == 0 do
+          Logger.info("🏢 Backfill progress: #{idx}/#{total_corps} corporations processed")
+        end
+
         # Optimized: Use participants table to find killmail_ids first (indexed),
         # then update only those specific killmails instead of scanning all rows.
         # Uses idx_participants_corp_activity on (corporation_id, killmail_time)
 
         acc = update_victim_raw_data(corp_id, corp_name, acc)
-        update_attacker_raw_data(corp_id, corp_name, acc)
+        acc = update_attacker_raw_data(corp_id, corp_name, acc)
+
+        # Throttle between corporation updates to prevent connection pool exhaustion
+        # This yields connections back to the pool for real-time operations
+        Process.sleep(@update_delay_ms)
+
+        acc
       end)
 
     if summary.victim_errors > 0 or summary.attacker_errors > 0 do
@@ -231,7 +253,9 @@ defmodule EveDmv.Killmails.CorporationNameBackfill do
   defp update_victim_raw_data(corp_id, corp_name, acc) do
     # Update victim corporation_name in raw_data JSONB
     # First find killmails where this corp was the victim via indexed participants lookup
+    # Uses statement timeout to prevent connection exhaustion from slow queries
     update_victim_query = """
+    SET LOCAL statement_timeout = '#{@statement_timeout_ms}';
     UPDATE killmails_raw k
     SET raw_data = jsonb_set(raw_data, '{victim,corporation_name}', $1::jsonb)
     FROM (
@@ -240,6 +264,7 @@ defmodule EveDmv.Killmails.CorporationNameBackfill do
       WHERE p.corporation_id = $2
         AND p.is_victim = true
         AND (p.corporation_name IS NULL OR p.corporation_name = '')
+      LIMIT 1000
     ) victim_kills
     WHERE k.killmail_id = victim_kills.killmail_id
       AND k.killmail_time = victim_kills.killmail_time
@@ -256,7 +281,9 @@ defmodule EveDmv.Killmails.CorporationNameBackfill do
         acc
 
       {:error, error} ->
-        Logger.error("🏢 Failed to update victim raw_data for corp #{corp_id}: #{inspect(error)}")
+        Logger.warning(
+          "🏢 Failed to update victim raw_data for corp #{corp_id}: #{inspect(error)}"
+        )
 
         %{acc | victim_errors: acc.victim_errors + 1}
     end
@@ -265,7 +292,10 @@ defmodule EveDmv.Killmails.CorporationNameBackfill do
   defp update_attacker_raw_data(corp_id, corp_name, acc) do
     # Update attacker corporation_names in raw_data JSONB
     # First find killmails where this corp was an attacker via indexed participants lookup
+    # Uses statement timeout and LIMIT to prevent connection exhaustion
+    # The jsonb_agg operation is expensive, so we process in smaller batches
     update_attackers_query = """
+    SET LOCAL statement_timeout = '#{@statement_timeout_ms}';
     UPDATE killmails_raw k
     SET raw_data = jsonb_set(
       raw_data,
@@ -288,6 +318,7 @@ defmodule EveDmv.Killmails.CorporationNameBackfill do
       WHERE p.corporation_id = $2
         AND p.is_victim = false
         AND (p.corporation_name IS NULL OR p.corporation_name = '')
+      LIMIT 500
     ) attacker_kills
     WHERE k.killmail_id = attacker_kills.killmail_id
       AND k.killmail_time = attacker_kills.killmail_time
@@ -303,7 +334,7 @@ defmodule EveDmv.Killmails.CorporationNameBackfill do
         acc
 
       {:error, error} ->
-        Logger.error(
+        Logger.warning(
           "🏢 Failed to update attacker raw_data for corp #{corp_id}: #{inspect(error)}"
         )
 

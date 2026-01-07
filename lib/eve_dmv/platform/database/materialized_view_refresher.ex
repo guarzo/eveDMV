@@ -19,6 +19,12 @@ defmodule EveDmv.Platform.Database.MaterializedViewRefresher do
   require Logger
 
   @refresh_interval :timer.minutes(5)
+  # Statement timeout for materialized view refresh (2 minutes max)
+  # This prevents long-running refreshes from blocking the connection pool
+  @refresh_statement_timeout_ms 120_000
+  # Minimum available connections required before attempting a refresh
+  # This ensures real-time operations have priority
+  @min_available_connections 5
   # Materialized views can only be fully refreshed - there is no incremental option.
   # The full_refresh_interval determines the minimum time between refreshes.
   @materialized_views %{
@@ -179,16 +185,43 @@ defmodule EveDmv.Platform.Database.MaterializedViewRefresher do
               "Only configured views are allowed: #{inspect(Map.keys(@materialized_views))}"
     end
 
+    # Check if connection pool has enough available connections
+    # Skip refresh if pool is under pressure to prioritize real-time operations
+    case check_pool_availability() do
+      {:ok, available} when available < @min_available_connections ->
+        Logger.warning(
+          "Skipping refresh of #{view_name} - only #{available} connections available " <>
+            "(minimum #{@min_available_connections} required)"
+        )
+
+        {:ok, 0, %{rows_updated: 0, skipped: :pool_pressure}}
+
+      _ ->
+        do_perform_full_refresh(view_name)
+    end
+  end
+
+  defp do_perform_full_refresh(view_name) do
     Logger.info("Performing full refresh for #{view_name}")
     start_time = System.monotonic_time(:millisecond)
 
-    # Use a transaction with increased work_mem to avoid disk spills during sort
+    # Use a transaction with increased work_mem and statement timeout
     # The character_activity_summary view requires ~9MB for sorting, default is 4MB
+    # Statement timeout prevents long-running refreshes from blocking the pool
     result =
-      EveDmv.Repo.transaction(fn ->
-        SQL.query!(EveDmv.Repo, "SET LOCAL work_mem = '32MB'")
-        SQL.query!(EveDmv.Repo, "REFRESH MATERIALIZED VIEW CONCURRENTLY #{view_name}")
-      end)
+      EveDmv.Repo.transaction(
+        fn ->
+          SQL.query!(EveDmv.Repo, "SET LOCAL work_mem = '32MB'")
+
+          SQL.query!(
+            EveDmv.Repo,
+            "SET LOCAL statement_timeout = '#{@refresh_statement_timeout_ms}'"
+          )
+
+          SQL.query!(EveDmv.Repo, "REFRESH MATERIALIZED VIEW CONCURRENTLY #{view_name}")
+        end,
+        timeout: @refresh_statement_timeout_ms + 5_000
+      )
 
     case result do
       {:ok, _query_result} ->
@@ -201,8 +234,42 @@ defmodule EveDmv.Platform.Database.MaterializedViewRefresher do
         {:ok, duration, %{rows_updated: 0}}
 
       {:error, error} ->
-        Logger.error("Failed to fully refresh #{view_name}: #{inspect(error)}")
+        duration = System.monotonic_time(:millisecond) - start_time
+
+        Logger.error(
+          "Failed to fully refresh #{view_name} after #{duration}ms: #{inspect(error)}"
+        )
+
         {:error, error}
+    end
+  end
+
+  defp check_pool_availability do
+    # Check if connection pool is under stress before refreshing
+    # Uses the ConnectionPoolMonitor to check pool health
+    try do
+      metrics =
+        EveDmv.Platform.Database.ConnectionPoolMonitor.get_current_metrics()
+
+      pool_health = Map.get(metrics, :pool_health, :healthy)
+      available = Map.get(metrics, :connections_available, 10)
+
+      case pool_health do
+        :stressed ->
+          # Pool is stressed, report 0 available to skip refresh
+          {:ok, 0}
+
+        _ ->
+          {:ok, available}
+      end
+    rescue
+      _ ->
+        # If monitor isn't available, assume pool is healthy
+        {:ok, 10}
+    catch
+      :exit, _ ->
+        # GenServer not started yet
+        {:ok, 10}
     end
   end
 
