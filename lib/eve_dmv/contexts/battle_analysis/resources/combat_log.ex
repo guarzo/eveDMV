@@ -60,6 +60,27 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
   actions do
     defaults([:read])
 
+    create :create do
+      accept([
+        :pilot_name,
+        :raw_content,
+        :content_hash,
+        :file_name,
+        :file_size,
+        :start_time,
+        :end_time,
+        :event_count,
+        :parsed_data,
+        :parse_status,
+        :summary,
+        :battle_id
+      ])
+
+      change(fn changeset, _ ->
+        Ash.Changeset.change_attribute(changeset, :uploaded_at, DateTime.utc_now())
+      end)
+    end
+
     update :update do
       primary?(true)
 
@@ -205,6 +226,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
   end
 
   code_interface do
+    define(:create)
     define(:upload)
     define(:parse)
     define(:analyze_performance)

@@ -139,7 +139,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
       {:ok, analysis} ->
         top_performers =
           analysis.member_participation_profiles
-          |> Enum.filter(fn member -> (member[:total_activities] || 0) > 0 end)
+          |> Enum.filter(fn member -> Map.get(member, :total_activities, 0) > 0 end)
           |> Enum.map(fn member ->
             # Calculate composite performance score
             performance_score = calculate_performance_score(member)
@@ -153,14 +153,14 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
               end
 
             %{
-              character_id: member.character_id,
-              character_name: member.character_name,
-              total_activities: member[:total_activities] || 0,
-              fleet_activities: member[:fleet_activities] || 0,
-              participation_consistency: member[:participation_consistency] || 0,
+              character_id: Map.get(member, :character_id),
+              character_name: Map.get(member, :character_name),
+              total_activities: Map.get(member, :total_activities, 0),
+              fleet_activities: Map.get(member, :fleet_activities, 0),
+              participation_consistency: Map.get(member, :participation_consistency, 0),
               engagement_depth: engagement_depth_score,
               fleet_effectiveness:
-                Map.get(member.fleet_effectiveness || %{}, :effectiveness_score, 0),
+                Map.get(Map.get(member, :fleet_effectiveness, %{}), :effectiveness_score, 0),
               performance_score: performance_score
             }
           end)
@@ -190,13 +190,13 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
     # - Engagement depth: 15%
     # - Fleet effectiveness: 10%
 
-    # Defensive nil guards for all fields
-    total_activities = member[:total_activities] || member.total_activities || 0
-    fleet_activities = member[:fleet_activities] || member.fleet_activities || 0
-    participation_consistency = member[:participation_consistency] || 0
+    # Defensive nil guards for all fields using consistent Map.get pattern
+    total_activities = Map.get(member, :total_activities, 0)
+    fleet_activities = Map.get(member, :fleet_activities, 0)
+    participation_consistency = Map.get(member, :participation_consistency, 0)
 
     engagement_depth_score =
-      case member[:engagement_depth] || Map.get(member, :engagement_depth) do
+      case Map.get(member, :engagement_depth) do
         nil -> 0
         %{depth_score: score} when is_number(score) -> score
         _ -> 0
