@@ -145,9 +145,16 @@ defmodule EveDmv.DataCase do
   end
 
   # Wait for repo to be properly registered in the Ecto registry
-  defp wait_for_repo_registration(attempts \\ 0, max_attempts \\ 30) do
+  # In CI environments under heavy load, the repo may take longer to become available
+  # Increased timeout from 3s to 10s for CI resilience
+  defp wait_for_repo_registration(attempts \\ 0, max_attempts \\ 100) do
     if attempts >= max_attempts do
-      raise "Repo registration timeout after #{max_attempts} attempts"
+      # Log diagnostic info before raising
+      repo_pid = GenServer.whereis(EveDmv.Repo)
+
+      raise "Repo registration timeout after #{max_attempts} attempts (#{max_attempts * 100}ms). " <>
+              "Repo PID: #{inspect(repo_pid)}. " <>
+              "This may indicate database connection issues or resource exhaustion in CI."
     end
 
     case GenServer.whereis(EveDmv.Repo) do
@@ -155,10 +162,40 @@ defmodule EveDmv.DataCase do
         Process.sleep(100)
         wait_for_repo_registration(attempts + 1, max_attempts)
 
-      _pid ->
-        # Repo is running, give it a moment to be fully registered
-        Process.sleep(25)
-        :ok
+      pid ->
+        # Verify the repo process is alive and responsive
+        if Process.alive?(pid) do
+          # Use a simple GenServer call to verify the process is responsive
+          # This is lighter weight than running a SQL query
+          case verify_repo_responsive(pid) do
+            :ok ->
+              :ok
+
+            :retry ->
+              Process.sleep(100)
+              wait_for_repo_registration(attempts + 1, max_attempts)
+          end
+        else
+          # Process registered but not alive - retry
+          Process.sleep(100)
+          wait_for_repo_registration(attempts + 1, max_attempts)
+        end
+    end
+  end
+
+  # Verify the repo process is responsive by checking if it can handle messages
+  defp verify_repo_responsive(pid) do
+    try do
+      # Use a short timeout call to verify the process is responsive
+      # We use __info__ which is a standard GenServer callback
+      case :sys.get_state(pid, 1_000) do
+        _state -> :ok
+      end
+    rescue
+      _ -> :retry
+    catch
+      :exit, {:timeout, _} -> :retry
+      :exit, _ -> :retry
     end
   end
 

@@ -17,6 +17,9 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
 
   @cache_ttl :timer.hours(3)
 
+  # Sentinel value for members with no last_seen date
+  @max_inactive_days 999
+
   @doc """
   Analyze participation patterns for a corporation.
 
@@ -96,16 +99,18 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
       {:ok, analysis} ->
         inactive_members =
           analysis.member_participation_profiles
-          |> Enum.filter(fn member ->
-            member.total_activities == 0 or
-              days_since_last_activity(member) >= threshold
-          end)
           |> Enum.map(fn member ->
+            {member, days_since_last_activity(member)}
+          end)
+          |> Enum.filter(fn {member, days} ->
+            member.total_activities == 0 or days >= threshold
+          end)
+          |> Enum.map(fn {member, days} ->
             %{
               character_id: member.character_id,
               character_name: member.character_name,
               last_seen: member.last_seen,
-              days_inactive: days_since_last_activity(member),
+              days_inactive: days,
               total_activities: member.total_activities
             }
           end)
@@ -162,7 +167,7 @@ defmodule EveDmv.Contexts.Corporation.Core.ParticipationAnalyzer do
 
   # Private Functions
 
-  defp days_since_last_activity(%{last_seen: nil}), do: 999
+  defp days_since_last_activity(%{last_seen: nil}), do: @max_inactive_days
 
   defp days_since_last_activity(%{last_seen: last_seen}) do
     DateTime.diff(DateTime.utc_now(), last_seen, :day)

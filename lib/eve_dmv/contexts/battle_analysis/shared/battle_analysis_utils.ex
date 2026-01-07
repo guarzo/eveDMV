@@ -99,7 +99,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Shared.BattleAnalysisUtils do
   def count_unique_alliances(killmails) do
     killmails
     |> Enum.flat_map(fn km ->
-      victim_alliance = get_in(km.victim, ["alliance_id"])
+      victim_alliance = get_in(km.victim, ["alliance_id"]) || get_in(km, [:victim_alliance_id])
 
       attacker_alliances =
         get_attackers(km)

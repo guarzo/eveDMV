@@ -106,11 +106,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
       iex> get_character_intelligence(123456789)
       {:ok, %{character_id: 123456789, threat_level: :medium, ...}}
   """
-  @spec get_character_intelligence(Types.character_id()) ::
-          {:ok, intelligence_result()} | {:error, intelligence_api_error() | term()}
+  @spec get_character_intelligence(Types.character_id()) :: {:ok, intelligence_result()}
   def get_character_intelligence(character_id) do
-    # get_intelligence always returns {:ok, ...} - it either returns cached analysis
-    # or performs a new analysis which also returns {:ok, ...}
     {:ok, analysis_result} = CharacterAnalyzer.get_intelligence(character_id)
     {:ok, IntelligenceTransformer.transform_character_analysis(analysis_result)}
   end
@@ -174,11 +171,8 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
       iex> get_corporation_intelligence(98000001)
       {:ok, %{corporation_id: 98000001, member_count: 150, ...}}
   """
-  @spec get_corporation_intelligence(integer()) ::
-          {:ok, corporation_intelligence_result()} | {:error, intelligence_api_error() | term()}
+  @spec get_corporation_intelligence(integer()) :: {:ok, corporation_intelligence_result()}
   def get_corporation_intelligence(corporation_id) do
-    # get_intelligence always returns {:ok, ...} - it either returns cached analysis
-    # or performs a new analysis which also returns {:ok, ...}
     {:ok, analysis_result} = CorporationAnalyzer.get_intelligence(corporation_id)
     {:ok, IntelligenceTransformer.transform_corporation_analysis(analysis_result)}
   end
