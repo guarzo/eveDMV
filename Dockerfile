@@ -4,13 +4,15 @@ FROM elixir:1.19-alpine AS builder
 # Set environment variables
 ENV MIX_ENV=prod
 
-# Install system dependencies
+# Install system dependencies including Node.js for asset building
 RUN apk add --no-cache \
     build-base \
     git \
     bzip2-dev \
     linux-headers \
-    musl-dev
+    musl-dev \
+    nodejs \
+    npm
 
 # Fix picosat_elixir compilation issue on Alpine
 RUN mkdir -p /usr/include/sys && \
@@ -35,12 +37,15 @@ COPY config/ ./config/
 COPY priv/ ./priv/
 COPY lib/ ./lib/
 
-# Skip asset building if assets directory doesn't exist
-# The priv/static/assets already contains compiled assets
-# RUN mix assets.deploy
+# Copy assets source and build them
+COPY assets/ ./assets/
+RUN cd assets && npm install && cd ..
 
 # Compile the project
 RUN mix compile
+
+# Build and digest assets (tailwind + esbuild + phx.digest)
+RUN mix assets.deploy
 
 # Build the release
 RUN mix release
@@ -72,8 +77,11 @@ WORKDIR /app
 # Copy the release from builder stage
 COPY --from=builder --chown=appuser:appgroup /app/_build/prod/rel/eve_dmv ./
 
-# Copy the digested static assets (includes cache_manifest.json)
-COPY --from=builder --chown=appuser:appgroup /app/priv/static ./priv/static
+# Copy digested static assets to the release's lib directory
+COPY --from=builder --chown=appuser:appgroup /app/priv/static /tmp/static
+RUN STATIC_DIR=$(find lib -type d -name "priv" -path "*/eve_dmv-*/priv" | head -1)/static && \
+    cp -r /tmp/static/* "$STATIC_DIR/" && \
+    rm -rf /tmp/static
 
 # Copy entrypoint script
 COPY --chown=appuser:appgroup entrypoint.sh ./

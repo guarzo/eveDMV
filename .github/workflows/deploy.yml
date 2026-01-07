@@ -1,4 +1,5 @@
 name: Deploy
+run-name: ${{ github.event.workflow_run.head_commit.message || format('Manual deploy {0}', github.event.inputs.version || github.sha) }}
 
 on:
   # Auto-deploy after CI passes on main
