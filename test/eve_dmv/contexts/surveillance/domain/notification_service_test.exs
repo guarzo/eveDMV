@@ -10,7 +10,17 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationServiceTest do
 
   alias EveDmv.Contexts.Surveillance.Domain.NotificationService
 
+  alias EveDmv.Contexts.Surveillance.Infrastructure.ProfileRepository
+
   setup do
+    # Start ProfileRepository first (dependency for NotificationService)
+    if repo_pid = GenServer.whereis(ProfileRepository) do
+      GenServer.stop(repo_pid, :normal, 5000)
+      Process.sleep(100)
+    end
+
+    {:ok, repo_pid} = ProfileRepository.start_link([])
+
     # Start the NotificationService for tests
     # Stop any existing instance first
     if pid = GenServer.whereis(NotificationService) do
@@ -23,9 +33,10 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationServiceTest do
 
     on_exit(fn ->
       if Process.alive?(pid), do: GenServer.stop(pid, :normal, 5000)
+      if Process.alive?(repo_pid), do: GenServer.stop(repo_pid, :normal, 5000)
     end)
 
-    {:ok, server_pid: pid}
+    {:ok, server_pid: pid, repo_pid: repo_pid}
   end
 
   describe "module interface" do
