@@ -80,10 +80,13 @@ defmodule EveDmvWeb.Plugs.CacheControl do
 
   @doc """
   Adds Cache-Control headers to the connection based on the cache type.
+
+  Unknown cache types default to `:realtime` (no-store, no-cache) for safety.
   """
   @spec call(Plug.Conn.t(), atom()) :: Plug.Conn.t()
   def call(conn, cache_type) when is_atom(cache_type) do
-    config = Map.fetch!(@cache_configs, cache_type)
+    # Default to realtime (no caching) for unknown types - safest option
+    config = Map.get(@cache_configs, cache_type, @cache_configs[:realtime])
     put_cache_headers(conn, config)
   end
 
