@@ -50,11 +50,10 @@ defmodule EveDmv.Repo.Migrations.AddPerformanceIndexesStream6 do
 
     # System activity queries with ship type (used in SystemLive heatmaps)
     # Extends the existing system_time index to include ship type for covering
-    # For partitioned tables, the index is created on each partition automatically
+    # Note: Cannot use CONCURRENTLY on partitioned tables (PostgreSQL limitation)
     create_if_not_exists(
       index(:killmails_raw, [:solar_system_id, :killmail_time, :victim_ship_type_id],
-        name: :idx_killmails_system_time_ship,
-        concurrently: true
+        name: :idx_killmails_system_time_ship
       )
     )
 
@@ -79,8 +78,9 @@ defmodule EveDmv.Repo.Migrations.AddPerformanceIndexesStream6 do
 
     # Index for high-value killmails (used in dashboards)
     # Raw SQL required: partial index with WHERE clause on partitioned table
+    # Note: Cannot use CONCURRENTLY on partitioned tables (PostgreSQL limitation)
     execute("""
-    CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_killmails_high_value
+    CREATE INDEX IF NOT EXISTS idx_killmails_high_value
     ON killmails_raw (total_value DESC, killmail_time DESC)
     WHERE total_value > 100000000
     """)
@@ -104,8 +104,8 @@ defmodule EveDmv.Repo.Migrations.AddPerformanceIndexesStream6 do
       )
     )
 
-    # Raw SQL required: Ecto's drop_if_exists doesn't support CONCURRENTLY option
-    execute("DROP INDEX CONCURRENTLY IF EXISTS idx_killmails_system_time_ship")
+    # Note: Cannot use CONCURRENTLY on partitioned tables (PostgreSQL limitation)
+    execute("DROP INDEX IF EXISTS idx_killmails_system_time_ship")
 
     drop_if_exists(
       index(:historical_fetch_status, [:entity_type, :entity_id, :status],
@@ -117,8 +117,8 @@ defmodule EveDmv.Repo.Migrations.AddPerformanceIndexesStream6 do
       index(:api_keys, [:character_id, :is_active], name: :idx_api_keys_character_active)
     )
 
-    # Raw SQL required: Ecto's drop_if_exists doesn't support CONCURRENTLY option
-    execute("DROP INDEX CONCURRENTLY IF EXISTS idx_killmails_high_value")
+    # Note: Cannot use CONCURRENTLY on partitioned tables (PostgreSQL limitation)
+    execute("DROP INDEX IF EXISTS idx_killmails_high_value")
 
     execute("RESET statement_timeout")
   end
