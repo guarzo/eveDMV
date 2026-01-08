@@ -135,8 +135,12 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.Battle do
       calculation(fn records, _context ->
         Enum.map(records, fn battle ->
           case {battle.start_time, battle.end_time} do
-            {nil, _} -> 0
-            {_, nil} -> 0
+            {nil, _} ->
+              0
+
+            {_, nil} ->
+              0
+
             {start, end_time} ->
               DateTime.diff(end_time, start, :minute)
           end

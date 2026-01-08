@@ -132,7 +132,8 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAssessmentEngine do
 
   @impl GenServer
   def handle_call({:update_assessment, entity_id, entity_type, intelligence_data}, _from, state) do
-    {:ok, updated_assessment} = update_threat_assessment(entity_id, entity_type, intelligence_data)
+    {:ok, updated_assessment} =
+      update_threat_assessment(entity_id, entity_type, intelligence_data)
 
     # Invalidate cache to force refresh
     cache_key = {safe_entity_type_atom(entity_type), entity_id}

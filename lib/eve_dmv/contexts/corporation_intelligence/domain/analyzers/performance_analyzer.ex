@@ -403,14 +403,18 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.PerformanceAn
   end
 
   defp classify_diversity(diversity_score) do
-    case Enum.find(@diversity_thresholds, fn {threshold, _rating} -> diversity_score > threshold end) do
+    case Enum.find(@diversity_thresholds, fn {threshold, _rating} ->
+           diversity_score > threshold
+         end) do
       nil -> :monotonous
       {_, rating} -> rating
     end
   end
 
   defp classify_competitive_position(score) do
-    case Enum.find(@competitive_position_thresholds, fn {threshold, _position} -> score > threshold end) do
+    case Enum.find(@competitive_position_thresholds, fn {threshold, _position} ->
+           score > threshold
+         end) do
       nil -> :emerging
       {_, position} -> position
     end

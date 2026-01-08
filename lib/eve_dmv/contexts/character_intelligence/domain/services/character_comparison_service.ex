@@ -670,9 +670,11 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
 
     case EveDmv.Repo.query(query, [char1_id, char2_id]) do
       {:ok, %{rows: rows, columns: columns}} ->
-        encounters = Enum.map(rows, fn row ->
-          Enum.zip(columns, row) |> Map.new() |> atomize_keys()
-        end)
+        encounters =
+          Enum.map(rows, fn row ->
+            Enum.zip(columns, row) |> Map.new() |> atomize_keys()
+          end)
+
         {:ok, encounters}
 
       _ ->

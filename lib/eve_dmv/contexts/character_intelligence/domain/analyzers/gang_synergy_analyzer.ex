@@ -76,7 +76,14 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnal
 
     case EveDmv.Repo.query(query, [character_ids, cutoff_date]) do
       {:ok, %{rows: rows}} ->
-        Enum.map(rows, fn [killmail_id, killmail_time, solar_system_id, raw_data, total_value, victim_ship_type_id] ->
+        Enum.map(rows, fn [
+                            killmail_id,
+                            killmail_time,
+                            solar_system_id,
+                            raw_data,
+                            total_value,
+                            victim_ship_type_id
+                          ] ->
           %{
             killmail_id: killmail_id,
             killmail_time: killmail_time,

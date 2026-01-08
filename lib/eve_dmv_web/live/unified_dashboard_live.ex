@@ -479,7 +479,8 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
     {DateTime.add(now, -@seconds_per_hour, :second), now}
   end
 
-  defp normalize_time_range_for_statistics(time_range) when time_range in [:last_24h, :last_7d, :last_30d] do
+  defp normalize_time_range_for_statistics(time_range)
+       when time_range in [:last_24h, :last_7d, :last_30d] do
     time_range
   end
 

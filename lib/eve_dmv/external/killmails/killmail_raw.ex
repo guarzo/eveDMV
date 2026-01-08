@@ -470,7 +470,9 @@ defmodule EveDmv.Killmails.KillmailRaw do
     )
 
     calculate :gang_size_category, :string do
-      description("Categorical gang size classification: solo, small_gang, medium_gang, large_gang, fleet")
+      description(
+        "Categorical gang size classification: solo, small_gang, medium_gang, large_gang, fleet"
+      )
 
       calculation(fn records, _context ->
         Enum.map(records, fn killmail ->

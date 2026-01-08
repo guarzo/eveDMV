@@ -255,7 +255,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.CrossCharacterA
 
     case EveDmv.Repo.query(query, [character_ids, cutoff]) do
       {:ok, %{rows: rows}} ->
-        Enum.map(rows, fn [killmail_id, killmail_time, solar_system_id, raw_data, victim_ship_type_id] ->
+        Enum.map(rows, fn [
+                            killmail_id,
+                            killmail_time,
+                            solar_system_id,
+                            raw_data,
+                            victim_ship_type_id
+                          ] ->
           %{
             killmail_id: killmail_id,
             killmail_time: killmail_time,
@@ -526,7 +532,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.CrossCharacterA
 
     case EveDmv.Repo.query(query, [character_ids, cutoff]) do
       {:ok, %{rows: rows}} ->
-        Enum.map(rows, fn [killmail_id, killmail_time, solar_system_id, raw_data, victim_ship_type_id] ->
+        Enum.map(rows, fn [
+                            killmail_id,
+                            killmail_time,
+                            solar_system_id,
+                            raw_data,
+                            victim_ship_type_id
+                          ] ->
           %{
             killmail_id: killmail_id,
             killmail_time: killmail_time,
