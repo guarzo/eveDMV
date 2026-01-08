@@ -1,10 +1,14 @@
 defmodule EveDmv.Repo.Migrations.FixKillmailsRawIndexesConcurrently do
   @moduledoc """
-  Recreates killmails_raw indexes with CONCURRENTLY support.
+  Recreates killmails_raw indexes.
+
+  Note: CONCURRENTLY cannot be used for indexes on partitioned tables (PostgreSQL limitation).
+  This migration uses @disable_ddl_transaction true to allow running outside a transaction,
+  which is required for certain DDL operations and provides flexibility for long-running
+  index operations.
 
   The original migration (20250806234708_add_performance_indexes.exs) created these
-  indexes without CONCURRENTLY, which blocks writes during index creation.
-  This migration drops and recreates them properly for non-blocking operations.
+  indexes. This migration drops and recreates them with consistent naming.
 
   Affected indexes:
   - killmails_raw_character_activity_idx

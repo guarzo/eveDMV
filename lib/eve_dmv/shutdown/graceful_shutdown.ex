@@ -226,7 +226,8 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
   defp setup_signal_handlers do
     # Register for SIGTERM signal (SIGINT is not supported by :os.set_signal/2)
     :os.set_signal(:sigterm, :handle)
-    # trap_exit handles SIGINT via Erlang VM's internal handling
+    # trap_exit converts linked process exits into messages, enabling cleanup during shutdown.
+    # Note: SIGINT is handled by the Erlang VM internally, not by :trap_exit.
     Process.flag(:trap_exit, true)
   rescue
     _ ->
@@ -358,7 +359,8 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
 
   defp cleanup_database_connections(_timeout) do
     # Ensure database connections are properly closed
-    Ecto.Adapters.SQL.Sandbox.checkin(EveDmv.Repo)
+    # Use disconnect_all which is the production-appropriate API for closing all connections
+    Ecto.Adapters.SQL.disconnect_all(EveDmv.Repo, 5_000)
     :ok
   rescue
     _ -> :ok

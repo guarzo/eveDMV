@@ -266,7 +266,7 @@ defmodule EveDmv.Killmails.KillmailPipeline do
                  end
                end,
                restart: :temporary,
-               shutdown: 30_000
+               shutdown: 10_000
              ) do
           {:ok, pid} ->
             Logger.debug("Started intelligence task with pid #{inspect(pid)}")
@@ -301,7 +301,7 @@ defmodule EveDmv.Killmails.KillmailPipeline do
                  end
                end,
                restart: :temporary,
-               shutdown: 30_000
+               shutdown: 10_000
              ) do
           {:ok, pid} ->
             Logger.debug("Started surveillance task with pid #{inspect(pid)}")

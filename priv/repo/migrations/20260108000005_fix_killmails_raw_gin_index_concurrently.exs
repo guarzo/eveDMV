@@ -1,10 +1,11 @@
 defmodule EveDmv.Repo.Migrations.FixKillmailsRawGinIndexConcurrently do
   @moduledoc """
-  Recreates the killmails_raw participants GIN index with CONCURRENTLY support.
+  Recreates the killmails_raw participants GIN index.
 
-  The original migration (20250801181407_add_participants_jsonb_to_killmails_raw.exs)
-  created this GIN index without CONCURRENTLY, which blocks writes during index creation.
-  This migration drops and recreates it properly for non-blocking operations.
+  Note: PostgreSQL CONCURRENTLY cannot be used on partitioned tables, so this
+  index creation will block writes during the operation. The migration disables
+  DDL transaction and migration lock to allow other operations to proceed, and
+  sets statement_timeout to 0 to prevent timeouts on large tables.
 
   Affected index:
   - killmails_raw_participants_gin_idx
@@ -38,6 +39,13 @@ defmodule EveDmv.Repo.Migrations.FixKillmailsRawGinIndexConcurrently do
     # Drop GIN index
     # Note: Cannot use CONCURRENTLY for partitioned table indexes (PostgreSQL limitation)
     execute("DROP INDEX IF EXISTS killmails_raw_participants_gin_idx")
+
+    # Recreate the original GIN index to restore state on rollback
+    # Note: Cannot use CONCURRENTLY for partitioned table indexes (PostgreSQL limitation)
+    execute("""
+    CREATE INDEX IF NOT EXISTS killmails_raw_participants_gin_idx
+    ON killmails_raw USING GIN (participants)
+    """)
 
     execute("RESET statement_timeout")
   end

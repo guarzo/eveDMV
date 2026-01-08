@@ -67,7 +67,7 @@ defmodule EveDmv.Killmails.KillmailBroadcaster do
   Extracts essential data from the killmail tuple and adds pre-formatted
   display fields to eliminate database queries in LiveViews.
   """
-  @spec build_broadcast_payload(tuple()) :: map() | nil
+  @spec build_broadcast_payload({map(), map(), [map()]} | map() | term()) :: map() | nil
   def build_broadcast_payload({raw_changeset, enriched_changeset, participants}) do
     killmail_id = raw_changeset[:killmail_id]
     killmail_time = raw_changeset[:killmail_time]
@@ -109,9 +109,7 @@ defmodule EveDmv.Killmails.KillmailBroadcaster do
         value_formatted: format_isk(total_value),
         zkillboard_url: "https://zkillboard.com/kill/#{killmail_id}/",
         is_high_value: high_value?(total_value)
-      },
-      # Raw changesets for backwards compatibility
-      _raw: {raw_changeset, enriched_changeset, participants}
+      }
     }
   end
 

@@ -284,7 +284,7 @@ defmodule EveDmvWeb.Telemetry do
     repo_config = EveDmv.Repo.config()
     pool_size = Keyword.get(repo_config, :pool_size, 10)
 
-    case get_pool_stats() do
+    case get_pool_stats(pool_size) do
       {:ok, %{busy: busy, idle: idle, queue_length: queue_length}} ->
         available = idle
         total = busy + idle
@@ -332,7 +332,7 @@ defmodule EveDmvWeb.Telemetry do
     _ -> :ok
   end
 
-  defp get_pool_stats do
+  defp get_pool_stats(pool_size) do
     # Get the pool from the repo and query its state
     # DBConnection pools track busy/idle connections internally
     repo_pid = Process.whereis(EveDmv.Repo)
@@ -359,19 +359,44 @@ defmodule EveDmvWeb.Telemetry do
           {:ok, _} ->
             # Estimate pool health based on checkout time
             # Fast checkout (<1ms) = healthy pool, slow checkout = pressure
-            repo_config = EveDmv.Repo.config()
-            pool_size = Keyword.get(repo_config, :pool_size, 10)
 
-            # Estimate busy connections based on checkout latency
-            # Under 1000 microseconds is considered healthy
+            # Estimate busy connections based on checkout latency.
+            # Since DBConnection pools don't expose busy/idle counts directly,
+            # we use checkout timing as a proxy for pool saturation.
+            #
+            # Threshold rationale (all values in microseconds):
+            #   < 1,000 us (1ms): Pool is healthy with ample idle connections.
+            #                     Immediate checkout indicates no contention.
+            #                     Estimated busy = 0 (all connections readily available).
+            #
+            #   < 5,000 us (5ms): Minor contention, ~25% pool utilization.
+            #                     Slight delay suggests some connections are busy
+            #                     but the pool is not under significant pressure.
+            #                     Estimated busy = pool_size / 4.
+            #
+            #   < 10,000 us (10ms): Moderate contention, ~50% pool utilization.
+            #                       Noticeable checkout delay indicates half the
+            #                       connections are likely in use.
+            #                       Estimated busy = pool_size / 2.
+            #
+            #   >= 10,000 us: High contention, pool nearly saturated.
+            #                 Long checkout times indicate most connections are
+            #                 busy and requests may be queuing.
+            #                 Estimated busy = pool_size - 1.
             estimated_busy =
               cond do
-                checkout_time < 1000 -> 0
-                checkout_time < 5000 -> div(pool_size, 4)
+                checkout_time < 1_000 -> 0
+                checkout_time < 5_000 -> div(pool_size, 4)
                 checkout_time < 10_000 -> div(pool_size, 2)
                 true -> pool_size - 1
               end
 
+            # queue_length is a coarse binary estimate (0 or 1) based on checkout time.
+            # This is NOT the actual number of processes waiting for connections.
+            # It serves as a simple indicator: 1 means the pool is likely saturated
+            # and requests are probably queuing; 0 means the pool appears healthy.
+            # For precise queue metrics, consider using DBConnection telemetry events
+            # or implementing a custom pool wrapper.
             {:ok,
              %{
                busy: estimated_busy,

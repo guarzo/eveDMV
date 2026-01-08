@@ -103,59 +103,73 @@ defmodule EveDmv.Repo.Migrations.ConsolidateMaterializedViewRefresh do
       unschedule_existing_jobs()
 
       # Schedule updated jobs with less aggressive intervals
+      # Only schedule if the materialized view exists
+
       # Character activity summary - 2 AM daily (heavy query, off-peak only)
-      execute """
-      SELECT cron.schedule(
-        'refresh_character_activity_summary',
-        '0 2 * * *',
-        $$SELECT safe_refresh_materialized_view('character_activity_summary')$$
-      );
-      """
+      if view_exists?("character_activity_summary") do
+        execute """
+        SELECT cron.schedule(
+          'refresh_character_activity_summary',
+          '0 2 * * *',
+          $$SELECT safe_refresh_materialized_view('character_activity_summary')$$
+        );
+        """
+      end
 
       # System activity heatmap - every 6 hours (medium weight)
-      execute """
-      SELECT cron.schedule(
-        'refresh_system_activity_heatmap',
-        '0 */6 * * *',
-        $$SELECT safe_refresh_materialized_view('system_activity_heatmap')$$
-      );
-      """
+      if view_exists?("system_activity_heatmap") do
+        execute """
+        SELECT cron.schedule(
+          'refresh_system_activity_heatmap',
+          '0 */6 * * *',
+          $$SELECT safe_refresh_materialized_view('system_activity_heatmap')$$
+        );
+        """
+      end
 
       # Fleet composition summary - 2:30 AM daily (staggered from above)
-      execute """
-      SELECT cron.schedule(
-        'refresh_fleet_composition_summary',
-        '30 2 * * *',
-        $$SELECT safe_refresh_materialized_view('fleet_composition_summary')$$
-      );
-      """
+      if view_exists?("fleet_composition_summary") do
+        execute """
+        SELECT cron.schedule(
+          'refresh_fleet_composition_summary',
+          '30 2 * * *',
+          $$SELECT safe_refresh_materialized_view('fleet_composition_summary')$$
+        );
+        """
+      end
 
       # High value targets - every 12 hours (light weight)
-      execute """
-      SELECT cron.schedule(
-        'refresh_high_value_targets',
-        '0 */12 * * *',
-        $$SELECT safe_refresh_materialized_view('high_value_targets')$$
-      );
-      """
+      if view_exists?("high_value_targets") do
+        execute """
+        SELECT cron.schedule(
+          'refresh_high_value_targets',
+          '0 */12 * * *',
+          $$SELECT safe_refresh_materialized_view('high_value_targets')$$
+        );
+        """
+      end
 
       # Timezone activity patterns - 3 AM daily (heavy, off-peak)
-      execute """
-      SELECT cron.schedule(
-        'refresh_timezone_activity_patterns',
-        '0 3 * * *',
-        $$SELECT safe_refresh_materialized_view('timezone_activity_patterns')$$
-      );
-      """
+      if view_exists?("timezone_activity_patterns") do
+        execute """
+        SELECT cron.schedule(
+          'refresh_timezone_activity_patterns',
+          '0 3 * * *',
+          $$SELECT safe_refresh_materialized_view('timezone_activity_patterns')$$
+        );
+        """
+      end
 
       # Ship type usage - 4 AM daily (staggered)
-      execute """
-      SELECT cron.schedule(
-        'refresh_ship_type_usage',
-        '0 4 * * *',
-        $$SELECT safe_refresh_materialized_view('ship_type_usage')$$
-      );
-      """
+      if view_exists?("ship_type_usage") do
+        execute """
+        SELECT cron.schedule(
+          'refresh_ship_type_usage',
+          '0 4 * * *',
+          $$SELECT safe_refresh_materialized_view('ship_type_usage')$$
+        );
+        """
+      end
 
       execute """
       DO $$
@@ -314,6 +328,19 @@ defmodule EveDmv.Repo.Migrations.ConsolidateMaterializedViewRefresh do
            EveDmv.Repo,
            "SELECT 1 FROM pg_extension WHERE extname = 'pg_cron'",
            []
+         ) do
+      {:ok, %{num_rows: 1}} -> true
+      _ -> false
+    end
+  rescue
+    _ -> false
+  end
+
+  defp view_exists?(view_name) do
+    case Ecto.Adapters.SQL.query(
+           EveDmv.Repo,
+           "SELECT 1 FROM pg_matviews WHERE matviewname = $1",
+           [view_name]
          ) do
       {:ok, %{num_rows: 1}} -> true
       _ -> false

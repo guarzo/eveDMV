@@ -109,7 +109,12 @@ defmodule EveDmv.Platform.Database.CacheHashManager do
     :ets.insert(@hash_table, {cache_key, hash, expiry})
     :ok
   rescue
-    _ -> :ok
+    err ->
+      Logger.warning(
+        "CacheHashManager: store_hash failed for key #{inspect(cache_key)}: #{inspect(err)}; #{inspect(__STACKTRACE__)}"
+      )
+
+      :ok
   end
 
   # Compute a deterministic hash from data
@@ -130,9 +135,7 @@ defmodule EveDmv.Platform.Database.CacheHashManager do
   end
 
   defp normalize_for_hashing(list) when is_list(list) do
-    list
-    |> Enum.map(&normalize_for_hashing/1)
-    |> Enum.sort()
+    Enum.map(list, &normalize_for_hashing/1)
   end
 
   defp normalize_for_hashing(other), do: other

@@ -90,42 +90,40 @@ defmodule EveDmv.Shared.Strategic.DataCollector do
          time_range: %{since: since, until: DateTime.utc_now()}
        }}
     else
-      # Single query for all systems instead of N queries
-      all_killmails =
-        Ash.read!(KillmailRaw,
-          filter: [
-            solar_system_id: [in: system_ids],
-            killmail_time: [greater_than: since]
-          ],
-          limit: 5000,
-          domain: Api
-        )
-
-      # Group by system in Elixir and limit each system to 500 killmails
+      # Per-system queries using Task.async_stream to ensure fair representation.
+      # Each system gets its own query with a 500 killmail limit, preventing
+      # high-activity systems from consuming disproportionate share of results.
+      # Concurrency is limited to 4 to avoid overwhelming the database.
       killmail_data =
-        all_killmails
-        |> Enum.group_by(& &1.solar_system_id)
-        |> Enum.map(fn {system_id, system_killmails} ->
-          limited_killmails = Enum.take(system_killmails, 500)
-
-          %{
-            system_id: system_id,
-            killmails: limited_killmails,
-            kill_count: length(limited_killmails)
-          }
-        end)
-
-      # Include systems with no activity
-      systems_with_data = MapSet.new(Enum.map(killmail_data, & &1.system_id))
-
-      empty_system_data =
         system_ids
-        |> Enum.reject(&MapSet.member?(systems_with_data, &1))
-        |> Enum.map(fn system_id ->
-          %{system_id: system_id, killmails: [], kill_count: 0}
-        end)
+        |> Task.async_stream(
+          fn system_id ->
+            killmails =
+              Ash.read!(KillmailRaw,
+                filter: [
+                  solar_system_id: system_id,
+                  killmail_time: [greater_than: since]
+                ],
+                limit: 500,
+                domain: Api
+              )
 
-      killmail_data = killmail_data ++ empty_system_data
+            %{
+              system_id: system_id,
+              killmails: killmails,
+              kill_count: length(killmails)
+            }
+          end,
+          max_concurrency: 4,
+          timeout: 30_000,
+          on_timeout: :kill_task
+        )
+        |> Enum.reduce([], fn
+          {:ok, data}, acc -> [data | acc]
+          {:exit, _reason}, acc -> acc
+        end)
+        |> Enum.reverse()
+
       metrics = calculate_multi_system_metrics(killmail_data)
 
       {:ok,

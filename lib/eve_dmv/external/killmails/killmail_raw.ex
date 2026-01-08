@@ -455,6 +455,26 @@ defmodule EveDmv.Killmails.KillmailRaw do
       calculation: expr(total_value > 1_000_000_000)
     )
 
+    # Gang Size Classification Rationale (EVE Online PvP Context):
+    #
+    # - solo (1): Single pilot engagements. High-skill ceiling gameplay where one
+    #   player hunts targets alone. Common in faction warfare and wormhole daytripping.
+    #
+    # - small_gang (2-5): The most tactical PvP format. Typically a tight-knit group
+    #   with defined roles (tackle, DPS, logi). Popular in lowsec roams and wormhole PvP.
+    #
+    # - medium_gang (6-15): Organized roaming fleets with basic fleet structure.
+    #   Usually has an FC, dedicated tackle wing, and logistics. Common format for
+    #   small corp/alliance ops and NPSI (Not Purple Shoot It) public fleets.
+    #
+    # - large_gang (16-50): Structured fleet operations requiring coordination tools.
+    #   Multiple wings, anchor pilots, and broadcast discipline. Typical for alliance
+    #   stratops, structure bashes, and regional defense fleets.
+    #
+    # - fleet (>50): Large-scale warfare involving capitals, time dilation (TiDi),
+    #   and strategic objectives. Sovereignty warfare, keepstar fights, and major
+    #   alliance conflicts. Requires extensive logistics and FC hierarchy.
+
     calculate(:is_small_gang, :boolean,
       description: "True if this was a small gang kill (2-5 attackers)",
       calculation: expr(attacker_count >= 2 and attacker_count <= 5)

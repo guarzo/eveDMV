@@ -6,6 +6,8 @@ defmodule EveDmv.Killmails.Participant do
   in a killmail, including their ship, weapon used, damage dealt, and final blow status.
   """
 
+  require Logger
+
   use Ash.Resource,
     otp_app: :eve_dmv,
     domain: EveDmv.Api,
@@ -547,6 +549,13 @@ defmodule EveDmv.Killmails.Participant do
       # matching records rather than per-group. Kept for backwards compatibility
       # but callers should migrate to get_character_ship_usage/3.
       prepare(fn query, context ->
+        Logger.warning(
+          "DEPRECATION WARNING: The :character_ship_usage read action is deprecated " <>
+            "due to incorrect aggregation behavior. Please migrate to " <>
+            "EveDmv.Killmails.Participant.get_character_ship_usage/3 which performs " <>
+            "proper GROUP BY queries with correct per-ship counts."
+        )
+
         query
         |> Ash.Query.aggregate(:usage_count, :count)
         |> Ash.Query.distinct([:ship_type_id, :ship_name])

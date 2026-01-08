@@ -16,11 +16,15 @@ defmodule EveDmv.Repo.Migrations.AddParticipantsCharNameLowerIndex do
   @disable_migration_lock true
 
   def up do
+    execute "SET statement_timeout TO 0"
+
     execute """
     CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_participants_char_name_lower
     ON participants (LOWER(character_name))
     WHERE character_name IS NOT NULL
     """
+
+    execute "RESET statement_timeout"
   end
 
   def down do

@@ -521,6 +521,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.CrossCharacterA
     JOIN group_killmails gk ON k.killmail_id = gk.killmail_id
       AND k.killmail_time = gk.killmail_time
     ORDER BY k.killmail_time DESC
+    LIMIT 500
     """
 
     case EveDmv.Repo.query(query, [character_ids, cutoff]) do

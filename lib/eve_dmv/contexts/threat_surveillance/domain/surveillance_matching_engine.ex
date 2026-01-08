@@ -8,12 +8,14 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngine d
 
   use GenServer
 
+  alias EveDmv.Api.SurveillanceApi
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.DomainEvents.KillmailEnriched
   alias EveDmv.DomainEvents.SurveillanceMatch
   alias EveDmv.Infrastructure.EventBus
   alias EveDmv.Shared.Infrastructure.UnifiedCache
   alias EveDmv.Shared.Infrastructure.UnifiedRepository
+  alias EveDmv.Surveillance.ProfileMatch
 
   require Logger
 
@@ -143,9 +145,14 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngine d
     since =
       Keyword.get(options, :since, DateTimeUtils.add(DateTime.utc_now(), -24 * 3600, :second))
 
-    # get_recent_matches_from_cache_or_db/2 always returns {:ok, matches}
-    {:ok, matches} = get_recent_matches_from_cache_or_db(since, limit)
-    {:reply, {:ok, matches}, state}
+    case get_recent_matches_from_cache_or_db(since, limit) do
+      {:ok, matches} ->
+        {:reply, {:ok, matches}, state}
+
+      {:error, reason} ->
+        Logger.error("Failed to get recent matches: #{inspect(reason)}")
+        {:reply, {:error, :fetch_failed}, state}
+    end
   end
 
   @impl GenServer
@@ -155,9 +162,14 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngine d
     since =
       Keyword.get(options, :since, DateTimeUtils.add(DateTime.utc_now(), -7 * 24 * 3600, :second))
 
-    # get_profile_matches_from_cache_or_db/3 always returns {:ok, matches}
-    {:ok, matches} = get_profile_matches_from_cache_or_db(profile_id, since, limit)
-    {:reply, {:ok, matches}, state}
+    case get_profile_matches_from_cache_or_db(profile_id, since, limit) do
+      {:ok, matches} ->
+        {:reply, {:ok, matches}, state}
+
+      {:error, reason} ->
+        Logger.error("Failed to get profile matches for #{profile_id}: #{inspect(reason)}")
+        {:reply, {:error, :fetch_failed}, state}
+    end
   end
 
   @impl GenServer
@@ -388,12 +400,26 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngine d
         {:ok, Enum.take(matches, limit)}
 
       {:error, :not_found} ->
-        # Would query database for recent matches
-        # Placeholder
-        matches = []
-        # 3 minutes
-        UnifiedCache.put(:surveillance, cache_key, matches, 180)
-        {:ok, Enum.take(matches, limit)}
+        # Convert since DateTime to hours for the Ash action
+        hours = calculate_hours_since(since)
+
+        case Ash.read(ProfileMatch,
+               action: :recent_matches,
+               input: %{hours: hours},
+               domain: SurveillanceApi
+             ) do
+          {:ok, matches} ->
+            # Cache results for 3 minutes
+            UnifiedCache.put(:surveillance, cache_key, matches, 180)
+            {:ok, Enum.take(matches, limit)}
+
+          {:error, error} ->
+            Logger.warning("Failed to query recent profile matches: #{inspect(error)}")
+            {:error, :database_query_failed}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -405,12 +431,33 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngine d
         {:ok, Enum.take(matches, limit)}
 
       {:error, :not_found} ->
-        # Would query database for profile matches
-        # Placeholder
-        matches = []
-        # 5 minutes
-        UnifiedCache.put(:surveillance, cache_key, matches, 300)
-        {:ok, Enum.take(matches, limit)}
+        # Query database for profile matches using Ash action
+        case Ash.read(ProfileMatch,
+               action: :profile_matches,
+               input: %{profile_id: profile_id},
+               domain: SurveillanceApi
+             ) do
+          {:ok, matches} ->
+            # Filter by since date and apply limit
+            filtered_matches =
+              matches
+              |> Enum.filter(fn match ->
+                DateTime.compare(match.matched_at, since) != :lt
+              end)
+              |> Enum.take(limit)
+
+            # Cache results for 5 minutes
+            UnifiedCache.put(:surveillance, cache_key, filtered_matches, 300)
+            {:ok, filtered_matches}
+
+          {:error, error} ->
+            Logger.warning("Failed to query profile matches for #{profile_id}: #{inspect(error)}")
+
+            {:error, :database_query_failed}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -432,5 +479,15 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngine d
     else
       0.0
     end
+  end
+
+  # Calculate the number of hours between the given DateTime and now
+  # Ensures a minimum of 1 hour for the Ash action
+  defp calculate_hours_since(since) do
+    now = DateTime.utc_now()
+    diff_seconds = DateTime.diff(now, since, :second)
+    hours = div(diff_seconds, 3600)
+    # Ensure at least 1 hour for the query
+    max(hours, 1)
   end
 end

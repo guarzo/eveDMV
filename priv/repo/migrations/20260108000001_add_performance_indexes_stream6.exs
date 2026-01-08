@@ -92,7 +92,7 @@ defmodule EveDmv.Repo.Migrations.AddPerformanceIndexesStream6 do
   def down do
     execute("SET statement_timeout = 0")
 
-    drop_if_exists(index(:battle_killmails, [:battle_id], name: :idx_battle_killmails_battle_id))
+    drop_if_exists(index(:battle_killmails, [:battle_id], name: :idx_battle_killmails_battle_id, concurrently: true))
 
     # Raw SQL required: index was created with PostgreSQL INCLUDE clause for covering index,
     # which is not supported by Ecto's index macro
@@ -100,7 +100,8 @@ defmodule EveDmv.Repo.Migrations.AddPerformanceIndexesStream6 do
 
     drop_if_exists(
       index(:participants, [:corporation_id, :killmail_time, :final_blow],
-        name: :idx_participants_corp_time_final
+        name: :idx_participants_corp_time_final,
+        concurrently: true
       )
     )
 
@@ -109,12 +110,13 @@ defmodule EveDmv.Repo.Migrations.AddPerformanceIndexesStream6 do
 
     drop_if_exists(
       index(:historical_fetch_status, [:entity_type, :entity_id, :status],
-        name: :idx_historical_fetch_entity_status
+        name: :idx_historical_fetch_entity_status,
+        concurrently: true
       )
     )
 
     drop_if_exists(
-      index(:api_keys, [:character_id, :is_active], name: :idx_api_keys_character_active)
+      index(:api_keys, [:character_id, :is_active], name: :idx_api_keys_character_active, concurrently: true)
     )
 
     # Note: Cannot use CONCURRENTLY on partitioned tables (PostgreSQL limitation)

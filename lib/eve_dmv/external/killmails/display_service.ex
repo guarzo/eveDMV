@@ -80,7 +80,8 @@ defmodule EveDmv.Killmails.DisplayService do
   def build_killmail_display(killmail_data) do
     # Use pre-computed display fields from KillmailBroadcaster when available
     case killmail_data do
-      %{display: %{}, victim: victim_data} when is_map(victim_data) ->
+      %{display: display, victim: victim_data}
+      when is_map(display) and map_size(display) > 0 and is_map(victim_data) ->
         # Use optimized format from KillmailBroadcaster
         build_from_optimized_payload(killmail_data)
 
@@ -116,7 +117,7 @@ defmodule EveDmv.Killmails.DisplayService do
     age_minutes = calculate_age_minutes(killmail_time)
 
     %{
-      id: generate_killmail_id(payload),
+      id: generate_killmail_id(payload, killmail_time),
       killmail_id: payload[:killmail_id],
       killmail_time: killmail_time,
       victim_character_id: victim[:character_id],
@@ -198,10 +199,13 @@ defmodule EveDmv.Killmails.DisplayService do
 
     system_security = NameResolver.system_security(system_id)
 
+    # Parse killmail_time once for both ID generation and display
+    killmail_time = parse_killmail_timestamp(killmail_data)
+
     %{
-      id: generate_killmail_id(killmail_data),
+      id: generate_killmail_id(killmail_data, killmail_time),
       killmail_id: killmail_data["killmail_id"],
-      killmail_time: parse_killmail_timestamp(killmail_data),
+      killmail_time: killmail_time,
       victim_character_id: victim["character_id"],
       victim_character_name: victim["character_name"] || "Unknown Pilot",
       victim_corporation_name: victim_corporation_name,
@@ -379,11 +383,29 @@ defmodule EveDmv.Killmails.DisplayService do
     end
   end
 
-  defp generate_killmail_id(killmail_data) do
-    # Use current timestamp for ID generation
-    now = DateTime.utc_now()
-    "#{killmail_data["killmail_id"]}-#{DateTime.to_unix(now)}"
+  defp generate_killmail_id(killmail_data, killmail_time) do
+    # Use killmail_time for stable ID generation
+    # Handle both atom keys (optimized payload) and string keys (raw data)
+    killmail_id = killmail_data[:killmail_id] || killmail_data["killmail_id"]
+    timestamp = killmail_time_to_unix(killmail_time)
+    "#{killmail_id}-#{timestamp}"
   end
+
+  # Convert killmail_time to unix timestamp, handling various formats
+  defp killmail_time_to_unix(nil), do: 0
+
+  defp killmail_time_to_unix(killmail_time) when is_struct(killmail_time, DateTime) do
+    DateTime.to_unix(killmail_time)
+  end
+
+  defp killmail_time_to_unix(killmail_time) when is_binary(killmail_time) do
+    case DateTime.from_iso8601(killmail_time) do
+      {:ok, dt, _} -> DateTime.to_unix(dt)
+      _ -> 0
+    end
+  end
+
+  defp killmail_time_to_unix(_), do: 0
 
   defp expensive_kill_wanderer(killmail_data) do
     total_value =

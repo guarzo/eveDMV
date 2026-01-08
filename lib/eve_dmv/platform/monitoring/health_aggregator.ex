@@ -7,15 +7,53 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
   alias EveDmv.Monitoring.ErrorTracker
   alias EveDmv.Monitoring.PipelineMonitor
   alias EveDmv.Platform.Cache.QueryCache
+  alias EveDmv.Platform.Monitoring.HealthConfig
   alias EveDmv.Repo
   alias EveDmv.Telemetry.QueryMonitor
 
   require Logger
 
+  # Cache TTL for Process.list() in milliseconds (5 seconds)
+  @process_list_cache_ttl_ms 5_000
+
+  # Process dictionary key for cached process list
+  @process_list_cache_key :health_aggregator_process_list_cache
+
   @doc """
   Returns comprehensive system health snapshot.
+
+  Emits telemetry events:
+  - `[:eve_dmv, :health, :snapshot, :start]` - When snapshot collection begins
+  - `[:eve_dmv, :health, :snapshot, :stop]` - When snapshot collection completes
+  - `[:eve_dmv, :health, :snapshot, :exception]` - If an exception occurs
+
+  Measurements (stop event):
+  - `:duration` - Time taken in native units
+
+  Metadata:
+  - `:overall_status` - The computed overall system status (:healthy, :warning, :critical, :degraded)
+  - `:uptime_seconds` - System uptime in seconds
+  - `:subsystem_count` - Number of subsystems checked
   """
   def get_health_snapshot do
+    :telemetry.span(
+      [:eve_dmv, :health, :snapshot],
+      %{},
+      fn ->
+        snapshot = collect_health_snapshot()
+
+        telemetry_metadata = %{
+          overall_status: snapshot.overall_status,
+          uptime_seconds: snapshot.uptime.total_seconds,
+          subsystem_count: 7
+        }
+
+        {snapshot, telemetry_metadata}
+      end
+    )
+  end
+
+  defp collect_health_snapshot do
     database = get_database_health()
     pipeline = get_pipeline_health()
     cache = get_cache_health()
@@ -89,7 +127,9 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
         utilization: Float.round(active / max(pool_size, 1) * 100, 1)
       }
     rescue
-      _ ->
+      e ->
+        Logger.error("get_pool_stats/0 failed: #{Exception.message(e)}")
+
         %{
           pool_size: pool_size,
           checked_out: 0,
@@ -101,19 +141,18 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
   end
 
   defp get_query_stats do
-    {:ok, result} =
-      Repo.query("""
-      SELECT
-        sum(calls) as total_queries,
-        round(sum(total_exec_time)::numeric, 2) as total_time_ms,
-        round(avg(mean_exec_time)::numeric, 2) as avg_time_ms,
-        max(max_exec_time) as max_time_ms
-      FROM pg_stat_statements
-      WHERE dbid = (SELECT oid FROM pg_database WHERE datname = current_database())
-      """)
+    query = """
+    SELECT
+      sum(calls) as total_queries,
+      round(sum(total_exec_time)::numeric, 2) as total_time_ms,
+      round(avg(mean_exec_time)::numeric, 2) as avg_time_ms,
+      max(max_exec_time) as max_time_ms
+    FROM pg_stat_statements
+    WHERE dbid = (SELECT oid FROM pg_database WHERE datname = current_database())
+    """
 
-    case result.rows do
-      [[total, total_time, avg_time, max_time]] ->
+    case Repo.query(query) do
+      {:ok, %{rows: [[total, total_time, avg_time, max_time]]}} ->
         %{
           total_queries: total || 0,
           total_time_ms: total_time || 0,
@@ -121,7 +160,18 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
           max_time_ms: max_time || 0
         }
 
-      _ ->
+      {:ok, _result} ->
+        %{
+          total_queries: 0,
+          total_time_ms: 0,
+          avg_time_ms: 0,
+          max_time_ms: 0,
+          note: "pg_stat_statements not available"
+        }
+
+      {:error, reason} ->
+        Logger.error("get_query_stats/0 failed: #{inspect(reason)}")
+
         %{
           total_queries: 0,
           total_time_ms: 0,
@@ -130,15 +180,6 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
           note: "pg_stat_statements not available"
         }
     end
-  rescue
-    _ ->
-      %{
-        total_queries: 0,
-        total_time_ms: 0,
-        avg_time_ms: 0,
-        max_time_ms: 0,
-        note: "pg_stat_statements not available"
-      }
   end
 
   defp get_slow_queries(limit) do
@@ -164,16 +205,13 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
       %{query: query, calls: calls, avg_ms: avg, max_ms: max, total_ms: total}
     end)
   rescue
-    _ -> []
+    e ->
+      Logger.error("get_slow_queries/1 failed: #{Exception.message(e)}")
+      []
   end
 
   defp database_status(pool_stats) do
-    cond do
-      pool_stats.utilization >= 90 -> :critical
-      pool_stats.utilization >= 70 -> :warning
-      pool_stats.queue_length > 5 -> :warning
-      true -> :healthy
-    end
+    HealthConfig.database_status(pool_stats)
   end
 
   @doc """
@@ -206,7 +244,9 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
       avg_processing_time_ms: avg_processing_time
     }
   rescue
-    _ ->
+    e ->
+      Logger.error("get_pipeline_health/0 failed: #{Exception.message(e)}")
+
       %{
         status: :unknown,
         messages_processed: 0,
@@ -232,12 +272,7 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
   end
 
   defp pipeline_status(success_rate, messages_failed) do
-    cond do
-      success_rate < 90 -> :critical
-      success_rate < 95 -> :warning
-      messages_failed > 100 -> :warning
-      true -> :healthy
-    end
+    HealthConfig.pipeline_status(success_rate, messages_failed)
   end
 
   @doc """
@@ -258,7 +293,9 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
       ets_tables: get_ets_table_stats()
     }
   rescue
-    _ ->
+    e ->
+      Logger.error("get_cache_health/0 failed: #{Exception.message(e)}")
+
       %{
         status: :unknown,
         query_cache: %{hits: 0, misses: 0, hit_rate: 0, size: 0, memory_mb: 0},
@@ -279,7 +316,12 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
           memory_bytes: (info[:memory] || 0) * :erlang.system_info(:wordsize)
         }
       rescue
-        _ -> nil
+        e ->
+          Logger.error(
+            "get_ets_table_stats/0 failed for table #{inspect(table)}: #{Exception.message(e)}"
+          )
+
+          nil
       end
     end)
     |> Enum.reject(&is_nil/1)
@@ -288,11 +330,7 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
   end
 
   defp cache_status(stats) do
-    cond do
-      stats.hit_rate < 50 -> :critical
-      stats.hit_rate < 70 -> :warning
-      true -> :healthy
-    end
+    HealthConfig.cache_status(stats)
   end
 
   @doc """
@@ -316,7 +354,7 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
   end
 
   defp get_top_memory_processes(limit) do
-    Process.list()
+    get_cached_process_list()
     |> Enum.map(fn pid ->
       try do
         info = Process.info(pid, [:memory, :registered_name, :current_function])
@@ -326,7 +364,12 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
           %{pid: inspect(pid), name: name, memory_kb: div(info[:memory], 1024)}
         end
       rescue
-        _ -> nil
+        e ->
+          Logger.error(
+            "get_top_memory_processes/1 failed for pid #{inspect(pid)}: #{Exception.message(e)}"
+          )
+
+          nil
       end
     end)
     |> Enum.reject(&is_nil/1)
@@ -335,10 +378,22 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
   end
 
   defp memory_status(total_mb) do
-    cond do
-      total_mb > 4096 -> :critical
-      total_mb > 2048 -> :warning
-      true -> :healthy
+    HealthConfig.memory_status(total_mb)
+  end
+
+  # Returns a cached process list if still valid (within TTL), otherwise fetches fresh.
+  # Uses process dictionary for per-process caching to avoid cross-process synchronization.
+  defp get_cached_process_list do
+    now_ms = System.monotonic_time(:millisecond)
+
+    case Process.get(@process_list_cache_key) do
+      {cached_at, process_list} when now_ms - cached_at < @process_list_cache_ttl_ms ->
+        process_list
+
+      _ ->
+        process_list = Process.list()
+        Process.put(@process_list_cache_key, {now_ms, process_list})
+        process_list
     end
   end
 
@@ -346,9 +401,9 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
   Returns LiveView socket statistics.
   """
   def get_liveview_health do
-    # Count LiveView processes
+    # Count LiveView processes using cached process list
     liveview_count =
-      Process.list()
+      get_cached_process_list()
       |> Enum.count(fn pid ->
         try do
           case Process.info(pid, :dictionary) do
@@ -356,7 +411,12 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
             _ -> false
           end
         rescue
-          _ -> false
+          e ->
+            Logger.error(
+              "get_liveview_health/0 failed for pid #{inspect(pid)}: #{Exception.message(e)}"
+            )
+
+            false
         end
       end)
 
@@ -367,11 +427,7 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
   end
 
   defp liveview_status(count) do
-    cond do
-      count > 5000 -> :critical
-      count > 1000 -> :warning
-      true -> :healthy
-    end
+    HealthConfig.liveview_status(count)
   end
 
   @doc """
@@ -389,7 +445,9 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
       n_plus_one_alerts: Enum.take(n_plus_one, 5)
     }
   rescue
-    _ ->
+    e ->
+      Logger.error("get_query_health/0 failed: #{Exception.message(e)}")
+
       %{
         status: :unknown,
         slow_query_count: 0,
@@ -400,12 +458,7 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
   end
 
   defp query_health_status(slow_queries, n_plus_one) do
-    cond do
-      length(slow_queries) > 10 -> :critical
-      length(slow_queries) > 5 -> :warning
-      length(n_plus_one) > 3 -> :warning
-      true -> :healthy
-    end
+    HealthConfig.query_health_status(slow_queries, n_plus_one)
   end
 
   @doc """
@@ -429,7 +482,9 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
       errors: formatted_errors
     }
   rescue
-    _ -> %{count: 0, errors: []}
+    e ->
+      Logger.error("get_recent_errors/0 failed: #{Exception.message(e)}")
+      %{count: 0, errors: []}
   end
 
   defp get_error_message(error) do

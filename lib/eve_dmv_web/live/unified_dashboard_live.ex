@@ -214,7 +214,6 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
     # Targeted update: Just refresh the specific alert status, not full reload
     if socket.assigns.dashboard_type == :surveillance do
       # Only log the update for monitoring; avoid database query
-      require Logger
       Logger.debug("Alert #{alert_id} updated - using cached data")
       {:noreply, socket}
     else
@@ -232,6 +231,7 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
     {:noreply, handle_surveillance_alerts_batch(socket, batch_payload)}
   end
 
+  @impl Phoenix.LiveView
   def handle_info({:alerts_batch, _batch_payload}, socket), do: {:noreply, socket}
 
   @impl Phoenix.LiveView
@@ -265,6 +265,8 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
     if batch_size > 0 or alerts != [] do
       socket
       |> update(:profile_metrics, fn metrics ->
+        # Handle nil metrics defensively
+        metrics = metrics || %{}
         # Use length(alerts) if alerts present, otherwise fall back to batch_size
         increment = if alerts != [], do: length(alerts), else: batch_size
         Map.update(metrics, :active_alerts, increment, &(&1 + increment))
@@ -433,6 +435,15 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
     _ -> []
   end
 
+  # Maximum number of characters to analyze concurrently
+  # Keep low to avoid overwhelming the database and ESI
+  @character_analysis_max_concurrency 3
+  # Maximum number of characters to analyze total
+  # Reduced from 10 to 5 to improve page load times
+  @character_analysis_limit 5
+  # Timeout for each character analysis task (5 seconds)
+  @character_analysis_timeout_ms 5_000
+
   defp load_recent_character_analyses(time_range) do
     # Get recent killmails and extract unique character IDs for analysis
     since = time_range_to_datetime(time_range)
@@ -454,21 +465,32 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
           |> Enum.map(fn km -> Map.get(km, :victim_character_id) end)
           |> Enum.reject(&is_nil/1)
           |> Enum.uniq()
-          |> Enum.take(10)
+          |> Enum.take(@character_analysis_limit)
 
-        # Analyze each character (limit to prevent slow loads)
+        # Analyze characters concurrently with bounded parallelism
+        # Using Task.async_stream to prevent blocking on slow analyses
         character_ids
-        |> Enum.map(fn character_id ->
-          case CharacterAnalyzer.analyze_character(character_id) do
-            {:ok, analysis} ->
-              # Add timestamp for display purposes
-              Map.put(analysis, :analyzed_at, DateTime.utc_now())
+        |> Task.async_stream(
+          fn character_id ->
+            case CharacterAnalyzer.analyze_character(character_id) do
+              {:ok, analysis} ->
+                # Add timestamp for display purposes
+                Map.put(analysis, :analyzed_at, DateTime.utc_now())
 
-            {:error, _} ->
-              nil
-          end
+              {:error, _} ->
+                nil
+            end
+          end,
+          max_concurrency: @character_analysis_max_concurrency,
+          timeout: @character_analysis_timeout_ms,
+          on_timeout: :kill_task
+        )
+        |> Enum.reduce([], fn
+          {:ok, nil}, acc -> acc
+          {:ok, analysis}, acc -> [analysis | acc]
+          {:exit, _reason}, acc -> acc
         end)
-        |> Enum.reject(&is_nil/1)
+        |> Enum.reverse()
 
       {:error, _} ->
         []

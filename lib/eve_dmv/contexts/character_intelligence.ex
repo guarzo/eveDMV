@@ -222,12 +222,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   """
   @spec get_character_intelligence_report(integer()) :: {:ok, map()}
   def get_character_intelligence_report(character_id) do
-    with {:ok, threat_data} <- analyze_character_threat(character_id),
-         {:ok, character_info} <- fetch_character_info(character_id) do
-      # Build the complete report structure expected by the template
-      report = build_intelligence_report(character_id, threat_data, character_info)
-      {:ok, report}
-    else
+    case analyze_character_threat(character_id) do
+      {:ok, threat_data} ->
+        character_info = fetch_character_info(character_id)
+        # Build the complete report structure expected by the template
+        report = build_intelligence_report(character_id, threat_data, character_info)
+        {:ok, report}
+
       {:error, :insufficient_data} ->
         # Return a minimal report for characters with no killmail data
         {:ok, build_minimal_report(character_id)}
@@ -242,14 +243,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
       {:error, reason} ->
         Logger.warning("Failed to fetch character info for #{character_id}: #{inspect(reason)}")
         # Return a minimal character info structure
-        {:ok,
-         %{
-           name: "Unknown Pilot",
-           corporation_id: nil,
-           corporation_name: "Unknown Corporation",
-           alliance_id: nil,
-           alliance_name: nil
-         }}
+        %{
+          name: "Unknown Pilot",
+          corporation_id: nil,
+          corporation_name: "Unknown Corporation",
+          alliance_id: nil,
+          alliance_name: nil
+        }
     end
   end
 
@@ -290,14 +290,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
         nil
       end
 
-    {:ok,
-     %{
-       name: name,
-       corporation_id: corporation_id,
-       corporation_name: corp_name,
-       alliance_id: alliance_id,
-       alliance_name: alliance_name
-     }}
+    %{
+      name: name,
+      corporation_id: corporation_id,
+      corporation_name: corp_name,
+      alliance_id: alliance_id,
+      alliance_name: alliance_name
+    }
   end
 
   defp build_intelligence_report(character_id, threat_data, character_info) do
@@ -520,8 +519,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   end
 
   defp build_minimal_report(character_id) do
-    # fetch_character_info/1 always returns {:ok, info} (handles errors internally)
-    {:ok, character_info} = fetch_character_info(character_id)
+    character_info = fetch_character_info(character_id)
 
     %{
       character_id: character_id,

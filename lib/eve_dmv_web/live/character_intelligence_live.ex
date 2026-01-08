@@ -4,6 +4,28 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
 
   Displays comprehensive threat scoring, behavioral patterns, and tactical recommendations
   for EVE Online characters based on their combat history.
+
+  ## Async Data Loading
+
+  This module uses `assign_async/3` for non-blocking data loading. The `assign_async`
+  creates an `Phoenix.LiveView.AsyncResult` struct accessible in templates via the
+  following fields:
+
+    * `@intelligence_data.loading` - `true` while data is loading
+    * `@intelligence_data.ok?` - `true` when data loaded successfully
+    * `@intelligence_data.failed?` - `true` when an error occurred
+    * `@intelligence_data.result` - contains `%{intelligence_data: report}` on success
+
+  ### Template Usage Example
+
+      <%= if @intelligence_data.loading do %>
+        Loading...
+      <% else %>
+        <%= if @intelligence_data.ok? do %>
+          <% report = @intelligence_data.result.intelligence_data %>
+          ... render report ...
+        <% end %>
+      <% end %>
   """
 
   use EveDmvWeb, :live_view
@@ -34,10 +56,8 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
       |> assign(:search_query, "")
       |> assign(:search_results, [])
       |> assign_async(:intelligence_data, fn ->
-        case CharacterIntelligence.get_character_intelligence_report(character_id) do
-          {:ok, report} -> {:ok, %{intelligence_data: report}}
-          {:error, reason} -> {:error, reason}
-        end
+        {:ok, report} = CharacterIntelligence.get_character_intelligence_report(character_id)
+        {:ok, %{intelligence_data: report}}
       end)
 
     {:ok, socket}
@@ -55,10 +75,8 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
         |> assign(:loading, true)
         |> assign(:intelligence_report, nil)
         |> assign_async(:intelligence_data, fn ->
-          case CharacterIntelligence.get_character_intelligence_report(character_id) do
-            {:ok, report} -> {:ok, %{intelligence_data: report}}
-            {:error, reason} -> {:error, reason}
-          end
+          {:ok, report} = CharacterIntelligence.get_character_intelligence_report(character_id)
+          {:ok, %{intelligence_data: report}}
         end)
 
       {:noreply, socket}
@@ -78,10 +96,8 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
       |> assign_async(
         :intelligence_data,
         fn ->
-          case CharacterIntelligence.get_character_intelligence_report(character_id) do
-            {:ok, report} -> {:ok, %{intelligence_data: report}}
-            {:error, reason} -> {:error, reason}
-          end
+          {:ok, report} = CharacterIntelligence.get_character_intelligence_report(character_id)
+          {:ok, %{intelligence_data: report}}
         end,
         reset: true
       )
@@ -144,24 +160,6 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
 
     {:noreply, assign(socket, :comparison_characters, comparison_characters)}
   end
-
-  # Private functions
-
-  # The assign_async creates an AsyncResult struct accessible in templates via:
-  #   @intelligence_data.loading - true while loading
-  #   @intelligence_data.ok?     - true when successful
-  #   @intelligence_data.failed? - true on error
-  #   @intelligence_data.result  - contains %{intelligence_data: report} on success
-  #
-  # Template should check:
-  #   <%= if @intelligence_data.loading do %>
-  #     Loading...
-  #   <% else %>
-  #     <%= if @intelligence_data.ok? do %>
-  #       <% report = @intelligence_data.result.intelligence_data %>
-  #       ... render report ...
-  #     <% end %>
-  #   <% end %>
 
   # View helpers
 

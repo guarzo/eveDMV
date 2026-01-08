@@ -81,12 +81,15 @@ defmodule EveDmvWeb.Plugs.CacheControl do
   @doc """
   Adds Cache-Control headers to the connection based on the cache type.
 
-  Unknown cache types default to `:realtime` (no-store, no-cache) for safety.
+  The cache_type is validated by `init/1` at compile time, which raises
+  an `ArgumentError` for unknown cache types. As a result, this function
+  will only receive valid cache types during normal operation. The use of
+  `Map.fetch!/2` serves as an exceptional defensive fallback that will
+  raise a `KeyError` if an invalid cache type somehow bypasses validation.
   """
   @spec call(Plug.Conn.t(), atom()) :: Plug.Conn.t()
   def call(conn, cache_type) when is_atom(cache_type) do
-    # Default to realtime (no caching) for unknown types - safest option
-    config = Map.get(@cache_configs, cache_type, @cache_configs[:realtime])
+    config = Map.fetch!(@cache_configs, cache_type)
     put_cache_headers(conn, config)
   end
 

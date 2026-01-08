@@ -520,65 +520,62 @@ defmodule EveDmv.Platform.Database.CacheInvalidator do
   defp invalidate_entity({:character, id}) when not is_nil(id) do
     # Only invalidate time-sensitive character caches
     # Don't invalidate historical analysis - it's expensive to recompute
-    keys_invalidated =
-      [
-        "character_recent_activity_#{id}",
-        "character_stats_#{id}",
-        "character_activity_#{id}"
-      ]
-      |> Enum.reduce(0, fn key, count ->
-        QueryCache.delete(key)
-        count + 1
-      end)
-
-    keys_invalidated
+    [
+      "character_recent_activity_#{id}",
+      "character_stats_#{id}",
+      "character_activity_#{id}"
+    ]
+    |> Enum.reduce(0, fn key, count ->
+      if delete_if_exists(key), do: count + 1, else: count
+    end)
   end
 
   defp invalidate_entity({:corporation, id}) when not is_nil(id) do
-    keys_invalidated =
-      [
-        "corp_activity_#{id}",
-        "corp_stats_#{id}",
-        "corporation_activity_#{id}"
-      ]
-      |> Enum.reduce(0, fn key, count ->
-        QueryCache.delete(key)
-        count + 1
-      end)
-
-    keys_invalidated
+    [
+      "corp_activity_#{id}",
+      "corp_stats_#{id}",
+      "corporation_activity_#{id}"
+    ]
+    |> Enum.reduce(0, fn key, count ->
+      if delete_if_exists(key), do: count + 1, else: count
+    end)
   end
 
   defp invalidate_entity({:alliance, id}) when not is_nil(id) do
-    keys_invalidated =
-      [
-        "alliance_activity_#{id}",
-        "alliance_stats_#{id}"
-      ]
-      |> Enum.reduce(0, fn key, count ->
-        QueryCache.delete(key)
-        count + 1
-      end)
-
-    keys_invalidated
+    [
+      "alliance_activity_#{id}",
+      "alliance_stats_#{id}"
+    ]
+    |> Enum.reduce(0, fn key, count ->
+      if delete_if_exists(key), do: count + 1, else: count
+    end)
   end
 
   defp invalidate_entity({:system, id}) when not is_nil(id) do
     # System info doesn't change from killmails, only activity does
-    keys_invalidated =
-      [
-        "system_activity_#{id}",
-        "system_recent_kills_#{id}"
-      ]
-      |> Enum.reduce(0, fn key, count ->
-        QueryCache.delete(key)
-        count + 1
-      end)
-
-    keys_invalidated
+    [
+      "system_activity_#{id}",
+      "system_recent_kills_#{id}"
+    ]
+    |> Enum.reduce(0, fn key, count ->
+      if delete_if_exists(key), do: count + 1, else: count
+    end)
   end
 
   defp invalidate_entity(_), do: 0
+
+  # Helper to check if a key exists before deleting, returns true if key was actually removed
+  defp delete_if_exists(key) do
+    case QueryCache.get(key) do
+      {:error, :not_found} ->
+        false
+
+      _ ->
+        # Key exists (either valid or expired), delete it
+        QueryCache.delete(key)
+        true
+    end
+  end
 
   # ============================================================================
   # Change Detection Functions (Stream 10 improvements)

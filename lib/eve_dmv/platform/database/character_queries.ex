@@ -21,7 +21,7 @@ defmodule EveDmv.Platform.Database.CharacterQueries do
       p.killmail_time,
       k.solar_system_id,
       CASE WHEN p.is_victim THEN 'loss' ELSE 'kill' END as involvement_type,
-      CASE WHEN p.is_victim THEN p.ship_type_id ELSE k.victim_ship_type_id END as ship_type_id,
+      p.ship_type_id,
       COALESCE(k.total_value, 0) as total_value
     FROM participants p
     JOIN killmails_raw k ON k.killmail_id = p.killmail_id

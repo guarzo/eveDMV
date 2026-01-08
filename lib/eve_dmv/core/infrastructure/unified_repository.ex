@@ -665,13 +665,18 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
     query = build_surveillance_profile_query(filters)
 
     # Execute query and apply filters
-    # execute_surveillance_query/2 always returns {:ok, profiles}
-    {:ok, profiles} = execute_surveillance_query(query, limit)
+    case execute_surveillance_query(query, limit) do
+      {:ok, profiles} ->
+        filtered_profiles =
+          profiles
+          |> filter_by_active_status(active_only)
+          |> filter_by_user(user_id)
 
-    profiles
-    |> filter_by_active_status(active_only)
-    |> filter_by_user(user_id)
-    |> then(&{:ok, &1})
+        {:ok, filtered_profiles}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   # Helper functions for surveillance profiles

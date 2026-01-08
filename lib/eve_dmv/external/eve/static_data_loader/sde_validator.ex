@@ -444,7 +444,7 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeValidator do
     if File.exists?(path) do
       count =
         path
-        |> File.stream!(:line, [])
+        |> File.stream!()
         |> Stream.reject(&(String.trim(&1) == ""))
         |> Enum.count()
 

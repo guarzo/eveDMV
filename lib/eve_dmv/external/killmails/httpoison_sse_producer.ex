@@ -15,6 +15,8 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
   @default_retry_delay 1000
   @max_retry_delay 30_000
   @max_buffer_size 1_048_576
+  # Half of @max_buffer_size (524KB vs 1MB) to limit memory growth and provide
+  # headroom when trimming - ensures we don't immediately overflow again after trim
   @trim_keep_size 524_288
   # Deduplication: Track last N killmail IDs to prevent duplicate processing
   # 1000 IDs should cover ~15-20 minutes of typical EVE activity
@@ -106,7 +108,12 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
         :telemetry.execute(
           [:eve_dmv, :sse, :buffer_overflow],
           %{size: byte_size(initial_combined_data)},
-          %{}
+          %{
+            sse_url: state.url,
+            connection_id: inspect(self()),
+            connected_at: state.connected_at,
+            killmail_count: state.killmail_count
+          }
         )
 
         # Keep last @trim_keep_size bytes (most recent events)

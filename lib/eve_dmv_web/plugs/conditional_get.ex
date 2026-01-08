@@ -31,6 +31,8 @@ defmodule EveDmvWeb.Plugs.ConditionalGet do
 
   import Plug.Conn
 
+  require Logger
+
   @doc """
   Initializes the plug.
   """
@@ -75,9 +77,15 @@ defmodule EveDmvWeb.Plugs.ConditionalGet do
   defp generate_etag(conn) do
     body =
       case conn.resp_body do
-        body when is_binary(body) -> body
-        body when is_list(body) -> IO.iodata_to_binary(body)
-        _ -> ""
+        body when is_binary(body) ->
+          body
+
+        body when is_list(body) ->
+          IO.iodata_to_binary(body)
+
+        unexpected ->
+          Logger.debug("Unexpected resp_body type in generate_etag: #{inspect(unexpected)}")
+          ""
       end
 
     hash = :crypto.hash(:md5, body) |> Base.encode16(case: :lower)

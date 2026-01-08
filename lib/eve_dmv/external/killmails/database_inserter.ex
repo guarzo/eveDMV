@@ -27,6 +27,7 @@ defmodule EveDmv.Killmails.DatabaseInserter do
   # Circuit breaker configuration
   @failure_threshold 5
   @reset_timeout_ms 60_000
+  @half_open_success_threshold 2
 
   # Circuit states
   @circuit_closed :closed
@@ -164,7 +165,7 @@ defmodule EveDmv.Killmails.DatabaseInserter do
   defp do_record_success(%{state: @circuit_half_open} = state) do
     new_count = state.success_count_since_half_open + 1
 
-    if new_count >= 2 do
+    if new_count >= @half_open_success_threshold do
       Logger.info("Circuit breaker closing after successful half-open tests")
 
       %CircuitState{
@@ -225,7 +226,11 @@ defmodule EveDmv.Killmails.DatabaseInserter do
     )
   end
 
-  # Circuit breaker check helper (called from insert functions)
+  # Circuit breaker helper functions with intentional fail-open behavior.
+  # If the GenServer is unavailable (crashed, not started, etc.), these functions
+  # return :ok to allow database operations to proceed. This prevents the circuit
+  # breaker infrastructure from becoming a single point of failure - database
+  # insertions should not fail just because the circuit breaker process is down.
   defp check_circuit do
     GenServer.call(__MODULE__, :check_circuit)
   catch

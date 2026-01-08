@@ -10,21 +10,16 @@ defmodule EveDmv.Killmails.PipelineAutoscaler do
   4. Emits telemetry for observability
 
   Configuration for next restart can be retrieved via `get_recommended_config/0`.
+
+  All numeric thresholds and limits are defined in `PipelineAutoscalerConfig`.
   """
 
   use GenServer
 
+  alias EveDmv.Killmails.PipelineAutoscalerConfig, as: Config
   alias EveDmv.Monitoring.PipelineMonitor
 
   require Logger
-
-  @check_interval 30_000
-  @scale_up_threshold 0.8
-  @scale_down_threshold 0.3
-  @min_concurrency 4
-  @max_concurrency 16
-  @default_concurrency 8
-  @batch_timeout_ms 30_000
 
   defmodule State do
     @moduledoc false
@@ -56,11 +51,11 @@ defmodule EveDmv.Killmails.PipelineAutoscaler do
           }
 
     @type t :: %__MODULE__{
-            current_concurrency: non_neg_integer(),
-            recommended_concurrency: non_neg_integer(),
+            current_concurrency: non_neg_integer() | nil,
+            recommended_concurrency: non_neg_integer() | nil,
             last_check: DateTime.t() | nil,
-            utilization_history: [utilization_entry()],
-            scale_events: [scale_event()]
+            utilization_history: [float()],
+            scale_events: list(any())
           }
   end
 
@@ -139,9 +134,9 @@ defmodule EveDmv.Killmails.PipelineAutoscaler do
   def handle_call(:get_recommended_config, _from, state) do
     config = %{
       pipeline_concurrency: state.recommended_concurrency,
-      batcher_concurrency: max(@min_concurrency, div(state.recommended_concurrency, 2)),
+      batcher_concurrency: max(Config.min_concurrency(), div(state.recommended_concurrency, 2)),
       batch_size: calculate_optimal_batch_size(state),
-      batch_timeout: @batch_timeout_ms
+      batch_timeout: Config.batch_timeout_ms()
     }
 
     {:reply, config, state}
@@ -202,13 +197,15 @@ defmodule EveDmv.Killmails.PipelineAutoscaler do
 
     new_recommended =
       cond do
-        utilization > @scale_up_threshold and state.recommended_concurrency < @max_concurrency ->
-          new_conc = min(state.recommended_concurrency + 2, @max_concurrency)
+        utilization > Config.scale_up_threshold() and
+            state.recommended_concurrency < Config.max_concurrency() ->
+          new_conc = min(state.recommended_concurrency + 2, Config.max_concurrency())
           log_scaling_recommendation(:up, state.recommended_concurrency, new_conc, utilization)
           new_conc
 
-        utilization < @scale_down_threshold and state.recommended_concurrency > @min_concurrency ->
-          new_conc = max(state.recommended_concurrency - 2, @min_concurrency)
+        utilization < Config.scale_down_threshold() and
+            state.recommended_concurrency > Config.min_concurrency() ->
+          new_conc = max(state.recommended_concurrency - 2, Config.min_concurrency())
           log_scaling_recommendation(:down, state.recommended_concurrency, new_conc, utilization)
           new_conc
 
@@ -261,31 +258,22 @@ defmodule EveDmv.Killmails.PipelineAutoscaler do
     # Calculate utilization based on batch processing time vs batch timeout
     # Higher ratio = higher utilization = need more capacity
 
-    # Safely extract avg_batch_time_ms, returning 0.0 if nil or non-positive
-    avg_batch_time_ms =
-      case metrics do
-        %{performance: %{avg_processing_time_ms: time}} when is_number(time) and time > 0 ->
-          time
+    # Defensively extract avg_batch_time_ms from metrics.performance.avg_processing_time_ms
+    # Returns 0.0 if metrics is nil, performance is nil/missing, or value is nil/non-positive
+    avg_batch_time_ms = get_avg_batch_time_ms(metrics)
 
-        _ ->
-          nil
-      end
-
-    if is_nil(avg_batch_time_ms) do
+    if avg_batch_time_ms == 0.0 do
       0.0
     else
       # Utilization = actual processing time / available time window
-      utilization = avg_batch_time_ms / @batch_timeout_ms
+      utilization = avg_batch_time_ms / Config.batch_timeout_ms()
 
-      # Safely extract success_rate, defaulting to 100 if nil/missing
-      raw_success_rate =
-        case metrics do
-          %{batches: %{success_rate: rate}} when is_number(rate) -> rate
-          _ -> 100
-        end
+      # Defensively extract success_rate from metrics.batches.success_rate
+      # Returns safe default of 100 if nil/missing, then clamps to prevent division by zero
+      success_rate = get_success_rate(metrics)
 
-      # Convert to float ratio and clamp to prevent division by zero
-      success_rate_ratio = max(raw_success_rate / 100, 0.5)
+      # Convert to float ratio and ensure we never divide by zero using max(..., 0.5)
+      success_rate_ratio = max(success_rate / 100, 0.5)
 
       # Also factor in success rate - lower success rate indicates stress
       adjusted_utilization = utilization / success_rate_ratio
@@ -294,6 +282,37 @@ defmodule EveDmv.Killmails.PipelineAutoscaler do
       min(adjusted_utilization, 1.0)
     end
   end
+
+  # Safely extract avg_processing_time_ms from nested metrics structure
+  # Returns 0.0 if metrics is nil, performance is nil/missing, or value is nil/non-positive
+  defp get_avg_batch_time_ms(nil), do: 0.0
+
+  defp get_avg_batch_time_ms(%{performance: nil}), do: 0.0
+
+  defp get_avg_batch_time_ms(%{performance: performance}) when is_map(performance) do
+    case Map.get(performance, :avg_processing_time_ms) do
+      time when is_number(time) and time > 0 -> time
+      _ -> 0.0
+    end
+  end
+
+  defp get_avg_batch_time_ms(_), do: 0.0
+
+  # Safely extract success_rate from metrics.batches.success_rate
+  # Returns 100 (safe default) if nil/missing, coerces nil to 100
+  defp get_success_rate(nil), do: 100
+
+  defp get_success_rate(%{batches: nil}), do: 100
+
+  defp get_success_rate(%{batches: batches}) when is_map(batches) do
+    case Map.get(batches, :success_rate) do
+      rate when is_number(rate) -> rate
+      nil -> 100
+      _ -> 100
+    end
+  end
+
+  defp get_success_rate(_), do: 100
 
   defp calculate_optimal_batch_size(state) do
     # Based on utilization trends, recommend batch size
@@ -345,10 +364,10 @@ defmodule EveDmv.Killmails.PipelineAutoscaler do
   end
 
   defp schedule_check do
-    Process.send_after(self(), :check_scaling, @check_interval)
+    Process.send_after(self(), :check_scaling, Config.check_interval_ms())
   end
 
   defp get_configured_concurrency do
-    Application.get_env(:eve_dmv, :pipeline_concurrency, @default_concurrency)
+    Application.get_env(:eve_dmv, :pipeline_concurrency, Config.default_concurrency())
   end
 end

@@ -62,13 +62,23 @@ defmodule EveDmvWeb.Plugs.CacheControlTest do
     end
   end
 
-  describe "call/2 with unknown cache type" do
-    test "defaults to realtime (no-store, no-cache)", %{conn: conn} do
-      conn = CacheControl.call(conn, :unknown_type)
+  describe "init/1 with unknown cache type" do
+    test "raises ArgumentError with helpful message" do
+      assert_raise ArgumentError, ~r/unknown cache_type :unknown_type/, fn ->
+        CacheControl.init(:unknown_type)
+      end
+    end
 
-      cache_control = get_resp_header(conn, "cache-control") |> List.first()
-      assert cache_control =~ "no-store"
-      assert cache_control =~ "no-cache"
+    test "includes valid cache types in error message" do
+      error =
+        assert_raise ArgumentError, fn ->
+          CacheControl.init(:invalid)
+        end
+
+      assert error.message =~ "static"
+      assert error.message =~ "semi_static"
+      assert error.message =~ "dynamic"
+      assert error.message =~ "realtime"
     end
   end
 end

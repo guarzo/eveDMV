@@ -151,12 +151,21 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.ExternalPriceClient 
   end
 
   defp get_bulk_killmail_prices(type_ids) do
-    # get_killmail_derived_price/1 always returns {:ok, price_data}
     type_ids
     |> Enum.map(fn type_id ->
-      {:ok, price_data} = get_killmail_derived_price(type_id)
-      {type_id, price_data}
+      case get_killmail_derived_price(type_id) do
+        {:ok, price_data} ->
+          {type_id, price_data}
+
+        {:error, reason} ->
+          Logger.warning(
+            "Failed to get killmail-derived price for type #{type_id}: #{inspect(reason)}"
+          )
+
+          {type_id, nil}
+      end
     end)
+    |> Enum.reject(fn {_type_id, price_data} -> is_nil(price_data) end)
     |> Map.new()
   end
 

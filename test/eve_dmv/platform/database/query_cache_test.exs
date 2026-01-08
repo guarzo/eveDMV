@@ -225,7 +225,7 @@ defmodule EveDmv.Platform.Database.QueryCacheTest do
 
   describe "performance characteristics" do
     @tag :performance
-    test "prefix lookup is faster than full scan for large datasets" do
+    test "prefix and full scan lookups complete successfully for large datasets" do
       # Insert many keys
       num_keys = 500
 
@@ -254,15 +254,17 @@ defmodule EveDmv.Platform.Database.QueryCacheTest do
       assert length(prefix_result) == 10
       assert length(scan_result) == num_keys + 10
 
-      # Prefix lookup should generally be faster, but we allow for some variance
-      # The important thing is that both complete successfully
+      # Verify both lookups complete successfully with valid timing
       assert is_integer(prefix_time)
       assert is_integer(scan_time)
-
-      # Times are captured for potential debugging via test metadata
-      # prefix_time and scan_time are in microseconds
       assert prefix_time >= 0
       assert scan_time >= 0
+
+      # Soft timing assertion: prefix lookup should not be dramatically slower than full scan
+      # We use a generous 10x multiplier to account for test environment variance
+      # In practice, prefix lookup (O(1) index lookup) should be faster than full scan (O(n))
+      assert prefix_time <= scan_time * 10,
+             "Prefix lookup (#{prefix_time}us) was unexpectedly slow compared to full scan (#{scan_time}us)"
     end
   end
 

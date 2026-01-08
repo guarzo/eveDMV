@@ -7,7 +7,7 @@
   #
   # Categories:
   # 1. MapSet opaque type warnings (Dialyzer limitation)
-  # 2. Ash Framework metaprogramming (complex macros)
+  # 2. Repository-specific suppressions (if needed)
   # 3. Compile-time conditionals (Mix.env checks)
   # ===========================================
 
@@ -27,19 +27,30 @@
   ~r/cross_system_coordinator\.ex:\d+.*call_without_opaque/,
 
   # ===========================================
-  # ASH FRAMEWORK METAPROGRAMMING
+  # REPOSITORY-SPECIFIC SUPPRESSIONS
   # ===========================================
-  # Ash uses extensive macros that Dialyzer can't analyze properly.
-  # These are false positives from generated code.
-
-  ~r/_repository\.ex:\d+:call/,
-  ~r/_repository\.ex:\d+:no_return/,
+  # Previously used broad patterns (~r/_repository\.ex:\d+:call/ and
+  # ~r/_repository\.ex:\d+:no_return/) have been removed as they were too
+  # broad. If repository warnings resurface, add targeted suppressions for
+  # specific repository files below.
+  #
+  # Known repository files in the codebase:
+  # - unified_repository.ex (main consolidated repository)
+  # - killmail_repository.ex (platform/database and platform/database/repositories)
+  # - character_repository.ex (platform/database and platform/database/repositories)
+  # - corporation_repository.ex (platform/database)
+  # - surveillance_repository.ex (platform/database)
+  # - fleet_repository.ex (contexts/fleet_operations/infrastructure)
+  # - profile_repository.ex (contexts/surveillance/infrastructure)
+  # - player_repository.ex (contexts/player_profile/infrastructure)
+  #
+  # No active repository suppressions needed at this time.
 
   # ===========================================
   # COMPILE-TIME CONDITIONALS
   # ===========================================
-  # Pattern matches at line 1 are from compile-time Mix.env checks.
-  # Always true/false at compile time but code is valid.
-
-  ~r/\.ex:1:pattern_match/
+  # No compile-time conditional suppressions currently needed.
+  # If pattern_match warnings appear at line 1 from Mix.env checks,
+  # add targeted suppressions for specific files here, e.g.:
+  # ~r/specific_file\.ex:1:pattern_match/
 ]

@@ -63,11 +63,19 @@ defmodule EveDmv.Contexts.PlayerProfile.Api do
 
   Returns ship usage patterns, role specialization, fitting preferences,
   and deployment patterns.
+
+  Accepts either a map or keyword list for options.
   """
-  @spec get_ship_preferences(Types.character_id(), map()) :: Result.t(map())
-  defdelegate get_ship_preferences(character_id, opts \\ %{}),
-    to: ShipPreferencesAnalyzer,
-    as: :analyze
+  @spec get_ship_preferences(Types.character_id(), map() | keyword()) :: Result.t(map())
+  def get_ship_preferences(character_id, opts \\ %{})
+
+  def get_ship_preferences(character_id, opts) when is_list(opts) do
+    get_ship_preferences(character_id, Enum.into(opts, %{}))
+  end
+
+  def get_ship_preferences(character_id, opts) when is_map(opts) do
+    ShipPreferencesAnalyzer.analyze(character_id, opts)
+  end
 
   # Formatting
 

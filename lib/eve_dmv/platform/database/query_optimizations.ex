@@ -62,6 +62,7 @@ defmodule EveDmv.Platform.Database.QueryOptimizations do
         AND k.killmail_time = p.killmail_time
       WHERE p.character_id = ANY($1)
         AND p.killmail_time >= NOW() - INTERVAL '90 days'
+        AND k.killmail_time >= NOW() - INTERVAL '90 days'
       GROUP BY p.character_id
     )
     SELECT * FROM character_stats
@@ -95,13 +96,15 @@ defmodule EveDmv.Platform.Database.QueryOptimizations do
         p.killmail_time,
         k.solar_system_id,
         CASE WHEN p.is_victim THEN 'loss' ELSE 'kill' END as involvement_type,
-        CASE WHEN p.is_victim THEN p.ship_type_id ELSE k.victim_ship_type_id END as ship_type_id,
+        p.ship_type_id,
         COALESCE(k.total_value, 0) as total_value,
         ROW_NUMBER() OVER (PARTITION BY p.character_id ORDER BY p.killmail_time DESC) as rn
       FROM participants p
       JOIN killmails_raw k ON k.killmail_id = p.killmail_id
         AND k.killmail_time = p.killmail_time
       WHERE p.character_id = ANY($1)
+        AND p.killmail_time >= NOW() - INTERVAL '90 days'
+        AND k.killmail_time >= NOW() - INTERVAL '90 days'
     )
     SELECT
       character_id,

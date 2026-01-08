@@ -94,9 +94,13 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
   def head_to_head_comparison(char1_id, char2_id, options \\ []) do
     Logger.info("Head-to-head comparison: #{char1_id} vs #{char2_id}")
 
+    timeframe = Keyword.get(options, :timeframe, 90)
+    end_time = DateTime.utc_now()
+    start_time = DateTimeUtils.add(end_time, -timeframe * 24 * 60 * 60, :second)
+
     with {:ok, char1_data} <- fetch_detailed_character_data(char1_id, options),
          {:ok, char2_data} <- fetch_detailed_character_data(char2_id, options),
-         {:ok, encounters} <- fetch_mutual_encounters(char1_id, char2_id) do
+         {:ok, encounters} <- fetch_mutual_encounters(char1_id, char2_id, start_time, end_time) do
       analysis = %{
         character_1: summarize_character(char1_data),
         character_2: summarize_character(char2_data),
@@ -653,39 +657,43 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
     end
   end
 
-  defp fetch_mutual_encounters(char1_id, char2_id) do
+  defp fetch_mutual_encounters(char1_id, char2_id, start_time, end_time) do
     # Optimized: Uses participants table instead of JSONB extraction
     # Find killmails where these characters fought each other
     # (char1 killed char2 OR char2 killed char1)
+    # Time filter on killmail_time enables partition pruning on killmails_raw
     query = """
     SELECT k.*
     FROM killmails_raw k
-    WHERE (
-      -- Char1 was victim, Char2 was attacker
-      k.victim_character_id = $1
-      AND EXISTS (
-        SELECT 1 FROM participants p
-        WHERE p.killmail_id = k.killmail_id
-          AND p.killmail_time = k.killmail_time
-          AND p.character_id = $2
-          AND p.is_victim = false
+    WHERE k.killmail_time BETWEEN $3 AND $4
+      AND (
+        (
+          -- Char1 was victim, Char2 was attacker
+          k.victim_character_id = $1
+          AND EXISTS (
+            SELECT 1 FROM participants p
+            WHERE p.killmail_id = k.killmail_id
+              AND p.killmail_time = k.killmail_time
+              AND p.character_id = $2
+              AND p.is_victim = false
+          )
+        ) OR (
+          -- Char2 was victim, Char1 was attacker
+          k.victim_character_id = $2
+          AND EXISTS (
+            SELECT 1 FROM participants p
+            WHERE p.killmail_id = k.killmail_id
+              AND p.killmail_time = k.killmail_time
+              AND p.character_id = $1
+              AND p.is_victim = false
+          )
+        )
       )
-    ) OR (
-      -- Char2 was victim, Char1 was attacker
-      k.victim_character_id = $2
-      AND EXISTS (
-        SELECT 1 FROM participants p
-        WHERE p.killmail_id = k.killmail_id
-          AND p.killmail_time = k.killmail_time
-          AND p.character_id = $1
-          AND p.is_victim = false
-      )
-    )
     ORDER BY k.killmail_time DESC
     LIMIT 50
     """
 
-    case EveDmv.Repo.query(query, [char1_id, char2_id]) do
+    case EveDmv.Repo.query(query, [char1_id, char2_id, start_time, end_time]) do
       {:ok, %{rows: rows, columns: columns}} ->
         encounters =
           Enum.map(rows, fn row ->
@@ -694,8 +702,12 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
 
         {:ok, encounters}
 
-      _ ->
-        {:ok, []}
+      {:error, reason} = error ->
+        Logger.error(
+          "Failed to fetch mutual encounters for #{char1_id} vs #{char2_id}: #{inspect(reason)}"
+        )
+
+        error
     end
   end
 

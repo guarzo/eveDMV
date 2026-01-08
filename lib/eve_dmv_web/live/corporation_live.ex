@@ -186,7 +186,7 @@ defmodule EveDmvWeb.CorporationLive do
   defp increment_last_30_days_kills(nil, _count), do: nil
 
   defp increment_last_30_days_kills(stats, count) do
-    if stats[:last_30_days] do
+    if is_map(stats[:last_30_days]) do
       current = get_in(stats, [:last_30_days, :total_kills]) || 0
       put_in(stats, [:last_30_days, :total_kills], current + count)
     else

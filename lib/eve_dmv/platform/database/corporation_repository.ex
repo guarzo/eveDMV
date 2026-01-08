@@ -34,6 +34,7 @@ defmodule EveDmv.Platform.Database.CorporationRepository do
     FROM participants p
     WHERE p.corporation_id = $1
       AND p.character_id IS NOT NULL
+      AND p.killmail_time >= NOW() - INTERVAL '90 days'
     GROUP BY p.character_id, p.corporation_id
     ORDER BY last_seen DESC
     LIMIT 1000
@@ -90,6 +91,7 @@ defmodule EveDmv.Platform.Database.CorporationRepository do
     FROM participants p
     WHERE p.corporation_id = $1
       AND p.corporation_name IS NOT NULL
+      AND p.killmail_time >= NOW() - INTERVAL '90 days'
     ORDER BY p.killmail_time DESC
     LIMIT 1
     """

@@ -123,9 +123,9 @@ defmodule EveDmv.Platform.Database.QueryPlanAnalyzer do
   ## Example
 
       iex> QueryPlanAnalyzer.get_missing_index_candidates()
-      [%{table: "public.participants", seq_scans: 5000, rows_fetched: 1000000, ...}]
+      {:ok, [%{table: "public.participants", seq_scans: 5000, rows_fetched: 1000000, ...}]}
   """
-  @spec get_missing_index_candidates() :: [map()]
+  @spec get_missing_index_candidates() :: {:ok, [map()]} | {:error, any()}
   def get_missing_index_candidates do
     query = """
     SELECT
@@ -147,16 +147,19 @@ defmodule EveDmv.Platform.Database.QueryPlanAnalyzer do
 
     case SQL.query(Repo, query, []) do
       {:ok, result} ->
-        result.rows
-        |> Enum.map(fn [table, seq_scans, rows, idx_scans, avg] ->
-          %{
-            table: table,
-            seq_scans: seq_scans,
-            rows_fetched: rows,
-            idx_scans: idx_scans || 0,
-            avg_rows_per_scan: avg
-          }
-        end)
+        candidates =
+          result.rows
+          |> Enum.map(fn [table, seq_scans, rows, idx_scans, avg] ->
+            %{
+              table: table,
+              seq_scans: seq_scans,
+              rows_fetched: rows,
+              idx_scans: idx_scans || 0,
+              avg_rows_per_scan: avg
+            }
+          end)
+
+        {:ok, candidates}
 
       {:error, error} ->
         Logger.warning("Failed to query missing index candidates: #{inspect(error)}")

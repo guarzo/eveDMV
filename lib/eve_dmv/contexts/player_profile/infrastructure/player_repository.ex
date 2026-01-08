@@ -271,11 +271,11 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
         # $1 = character_id (integer), $2 = since_date
         case EveDmv.Repo.query(query, [character_id, since_date]) do
           {:ok, %{rows: rows}} ->
-            format_external_groups(rows)
+            {:ok, format_external_groups(rows)}
 
           {:error, error} ->
             Logger.error("Failed to get external groups: #{inspect(error)}")
-            []
+            {:error, error}
         end
       end,
       ttl: @external_groups_ttl

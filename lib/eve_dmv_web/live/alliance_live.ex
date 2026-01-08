@@ -45,7 +45,12 @@ defmodule EveDmvWeb.AllianceLive do
         recent_activity = load_recent_activity(alliance_id)
         alliance_stats = calculate_alliance_stats(corporations, alliance_id)
         top_pilots = load_top_pilots(alliance_id, 10)
-        activity_trends = calculate_activity_trends(alliance_id)
+
+        {activity_trends, activity_trends_error} =
+          case calculate_activity_trends(alliance_id) do
+            {:ok, trends} -> {trends, nil}
+            {:error, reason} -> {nil, reason}
+          end
 
         socket =
           socket
@@ -56,6 +61,7 @@ defmodule EveDmvWeb.AllianceLive do
           |> assign(:alliance_stats, alliance_stats)
           |> assign(:top_pilots, top_pilots)
           |> assign(:activity_trends, activity_trends)
+          |> assign(:activity_trends_error, activity_trends_error)
           |> assign(:loading, false)
           |> assign(:error, nil)
           |> assign(:historical_fetch_status, historical_status)
@@ -68,6 +74,7 @@ defmodule EveDmvWeb.AllianceLive do
           |> assign(:error, "Invalid alliance ID")
           |> assign(:loading, false)
           |> assign(:historical_fetch_status, nil)
+          |> assign(:activity_trends_error, nil)
 
         {:ok, socket}
     end
@@ -82,7 +89,12 @@ defmodule EveDmvWeb.AllianceLive do
     recent_activity = load_recent_activity(alliance_id)
     alliance_stats = calculate_alliance_stats(corporations, alliance_id)
     top_pilots = load_top_pilots(alliance_id, 10)
-    activity_trends = calculate_activity_trends(alliance_id)
+
+    {activity_trends, activity_trends_error} =
+      case calculate_activity_trends(alliance_id) do
+        {:ok, trends} -> {trends, nil}
+        {:error, reason} -> {nil, reason}
+      end
 
     socket =
       socket
@@ -92,6 +104,7 @@ defmodule EveDmvWeb.AllianceLive do
       |> assign(:alliance_stats, alliance_stats)
       |> assign(:top_pilots, top_pilots)
       |> assign(:activity_trends, activity_trends)
+      |> assign(:activity_trends_error, activity_trends_error)
       |> put_flash(:info, "Alliance data refreshed")
 
     {:noreply, socket}
@@ -345,10 +358,10 @@ defmodule EveDmvWeb.AllianceLive do
     LIMIT 4
     """
 
-    raw_weeks =
-      case EveDmv.Repo.query(query, [alliance_id, start_date, end_date]) do
-        {:ok, %{rows: rows}} ->
-          # Convert rows and calculate week labels
+    case EveDmv.Repo.query(query, [alliance_id, start_date, end_date]) do
+      {:ok, %{rows: rows}} ->
+        # Convert rows and calculate week labels
+        raw_weeks =
           rows
           |> Enum.with_index()
           |> Enum.map(fn {[_week_start, kills, losses], idx} ->
@@ -360,18 +373,22 @@ defmodule EveDmvWeb.AllianceLive do
             }
           end)
 
-        {:error, _} ->
-          # Fallback to empty weeks
-          for week <- 0..3, do: %{week_label: "Week -#{week}", kills: 0, losses: 0, total: 0}
-      end
+        # Ensure we always have 4 weeks of data (pad with zeros if needed)
+        weeks = pad_weeks_data(raw_weeks)
 
-    # Ensure we always have 4 weeks of data (pad with zeros if needed)
-    weeks = pad_weeks_data(raw_weeks)
+        {:ok,
+         %{
+           weekly_data: weeks,
+           trend_direction: calculate_trend_direction(weeks),
+           error: nil
+         }}
 
-    %{
-      weekly_data: weeks,
-      trend_direction: calculate_trend_direction(weeks)
-    }
+      {:error, %Postgrex.Error{} = error} ->
+        {:error, Postgrex.Error.message(error)}
+
+      {:error, reason} ->
+        {:error, inspect(reason)}
+    end
   end
 
   # Pad weeks data to ensure we always have 4 weeks

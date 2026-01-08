@@ -368,18 +368,25 @@ defmodule EveDmv.Search.SearchSuggestionService do
   defp get_character_suggestions_from_participants(query, limit) do
     # Use direct SQL query for better reliability (based on working character_search_live.ex implementation)
     # Optimized: Uses participants table instead of JSONB extraction
+    # Groups by character_id only to avoid duplicates when a character changed corporations
+    # Uses a subquery to get the most recent corporation name
     search_query = """
     SELECT
       p.character_id,
-      p.character_name,
-      p.corporation_name,
+      MAX(p.character_name) as character_name,
+      (SELECT p2.corporation_name
+       FROM participants p2
+       WHERE p2.character_id = p.character_id
+         AND p2.corporation_name IS NOT NULL
+       ORDER BY p2.killmail_time DESC
+       LIMIT 1) as corporation_name,
       COUNT(*) as total_killmails,
       MAX(p.killmail_time) as last_seen
     FROM participants p
     WHERE p.character_name IS NOT NULL
       AND LOWER(p.character_name) LIKE $1
       AND p.character_id IS NOT NULL
-    GROUP BY p.character_id, p.character_name, p.corporation_name
+    GROUP BY p.character_id
     ORDER BY total_killmails DESC, last_seen DESC
     LIMIT $2
     """

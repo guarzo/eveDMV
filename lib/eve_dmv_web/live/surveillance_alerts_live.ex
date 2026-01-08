@@ -194,12 +194,7 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
         alerts
         |> Enum.min_by(fn alert -> Map.get(alert, :priority, 4) end, fn -> nil end)
 
-      socket =
-        if highest_priority_alert do
-          trigger_alert_notification(socket, highest_priority_alert)
-        else
-          socket
-        end
+      socket = trigger_alert_notification(socket, highest_priority_alert)
 
       # Prepend new alerts to existing list instead of full reload
       # This avoids database queries during high-activity periods
@@ -449,8 +444,11 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
     end)
   end
 
+  defp trigger_alert_notification(socket, nil), do: socket
+
   defp trigger_alert_notification(socket, alert_data) do
     # Send client-side notification for visual/audio feedback
+    # No-op when sound is disabled
     if socket.assigns.sound_enabled do
       # Push event to client to play notification sound
       push_event(socket, "play_alert_sound", %{

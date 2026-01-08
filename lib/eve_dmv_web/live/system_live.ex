@@ -130,13 +130,17 @@ defmodule EveDmvWeb.SystemLive do
     if id == socket.assigns.system_id && socket.assigns.system_data != nil do
       # Targeted update: Prepend new kills without full reload
       socket =
-        socket
-        |> update_in([:system_data, :recent_kills], fn current_kills ->
-          (kills ++ (current_kills || []))
-          |> Enum.take(20)
-        end)
-        |> update_in([:system_data, :activity_stats, :total_kills], fn count ->
-          (count || 0) + length(kills)
+        update(socket, :system_data, fn system_data ->
+          updated_kills =
+            (kills ++ (system_data.recent_kills || []))
+            |> Enum.take(20)
+
+          updated_activity_stats =
+            Map.update(system_data.activity_stats, :total_kills, length(kills), fn count ->
+              (count || 0) + length(kills)
+            end)
+
+          %{system_data | recent_kills: updated_kills, activity_stats: updated_activity_stats}
         end)
 
       {:noreply, socket}
@@ -147,48 +151,50 @@ defmodule EveDmvWeb.SystemLive do
 
   # Handle historical fetch status updates via PubSub
   def handle_info({:historical_fetch_update, :system, entity_id, update}, socket) do
-    system_id = socket.assigns.system_id
-
-    # Only process updates for this system
-    if entity_id != system_id do
+    # Early return if update is not for this system
+    if entity_id != socket.assigns.system_id do
       {:noreply, socket}
     else
-      case update do
-        {:progress, _progress} ->
-          # Targeted update: Only update status, no database queries
-          status = get_historical_fetch_status(:system, system_id)
-          {:noreply, assign(socket, :historical_fetch_status, status)}
-
-        {:completed, result} ->
-          # Targeted update: Update status and incrementally update stats
-          status = get_historical_fetch_status(:system, system_id)
-          new_killmails = Map.get(result, :new_killmails, 0)
-
-          socket =
-            socket
-            |> assign(:historical_fetch_status, status)
-            |> maybe_update_kill_count(new_killmails)
-            |> put_flash(
-              :info,
-              "Historical data loaded. #{new_killmails} new killmails available."
-            )
-
-          {:noreply, socket}
-
-        {:failed, reason} ->
-          status = get_historical_fetch_status(:system, system_id)
-
-          socket =
-            socket
-            |> assign(:historical_fetch_status, status)
-            |> put_flash(:error, "Historical fetch failed: #{inspect(reason)}")
-
-          {:noreply, socket}
-
-        _ ->
-          {:noreply, socket}
-      end
+      handle_historical_fetch_update(update, socket)
     end
+  end
+
+  defp handle_historical_fetch_update({:progress, _progress}, socket) do
+    # Targeted update: Only update status, no database queries
+    status = get_historical_fetch_status(:system, socket.assigns.system_id)
+    {:noreply, assign(socket, :historical_fetch_status, status)}
+  end
+
+  defp handle_historical_fetch_update({:completed, result}, socket) do
+    # Targeted update: Update status and incrementally update stats
+    status = get_historical_fetch_status(:system, socket.assigns.system_id)
+    new_killmails = Map.get(result, :new_killmails, 0)
+
+    socket =
+      socket
+      |> assign(:historical_fetch_status, status)
+      |> maybe_update_kill_count(new_killmails)
+      |> put_flash(
+        :info,
+        "Historical data loaded. #{new_killmails} new killmails available."
+      )
+
+    {:noreply, socket}
+  end
+
+  defp handle_historical_fetch_update({:failed, reason}, socket) do
+    status = get_historical_fetch_status(:system, socket.assigns.system_id)
+
+    socket =
+      socket
+      |> assign(:historical_fetch_status, status)
+      |> put_flash(:error, "Historical fetch failed: #{inspect(reason)}")
+
+    {:noreply, socket}
+  end
+
+  defp handle_historical_fetch_update(_unknown, socket) do
+    {:noreply, socket}
   end
 
   @impl Phoenix.LiveView
@@ -423,6 +429,30 @@ defmodule EveDmvWeb.SystemLive do
     """
   end
 
+  # Transform a row from corporation presence query into a map
+  defp build_corporation_presence_map([
+         corp_id,
+         corp_name,
+         alliance_id,
+         alliance_name,
+         participation,
+         final_blows,
+         unique_kills,
+         unique_pilots
+       ]) do
+    %{
+      corporation_id: corp_id,
+      corporation_name: corp_name || "Unknown Corporation",
+      alliance_id: alliance_id,
+      alliance_name: alliance_name,
+      kill_participation: participation,
+      final_blows: final_blows,
+      unique_kills: unique_kills,
+      unique_pilots: unique_pilots,
+      activity_score: participation + final_blows * 2 + unique_pilots
+    }
+  end
+
   # Get corporation and alliance presence
   defp get_corporation_presence(system_id) do
     thirty_days_ago = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
@@ -433,31 +463,7 @@ defmodule EveDmvWeb.SystemLive do
       {:ok, %{rows: rows}} ->
         # Corporation names are resolved at ingestion time in DataProcessor.enrich_entity_names/1
         # If names are missing, run: mix run priv/repo/scripts/backfill_corporation_names.exs
-        corporations =
-          Enum.map(rows, fn [
-                              corp_id,
-                              corp_name,
-                              alliance_id,
-                              alliance_name,
-                              participation,
-                              final_blows,
-                              unique_kills,
-                              unique_pilots
-                            ] ->
-            %{
-              corporation_id: corp_id,
-              corporation_name: corp_name || "Unknown Corporation",
-              alliance_id: alliance_id,
-              alliance_name: alliance_name,
-              kill_participation: participation,
-              final_blows: final_blows,
-              unique_kills: unique_kills,
-              unique_pilots: unique_pilots,
-              activity_score: participation + final_blows * 2 + unique_pilots
-            }
-          end)
-
-        {:ok, corporations}
+        {:ok, Enum.map(rows, &build_corporation_presence_map/1)}
 
       {:error, reason} ->
         {:error, reason}
@@ -471,31 +477,7 @@ defmodule EveDmvWeb.SystemLive do
 
     case SQL.query(Repo, presence_query, [system_id, thirty_days_ago, limit, offset]) do
       {:ok, %{rows: rows}} ->
-        corporations =
-          Enum.map(rows, fn [
-                              corp_id,
-                              corp_name,
-                              alliance_id,
-                              alliance_name,
-                              participation,
-                              final_blows,
-                              unique_kills,
-                              unique_pilots
-                            ] ->
-            %{
-              corporation_id: corp_id,
-              corporation_name: corp_name || "Unknown Corporation",
-              alliance_id: alliance_id,
-              alliance_name: alliance_name,
-              kill_participation: participation,
-              final_blows: final_blows,
-              unique_kills: unique_kills,
-              unique_pilots: unique_pilots,
-              activity_score: participation + final_blows * 2 + unique_pilots
-            }
-          end)
-
-        {:ok, corporations}
+        {:ok, Enum.map(rows, &build_corporation_presence_map/1)}
 
       {:error, reason} ->
         {:error, reason}
@@ -806,10 +788,14 @@ defmodule EveDmvWeb.SystemLive do
 
   defp maybe_update_kill_count(socket, new_killmails) do
     if socket.assigns.system_data != nil do
-      update_in(socket.assigns.system_data.activity_stats.total_kills, fn count ->
-        (count || 0) + new_killmails
+      update(socket, :system_data, fn system_data ->
+        updated_activity_stats =
+          Map.update(system_data.activity_stats, :total_kills, new_killmails, fn count ->
+            (count || 0) + new_killmails
+          end)
+
+        %{system_data | activity_stats: updated_activity_stats}
       end)
-      |> then(&assign(socket, :system_data, &1))
     else
       socket
     end

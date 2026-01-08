@@ -102,6 +102,14 @@ defmodule EveDmvWeb.HealthController do
 
   @doc """
   Detailed health check with all metrics.
+
+  NOTE: This endpoint intentionally returns HTTP 200 regardless of overall health status.
+  This is by design for debugging and inspection purposes - operators can view the full
+  health details (including all component statuses and metrics) even when the service
+  is in a critical or degraded state. For load balancer probes and automated health
+  checks that need status-appropriate HTTP codes, use index/2 instead, which reflects
+  the aggregated health status in its response code (200 for healthy/warning/degraded,
+  503 for critical).
   """
   def detailed(conn, _params) do
     health = get_health_safely()
@@ -116,16 +124,21 @@ defmodule EveDmvWeb.HealthController do
   rescue
     e in [RuntimeError, ArgumentError, KeyError, FunctionClauseError] ->
       Logger.error(
-        "HealthAggregator.get_health_snapshot/0 raised expected exception: " <>
-          "#{inspect(e)}\n#{Exception.format_stacktrace(__STACKTRACE__)}"
+        "HealthAggregator.get_health_snapshot/0 raised #{inspect(e.__struct__)}: #{Exception.format(:error, e, __STACKTRACE__)}"
       )
 
       fallback_health_snapshot()
 
-    e ->
+    e in [DBConnection.ConnectionError, Postgrex.Error] ->
       Logger.error(
-        "HealthAggregator.get_health_snapshot/0 raised unexpected exception: " <>
-          "#{inspect(e)}\n#{Exception.format_stacktrace(__STACKTRACE__)}"
+        "HealthAggregator.get_health_snapshot/0 raised database exception #{inspect(e.__struct__)}: #{Exception.format(:error, e, __STACKTRACE__)}"
+      )
+
+      fallback_health_snapshot()
+
+    e in [ErlangError, SystemLimitError] ->
+      Logger.error(
+        "HealthAggregator.get_health_snapshot/0 raised system exception #{inspect(e.__struct__)}: #{Exception.format(:error, e, __STACKTRACE__)}"
       )
 
       fallback_health_snapshot()

@@ -89,9 +89,21 @@ defmodule EveDmv.Platform.Database.QueryCache do
   Also updates the prefix index for efficient pattern lookups.
   """
   def put(cache_key, value, ttl \\ @default_ttl) do
-    result = Cache.put(@cache_name, cache_key, value, ttl_ms: ttl)
-    add_to_prefix_index(cache_key)
-    result
+    # Update prefix index BEFORE caching to maintain consistency
+    # If prefix index update fails, we don't cache the value
+    case add_to_prefix_index(cache_key) do
+      :ok ->
+        Cache.put(@cache_name, cache_key, value, ttl_ms: ttl)
+
+      {:error, reason} ->
+        require Logger
+
+        Logger.warning(
+          "QueryCache: Failed to update prefix index for key #{inspect(cache_key)}: #{inspect(reason)}, skipping cache put"
+        )
+
+        {:error, :prefix_index_failed}
+    end
   end
 
   @doc """
@@ -153,12 +165,25 @@ defmodule EveDmv.Platform.Database.QueryCache do
 
   Pattern uses `*` as wildcard (e.g., `"user_*"`).
 
-  ## Performance
+  ## Warning: Performance Implications
+
+  **For suffix and complex patterns, this function performs a full ETS table scan.**
+  Each key in the cache is converted to a string via `to_string/1`, and for complex
+  patterns, `Regex.match?/2` is called on every key. This is O(n) where n can be
+  up to `@max_cache_size` (#{@max_cache_size} entries).
+
+  While the `@max_cache_size` limit bounds the worst-case scan, calling this function
+  frequently with non-prefix patterns in hot code paths can degrade performance.
+  Consider caching the results or restructuring keys to use prefix-based lookups.
+
+  ## Performance Characteristics
 
   - **Simple prefix patterns** (e.g., `"user_*"`): O(m) where m is the number of keys
     with that prefix. Uses the prefix index for fast lookups.
-  - **Simple suffix patterns** (e.g., `"*_stats"`): O(n) full scan required.
-  - **Complex patterns** (e.g., `"user_*_stats"`): O(n) full scan required.
+  - **Simple suffix patterns** (e.g., `"*_stats"`): O(n) full ETS scan. Each key is
+    converted to string and checked with `String.ends_with?/2`.
+  - **Complex patterns** (e.g., `"user_*_stats"`): O(n) full ETS scan. Each key is
+    converted to string and matched against a compiled regex via `Regex.match?/2`.
 
   The cache is bounded by `@max_cache_size` (#{@max_cache_size} entries), so even
   full scans are limited. For production workloads, prefer simple prefix patterns
@@ -170,6 +195,7 @@ defmodule EveDmv.Platform.Database.QueryCache do
       get_keys_by_pattern("character_123_*")
 
       # Slow - requires full scan (O(n) where n = @max_cache_size)
+      # Each of the up to 1000 keys will be converted to string and checked
       get_keys_by_pattern("*_stats")
       get_keys_by_pattern("character_*_stats")
 
@@ -322,10 +348,13 @@ defmodule EveDmv.Platform.Database.QueryCache do
   end
 
   defp pattern_to_regex(pattern) do
-    pattern
-    |> Regex.escape()
-    |> String.replace("\\*", ".*")
-    |> Regex.compile!()
+    escaped =
+      pattern
+      |> Regex.escape()
+      |> String.replace("\\*", ".*")
+
+    # Add anchors for exact-match semantics
+    Regex.compile!("^" <> escaped <> "$")
   end
 
   # Prefix index management
@@ -337,6 +366,19 @@ defmodule EveDmv.Platform.Database.QueryCache do
   #
   # This allows O(1) lookups for patterns like "character_*" or "character_123_*"
   # instead of O(n) full table scans.
+  #
+  # CONCURRENCY NOTE: The read-modify-write operations in add_to_prefix_index/1
+  # and remove_from_prefix_index/1 are non-atomic and can lose updates under
+  # concurrent writers (e.g., two writers read the same MapSet, each adds their
+  # key, and the second insert overwrites the first). This race is benign because:
+  # 1. get_keys_by_prefix/1 filters results through key_exists_in_cache?/1,
+  #    which validates each key against the authoritative main cache
+  # 2. Stale entries in the prefix index are harmless - they just cause a cache
+  #    miss check that returns false
+  # 3. Missing entries cause a fallback to get_keys_by_prefix_scan/1, which
+  #    performs a full ETS scan and finds the key anyway
+  # The prefix index is purely an optimization; correctness is guaranteed by
+  # the defensive lookups in get_keys_by_prefix/1.
 
   # Extract all meaningful prefix segments from a cache key
   # For "character_123_stats", returns ["character_", "character_123_"]
@@ -386,7 +428,12 @@ defmodule EveDmv.Platform.Database.QueryCache do
 
     :ok
   rescue
-    ArgumentError -> :ok
+    e in ArgumentError ->
+      # ETS table doesn't exist - this is expected during startup or if table was deleted
+      {:error, {:ets_error, e.message}}
+
+    e ->
+      {:error, {:unexpected_error, Exception.message(e)}}
   end
 
   defp remove_from_prefix_index(cache_key) do

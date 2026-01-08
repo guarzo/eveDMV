@@ -178,59 +178,91 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Resources.CharacterStats do
   end
 
   # Calculate total ISK destroyed by character (as attacker)
-  # Uses Ash.sum aggregate function for type-safe aggregation
+  # Queries KillmailRaw using Ash exists() through the participants relationship
+  # Includes OpenTelemetry instrumentation for performance monitoring
   defp calculate_isk_destroyed(char_id, since_date) do
-    import Ash.Expr
-    alias EveDmv.Killmails.KillmailRaw
+    alias EveDmv.Telemetry.OtelSpans
 
-    # Build query for killmails where this character was an attacker
-    query =
-      KillmailRaw
-      |> Ash.Query.filter(
-        expr(
-          fragment(
-            "EXISTS (SELECT 1 FROM participants p WHERE p.killmail_id = ? AND p.character_id = ? AND p.is_victim = false)",
-            killmail_id,
-            ^char_id
+    OtelSpans.with_span(
+      "character_stats.calculate_isk_destroyed",
+      %{character_id: char_id, since_date: DateTime.to_iso8601(since_date)},
+      fn ->
+        import Ash.Expr
+        alias EveDmv.Killmails.KillmailRaw
+
+        # Query killmails where this character was an attacker using Ash relationships
+        query =
+          KillmailRaw
+          |> Ash.Query.filter(expr(killmail_time >= ^since_date))
+          |> Ash.Query.filter(
+            expr(exists(participants, character_id == ^char_id and is_victim == false))
           )
-        )
-      )
-      |> Ash.Query.filter(expr(killmail_time >= ^since_date))
 
-    case Ash.sum(query, :total_value, domain: EveDmv.Api) do
-      {:ok, nil} -> Decimal.new("0")
-      {:ok, value} -> ensure_decimal(value)
-      {:error, _} -> Decimal.new("0")
-    end
+        case Ash.sum(query, :total_value, domain: EveDmv.Api) do
+          {:ok, nil} ->
+            Decimal.new("0")
+
+          {:ok, value} ->
+            case ensure_decimal(value) do
+              {:ok, decimal} -> decimal
+              {:error, _reason} -> Decimal.new("0")
+            end
+
+          {:error, _} ->
+            Decimal.new("0")
+        end
+      end
+    )
   end
 
   # Calculate total ISK lost by character (as victim)
-  # Uses Ash.sum aggregate function for type-safe aggregation
+  # Queries KillmailRaw directly using victim_character_id
+  # Includes OpenTelemetry instrumentation for performance monitoring
   defp calculate_isk_lost(char_id, since_date) do
-    import Ash.Expr
-    alias EveDmv.Killmails.KillmailRaw
+    alias EveDmv.Telemetry.OtelSpans
 
-    query =
-      KillmailRaw
-      |> Ash.Query.filter(expr(victim_character_id == ^char_id))
-      |> Ash.Query.filter(expr(killmail_time >= ^since_date))
+    OtelSpans.with_span(
+      "character_stats.calculate_isk_lost",
+      %{character_id: char_id, since_date: DateTime.to_iso8601(since_date)},
+      fn ->
+        import Ash.Expr
+        alias EveDmv.Killmails.KillmailRaw
 
-    case Ash.sum(query, :total_value, domain: EveDmv.Api) do
-      {:ok, nil} -> Decimal.new("0")
-      {:ok, value} -> ensure_decimal(value)
-      {:error, _} -> Decimal.new("0")
-    end
+        query =
+          KillmailRaw
+          |> Ash.Query.filter(expr(victim_character_id == ^char_id))
+          |> Ash.Query.filter(expr(killmail_time >= ^since_date))
+
+        case Ash.sum(query, :total_value, domain: EveDmv.Api) do
+          {:ok, nil} ->
+            Decimal.new("0")
+
+          {:ok, value} ->
+            case ensure_decimal(value) do
+              {:ok, decimal} -> decimal
+              {:error, _reason} -> Decimal.new("0")
+            end
+
+          {:error, _} ->
+            Decimal.new("0")
+        end
+      end
+    )
   end
 
-  defp ensure_decimal(%Decimal{} = value), do: value
-  defp ensure_decimal(value) when is_number(value), do: Decimal.new(value)
+  @spec ensure_decimal(Decimal.t() | number() | String.t()) ::
+          {:ok, Decimal.t()} | {:error, String.t()}
+  defp ensure_decimal(%Decimal{} = value), do: {:ok, value}
+  defp ensure_decimal(value) when is_number(value), do: {:ok, Decimal.new(value)}
 
   defp ensure_decimal(value) when is_binary(value) do
     case Decimal.parse(value) do
-      {decimal, _rest} -> decimal
-      :error -> raise ArgumentError, "cannot parse #{inspect(value)} as Decimal"
+      {decimal, _rest} -> {:ok, decimal}
+      :error -> {:error, "cannot parse #{inspect(value)} as Decimal"}
     end
   end
+
+  defp ensure_decimal(value), do: {:error, "unsupported type: #{inspect(value)}"}
 
   defp count_participants(query) do
     case Ash.count(query, domain: EveDmv.Api) do

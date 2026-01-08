@@ -243,15 +243,26 @@ defmodule EveDmv.Platform.Database.CorporationQueries do
 
   @doc """
   Get recent activity without expensive operations.
+
+  Accepts an optional since_date parameter (Date or DateTime) to enable partition pruning.
+  Defaults to 90 days ago if not provided.
   """
-  def get_recent_activity(corporation_id, limit \\ 20) do
+  def get_recent_activity(corporation_id, limit \\ 20, since_date \\ nil) do
+    since_datetime =
+      case since_date do
+        nil -> DateTime.utc_now() |> DateTime.add(-90, :day)
+        date -> to_datetime(date)
+      end
+
     # Optimized: Uses participants table instead of JSONB extraction
+    # Time constraint enables partition pruning on the participants table
     query = """
     WITH corp_killmails AS (
       -- Find all killmails where this corp was involved
       SELECT DISTINCT p.killmail_id, p.killmail_time
       FROM participants p
       WHERE p.corporation_id = $1
+        AND p.killmail_time >= $3
       ORDER BY p.killmail_time DESC
       LIMIT $2
     )
@@ -276,7 +287,7 @@ defmodule EveDmv.Platform.Database.CorporationQueries do
     ORDER BY k.killmail_time DESC
     """
 
-    case Repo.query(query, [corporation_id, limit]) do
+    case Repo.query(query, [corporation_id, limit, since_datetime]) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [
                             km_id,

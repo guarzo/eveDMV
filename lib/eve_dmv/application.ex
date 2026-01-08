@@ -55,8 +55,10 @@ defmodule EveDmv.Application do
       EveDmvWeb.Telemetry,
       # Task supervisor for background tasks (start early)
       {Task.Supervisor, name: EveDmv.TaskSupervisor},
-      # Task supervisor specifically for pipeline async work (intelligence, surveillance)
-      # Has 30-second shutdown timeout for graceful termination
+      # Task supervisor specifically for pipeline async work (intelligence, surveillance).
+      # Uses 30-second shutdown timeout (vs default 5s) to allow long-running tasks
+      # (e.g., historical killmail fetches, surveillance scans, intelligence analysis)
+      # to complete gracefully during shutdown, preventing data loss and partial writes.
       Supervisor.child_spec(
         {Task.Supervisor, name: EveDmv.PipelineTaskSupervisor},
         shutdown: 30_000
