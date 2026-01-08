@@ -21,56 +21,23 @@ defmodule EveDmv.Platform.Database.CorporationRepository do
   Returns a list of corporation members with their basic information based on killmail data.
   """
   def get_corporation_members(corporation_id) when is_integer(corporation_id) do
-    # Use raw SQL to handle JSONB array elements properly
+    # Optimized: Uses participants table instead of JSONB extraction
     query = """
-    WITH victim_members AS (
-      SELECT DISTINCT
-        victim_character_id as character_id,
-        victim_character_name as character_name,
-        victim_corporation_id as corporation_id,
-        victim_corporation_name as corporation_name,
-        victim_alliance_id as alliance_id,
-        victim_alliance_name as alliance_name,
-        MAX(killmail_time) as last_seen
-      FROM killmails_raw
-      WHERE victim_corporation_id = $1
-        AND victim_character_id IS NOT NULL
-      GROUP BY victim_character_id, victim_character_name, victim_corporation_id,
-               victim_corporation_name, victim_alliance_id, victim_alliance_name
-    ),
-    attacker_members AS (
-      SELECT DISTINCT
-        (attacker->>'character_id')::bigint as character_id,
-        attacker->>'character_name' as character_name,
-        (attacker->>'corporation_id')::bigint as corporation_id,
-        attacker->>'corporation_name' as corporation_name,
-        (attacker->>'alliance_id')::bigint as alliance_id,
-        attacker->>'alliance_name' as alliance_name,
-        MAX(killmail_time) as last_seen
-      FROM killmails_raw, jsonb_array_elements(attackers) as attacker
-      WHERE (attacker->>'corporation_id')::bigint = $1
-        AND attacker->>'character_id' IS NOT NULL
-      GROUP BY (attacker->>'character_id')::bigint, attacker->>'character_name',
-               (attacker->>'corporation_id')::bigint, attacker->>'corporation_name',
-               (attacker->>'alliance_id')::bigint, attacker->>'alliance_name'
-    ),
-    all_members AS (
-      SELECT * FROM victim_members
-      UNION
-      SELECT * FROM attacker_members
-    )
     SELECT
-      character_id,
-      character_name,
-      corporation_id,
-      corporation_name,
-      alliance_id,
-      alliance_name,
-      MAX(last_seen) as last_seen
-    FROM all_members
-    WHERE character_id IS NOT NULL
-    GROUP BY character_id, character_name, corporation_id, corporation_name, alliance_id, alliance_name
+      p.character_id,
+      p.character_name,
+      p.corporation_id,
+      p.corporation_name,
+      p.alliance_id,
+      p.alliance_name,
+      MAX(p.killmail_time) as last_seen
+    FROM participants p
+    WHERE p.corporation_id = $1
+      AND p.character_id IS NOT NULL
+    GROUP BY p.character_id, p.character_name, p.corporation_id,
+             p.corporation_name, p.alliance_id, p.alliance_name
     ORDER BY last_seen DESC
+    LIMIT 1000
     """
 
     case Repo.query(query, [corporation_id]) do
@@ -114,35 +81,17 @@ defmodule EveDmv.Platform.Database.CorporationRepository do
   Get corporation basic information.
   """
   def get_corporation_info(corporation_id) when is_integer(corporation_id) do
-    # Use raw SQL to get corporation info
+    # Optimized: Uses participants table instead of JSONB extraction
     query = """
-    WITH corp_from_victims AS (
-      SELECT DISTINCT
-        victim_corporation_id as corporation_id,
-        victim_corporation_name as corporation_name,
-        victim_alliance_id as alliance_id,
-        victim_alliance_name as alliance_name
-      FROM killmails_raw
-      WHERE victim_corporation_id = $1
-        AND victim_corporation_name IS NOT NULL
-      LIMIT 1
-    ),
-    corp_from_attackers AS (
-      SELECT DISTINCT
-        (attacker->>'corporation_id')::bigint as corporation_id,
-        attacker->>'corporation_name' as corporation_name,
-        (attacker->>'alliance_id')::bigint as alliance_id,
-        attacker->>'alliance_name' as alliance_name
-      FROM killmails_raw, jsonb_array_elements(attackers) as attacker
-      WHERE (attacker->>'corporation_id')::bigint = $1
-        AND attacker->>'corporation_name' IS NOT NULL
-      LIMIT 1
-    )
-    SELECT corporation_id, corporation_name, alliance_id, alliance_name
-    FROM corp_from_victims
-    UNION ALL
-    SELECT corporation_id, corporation_name, alliance_id, alliance_name
-    FROM corp_from_attackers
+    SELECT
+      p.corporation_id,
+      p.corporation_name,
+      p.alliance_id,
+      p.alliance_name
+    FROM participants p
+    WHERE p.corporation_id = $1
+      AND p.corporation_name IS NOT NULL
+    ORDER BY p.killmail_time DESC
     LIMIT 1
     """
 

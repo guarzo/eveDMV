@@ -70,7 +70,7 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.HistoricalFetchWorkerTest do
     end
 
     test "initializes with correct default state" do
-      pid = ensure_worker_running()
+      _pid = ensure_worker_running()
 
       # Worker should not be busy on startup
       assert HistoricalFetchWorker.busy?() == false or HistoricalFetchWorker.busy?() == true

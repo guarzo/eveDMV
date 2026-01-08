@@ -165,6 +165,8 @@ defmodule EveDmv.Eve.StaticDataLoader.CcpSdeClientTest do
 
     test "creates output directory if it doesn't exist", %{tmp_dir: tmp_dir} do
       non_existent_dir = Path.join(tmp_dir, "new_dir")
+      # Ensure clean state (may persist from interrupted previous runs)
+      File.rm_rf!(non_existent_dir)
       refute File.exists?(non_existent_dir)
 
       # This will fail due to network, but directory should be created

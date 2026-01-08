@@ -198,13 +198,9 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
     length(Map.get(topology, "systems", []))
   end
 
-  defp count_systems(_), do: 0
-
   defp count_connections(topology) when is_map(topology) do
     length(Map.get(topology, "connections", []))
   end
-
-  defp count_connections(_), do: 0
 
   @doc """
   Perform threat analysis for a specific map.
@@ -854,8 +850,6 @@ defmodule EveDmv.Contexts.Surveillance.Domain.ChainIntelligenceHelper do
 
     if dangerous_ships > 0, do: 2, else: 0
   end
-
-  defp analyze_ship_threat(_), do: 0
 
   defp calculate_confidence(hostile_data, contact_info, recent_activity) do
     # Base confidence from data quality

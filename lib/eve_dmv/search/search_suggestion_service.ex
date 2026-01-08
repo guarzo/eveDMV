@@ -367,43 +367,19 @@ defmodule EveDmv.Search.SearchSuggestionService do
 
   defp get_character_suggestions_from_participants(query, limit) do
     # Use direct SQL query for better reliability (based on working character_search_live.ex implementation)
+    # Optimized: Uses participants table instead of JSONB extraction
     search_query = """
-    WITH character_activity AS (
     SELECT
-        victim_character_id as character_id,
-        victim_character_name as character_name,
-        victim_corporation_name as corporation_name,
-        COUNT(*) as killmail_count,
-        MAX(killmail_time) as last_activity
-      FROM killmails_raw
-      WHERE victim_character_name IS NOT NULL
-        AND LOWER(victim_character_name) LIKE $1
-      GROUP BY victim_character_id, victim_character_name, victim_corporation_name
-
-    UNION
-
-      SELECT DISTINCT
-        (attacker->>'character_id')::bigint as character_id,
-        attacker->>'character_name' as character_name,
-        attacker->>'corporation_name' as corporation_name,
-        COUNT(*) as killmail_count,
-        MAX(killmail_time) as last_activity
-      FROM killmails_raw km,
-           jsonb_array_elements(km.raw_data->'attackers') as attacker
-      WHERE attacker->>'character_name' IS NOT NULL
-        AND LOWER(attacker->>'character_name') LIKE $1
-        AND (attacker->>'character_id')::bigint IS NOT NULL
-      GROUP BY (attacker->>'character_id')::bigint, attacker->>'character_name', attacker->>'corporation_name'
-    )
-    SELECT
-      character_id,
-      character_name,
-      corporation_name,
-      SUM(killmail_count) as total_killmails,
-      MAX(last_activity) as last_seen
-    FROM character_activity
-    WHERE character_id IS NOT NULL
-    GROUP BY character_id, character_name, corporation_name
+      p.character_id,
+      p.character_name,
+      p.corporation_name,
+      COUNT(*) as total_killmails,
+      MAX(p.killmail_time) as last_seen
+    FROM participants p
+    WHERE p.character_name IS NOT NULL
+      AND LOWER(p.character_name) LIKE $1
+      AND p.character_id IS NOT NULL
+    GROUP BY p.character_id, p.character_name, p.corporation_name
     ORDER BY total_killmails DESC, last_seen DESC
     LIMIT $2
     """

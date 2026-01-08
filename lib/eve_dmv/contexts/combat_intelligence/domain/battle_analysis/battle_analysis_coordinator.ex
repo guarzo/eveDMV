@@ -255,12 +255,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
     SELECT k.killmail_id, k.killmail_time, k.solar_system_id, k.victim_character_id,
            k.victim_corporation_id, k.victim_alliance_id, k.victim_ship_type_id,
            k.attacker_count, k.total_value
-    FROM killmails_enriched k
+    FROM killmails_raw k
     WHERE k.killmail_id = $1
     OR k.killmail_time BETWEEN
-      (SELECT killmail_time - INTERVAL '30 minutes' FROM killmails_enriched WHERE killmail_id = $1)
+      (SELECT killmail_time - INTERVAL '30 minutes' FROM killmails_raw WHERE killmail_id = $1)
     AND
-      (SELECT killmail_time + INTERVAL '30 minutes' FROM killmails_enriched WHERE killmail_id = $1)
+      (SELECT killmail_time + INTERVAL '30 minutes' FROM killmails_raw WHERE killmail_id = $1)
     ORDER BY k.killmail_time ASC
     LIMIT 1000
     """
@@ -361,7 +361,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.BattleAnalysis.BattleAnalysi
     SELECT k.killmail_id, k.killmail_time, k.solar_system_id, k.victim_character_id,
            k.victim_corporation_id, k.victim_alliance_id, k.victim_ship_type_id,
            k.attacker_count, k.total_value
-    FROM killmails_enriched k
+    FROM killmails_raw k
     WHERE k.solar_system_id = $1 AND k.killmail_time >= $2
     ORDER BY k.killmail_time DESC
     LIMIT 100

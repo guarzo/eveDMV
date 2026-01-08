@@ -66,14 +66,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzerS
       min_correlation_strength: min_correlation
     ]
 
-    case ActivityCorrelator.correlate_activities(system_ids, activity_options) do
-      activity_correlation when is_map(activity_correlation) ->
-        {:ok, activity_correlation}
-
-      error ->
-        Logger.error("Activity correlation failed: #{inspect(error)}")
-        {:error, "Failed to correlate cross-system activity"}
-    end
+    activity_correlation = ActivityCorrelator.correlate_activities(system_ids, activity_options)
+    {:ok, activity_correlation}
   end
 
   @doc """
@@ -92,14 +86,8 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystemAnalyzerS
   def analyze_cross_system_threats(system_ids, options \\ []) do
     Logger.info("Delegating threat analysis to ThreatCorrelator")
 
-    case ThreatCorrelator.correlate_threats(system_ids, options) do
-      threat_analysis when is_map(threat_analysis) ->
-        {:ok, threat_analysis}
-
-      error ->
-        Logger.error("Threat correlation failed: #{inspect(error)}")
-        {:error, "Failed to analyze cross-system threats"}
-    end
+    threat_analysis = ThreatCorrelator.correlate_threats(system_ids, options)
+    {:ok, threat_analysis}
   end
 
   @doc """

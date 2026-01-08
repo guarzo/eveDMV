@@ -83,4 +83,50 @@ defmodule EveDmv.Platform.Database.QueryCache do
   def invalidate_pattern(pattern) do
     Cache.invalidate_pattern(@cache_name, pattern)
   end
+
+  @doc """
+  Get a cached value by key.
+  Returns {:ok, value} or :miss.
+  """
+  def get(cache_key) do
+    Cache.get(@cache_name, cache_key)
+  end
+
+  @doc """
+  Invalidate a single cache key.
+  """
+  def invalidate_key(cache_key) do
+    Cache.delete(@cache_name, cache_key)
+  end
+
+  @doc """
+  Get all cache keys matching a pattern.
+  Pattern uses * as wildcard (e.g., "user_*").
+  """
+  def get_keys_by_pattern(pattern) do
+    table_name = @cache_name
+    regex = pattern_to_regex(pattern)
+
+    :ets.foldl(
+      fn {key, _value, _expires_at}, acc ->
+        key_str = to_string(key)
+
+        if Regex.match?(regex, key_str) do
+          [key | acc]
+        else
+          acc
+        end
+      end,
+      [],
+      table_name
+    )
+  rescue
+    ArgumentError -> []
+  end
+
+  defp pattern_to_regex(pattern) do
+    pattern
+    |> String.replace("*", ".*")
+    |> Regex.compile!()
+  end
 end

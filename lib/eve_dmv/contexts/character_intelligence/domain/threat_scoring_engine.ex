@@ -230,15 +230,16 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     end
   end
 
-  # Fetch killmail IDs where character was an attacker using efficient JSONB query
+  # Fetch killmail IDs where character was an attacker using participants table
   defp fetch_attacker_killmail_ids(character_id, cutoff_date) do
+    # Optimized: Uses participants table instead of JSONB extraction
     query = """
-    SELECT DISTINCT killmail_id
-    FROM killmails_raw,
-         jsonb_array_elements(raw_data->'attackers') as attacker
-    WHERE killmail_time >= $1
-      AND (attacker->>'character_id')::bigint = $2
-    ORDER BY killmail_id DESC
+    SELECT DISTINCT p.killmail_id
+    FROM participants p
+    WHERE p.killmail_time >= $1
+      AND p.character_id = $2
+      AND p.is_victim = false
+    ORDER BY p.killmail_id DESC
     LIMIT 500
     """
 

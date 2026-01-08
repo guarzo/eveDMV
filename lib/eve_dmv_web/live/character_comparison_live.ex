@@ -234,8 +234,8 @@ defmodule EveDmvWeb.CharacterComparisonLive do
 
       case CharacterComparisonService.find_similar_characters(
              character_id,
-             socket.assigns.timeframe,
-             10
+             10,
+             timeframe: socket.assigns.timeframe
            ) do
         {:ok, result} ->
           socket =

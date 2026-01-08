@@ -106,12 +106,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
       iex> get_character_intelligence(123456789)
       {:ok, %{character_id: 123456789, threat_level: :medium, ...}}
   """
-  @spec get_character_intelligence(Types.character_id()) ::
-          {:ok, intelligence_result()} | {:error, term()}
+  @spec get_character_intelligence(Types.character_id()) :: {:ok, intelligence_result()}
   def get_character_intelligence(character_id) do
-    with {:ok, analysis_result} <- CharacterAnalyzer.get_intelligence(character_id) do
-      {:ok, IntelligenceTransformer.transform_character_analysis(analysis_result)}
-    end
+    {:ok, analysis_result} = CharacterAnalyzer.get_intelligence(character_id)
+    {:ok, IntelligenceTransformer.transform_character_analysis(analysis_result)}
   end
 
   @doc """
@@ -173,12 +171,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
       iex> get_corporation_intelligence(98000001)
       {:ok, %{corporation_id: 98000001, member_count: 150, ...}}
   """
-  @spec get_corporation_intelligence(integer()) ::
-          {:ok, corporation_intelligence_result()} | {:error, term()}
+  @spec get_corporation_intelligence(integer()) :: {:ok, corporation_intelligence_result()}
   def get_corporation_intelligence(corporation_id) do
-    with {:ok, analysis_result} <- CorporationAnalyzer.get_intelligence(corporation_id) do
-      {:ok, IntelligenceTransformer.transform_corporation_analysis(analysis_result)}
-    end
+    {:ok, analysis_result} = CorporationAnalyzer.get_intelligence(corporation_id)
+    {:ok, IntelligenceTransformer.transform_corporation_analysis(analysis_result)}
   end
 
   @doc """
@@ -434,16 +430,16 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   ## Examples
 
       iex> get_external_groups(123456789, ~U[2024-01-01 00:00:00Z])
-      [%{group_type: :corporation, group_id: 98000001, collaboration_count: 25, ...}]
+      {:ok, [%{group_type: :corporation, group_id: 98000001, collaboration_count: 25, ...}]}
   """
-  @spec get_external_groups(integer(), DateTime.t()) :: list(map())
+  @spec get_external_groups(integer(), DateTime.t()) :: {:ok, list(map())} | {:error, term()}
   def get_external_groups(character_id, since_date) do
     with :ok <- validate_external_groups_params(character_id, since_date),
          {:ok, groups} <- Domain.ExternalGroupAnalyzer.analyze(character_id, since_date) do
-      groups
+      {:ok, groups}
     else
-      {:error, _reason} ->
-        []
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 

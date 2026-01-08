@@ -47,7 +47,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   @doc """
   Analyze a character's combat intelligence.
   """
-  @spec analyze(integer(), map()) :: {:ok, character_intelligence()} | {:error, atom()}
+  @spec analyze(integer(), map()) :: {:ok, character_intelligence()}
   def analyze(character_id, context \\ %{}) do
     perform_analysis(character_id, context)
   end
@@ -55,7 +55,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   @doc """
   Get cached intelligence for a character.
   """
-  @spec get_intelligence(integer()) :: {:ok, character_intelligence()} | {:error, atom()}
+  @spec get_intelligence(integer()) :: {:ok, character_intelligence()}
   def get_intelligence(character_id) do
     case AnalysisCache.get_character_analysis(character_id) do
       {:ok, analysis} -> {:ok, analysis}
@@ -66,7 +66,7 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
   @doc """
   Refresh analysis for a character.
   """
-  @spec refresh_analysis(integer()) :: {:ok, character_intelligence()} | {:error, atom()}
+  @spec refresh_analysis(integer()) :: {:ok, character_intelligence()}
   def refresh_analysis(character_id) do
     AnalysisCache.invalidate_character(character_id)
     analyze(character_id, %{force_refresh: true})

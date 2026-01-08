@@ -16,8 +16,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPhaseDetector do
   alias EveDmv.Core.Utils.DateTimeUtils
 
   require Logger
-  # Phase detection parameters optimized for EVE PvP
-  # Minimum time for a valid phase
+
   @min_phase_duration_seconds 30
   # Maximum number of tactical phases
   @max_clusters 5

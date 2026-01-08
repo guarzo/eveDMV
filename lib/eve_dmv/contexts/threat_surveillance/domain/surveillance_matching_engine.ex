@@ -143,10 +143,8 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngine d
     since =
       Keyword.get(options, :since, DateTimeUtils.add(DateTime.utc_now(), -24 * 3600, :second))
 
-    case get_recent_matches_from_cache_or_db(since, limit) do
-      {:ok, matches} -> {:reply, {:ok, matches}, state}
-      error -> {:reply, error, state}
-    end
+    {:ok, matches} = get_recent_matches_from_cache_or_db(since, limit)
+    {:reply, {:ok, matches}, state}
   end
 
   @impl GenServer
@@ -156,10 +154,8 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngine d
     since =
       Keyword.get(options, :since, DateTimeUtils.add(DateTime.utc_now(), -7 * 24 * 3600, :second))
 
-    case get_profile_matches_from_cache_or_db(profile_id, since, limit) do
-      {:ok, matches} -> {:reply, {:ok, matches}, state}
-      error -> {:reply, error, state}
-    end
+    {:ok, matches} = get_profile_matches_from_cache_or_db(profile_id, since, limit)
+    {:reply, {:ok, matches}, state}
   end
 
   @impl GenServer

@@ -178,42 +178,52 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Resources.CharacterStats do
   end
 
   # Calculate total ISK destroyed by character (as attacker)
-  # Uses raw SQL for performance - aggregating ISK across participant joins
+  # Uses Ash.sum aggregate function for type-safe aggregation
   defp calculate_isk_destroyed(char_id, since_date) do
-    query = """
-    SELECT COALESCE(SUM(k.total_value), 0)
-    FROM participants p
-    INNER JOIN killmails_raw k ON p.killmail_id = k.killmail_id AND p.killmail_time = k.killmail_time
-    WHERE p.character_id = $1
-      AND p.killmail_time >= $2
-      AND p.is_victim = false
-    """
+    import Ash.Expr
+    alias EveDmv.Killmails.KillmailRaw
 
-    case EveDmv.Repo.query(query, [char_id, since_date]) do
-      {:ok, %{rows: [[nil]]}} -> Decimal.new("0")
-      {:ok, %{rows: [[value]]}} when is_number(value) -> Decimal.new(value)
-      {:ok, %{rows: [[%Decimal{} = value]]}} -> value
+    # Build query for killmails where this character was an attacker
+    query =
+      KillmailRaw
+      |> Ash.Query.filter(
+        expr(
+          fragment(
+            "EXISTS (SELECT 1 FROM participants p WHERE p.killmail_id = ? AND p.character_id = ? AND p.is_victim = false)",
+            killmail_id,
+            ^char_id
+          )
+        )
+      )
+      |> Ash.Query.filter(expr(killmail_time >= ^since_date))
+
+    case Ash.sum(query, :total_value, domain: EveDmv.Api) do
+      {:ok, nil} -> Decimal.new("0")
+      {:ok, value} -> ensure_decimal(value)
       {:error, _} -> Decimal.new("0")
     end
   end
 
   # Calculate total ISK lost by character (as victim)
-  # Queries killmails where the character was the victim
+  # Uses Ash.sum aggregate function for type-safe aggregation
   defp calculate_isk_lost(char_id, since_date) do
-    query = """
-    SELECT COALESCE(SUM(total_value), 0)
-    FROM killmails_raw
-    WHERE victim_character_id = $1
-      AND killmail_time >= $2
-    """
+    import Ash.Expr
+    alias EveDmv.Killmails.KillmailRaw
 
-    case EveDmv.Repo.query(query, [char_id, since_date]) do
-      {:ok, %{rows: [[nil]]}} -> Decimal.new("0")
-      {:ok, %{rows: [[value]]}} when is_number(value) -> Decimal.new(value)
-      {:ok, %{rows: [[%Decimal{} = value]]}} -> value
+    query =
+      KillmailRaw
+      |> Ash.Query.filter(expr(victim_character_id == ^char_id))
+      |> Ash.Query.filter(expr(killmail_time >= ^since_date))
+
+    case Ash.sum(query, :total_value, domain: EveDmv.Api) do
+      {:ok, nil} -> Decimal.new("0")
+      {:ok, value} -> ensure_decimal(value)
       {:error, _} -> Decimal.new("0")
     end
   end
+
+  defp ensure_decimal(%Decimal{} = value), do: value
+  defp ensure_decimal(value) when is_number(value), do: Decimal.new(value)
 
   defp count_participants(query) do
     case Ash.count(query, domain: EveDmv.Api) do

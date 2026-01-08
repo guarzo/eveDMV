@@ -232,10 +232,8 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.AlertManagementService do
     entity_type = threat_event[:entity_type] || threat_event.entity_type
 
     # Find users who have surveillance profiles watching this entity
-    case get_users_watching_entity(entity_id, entity_type) do
-      {:ok, users} -> users
-      _ -> []
-    end
+    {:ok, users} = get_users_watching_entity(entity_id, entity_type)
+    users
   end
 
   defp generate_surveillance_alert(user_id, match_event) do

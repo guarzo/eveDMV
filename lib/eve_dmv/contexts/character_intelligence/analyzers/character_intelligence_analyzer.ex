@@ -50,38 +50,36 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
       cache_key,
       fn ->
         # Query to get weapons used per ship from attacker data in killmails
+        # Optimized: Uses participants table directly instead of JSONB extraction
         # We can only know what weapons they used when they were an ATTACKER
         # because that's what gets recorded in the killmail
         # Also includes death counts for each ship type
         loadout_query = """
         WITH character_kills AS (
-          -- Get killmails where character was an attacker
-          SELECT DISTINCT p.killmail_id, p.killmail_time
+          -- Get killmails where character was an attacker (with ship and weapon from participants)
+          SELECT p.killmail_id, p.killmail_time, p.ship_type_id, p.weapon_type_id
           FROM participants p
-          WHERE p.character_id = $3
-            AND p.killmail_time >= $2
+          WHERE p.character_id = $2
+            AND p.killmail_time >= $1
             AND p.is_victim = false
+            AND p.ship_type_id IS NOT NULL
         ),
         character_deaths AS (
           -- Get killmails where character died (to count deaths per ship)
-          SELECT k.victim_ship_type_id as ship_type_id, COUNT(*) as death_count
-          FROM killmails_raw k
-          WHERE k.victim_character_id = $3
-            AND k.killmail_time >= $2
-          GROUP BY k.victim_ship_type_id
+          SELECT p.ship_type_id, COUNT(*) as death_count
+          FROM participants p
+          WHERE p.character_id = $2
+            AND p.killmail_time >= $1
+            AND p.is_victim = true
+          GROUP BY p.ship_type_id
         ),
         attacker_data AS (
-          -- Extract the character's ship and weapon from each kill
+          -- Use the pre-extracted ship and weapon from participants table
           SELECT
-            k.killmail_id,
-            (attacker->>'ship_type_id')::integer as ship_type_id,
-            (attacker->>'weapon_type_id')::integer as weapon_type_id
-          FROM killmails_raw k
-          INNER JOIN character_kills ck ON k.killmail_id = ck.killmail_id
-            AND k.killmail_time = ck.killmail_time
-          CROSS JOIN LATERAL jsonb_array_elements(k.raw_data->'attackers') as attacker
-          WHERE attacker->>'character_id' = $1
-            AND attacker->>'ship_type_id' IS NOT NULL
+            ck.killmail_id,
+            ck.ship_type_id,
+            ck.weapon_type_id
+          FROM character_kills ck
         ),
         ship_weapon_usage AS (
           SELECT
@@ -119,7 +117,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
         """
 
         case Ecto.Adapters.SQL.query(EveDmv.Repo, loadout_query, [
-               to_string(character_id),
                since_date,
                character_id
              ]) do
@@ -151,42 +148,22 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
     QueryCache.get_or_compute(
       cache_key,
       fn ->
-        # Optimized query: Use participants table for indexed lookup,
-        # then extract weapon_type_id from attacker data (not items - attackers use weapon_type_id)
-        # $1 = character_id as string (for JSONB text comparison)
-        # $2 = since_date
-        # $3 = character_id as integer (for participants table)
+        # Optimized: Uses participants table directly for weapon_type_id instead of JSONB extraction
+        # $1 = since_date, $2 = character_id
         weapon_query = """
-        WITH character_killmails AS (
-          -- Step 1: Fast indexed lookup via participants table
-          -- Uses idx_participants_character_activity index on (character_id, killmail_time)
-          SELECT DISTINCT p.killmail_id, p.killmail_time
-          FROM participants p
-          WHERE p.character_id = $3
-            AND p.killmail_time >= $2
-            AND p.is_victim = false
-        ),
-        character_weapons AS (
-          -- Step 2: Extract weapon_type_id from attacker data
-          -- EVE killmails store weapon_type_id directly on each attacker, not in an items array
+        WITH weapon_usage AS (
+          -- Get weapon usage directly from participants table (already indexed)
           SELECT
-            (attacker->>'weapon_type_id')::integer as weapon_type_id,
-            k.killmail_time
-          FROM killmails_raw k
-          INNER JOIN character_killmails ck ON k.killmail_id = ck.killmail_id AND k.killmail_time = ck.killmail_time
-          CROSS JOIN LATERAL jsonb_array_elements(k.raw_data->'attackers') as attacker
-          WHERE attacker->>'character_id' = $1
-            AND attacker->>'weapon_type_id' IS NOT NULL
-        ),
-        weapon_usage AS (
-          SELECT
-            cw.weapon_type_id,
+            p.weapon_type_id,
             COUNT(*) as usage_count,
-            MAX(cw.killmail_time) as last_used
-          FROM character_weapons cw
-          JOIN eve_item_types eit ON cw.weapon_type_id = eit.type_id
-          WHERE cw.weapon_type_id IS NOT NULL
-            AND cw.weapon_type_id > 0
+            MAX(p.killmail_time) as last_used
+          FROM participants p
+          JOIN eve_item_types eit ON p.weapon_type_id = eit.type_id
+          WHERE p.character_id = $2
+            AND p.killmail_time >= $1
+            AND p.is_victim = false
+            AND p.weapon_type_id IS NOT NULL
+            AND p.weapon_type_id > 0
             -- Exclude ships (category 6), deployables (22), implants (20)
             AND eit.category_id NOT IN (6, 20, 22)
             -- Exclude tackle/ewar modules: warp scramblers (52), stasis webs (65),
@@ -195,7 +172,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
             AND eit.group_id NOT IN (52, 65, 899, 379, 289, 290, 273, 283, 291, 292)
             -- Exclude EW drones (639), but keep combat drones (100)
             AND NOT (eit.category_id = 18 AND eit.group_id = 639)
-          GROUP BY cw.weapon_type_id
+          GROUP BY p.weapon_type_id
           ORDER BY usage_count DESC
           LIMIT 20
         )
@@ -211,9 +188,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
         ORDER BY wu.usage_count DESC
         """
 
-        # $1 = string (JSONB), $2 = date, $3 = integer (participants)
         case Ecto.Adapters.SQL.query(EveDmv.Repo, weapon_query, [
-               to_string(character_id),
                since_date,
                character_id
              ]) do
@@ -929,19 +904,20 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
             AND p.is_victim = false
         ),
         co_attackers AS (
+          -- Optimized: Use participants table instead of JSONB extraction
           SELECT
-            (attacker->>'character_id')::bigint as associate_id,
-            attacker->>'character_name' as associate_name,
-            (attacker->>'corporation_id')::bigint as corp_id,
-            attacker->>'corporation_name' as corp_name,
+            p2.character_id as associate_id,
+            p2.character_name as associate_name,
+            p2.corporation_id as corp_id,
+            p2.corporation_name as corp_name,
             COUNT(DISTINCT ck.killmail_id) as shared_kills
           FROM character_kills ck
-          JOIN killmails_raw k ON k.killmail_id = ck.killmail_id
-            AND k.killmail_time = ck.killmail_time
-          CROSS JOIN LATERAL jsonb_array_elements(k.raw_data->'attackers') as attacker
-          WHERE (attacker->>'character_id')::bigint IS NOT NULL
-            AND (attacker->>'character_id')::bigint != $1
-          GROUP BY associate_id, associate_name, corp_id, corp_name
+          JOIN participants p2 ON p2.killmail_id = ck.killmail_id
+            AND p2.killmail_time = ck.killmail_time
+            AND p2.is_victim = false
+          WHERE p2.character_id IS NOT NULL
+            AND p2.character_id != $1
+          GROUP BY p2.character_id, p2.character_name, p2.corporation_id, p2.corporation_name
           HAVING COUNT(DISTINCT ck.killmail_id) >= 2
           ORDER BY shared_kills DESC
           LIMIT 10
@@ -1331,37 +1307,25 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
       cache_key,
       fn ->
         # First get the character's corp from recent killmails
+        # Optimized: Uses participants table instead of JSONB extraction
         corp_query = """
         WITH char_corp AS (
-          SELECT
-            COALESCE(
-              (SELECT (k.raw_data->'victim'->>'corporation_id')::bigint
-               FROM killmails_raw k WHERE k.victim_character_id = $1
-               ORDER BY k.killmail_time DESC LIMIT 1),
-              (SELECT (attacker->>'corporation_id')::bigint
-               FROM killmails_raw k, jsonb_array_elements(k.raw_data->'attackers') as attacker
-               WHERE (attacker->>'character_id')::bigint = $1
-               ORDER BY k.killmail_time DESC LIMIT 1)
-            ) as corp_id,
-            COALESCE(
-              (SELECT k.raw_data->'victim'->>'corporation_name'
-               FROM killmails_raw k WHERE k.victim_character_id = $1
-               ORDER BY k.killmail_time DESC LIMIT 1),
-              (SELECT attacker->>'corporation_name'
-               FROM killmails_raw k, jsonb_array_elements(k.raw_data->'attackers') as attacker
-               WHERE (attacker->>'character_id')::bigint = $1
-               ORDER BY k.killmail_time DESC LIMIT 1)
-            ) as corp_name
+          -- Get character's most recent corporation from participants table
+          SELECT corporation_id as corp_id, corporation_name as corp_name
+          FROM participants
+          WHERE character_id = $1
+          ORDER BY killmail_time DESC
+          LIMIT 1
         ),
         corp_activity AS (
+          -- Count active pilots and kills from participants table
           SELECT
-            COUNT(DISTINCT (attacker->>'character_id')::bigint) as active_pilots,
-            COUNT(DISTINCT k.killmail_id) as corp_kills
-          FROM killmails_raw k,
-               jsonb_array_elements(k.raw_data->'attackers') as attacker,
-               char_corp cc
-          WHERE (attacker->>'corporation_id')::bigint = cc.corp_id
-            AND k.killmail_time >= $2
+            COUNT(DISTINCT p.character_id) as active_pilots,
+            COUNT(DISTINCT p.killmail_id) as corp_kills
+          FROM participants p, char_corp cc
+          WHERE p.corporation_id = cc.corp_id
+            AND p.killmail_time >= $2
+            AND p.is_victim = false
         )
         SELECT
           cc.corp_id,
@@ -1421,24 +1385,29 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
     QueryCache.get_or_compute(
       cache_key,
       fn ->
+        # Optimized: Uses participants table instead of JSONB extraction
         bait_query = """
         WITH char_deaths AS (
-          -- Get deaths of this character
+          -- Get deaths of this character using participants table
           SELECT
-            k.killmail_id,
-            k.killmail_time,
-            k.solar_system_id,
-            k.victim_ship_type_id,
-            COALESCE((k.raw_data->'zkb'->>'totalValue')::numeric, 0) as loss_value
-          FROM killmails_raw k
-          WHERE k.victim_character_id = $1
-            AND k.killmail_time >= $2
+            p.killmail_id,
+            p.killmail_time,
+            p.solar_system_id,
+            p.ship_type_id as victim_ship_type_id,
+            COALESCE(k.total_value, 0) as loss_value
+          FROM participants p
+          JOIN killmails_raw k ON k.killmail_id = p.killmail_id
+            AND k.killmail_time = p.killmail_time
+          WHERE p.character_id = $1
+            AND p.killmail_time >= $2
+            AND p.is_victim = true
         ),
         char_corp AS (
+          -- Get character's most recent corporation from participants table
           SELECT COALESCE(
-            (SELECT (k.raw_data->'victim'->>'corporation_id')::bigint
-             FROM killmails_raw k WHERE k.victim_character_id = $1
-             ORDER BY k.killmail_time DESC LIMIT 1),
+            (SELECT corporation_id FROM participants
+             WHERE character_id = $1
+             ORDER BY killmail_time DESC LIMIT 1),
             0
           ) as corp_id
         ),
@@ -1448,7 +1417,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
             cd.killmail_id as death_id,
             cd.loss_value,
             COUNT(DISTINCT k.killmail_id) as related_corp_kills,
-            SUM(COALESCE((k.raw_data->'zkb'->>'totalValue')::numeric, 0)) as related_kill_value
+            SUM(COALESCE(k.total_value, 0)) as related_kill_value
           FROM char_deaths cd
           JOIN char_corp cc ON true
           JOIN killmails_raw k ON k.solar_system_id = cd.solar_system_id
@@ -1456,8 +1425,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
                                     AND cd.killmail_time + interval '5 minutes'
             AND k.killmail_id != cd.killmail_id
           WHERE EXISTS (
-            SELECT 1 FROM jsonb_array_elements(k.raw_data->'attackers') as att
-            WHERE (att->>'corporation_id')::bigint = cc.corp_id
+            -- Check if corpmate is attacker using participants table
+            SELECT 1 FROM participants p_att
+            WHERE p_att.killmail_id = k.killmail_id
+              AND p_att.killmail_time = k.killmail_time
+              AND p_att.corporation_id = cc.corp_id
+              AND p_att.is_victim = false
           )
           GROUP BY cd.killmail_id, cd.loss_value
         )

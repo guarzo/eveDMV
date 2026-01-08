@@ -179,8 +179,43 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
   # PubSub handlers
 
   @impl Phoenix.LiveView
+  def handle_info({:alerts_batch, batch_payload}, socket) do
+    # Handle batched alerts for improved performance
+    # This reduces individual handle_info calls during high-activity periods
+    alerts = Map.get(batch_payload, :alerts, [])
+    batch_size = Map.get(batch_payload, :batch_size, length(alerts))
+
+    if batch_size > 0 do
+      Logger.info("Received batched surveillance alerts: #{batch_size} alerts")
+
+      # Trigger notification for the highest priority alert only
+      # This prevents notification spam during high-activity periods
+      highest_priority_alert =
+        alerts
+        |> Enum.min_by(fn alert -> Map.get(alert, :priority, 4) end, fn -> nil end)
+
+      socket =
+        if highest_priority_alert do
+          trigger_alert_notification(socket, highest_priority_alert)
+        else
+          socket
+        end
+
+      # Update new alert count once for entire batch
+      socket =
+        socket
+        |> update(:new_alert_count, &(&1 + batch_size))
+        |> load_alerts()
+
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl Phoenix.LiveView
   def handle_info({:surveillance_alert, alert_data}, socket) do
-    # New real-time alert received
+    # Handle individual alert (backwards compatibility with direct broadcasts)
     Logger.info("Received real-time surveillance alert: #{alert_data.alert_id}")
 
     # Trigger visual and audio notifications and update state
@@ -191,6 +226,13 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
       |> load_alerts()
 
     {:noreply, socket}
+  end
+
+  @impl Phoenix.LiveView
+  def handle_info({:metrics_update, _metrics}, socket) do
+    # Handle metrics-only updates from AlertBatcher
+    # Reload metrics without full alert reload
+    {:noreply, load_alert_metrics(socket)}
   end
 
   @impl Phoenix.LiveView

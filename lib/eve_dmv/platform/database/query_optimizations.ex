@@ -48,38 +48,21 @@ defmodule EveDmv.Platform.Database.QueryOptimizations do
   Batch load character statistics for multiple characters.
   """
   def batch_load_character_stats(character_ids) do
+    # Optimized: Uses participants table instead of JSONB extraction
     query = """
     WITH character_stats AS (
       SELECT
-        character_id,
-        COUNT(CASE WHEN involvement_type = 'victim' THEN 1 END) as deaths,
-        COUNT(CASE WHEN involvement_type = 'attacker' THEN 1 END) as kills,
-        SUM(CASE WHEN involvement_type = 'victim' THEN total_value ELSE 0 END) as isk_lost,
-        SUM(CASE WHEN involvement_type = 'attacker' THEN total_value ELSE 0 END) as isk_destroyed
-      FROM (
-        -- Victims
-        SELECT
-          victim_character_id as character_id,
-          'victim' as involvement_type,
-          COALESCE((raw_data->>'total_value')::numeric, 0) as total_value
-        FROM killmails_raw
-        WHERE victim_character_id = ANY($1)
-          AND killmail_time >= NOW() - INTERVAL '90 days'
-
-        UNION ALL
-
-        -- Attackers (using indexed JSONB query)
-        SELECT
-          (attacker->>'character_id')::bigint as character_id,
-          'attacker' as involvement_type,
-          COALESCE((raw_data->>'total_value')::numeric, 0) /
-            jsonb_array_length(raw_data->'attackers') as total_value
-        FROM killmails_raw,
-             LATERAL jsonb_array_elements(raw_data->'attackers') as attacker
-        WHERE (attacker->>'character_id')::bigint = ANY($1)
-          AND killmail_time >= NOW() - INTERVAL '90 days'
-      ) as involvements
-      GROUP BY character_id
+        p.character_id,
+        COUNT(*) FILTER (WHERE p.is_victim = true) as deaths,
+        COUNT(*) FILTER (WHERE p.is_victim = false) as kills,
+        SUM(CASE WHEN p.is_victim THEN COALESCE(k.total_value, 0) ELSE 0 END) as isk_lost,
+        SUM(CASE WHEN NOT p.is_victim THEN COALESCE(k.total_value, 0) / NULLIF(k.attacker_count, 0) ELSE 0 END) as isk_destroyed
+      FROM participants p
+      JOIN killmails_raw k ON k.killmail_id = p.killmail_id
+        AND k.killmail_time = p.killmail_time
+      WHERE p.character_id = ANY($1)
+        AND p.killmail_time >= NOW() - INTERVAL '90 days'
+      GROUP BY p.character_id
     )
     SELECT * FROM character_stats
     """
@@ -103,45 +86,22 @@ defmodule EveDmv.Platform.Database.QueryOptimizations do
   Batch load recent activity for multiple characters.
   """
   def batch_load_recent_activity(character_ids, limit \\ 10) do
+    # Optimized: Uses participants table instead of JSONB extraction
     query = """
     WITH ranked_activity AS (
       SELECT
-        character_id,
-        killmail_id,
-        killmail_time,
-        solar_system_id,
-        involvement_type,
-        ship_type_id,
-        total_value,
-        ROW_NUMBER() OVER (PARTITION BY character_id ORDER BY killmail_time DESC) as rn
-      FROM (
-        -- Victims
-        SELECT
-          victim_character_id as character_id,
-          killmail_id,
-          killmail_time,
-          solar_system_id,
-          'loss' as involvement_type,
-          victim_ship_type_id as ship_type_id,
-          COALESCE((raw_data->>'total_value')::numeric, 0) as total_value
-        FROM killmails_raw
-        WHERE victim_character_id = ANY($1)
-
-        UNION ALL
-
-        -- Attackers
-        SELECT
-          (attacker->>'character_id')::bigint as character_id,
-          k.killmail_id,
-          k.killmail_time,
-          k.solar_system_id,
-          'kill' as involvement_type,
-          k.victim_ship_type_id as ship_type_id,
-          COALESCE((k.raw_data->>'total_value')::numeric, 0) as total_value
-        FROM killmails_raw k,
-             LATERAL jsonb_array_elements(k.raw_data->'attackers') as attacker
-        WHERE (attacker->>'character_id')::bigint = ANY($1)
-      ) as all_activity
+        p.character_id,
+        p.killmail_id,
+        p.killmail_time,
+        k.solar_system_id,
+        CASE WHEN p.is_victim THEN 'loss' ELSE 'kill' END as involvement_type,
+        CASE WHEN p.is_victim THEN p.ship_type_id ELSE k.victim_ship_type_id END as ship_type_id,
+        COALESCE(k.total_value, 0) as total_value,
+        ROW_NUMBER() OVER (PARTITION BY p.character_id ORDER BY p.killmail_time DESC) as rn
+      FROM participants p
+      JOIN killmails_raw k ON k.killmail_id = p.killmail_id
+        AND k.killmail_time = p.killmail_time
+      WHERE p.character_id = ANY($1)
     )
     SELECT
       character_id,
@@ -244,39 +204,20 @@ defmodule EveDmv.Platform.Database.QueryOptimizations do
   Batch load ship preferences for multiple characters.
   """
   def batch_load_ship_preferences(character_ids, limit \\ 5) do
+    # Optimized: Uses participants table instead of JSONB extraction
     query = """
     WITH ship_usage AS (
       SELECT
-        character_id,
-        ship_type_id,
+        p.character_id,
+        p.ship_type_id,
         COUNT(*) as usage_count,
-        COUNT(CASE WHEN involvement_type = 'kill' THEN 1 END) as kill_count,
-        COUNT(CASE WHEN involvement_type = 'loss' THEN 1 END) as loss_count
-      FROM (
-        -- Ships lost
-        SELECT
-          victim_character_id as character_id,
-          victim_ship_type_id as ship_type_id,
-          'loss' as involvement_type
-        FROM killmails_raw
-        WHERE victim_character_id = ANY($1)
-          AND killmail_time >= NOW() - INTERVAL '90 days'
-
-        UNION ALL
-
-        -- Ships used in kills
-        SELECT
-          (attacker->>'character_id')::bigint as character_id,
-          (attacker->>'ship_type_id')::bigint as ship_type_id,
-          'kill' as involvement_type
-        FROM killmails_raw,
-             LATERAL jsonb_array_elements(raw_data->'attackers') as attacker
-        WHERE (attacker->>'character_id')::bigint = ANY($1)
-          AND (attacker->>'ship_type_id') IS NOT NULL
-          AND killmail_time >= NOW() - INTERVAL '90 days'
-      ) as all_ships
-      WHERE ship_type_id IS NOT NULL
-      GROUP BY character_id, ship_type_id
+        COUNT(*) FILTER (WHERE NOT p.is_victim) as kill_count,
+        COUNT(*) FILTER (WHERE p.is_victim) as loss_count
+      FROM participants p
+      WHERE p.character_id = ANY($1)
+        AND p.ship_type_id IS NOT NULL
+        AND p.killmail_time >= NOW() - INTERVAL '90 days'
+      GROUP BY p.character_id, p.ship_type_id
     ),
     ranked_ships AS (
       SELECT

@@ -93,46 +93,21 @@ defmodule EveDmv.Platform.Database.CorporationQueries do
 
   # Fallback method using direct queries (expects DateTime)
   defp get_top_active_members_direct(corporation_id, limit, since_datetime) do
+    # Optimized: Uses participants table instead of JSONB extraction
     query = """
     WITH member_activity AS (
-      -- Members who died
-    SELECT
-        victim_character_id as character_id,
-        raw_data->'victim'->>'character_name' as character_name,
+      -- All member activity from participants table
+      SELECT
+        p.character_id,
+        p.character_name,
         COUNT(*) as total_activity,
-        0 as kills,
-        COUNT(*) as losses
-      FROM killmails_raw
-      WHERE victim_corporation_id = $1
-        AND victim_character_id IS NOT NULL
-        AND killmail_time >= $3
-      GROUP BY victim_character_id, character_name
-
-      UNION ALL
-
-      -- Members who got kills
-    SELECT
-        (attacker->>'character_id')::integer as character_id,
-        attacker->>'character_name' as character_name,
-        COUNT(*) as total_activity,
-        COUNT(*) as kills,
-        0 as losses
-      FROM killmails_raw k,
-           jsonb_array_elements(k.raw_data->'attackers') as attacker
-      WHERE (attacker->>'corporation_id')::integer = $1
-        AND attacker->>'character_id' IS NOT NULL
-        AND k.killmail_time >= $3
-      GROUP BY character_id, character_name
-    ),
-    aggregated AS (
-    SELECT
-        character_id,
-        MAX(character_name) as character_name,
-        SUM(total_activity) as total_activity,
-        SUM(kills) as kills,
-        SUM(losses) as losses
-      FROM member_activity
-      GROUP BY character_id
+        COUNT(*) FILTER (WHERE p.is_victim = false) as kills,
+        COUNT(*) FILTER (WHERE p.is_victim = true) as losses
+      FROM participants p
+      WHERE p.corporation_id = $1
+        AND p.character_id IS NOT NULL
+        AND p.killmail_time >= $3
+      GROUP BY p.character_id, p.character_name
     )
     SELECT
       character_id,
@@ -140,11 +115,11 @@ defmodule EveDmv.Platform.Database.CorporationQueries do
       total_activity,
       kills,
       losses,
-    CASE
+      CASE
         WHEN losses > 0 THEN ROUND(kills::numeric / losses, 2)
         ELSE kills
       END as kd_ratio
-    FROM aggregated
+    FROM member_activity
     ORDER BY total_activity DESC
     LIMIT $2
     """
@@ -176,37 +151,21 @@ defmodule EveDmv.Platform.Database.CorporationQueries do
   def get_timezone_activity(corporation_id, since_date) do
     since_datetime = to_datetime(since_date)
 
+    # Optimized: Uses participants table instead of JSONB extraction
     query = """
     WITH hourly_activity AS (
-    SELECT
-        EXTRACT(HOUR FROM killmail_time AT TIME ZONE 'UTC') as hour,
-        COUNT(*) as activity_count,
-        'loss' as activity_type
-      FROM killmails_raw
-      WHERE victim_corporation_id = $1
-        AND killmail_time >= $2
-      GROUP BY hour
-
-      UNION ALL
-
-    SELECT
-        EXTRACT(HOUR FROM k.killmail_time AT TIME ZONE 'UTC') as hour,
-        COUNT(*) as activity_count,
-        'kill' as activity_type
-      FROM killmails_raw k
-      WHERE k.killmail_time >= $2
-        AND EXISTS (
-          SELECT 1
-          FROM jsonb_array_elements(k.raw_data->'attackers') AS attacker
-          WHERE (attacker->>'corporation_id')::integer = $1
-        )
+      SELECT
+        EXTRACT(HOUR FROM p.killmail_time AT TIME ZONE 'UTC') as hour,
+        COUNT(*) as activity_count
+      FROM participants p
+      WHERE p.corporation_id = $1
+        AND p.killmail_time >= $2
       GROUP BY hour
     )
     SELECT
       hour::integer,
-      SUM(activity_count) as total_activity
+      activity_count as total_activity
     FROM hourly_activity
-    GROUP BY hour
     ORDER BY hour
     """
 
@@ -241,41 +200,29 @@ defmodule EveDmv.Platform.Database.CorporationQueries do
   def get_ship_usage_stats(corporation_id, since_date, limit \\ 20) do
     since_datetime = to_datetime(since_date)
 
+    # Optimized: Uses participants table instead of JSONB extraction
     query = """
     WITH ship_usage AS (
-      -- Ships lost by corp members
-    SELECT
-        victim_ship_type_id as ship_type_id,
+      -- All ship usage from participants table with ISK values for losses
+      SELECT
+        p.ship_type_id,
         COUNT(*) as usage_count,
-        SUM(COALESCE((raw_data->>'total_value')::numeric, 0)) as total_value
-      FROM killmails_raw
-      WHERE victim_corporation_id = $1
-        AND victim_ship_type_id IS NOT NULL
-        AND killmail_time >= $2
-      GROUP BY victim_ship_type_id
-
-      UNION ALL
-
-      -- Ships used by corp members in kills
-    SELECT
-        (attacker->>'ship_type_id')::integer as ship_type_id,
-        COUNT(*) as usage_count,
-        0 as total_value
-      FROM killmails_raw k,
-           jsonb_array_elements(k.raw_data->'attackers') as attacker
-      WHERE (attacker->>'corporation_id')::integer = $1
-        AND attacker->>'ship_type_id' IS NOT NULL
-        AND k.killmail_time >= $2
-      GROUP BY ship_type_id
+        SUM(CASE WHEN p.is_victim THEN COALESCE(k.total_value, 0) ELSE 0 END) as total_value
+      FROM participants p
+      LEFT JOIN killmails_raw k ON k.killmail_id = p.killmail_id
+        AND k.killmail_time = p.killmail_time
+        AND p.is_victim = true
+      WHERE p.corporation_id = $1
+        AND p.ship_type_id IS NOT NULL
+        AND p.killmail_time >= $2
+      GROUP BY p.ship_type_id
     )
     SELECT
       ship_type_id,
-      SUM(usage_count) as total_usage,
-      SUM(total_value) as total_isk_lost
+      usage_count as total_usage,
+      total_value as total_isk_lost
     FROM ship_usage
-    WHERE ship_type_id IS NOT NULL
-    GROUP BY ship_type_id
-    ORDER BY total_usage DESC
+    ORDER BY usage_count DESC
     LIMIT $3
     """
 
@@ -299,28 +246,35 @@ defmodule EveDmv.Platform.Database.CorporationQueries do
   Get recent activity without expensive operations.
   """
   def get_recent_activity(corporation_id, limit \\ 20) do
+    # Optimized: Uses participants table instead of JSONB extraction
     query = """
+    WITH corp_killmails AS (
+      -- Find all killmails where this corp was involved
+      SELECT DISTINCT p.killmail_id, p.killmail_time
+      FROM participants p
+      WHERE p.corporation_id = $1
+      ORDER BY p.killmail_time DESC
+      LIMIT $2
+    )
     SELECT
       k.killmail_id,
       k.killmail_time,
       k.solar_system_id,
       k.victim_ship_type_id,
       k.victim_character_id,
-      k.raw_data->'victim'->>'character_name' as victim_name,
-    CASE
+      v.character_name as victim_name,
+      CASE
         WHEN k.victim_corporation_id = $1 THEN 'loss'
         ELSE 'kill'
       END as involvement_type,
-      COALESCE((k.raw_data->>'total_value')::numeric, 0) as total_value
-    FROM killmails_raw k
-    WHERE k.victim_corporation_id = $1
-       OR EXISTS (
-         SELECT 1
-         FROM jsonb_array_elements(k.raw_data->'attackers') as attacker
-         WHERE (attacker->>'corporation_id')::integer = $1
-       )
+      COALESCE(k.total_value, 0) as total_value
+    FROM corp_killmails ck
+    JOIN killmails_raw k ON k.killmail_id = ck.killmail_id
+      AND k.killmail_time = ck.killmail_time
+    LEFT JOIN participants v ON v.killmail_id = k.killmail_id
+      AND v.killmail_time = k.killmail_time
+      AND v.is_victim = true
     ORDER BY k.killmail_time DESC
-    LIMIT $2
     """
 
     case Repo.query(query, [corporation_id, limit]) do
@@ -357,45 +311,17 @@ defmodule EveDmv.Platform.Database.CorporationQueries do
   Get corporation name and alliance info from recent killmails.
   """
   def get_corporation_info_from_killmails(corporation_id) do
+    # Optimized: Uses participants table instead of JSONB extraction
     query = """
-    WITH corp_data AS (
-      -- From victims
     SELECT
-        raw_data->'victim'->>'corporation_name' as corp_name,
-        raw_data->'victim'->>'alliance_name' as alliance_name,
-        (raw_data->'victim'->>'alliance_id')::integer as alliance_id,
-    killmail_time
-      FROM killmails_raw
-      WHERE victim_corporation_id = $1
-      ORDER BY killmail_time DESC
-      LIMIT 1
-    ),
-    attacker_data AS (
-      -- From attackers
-    SELECT
-        attacker->>'corporation_name' as corp_name,
-        attacker->>'alliance_name' as alliance_name,
-        (attacker->>'alliance_id')::integer as alliance_id,
-        k.killmail_time
-      FROM killmails_raw k,
-           jsonb_array_elements(k.raw_data->'attackers') as attacker
-      WHERE (attacker->>'corporation_id')::integer = $1
-      ORDER BY k.killmail_time DESC
-      LIMIT 1
-    )
-    SELECT
-      COALESCE(
-        (SELECT corp_name FROM corp_data),
-        (SELECT corp_name FROM attacker_data)
-      ) as corp_name,
-      COALESCE(
-        (SELECT alliance_name FROM corp_data),
-        (SELECT alliance_name FROM attacker_data)
-      ) as alliance_name,
-      COALESCE(
-        (SELECT alliance_id FROM corp_data),
-        (SELECT alliance_id FROM attacker_data)
-      ) as alliance_id
+      p.corporation_name as corp_name,
+      p.alliance_name,
+      p.alliance_id
+    FROM participants p
+    WHERE p.corporation_id = $1
+      AND p.corporation_name IS NOT NULL
+    ORDER BY p.killmail_time DESC
+    LIMIT 1
     """
 
     case Repo.query(query, [corporation_id]) do

@@ -54,7 +54,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
 
   ## Data Integration
 
-  - **Real Killmail Data**: Uses actual combat data from `killmails_enriched` table
+  - **Real Killmail Data**: Uses actual combat data from `killmails_raw` table
   - **Multi-System Queries**: Efficiently fetches data across system boundaries
   - **Temporal Analysis**: Supports configurable time windows for analysis
   - **Statistical Processing**: Applies statistical methods for pattern detection
@@ -308,8 +308,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     |> add_coordinated_threat_insight(incidents)
     |> Enum.reverse()
   end
-
-  defp convert_threat_analysis_to_insights(_), do: []
 
   defp add_major_entities_insight(acc, entities) when is_list(entities) and entities != [] do
     ["#{length(entities)} major threat entities identified" | acc]
@@ -795,28 +793,20 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     if is_list(hotspots), do: length(hotspots), else: 0
   end
 
-  defp count_threat_hotspots(_), do: 0
-
   defp count_movement_corridors(movement) when is_map(movement) do
     corridors = Map.get(movement, :movement_corridors, [])
     if is_list(corridors), do: length(corridors), else: 0
   end
-
-  defp count_movement_corridors(_), do: 0
 
   defp count_activity_anomalies(activity) when is_map(activity) do
     anomalies = Map.get(activity, :anomalies, [])
     if is_list(anomalies), do: length(anomalies), else: 0
   end
 
-  defp count_activity_anomalies(_), do: 0
-
   defp count_choke_points(movement) when is_map(movement) do
     choke_points = Map.get(movement, :choke_points, [])
     if is_list(choke_points), do: length(choke_points), else: 0
   end
-
-  defp count_choke_points(_), do: 0
 
   defp count_primary_corridors(movement) when is_map(movement) do
     corridors = Map.get(movement, :movement_corridors, [])
@@ -829,8 +819,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
       0
     end
   end
-
-  defp count_primary_corridors(_), do: 0
 
   # Correlation calculation helpers
 
@@ -912,8 +900,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     |> MapSet.new()
   end
 
-  defp extract_high_activity_systems(_), do: MapSet.new()
-
   defp extract_hotspot_systems(threat) when is_map(threat) do
     hotspots = Map.get(threat, :threat_hotspots, [])
 
@@ -931,8 +917,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     end
   end
 
-  defp extract_hotspot_systems(_), do: MapSet.new()
-
   defp extract_corridor_systems(movement) when is_map(movement) do
     corridors = Map.get(movement, :movement_corridors, [])
 
@@ -947,8 +931,6 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
       MapSet.new()
     end
   end
-
-  defp extract_corridor_systems(_), do: MapSet.new()
 
   defp extract_anomaly_systems(activity) when is_map(activity) do
     anomalies = Map.get(activity, :anomalies, [])
@@ -966,18 +948,14 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.CrossSys
     end
   end
 
-  defp extract_anomaly_systems(_), do: MapSet.new()
-
   # Helper to safely check if a pattern has data
   defp has_data?(patterns) when is_map(patterns), do: map_size(patterns) > 0
-  defp has_data?(patterns) when is_list(patterns), do: not Enum.empty?(patterns)
-  defp has_data?(_), do: false
 
   # Database query helper
 
   defp fetch_multi_system_killmails(system_ids, start_time) do
     query =
-      from(k in "killmails_enriched",
+      from(k in "killmails_raw",
         where: k.solar_system_id in ^system_ids and k.killmail_time >= ^start_time,
         select: %{
           killmail_id: k.killmail_id,

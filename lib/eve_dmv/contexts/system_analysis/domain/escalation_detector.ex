@@ -250,7 +250,6 @@ defmodule EveDmv.Contexts.SystemAnalysis.Domain.EscalationDetector do
           |> length()
 
         %{
-          # Phase number
           phase: length(phases) - length(phases) + 1,
           participants: unique_participants
         }

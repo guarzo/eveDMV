@@ -419,38 +419,29 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
       cache_key,
       fn ->
         # Query to calculate ISK efficiency from killmails
+        # Optimized: Uses participants table with indexed lookups instead of JSONB extraction
+        # Uses idx_participants_character_activity index on (character_id, killmail_time)
         efficiency_query = """
-        WITH character_isk_data AS (
-          -- ISK destroyed (when character is attacker)
-        SELECT
-            SUM(COALESCE((k.raw_data->>'total_value')::numeric, 0)) as isk_destroyed,
-            0 as isk_lost
-          FROM killmails_raw k,
-               jsonb_array_elements(k.raw_data->'attackers') as attacker
-          WHERE attacker->>'character_id' = $1
-            AND k.killmail_time >= $2
-
-          UNION ALL
-
-          -- ISK lost (when character is victim)
-        SELECT
-            0 as isk_destroyed,
-            SUM(COALESCE((k.raw_data->>'total_value')::numeric, 0)) as isk_lost
-          FROM killmails_raw k
-          WHERE k.victim_character_id = $3
-            AND k.killmail_time >= $4
+        WITH character_activity AS (
+          SELECT
+            CASE WHEN p.is_victim THEN 0 ELSE COALESCE(k.total_value, 0) END as isk_destroyed,
+            CASE WHEN p.is_victim THEN COALESCE(k.total_value, 0) ELSE 0 END as isk_lost,
+            p.is_victim
+          FROM participants p
+          JOIN killmails_raw k ON k.killmail_id = p.killmail_id
+            AND k.killmail_time = p.killmail_time
+          WHERE p.character_id = $1
+            AND p.killmail_time >= $2
         )
         SELECT
-          SUM(isk_destroyed) as total_destroyed,
-          SUM(isk_lost) as total_lost,
-          COUNT(CASE WHEN isk_destroyed > 0 THEN 1 END) as kills_count,
-          COUNT(CASE WHEN isk_lost > 0 THEN 1 END) as deaths_count
-        FROM character_isk_data
+          COALESCE(SUM(isk_destroyed), 0) as total_destroyed,
+          COALESCE(SUM(isk_lost), 0) as total_lost,
+          COUNT(*) FILTER (WHERE NOT is_victim) as kills_count,
+          COUNT(*) FILTER (WHERE is_victim) as deaths_count
+        FROM character_activity
         """
 
         case EveDmv.Repo.query(efficiency_query, [
-               to_string(character_id),
-               since_date,
                character_id,
                since_date
              ]) do
@@ -554,18 +545,32 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
   end
 
   defp build_gang_size_query do
+    # Optimized: Uses participants table with indexed lookups instead of JSONB extraction
+    # Uses idx_participants_character_activity index on (character_id, killmail_time)
+    # $1 = character_id (integer), $2 = since_date
     """
-    WITH gang_sizes AS (
+    WITH character_killmails AS (
+      -- Step 1: Fast indexed lookup via participants table
+      SELECT DISTINCT p.killmail_id, p.killmail_time
+      FROM participants p
+      WHERE p.character_id = $1
+        AND p.killmail_time >= $2
+        AND p.is_victim = false
+    ),
+    gang_sizes AS (
+      -- Step 2: Count attackers per killmail using participants table
       SELECT
-        jsonb_array_length(k.raw_data->'attackers') as gang_size,
+        p_count.attacker_count as gang_size,
         COUNT(*) as frequency
-      FROM killmails_raw k
-      WHERE k.killmail_time >= $2
-        AND EXISTS (
-          SELECT 1 FROM jsonb_array_elements(k.raw_data->'attackers') as attacker
-          WHERE attacker->>'character_id' = $1
-        )
-      GROUP BY gang_size
+      FROM character_killmails ck
+      JOIN LATERAL (
+        SELECT COUNT(*) as attacker_count
+        FROM participants p
+        WHERE p.killmail_id = ck.killmail_id
+          AND p.killmail_time = ck.killmail_time
+          AND p.is_victim = false
+      ) p_count ON true
+      GROUP BY p_count.attacker_count
       ORDER BY frequency DESC
       LIMIT 10
     )
@@ -630,10 +635,9 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
       ei.corporation_id,
       ei.corporation_name,
       ei.alliance_id,
-      COALESCE(ei.alliance_name, a.alliance_name) as alliance_name,
+      ei.alliance_name,
       ei.interaction_count
     FROM external_interactions ei
-    LEFT JOIN alliances a ON ei.alliance_id = a.alliance_id
     ORDER BY ei.interaction_count DESC
     """
   end

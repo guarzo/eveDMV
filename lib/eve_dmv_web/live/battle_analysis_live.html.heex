@@ -358,9 +358,9 @@
               </div>
             
             <% :fleet -> %>
-              <!-- Fleet Composition View -->
+              <!-- Fleet Composition View (Stream 8: with pagination for large battles) -->
               <div class="space-y-6">
-                <%= for window <- @current_battle.timeline.fleet_composition do %>
+                <%= for {window, window_index} <- Enum.with_index(@current_battle.timeline.fleet_composition) do %>
                   <div class="bg-gray-800 rounded-lg p-4">
                     <div class="mb-4">
                       <h4 class="font-medium">Time Window: <%= format_timestamp(window.timestamp) %></h4>
@@ -487,15 +487,19 @@
                       <!-- Group ships by battle sides -->
                       <%= if window[:pilot_ships] && length(window.pilot_ships) > 0 do %>
                       <div class="space-y-6">
-                        <!-- Active Sides -->
+                        <!-- Active Sides (Stream 8: with pagination for large fleets) -->
                         <div class={"grid grid-cols-1 gap-6 " <> if(length(@custom_sides) == 2, do: "lg:grid-cols-2", else: "lg:grid-cols-3")}>
                           <%= for side <- @custom_sides do %>
+                            <% {visible_pilots, total_pilots, has_more} = EveDmvWeb.BattleAnalysisLive.get_visible_ships_for_side(
+                              window.pilot_ships || [], side, @ship_side_assignments, window_index, @expanded_sides, @visible_pilots_per_side
+                            ) %>
                             <div class="space-y-3">
                               <h6 class="text-xs font-medium text-blue-400 uppercase border-b border-blue-800 pb-1">
                                 <%= String.replace(side, "_", " ") |> String.capitalize() %>
+                                <span class="text-gray-500 font-normal">(<%= total_pilots %>)</span>
                               </h6>
-                              
-                              <%= for pilot <- EveDmvWeb.BattleAnalysisLive.get_ships_for_side(window.pilot_ships || [], side, @ship_side_assignments) do %>
+
+                              <%= for pilot <- visible_pilots do %>
                                 <div 
                                   class={"bg-gray-900 rounded-lg p-2 cursor-pointer transition-all " <> 
                                          if @editing_fleet_sides do
@@ -579,6 +583,21 @@
                                     <% end %>
                                   </div>
                                 </div>
+                              <% end %>
+                              <!-- Stream 8: Show more/less button for large fleets -->
+                              <%= if has_more or EveDmvWeb.BattleAnalysisLive.side_expanded?(window_index, side, @expanded_sides) do %>
+                                <button
+                                  phx-click="toggle_side_expansion"
+                                  phx-value-side={side}
+                                  phx-value-window_index={window_index}
+                                  class="w-full mt-2 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 text-xs font-medium rounded transition-colors"
+                                >
+                                  <%= if has_more do %>
+                                    Show all <%= total_pilots %> pilots
+                                  <% else %>
+                                    Show fewer pilots
+                                  <% end %>
+                                </button>
                               <% end %>
                             </div>
                           <% end %>

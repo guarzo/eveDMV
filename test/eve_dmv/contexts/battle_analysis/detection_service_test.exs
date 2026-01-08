@@ -399,7 +399,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.Services.DetectionServiceTest do
 
   # Helper functions for creating test data
 
-  defp create_multi_pilot_killmail(character_id) do
+  defp create_multi_pilot_killmail(_character_id) do
     insert_killmail_raw!(%{
       attacker_count: 10,
       solar_system_id: @test_system_id,
@@ -407,7 +407,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.Services.DetectionServiceTest do
     })
   end
 
-  defp create_multi_pilot_killmail_for_corp(corporation_id) do
+  defp create_multi_pilot_killmail_for_corp(_corporation_id) do
     insert_killmail_raw!(%{
       attacker_count: 10,
       victim_corporation_id: Enum.random(98_000_000..98_999_999),

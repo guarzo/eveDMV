@@ -240,12 +240,14 @@ defmodule EveDmv.Types do
   # Combat data types (for threat calculation input)
   @typedoc "Combat data for threat score calculation"
   @type combat_data :: %{
-          character_id: character_id(),
-          killmails: [map()],
-          attacker_killmails: [map()],
-          victim_killmails: [map()],
-          analysis_period_days: pos_integer(),
-          total_killmails: non_neg_integer()
+          required(:character_id) => character_id(),
+          required(:killmails) => [map()],
+          required(:attacker_killmails) => [map()],
+          required(:victim_killmails) => [map()],
+          required(:analysis_period_days) => number(),
+          required(:total_killmails) => non_neg_integer(),
+          optional(:data_cutoff) => DateTime.t() | nil,
+          optional(:fetched_at) => DateTime.t()
         }
 
   # Battle analysis types

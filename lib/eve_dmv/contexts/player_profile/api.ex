@@ -54,7 +54,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Api do
   engagement patterns, and performance metrics.
   """
   @spec get_combat_stats(Types.character_id(), map()) :: Result.t(map())
-  defdelegate get_combat_stats(character_id, opts \\ []), to: CombatStatsAnalyzer, as: :analyze
+  defdelegate get_combat_stats(character_id, opts \\ %{}), to: CombatStatsAnalyzer, as: :analyze
 
   # Ship Preferences
 
@@ -65,7 +65,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Api do
   and deployment patterns.
   """
   @spec get_ship_preferences(Types.character_id(), map()) :: Result.t(map())
-  defdelegate get_ship_preferences(character_id, opts \\ []),
+  defdelegate get_ship_preferences(character_id, opts \\ %{}),
     to: ShipPreferencesAnalyzer,
     as: :analyze
 

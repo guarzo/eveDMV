@@ -97,8 +97,6 @@ defmodule EveDmv.Core.Services.BattleService do
     case BattleAnalysis.analyze_battle_from_killmail_ids(killmail_ids) do
       {:ok, battle} -> {:ok, battle}
       {:error, _} = error -> error
-      # Handle legacy return format
-      result -> {:ok, result}
     end
   end
 

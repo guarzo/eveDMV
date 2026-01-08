@@ -8,6 +8,7 @@ defmodule EveDmvWeb.HealthController do
   import Plug.Conn
 
   alias EveDmv.Platform.Database.HealthCheck
+  alias EveDmv.Platform.Monitoring.HealthAggregator
 
   @doc """
   Health check endpoint for load balancers and monitoring systems.
@@ -59,5 +60,62 @@ defmodule EveDmvWeb.HealthController do
           }
         })
     end
+  end
+
+  @doc """
+  Simple health check for load balancers.
+  Returns 200 if healthy, 503 if critical.
+  """
+  def index(conn, _params) do
+    health = get_health_safely()
+
+    status =
+      case health.overall_status do
+        :healthy -> 200
+        :warning -> 200
+        :degraded -> 200
+        :critical -> 503
+        _ -> 503
+      end
+
+    conn
+    |> put_status(status)
+    |> json(%{
+      status: health.overall_status,
+      timestamp: health.timestamp,
+      uptime: health.uptime.formatted,
+      components: %{
+        database: health.database.status,
+        pipeline: health.pipeline.status,
+        cache: health.cache.status,
+        memory: health.memory.status
+      }
+    })
+  end
+
+  @doc """
+  Detailed health check with all metrics.
+  """
+  def detailed(conn, _params) do
+    health = get_health_safely()
+
+    conn
+    |> put_status(200)
+    |> json(health)
+  end
+
+  defp get_health_safely do
+    HealthAggregator.get_health_snapshot()
+  rescue
+    _ ->
+      %{
+        overall_status: :unknown,
+        timestamp: DateTime.utc_now(),
+        uptime: %{formatted: "unknown"},
+        database: %{status: :unknown},
+        pipeline: %{status: :unknown},
+        cache: %{status: :unknown},
+        memory: %{status: :unknown}
+      }
   end
 end

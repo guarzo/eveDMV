@@ -102,33 +102,144 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
     {:noreply, socket}
   end
 
-  # PubSub handlers
+  @impl Phoenix.LiveView
+  def handle_info({:surveillance_alert, %{type: :metrics_updated, metrics: metrics}}, socket) do
+    # Targeted update: Only update the metrics that changed
+    if socket.assigns.dashboard_type == :surveillance do
+      {:noreply,
+       assign(socket, :profile_metrics, Map.merge(socket.assigns.profile_metrics, metrics))}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl Phoenix.LiveView
+  def handle_info({:surveillance_alert, %{type: :new_match, match: match}}, socket) do
+    # Targeted update: Prepend new match and increment alert count
+    if socket.assigns.dashboard_type == :surveillance do
+      socket =
+        socket
+        |> update(:profile_metrics, fn metrics ->
+          Map.update(metrics, :active_alerts, 1, &(&1 + 1))
+        end)
+        |> update(:recent_matches, fn matches ->
+          [match | Enum.take(matches || [], 9)]
+        end)
+
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl Phoenix.LiveView
+  def handle_info({:surveillance_alert, %{type: :profile_created, profile: profile}}, socket) do
+    # Targeted update: Add new profile to list and update count
+    if socket.assigns.dashboard_type == :surveillance do
+      socket =
+        socket
+        |> update(:profiles, fn profiles -> [profile | profiles] end)
+        |> update(:profile_metrics, fn metrics ->
+          Map.update(metrics, :total_profiles, 1, &(&1 + 1))
+        end)
+
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
 
   @impl Phoenix.LiveView
   def handle_info({:surveillance_alert, alert}, socket) do
-    # Only reload dashboard data for surveillance dashboard and if it's a meaningful alert
+    # For high-priority alerts, do targeted update instead of full reload
     if socket.assigns.dashboard_type == :surveillance and should_reload_for_alert?(alert) do
-      {:noreply, load_dashboard_data(socket)}
+      # Increment alert count without full reload
+      socket =
+        update(socket, :profile_metrics, fn metrics ->
+          Map.update(metrics, :active_alerts, 1, &(&1 + 1))
+        end)
+
+      {:noreply, socket}
     else
       {:noreply, socket}
     end
   end
 
   @impl Phoenix.LiveView
-  def handle_info({:intelligence_update, update}, socket) do
-    # Only reload dashboard data for intelligence dashboard and if it's a meaningful update
-    if socket.assigns.dashboard_type == :intelligence and should_reload_for_update?(update) do
-      {:noreply, load_dashboard_data(socket)}
+  def handle_info({:intelligence_update, %{type: :analysis_completed, report: report}}, socket) do
+    # Targeted update: Add completed analysis to list
+    if socket.assigns.dashboard_type == :intelligence do
+      socket =
+        update(socket, :character_analyses, fn analyses ->
+          [report | Enum.take(analyses || [], 9)]
+        end)
+
+      {:noreply, socket}
     else
       {:noreply, socket}
     end
   end
 
   @impl Phoenix.LiveView
-  def handle_info({:alert_updated, _alert_id}, socket) do
-    # Only reload for surveillance dashboard when alerts are updated
+  def handle_info(
+        {:intelligence_update, %{type: :threat_assessment_updated, assessment: assessment}},
+        socket
+      ) do
+    # Targeted update: Update specific threat assessment
+    if socket.assigns.dashboard_type == :intelligence do
+      socket =
+        update(socket, :threat_assessments, fn assessments ->
+          [assessment | Enum.take(assessments || [], 9)]
+        end)
+
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl Phoenix.LiveView
+  def handle_info({:intelligence_update, _update}, socket) do
+    # Ignore other intelligence updates to prevent unnecessary reloads
+    {:noreply, socket}
+  end
+
+  @impl Phoenix.LiveView
+  def handle_info({:alert_updated, alert_id}, socket) do
+    # Targeted update: Just refresh the specific alert status, not full reload
     if socket.assigns.dashboard_type == :surveillance do
-      {:noreply, load_dashboard_data(socket)}
+      # Only log the update for monitoring; avoid database query
+      require Logger
+      Logger.debug("Alert #{alert_id} updated - using cached data")
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl Phoenix.LiveView
+  def handle_info(
+        {:alerts_batch, batch_payload},
+        %{assigns: %{dashboard_type: :surveillance}} = socket
+      ) do
+    # Handle batched alerts for improved performance (Stream 9 optimization)
+    # This is the optimized path during high-activity periods (100+ kills/min)
+    {:noreply, handle_surveillance_alerts_batch(socket, batch_payload)}
+  end
+
+  def handle_info({:alerts_batch, _batch_payload}, socket), do: {:noreply, socket}
+
+  @impl Phoenix.LiveView
+  def handle_info({:metrics_update, metrics}, socket) do
+    # Handle metrics-only updates from AlertBatcher (Stream 9 optimization)
+    # Light-weight update without full reload
+    if socket.assigns.dashboard_type == :surveillance do
+      socket =
+        update(socket, :profile_metrics, fn current_metrics ->
+          Map.merge(current_metrics, metrics)
+        end)
+
+      {:noreply, socket}
     else
       {:noreply, socket}
     end
@@ -141,6 +252,19 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
   end
 
   # Private functions
+
+  defp handle_surveillance_alerts_batch(socket, batch_payload) do
+    batch_size = Map.get(batch_payload, :batch_size, 0)
+
+    if batch_size > 0 do
+      # Update active alerts count for the entire batch
+      update(socket, :profile_metrics, fn metrics ->
+        Map.update(metrics, :active_alerts, batch_size, &(&1 + batch_size))
+      end)
+    else
+      socket
+    end
+  end
 
   defp get_dashboard_type(socket) do
     # Check the route name first
@@ -176,6 +300,7 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
     |> assign(:system_metrics, %{})
     |> assign(:top_performing_profiles, [])
     |> assign(:performance_recommendations, [])
+    |> assign(:recent_matches, [])
   end
 
   defp assign_dashboard_data(socket, :intelligence) do
@@ -306,13 +431,14 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
     if Enum.empty?(profiles) do
       0.0
     else
-      since = time_range_to_datetime(time_range)
+      # Convert time_range to format expected by get_match_statistics
+      stats_time_range = normalize_time_range_for_statistics(time_range)
 
       # Get match counts for each profile
       match_counts =
         profiles
         |> Enum.map(fn profile ->
-          case Surveillance.get_match_statistics(profile.id, since) do
+          case Surveillance.get_match_statistics(profile.id, stats_time_range) do
             {:ok, stats} -> Map.get(stats, :total_matches, 0)
             {:error, _} -> 0
           end
@@ -344,6 +470,20 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
   defp time_range_to_datetime(_) do
     DateTime.add(DateTime.utc_now(), -@seconds_per_day, :second)
   end
+
+  # Normalize time_range to format expected by get_match_statistics
+  # which accepts :last_24h, :last_7d, :last_30d or {DateTime.t(), DateTime.t()}
+  defp normalize_time_range_for_statistics(:last_hour) do
+    # Convert to DateTime tuple since :last_hour isn't directly supported
+    now = DateTime.utc_now()
+    {DateTime.add(now, -@seconds_per_hour, :second), now}
+  end
+
+  defp normalize_time_range_for_statistics(time_range) when time_range in [:last_24h, :last_7d, :last_30d] do
+    time_range
+  end
+
+  defp normalize_time_range_for_statistics(_), do: :last_24h
 
   defp format_response_time(nil), do: "N/A"
 
@@ -395,17 +535,8 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
     end
   end
 
-  defp should_reload_for_update?(update) do
-    # Only reload for intelligence updates that affect dashboard data
-    case update do
-      %{type: type}
-      when type in ["analysis_completed", "threat_assessment_updated", "batch_processed"] ->
-        true
-
-      _ ->
-        false
-    end
-  end
+  # Note: should_reload_for_update?/1 removed in Stream 2 optimization
+  # We now use targeted pattern-matched handlers instead of full reloads
 
   # Render functions
 

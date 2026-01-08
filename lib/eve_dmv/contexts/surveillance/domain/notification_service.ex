@@ -635,7 +635,9 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
   end
 
   defp deliver_in_app_notification(notification) do
-    # Broadcast real-time notification to connected users via PubSub
+    alias EveDmv.Contexts.Surveillance.Domain.AlertBatcher
+
+    # Build notification data for broadcast
     notification_data = %{
       notification_id: notification.id,
       alert_id: notification.alert_id,
@@ -648,22 +650,33 @@ defmodule EveDmv.Contexts.Surveillance.Domain.NotificationService do
       action_url: notification.content.action_url
     }
 
-    # Broadcast to surveillance alerts topic
+    # Use AlertBatcher for batched delivery (performance optimization)
+    # This reduces PubSub message frequency during high-activity periods
+    # The batcher will accumulate alerts and broadcast them in batches
+    case Process.whereis(AlertBatcher) do
+      nil ->
+        # AlertBatcher not running, fall back to immediate broadcast
+        Logger.debug("AlertBatcher not available, broadcasting immediately")
+        broadcast_alert_immediately(notification_data)
+
+      _pid ->
+        # Queue alert for batched delivery
+        AlertBatcher.queue_alert(notification_data)
+        Logger.debug("Queued in-app notification for batched delivery: #{notification.alert_id}")
+    end
+
+    {:ok, :in_app_notification_queued}
+  end
+
+  # Fallback immediate broadcast when AlertBatcher is unavailable
+  defp broadcast_alert_immediately(notification_data) do
     Phoenix.PubSub.broadcast(
       EveDmv.PubSub,
       "surveillance:alerts",
       {:surveillance_alert, notification_data}
     )
 
-    # Also broadcast to user-specific topic if needed
-    # Phoenix.PubSub.broadcast(
-    #   EveDmv.PubSub,
-    #   "user:#{user_id}:notifications",
-    #   {:notification, notification_data}
-    # )
-
-    Logger.info("Delivered in-app notification for alert #{notification.alert_id}")
-    {:ok, :in_app_notification_sent}
+    Logger.info("Broadcast in-app notification immediately: #{notification_data.alert_id}")
   end
 
   defp validate_notification_config(config) when is_map(config) do

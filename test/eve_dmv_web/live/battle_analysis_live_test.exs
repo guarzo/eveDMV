@@ -6,7 +6,6 @@ defmodule EveDmvWeb.BattleAnalysisLiveTest do
   use EveDmvWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
-  import EveDmv.Factories
 
   alias Ecto.Adapters.SQL.Sandbox
   alias EveDmv.Eve.ItemType

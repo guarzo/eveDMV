@@ -55,7 +55,7 @@ defmodule EveDmv.Contexts.SystemAnalysis do
   Analyzes activity level in a specific solar system.
   Returns activity metrics, trends, and patterns.
   """
-  @spec analyze_system_activity(integer(), keyword()) :: {:ok, map()} | {:error, atom()}
+  @spec analyze_system_activity(integer(), keyword()) :: {:ok, map()} | {:error, term()}
   def analyze_system_activity(system_id, opts \\ []) do
     days = Keyword.get(opts, :days, 30)
     cutoff_date = DateTime.utc_now() |> DateTime.add(-days, :day)
@@ -88,7 +88,7 @@ defmodule EveDmv.Contexts.SystemAnalysis do
   @doc """
   Generates activity heatmap for a region or set of systems with real data.
   """
-  @spec generate_heatmap(keyword()) :: {:ok, map()} | {:error, atom()}
+  @spec generate_heatmap(keyword()) :: {:ok, map()} | {:error, term()}
   def generate_heatmap(opts) do
     hours = Keyword.get(opts, :hours, 24)
     _limit = Keyword.get(opts, :limit, 100)
@@ -113,7 +113,7 @@ defmodule EveDmv.Contexts.SystemAnalysis do
   @doc """
   Gets overview metrics for system analytics dashboard.
   """
-  @spec get_overview_metrics() :: {:ok, map()} | {:error, atom()}
+  @spec get_overview_metrics() :: {:ok, map()} | {:error, term()}
   def get_overview_metrics do
     last_24h = DateTime.utc_now() |> DateTime.add(-24, :hour)
     last_48h = DateTime.utc_now() |> DateTime.add(-48, :hour)
@@ -180,7 +180,7 @@ defmodule EveDmv.Contexts.SystemAnalysis do
   @doc """
   Detects activity spillover between two systems.
   """
-  @spec detect_activity_spillover(integer(), integer()) :: {:ok, map()} | {:error, atom()}
+  @spec detect_activity_spillover(integer(), integer()) :: {:ok, map()}
   def detect_activity_spillover(system_a, system_b) do
     days = 7
     cutoff_date = DateTime.utc_now() |> DateTime.add(-days, :day)
@@ -206,7 +206,7 @@ defmodule EveDmv.Contexts.SystemAnalysis do
   Can accept either a single region_id or a list of system_ids.
   """
   @spec analyze_regional_correlation(integer() | list(integer()), keyword()) ::
-          {:ok, map()} | {:error, atom()}
+          {:ok, map()} | {:error, term()}
 
   # Define the default once
   def analyze_regional_correlation(region_or_systems, opts \\ [])
@@ -279,7 +279,7 @@ defmodule EveDmv.Contexts.SystemAnalysis do
   @doc """
   Identifies hot zones based on activity levels.
   """
-  @spec identify_hot_zones(keyword()) :: {:ok, map()} | {:error, atom()}
+  @spec identify_hot_zones(keyword()) :: {:ok, map()} | {:error, term()}
   def identify_hot_zones(opts \\ []) do
     hours = Keyword.get(opts, :hours, 24)
     cutoff_date = DateTime.utc_now() |> DateTime.add(-hours, :hour)
@@ -310,7 +310,7 @@ defmodule EveDmv.Contexts.SystemAnalysis do
   @doc """
   Detects threat escalations in systems based on activity spikes.
   """
-  @spec detect_escalations(keyword()) :: {:ok, list(map())} | {:error, atom()}
+  @spec detect_escalations(keyword()) :: {:ok, list(map())} | {:error, term()}
   def detect_escalations(opts \\ []) do
     # Look at last 6 hours
     hours = Keyword.get(opts, :hours, 6)

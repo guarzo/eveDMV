@@ -233,9 +233,9 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
   # Private functions
 
   defp setup_signal_handlers do
-    # Register for SIGTERM and SIGINT signals
+    # Register for SIGTERM signal (SIGINT is not supported by :os.set_signal/2)
     :os.set_signal(:sigterm, :handle)
-    :os.set_signal(:sigint, :handle)
+    # trap_exit handles SIGINT via Erlang VM's internal handling
     Process.flag(:trap_exit, true)
   rescue
     _ ->

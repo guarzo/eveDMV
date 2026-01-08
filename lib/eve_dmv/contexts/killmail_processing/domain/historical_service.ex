@@ -211,8 +211,4 @@ defmodule EveDmv.Contexts.KillmailProcessing.Domain.HistoricalService do
 
     successful_imports
   end
-
-  # NOTE: Removed placeholder implementation of fetch_character_killmails
-  # This function returned empty list and violated the "no placeholder" rule
-  # If historical killmails are needed, implement with real zkillboard/ESI integration
 end

@@ -637,30 +637,51 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
   end
 
   defp fetch_mutual_encounters(char1_id, char2_id) do
+    # Optimized: Uses participants table instead of JSONB extraction
     # Find killmails where these characters fought each other
-    query =
-      from(k in KillmailRaw,
-        where:
-          (fragment("?->>'character_id' = ?", k.victim, ^to_string(char1_id)) and
-             fragment(
-               "EXISTS (SELECT 1 FROM jsonb_array_elements(?) AS a WHERE a->>'character_id' = ?)",
-               k.attackers,
-               ^to_string(char2_id)
-             )) or
-            (fragment("?->>'character_id' = ?", k.victim, ^to_string(char2_id)) and
-               fragment(
-                 "EXISTS (SELECT 1 FROM jsonb_array_elements(?) AS a WHERE a->>'character_id' = ?)",
-                 k.attackers,
-                 ^to_string(char1_id)
-               )),
-        order_by: [desc: k.killmail_time],
-        limit: 50
+    # (char1 killed char2 OR char2 killed char1)
+    query = """
+    SELECT k.*
+    FROM killmails_raw k
+    WHERE (
+      -- Char1 was victim, Char2 was attacker
+      k.victim_character_id = $1
+      AND EXISTS (
+        SELECT 1 FROM participants p
+        WHERE p.killmail_id = k.killmail_id
+          AND p.killmail_time = k.killmail_time
+          AND p.character_id = $2
+          AND p.is_victim = false
       )
+    ) OR (
+      -- Char2 was victim, Char1 was attacker
+      k.victim_character_id = $2
+      AND EXISTS (
+        SELECT 1 FROM participants p
+        WHERE p.killmail_id = k.killmail_id
+          AND p.killmail_time = k.killmail_time
+          AND p.character_id = $1
+          AND p.is_victim = false
+      )
+    )
+    ORDER BY k.killmail_time DESC
+    LIMIT 50
+    """
 
-    case EveDmv.Repo.all(query) do
-      encounters when is_list(encounters) -> {:ok, encounters}
-      _ -> {:ok, []}
+    case EveDmv.Repo.query(query, [char1_id, char2_id]) do
+      {:ok, %{rows: rows, columns: columns}} ->
+        encounters = Enum.map(rows, fn row ->
+          Enum.zip(columns, row) |> Map.new() |> atomize_keys()
+        end)
+        {:ok, encounters}
+
+      _ ->
+        {:ok, []}
     end
+  end
+
+  defp atomize_keys(map) do
+    Map.new(map, fn {k, v} -> {String.to_atom(k), v} end)
   end
 
   defp summarize_character(char_data) do

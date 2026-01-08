@@ -192,7 +192,7 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.RequirementsBuilder do
         role = if role == :unknown, do: defaults.role, else: Atom.to_string(role)
 
         category = EveDmv.StaticData.get_ship_category(type_id)
-        category_str = if category, do: Atom.to_string(category), else: defaults.category
+        category_str = Atom.to_string(category)
 
         # Estimate cost based on ship category and role, with fallback to default
         estimated_cost =
@@ -454,7 +454,6 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.RequirementsBuilder do
   # Parse type_id string to integer, returns nil for unknown ships
   defp parse_type_id("unknown_" <> _), do: nil
   defp parse_type_id(type_id) when is_binary(type_id), do: String.to_integer(type_id)
-  defp parse_type_id(type_id) when is_integer(type_id), do: type_id
 
   # Safely convert role to atom, defaulting to :unknown for invalid roles
   defp safe_to_atom(role) when is_atom(role), do: role

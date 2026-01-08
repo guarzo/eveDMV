@@ -55,7 +55,7 @@ defmodule EveDmv.Eve.StaticDataLoader.JsonlParser do
     if File.exists?(file_path) do
       stream =
         file_path
-        |> File.stream!([], :line)
+        |> File.stream!(:line, [])
         |> Stream.map(&String.trim/1)
         |> Stream.reject(&(&1 == ""))
         |> Stream.map(&parse_line/1)

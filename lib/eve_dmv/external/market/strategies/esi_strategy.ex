@@ -45,13 +45,6 @@ defmodule EveDmv.Market.Strategies.EsiStrategy do
 
             order_list when is_list(order_list) ->
               order_list
-
-            other ->
-              Logger.warning(
-                "ESI strategy: unexpected orders format for #{type_id}: #{inspect(other)}"
-              )
-
-              []
           end
 
         Logger.debug("ESI strategy received #{length(actual_orders)} orders for type #{type_id}")

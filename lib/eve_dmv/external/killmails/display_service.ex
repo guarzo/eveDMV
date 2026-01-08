@@ -78,6 +78,64 @@ defmodule EveDmv.Killmails.DisplayService do
   end
 
   def build_killmail_display(killmail_data) do
+    # Use pre-computed display fields from KillmailBroadcaster when available
+    case killmail_data do
+      %{display: %{}, victim: victim_data} when is_map(victim_data) ->
+        # Use optimized format from KillmailBroadcaster
+        build_from_optimized_payload(killmail_data)
+
+      _ ->
+        # Legacy format - do full processing
+        build_from_raw_data(killmail_data)
+    end
+  end
+
+  # Build display from optimized payload with pre-computed fields
+  defp build_from_optimized_payload(payload) do
+    victim = payload[:victim] || payload["victim"] || %{}
+    system_id = payload[:solar_system_id] || payload["solar_system_id"]
+    display = payload[:display] || payload["display"] || %{}
+
+    # Get system security info (this is cached and fast)
+    system_security = NameResolver.system_security(system_id)
+
+    # Ship name from payload, with fallback to resolver if missing
+    victim_ship_name =
+      case victim[:ship_name] || victim["ship_name"] do
+        nil -> NameResolver.ship_name(victim[:ship_type_id] || victim["ship_type_id"])
+        "Unknown Ship" -> NameResolver.ship_name(victim[:ship_type_id] || victim["ship_type_id"])
+        name -> name
+      end
+
+    %{
+      id: generate_killmail_id(payload),
+      killmail_id: payload[:killmail_id] || payload["killmail_id"],
+      killmail_time: payload[:killmail_time] || payload["killmail_time"],
+      victim_character_id: victim[:character_id] || victim["character_id"],
+      victim_character_name:
+        victim[:character_name] || victim["character_name"] || "Unknown Pilot",
+      victim_corporation_name:
+        victim[:corporation_name] || victim["corporation_name"] || "Unknown Corp",
+      victim_alliance_name: victim[:alliance_name] || victim["alliance_name"],
+      victim_ship_name: victim_ship_name,
+      solar_system_id: system_id,
+      solar_system_name:
+        payload[:solar_system_name] || payload["solar_system_name"] || "Unknown System",
+      security_class: system_security.class,
+      security_color: system_security.color,
+      security_status: system_security.status,
+      total_value: payload[:total_value] || payload["total_value"] || Decimal.new(0),
+      ship_value: payload[:ship_value] || payload["ship_value"],
+      attacker_count: payload[:attacker_count] || payload["attacker_count"] || 0,
+      final_blow_character_id: nil,
+      final_blow_character_name: nil,
+      age_minutes: 0,
+      is_expensive: display[:is_high_value] || display["is_high_value"] || false
+    }
+  end
+
+  # Build display from raw wanderer-kills data (legacy path)
+  defp build_from_raw_data(killmail_data) do
     # Handle both wanderer-kills formats:
     # 1. Separate victim/attackers fields
     # 2. Participants array with is_victim flag

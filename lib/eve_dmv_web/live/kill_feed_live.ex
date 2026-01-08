@@ -46,7 +46,9 @@ defmodule EveDmvWeb.KillFeedLive do
       |> assign(:offset, page_data.next_offset)
       |> stream(:killmail_stream, page_data.killmails)
 
-    {:ok, socket}
+    # Use temporary_assigns to clear killmails from process memory after render
+    # The stream handles DOM updates, so we don't need to keep the full list in memory
+    {:ok, socket, temporary_assigns: [killmails: []]}
   end
 
   @impl Phoenix.LiveView

@@ -36,12 +36,15 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.OperationalPa
   defp get_corporation_activity(corporation_id, days) do
     cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -days * 86_400, :second)
 
+    # Use participants table for efficient indexed lookup instead of JSONB search
     query =
-      from(k in "killmails_raw",
+      from(p in "participants",
         where:
-          k.victim_corporation_id == ^corporation_id or
-            fragment("? @> ?::jsonb", k.data, ^%{attackers: [%{corporation_id: corporation_id}]}),
-        where: k.killmail_time > ^cutoff_date,
+          p.corporation_id == ^corporation_id and
+            p.killmail_time > ^cutoff_date and
+            p.is_victim == false,
+        join: k in "killmails_raw",
+        on: k.killmail_id == p.killmail_id and k.killmail_time == p.killmail_time,
         select: %{
           killmail_id: k.killmail_id,
           killmail_time: k.killmail_time,
@@ -50,8 +53,9 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.OperationalPa
           victim_corporation_id: k.victim_corporation_id,
           attacker_count: k.attacker_count,
           total_value: k.total_value,
-          data: k.data
+          raw_data: k.raw_data
         },
+        distinct: true,
         limit: 5000
       )
 

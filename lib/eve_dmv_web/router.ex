@@ -55,6 +55,27 @@ defmodule EveDmvWeb.Router do
     plug(EveDmvWeb.Plugs.RequireAdmin)
   end
 
+  # Cached API pipeline for semi-static data (changes occasionally)
+  # Used for analysis endpoints that can be cached for 1 hour
+  pipeline :cached_api do
+    plug(:accepts, ["json"])
+    plug(EveDmvWeb.Plugs.RequestTimer)
+    plug(EveDmvWeb.Plugs.SimpleRateLimit, limit: 100, window: 60_000)
+    plug(EveDmvWeb.Plugs.CacheControl, :semi_static)
+    plug(EveDmvWeb.Plugs.ConditionalGet)
+    plug(:load_from_bearer)
+  end
+
+  # Cached API pipeline for static EVE data (rarely changes)
+  # Used for item types, solar systems, etc. - cached for 24 hours
+  pipeline :cached_api_static do
+    plug(:accepts, ["json"])
+    plug(EveDmvWeb.Plugs.RequestTimer)
+    plug(EveDmvWeb.Plugs.SimpleRateLimit, limit: 100, window: 60_000)
+    plug(EveDmvWeb.Plugs.CacheControl, :static)
+    plug(EveDmvWeb.Plugs.ConditionalGet)
+  end
+
   # Handle .well-known requests (Chrome DevTools, etc.) - return 204 No Content
   scope "/.well-known", EveDmvWeb do
     get("/*path", WellKnownController, :index)
@@ -161,30 +182,39 @@ defmodule EveDmvWeb.Router do
     get("/health", HealthController, :check)
   end
 
-  # Authenticated API endpoints
+  # Comprehensive health endpoints for monitoring
+  scope "/health", EveDmvWeb do
+    pipe_through(:api)
+
+    get("/status", HealthController, :index)
+    get("/detailed", HealthController, :detailed)
+  end
+
+  # Authenticated API endpoints (non-cacheable - user-specific or mutations)
   scope "/api/v1", EveDmvWeb.Api do
     pipe_through([:api, :load_from_bearer])
 
-    # API key management (requires user authentication)
+    # API key management (requires user authentication, user-specific)
     resources "/api_keys", ApiKeysController, only: [:index, :create, :delete] do
       post("/validate", ApiKeysController, :validate)
     end
 
-    # Sprint 8: Battle Intelligence APIs
+    post("/battles/:id/share", BattleShareController, :create)
+    post("/battles/:id/rate", BattleRatingController, :create)
+  end
+
+  # Cached API endpoints for intelligence/analysis data (semi-static, 1 hour cache)
+  scope "/api/v1", EveDmvWeb.Api do
+    pipe_through([:cached_api])
+
     get("/battles/:id/intelligence", BattleIntelligenceController, :show)
     get("/battles/:id/multi_system", MultiSystemBattleController, :show)
 
-    # Sprint 8: Character Intelligence APIs
     get("/characters/:id/threat_score", CharacterThreatController, :show)
     get("/characters/:id/behavioral_patterns", CharacterBehaviorController, :show)
 
-    # Sprint 8: Corporation Intelligence APIs
     get("/corporations/:id/doctrine_analysis", CorporationDoctrineController, :show)
     get("/corporations/:id/threat_assessment", CorporationThreatController, :show)
-
-    # Sprint 8: Battle Sharing APIs
-    post("/battles/:id/share", BattleShareController, :create)
-    post("/battles/:id/rate", BattleRatingController, :create)
   end
 
   # Internal API endpoints (requires API key authentication)
@@ -214,6 +244,7 @@ defmodule EveDmvWeb.Router do
 
     live("/users", Admin.UsersLive)
     live("/system", Admin.SystemLive)
+    live("/health", Admin.SystemHealthLive)
   end
 
   # Production performance monitoring (admin only)

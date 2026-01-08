@@ -461,6 +461,177 @@ defmodule EveDmv.Killmails.Participant do
 
       prepare(build(sort: [killmail_time: :desc], load: [:ship_type, :participation_type]))
     end
+
+    read :character_kill_stats do
+      description("Get aggregated kill statistics for a character")
+
+      argument :character_id, :integer do
+        allow_nil?(false)
+        description("Character ID to get stats for")
+      end
+
+      argument :since_days, :integer do
+        allow_nil?(false)
+        default(90)
+        description("Number of days to look back")
+      end
+
+      filter(expr(character_id == ^arg(:character_id)))
+      filter(expr(killmail_time >= ago(^arg(:since_days), :day)))
+      filter(expr(is_victim == false))
+
+      prepare(fn query, _context ->
+        query
+        |> Ash.Query.aggregate(:total_kills, :count)
+        |> Ash.Query.aggregate(:total_damage, :sum, :damage_done)
+        |> Ash.Query.aggregate(:final_blows, :count, filter: expr(final_blow == true))
+      end)
+    end
+
+    read :character_loss_stats do
+      description("Get aggregated loss statistics for a character")
+
+      argument :character_id, :integer do
+        allow_nil?(false)
+        description("Character ID to get stats for")
+      end
+
+      argument :since_days, :integer do
+        allow_nil?(false)
+        default(90)
+        description("Number of days to look back")
+      end
+
+      filter(expr(character_id == ^arg(:character_id)))
+      filter(expr(killmail_time >= ago(^arg(:since_days), :day)))
+      filter(expr(is_victim == true))
+
+      prepare(fn query, _context ->
+        query
+        |> Ash.Query.aggregate(:total_losses, :count)
+      end)
+    end
+
+    read :character_ship_usage do
+      description("Get ship usage breakdown for a character")
+
+      argument :character_id, :integer do
+        allow_nil?(false)
+        description("Character ID to get ship usage for")
+      end
+
+      argument :since_days, :integer do
+        allow_nil?(false)
+        default(90)
+        description("Number of days to look back")
+      end
+
+      argument :limit, :integer do
+        allow_nil?(false)
+        default(10)
+        description("Maximum number of ships to return")
+      end
+
+      filter(expr(character_id == ^arg(:character_id)))
+      filter(expr(killmail_time >= ago(^arg(:since_days), :day)))
+      filter(expr(is_victim == false))
+
+      prepare(fn query, context ->
+        query
+        |> Ash.Query.aggregate(:usage_count, :count)
+        |> Ash.Query.distinct([:ship_type_id, :ship_name])
+        |> Ash.Query.sort(usage_count: :desc)
+        |> Ash.Query.limit(context.arguments.limit)
+        |> Ash.Query.select([:ship_type_id, :ship_name])
+      end)
+    end
+
+    # Bulk read actions for efficient multi-record fetching
+
+    read :by_killmail_ids do
+      description("Get participants for multiple killmails efficiently")
+
+      argument :killmail_ids, {:array, :integer} do
+        allow_nil?(false)
+        description("List of killmail IDs to fetch participants for")
+      end
+
+      filter(expr(killmail_id in ^arg(:killmail_ids)))
+
+      prepare(build(sort: [:killmail_id, :is_victim, {:damage_done, :desc}]))
+    end
+
+    read :by_character_ids do
+      description("Get recent activity for multiple characters")
+
+      argument :character_ids, {:array, :integer} do
+        allow_nil?(false)
+        description("List of character IDs to fetch activity for")
+      end
+
+      argument :since_days, :integer do
+        allow_nil?(false)
+        default(90)
+        description("Number of days to look back")
+      end
+
+      filter(expr(character_id in ^arg(:character_ids)))
+      filter(expr(killmail_time >= ago(^arg(:since_days), :day)))
+
+      prepare(build(sort: [killmail_time: :desc]))
+    end
+
+    read :corporation_activity do
+      description("Get corporation member activity with aggregation")
+
+      argument :corporation_id, :integer do
+        allow_nil?(false)
+        description("Corporation ID to get activity for")
+      end
+
+      argument :since_days, :integer do
+        allow_nil?(false)
+        default(30)
+        description("Number of days to look back")
+      end
+
+      filter(expr(corporation_id == ^arg(:corporation_id)))
+      filter(expr(killmail_time >= ago(^arg(:since_days), :day)))
+
+      prepare(fn query, _context ->
+        query
+        |> Ash.Query.aggregate(:total_activity, :count)
+        |> Ash.Query.aggregate(:total_kills, :count, filter: expr(is_victim == false))
+        |> Ash.Query.aggregate(:total_losses, :count, filter: expr(is_victim == true))
+        |> Ash.Query.aggregate(:unique_members, :count, field: :character_id, uniq?: true)
+      end)
+    end
+
+    read :system_activity_summary do
+      description("Get activity summary for a solar system")
+
+      argument :system_id, :integer do
+        allow_nil?(false)
+        description("Solar system ID to get activity for")
+      end
+
+      argument :since_hours, :integer do
+        allow_nil?(false)
+        default(24)
+        description("Number of hours to look back")
+      end
+
+      filter(expr(solar_system_id == ^arg(:system_id)))
+      filter(expr(killmail_time >= ago(^arg(:since_hours), :hour)))
+
+      prepare(fn query, _context ->
+        query
+        |> Ash.Query.aggregate(:total_participants, :count)
+        |> Ash.Query.aggregate(:unique_characters, :count, field: :character_id, uniq?: true)
+        |> Ash.Query.aggregate(:unique_corporations, :count, field: :corporation_id, uniq?: true)
+        |> Ash.Query.aggregate(:total_kills, :count, filter: expr(is_victim == false))
+      end)
+    end
   end
 
   # Aggregates

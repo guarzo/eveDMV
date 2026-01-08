@@ -152,25 +152,37 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
   end
 
   # Get attacker counts for a list of killmails (excluding victims)
+  # Uses a single bulk query instead of N queries to avoid N+1 performance issues
   defp get_attacker_counts_for_killmails(killmail_keys) do
-    killmail_keys
-    |> Enum.map(fn {killmail_id, killmail_time} ->
-      case Ash.read(Participant,
-             filter: %{
-               killmail_id: killmail_id,
-               killmail_time: killmail_time,
-               is_victim: false
-             },
-             domain: Api
-           ) do
-        {:ok, attackers} ->
-          {{killmail_id, killmail_time}, length(attackers)}
+    if Enum.empty?(killmail_keys) do
+      %{}
+    else
+      # Extract killmail_ids for the query
+      killmail_ids = Enum.map(killmail_keys, fn {id, _time} -> id end)
+
+      query = """
+      SELECT killmail_id, killmail_time, COUNT(*) as attacker_count
+      FROM participants
+      WHERE killmail_id = ANY($1::bigint[])
+        AND is_victim = false
+      GROUP BY killmail_id, killmail_time
+      """
+
+      case EveDmv.Repo.query(query, [killmail_ids]) do
+        {:ok, %{rows: rows}} ->
+          rows
+          |> Enum.map(fn [killmail_id, killmail_time, count] ->
+            {{killmail_id, killmail_time}, count}
+          end)
+          |> Map.new()
 
         {:error, _} ->
-          {{killmail_id, killmail_time}, 1}
+          # Fallback: return 1 for all killmails
+          killmail_keys
+          |> Enum.map(fn key -> {key, 1} end)
+          |> Map.new()
       end
-    end)
-    |> Map.new()
+    end
   end
 
   # Build character-level metrics map

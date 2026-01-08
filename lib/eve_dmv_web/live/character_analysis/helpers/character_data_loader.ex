@@ -124,9 +124,8 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
     # Get external groups analysis (15-day window for more recent activity)
     fifteen_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-15 * 24 * 60 * 60, :second)
 
-    external_groups =
-      CombatIntelligence.get_external_groups(character_id, fifteen_days_ago)
-      |> unwrap_or_default([])
+    # get_external_groups returns [] on error, so no unwrapping needed
+    external_groups = CombatIntelligence.get_external_groups(character_id, fifteen_days_ago)
 
     # Get gang size patterns - transform from list to map format for template
     gang_size_patterns =

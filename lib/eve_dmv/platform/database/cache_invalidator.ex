@@ -4,11 +4,23 @@ defmodule EveDmv.Platform.Database.CacheInvalidator do
 
   Provides pattern-based and event-driven cache invalidation to ensure
   cached data remains consistent when underlying data changes.
+
+  ## Selective Invalidation
+
+  This module supports selective invalidation based on actual changes to reduce
+  unnecessary cache clearing. Use `invalidate_for_killmail/1` for targeted
+  invalidation of only the entities involved in a killmail.
+
+  ## Change Detection
+
+  Use `maybe_invalidate_*` functions to check if content has actually changed
+  before invalidating. This improves cache hit rates by preserving valid entries.
   """
 
   use GenServer
 
   alias EveDmv.Platform.Cache.QueryCache
+  alias EveDmv.Platform.Database.CacheHashManager
   alias EveDmv.Platform.Database.CacheWarmer
   alias Phoenix.PubSub
 
@@ -428,5 +440,225 @@ defmodule EveDmv.Platform.Database.CacheInvalidator do
   def warm_after_invalidation(cache_type, entity_id) do
     # Trigger cache warming after invalidation
     CacheWarmer.warm_specific(to_string(cache_type), [entity_id])
+  end
+
+  # ============================================================================
+  # Selective Invalidation Functions (Stream 10 improvements)
+  # ============================================================================
+
+  @doc """
+  Selectively invalidate caches for entities involved in a killmail.
+
+  Only invalidates caches for the specific characters, corporations, alliances,
+  and system involved in the killmail, rather than using broad pattern-based
+  invalidation. This improves cache hit rates.
+
+  ## Example
+
+      iex> invalidate_for_killmail(killmail)
+      :ok
+
+  """
+  def invalidate_for_killmail(%{} = killmail) do
+    start_time = System.monotonic_time(:microsecond)
+
+    # Extract affected entities from victim
+    victim_entities = [
+      {:character, Map.get(killmail, :victim_character_id)},
+      {:corporation, Map.get(killmail, :victim_corporation_id)},
+      {:alliance, Map.get(killmail, :victim_alliance_id)},
+      {:system, Map.get(killmail, :solar_system_id)}
+    ]
+
+    # Extract affected entities from attackers
+    attacker_entities =
+      case Map.get(killmail, :raw_data, %{}) do
+        %{"attackers" => attackers} when is_list(attackers) ->
+          Enum.flat_map(attackers, fn attacker ->
+            [
+              {:character, Map.get(attacker, "character_id")},
+              {:corporation, Map.get(attacker, "corporation_id")},
+              {:alliance, Map.get(attacker, "alliance_id")}
+            ]
+          end)
+
+        _ ->
+          []
+      end
+
+    # Combine, filter nil IDs, and deduplicate
+    affected_entities =
+      (victim_entities ++ attacker_entities)
+      |> Enum.reject(fn {_, id} -> is_nil(id) end)
+      |> Enum.uniq()
+
+    # Invalidate each entity
+    invalidated_count =
+      Enum.reduce(affected_entities, 0, fn entity, count ->
+        count + invalidate_entity(entity)
+      end)
+
+    duration_us = System.monotonic_time(:microsecond) - start_time
+
+    # Emit telemetry
+    emit_invalidation_telemetry(:selective_killmail, %{
+      entities_count: length(affected_entities),
+      invalidated_count: invalidated_count,
+      duration_us: duration_us,
+      killmail_id: Map.get(killmail, :killmail_id)
+    })
+
+    Logger.debug(
+      "Selective invalidation for killmail #{Map.get(killmail, :killmail_id)}: " <>
+        "#{invalidated_count} entries from #{length(affected_entities)} entities in #{duration_us}µs"
+    )
+
+    :ok
+  end
+
+  # Entity-specific invalidation that only clears time-sensitive caches
+  defp invalidate_entity({:character, id}) when not is_nil(id) do
+    # Only invalidate time-sensitive character caches
+    # Don't invalidate historical analysis - it's expensive to recompute
+    keys_invalidated =
+      [
+        "character_recent_activity_#{id}",
+        "character_stats_#{id}",
+        "character_activity_#{id}"
+      ]
+      |> Enum.reduce(0, fn key, count ->
+        QueryCache.delete(key)
+        count + 1
+      end)
+
+    keys_invalidated
+  end
+
+  defp invalidate_entity({:corporation, id}) when not is_nil(id) do
+    keys_invalidated =
+      [
+        "corp_activity_#{id}",
+        "corp_stats_#{id}",
+        "corporation_activity_#{id}"
+      ]
+      |> Enum.reduce(0, fn key, count ->
+        QueryCache.delete(key)
+        count + 1
+      end)
+
+    keys_invalidated
+  end
+
+  defp invalidate_entity({:alliance, id}) when not is_nil(id) do
+    keys_invalidated =
+      [
+        "alliance_activity_#{id}",
+        "alliance_stats_#{id}"
+      ]
+      |> Enum.reduce(0, fn key, count ->
+        QueryCache.delete(key)
+        count + 1
+      end)
+
+    keys_invalidated
+  end
+
+  defp invalidate_entity({:system, id}) when not is_nil(id) do
+    # System info doesn't change from killmails, only activity does
+    keys_invalidated =
+      [
+        "system_activity_#{id}",
+        "system_recent_kills_#{id}"
+      ]
+      |> Enum.reduce(0, fn key, count ->
+        QueryCache.delete(key)
+        count + 1
+      end)
+
+    keys_invalidated
+  end
+
+  defp invalidate_entity(_), do: 0
+
+  # ============================================================================
+  # Change Detection Functions (Stream 10 improvements)
+  # ============================================================================
+
+  @doc """
+  Conditionally invalidate a character cache only if content has changed.
+
+  Uses CacheHashManager to detect actual changes before invalidating.
+  Returns `:invalidated` if cache was invalidated, `:unchanged` if preserved.
+
+  ## Example
+
+      iex> maybe_invalidate_character(12345, %{kills: 100, losses: 50})
+      :unchanged
+
+  """
+  def maybe_invalidate_character(character_id, new_data) when is_integer(character_id) do
+    cache_key = "character_analysis_#{character_id}"
+    do_maybe_invalidate(cache_key, new_data, :character, character_id)
+  end
+
+  @doc """
+  Conditionally invalidate a corporation cache only if content has changed.
+  """
+  def maybe_invalidate_corporation(corporation_id, new_data) when is_integer(corporation_id) do
+    cache_key = "corp_analysis_#{corporation_id}"
+    do_maybe_invalidate(cache_key, new_data, :corporation, corporation_id)
+  end
+
+  @doc """
+  Conditionally invalidate an alliance cache only if content has changed.
+  """
+  def maybe_invalidate_alliance(alliance_id, new_data) when is_integer(alliance_id) do
+    cache_key = "alliance_analysis_#{alliance_id}"
+    do_maybe_invalidate(cache_key, new_data, :alliance, alliance_id)
+  end
+
+  @doc """
+  Conditionally invalidate a system cache only if content has changed.
+  """
+  def maybe_invalidate_system(system_id, new_data) when is_integer(system_id) do
+    cache_key = "system_analysis_#{system_id}"
+    do_maybe_invalidate(cache_key, new_data, :system, system_id)
+  end
+
+  defp do_maybe_invalidate(cache_key, new_data, entity_type, entity_id) do
+    start_time = System.monotonic_time(:microsecond)
+
+    result =
+      if CacheHashManager.content_changed?(cache_key, new_data) do
+        QueryCache.delete(cache_key)
+        CacheHashManager.store_hash(cache_key, new_data)
+        :invalidated
+      else
+        :unchanged
+      end
+
+    duration_us = System.monotonic_time(:microsecond) - start_time
+
+    # Emit telemetry for monitoring
+    emit_invalidation_telemetry(:conditional, %{
+      entity_type: entity_type,
+      entity_id: entity_id,
+      result: result,
+      duration_us: duration_us
+    })
+
+    result
+  end
+
+  # ============================================================================
+  # Telemetry Functions (Stream 10 improvements)
+  # ============================================================================
+
+  defp emit_invalidation_telemetry(type, metadata) do
+    :telemetry.execute(
+      [:eve_dmv, :cache, :invalidation],
+      %{count: 1, duration_us: Map.get(metadata, :duration_us, 0)},
+      Map.put(metadata, :type, type)
+    )
   end
 end

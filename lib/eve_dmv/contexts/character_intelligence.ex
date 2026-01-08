@@ -220,7 +220,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Gets a comprehensive intelligence report for a character.
   Combines threat scoring, behavioral analysis, and performance metrics.
   """
-  @spec get_character_intelligence_report(integer()) :: {:ok, map()} | {:error, atom()}
+  @spec get_character_intelligence_report(integer()) :: {:ok, map()}
   def get_character_intelligence_report(character_id) do
     with {:ok, threat_data} <- analyze_character_threat(character_id),
          {:ok, character_info} <- fetch_character_info(character_id) do
@@ -231,9 +231,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
       {:error, :insufficient_data} ->
         # Return a minimal report for characters with no killmail data
         {:ok, build_minimal_report(character_id)}
-
-      {:error, reason} ->
-        {:error, reason}
     end
   end
 
@@ -302,17 +299,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
        alliance_name: alliance_name
      }}
   end
-
-  defp extract_character_info(_),
-    do:
-      {:ok,
-       %{
-         name: "Unknown Pilot",
-         corporation_id: nil,
-         corporation_name: "Unknown",
-         alliance_id: nil,
-         alliance_name: nil
-       }}
 
   defp build_intelligence_report(character_id, threat_data, character_info) do
     # Extract dimensions from threat_data, converting to template format
@@ -534,12 +520,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   end
 
   defp build_minimal_report(character_id) do
-    # Fetch character info even for minimal reports
-    character_info =
-      case fetch_character_info(character_id) do
-        {:ok, info} -> info
-        _ -> %{name: "Unknown Pilot", corporation_name: "Unknown", alliance_name: nil}
-      end
+    # Fetch character info even for minimal reports (always returns {:ok, info})
+    {:ok, character_info} = fetch_character_info(character_id)
 
     %{
       character_id: character_id,
@@ -777,7 +759,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Identifies patterns in group operations.
   Returns operation types, temporal patterns, geographic patterns, and coordination level.
   """
-  @spec analyze_group_patterns([integer()]) :: {:ok, map()} | {:error, atom()}
+  @spec analyze_group_patterns([integer()]) :: {:ok, map()}
   def analyze_group_patterns(character_ids) when is_list(character_ids) do
     CrossCharacterAnalyzer.analyze_group_patterns(character_ids)
   end

@@ -224,15 +224,18 @@ defmodule EveDmv.Contexts.FleetOperations.Analyzers.CompositionAnalyzer do
 
   # Analyze ship role based on recent killmail fitting data
   defp get_role_from_killmail_analysis(ship_type_id) do
-    # Query recent killmails for this ship type to analyze fitting patterns
-    # Query killmails where this ship type was used
+    # Optimized: Uses participants table instead of JSONB extraction
+    # Query killmails where this ship type was used (as victim or attacker)
     query = """
     SELECT km.raw_data
     FROM killmails_raw km
     WHERE km.victim_ship_type_id = $1
        OR EXISTS (
-         SELECT 1 FROM jsonb_array_elements(km.raw_data->'attackers') as attacker
-         WHERE (attacker->>'ship_type_id')::integer = $1
+         SELECT 1 FROM participants p
+         WHERE p.killmail_id = km.killmail_id
+           AND p.killmail_time = km.killmail_time
+           AND p.ship_type_id = $1
+           AND p.is_victim = false
        )
     ORDER BY km.killmail_time DESC
     LIMIT 20

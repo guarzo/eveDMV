@@ -58,6 +58,67 @@ defmodule EveDmv.Platform.Database.CacheHashManager do
     GenServer.call(__MODULE__, :get_stats)
   end
 
+  @doc """
+  Check if content has changed for a given cache key.
+
+  Computes a hash of the new data and compares it with the stored hash.
+  Returns true if the content has changed (or no hash exists), false otherwise.
+
+  This is used for selective invalidation - only invalidate if actual data changed.
+  """
+  @spec content_changed?(String.t(), term()) :: boolean()
+  def content_changed?(cache_key, new_data) do
+    new_hash = compute_content_hash(new_data)
+
+    case :ets.lookup(@hash_table, cache_key) do
+      [{^cache_key, stored_hash, expiry}] ->
+        now = System.system_time(:second)
+
+        if now < expiry do
+          # Hash exists and not expired - compare
+          new_hash != stored_hash
+        else
+          # Hash expired - consider changed
+          :ets.delete(@hash_table, cache_key)
+          true
+        end
+
+      [] ->
+        # No hash found - consider changed
+        true
+    end
+  rescue
+    _ -> true
+  end
+
+  @doc """
+  Store a hash for the given cache key and data.
+
+  This should be called after invalidation to store the new hash
+  for future comparisons.
+  """
+  @spec store_hash(String.t(), term()) :: :ok
+  def store_hash(cache_key, data) do
+    hash = compute_content_hash(data)
+    expiry = System.system_time(:second) + div(@hash_ttl, 1000)
+    :ets.insert(@hash_table, {cache_key, hash, expiry})
+    :ok
+  rescue
+    _ -> :ok
+  end
+
+  # Compute a deterministic hash from data
+  defp compute_content_hash(data) do
+    content =
+      case data do
+        %{} = map -> map |> Map.to_list() |> Enum.sort() |> :erlang.term_to_binary()
+        list when is_list(list) -> list |> Enum.sort() |> :erlang.term_to_binary()
+        other -> :erlang.term_to_binary(other)
+      end
+
+    Base.encode16(:crypto.hash(:sha256, content))
+  end
+
   # Server callbacks
 
   @impl GenServer

@@ -185,7 +185,39 @@ defmodule EveDmv.Killmails.KillmailRaw do
 
     # Custom read actions for common queries
     read :recent_kills do
-      description("Get recent killmails ordered by time")
+      description("Get recent killmails within specified time window")
+
+      argument :hours, :integer do
+        allow_nil?(false)
+        default(24)
+        description("Number of hours to look back")
+      end
+
+      argument :system_id, :integer do
+        allow_nil?(true)
+        description("Optional: filter by solar system ID")
+      end
+
+      filter(expr(killmail_time >= ago(^arg(:hours), :hour)))
+      filter(expr(is_nil(^arg(:system_id)) or solar_system_id == ^arg(:system_id)))
+
+      prepare(build(sort: [killmail_time: :desc], limit: 100))
+    end
+
+    read :by_date_range do
+      description("Get killmails within a date range")
+
+      argument :start_date, :utc_datetime do
+        allow_nil?(false)
+        description("Start of date range (inclusive)")
+      end
+
+      argument :end_date, :utc_datetime do
+        allow_nil?(false)
+        description("End of date range (inclusive)")
+      end
+
+      filter(expr(killmail_time >= ^arg(:start_date) and killmail_time <= ^arg(:end_date)))
 
       prepare(build(sort: [killmail_time: :desc]))
     end
@@ -303,10 +335,30 @@ defmodule EveDmv.Killmails.KillmailRaw do
       description("All participants (attackers and victim) in this killmail")
     end
 
+    has_many :attackers, EveDmv.Killmails.Participant do
+      source_attribute(:killmail_id)
+      destination_attribute(:killmail_id)
+      filter(expr(is_victim == false))
+      description("Only attackers in this killmail")
+    end
+
+    has_one :victim, EveDmv.Killmails.Participant do
+      source_attribute(:killmail_id)
+      destination_attribute(:killmail_id)
+      filter(expr(is_victim == true))
+      description("The victim in this killmail")
+    end
+
     belongs_to :solar_system, EveDmv.Eve.SolarSystem do
       source_attribute(:solar_system_id)
       destination_attribute(:system_id)
       description("Solar system where the kill occurred")
+    end
+
+    belongs_to :victim_ship_type, EveDmv.Eve.ItemType do
+      source_attribute(:victim_ship_type_id)
+      destination_attribute(:type_id)
+      description("Ship type that was destroyed")
     end
   end
 
@@ -340,9 +392,36 @@ defmodule EveDmv.Killmails.KillmailRaw do
       filter(expr(is_victim == false))
     end
 
+    count :calculated_attacker_count, :attackers do
+      description("Count of attackers (non-victim participants)")
+    end
+
     sum :total_attacker_damage, :participants, :damage_done do
       description("Total damage dealt by all attackers")
       filter(expr(is_victim == false))
+    end
+
+    sum :total_damage_dealt, :attackers, :damage_done do
+      description("Sum of all damage dealt by attackers")
+    end
+
+    first :final_blow_character_id, :attackers, :character_id do
+      filter(expr(final_blow == true))
+      description("Character who landed the final blow")
+    end
+
+    first :final_blow_character_name, :attackers, :character_name do
+      filter(expr(final_blow == true))
+      description("Name of character who landed the final blow")
+    end
+
+    first :top_damage_dealer_id, :attackers, :character_id do
+      sort([{:damage_done, :desc}])
+      description("Character who dealt the most damage")
+    end
+
+    max :max_single_damage, :attackers, :damage_done do
+      description("Highest damage from a single attacker")
     end
   end
 
@@ -378,6 +457,38 @@ defmodule EveDmv.Killmails.KillmailRaw do
     calculate(:is_high_value, :boolean,
       description: "True if kill value exceeds 1 billion ISK",
       calculation: expr(total_value > 1_000_000_000)
+    )
+
+    calculate(:is_small_gang, :boolean,
+      description: "True if this was a small gang kill (2-5 attackers)",
+      calculation: expr(attacker_count >= 2 and attacker_count <= 5)
+    )
+
+    calculate(:is_fleet_kill, :boolean,
+      description: "True if this was a fleet kill (>5 attackers)",
+      calculation: expr(attacker_count > 5)
+    )
+
+    calculate :gang_size_category, :string do
+      description("Categorical gang size classification: solo, small_gang, medium_gang, large_gang, fleet")
+
+      calculation(fn records, _context ->
+        Enum.map(records, fn killmail ->
+          cond do
+            killmail.attacker_count == 1 -> "solo"
+            killmail.attacker_count <= 5 -> "small_gang"
+            killmail.attacker_count <= 15 -> "medium_gang"
+            killmail.attacker_count <= 50 -> "large_gang"
+            true -> "fleet"
+          end
+        end)
+      end)
+    end
+
+    calculate(:kill_age_hours, :integer,
+      description: "Hours since this kill occurred",
+      calculation:
+        expr(fragment("EXTRACT(EPOCH FROM (NOW() - ?)) / 3600", killmail_time) |> type(:integer))
     )
 
     calculate :age_in_days, :integer do

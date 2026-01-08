@@ -8,7 +8,6 @@ defmodule EveDmv.Platform.Database.ConnectionPoolMonitor do
 
   use GenServer
 
-  alias DBConnection
   alias EveDmv.Repo
   alias EveDmv.Telemetry.PerformanceMonitor
 
@@ -103,6 +102,9 @@ defmodule EveDmv.Platform.Database.ConnectionPoolMonitor do
     # Track metrics
     track_telemetry_metrics(stats)
 
+    # Check pool health and emit alerts for critical conditions
+    check_pool_health(stats)
+
     # Update state
     new_history =
       Enum.take([%{timestamp: DateTime.utc_now(), stats: stats} | state.stats_history], 100)
@@ -116,15 +118,49 @@ defmodule EveDmv.Platform.Database.ConnectionPoolMonitor do
     pool_config = Application.get_env(:eve_dmv, Repo, [])
     pool_size = Keyword.get(pool_config, :pool_size, 10)
 
-    # DBConnection.status might not be available, use telemetry instead
+    # Query pg_stat_activity for actual connection information
+    query = """
+    SELECT
+      count(*) FILTER (WHERE state = 'active') as active,
+      count(*) FILTER (WHERE state = 'idle') as idle,
+      count(*) FILTER (WHERE state = 'idle in transaction') as idle_in_transaction,
+      count(*) FILTER (WHERE wait_event_type = 'Client' AND wait_event = 'ClientRead') as waiting_for_client,
+      count(*) as total
+    FROM pg_stat_activity
+    WHERE datname = current_database()
+      AND pid != pg_backend_pid()
+      AND backend_type = 'client backend'
+    """
+
+    {active, idle, idle_in_tx, _waiting_for_client, total} =
+      case Ecto.Adapters.SQL.query(Repo, query) do
+        {:ok, %{rows: [[active, idle, idle_in_tx, waiting, total]]}} ->
+          {active || 0, idle || 0, idle_in_tx || 0, waiting || 0, total || 0}
+
+        _ ->
+          # Fallback if query fails
+          {0, pool_size, 0, 0, pool_size}
+      end
+
+    # Calculate utilization based on active connections vs pool size
+    checked_out = active + idle_in_tx
+    available = max(0, pool_size - checked_out)
+    # Queue length estimated from connections exceeding pool size
+    queue_length = max(0, total - pool_size)
+    utilization = if pool_size > 0, do: checked_out / pool_size, else: 0.0
+
     stats = %{
       pool_size: pool_size,
-      checked_out: 0,
-      checked_in: pool_size,
-      available: pool_size,
-      queue_length: 0,
+      checked_out: checked_out,
+      checked_in: idle,
+      available: available,
+      queue_length: queue_length,
       max_connections: pool_size,
-      utilization: 0.0,
+      utilization: utilization,
+      active_connections: active,
+      idle_connections: idle,
+      idle_in_transaction: idle_in_tx,
+      total_connections: total,
       timestamp: DateTime.utc_now()
     }
 
@@ -219,7 +255,70 @@ defmodule EveDmv.Platform.Database.ConnectionPoolMonitor do
       PerformanceMonitor.track_database_metric("queue_length", stats.queue_length)
       PerformanceMonitor.track_database_metric("available_connections", stats.available)
       PerformanceMonitor.track_database_metric("checked_out_connections", stats.checked_out)
+
+      # Emit detailed telemetry events for monitoring dashboards
+      utilization_percent = stats.utilization * 100
+
+      :telemetry.execute(
+        [:eve_dmv, :database, :pool, :utilization],
+        %{value: utilization_percent},
+        %{}
+      )
+
+      :telemetry.execute(
+        [:eve_dmv, :database, :pool, :queue_length],
+        %{value: stats.queue_length},
+        %{}
+      )
+
+      :telemetry.execute(
+        [:eve_dmv, :database, :pool, :available],
+        %{value: stats.available},
+        %{}
+      )
     end
+  end
+
+  defp check_pool_health(stats) do
+    utilization_percent = Map.get(stats, :utilization, 0.0) * 100
+    queue_length = Map.get(stats, :queue_length, 0)
+
+    cond do
+      utilization_percent >= 95.0 ->
+        Logger.error(
+          "Database pool critical: #{Float.round(utilization_percent, 1)}% utilized, #{queue_length} waiting"
+        )
+
+        emit_alert(:pool_exhaustion, :critical, stats)
+
+      utilization_percent >= 80.0 ->
+        Logger.warning("Database pool warning: #{Float.round(utilization_percent, 1)}% utilized")
+        emit_alert(:pool_high_utilization, :warning, stats)
+
+      queue_length > 10 ->
+        Logger.warning("Database pool queue building: #{queue_length} waiting")
+        emit_alert(:pool_queue_building, :warning, stats)
+
+      true ->
+        :ok
+    end
+  end
+
+  defp emit_alert(type, severity, stats) do
+    utilization_percent = Map.get(stats, :utilization, 0.0) * 100
+    queue_length = Map.get(stats, :queue_length, 0)
+
+    :telemetry.execute(
+      [:eve_dmv, :database, :pool, :alert],
+      %{utilization: utilization_percent, queue_length: queue_length},
+      %{type: type, severity: severity}
+    )
+
+    Phoenix.PubSub.broadcast(
+      EveDmv.PubSub,
+      "performance:alerts",
+      {:pool_alert, type, severity, stats}
+    )
   end
 
   defp analyze_pool_health(state) do

@@ -14,9 +14,8 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
 
   @default_retry_delay 1000
   @max_retry_delay 30_000
-  # Sprint 15A: Memory optimization - prevent buffer overflow
-  # 1MB buffer limit
   @max_buffer_size 1_048_576
+  @trim_keep_size 524_288
   # Deduplication: Track last N killmail IDs to prevent duplicate processing
   # 1000 IDs should cover ~15-20 minutes of typical EVE activity
   @dedup_cache_size 1000
@@ -95,24 +94,48 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
   end
 
   def handle_info(%HTTPoison.AsyncChunk{chunk: chunk}, state) do
-    # Sprint 15A: Memory optimization - check buffer overflow before processing
     initial_combined_data = state.buffer <> chunk
 
     combined_data =
       if byte_size(initial_combined_data) > @max_buffer_size do
         Logger.warning(
-          "⚠️  SSE buffer overflow detected (#{byte_size(initial_combined_data)} bytes), resetting buffer"
+          "⚠️  SSE buffer overflow detected (#{byte_size(initial_combined_data)} bytes), trimming oldest data"
         )
 
-        # Reset buffer to prevent memory leaks, log for monitoring
+        # Emit telemetry for monitoring buffer overflow frequency
         :telemetry.execute(
           [:eve_dmv, :sse, :buffer_overflow],
           %{size: byte_size(initial_combined_data)},
           %{}
         )
 
-        # Keep only current chunk
-        chunk
+        # Keep last @trim_keep_size bytes (most recent events)
+        trimmed =
+          binary_part(
+            initial_combined_data,
+            byte_size(initial_combined_data) - @trim_keep_size,
+            @trim_keep_size
+          )
+
+        # Find next complete event boundary (double newline marks event end)
+        # This ensures we don't start processing in the middle of an event
+        case :binary.match(trimmed, "\n\n") do
+          {pos, _len} ->
+            # Skip to after the event boundary to start with a complete event
+            binary_part(trimmed, pos + 2, byte_size(trimmed) - pos - 2)
+
+          :nomatch ->
+            # No event boundary found, try single newline (might be Windows-style)
+            case :binary.match(trimmed, "\r\n\r\n") do
+              {pos, _len} ->
+                binary_part(trimmed, pos + 4, byte_size(trimmed) - pos - 4)
+
+              :nomatch ->
+                # No complete events in buffer, reset to prevent corruption
+                Logger.warning("No event boundary found in trimmed buffer, resetting")
+                ""
+            end
+        end
       else
         initial_combined_data
       end

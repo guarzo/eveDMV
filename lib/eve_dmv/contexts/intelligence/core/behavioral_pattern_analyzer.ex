@@ -219,7 +219,6 @@ defmodule EveDmv.Contexts.Intelligence.Core.BehavioralPatternAnalyzer do
   # Pattern matching in function heads instead of nested if statements
   defp calculate_average([]), do: 0.0
   defp calculate_average(list) when is_list(list), do: Enum.sum(list) / length(list)
-  defp calculate_average(_), do: 0.0
 
   defp calculate_session_regularity(sessions) do
     if Enum.count(sessions) < 2 do

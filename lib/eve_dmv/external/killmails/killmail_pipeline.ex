@@ -20,26 +20,29 @@ defmodule EveDmv.Killmails.KillmailPipeline do
 
   require Logger
 
-  # Broadway configuration
   def start_link(_opts) do
+    config = Application.get_all_env(:eve_dmv)
+
     Broadway.start_link(__MODULE__,
       name: __MODULE__,
       producer: [
         module: {
           EveDmv.Killmails.HTTPoisonSSEProducer,
-          url: Application.get_env(:eve_dmv, :wanderer_kills_sse_url, "http://localhost:8080/sse")
+          url: config[:wanderer_kills_sse_url] || "http://localhost:8080/sse"
         }
       ],
       processors: [
         default: [
-          concurrency: Application.get_env(:eve_dmv, :pipeline_concurrency, 12)
+          concurrency: config[:pipeline_concurrency] || 16,
+          min_demand: 5,
+          max_demand: 10
         ]
       ],
       batchers: [
         db_insert: [
-          concurrency: Application.get_env(:eve_dmv, :batcher_concurrency, 4),
-          batch_size: Application.get_env(:eve_dmv, :batch_size, 100),
-          batch_timeout: Application.get_env(:eve_dmv, :batch_timeout, 30_000)
+          concurrency: config[:batcher_concurrency] || 8,
+          batch_size: config[:batch_size] || 200,
+          batch_timeout: config[:batch_timeout] || 30_000
         ]
       ]
     )
@@ -233,44 +236,55 @@ defmodule EveDmv.Killmails.KillmailPipeline do
             # Don't fail the pipeline for broadcasting issues
         end
 
-        # Handle real-time intelligence processing asynchronously
-        Task.start(fn ->
-          try do
-            Logger.debug(
-              "🧠 Processing #{length(broadcast_messages)} killmails for intelligence updates"
-            )
+        # Handle real-time intelligence processing asynchronously with supervision
+        # Uses PipelineTaskSupervisor for graceful shutdown and error isolation
+        Task.Supervisor.start_child(
+          EveDmv.PipelineTaskSupervisor,
+          fn ->
+            try do
+              Logger.debug(
+                "🧠 Processing #{length(broadcast_messages)} killmails for intelligence updates"
+              )
 
-            # Process each killmail for intelligence
-            Enum.each(broadcast_messages, fn message ->
-              case message.data do
-                %{killmail_id: _} = killmail_data ->
-                  RealTimeCoordinator.process_killmail(killmail_data)
+              # Process each killmail for intelligence
+              Enum.each(broadcast_messages, fn message ->
+                case message.data do
+                  %{killmail_id: _} = killmail_data ->
+                    RealTimeCoordinator.process_killmail(killmail_data)
 
-                _ ->
-                  :skip
-              end
-            end)
-          rescue
-            error ->
-              Logger.error("Failed to process killmails for intelligence: #{inspect(error)}")
-              # Don't fail the pipeline for intelligence processing issues
-          end
-        end)
+                  _ ->
+                    :skip
+                end
+              end)
+            rescue
+              error ->
+                Logger.error("Failed to process killmails for intelligence: #{inspect(error)}")
+                # Don't fail the pipeline for intelligence processing issues
+            end
+          end,
+          restart: :temporary,
+          shutdown: 30_000
+        )
 
-        # Handle surveillance matching asynchronously
-        Task.start(fn ->
-          try do
-            Logger.info(
-              "🔍 Checking #{length(broadcast_messages)} killmails for surveillance matches"
-            )
+        # Handle surveillance matching asynchronously with supervision
+        Task.Supervisor.start_child(
+          EveDmv.PipelineTaskSupervisor,
+          fn ->
+            try do
+              Logger.info(
+                "🔍 Checking #{length(broadcast_messages)} killmails for surveillance matches"
+              )
 
-            KillmailBroadcaster.check_surveillance_matches(broadcast_messages)
-          rescue
-            error ->
-              normalized_error = Error.normalize(error)
-              Logger.error("Failed to check surveillance matches: #{normalized_error.message}")
-          end
-        end)
+              KillmailBroadcaster.check_surveillance_matches(broadcast_messages)
+            rescue
+              error ->
+                normalized_error = Error.normalize(error)
+                Logger.error("Failed to check surveillance matches: #{normalized_error.message}")
+            end
+          end,
+          restart: :temporary,
+          shutdown: 30_000
+        )
 
         # Database insertion complete - return messages
         messages

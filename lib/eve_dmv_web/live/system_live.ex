@@ -40,6 +40,9 @@ defmodule EveDmvWeb.SystemLive do
     "Sovereignty Blockade Unit"
   ]
 
+  # Pagination settings for corporation presence (Stream 8 optimization)
+  @corp_presence_per_page 20
+
   @impl Phoenix.LiveView
   def mount(%{"system_id" => system_id}, _session, socket) do
     system_id = String.to_integer(system_id)
@@ -55,6 +58,9 @@ defmodule EveDmvWeb.SystemLive do
     # Load system info and activity data
     case load_system_data(system_id) do
       {:ok, system_data} ->
+        # Calculate if there are more corporations to load
+        has_more_corps = length(system_data.corp_presence) >= @corp_presence_per_page
+
         {:ok,
          assign(socket,
            page_title: "System Intelligence - #{system_data.system_name}",
@@ -63,7 +69,11 @@ defmodule EveDmvWeb.SystemLive do
            loading: false,
            detail_panel: nil,
            detail_type: nil,
-           historical_fetch_status: historical_status
+           historical_fetch_status: historical_status,
+           corp_presence_page: 1,
+           corp_presence_per_page: @corp_presence_per_page,
+           has_more_corps: has_more_corps,
+           loading_more_corps: false
          )}
 
       {:error, :not_found} ->
@@ -74,7 +84,11 @@ defmodule EveDmvWeb.SystemLive do
            system_data: nil,
            loading: false,
            error: "System not found",
-           historical_fetch_status: nil
+           historical_fetch_status: nil,
+           corp_presence_page: 1,
+           corp_presence_per_page: @corp_presence_per_page,
+           has_more_corps: false,
+           loading_more_corps: false
          )}
 
       {:error, reason} ->
@@ -85,7 +99,11 @@ defmodule EveDmvWeb.SystemLive do
            system_data: nil,
            loading: false,
            error: "Failed to load system data: #{reason}",
-           historical_fetch_status: nil
+           historical_fetch_status: nil,
+           corp_presence_page: 1,
+           corp_presence_per_page: @corp_presence_per_page,
+           has_more_corps: false,
+           loading_more_corps: false
          )}
     end
   end
@@ -93,48 +111,85 @@ defmodule EveDmvWeb.SystemLive do
   @impl Phoenix.LiveView
   def handle_info({:cache_updated, cache_key}, socket) do
     if String.contains?(cache_key, "system_#{socket.assigns.system_id}") do
-      # Refresh system data when cache is updated
-      case load_system_data(socket.assigns.system_id) do
-        {:ok, system_data} ->
-          {:noreply, assign(socket, system_data: system_data)}
+      # Instead of full reload, just mark that data may be stale
+      # The user can manually refresh if needed
+      require Logger
 
-        {:error, _reason} ->
-          {:noreply, socket}
-      end
+      Logger.debug(
+        "Cache updated for system #{socket.assigns.system_id} - data available on refresh"
+      )
+
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  # Handle system activity updates (new kills in this system)
+  def handle_info({:system_activity_update, %{system_id: id, new_kills: kills}}, socket) do
+    if id == socket.assigns.system_id do
+      # Targeted update: Prepend new kills without full reload
+      socket =
+        socket
+        |> update_in([:system_data, :recent_kills], fn current_kills ->
+          (kills ++ (current_kills || []))
+          |> Enum.take(20)
+        end)
+        |> update_in([:system_data, :activity_stats, :total_kills], fn count ->
+          (count || 0) + length(kills)
+        end)
+
+      {:noreply, socket}
     else
       {:noreply, socket}
     end
   end
 
   # Handle historical fetch status updates via PubSub
-  def handle_info({:historical_fetch_update, :system, _entity_id, update}, socket) do
+  def handle_info({:historical_fetch_update, :system, entity_id, update}, socket) do
     system_id = socket.assigns.system_id
 
-    case update do
-      {:progress, _progress} ->
-        status = get_historical_fetch_status(:system, system_id)
-        {:noreply, assign(socket, :historical_fetch_status, status)}
+    # Only process updates for this system
+    if entity_id != system_id do
+      {:noreply, socket}
+    else
+      case update do
+        {:progress, _progress} ->
+          # Targeted update: Only update status, no database queries
+          status = get_historical_fetch_status(:system, system_id)
+          {:noreply, assign(socket, :historical_fetch_status, status)}
 
-      {:completed, _result} ->
-        status = get_historical_fetch_status(:system, system_id)
-        # Reload data to include new historical killmails
-        case load_system_data(system_id) do
-          {:ok, system_data} ->
-            {:noreply,
-             socket
-             |> assign(:historical_fetch_status, status)
-             |> assign(:system_data, system_data)}
+        {:completed, result} ->
+          # Targeted update: Update status and incrementally update stats
+          status = get_historical_fetch_status(:system, system_id)
+          new_killmails = Map.get(result, :new_killmails, 0)
 
-          {:error, _} ->
-            {:noreply, assign(socket, :historical_fetch_status, status)}
-        end
+          socket =
+            socket
+            |> assign(:historical_fetch_status, status)
+            |> update_in([:system_data, :activity_stats, :total_kills], fn count ->
+              (count || 0) + new_killmails
+            end)
+            |> put_flash(
+              :info,
+              "Historical data loaded. #{new_killmails} new killmails available."
+            )
 
-      {:failed, _reason} ->
-        status = get_historical_fetch_status(:system, system_id)
-        {:noreply, assign(socket, :historical_fetch_status, status)}
+          {:noreply, socket}
 
-      _ ->
-        {:noreply, socket}
+        {:failed, reason} ->
+          status = get_historical_fetch_status(:system, system_id)
+
+          socket =
+            socket
+            |> assign(:historical_fetch_status, status)
+            |> put_flash(:error, "Historical fetch failed: #{inspect(reason)}")
+
+          {:noreply, socket}
+
+        _ ->
+          {:noreply, socket}
+      end
     end
   end
 
@@ -153,6 +208,39 @@ defmodule EveDmvWeb.SystemLive do
 
   def handle_event("close_detail_panel", _params, socket) do
     {:noreply, assign(socket, detail_panel: nil, detail_type: nil)}
+  end
+
+  def handle_event("load_more_corps", _params, socket) do
+    next_page = socket.assigns.corp_presence_page + 1
+    offset = socket.assigns.corp_presence_page * socket.assigns.corp_presence_per_page
+
+    socket = assign(socket, :loading_more_corps, true)
+
+    case load_more_corporation_presence(socket.assigns.system_id, offset, @corp_presence_per_page) do
+      {:ok, more_corps} ->
+        # Append new corporations to existing list
+        current_corps = socket.assigns.system_data.corp_presence
+        updated_corps = current_corps ++ more_corps
+
+        # Check if there might be more to load
+        has_more = length(more_corps) >= @corp_presence_per_page
+
+        # Update system_data with extended corporation list
+        updated_system_data = %{socket.assigns.system_data | corp_presence: updated_corps}
+
+        {:noreply,
+         socket
+         |> assign(:system_data, updated_system_data)
+         |> assign(:corp_presence_page, next_page)
+         |> assign(:has_more_corps, has_more)
+         |> assign(:loading_more_corps, false)}
+
+      {:error, _reason} ->
+        {:noreply,
+         socket
+         |> assign(:loading_more_corps, false)
+         |> put_flash(:error, "Failed to load more corporations")}
+    end
   end
 
   def handle_event(
@@ -343,6 +431,62 @@ defmodule EveDmvWeb.SystemLive do
       {:ok, %{rows: rows}} ->
         # Corporation names are resolved at ingestion time in DataProcessor.enrich_entity_names/1
         # If names are missing, run: mix run priv/repo/scripts/backfill_corporation_names.exs
+        corporations =
+          Enum.map(rows, fn [
+                              corp_id,
+                              corp_name,
+                              alliance_id,
+                              alliance_name,
+                              participation,
+                              final_blows,
+                              unique_kills,
+                              unique_pilots
+                            ] ->
+            %{
+              corporation_id: corp_id,
+              corporation_name: corp_name || "Unknown Corporation",
+              alliance_id: alliance_id,
+              alliance_name: alliance_name,
+              kill_participation: participation,
+              final_blows: final_blows,
+              unique_kills: unique_kills,
+              unique_pilots: unique_pilots,
+              activity_score: participation + final_blows * 2 + unique_pilots
+            }
+          end)
+
+        {:ok, corporations}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp load_more_corporation_presence(system_id, offset, limit) do
+    thirty_days_ago = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
+
+    presence_query = """
+    SELECT
+      p.corporation_id,
+      p.corporation_name,
+      p.alliance_id,
+      p.alliance_name,
+      COUNT(*) as kill_participation,
+      COUNT(CASE WHEN p.final_blow = true THEN 1 END) as final_blows,
+      COUNT(DISTINCT k.killmail_id) as unique_kills,
+      COUNT(DISTINCT p.character_id) as unique_pilots
+    FROM participants p
+    JOIN killmails_raw k ON p.killmail_id = k.killmail_id
+    WHERE k.solar_system_id = $1
+      AND k.killmail_time >= $2
+    GROUP BY p.corporation_id, p.corporation_name, p.alliance_id, p.alliance_name
+    HAVING COUNT(*) >= 3
+    ORDER BY kill_participation DESC
+    LIMIT $3 OFFSET $4
+    """
+
+    case SQL.query(Repo, presence_query, [system_id, thirty_days_ago, limit, offset]) do
+      {:ok, %{rows: rows}} ->
         corporations =
           Enum.map(rows, fn [
                               corp_id,

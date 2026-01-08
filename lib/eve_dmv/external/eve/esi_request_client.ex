@@ -424,6 +424,4 @@ defmodule EveDmv.Eve.EsiRequestClient do
       end
     end)
   end
-
-  defp sanitize_list_for_logging(non_list), do: non_list
 end

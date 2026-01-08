@@ -68,35 +68,75 @@ defmodule EveDmv.Shared.Strategic.DataCollector do
   # Private functions
 
   defp collect_multi_system_data(system_ids, since) do
-    killmail_data =
-      Enum.map(system_ids, fn system_id ->
-        killmails =
-          Ash.read!(KillmailRaw,
-            filter: [
-              solar_system_id: system_id,
-              timestamp: [greater_than: since]
-            ],
-            limit: 500,
-            domain: Api
-          )
+    if Enum.empty?(system_ids) do
+      {:ok,
+       %{
+         scope: :multi_system,
+         systems: [],
+         killmail_data: [],
+         metrics: %{
+           total_killmails: 0,
+           systems_with_activity: 0,
+           average_kills_per_system: 0.0,
+           most_active_system: nil,
+           temporal_distribution: %{},
+           entity_participation: %{
+             unique_attackers: 0,
+             unique_victims: 0,
+             corporation_participation: 0,
+             alliance_participation: 0
+           }
+         },
+         time_range: %{since: since, until: DateTime.utc_now()}
+       }}
+    else
+      # Single query for all systems instead of N queries
+      all_killmails =
+        Ash.read!(KillmailRaw,
+          filter: [
+            solar_system_id: [in: system_ids],
+            timestamp: [greater_than: since]
+          ],
+          limit: 5000,
+          domain: Api
+        )
 
-        %{
-          system_id: system_id,
-          killmails: killmails,
-          kill_count: length(killmails)
-        }
-      end)
+      # Group by system in Elixir and limit each system to 500 killmails
+      killmail_data =
+        all_killmails
+        |> Enum.group_by(& &1.solar_system_id)
+        |> Enum.map(fn {system_id, system_killmails} ->
+          limited_killmails = Enum.take(system_killmails, 500)
 
-    metrics = calculate_multi_system_metrics(killmail_data)
+          %{
+            system_id: system_id,
+            killmails: limited_killmails,
+            kill_count: length(limited_killmails)
+          }
+        end)
 
-    {:ok,
-     %{
-       scope: :multi_system,
-       systems: system_ids,
-       killmail_data: killmail_data,
-       metrics: metrics,
-       time_range: %{since: since, until: DateTime.utc_now()}
-     }}
+      # Include systems with no activity
+      systems_with_data = MapSet.new(Enum.map(killmail_data, & &1.system_id))
+
+      empty_system_data =
+        system_ids
+        |> Enum.reject(&MapSet.member?(systems_with_data, &1))
+        |> Enum.map(fn system_id ->
+          %{system_id: system_id, killmails: [], kill_count: 0}
+        end)
+
+      killmail_data = killmail_data ++ empty_system_data
+      metrics = calculate_multi_system_metrics(killmail_data)
+
+      {:ok,
+       %{
+         scope: :multi_system,
+         systems: system_ids,
+         killmail_data: killmail_data,
+         metrics: metrics,
+         time_range: %{since: since, until: DateTime.utc_now()}
+       }}
+    end
   catch
     error ->
       Logger.error("Failed to collect multi-system data: #{inspect(error)}")

@@ -94,14 +94,21 @@ defmodule EveDmv.Workers.BackgroundTaskSupervisor do
   def start_task_with_callback(supervisor \\ __MODULE__, fun, callback_fun, opts \\ []) do
     case start_task(supervisor, fun, opts) do
       {:ok, pid} ->
-        # Spawn a lightweight process to await the result and call callback
+        # Spawn a lightweight process to monitor and await the result
         spawn(fn ->
-          try do
-            result = Task.await(pid, @max_task_duration)
-            callback_fun.({:ok, result})
-          catch
-            :exit, reason ->
+          ref = Process.monitor(pid)
+
+          receive do
+            {:DOWN, ^ref, :process, ^pid, :normal} ->
+              callback_fun.({:ok, :completed})
+
+            {:DOWN, ^ref, :process, ^pid, reason} ->
               callback_fun.({:error, reason})
+          after
+            @max_task_duration ->
+              Process.demonitor(ref, [:flush])
+              Process.exit(pid, :kill)
+              callback_fun.({:error, :timeout})
           end
         end)
 

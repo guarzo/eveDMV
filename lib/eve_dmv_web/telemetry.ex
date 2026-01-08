@@ -184,6 +184,21 @@ defmodule EveDmvWeb.Telemetry do
         tags: [:type],
         unit: {:native, :millisecond},
         description: "Time taken for re-enrichment batches"
+      ),
+
+      # Database Connection Pool Metrics
+      counter("eve_dmv.database.pool.alert.count",
+        tags: [:type, :severity],
+        description: "Database pool alerts by type and severity"
+      ),
+      last_value("eve_dmv.database.pool.utilization",
+        description: "Database pool utilization percentage"
+      ),
+      last_value("eve_dmv.database.pool.queue_length",
+        description: "Number of processes waiting for database connections"
+      ),
+      last_value("eve_dmv.database.pool.available",
+        description: "Available database connections"
       )
     ]
   end

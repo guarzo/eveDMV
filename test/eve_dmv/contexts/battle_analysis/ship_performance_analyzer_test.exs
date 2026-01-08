@@ -15,7 +15,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzerTest do
   alias EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer
 
   # Test fixtures for battle data
-  defp build_battle_struct(attrs \\ %{}) do
+  defp build_battle_struct(attrs) do
     killmails = Map.get(attrs, :killmails, [build_killmail_struct()])
 
     default_metadata = %{
@@ -66,7 +66,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzerTest do
     }
   end
 
-  defp build_ship_data(attrs \\ %{}) do
+  defp build_ship_data(attrs) do
     %{
       character_id: Map.get(attrs, :character_id, 90_000_001),
       ship_type_id: Map.get(attrs, :ship_type_id, 620),

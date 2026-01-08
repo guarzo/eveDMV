@@ -11,18 +11,14 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.ExternalGroupAnalyzer do
   @doc """
   Analyze external groups for a character within a given time range.
   """
-  @spec analyze(integer(), DateTime.t()) :: {:ok, list(map())}
+  @spec analyze(integer(), DateTime.t()) :: {:ok, list(map())} | {:error, term()}
   def analyze(character_id, since_date) do
     # Delegate to PlayerRepository which contains the consolidated external groups logic.
-    # PlayerRepository.get_external_groups returns a plain list, so we wrap it in {:ok, result}
-    # to match our spec and the expectations of callers (e.g., Api.get_external_groups/2).
-    result =
-      EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository.get_external_groups(
-        character_id,
-        since_date
-      )
-
-    {:ok, result}
+    # QueryCache.get_or_compute already wraps results in {:ok, value}
+    EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository.get_external_groups(
+      character_id,
+      since_date
+    )
   end
 
   # Legacy implementation kept for reference but no longer used

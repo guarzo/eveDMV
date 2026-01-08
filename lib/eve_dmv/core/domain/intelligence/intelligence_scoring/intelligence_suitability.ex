@@ -367,12 +367,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
   defp suggest_intelligence_training(intel_components) do
     initial_training = []
 
-    opsec_score =
-      case intel_components.operational_security do
-        %{overall_opsec_score: score} -> score
-        value when is_number(value) -> value
-        _ -> 0.5
-      end
+    %{overall_opsec_score: opsec_score} = intel_components.operational_security
 
     training_with_opsec =
       if opsec_score < 0.6 do
@@ -434,12 +429,7 @@ defmodule EveDmv.Intelligence.IntelligenceScoring.IntelligenceSuitability do
       end
 
     # Adjust based on OPSEC and discretion scores
-    opsec_score =
-      case intel_components.operational_security do
-        %{overall_opsec_score: score} -> score
-        value when is_number(value) -> value
-        _ -> 0.5
-      end
+    %{overall_opsec_score: opsec_score} = intel_components.operational_security
 
     opsec_adjustment =
       if opsec_score < 0.6 or intel_components.discretion_level < 0.6 do

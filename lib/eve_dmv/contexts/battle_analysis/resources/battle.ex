@@ -112,8 +112,51 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.Battle do
       destination_attribute(:killmail_id)
     end
 
+    has_many :battle_killmails, EveDmv.Contexts.BattleAnalysis.Resources.BattleKillmail do
+      destination_attribute(:battle_id)
+      description("Junction records linking battles to killmails")
+    end
+
     has_many :combat_logs, EveDmv.Contexts.BattleAnalysis.Resources.CombatLog do
       destination_attribute(:battle_id)
+    end
+  end
+
+  aggregates do
+    count :killmail_count, :battle_killmails do
+      description("Total number of killmails in this battle")
+    end
+  end
+
+  calculations do
+    calculate :duration_minutes, :integer do
+      description("Duration of battle in minutes (end_time - start_time)")
+
+      calculation(fn records, _context ->
+        Enum.map(records, fn battle ->
+          case {battle.start_time, battle.end_time} do
+            {nil, _} -> 0
+            {_, nil} -> 0
+            {start, end_time} ->
+              DateTime.diff(end_time, start, :minute)
+          end
+        end)
+      end)
+    end
+
+    calculate :is_recent, :boolean do
+      description("True if battle ended within the last 24 hours")
+
+      calculation(fn records, _context ->
+        cutoff = DateTime.add(DateTime.utc_now(), -24, :hour)
+
+        Enum.map(records, fn battle ->
+          case battle.end_time do
+            nil -> false
+            end_time -> DateTime.compare(end_time, cutoff) == :gt
+          end
+        end)
+      end)
     end
   end
 

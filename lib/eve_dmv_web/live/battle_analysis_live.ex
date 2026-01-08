@@ -17,6 +17,8 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
+  @visible_pilots_per_side 50
+
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     socket =
@@ -27,7 +29,16 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       |> initialize_share_state()
       |> load_recent_battles()
 
-    {:ok, socket}
+    # Use temporary_assigns to clear large list-based data from process memory after render
+    # These lists are rendered once and don't need to persist in full between renders
+    {:ok, socket,
+     temporary_assigns: [
+       recent_battles: [],
+       combat_logs: [],
+       battle_reports: [],
+       pilot_suggestions: [],
+       recently_viewed_battles: []
+     ]}
   end
 
   @impl Phoenix.LiveView
@@ -124,6 +135,25 @@ defmodule EveDmvWeb.BattleAnalysisLive do
       |> assign(:editing_fleet_sides, false)
 
     {:noreply, socket}
+  end
+
+  # Toggle expansion of a fleet side to show all pilots
+  def handle_event(
+        "toggle_side_expansion",
+        %{"side" => side, "window_index" => window_index},
+        socket
+      ) do
+    side_key = "#{window_index}_#{side}"
+    expanded_sides = socket.assigns.expanded_sides
+
+    new_expanded_sides =
+      if MapSet.member?(expanded_sides, side_key) do
+        MapSet.delete(expanded_sides, side_key)
+      else
+        MapSet.put(expanded_sides, side_key)
+      end
+
+    {:noreply, assign(socket, :expanded_sides, new_expanded_sides)}
   end
 
   def handle_event("toggle_log_upload", _, socket) do
@@ -649,8 +679,14 @@ defmodule EveDmvWeb.BattleAnalysisLive do
   defp format_error_reason({:invalid_rating, :out_of_range}),
     do: "Rating must be between 1 and 10"
 
+  # Handle tuple error reasons with atom components
   defp format_error_reason({error_type, detail}) when is_atom(error_type) and is_atom(detail) do
     "#{error_type |> Atom.to_string() |> String.replace("_", " ") |> String.capitalize()}: #{detail |> Atom.to_string() |> String.replace("_", " ")}"
+  end
+
+  # Handle tuple error reasons with any second component
+  defp format_error_reason({error_type, detail}) when is_atom(error_type) do
+    "#{error_type |> Atom.to_string() |> String.replace("_", " ") |> String.capitalize()}: #{inspect(detail)}"
   end
 
   # Handle other atom error reasons
@@ -752,6 +788,32 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     Enum.filter(pilots || [], fn pilot ->
       Helpers.get_ship_side(pilot, ship_side_assignments) == side
     end)
+  end
+
+  # Get visible ships for a side with pagination support
+  def get_visible_ships_for_side(
+        pilots,
+        side,
+        ship_side_assignments,
+        window_index,
+        expanded_sides,
+        visible_limit
+      ) do
+    all_pilots = get_ships_for_side(pilots, side, ship_side_assignments)
+    total = length(all_pilots)
+    side_key = "#{window_index}_#{side}"
+
+    if MapSet.member?(expanded_sides, side_key) or total <= visible_limit do
+      {all_pilots, total, false}
+    else
+      {Enum.take(all_pilots, visible_limit), total, true}
+    end
+  end
+
+  # Check if a side is expanded
+  def side_expanded?(window_index, side, expanded_sides) do
+    side_key = "#{window_index}_#{side}"
+    MapSet.member?(expanded_sides, side_key)
   end
 
   # Update battle sides based on detected sides in timeline
@@ -1241,6 +1303,8 @@ defmodule EveDmvWeb.BattleAnalysisLive do
     |> assign(:selected_ship, nil)
     |> assign(:ship_performance, nil)
     |> assign(:show_fitting_import, false)
+    |> assign(:expanded_sides, MapSet.new())
+    |> assign(:visible_pilots_per_side, @visible_pilots_per_side)
   end
 
   defp initialize_upload_state(socket) do

@@ -153,23 +153,8 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.ExternalPriceClient 
   defp get_bulk_killmail_prices(type_ids) do
     type_ids
     |> Enum.map(fn type_id ->
-      case get_killmail_derived_price(type_id) do
-        {:ok, price_data} ->
-          {type_id, price_data}
-
-        _ ->
-          # Use SDE-based estimation instead of returning 0.0
-          estimated_price = estimate_price_from_sde(type_id)
-
-          {type_id,
-           %{
-             price: estimated_price,
-             buy_price: estimated_price * 0.9,
-             volume: 0,
-             last_updated: DateTime.utc_now(),
-             source: :sde_estimate
-           }}
-      end
+      {:ok, price_data} = get_killmail_derived_price(type_id)
+      {type_id, price_data}
     end)
     |> Map.new()
   end
