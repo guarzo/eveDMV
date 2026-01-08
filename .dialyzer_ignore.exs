@@ -24,7 +24,7 @@
   ~r/correlation_engine\.ex:\d+.*call_without_opaque/,
   ~r/cross_character_analyzer\.ex:\d+.*call_without_opaque/,
   ~r/ewar_analyzer\.ex:\d+.*call_without_opaque/,
-  ~r/cross_system_coordinator\.ex:\d+.*call_without_opaque/,
+  ~r/cross_system_coordinator\.ex:\d+.*call_without_opaque/
 
   # ===========================================
   # REPOSITORY-SPECIFIC SUPPRESSIONS

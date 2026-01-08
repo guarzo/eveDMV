@@ -403,11 +403,12 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngine d
         # Convert since DateTime to hours for the Ash action
         hours = calculate_hours_since(since)
 
-        case Ash.read(ProfileMatch,
-               action: :recent_matches,
-               input: %{hours: hours},
-               domain: SurveillanceApi
-             ) do
+        # Use Ash.Query to set action arguments properly
+        query =
+          ProfileMatch
+          |> Ash.Query.for_read(:recent_matches, %{hours: hours})
+
+        case Ash.read(query, domain: SurveillanceApi) do
           {:ok, matches} ->
             # Cache results for 3 minutes
             UnifiedCache.put(:surveillance, cache_key, matches, 180)
@@ -432,11 +433,11 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngine d
 
       {:error, :not_found} ->
         # Query database for profile matches using Ash action
-        case Ash.read(ProfileMatch,
-               action: :profile_matches,
-               input: %{profile_id: profile_id},
-               domain: SurveillanceApi
-             ) do
+        query =
+          ProfileMatch
+          |> Ash.Query.for_read(:profile_matches, %{profile_id: profile_id})
+
+        case Ash.read(query, domain: SurveillanceApi) do
           {:ok, matches} ->
             # Filter by since date and apply limit
             filtered_matches =
