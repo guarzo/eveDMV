@@ -151,132 +151,13 @@ defmodule EveDmv.Contexts.MarketIntelligence.Infrastructure.ExternalPriceClient 
   end
 
   defp get_bulk_killmail_prices(type_ids) do
+    # get_killmail_derived_price/1 always returns {:ok, price_data}
     type_ids
     |> Enum.map(fn type_id ->
       {:ok, price_data} = get_killmail_derived_price(type_id)
       {type_id, price_data}
     end)
     |> Map.new()
-  end
-
-  defp estimate_price_from_sde(type_id) do
-    # Try to get ship data first for better estimates
-    case get_ship_based_estimate(type_id) do
-      {:ok, price} -> price
-      :error -> estimate_value_from_type(type_id)
-    end
-  end
-
-  defp get_ship_based_estimate(type_id) do
-    case EveDmv.Repo.query(
-           """
-             SELECT sa.size_class, sa.role_classification, eit.group_name, eit.base_price
-             FROM ship_attributes sa
-             JOIN eve_item_types eit ON sa.type_id = eit.type_id
-             WHERE sa.type_id = $1
-           """,
-           [type_id]
-         ) do
-      {:ok, %{rows: [[size_class, role, group_name, base_price]]}} ->
-        # Use size class and role for better pricing
-        estimated_price = calculate_ship_price(size_class, role, group_name, base_price)
-        {:ok, estimated_price}
-
-      _ ->
-        # Try basic item type lookup
-        case EveDmv.Repo.query(
-               """
-                 SELECT group_name, category_name, base_price
-                 FROM eve_item_types
-                 WHERE type_id = $1
-               """,
-               [type_id]
-             ) do
-          {:ok, %{rows: [[group_name, category_name, base_price]]}} ->
-            estimated_price = calculate_item_price(group_name, category_name, base_price)
-            {:ok, estimated_price}
-
-          _ ->
-            :error
-        end
-    end
-  end
-
-  defp calculate_ship_price(size_class, role, _group_name, base_price) do
-    # Base price multipliers by ship class
-    base_multiplier =
-      case size_class do
-        "frigate" -> 1.0
-        "destroyer" -> 3.0
-        "cruiser" -> 8.0
-        "battlecruiser" -> 25.0
-        "battleship" -> 80.0
-        "capital" -> 600.0
-        "supercapital" -> 15_000.0
-        _ -> 5.0
-      end
-
-    # Role multipliers
-    role_multiplier =
-      case role do
-        "logistics" -> 1.5
-        "ewar" -> 1.3
-        "tackle" -> 1.1
-        "dps" -> 1.0
-        "support" -> 1.4
-        _ -> 1.0
-      end
-
-    # Use base price if available, otherwise use size-based estimate
-    if base_price && base_price > 0 do
-      base_price * role_multiplier
-    else
-      # Fallback estimates in ISK
-      base_estimate =
-        case size_class do
-          "frigate" -> 2_000_000
-          "destroyer" -> 10_000_000
-          "cruiser" -> 25_000_000
-          "battlecruiser" -> 80_000_000
-          "battleship" -> 250_000_000
-          "capital" -> 2_000_000_000
-          "supercapital" -> 50_000_000_000
-          _ -> 10_000_000
-        end
-
-      Float.round(base_estimate * base_multiplier * role_multiplier, 2)
-    end
-  end
-
-  defp calculate_item_price(group_name, category_name, base_price) do
-    # Use base price when available
-    if base_price && base_price > 0 do
-      base_price
-    else
-      # Category-based estimates
-      case category_name do
-        "Ship" -> estimate_ship_price_by_group(group_name)
-        "Module" -> 5_000_000.0
-        "Charge" -> 1_000.0
-        "Commodity" -> 50_000.0
-        "Implant" -> 100_000_000.0
-        "Drone" -> 10_000_000.0
-        _ -> 100_000.0
-      end
-    end
-  end
-
-  defp estimate_ship_price_by_group(group_name) do
-    cond do
-      String.contains?(group_name, ["Frigate", "Stealth Bomber"]) -> 5_000_000.0
-      String.contains?(group_name, ["Destroyer"]) -> 15_000_000.0
-      String.contains?(group_name, ["Cruiser"]) -> 35_000_000.0
-      String.contains?(group_name, ["Battlecruiser"]) -> 120_000_000.0
-      String.contains?(group_name, ["Battleship", "Marauder"]) -> 400_000_000.0
-      String.contains?(group_name, ["Carrier", "Dreadnought"]) -> 3_000_000_000.0
-      String.contains?(group_name, ["Supercarrier", "Titan"]) -> 75_000_000_000.0
-      true -> 25_000_000.0
-    end
   end
 
   defp estimate_value_from_type(type_id) do

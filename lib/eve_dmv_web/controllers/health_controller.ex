@@ -10,6 +10,8 @@ defmodule EveDmvWeb.HealthController do
   alias EveDmv.Platform.Database.HealthCheck
   alias EveDmv.Platform.Monitoring.HealthAggregator
 
+  require Logger
+
   @doc """
   Health check endpoint for load balancers and monitoring systems.
   Returns 200 OK if the application and database are healthy.
@@ -69,6 +71,11 @@ defmodule EveDmvWeb.HealthController do
   def index(conn, _params) do
     health = get_health_safely()
 
+    # Map overall_status to HTTP status codes for load balancer health checks.
+    # Return 200 for :healthy, :warning, and :degraded to keep the instance in
+    # rotation - these states indicate the service is functional enough to serve
+    # traffic. Only :critical (or unknown states) returns 503 to signal the load
+    # balancer should take this instance out of service.
     status =
       case health.overall_status do
         :healthy -> 200
@@ -107,15 +114,32 @@ defmodule EveDmvWeb.HealthController do
   defp get_health_safely do
     HealthAggregator.get_health_snapshot()
   rescue
-    _ ->
-      %{
-        overall_status: :unknown,
-        timestamp: DateTime.utc_now(),
-        uptime: %{formatted: "unknown"},
-        database: %{status: :unknown},
-        pipeline: %{status: :unknown},
-        cache: %{status: :unknown},
-        memory: %{status: :unknown}
-      }
+    e in [RuntimeError, ArgumentError, KeyError, FunctionClauseError] ->
+      Logger.error(
+        "HealthAggregator.get_health_snapshot/0 raised expected exception: " <>
+          "#{inspect(e)}\n#{Exception.format_stacktrace(__STACKTRACE__)}"
+      )
+
+      fallback_health_snapshot()
+
+    e ->
+      Logger.error(
+        "HealthAggregator.get_health_snapshot/0 raised unexpected exception: " <>
+          "#{inspect(e)}\n#{Exception.format_stacktrace(__STACKTRACE__)}"
+      )
+
+      fallback_health_snapshot()
+  end
+
+  defp fallback_health_snapshot do
+    %{
+      overall_status: :unknown,
+      timestamp: DateTime.utc_now(),
+      uptime: %{formatted: "unknown"},
+      database: %{status: :unknown},
+      pipeline: %{status: :unknown},
+      cache: %{status: :unknown},
+      memory: %{status: :unknown}
+    }
   end
 end

@@ -295,14 +295,17 @@ defmodule EveDmv.Repo.Migrations.ConsolidateMaterializedViewRefresh do
     ]
 
     Enum.each(job_names, fn job_name ->
-      execute """
-      DO $$
-      BEGIN
-        IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = '#{job_name}') THEN
-          PERFORM cron.unschedule('#{job_name}');
-        END IF;
-      END $$;
-      """
+      # Use parameterized query to avoid SQL injection risk pattern
+      Ecto.Adapters.SQL.query(
+        EveDmv.Repo,
+        """
+        SELECT CASE WHEN EXISTS (SELECT 1 FROM cron.job WHERE jobname = $1)
+          THEN cron.unschedule($1)
+          ELSE NULL
+        END
+        """,
+        [job_name]
+      )
     end)
   end
 

@@ -17,8 +17,11 @@ defmodule EveDmvWeb.Admin.SystemHealthLive do
   alias EveDmv.Platform.Monitoring.HealthAggregator
   alias Phoenix.PubSub
 
+  require Logger
+
   # 5 seconds
   @refresh_interval 5_000
+  @valid_tabs ~w(overview database pipeline cache memory queries errors)a
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
@@ -51,7 +54,14 @@ defmodule EveDmvWeb.Admin.SystemHealthLive do
     {:noreply, assign(socket, :alerts, alerts)}
   end
 
-  def handle_info(_, socket), do: {:noreply, socket}
+  def handle_info(msg, socket) do
+    Logger.debug(
+      "SystemHealthLive received unexpected message: #{inspect(msg)}, " <>
+        "assigns: #{inspect(Map.take(socket.assigns, [:page_title, :auto_refresh, :selected_tab]))}"
+    )
+
+    {:noreply, socket}
+  end
 
   @impl Phoenix.LiveView
   def handle_event("toggle_refresh", _, socket) do
@@ -65,7 +75,10 @@ defmodule EveDmvWeb.Admin.SystemHealthLive do
   end
 
   def handle_event("select_tab", %{"tab" => tab}, socket) do
-    {:noreply, assign(socket, :selected_tab, String.to_existing_atom(tab))}
+    case Enum.find(@valid_tabs, fn valid -> Atom.to_string(valid) == tab end) do
+      nil -> {:noreply, socket}
+      tab_atom -> {:noreply, assign(socket, :selected_tab, tab_atom)}
+    end
   end
 
   defp schedule_refresh do
@@ -75,7 +88,12 @@ defmodule EveDmvWeb.Admin.SystemHealthLive do
   defp get_health_safely do
     HealthAggregator.get_health_snapshot()
   rescue
-    _ ->
+    e ->
+      Logger.error(
+        "Failed to get health snapshot from HealthAggregator.get_health_snapshot/0: " <>
+          Exception.format(:error, e, __STACKTRACE__)
+      )
+
       %{
         timestamp: DateTime.utc_now(),
         overall_status: :unknown,

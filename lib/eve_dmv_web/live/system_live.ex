@@ -127,7 +127,7 @@ defmodule EveDmvWeb.SystemLive do
 
   # Handle system activity updates (new kills in this system)
   def handle_info({:system_activity_update, %{system_id: id, new_kills: kills}}, socket) do
-    if id == socket.assigns.system_id do
+    if id == socket.assigns.system_id && socket.assigns.system_data != nil do
       # Targeted update: Prepend new kills without full reload
       socket =
         socket
@@ -167,9 +167,7 @@ defmodule EveDmvWeb.SystemLive do
           socket =
             socket
             |> assign(:historical_fetch_status, status)
-            |> update_in([:system_data, :activity_stats, :total_kills], fn count ->
-              (count || 0) + new_killmails
-            end)
+            |> maybe_update_kill_count(new_killmails)
             |> put_flash(
               :info,
               "Historical data loaded. #{new_killmails} new killmails available."
@@ -403,11 +401,9 @@ defmodule EveDmvWeb.SystemLive do
     end
   end
 
-  # Get corporation and alliance presence
-  defp get_corporation_presence(system_id) do
-    thirty_days_ago = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
-
-    presence_query = """
+  # Base SQL query for corporation presence - reused by both initial load and pagination
+  defp corporation_presence_base_query do
+    """
     SELECT
       p.corporation_id,
       p.corporation_name,
@@ -424,8 +420,14 @@ defmodule EveDmvWeb.SystemLive do
     GROUP BY p.corporation_id, p.corporation_name, p.alliance_id, p.alliance_name
     HAVING COUNT(*) >= 3
     ORDER BY kill_participation DESC
-    LIMIT 20
     """
+  end
+
+  # Get corporation and alliance presence
+  defp get_corporation_presence(system_id) do
+    thirty_days_ago = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
+
+    presence_query = corporation_presence_base_query() <> "LIMIT 20"
 
     case SQL.query(Repo, presence_query, [system_id, thirty_days_ago]) do
       {:ok, %{rows: rows}} ->
@@ -465,25 +467,7 @@ defmodule EveDmvWeb.SystemLive do
   defp load_more_corporation_presence(system_id, offset, limit) do
     thirty_days_ago = DateTimeUtils.add(DateTime.utc_now(), -30 * 24 * 60 * 60, :second)
 
-    presence_query = """
-    SELECT
-      p.corporation_id,
-      p.corporation_name,
-      p.alliance_id,
-      p.alliance_name,
-      COUNT(*) as kill_participation,
-      COUNT(CASE WHEN p.final_blow = true THEN 1 END) as final_blows,
-      COUNT(DISTINCT k.killmail_id) as unique_kills,
-      COUNT(DISTINCT p.character_id) as unique_pilots
-    FROM participants p
-    JOIN killmails_raw k ON p.killmail_id = k.killmail_id
-    WHERE k.solar_system_id = $1
-      AND k.killmail_time >= $2
-    GROUP BY p.corporation_id, p.corporation_name, p.alliance_id, p.alliance_name
-    HAVING COUNT(*) >= 3
-    ORDER BY kill_participation DESC
-    LIMIT $3 OFFSET $4
-    """
+    presence_query = corporation_presence_base_query() <> "LIMIT $3 OFFSET $4"
 
     case SQL.query(Repo, presence_query, [system_id, thirty_days_ago, limit, offset]) do
       {:ok, %{rows: rows}} ->
@@ -819,6 +803,17 @@ defmodule EveDmvWeb.SystemLive do
   # Historical fetch helpers
   # These functions integrate with the KillmailProcessing context for 2-year historical data.
   # The backend API (Phase 4) provides the actual implementation; these are the LiveView wrappers.
+
+  defp maybe_update_kill_count(socket, new_killmails) do
+    if socket.assigns.system_data != nil do
+      update_in(socket.assigns.system_data.activity_stats.total_kills, fn count ->
+        (count || 0) + new_killmails
+      end)
+      |> then(&assign(socket, :system_data, &1))
+    else
+      socket
+    end
+  end
 
   defp get_historical_fetch_status(entity_type, entity_id) do
     # Try to get status from KillmailProcessing API if available

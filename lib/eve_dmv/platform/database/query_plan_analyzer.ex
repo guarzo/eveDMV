@@ -71,9 +71,9 @@ defmodule EveDmv.Platform.Database.QueryPlanAnalyzer do
   ## Example
 
       iex> QueryPlanAnalyzer.get_unused_indexes()
-      [%{table: "public.participants", index: "idx_old_unused", size: "128 MB", scans: 0}]
+      {:ok, [%{table: "public.participants", index: "idx_old_unused", size: "128 MB", scans: 0}]}
   """
-  @spec get_unused_indexes() :: [map()]
+  @spec get_unused_indexes() :: {:ok, [map()]} | {:error, term()}
   def get_unused_indexes do
     query = """
     SELECT
@@ -91,14 +91,17 @@ defmodule EveDmv.Platform.Database.QueryPlanAnalyzer do
 
     case SQL.query(Repo, query, []) do
       {:ok, result} ->
-        result.rows
-        |> Enum.map(fn [table, index, size, scans] ->
-          %{table: table, index: index, size: size, scans: scans}
-        end)
+        indexes =
+          result.rows
+          |> Enum.map(fn [table, index, size, scans] ->
+            %{table: table, index: index, size: size, scans: scans}
+          end)
+
+        {:ok, indexes}
 
       {:error, error} ->
         Logger.warning("Failed to query unused indexes: #{inspect(error)}")
-        []
+        {:error, error}
     end
   end
 
@@ -157,7 +160,7 @@ defmodule EveDmv.Platform.Database.QueryPlanAnalyzer do
 
       {:error, error} ->
         Logger.warning("Failed to query missing index candidates: #{inspect(error)}")
-        []
+        {:error, error}
     end
   end
 

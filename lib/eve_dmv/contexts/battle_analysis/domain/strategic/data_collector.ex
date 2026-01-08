@@ -95,7 +95,7 @@ defmodule EveDmv.Shared.Strategic.DataCollector do
         Ash.read!(KillmailRaw,
           filter: [
             solar_system_id: [in: system_ids],
-            timestamp: [greater_than: since]
+            killmail_time: [greater_than: since]
           ],
           limit: 5000,
           domain: Api
@@ -148,7 +148,7 @@ defmodule EveDmv.Shared.Strategic.DataCollector do
       Ash.read!(KillmailRaw,
         filter: [
           solar_system_id: system_id,
-          timestamp: [greater_than: since]
+          killmail_time: [greater_than: since]
         ],
         limit: 1000,
         domain: Api
@@ -229,7 +229,7 @@ defmodule EveDmv.Shared.Strategic.DataCollector do
   defp calculate_temporal_distribution(killmails) do
     killmails
     |> Enum.group_by(fn km ->
-      km.timestamp
+      km.killmail_time
       |> DateTime.to_date()
     end)
     |> Enum.map(fn {date, kms} ->
@@ -365,7 +365,7 @@ defmodule EveDmv.Shared.Strategic.DataCollector do
     killmails = get_all_killmails(strategic_data)
 
     killmails
-    |> Enum.group_by(fn km -> km.timestamp.hour end)
+    |> Enum.group_by(fn km -> km.killmail_time.hour end)
     |> Enum.map(fn {hour, kms} -> {hour, length(kms)} end)
     |> Map.new()
   end

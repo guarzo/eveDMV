@@ -244,7 +244,7 @@ defmodule EveDmv.Types do
           required(:killmails) => [map()],
           required(:attacker_killmails) => [map()],
           required(:victim_killmails) => [map()],
-          required(:analysis_period_days) => number(),
+          required(:analysis_period_days) => pos_integer(),
           required(:total_killmails) => non_neg_integer(),
           optional(:data_cutoff) => DateTime.t() | nil,
           optional(:fetched_at) => DateTime.t()

@@ -201,11 +201,17 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
           socket
         end
 
-      # Update new alert count once for entire batch
+      # Prepend new alerts to existing list instead of full reload
+      # This avoids database queries during high-activity periods
+      current_alerts = socket.assigns.alerts
+      updated_alerts = Enum.take(alerts ++ current_alerts, @alerts_per_page)
+
+      # Update new alert count once for entire batch and refresh metrics
       socket =
         socket
         |> update(:new_alert_count, &(&1 + batch_size))
-        |> load_alerts()
+        |> assign(:alerts, updated_alerts)
+        |> load_alert_metrics()
 
       {:noreply, socket}
     else
@@ -229,10 +235,10 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
   end
 
   @impl Phoenix.LiveView
-  def handle_info({:metrics_update, _metrics}, socket) do
+  def handle_info({:metrics_update, metrics}, socket) do
     # Handle metrics-only updates from AlertBatcher
-    # Reload metrics without full alert reload
-    {:noreply, load_alert_metrics(socket)}
+    # Use incoming metrics directly when valid, avoiding unnecessary DB calls
+    {:noreply, apply_metrics_update(socket, metrics)}
   end
 
   @impl Phoenix.LiveView
@@ -302,6 +308,90 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
         assign(socket, :alert_metrics, %{})
     end
   end
+
+  defp apply_metrics_update(socket, metrics) when is_map(metrics) and map_size(metrics) > 0 do
+    # Check if incoming metrics are complete (from AlertBatcher full update)
+    # Complete metrics have the core structure from AlertService.get_alert_metrics/1
+    if complete_metrics?(metrics) do
+      # Use incoming metrics directly - no DB call needed
+      assign(socket, :alert_metrics, normalize_metrics(metrics))
+    else
+      # Partial/incremental update - merge with existing metrics
+      existing = socket.assigns.alert_metrics
+
+      if map_size(existing) > 0 do
+        # Merge incremental updates with existing metrics
+        merged = merge_incremental_metrics(existing, metrics)
+        assign(socket, :alert_metrics, merged)
+      else
+        # No existing metrics - need to load full metrics from DB
+        load_alert_metrics(socket)
+      end
+    end
+  end
+
+  defp apply_metrics_update(socket, _metrics) do
+    # Nil or empty metrics - fall back to DB load
+    load_alert_metrics(socket)
+  end
+
+  defp complete_metrics?(metrics) do
+    # Check for presence of core keys that indicate a complete metrics update
+    # These keys are always present in AlertService.get_alert_metrics/1 output
+    Map.has_key?(metrics, :time_range) and
+      Map.has_key?(metrics, :total_alerts) and
+      Map.has_key?(metrics, :current_counters)
+  end
+
+  defp normalize_metrics(metrics) do
+    # Ensure all expected keys are present with sensible defaults
+    %{
+      time_range: Map.get(metrics, :time_range, :last_24h),
+      total_alerts: Map.get(metrics, :total_alerts, 0),
+      priority_distribution: Map.get(metrics, :priority_distribution, %{}),
+      state_distribution: Map.get(metrics, :state_distribution, %{}),
+      type_distribution: Map.get(metrics, :type_distribution, %{}),
+      average_confidence: Map.get(metrics, :average_confidence, 0),
+      current_counters: Map.get(metrics, :current_counters, %{})
+    }
+  end
+
+  defp merge_incremental_metrics(existing, updates) do
+    # Merge incremental updates into existing metrics
+    # For counters, add increments; for distributions, update counts
+    Enum.reduce(updates, existing, fn {key, value}, acc ->
+      case key do
+        :current_counters when is_map(value) ->
+          # Merge counter updates
+          existing_counters = Map.get(acc, :current_counters, %{})
+          merged_counters = merge_counters(existing_counters, value)
+          Map.put(acc, :current_counters, merged_counters)
+
+        :total_alerts when is_number(value) ->
+          # Increment total alerts
+          current = Map.get(acc, :total_alerts, 0)
+          Map.put(acc, :total_alerts, current + value)
+
+        _ when is_map(value) ->
+          # Merge distribution maps (priority, state, type)
+          existing_dist = Map.get(acc, key, %{})
+          merged_dist = merge_counters(existing_dist, value)
+          Map.put(acc, key, merged_dist)
+
+        _ ->
+          # For other values, take the latest
+          Map.put(acc, key, value)
+      end
+    end)
+  end
+
+  defp merge_counters(existing, updates) when is_map(existing) and is_map(updates) do
+    Map.merge(existing, updates, fn _key, v1, v2 ->
+      if is_number(v1) and is_number(v2), do: v1 + v2, else: v2
+    end)
+  end
+
+  defp merge_counters(_existing, updates), do: updates
 
   defp show_alert_details(socket, alert_id) do
     case safe_call(fn -> AlertService.get_alert(alert_id) end) do

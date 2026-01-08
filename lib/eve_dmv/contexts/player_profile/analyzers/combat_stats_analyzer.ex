@@ -15,8 +15,11 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
   @doc """
   Analyze combat statistics for a character.
   """
-  @spec analyze(integer(), map()) :: Result.t(map())
-  def analyze(character_id, base_data \\ %{}) when is_integer(character_id) do
+  @spec analyze(integer(), map() | keyword()) :: Result.t(map())
+  def analyze(character_id, base_data \\ []) when is_integer(character_id) do
+    # Normalize keyword lists to maps for Map.get compatibility
+    base_data = if is_list(base_data), do: Enum.into(base_data, %{}), else: base_data
+
     character_stats = Map.get(base_data, :character_stats, %{})
     killmail_stats = Map.get(base_data, :killmail_stats, %{})
 

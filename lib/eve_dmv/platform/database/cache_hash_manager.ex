@@ -88,7 +88,12 @@ defmodule EveDmv.Platform.Database.CacheHashManager do
         true
     end
   rescue
-    _ -> true
+    err ->
+      Logger.warning(
+        "CacheHashManager: content_changed? failed: #{inspect(err)}; #{inspect(__STACKTRACE__)}"
+      )
+
+      true
   end
 
   @doc """
@@ -109,15 +114,28 @@ defmodule EveDmv.Platform.Database.CacheHashManager do
 
   # Compute a deterministic hash from data
   defp compute_content_hash(data) do
-    content =
-      case data do
-        %{} = map -> map |> Map.to_list() |> Enum.sort() |> :erlang.term_to_binary()
-        list when is_list(list) -> list |> Enum.sort() |> :erlang.term_to_binary()
-        other -> :erlang.term_to_binary(other)
-      end
-
-    Base.encode16(:crypto.hash(:sha256, content))
+    data
+    |> normalize_for_hashing()
+    |> :erlang.term_to_binary()
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16()
   end
+
+  # Recursively normalize data structures for deterministic hashing
+  defp normalize_for_hashing(%{} = map) do
+    map
+    |> Map.to_list()
+    |> Enum.map(fn {k, v} -> {k, normalize_for_hashing(v)} end)
+    |> Enum.sort()
+  end
+
+  defp normalize_for_hashing(list) when is_list(list) do
+    list
+    |> Enum.map(&normalize_for_hashing/1)
+    |> Enum.sort()
+  end
+
+  defp normalize_for_hashing(other), do: other
 
   # Server callbacks
 

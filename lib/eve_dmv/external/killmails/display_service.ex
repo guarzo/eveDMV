@@ -92,47 +92,75 @@ defmodule EveDmv.Killmails.DisplayService do
 
   # Build display from optimized payload with pre-computed fields
   defp build_from_optimized_payload(payload) do
-    victim = payload[:victim] || payload["victim"] || %{}
-    system_id = payload[:solar_system_id] || payload["solar_system_id"]
-    display = payload[:display] || payload["display"] || %{}
+    victim = payload[:victim] || %{}
+    system_id = payload[:solar_system_id]
+    display = payload[:display] || %{}
+
+    # Extract final blow attacker from attackers array
+    attackers = payload[:attackers] || []
+    final_blow = Enum.find(attackers, &(&1[:final_blow] || &1["final_blow"]))
 
     # Get system security info (this is cached and fast)
     system_security = NameResolver.system_security(system_id)
 
     # Ship name from payload, with fallback to resolver if missing
     victim_ship_name =
-      case victim[:ship_name] || victim["ship_name"] do
-        nil -> NameResolver.ship_name(victim[:ship_type_id] || victim["ship_type_id"])
-        "Unknown Ship" -> NameResolver.ship_name(victim[:ship_type_id] || victim["ship_type_id"])
+      case victim[:ship_name] do
+        nil -> NameResolver.ship_name(victim[:ship_type_id])
+        "Unknown Ship" -> NameResolver.ship_name(victim[:ship_type_id])
         name -> name
       end
 
+    # Calculate age_minutes from killmail_time
+    killmail_time = payload[:killmail_time]
+    age_minutes = calculate_age_minutes(killmail_time)
+
     %{
       id: generate_killmail_id(payload),
-      killmail_id: payload[:killmail_id] || payload["killmail_id"],
-      killmail_time: payload[:killmail_time] || payload["killmail_time"],
-      victim_character_id: victim[:character_id] || victim["character_id"],
-      victim_character_name:
-        victim[:character_name] || victim["character_name"] || "Unknown Pilot",
-      victim_corporation_name:
-        victim[:corporation_name] || victim["corporation_name"] || "Unknown Corp",
-      victim_alliance_name: victim[:alliance_name] || victim["alliance_name"],
+      killmail_id: payload[:killmail_id],
+      killmail_time: killmail_time,
+      victim_character_id: victim[:character_id],
+      victim_character_name: victim[:character_name] || "Unknown Pilot",
+      victim_corporation_name: victim[:corporation_name] || "Unknown Corp",
+      victim_alliance_name: victim[:alliance_name],
       victim_ship_name: victim_ship_name,
       solar_system_id: system_id,
-      solar_system_name:
-        payload[:solar_system_name] || payload["solar_system_name"] || "Unknown System",
+      solar_system_name: payload[:solar_system_name] || "Unknown System",
       security_class: system_security.class,
       security_color: system_security.color,
       security_status: system_security.status,
-      total_value: payload[:total_value] || payload["total_value"] || Decimal.new(0),
-      ship_value: payload[:ship_value] || payload["ship_value"],
-      attacker_count: payload[:attacker_count] || payload["attacker_count"] || 0,
-      final_blow_character_id: nil,
-      final_blow_character_name: nil,
-      age_minutes: 0,
-      is_expensive: display[:is_high_value] || display["is_high_value"] || false
+      total_value: payload[:total_value] || Decimal.new(0),
+      ship_value: payload[:ship_value],
+      attacker_count: payload[:attacker_count] || 0,
+      final_blow_character_id: get_final_blow_field(final_blow, :character_id),
+      final_blow_character_name: get_final_blow_field(final_blow, :character_name),
+      age_minutes: age_minutes,
+      is_expensive: display[:is_high_value] || false
     }
   end
+
+  # Helper to get final blow field with atom/string key support
+  defp get_final_blow_field(nil, _field), do: nil
+
+  defp get_final_blow_field(final_blow, field) when is_atom(field) do
+    final_blow[field] || final_blow[Atom.to_string(field)]
+  end
+
+  # Calculate age in minutes from killmail time
+  defp calculate_age_minutes(nil), do: 0
+
+  defp calculate_age_minutes(killmail_time) when is_struct(killmail_time, DateTime) do
+    DateTimeUtils.diff(DateTime.utc_now(), killmail_time, :minute)
+  end
+
+  defp calculate_age_minutes(killmail_time) when is_binary(killmail_time) do
+    case DateTime.from_iso8601(killmail_time) do
+      {:ok, dt, _} -> DateTimeUtils.diff(DateTime.utc_now(), dt, :minute)
+      _ -> 0
+    end
+  end
+
+  defp calculate_age_minutes(_), do: 0
 
   # Build display from raw wanderer-kills data (legacy path)
   defp build_from_raw_data(killmail_data) do

@@ -28,6 +28,7 @@ defmodule EveDmv.Killmails.PipelineAutoscaler do
 
   defmodule State do
     @moduledoc false
+
     defstruct [
       :current_concurrency,
       :recommended_concurrency,
@@ -35,6 +36,32 @@ defmodule EveDmv.Killmails.PipelineAutoscaler do
       :utilization_history,
       :scale_events
     ]
+
+    @typedoc "A utilization measurement entry"
+    @type utilization_entry :: %{
+            timestamp: DateTime.t(),
+            utilization: float(),
+            messages_processed: non_neg_integer(),
+            batches_processed: non_neg_integer(),
+            avg_processing_time_ms: float()
+          }
+
+    @typedoc "A scaling event record"
+    @type scale_event :: %{
+            timestamp: DateTime.t(),
+            from: non_neg_integer(),
+            to: non_neg_integer(),
+            utilization: float(),
+            direction: :up | :down
+          }
+
+    @type t :: %__MODULE__{
+            current_concurrency: non_neg_integer(),
+            recommended_concurrency: non_neg_integer(),
+            last_check: DateTime.t() | nil,
+            utilization_history: [utilization_entry()],
+            scale_events: [scale_event()]
+          }
   end
 
   # Client API
@@ -140,8 +167,36 @@ defmodule EveDmv.Killmails.PipelineAutoscaler do
 
   # Private functions
 
+  defp fetch_metrics_safely do
+    PipelineMonitor.get_metrics()
+  catch
+    :exit, reason ->
+      Logger.warning(
+        "PipelineAutoscaler: Failed to fetch metrics from PipelineMonitor, " <>
+          "using defaults. Reason: #{inspect(reason)}"
+      )
+
+      default_metrics()
+  end
+
+  defp default_metrics do
+    %{
+      messages: %{received: 0, processed: 0, failed: 0, success_rate: 100.0},
+      batches: %{processed: 0, failed: 0, average_size: 0.0, success_rate: 100.0},
+      performance: %{
+        avg_processing_time_ms: 0.0,
+        p95_processing_time_ms: 0.0,
+        p99_processing_time_ms: 0.0
+      },
+      errors: %{},
+      last_success: nil,
+      last_failure: nil,
+      uptime_minutes: 0
+    }
+  end
+
   defp perform_scaling_check(state) do
-    metrics = PipelineMonitor.get_metrics()
+    metrics = fetch_metrics_safely()
     utilization = calculate_utilization(metrics)
     now = DateTime.utc_now()
 
@@ -205,20 +260,38 @@ defmodule EveDmv.Killmails.PipelineAutoscaler do
   defp calculate_utilization(metrics) do
     # Calculate utilization based on batch processing time vs batch timeout
     # Higher ratio = higher utilization = need more capacity
-    avg_batch_time_ms = metrics.performance.avg_processing_time_ms
 
-    if avg_batch_time_ms > 0 do
+    # Safely extract avg_batch_time_ms, returning 0.0 if nil or non-positive
+    avg_batch_time_ms =
+      case metrics do
+        %{performance: %{avg_processing_time_ms: time}} when is_number(time) and time > 0 ->
+          time
+
+        _ ->
+          nil
+      end
+
+    if is_nil(avg_batch_time_ms) do
+      0.0
+    else
       # Utilization = actual processing time / available time window
       utilization = avg_batch_time_ms / @batch_timeout_ms
 
+      # Safely extract success_rate, defaulting to 100 if nil/missing
+      raw_success_rate =
+        case metrics do
+          %{batches: %{success_rate: rate}} when is_number(rate) -> rate
+          _ -> 100
+        end
+
+      # Convert to float ratio and clamp to prevent division by zero
+      success_rate_ratio = max(raw_success_rate / 100, 0.5)
+
       # Also factor in success rate - lower success rate indicates stress
-      success_rate = metrics.batches.success_rate / 100
-      adjusted_utilization = utilization / max(success_rate, 0.5)
+      adjusted_utilization = utilization / success_rate_ratio
 
       # Clamp to reasonable range
       min(adjusted_utilization, 1.0)
-    else
-      0.0
     end
   end
 

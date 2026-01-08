@@ -203,15 +203,14 @@ defmodule EveDmv.Platform.Database.CorporationQueries do
     # Optimized: Uses participants table instead of JSONB extraction
     query = """
     WITH ship_usage AS (
-      -- All ship usage from participants table with ISK values for losses
+      -- Ship usage counts with ISK lost (summed only for victim records)
       SELECT
         p.ship_type_id,
         COUNT(*) as usage_count,
-        SUM(CASE WHEN p.is_victim THEN COALESCE(k.total_value, 0) ELSE 0 END) as total_value
+        SUM(CASE WHEN p.is_victim THEN COALESCE(k.total_value, 0) ELSE 0 END) as total_isk_lost
       FROM participants p
       LEFT JOIN killmails_raw k ON k.killmail_id = p.killmail_id
         AND k.killmail_time = p.killmail_time
-        AND p.is_victim = true
       WHERE p.corporation_id = $1
         AND p.ship_type_id IS NOT NULL
         AND p.killmail_time >= $2
@@ -220,7 +219,7 @@ defmodule EveDmv.Platform.Database.CorporationQueries do
     SELECT
       ship_type_id,
       usage_count as total_usage,
-      total_value as total_isk_lost
+      total_isk_lost
     FROM ship_usage
     ORDER BY usage_count DESC
     LIMIT $3

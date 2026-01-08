@@ -520,7 +520,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   end
 
   defp build_minimal_report(character_id) do
-    # Fetch character info even for minimal reports (always returns {:ok, info})
+    # fetch_character_info/1 always returns {:ok, info} (handles errors internally)
     {:ok, character_info} = fetch_character_info(character_id)
 
     %{
@@ -759,7 +759,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   Identifies patterns in group operations.
   Returns operation types, temporal patterns, geographic patterns, and coordination level.
   """
-  @spec analyze_group_patterns([integer()]) :: {:ok, map()}
+  @spec analyze_group_patterns([integer()]) :: {:ok, map()} | {:error, atom()}
   def analyze_group_patterns(character_ids) when is_list(character_ids) do
     CrossCharacterAnalyzer.analyze_group_patterns(character_ids)
   end

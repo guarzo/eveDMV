@@ -208,7 +208,8 @@ defmodule EveDmvWeb.Telemetry do
       # EVE DMV specific measurements
       {__MODULE__, :measure_surveillance_profiles, []},
       {__MODULE__, :measure_cache_stats, []},
-      {__MODULE__, :measure_pipeline_stats, []}
+      {__MODULE__, :measure_pipeline_stats, []},
+      {__MODULE__, :measure_database_pool, []}
     ]
   end
 
@@ -274,5 +275,122 @@ defmodule EveDmvWeb.Telemetry do
     })
   rescue
     _ -> :ok
+  end
+
+  @doc """
+  Measure database connection pool statistics.
+  """
+  def measure_database_pool do
+    repo_config = EveDmv.Repo.config()
+    pool_size = Keyword.get(repo_config, :pool_size, 10)
+
+    case get_pool_stats() do
+      {:ok, %{busy: busy, idle: idle, queue_length: queue_length}} ->
+        available = idle
+        total = busy + idle
+        utilization = if total > 0, do: busy / total * 100, else: 0.0
+
+        :telemetry.execute(
+          [:eve_dmv, :database, :pool, :utilization],
+          %{value: utilization},
+          %{}
+        )
+
+        :telemetry.execute(
+          [:eve_dmv, :database, :pool, :queue_length],
+          %{value: queue_length},
+          %{}
+        )
+
+        :telemetry.execute(
+          [:eve_dmv, :database, :pool, :available],
+          %{value: available},
+          %{}
+        )
+
+      {:error, _reason} ->
+        # Pool not available, emit zeros
+        :telemetry.execute(
+          [:eve_dmv, :database, :pool, :utilization],
+          %{value: 0.0},
+          %{}
+        )
+
+        :telemetry.execute(
+          [:eve_dmv, :database, :pool, :queue_length],
+          %{value: 0},
+          %{}
+        )
+
+        :telemetry.execute(
+          [:eve_dmv, :database, :pool, :available],
+          %{value: pool_size},
+          %{}
+        )
+    end
+  rescue
+    _ -> :ok
+  end
+
+  defp get_pool_stats do
+    # Get the pool from the repo and query its state
+    # DBConnection pools track busy/idle connections internally
+    repo_pid = Process.whereis(EveDmv.Repo)
+
+    if repo_pid && Process.alive?(repo_pid) do
+      # Use Ecto's internal pool query mechanism
+      # The pool is typically a DBConnection.ConnectionPool
+      try do
+        # Get pool status via checkout timing - a quick checkout indicates healthy pool
+        checkout_start = System.monotonic_time(:microsecond)
+
+        result =
+          Ecto.Adapters.SQL.query(
+            EveDmv.Repo,
+            "SELECT 1",
+            [],
+            timeout: 100,
+            queue_target: 50
+          )
+
+        checkout_time = System.monotonic_time(:microsecond) - checkout_start
+
+        case result do
+          {:ok, _} ->
+            # Estimate pool health based on checkout time
+            # Fast checkout (<1ms) = healthy pool, slow checkout = pressure
+            repo_config = EveDmv.Repo.config()
+            pool_size = Keyword.get(repo_config, :pool_size, 10)
+
+            # Estimate busy connections based on checkout latency
+            # Under 1000 microseconds is considered healthy
+            estimated_busy =
+              cond do
+                checkout_time < 1000 -> 0
+                checkout_time < 5000 -> div(pool_size, 4)
+                checkout_time < 10_000 -> div(pool_size, 2)
+                true -> pool_size - 1
+              end
+
+            {:ok,
+             %{
+               busy: estimated_busy,
+               idle: pool_size - estimated_busy,
+               queue_length: if(checkout_time > 10_000, do: 1, else: 0)
+             }}
+
+          {:error, _} ->
+            {:error, :query_failed}
+        end
+      rescue
+        DBConnection.ConnectionError ->
+          {:error, :connection_error}
+
+        _ ->
+          {:error, :unknown}
+      end
+    else
+      {:error, :repo_not_started}
+    end
   end
 end

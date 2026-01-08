@@ -238,53 +238,83 @@ defmodule EveDmv.Killmails.KillmailPipeline do
 
         # Handle real-time intelligence processing asynchronously with supervision
         # Uses PipelineTaskSupervisor for graceful shutdown and error isolation
-        Task.Supervisor.start_child(
-          EveDmv.PipelineTaskSupervisor,
-          fn ->
-            try do
-              Logger.debug(
-                "🧠 Processing #{length(broadcast_messages)} killmails for intelligence updates"
-              )
+        case Task.Supervisor.start_child(
+               EveDmv.PipelineTaskSupervisor,
+               fn ->
+                 try do
+                   Logger.debug(
+                     "🧠 Processing #{length(broadcast_messages)} killmails for intelligence updates"
+                   )
 
-              # Process each killmail for intelligence
-              Enum.each(broadcast_messages, fn message ->
-                case message.data do
-                  %{killmail_id: _} = killmail_data ->
-                    RealTimeCoordinator.process_killmail(killmail_data)
+                   # Process each killmail for intelligence
+                   Enum.each(broadcast_messages, fn message ->
+                     case message.data do
+                       %{killmail_id: _} = killmail_data ->
+                         RealTimeCoordinator.process_killmail(killmail_data)
 
-                  _ ->
-                    :skip
-                end
-              end)
-            rescue
-              error ->
-                Logger.error("Failed to process killmails for intelligence: #{inspect(error)}")
-                # Don't fail the pipeline for intelligence processing issues
-            end
-          end,
-          restart: :temporary,
-          shutdown: 30_000
-        )
+                       _ ->
+                         :skip
+                     end
+                   end)
+                 rescue
+                   error ->
+                     Logger.error(
+                       "Failed to process killmails for intelligence: #{inspect(error)}"
+                     )
+
+                     # Don't fail the pipeline for intelligence processing issues
+                 end
+               end,
+               restart: :temporary,
+               shutdown: 30_000
+             ) do
+          {:ok, pid} ->
+            Logger.debug("Started intelligence task with pid #{inspect(pid)}")
+
+          {:error, reason} ->
+            Logger.error("Failed to start intelligence task: #{inspect(reason)}")
+
+            :telemetry.execute(
+              [:eve_dmv, :killmail, :task_start_failed],
+              %{count: 1},
+              %{task_type: :intelligence, reason: reason}
+            )
+        end
 
         # Handle surveillance matching asynchronously with supervision
-        Task.Supervisor.start_child(
-          EveDmv.PipelineTaskSupervisor,
-          fn ->
-            try do
-              Logger.info(
-                "🔍 Checking #{length(broadcast_messages)} killmails for surveillance matches"
-              )
+        case Task.Supervisor.start_child(
+               EveDmv.PipelineTaskSupervisor,
+               fn ->
+                 try do
+                   Logger.info(
+                     "🔍 Checking #{length(broadcast_messages)} killmails for surveillance matches"
+                   )
 
-              KillmailBroadcaster.check_surveillance_matches(broadcast_messages)
-            rescue
-              error ->
-                normalized_error = Error.normalize(error)
-                Logger.error("Failed to check surveillance matches: #{normalized_error.message}")
-            end
-          end,
-          restart: :temporary,
-          shutdown: 30_000
-        )
+                   KillmailBroadcaster.check_surveillance_matches(broadcast_messages)
+                 rescue
+                   error ->
+                     normalized_error = Error.normalize(error)
+
+                     Logger.error(
+                       "Failed to check surveillance matches: #{normalized_error.message}"
+                     )
+                 end
+               end,
+               restart: :temporary,
+               shutdown: 30_000
+             ) do
+          {:ok, pid} ->
+            Logger.debug("Started surveillance task with pid #{inspect(pid)}")
+
+          {:error, reason} ->
+            Logger.error("Failed to start surveillance task: #{inspect(reason)}")
+
+            :telemetry.execute(
+              [:eve_dmv, :killmail, :task_start_failed],
+              %{count: 1},
+              %{task_type: :surveillance, reason: reason}
+            )
+        end
 
         # Database insertion complete - return messages
         messages

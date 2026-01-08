@@ -2,8 +2,9 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
   @moduledoc """
   Graceful shutdown coordinator for EVE DMV application.
 
-  Handles SIGTERM/SIGINT signals and orchestrates orderly shutdown
-  of all application components with proper cleanup.
+  Handles SIGTERM signals via `:os.set_signal/2` and orchestrates orderly
+  shutdown of all application components with proper cleanup. Note that SIGINT
+  is handled by the Erlang VM internally and does not go through this module.
   """
 
   use GenServer
@@ -202,16 +203,6 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
       {:noreply, state}
     else
       send(self(), {:initiate_shutdown, :sigterm, @total_shutdown_timeout})
-      {:noreply, state}
-    end
-  end
-
-  @impl GenServer
-  def handle_info({:signal, :sigint}, state) do
-    if state.shutdown_reason do
-      {:noreply, state}
-    else
-      send(self(), {:initiate_shutdown, :sigint, @total_shutdown_timeout})
       {:noreply, state}
     end
   end

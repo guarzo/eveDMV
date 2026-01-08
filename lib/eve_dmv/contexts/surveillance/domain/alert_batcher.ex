@@ -11,6 +11,10 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertBatcher do
   ## Configuration
 
   - `batch_interval` - Time in milliseconds between batch flushes (default: 5000ms)
+  - `backward_compat` - When true, broadcasts individual alerts in addition to batches
+    for backward compatibility with existing subscribers (default: true).
+    Set to false via `config :eve_dmv, alert_batcher: [backward_compat: false]`
+    once all subscribers handle `{:alerts_batch, payload}` messages.
   - Alerts are queued and broadcast together, reducing individual PubSub messages
 
   ## Usage
@@ -33,6 +37,13 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertBatcher do
 
   @pubsub EveDmv.PubSub
   @default_batch_interval 5_000
+  # Backward compatibility mode broadcasts individual alerts in addition to batches.
+  # Disable in production for full batching benefits once all subscribers are updated.
+  @backward_compat_enabled Application.compile_env(
+                             :eve_dmv,
+                             [:alert_batcher, :backward_compat],
+                             true
+                           )
 
   # Public API
 
@@ -247,20 +258,38 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertBatcher do
       }
 
       # Broadcast batched alerts
-      Phoenix.PubSub.broadcast(
-        @pubsub,
-        "surveillance:alerts",
-        {:alerts_batch, batch_payload}
-      )
+      case Phoenix.PubSub.broadcast(
+             @pubsub,
+             "surveillance:alerts",
+             {:alerts_batch, batch_payload}
+           ) do
+        :ok ->
+          :ok
 
-      # Also broadcast individual alerts for backwards compatibility
-      # This allows existing subscribers to work without modification
-      for alert <- alerts do
-        Phoenix.PubSub.broadcast(
-          @pubsub,
-          "surveillance:alerts",
-          {:surveillance_alert, alert}
-        )
+        {:error, reason} ->
+          Logger.error(
+            "#{__MODULE__}.do_flush/1: Failed to broadcast to topic \"surveillance:alerts\", reason: #{inspect(reason)}"
+          )
+      end
+
+      # Backward compatibility - can be disabled via config once all subscribers
+      # are updated to handle {:alerts_batch, payload} messages
+      if @backward_compat_enabled do
+        for alert <- alerts do
+          case Phoenix.PubSub.broadcast(
+                 @pubsub,
+                 "surveillance:alerts",
+                 {:surveillance_alert, alert}
+               ) do
+            :ok ->
+              :ok
+
+            {:error, reason} ->
+              Logger.error(
+                "#{__MODULE__}.do_flush/1: Failed to broadcast individual alert to topic \"surveillance:alerts\", reason: #{inspect(reason)}"
+              )
+          end
+        end
       end
 
       # Update stats
@@ -275,11 +304,19 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertBatcher do
   end
 
   defp broadcast_metrics_only(metrics_updates) do
-    Phoenix.PubSub.broadcast(
-      @pubsub,
-      "surveillance:alerts",
-      {:metrics_update, metrics_updates}
-    )
+    case Phoenix.PubSub.broadcast(
+           @pubsub,
+           "surveillance:alerts",
+           {:metrics_update, metrics_updates}
+         ) do
+      :ok ->
+        :ok
+
+      {:error, reason} ->
+        Logger.error(
+          "#{__MODULE__}.broadcast_metrics_only/1: Failed to broadcast to topic \"surveillance:alerts\", reason: #{inspect(reason)}"
+        )
+    end
   end
 
   defp schedule_flush(state) do
@@ -288,12 +325,23 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertBatcher do
   end
 
   defp merge_metrics_update(existing, new_update) do
-    # Merge metrics updates intelligently
-    # For counters, sum them; for gauges, take latest
-    Map.merge(existing, new_update, fn _key, v1, v2 ->
-      if is_number(v1) and is_number(v2), do: v1 + v2, else: v2
+    Map.merge(existing, new_update, fn key, v1, v2 ->
+      # Counter metrics (prefixed with count_ or _count suffix) should sum
+      if is_number(v1) and is_number(v2) and counter_metric?(key) do
+        v1 + v2
+      else
+        # All other values (gauges) take the latest
+        v2
+      end
     end)
   end
+
+  defp counter_metric?(key) when is_atom(key) do
+    key_str = Atom.to_string(key)
+    String.starts_with?(key_str, "count_") or String.ends_with?(key_str, "_count")
+  end
+
+  defp counter_metric?(_), do: false
 
   defp update_stats(stats, batch_size) do
     total_batches = stats.total_batches + 1

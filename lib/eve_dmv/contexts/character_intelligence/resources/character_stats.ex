@@ -225,6 +225,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Resources.CharacterStats do
   defp ensure_decimal(%Decimal{} = value), do: value
   defp ensure_decimal(value) when is_number(value), do: Decimal.new(value)
 
+  defp ensure_decimal(value) when is_binary(value) do
+    case Decimal.parse(value) do
+      {decimal, _rest} -> decimal
+      :error -> raise ArgumentError, "cannot parse #{inspect(value)} as Decimal"
+    end
+  end
+
   defp count_participants(query) do
     case Ash.count(query, domain: EveDmv.Api) do
       {:ok, count} -> count

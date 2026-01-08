@@ -171,8 +171,10 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
       iex> get_corporation_intelligence(98000001)
       {:ok, %{corporation_id: 98000001, member_count: 150, ...}}
   """
-  @spec get_corporation_intelligence(integer()) :: {:ok, corporation_intelligence_result()}
+  @spec get_corporation_intelligence(integer()) ::
+          {:ok, corporation_intelligence_result()} | {:error, intelligence_api_error() | term()}
   def get_corporation_intelligence(corporation_id) do
+    # CorporationAnalyzer.get_intelligence/1 always returns {:ok, map()}
     {:ok, analysis_result} = CorporationAnalyzer.get_intelligence(corporation_id)
     {:ok, IntelligenceTransformer.transform_corporation_analysis(analysis_result)}
   end

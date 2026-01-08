@@ -129,7 +129,7 @@ defmodule EveDmv.Killmails.DatabaseInserter do
 
   @impl GenServer
   def handle_call(:record_failure, _from, state) do
-    new_state = do_record_failure(state)
+    new_state = do_record_failure(state, self())
     {:reply, :ok, new_state}
   end
 
@@ -186,7 +186,7 @@ defmodule EveDmv.Killmails.DatabaseInserter do
 
   defp do_record_success(state), do: state
 
-  defp do_record_failure(%{state: @circuit_closed, failure_count: count} = state) do
+  defp do_record_failure(%{state: @circuit_closed, failure_count: count} = state, pid) do
     new_count = count + 1
     now = DateTime.utc_now()
 
@@ -194,7 +194,7 @@ defmodule EveDmv.Killmails.DatabaseInserter do
       Logger.warning("Circuit breaker OPENING after #{new_count} consecutive failures")
 
       emit_circuit_breaker_telemetry(:opened, new_count)
-      schedule_half_open_transition()
+      schedule_half_open_transition(pid)
 
       %{state | state: @circuit_open, failure_count: new_count, last_failure: now, opened_at: now}
     else
@@ -202,19 +202,19 @@ defmodule EveDmv.Killmails.DatabaseInserter do
     end
   end
 
-  defp do_record_failure(%{state: @circuit_half_open} = state) do
+  defp do_record_failure(%{state: @circuit_half_open} = state, pid) do
     Logger.warning("Circuit breaker reopening after failed half-open test")
     emit_circuit_breaker_telemetry(:reopened, state.failure_count + 1)
-    schedule_half_open_transition()
+    schedule_half_open_transition(pid)
 
     now = DateTime.utc_now()
     %{state | state: @circuit_open, failure_count: state.failure_count + 1, opened_at: now}
   end
 
-  defp do_record_failure(state), do: state
+  defp do_record_failure(state, _pid), do: state
 
-  defp schedule_half_open_transition do
-    Process.send_after(self(), :try_half_open, @reset_timeout_ms)
+  defp schedule_half_open_transition(pid) do
+    Process.send_after(pid, :try_half_open, @reset_timeout_ms)
   end
 
   defp emit_circuit_breaker_telemetry(event, failure_count) do

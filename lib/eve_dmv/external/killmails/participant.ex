@@ -512,8 +512,15 @@ defmodule EveDmv.Killmails.Participant do
       end)
     end
 
+    # NOTE: This read action is deprecated due to incorrect aggregation behavior.
+    # The aggregate+distinct pattern does not properly group counts per ship.
+    # Use EveDmv.Killmails.Participant.get_character_ship_usage/3 instead,
+    # which performs a proper GROUP BY query with correct per-ship counts.
     read :character_ship_usage do
-      description("Get ship usage breakdown for a character")
+      description(
+        "DEPRECATED: Use get_character_ship_usage/3 function instead. " <>
+          "This action has incorrect aggregation behavior."
+      )
 
       argument :character_id, :integer do
         allow_nil?(false)
@@ -536,6 +543,9 @@ defmodule EveDmv.Killmails.Participant do
       filter(expr(killmail_time >= ago(^arg(:since_days), :day)))
       filter(expr(is_victim == false))
 
+      # This prepare block has incorrect behavior - the aggregate counts all
+      # matching records rather than per-group. Kept for backwards compatibility
+      # but callers should migrate to get_character_ship_usage/3.
       prepare(fn query, context ->
         query
         |> Ash.Query.aggregate(:usage_count, :count)
@@ -597,6 +607,8 @@ defmodule EveDmv.Killmails.Participant do
 
       filter(expr(corporation_id == ^arg(:corporation_id)))
       filter(expr(killmail_time >= ago(^arg(:since_days), :day)))
+      # Exclude NPCs - only count actual corporation members
+      filter(expr(is_npc == false))
 
       prepare(fn query, _context ->
         query
@@ -608,7 +620,7 @@ defmodule EveDmv.Killmails.Participant do
     end
 
     read :system_activity_summary do
-      description("Get activity summary for a solar system")
+      description("Get activity summary for a solar system (player activity only)")
 
       argument :system_id, :integer do
         allow_nil?(false)
@@ -623,6 +635,8 @@ defmodule EveDmv.Killmails.Participant do
 
       filter(expr(solar_system_id == ^arg(:system_id)))
       filter(expr(killmail_time >= ago(^arg(:since_hours), :hour)))
+      # Exclude NPCs - system activity measures player presence
+      filter(expr(is_npc == false))
 
       prepare(fn query, _context ->
         query
@@ -720,6 +734,60 @@ defmodule EveDmv.Killmails.Participant do
     # Only authenticated users can create/modify participant data
     policy action_type([:create, :update, :destroy]) do
       authorize_if(actor_present())
+    end
+  end
+
+  @doc """
+  Get ship usage breakdown for a character with proper grouping.
+
+  Returns a list of maps with :ship_type_id, :ship_name, and :usage_count,
+  ordered by usage_count descending.
+
+  ## Parameters
+    - character_id: The EVE character ID
+    - since_days: Number of days to look back (default: 90)
+    - limit: Maximum number of ships to return (default: 10)
+
+  ## Examples
+
+      iex> EveDmv.Killmails.Participant.get_character_ship_usage(12345)
+      {:ok, [%{ship_type_id: 587, ship_name: "Rifter", usage_count: 42}, ...]}
+
+  """
+  @spec get_character_ship_usage(integer(), integer(), integer()) ::
+          {:ok, [map()]} | {:error, term()}
+  def get_character_ship_usage(character_id, since_days \\ 90, limit \\ 10) do
+    since_date = DateTime.utc_now() |> DateTime.add(-since_days, :day)
+
+    query = """
+    SELECT
+      ship_type_id,
+      ship_name,
+      COUNT(*) as usage_count
+    FROM participants
+    WHERE character_id = $1
+      AND killmail_time >= $2
+      AND is_victim = false
+    GROUP BY ship_type_id, ship_name
+    ORDER BY usage_count DESC
+    LIMIT $3
+    """
+
+    case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [character_id, since_date, limit]) do
+      {:ok, %{rows: rows}} ->
+        results =
+          Enum.map(rows, fn [ship_type_id, ship_name, usage_count] ->
+            %{
+              ship_type_id: ship_type_id,
+              ship_name: ship_name,
+              usage_count: usage_count
+            }
+          end)
+
+        {:ok, results}
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 end

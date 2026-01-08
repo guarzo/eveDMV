@@ -25,17 +25,16 @@ defmodule EveDmv.Platform.Database.CorporationRepository do
     query = """
     SELECT
       p.character_id,
-      p.character_name,
+      MAX(p.character_name) as character_name,
       p.corporation_id,
-      p.corporation_name,
-      p.alliance_id,
-      p.alliance_name,
+      MAX(p.corporation_name) as corporation_name,
+      MAX(p.alliance_id) as alliance_id,
+      MAX(p.alliance_name) as alliance_name,
       MAX(p.killmail_time) as last_seen
     FROM participants p
     WHERE p.corporation_id = $1
       AND p.character_id IS NOT NULL
-    GROUP BY p.character_id, p.character_name, p.corporation_id,
-             p.corporation_name, p.alliance_id, p.alliance_name
+    GROUP BY p.character_id, p.corporation_id
     ORDER BY last_seen DESC
     LIMIT 1000
     """

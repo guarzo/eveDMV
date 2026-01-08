@@ -230,6 +230,27 @@ defmodule EveDmv.Contexts.ThreatSurveillance do
     Domain.AlertManagementService.get_recent_alerts(options)
   end
 
+  @doc """
+  List recent threat assessments.
+
+  Returns a list of recent high-priority threat assessments, useful for
+  displaying on dashboards and intelligence summaries.
+
+  ## Options
+
+    * `:limit` - Maximum number of assessments to return (default: 10)
+    * `:since` - Only return assessments updated after this DateTime
+
+  ## Examples
+
+      iex> list_recent_threat_assessments(limit: 5)
+      {:ok, [%{character_id: 123, threat_level: :high, ...}, ...]}
+
+  """
+  def list_recent_threat_assessments(options \\ []) do
+    UnifiedRepository.get_recent_high_threats(options)
+  end
+
   ## Repository Operations
 
   @doc """

@@ -143,6 +143,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngine d
     since =
       Keyword.get(options, :since, DateTimeUtils.add(DateTime.utc_now(), -24 * 3600, :second))
 
+    # get_recent_matches_from_cache_or_db/2 always returns {:ok, matches}
     {:ok, matches} = get_recent_matches_from_cache_or_db(since, limit)
     {:reply, {:ok, matches}, state}
   end
@@ -154,6 +155,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngine d
     since =
       Keyword.get(options, :since, DateTimeUtils.add(DateTime.utc_now(), -7 * 24 * 3600, :second))
 
+    # get_profile_matches_from_cache_or_db/3 always returns {:ok, matches}
     {:ok, matches} = get_profile_matches_from_cache_or_db(profile_id, since, limit)
     {:reply, {:ok, matches}, state}
   end

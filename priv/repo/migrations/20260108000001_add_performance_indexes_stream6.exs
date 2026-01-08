@@ -50,11 +50,11 @@ defmodule EveDmv.Repo.Migrations.AddPerformanceIndexesStream6 do
 
     # System activity queries with ship type (used in SystemLive heatmaps)
     # Extends the existing system_time index to include ship type for covering
-    # Note: Cannot use CONCURRENTLY on partitioned tables in PostgreSQL < 14
     # For partitioned tables, the index is created on each partition automatically
     create_if_not_exists(
       index(:killmails_raw, [:solar_system_id, :killmail_time, :victim_ship_type_id],
-        name: :idx_killmails_system_time_ship
+        name: :idx_killmails_system_time_ship,
+        concurrently: true
       )
     )
 
@@ -78,11 +78,9 @@ defmodule EveDmv.Repo.Migrations.AddPerformanceIndexesStream6 do
     )
 
     # Index for high-value killmails (used in dashboards)
-    # Note: Cannot use partial index with NOW() as PostgreSQL requires IMMUTABLE functions
-    # Instead, we create a full index on high-value killmails and filter at query time
-    # Note: Cannot use CONCURRENTLY on partitioned tables in PostgreSQL < 14
+    # Raw SQL required: partial index with WHERE clause on partitioned table
     execute("""
-    CREATE INDEX IF NOT EXISTS idx_killmails_high_value
+    CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_killmails_high_value
     ON killmails_raw (total_value DESC, killmail_time DESC)
     WHERE total_value > 100000000
     """)
@@ -96,6 +94,8 @@ defmodule EveDmv.Repo.Migrations.AddPerformanceIndexesStream6 do
 
     drop_if_exists(index(:battle_killmails, [:battle_id], name: :idx_battle_killmails_battle_id))
 
+    # Raw SQL required: index was created with PostgreSQL INCLUDE clause for covering index,
+    # which is not supported by Ecto's index macro
     execute("DROP INDEX CONCURRENTLY IF EXISTS idx_participants_char_time_covering")
 
     drop_if_exists(
@@ -104,8 +104,8 @@ defmodule EveDmv.Repo.Migrations.AddPerformanceIndexesStream6 do
       )
     )
 
-    # Note: Cannot use CONCURRENTLY on partitioned tables in PostgreSQL < 14
-    execute("DROP INDEX IF EXISTS idx_killmails_system_time_ship")
+    # Raw SQL required: Ecto's drop_if_exists doesn't support CONCURRENTLY option
+    execute("DROP INDEX CONCURRENTLY IF EXISTS idx_killmails_system_time_ship")
 
     drop_if_exists(
       index(:historical_fetch_status, [:entity_type, :entity_id, :status],
@@ -117,8 +117,8 @@ defmodule EveDmv.Repo.Migrations.AddPerformanceIndexesStream6 do
       index(:api_keys, [:character_id, :is_active], name: :idx_api_keys_character_active)
     )
 
-    # Note: Cannot use CONCURRENTLY on partitioned tables in PostgreSQL < 14
-    execute("DROP INDEX IF EXISTS idx_killmails_high_value")
+    # Raw SQL required: Ecto's drop_if_exists doesn't support CONCURRENTLY option
+    execute("DROP INDEX CONCURRENTLY IF EXISTS idx_killmails_high_value")
 
     execute("RESET statement_timeout")
   end

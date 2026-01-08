@@ -334,8 +334,6 @@ defmodule EveDmvWeb.AllianceLive do
     query = """
     SELECT
       DATE_TRUNC('week', killmail_time) as week_start,
-      COUNT(*) as activity_count,
-      COUNT(DISTINCT character_id) as unique_pilots,
       SUM(CASE WHEN is_victim THEN 0 ELSE 1 END) as kills,
       SUM(CASE WHEN is_victim THEN 1 ELSE 0 END) as losses
     FROM participants
@@ -347,13 +345,13 @@ defmodule EveDmvWeb.AllianceLive do
     LIMIT 4
     """
 
-    weeks =
+    raw_weeks =
       case EveDmv.Repo.query(query, [alliance_id, start_date, end_date]) do
         {:ok, %{rows: rows}} ->
           # Convert rows and calculate week labels
           rows
           |> Enum.with_index()
-          |> Enum.map(fn {[_week_start, _count, _pilots, kills, losses], idx} ->
+          |> Enum.map(fn {[_week_start, kills, losses], idx} ->
             %{
               week_label: "Week -#{idx}",
               kills: kills || 0,
@@ -368,7 +366,7 @@ defmodule EveDmvWeb.AllianceLive do
       end
 
     # Ensure we always have 4 weeks of data (pad with zeros if needed)
-    weeks = pad_weeks_data(weeks)
+    weeks = pad_weeks_data(raw_weeks)
 
     %{
       weekly_data: weeks,
@@ -377,7 +375,7 @@ defmodule EveDmvWeb.AllianceLive do
   end
 
   # Pad weeks data to ensure we always have 4 weeks
-  defp pad_weeks_data(weeks) when length(weeks) >= 4, do: Enum.take(weeks, 4)
+  defp pad_weeks_data([_, _, _, _ | _] = weeks), do: Enum.take(weeks, 4)
 
   defp pad_weeks_data(weeks) do
     existing_count = length(weeks)

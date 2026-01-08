@@ -132,16 +132,10 @@ defmodule EveDmvWeb.CorporationLive do
       {:noreply, socket}
     else
       case update do
-        {:progress, progress} ->
+        {:progress, _progress} ->
           # Targeted update: Only update progress status, no database queries
           status = get_historical_fetch_status(:corporation, corporation_id)
-
-          socket =
-            socket
-            |> assign(:historical_fetch_status, status)
-            |> maybe_update_progress_info(progress)
-
-          {:noreply, socket}
+          {:noreply, assign(socket, :historical_fetch_status, status)}
 
         {:completed, result} ->
           # Targeted update: Update status and incrementally update stats
@@ -153,7 +147,7 @@ defmodule EveDmvWeb.CorporationLive do
           socket =
             socket
             |> assign(:historical_fetch_status, status)
-            |> update(:comp_stats, &increment_comp_stats_kills(&1, new_killmails_count))
+            |> update(:corp_stats, &increment_corp_stats_kills(&1, new_killmails_count))
             |> update(
               :comprehensive_stats,
               &increment_last_30_days_kills(&1, new_killmails_count)
@@ -181,22 +175,10 @@ defmodule EveDmvWeb.CorporationLive do
     end
   end
 
-  # Helper for progress updates
-  defp maybe_update_progress_info(socket, progress) do
-    case progress do
-      %{killmails_fetched: count} when is_integer(count) and count > 0 ->
-        # Update a progress indicator if we track it in assigns
-        socket
+  # Helper for incrementing corp_stats kills count
+  defp increment_corp_stats_kills(nil, _count), do: nil
 
-      _ ->
-        socket
-    end
-  end
-
-  # Helper for incrementing comp_stats kills count
-  defp increment_comp_stats_kills(nil, _count), do: nil
-
-  defp increment_comp_stats_kills(stats, count) do
+  defp increment_corp_stats_kills(stats, count) do
     Map.update(stats, :total_kills, count, &(&1 + count))
   end
 

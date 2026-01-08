@@ -157,18 +157,23 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
     if Enum.empty?(killmail_keys) do
       %{}
     else
-      # Extract killmail_ids for the query
+      # Extract killmail_ids and time range for partition pruning
       killmail_ids = Enum.map(killmail_keys, fn {id, _time} -> id end)
+      killmail_times = Enum.map(killmail_keys, fn {_id, time} -> time end)
+      min_time = Enum.min(killmail_times)
+      max_time = Enum.max(killmail_times)
 
       query = """
       SELECT killmail_id, killmail_time, COUNT(*) as attacker_count
       FROM participants
       WHERE killmail_id = ANY($1::bigint[])
+        AND killmail_time >= $2
+        AND killmail_time <= $3
         AND is_victim = false
       GROUP BY killmail_id, killmail_time
       """
 
-      case EveDmv.Repo.query(query, [killmail_ids]) do
+      case EveDmv.Repo.query(query, [killmail_ids, min_time, max_time]) do
         {:ok, %{rows: rows}} ->
           rows
           |> Enum.map(fn [killmail_id, killmail_time, count] ->
@@ -176,7 +181,8 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
           end)
           |> Map.new()
 
-        {:error, _} ->
+        {:error, err} ->
+          Logger.error("Failed to fetch attacker counts for killmails: #{inspect(err)}")
           # Fallback: return 1 for all killmails
           killmail_keys
           |> Enum.map(fn key -> {key, 1} end)

@@ -57,7 +57,10 @@ defmodule EveDmv.Application do
       {Task.Supervisor, name: EveDmv.TaskSupervisor},
       # Task supervisor specifically for pipeline async work (intelligence, surveillance)
       # Has 30-second shutdown timeout for graceful termination
-      {Task.Supervisor, name: EveDmv.PipelineTaskSupervisor},
+      Supervisor.child_spec(
+        {Task.Supervisor, name: EveDmv.PipelineTaskSupervisor},
+        shutdown: 30_000
+      ),
       # Start rate limiter
       {EveDmvWeb.RateLimit, [clean_period: 60_000]},
       # Auto-recompilation in dev environment (handled by exsync application)

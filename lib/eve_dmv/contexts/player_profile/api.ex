@@ -53,8 +53,8 @@ defmodule EveDmv.Contexts.PlayerProfile.Api do
   Returns detailed combat analysis including basic stats, weapon preferences,
   engagement patterns, and performance metrics.
   """
-  @spec get_combat_stats(Types.character_id(), map()) :: Result.t(map())
-  defdelegate get_combat_stats(character_id, opts \\ %{}), to: CombatStatsAnalyzer, as: :analyze
+  @spec get_combat_stats(Types.character_id(), map() | keyword()) :: Result.t(map())
+  defdelegate get_combat_stats(character_id, opts \\ []), to: CombatStatsAnalyzer, as: :analyze
 
   # Ship Preferences
 

@@ -392,10 +392,6 @@ defmodule EveDmv.Killmails.KillmailRaw do
       filter(expr(is_victim == false))
     end
 
-    count :calculated_attacker_count, :attackers do
-      description("Count of attackers (non-victim participants)")
-    end
-
     sum :total_attacker_damage, :participants, :damage_done do
       description("Total damage dealt by all attackers")
       filter(expr(is_victim == false))
@@ -465,33 +461,28 @@ defmodule EveDmv.Killmails.KillmailRaw do
     )
 
     calculate(:is_fleet_kill, :boolean,
-      description: "True if this was a fleet kill (>5 attackers)",
-      calculation: expr(attacker_count > 5)
+      description:
+        "True if this was a fleet kill (>50 attackers, aligned with gang_size_category)",
+      calculation: expr(attacker_count > 50)
     )
 
-    calculate :gang_size_category, :string do
-      description(
-        "Categorical gang size classification: solo, small_gang, medium_gang, large_gang, fleet"
-      )
-
-      calculation(fn records, _context ->
-        Enum.map(records, fn killmail ->
+    calculate(:gang_size_category, :string,
+      description:
+        "Categorical gang size classification: solo, small_gang, medium_gang, large_gang, fleet",
+      calculation:
+        expr(
           cond do
-            killmail.attacker_count == 1 -> "solo"
-            killmail.attacker_count <= 5 -> "small_gang"
-            killmail.attacker_count <= 15 -> "medium_gang"
-            killmail.attacker_count <= 50 -> "large_gang"
+            attacker_count == 1 -> "solo"
+            attacker_count <= 5 -> "small_gang"
+            attacker_count <= 15 -> "medium_gang"
+            attacker_count <= 50 -> "large_gang"
             true -> "fleet"
           end
-        end)
-      end)
-    end
-
-    calculate(:kill_age_hours, :integer,
-      description: "Hours since this kill occurred",
-      calculation:
-        expr(fragment("EXTRACT(EPOCH FROM (NOW() - ?)) / 3600", killmail_time) |> type(:integer))
+        )
     )
+
+    # Note: age_in_hours (Elixir-based, above) is the canonical age calculation.
+    # kill_age_hours (SQL-based) was removed as redundant.
 
     calculate :age_in_days, :integer do
       description("Age of the killmail in days")

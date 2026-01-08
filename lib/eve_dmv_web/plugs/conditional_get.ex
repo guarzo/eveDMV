@@ -54,9 +54,7 @@ defmodule EveDmvWeb.Plugs.ConditionalGet do
       if_none_match = get_req_header(conn, "if-none-match") |> List.first()
 
       if matches_etag?(if_none_match, etag) do
-        conn
-        |> put_status(304)
-        |> resp(304, "")
+        resp(conn, 304, "")
       else
         conn
       end

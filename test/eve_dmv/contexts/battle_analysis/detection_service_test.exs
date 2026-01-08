@@ -43,7 +43,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.Services.DetectionServiceTest do
     test "returns battles with expected structure when data exists" do
       # Create test data with at least 5 attackers for multi-pilot engagement
       character_id = character_id()
-      killmail = create_multi_pilot_killmail(character_id)
+      killmail = create_multi_pilot_killmail()
       create_participant_records(killmail, character_id)
 
       result = DetectionService.detect_character_battles(character_id, 10)
@@ -81,7 +81,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.Services.DetectionServiceTest do
 
     test "returns battles with coordination context when data exists" do
       corporation_id = corporation_id()
-      killmail = create_multi_pilot_killmail_for_corp(corporation_id)
+      killmail = create_multi_pilot_killmail_for_corp()
       create_corp_participant_records(killmail, corporation_id)
 
       result = DetectionService.detect_corporation_battles(corporation_id, 10)
@@ -399,7 +399,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.Services.DetectionServiceTest do
 
   # Helper functions for creating test data
 
-  defp create_multi_pilot_killmail(_character_id) do
+  defp create_multi_pilot_killmail do
     insert_killmail_raw!(%{
       attacker_count: 10,
       solar_system_id: @test_system_id,
@@ -407,7 +407,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.Services.DetectionServiceTest do
     })
   end
 
-  defp create_multi_pilot_killmail_for_corp(_corporation_id) do
+  defp create_multi_pilot_killmail_for_corp do
     insert_killmail_raw!(%{
       attacker_count: 10,
       victim_corporation_id: Enum.random(98_000_000..98_999_999),

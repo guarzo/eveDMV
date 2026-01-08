@@ -664,15 +664,14 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
     # Build query based on filters
     query = build_surveillance_profile_query(filters)
 
-    # Execute query (simplified for now)
+    # Execute query and apply filters
+    # execute_surveillance_query/2 always returns {:ok, profiles}
     {:ok, profiles} = execute_surveillance_query(query, limit)
 
-    filtered_profiles =
-      profiles
-      |> filter_by_active_status(active_only)
-      |> filter_by_user(user_id)
-
-    {:ok, filtered_profiles}
+    profiles
+    |> filter_by_active_status(active_only)
+    |> filter_by_user(user_id)
+    |> then(&{:ok, &1})
   end
 
   # Helper functions for surveillance profiles

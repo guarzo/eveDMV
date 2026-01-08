@@ -67,14 +67,23 @@ defmodule EveDmvWeb.Plugs.CacheControl do
   Initializes the plug with the given cache type.
   """
   @spec init(atom()) :: atom()
-  def init(cache_type) when is_atom(cache_type), do: cache_type
+  def init(cache_type) when is_atom(cache_type) do
+    if Map.has_key?(@cache_configs, cache_type) do
+      cache_type
+    else
+      valid_keys = @cache_configs |> Map.keys() |> Enum.join(", ")
+
+      raise ArgumentError,
+            "unknown cache_type #{inspect(cache_type)}. Valid cache types are: #{valid_keys}"
+    end
+  end
 
   @doc """
   Adds Cache-Control headers to the connection based on the cache type.
   """
   @spec call(Plug.Conn.t(), atom()) :: Plug.Conn.t()
   def call(conn, cache_type) when is_atom(cache_type) do
-    config = Map.get(@cache_configs, cache_type, @cache_configs.realtime)
+    config = Map.fetch!(@cache_configs, cache_type)
     put_cache_headers(conn, config)
   end
 

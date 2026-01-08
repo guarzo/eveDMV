@@ -16,17 +16,26 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
   Returns comprehensive system health snapshot.
   """
   def get_health_snapshot do
+    database = get_database_health()
+    pipeline = get_pipeline_health()
+    cache = get_cache_health()
+    memory = get_memory_health()
+    liveview = get_liveview_health()
+    queries = get_query_health()
+    errors = get_recent_errors()
+    uptime = get_uptime()
+
     %{
       timestamp: DateTime.utc_now(),
-      overall_status: calculate_overall_status(),
-      database: get_database_health(),
-      pipeline: get_pipeline_health(),
-      cache: get_cache_health(),
-      memory: get_memory_health(),
-      liveview: get_liveview_health(),
-      queries: get_query_health(),
-      errors: get_recent_errors(),
-      uptime: get_uptime()
+      overall_status: calculate_overall_status(database, pipeline, cache, memory, queries),
+      database: database,
+      pipeline: pipeline,
+      cache: cache,
+      memory: memory,
+      liveview: liveview,
+      queries: queries,
+      errors: errors,
+      uptime: uptime
     }
   end
 
@@ -458,13 +467,13 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
     }
   end
 
-  defp calculate_overall_status do
+  defp calculate_overall_status(database, pipeline, cache, memory, queries) do
     statuses = [
-      get_database_health().status,
-      get_pipeline_health().status,
-      get_cache_health().status,
-      get_memory_health().status,
-      get_query_health().status
+      database.status,
+      pipeline.status,
+      cache.status,
+      memory.status,
+      queries.status
     ]
 
     cond do

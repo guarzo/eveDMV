@@ -28,6 +28,23 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
   # 10 minutes
   @cache_ttl 600
 
+  # Known column mappings for killmails_raw table to avoid atom table exhaustion
+  # Only columns actually used by this module are mapped
+  @killmail_columns %{
+    "id" => :id,
+    "killmail_id" => :killmail_id,
+    "killmail_time" => :killmail_time,
+    "solar_system_id" => :solar_system_id,
+    "victim" => :victim,
+    "victim_character_id" => :victim_character_id,
+    "attackers" => :attackers,
+    "zkb_total_value" => :zkb_total_value,
+    "zkb_points" => :zkb_points,
+    "raw_data" => :raw_data,
+    "inserted_at" => :inserted_at,
+    "updated_at" => :updated_at
+  }
+
   @doc """
   Compare multiple characters across various metrics.
 
@@ -683,7 +700,23 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
   end
 
   defp atomize_keys(map) do
-    Map.new(map, fn {k, v} -> {String.to_atom(k), v} end)
+    # Log any unknown columns for debugging (schema drift detection)
+    unknown_columns =
+      map
+      |> Map.keys()
+      |> Enum.reject(&Map.has_key?(@killmail_columns, &1))
+
+    if unknown_columns != [] do
+      Logger.warning(
+        "atomize_keys encountered unknown column(s): #{inspect(unknown_columns)}. " <>
+          "Add these to @killmail_columns if they should be included."
+      )
+    end
+
+    # Only include known columns to prevent atom table exhaustion
+    map
+    |> Enum.filter(fn {k, _v} -> Map.has_key?(@killmail_columns, k) end)
+    |> Map.new(fn {k, v} -> {Map.fetch!(@killmail_columns, k), v} end)
   end
 
   defp summarize_character(char_data) do

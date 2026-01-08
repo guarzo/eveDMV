@@ -43,9 +43,15 @@ defmodule EveDmv.Killmails.KillmailBroadcaster do
     for %Message{data: killmail_data} <- messages do
       try do
         # Build enriched payload with display-ready data
-        payload = build_broadcast_payload(killmail_data)
-        # Use PubSub directly to avoid web layer dependency
-        Phoenix.PubSub.broadcast(@pubsub, "kill_feed", {"new_kill", payload})
+        # Skip broadcasting if payload is nil (invalid format)
+        case build_broadcast_payload(killmail_data) do
+          nil ->
+            :skipped
+
+          payload ->
+            # Use PubSub directly to avoid web layer dependency
+            Phoenix.PubSub.broadcast(@pubsub, "kill_feed", {"new_kill", payload})
+        end
       rescue
         error ->
           Logger.warning("Failed to broadcast killmail: #{inspect(error)}")
@@ -61,7 +67,7 @@ defmodule EveDmv.Killmails.KillmailBroadcaster do
   Extracts essential data from the killmail tuple and adds pre-formatted
   display fields to eliminate database queries in LiveViews.
   """
-  @spec build_broadcast_payload(tuple()) :: map()
+  @spec build_broadcast_payload(tuple()) :: map() | nil
   def build_broadcast_payload({raw_changeset, enriched_changeset, participants}) do
     killmail_id = raw_changeset[:killmail_id]
     killmail_time = raw_changeset[:killmail_time]
@@ -129,10 +135,10 @@ defmodule EveDmv.Killmails.KillmailBroadcaster do
     end
   end
 
-  # Fallback for unexpected formats
+  # Fallback for unexpected formats - return nil to signal invalid data
   def build_broadcast_payload(other) do
-    Logger.warning("Unexpected killmail data format: #{inspect(other)}")
-    %{_raw: other, display: %{}}
+    Logger.warning("Unexpected killmail data format, skipping broadcast: #{inspect(other)}")
+    nil
   end
 
   # ISK formatting helpers

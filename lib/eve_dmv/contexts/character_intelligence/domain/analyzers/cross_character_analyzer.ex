@@ -43,14 +43,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.CrossCharacterA
     shared_operations = get_shared_operations(character_ids)
 
     if Enum.empty?(shared_operations) do
-      {:ok,
-       %{
-         operation_types: %{},
-         temporal_patterns: %{},
-         geographic_patterns: %{},
-         target_preferences: [],
-         coordination_level: 0.0
-       }}
+      {:error, :no_shared_operations}
     else
       {:ok,
        %{

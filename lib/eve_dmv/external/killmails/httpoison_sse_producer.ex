@@ -132,7 +132,12 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
 
               :nomatch ->
                 # No complete events in buffer, reset to prevent corruption
-                Logger.warning("No event boundary found in trimmed buffer, resetting")
+                Logger.warning(
+                  "No event boundary found in trimmed buffer, resetting. " <>
+                    "Discarding #{byte_size(initial_combined_data)} bytes total " <>
+                    "(#{byte_size(trimmed)} bytes searched for boundary)"
+                )
+
                 ""
             end
         end
