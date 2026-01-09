@@ -12,8 +12,6 @@ defmodule EveDmv.Killmails.Participant do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
-  require Logger
-
   postgres do
     table("participants")
     repo(EveDmv.Repo)
@@ -53,7 +51,7 @@ defmodule EveDmv.Killmails.Participant do
     define(:character_activity_summary, args: [:character_id])
     define(:search_characters_by_name, args: [:query])
     define(:search_corporations_by_name, args: [:query])
-    define(:character_ship_usage, args: [:character_id, :since_date])
+    define(:character_ship_usage, args: [:character_id, :since_date, :limit])
   end
 
   # Attributes
