@@ -40,7 +40,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
   ## Data Sources
 
-  This module operates on real killmail data from the `killmails_enriched` table,
+  This module operates on real killmail data from the `killmails_raw` table,
   providing authentic analysis based on actual EVE Online combat events.
 
   ## Analysis Methods

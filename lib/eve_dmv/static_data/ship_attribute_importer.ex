@@ -5,8 +5,8 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
   This service populates the ship_attributes table with calculated DPS, EHP,
   and tactical classifications derived from existing EVE item type data.
 
-  Phase 1: Use basic ship data and estimates
-  Phase 2: Import full dogma attributes when available
+  Uses basic ship data and estimates, with support for full dogma attributes
+  when available from the SDE.
   """
 
   use GenServer
@@ -595,7 +595,6 @@ defmodule EveDmv.StaticData.ShipAttributeImporter do
       tank_rating: calculate_tank_rating(ehp, size_class),
       speed_rating: estimate_speed_rating(size_class, ship.mass),
       utility_rating: min(role_multipliers.utility, 1.0),
-      # Phase 1 estimates are moderate confidence
       confidence: 0.6
     }
   end

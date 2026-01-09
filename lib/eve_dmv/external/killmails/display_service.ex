@@ -78,6 +78,113 @@ defmodule EveDmv.Killmails.DisplayService do
   end
 
   def build_killmail_display(killmail_data) do
+    # Use pre-computed display fields from KillmailBroadcaster when available
+    case killmail_data do
+      %{display: display, victim: victim_data}
+      when is_map(display) and map_size(display) > 0 and is_map(victim_data) ->
+        # Use optimized format from KillmailBroadcaster
+        build_from_optimized_payload(killmail_data)
+
+      _ ->
+        # Legacy format - do full processing
+        build_from_raw_data(killmail_data)
+    end
+  end
+
+  # Build display from optimized payload with pre-computed fields
+  defp build_from_optimized_payload(payload) do
+    start_time = System.monotonic_time(:microsecond)
+    killmail_id = payload[:killmail_id]
+
+    victim = payload[:victim] || %{}
+    system_id = payload[:solar_system_id]
+    display = payload[:display] || %{}
+
+    # Extract final blow attacker from attackers array
+    attackers = payload[:attackers] || []
+    final_blow = Enum.find(attackers, &(&1[:final_blow] || &1["final_blow"]))
+
+    # Get system security info (this is cached and fast)
+    system_security = NameResolver.system_security(system_id)
+
+    # Ship name from payload, with fallback to resolver if missing
+    used_name_resolver = victim[:ship_name] in [nil, "Unknown Ship"]
+
+    victim_ship_name =
+      case victim[:ship_name] do
+        nil -> NameResolver.ship_name(victim[:ship_type_id])
+        "Unknown Ship" -> NameResolver.ship_name(victim[:ship_type_id])
+        name -> name
+      end
+
+    # Calculate age_minutes from killmail_time
+    killmail_time = payload[:killmail_time]
+    age_minutes = calculate_age_minutes(killmail_time)
+
+    result = %{
+      id: generate_killmail_id(payload, killmail_time),
+      killmail_id: killmail_id,
+      killmail_time: killmail_time,
+      victim_character_id: victim[:character_id],
+      victim_character_name: victim[:character_name] || "Unknown Pilot",
+      victim_corporation_name: victim[:corporation_name] || "Unknown Corp",
+      victim_alliance_name: victim[:alliance_name],
+      victim_ship_name: victim_ship_name,
+      solar_system_id: system_id,
+      solar_system_name: payload[:solar_system_name] || "Unknown System",
+      security_class: system_security.class,
+      security_color: system_security.color,
+      security_status: system_security.status,
+      total_value: payload[:total_value] || Decimal.new(0),
+      ship_value: payload[:ship_value],
+      attacker_count: payload[:attacker_count] || 0,
+      final_blow_character_id: get_final_blow_field(final_blow, :character_id),
+      final_blow_character_name: get_final_blow_field(final_blow, :character_name),
+      age_minutes: age_minutes,
+      is_expensive: display[:is_high_value] || false
+    }
+
+    # Emit telemetry for optimized path performance monitoring
+    duration = System.monotonic_time(:microsecond) - start_time
+
+    :telemetry.execute(
+      [:eve_dmv, :killmail, :display, :optimized_path],
+      %{duration: duration},
+      %{
+        killmail_id: killmail_id,
+        attacker_count: payload[:attacker_count] || 0,
+        used_name_resolver: used_name_resolver
+      }
+    )
+
+    result
+  end
+
+  # Helper to get final blow field with atom/string key support
+  defp get_final_blow_field(nil, _field), do: nil
+
+  defp get_final_blow_field(final_blow, field) when is_atom(field) do
+    final_blow[field] || final_blow[Atom.to_string(field)]
+  end
+
+  # Calculate age in minutes from killmail time
+  defp calculate_age_minutes(nil), do: 0
+
+  defp calculate_age_minutes(killmail_time) when is_struct(killmail_time, DateTime) do
+    DateTimeUtils.diff(DateTime.utc_now(), killmail_time, :minute)
+  end
+
+  defp calculate_age_minutes(killmail_time) when is_binary(killmail_time) do
+    case DateTime.from_iso8601(killmail_time) do
+      {:ok, dt, _} -> DateTimeUtils.diff(DateTime.utc_now(), dt, :minute)
+      _ -> 0
+    end
+  end
+
+  defp calculate_age_minutes(_), do: 0
+
+  # Build display from raw wanderer-kills data (legacy path)
+  defp build_from_raw_data(killmail_data) do
     # Handle both wanderer-kills formats:
     # 1. Separate victim/attackers fields
     # 2. Participants array with is_victim flag
@@ -112,10 +219,13 @@ defmodule EveDmv.Killmails.DisplayService do
 
     system_security = NameResolver.system_security(system_id)
 
+    # Parse killmail_time once for both ID generation and display
+    killmail_time = parse_killmail_timestamp(killmail_data)
+
     %{
-      id: generate_killmail_id(killmail_data),
+      id: generate_killmail_id(killmail_data, killmail_time),
       killmail_id: killmail_data["killmail_id"],
-      killmail_time: parse_killmail_timestamp(killmail_data),
+      killmail_time: killmail_time,
       victim_character_id: victim["character_id"],
       victim_character_name: victim["character_name"] || "Unknown Pilot",
       victim_corporation_name: victim_corporation_name,
@@ -293,11 +403,52 @@ defmodule EveDmv.Killmails.DisplayService do
     end
   end
 
-  defp generate_killmail_id(killmail_data) do
-    # Use current timestamp for ID generation
-    now = DateTime.utc_now()
-    "#{killmail_data["killmail_id"]}-#{DateTime.to_unix(now)}"
+  defp generate_killmail_id(killmail_data, killmail_time) do
+    # Use killmail_time for stable ID generation
+    # Handle both atom keys (optimized payload) and string keys (raw data)
+    killmail_id = killmail_data[:killmail_id] || killmail_data["killmail_id"]
+    generate_killmail_id_from_time(killmail_id, killmail_time)
   end
+
+  @doc """
+  Generates a stable killmail ID from a killmail_id and killmail_time.
+
+  Handles both DateTime structs and ISO8601 strings for the time parameter.
+  Returns a string in the format "killmail_id-unix_timestamp".
+
+  ## Examples
+
+      iex> generate_killmail_id_from_time(12345, ~U[2024-01-15 10:30:00Z])
+      "12345-1705314600"
+
+      iex> generate_killmail_id_from_time(12345, "2024-01-15T10:30:00Z")
+      "12345-1705314600"
+
+      iex> generate_killmail_id_from_time(12345, nil)
+      "12345-0"
+  """
+  @spec generate_killmail_id_from_time(integer() | String.t(), DateTime.t() | String.t() | nil) ::
+          String.t()
+  def generate_killmail_id_from_time(killmail_id, killmail_time) do
+    timestamp = killmail_time_to_unix(killmail_time)
+    "#{killmail_id}-#{timestamp}"
+  end
+
+  # Convert killmail_time to unix timestamp, handling various formats
+  defp killmail_time_to_unix(nil), do: 0
+
+  defp killmail_time_to_unix(killmail_time) when is_struct(killmail_time, DateTime) do
+    DateTime.to_unix(killmail_time)
+  end
+
+  defp killmail_time_to_unix(killmail_time) when is_binary(killmail_time) do
+    case DateTime.from_iso8601(killmail_time) do
+      {:ok, dt, _} -> DateTime.to_unix(dt)
+      _ -> 0
+    end
+  end
+
+  defp killmail_time_to_unix(_), do: 0
 
   defp expensive_kill_wanderer(killmail_data) do
     total_value =

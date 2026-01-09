@@ -66,7 +66,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
         tactical_preferences: %{...}
       }}
   """
-  @spec analyze_combat_doctrines(integer(), keyword()) :: {:ok, map()} | {:error, atom()}
+  @spec analyze_combat_doctrines(integer(), keyword()) :: {:ok, map()} | {:error, term()}
   def analyze_combat_doctrines(corporation_id, options \\ []) do
     case CombatDoctrineAnalyzer.analyze_combat_doctrines(corporation_id, options) do
       {:ok, analysis} -> {:ok, analysis}
@@ -79,7 +79,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
 
   Useful for identifying tactical advantages and vulnerabilities.
   """
-  @spec compare_combat_doctrines([integer()], keyword()) :: {:ok, map()} | {:error, atom()}
+  @spec compare_combat_doctrines([integer()], keyword()) :: {:ok, map()} | {:error, term()}
   def compare_combat_doctrines(corporation_ids, options \\ []) when is_list(corporation_ids) do
     case CombatDoctrineAnalyzer.compare_combat_doctrines(corporation_ids, options) do
       {:ok, comparison} -> {:ok, comparison}
@@ -92,7 +92,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
 
   Analyzes the target's preferred doctrines and suggests effective counters.
   """
-  @spec generate_counter_doctrine(integer(), keyword()) :: {:ok, map()} | {:error, atom()}
+  @spec generate_counter_doctrine(integer(), keyword()) :: {:ok, map()} | {:error, term()}
   def generate_counter_doctrine(target_corporation_id, options \\ []) do
     case CombatDoctrineAnalyzer.generate_counter_doctrine(target_corporation_id, options) do
       {:ok, recommendations} -> {:ok, recommendations}
@@ -105,7 +105,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
 
   Shows how tactics and fleet compositions have changed.
   """
-  @spec track_doctrine_evolution(integer(), keyword()) :: {:ok, map()} | {:error, atom()}
+  @spec track_doctrine_evolution(integer(), keyword()) :: {:ok, map()} | {:error, term()}
   def track_doctrine_evolution(corporation_id, options \\ []) do
     case CombatDoctrineAnalyzer.track_doctrine_evolution(corporation_id, options) do
       {:ok, evolution} -> {:ok, evolution}
@@ -196,7 +196,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
   @doc """
   Analyzes threat levels of top members in a corporation.
   """
-  @spec analyze_top_member_threats(integer(), integer()) :: {:ok, map()} | {:error, atom()}
+  @spec analyze_top_member_threats(integer(), integer()) :: {:ok, map()} | {:error, term()}
   def analyze_top_member_threats(corporation_id, limit \\ 10) do
     alias EveDmv.Contexts.CharacterIntelligence
 
@@ -278,7 +278,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence do
   @doc """
   Calculates activity metrics for a corporation.
   """
-  @spec calculate_activity_metrics(integer(), integer()) :: {:ok, map()} | {:error, atom()}
+  @spec calculate_activity_metrics(integer(), integer()) :: {:ok, map()} | {:error, term()}
   def calculate_activity_metrics(corporation_id, days_back \\ @activity_metrics_days_default) do
     time_cutoff = DateTime.utc_now() |> DateTimeUtils.add(-days_back * 24 * 60 * 60, :second)
 

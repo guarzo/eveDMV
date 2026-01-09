@@ -15,8 +15,11 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
   @doc """
   Analyze combat statistics for a character.
   """
-  @spec analyze(integer(), map()) :: Result.t(map())
-  def analyze(character_id, base_data \\ %{}) when is_integer(character_id) do
+  @spec analyze(integer(), map() | keyword()) :: Result.t(map())
+  def analyze(character_id, base_data \\ []) when is_integer(character_id) do
+    # Normalize keyword lists to maps for Map.get compatibility
+    base_data = normalize_base_data(base_data)
+
     character_stats = Map.get(base_data, :character_stats, %{})
     killmail_stats = Map.get(base_data, :killmail_stats, %{})
 
@@ -174,6 +177,22 @@ defmodule EveDmv.Contexts.PlayerProfile.Analyzers.CombatStatsAnalyzer do
   end
 
   # Helper functions
+
+  defp normalize_base_data(base_data) when is_map(base_data), do: base_data
+
+  defp normalize_base_data(base_data) when is_list(base_data) do
+    if Keyword.keyword?(base_data) do
+      Enum.into(base_data, %{})
+    else
+      raise ArgumentError,
+            "base_data must be a map or keyword list, got non-keyword list: #{inspect(base_data)}"
+    end
+  end
+
+  defp normalize_base_data(base_data) do
+    raise ArgumentError,
+          "base_data must be a map or keyword list, got: #{inspect(base_data)}"
+  end
 
   defp safe_divide(numerator, denominator) when denominator > 0 do
     Float.round(numerator / denominator, 2)

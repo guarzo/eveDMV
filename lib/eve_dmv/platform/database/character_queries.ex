@@ -9,39 +9,51 @@ defmodule EveDmv.Platform.Database.CharacterQueries do
   alias EveDmv.Repo
   require Logger
 
+  # Default time range for partition pruning (90 days matches other queries in the codebase)
+  @default_days_back 90
+
   @doc """
   Get character's recent activity without expensive JSONB operations.
   Supports pagination.
+
+  Options:
+    * `:days_back` - Number of days to look back (default: #{@default_days_back}).
+      This enables partition pruning on killmails_raw.
   """
   def get_recent_activity(character_id, opts \\ []) do
+    # Extract days_back from opts, defaulting to 90 days for partition pruning
+    days_back =
+      case opts do
+        limit when is_integer(limit) -> @default_days_back
+        opts when is_list(opts) -> Keyword.get(opts, :days_back, @default_days_back)
+      end
+
+    # Optimized: Uses participants table instead of JSONB extraction
+    # Time-range filter on killmails_raw enables partition pruning
     base_query = """
     SELECT
-      killmail_id,
-      killmail_time,
-      solar_system_id,
-    CASE
-        WHEN victim_character_id = $1 THEN 'loss'
-        ELSE 'kill'
-      END as involvement_type,
-      victim_ship_type_id as ship_type_id,
-      COALESCE((raw_data->>'total_value')::numeric, 0) as total_value
-    FROM killmails_raw
-    WHERE victim_character_id = $1
-       OR EXISTS (
-         SELECT 1
-         FROM jsonb_array_elements(raw_data->'attackers') as attacker
-         WHERE attacker->>'character_id' = $2
-       )
-    ORDER BY killmail_time DESC
+      p.killmail_id,
+      p.killmail_time,
+      k.solar_system_id,
+      CASE WHEN p.is_victim THEN 'loss' ELSE 'kill' END as involvement_type,
+      p.ship_type_id,
+      COALESCE(k.total_value, 0) as total_value
+    FROM participants p
+    JOIN killmails_raw k ON k.killmail_id = p.killmail_id
+      AND k.killmail_time = p.killmail_time
+    WHERE p.character_id = $1
+      AND p.killmail_time >= NOW() - INTERVAL '#{days_back} days'
+      AND k.killmail_time >= NOW() - INTERVAL '#{days_back} days'
+    ORDER BY p.killmail_time DESC
     """
 
     # Handle both old limit-based and new pagination-based calls
     case opts do
       limit when is_integer(limit) ->
         # Legacy support
-        query = base_query <> " LIMIT $3"
+        query = base_query <> " LIMIT $2"
 
-        case Repo.query(query, [character_id, to_string(character_id), limit]) do
+        case Repo.query(query, [character_id, limit]) do
           {:ok, %{rows: rows}} ->
             map_activity_rows(rows)
 
@@ -55,7 +67,7 @@ defmodule EveDmv.Platform.Database.CharacterQueries do
         result =
           Pagination.paginated_query(
             base_query,
-            [character_id, to_string(character_id)],
+            [character_id],
             opts
           )
 
@@ -97,32 +109,19 @@ defmodule EveDmv.Platform.Database.CharacterQueries do
   Get character name from recent killmails.
   """
   def get_character_name_from_killmails(character_id) do
-    # First check if they're a victim
-    victim_query = """
-    SELECT raw_data->'victim'->>'character_name'
-    FROM killmails_raw
-    WHERE victim_character_id = $1
+    # Optimized: Uses participants table instead of JSONB extraction
+    query = """
+    SELECT p.character_name
+    FROM participants p
+    WHERE p.character_id = $1
+      AND p.character_name IS NOT NULL
+    ORDER BY p.killmail_time DESC
     LIMIT 1
     """
 
-    case Repo.query(victim_query, [character_id]) do
-      {:ok, %{rows: [[name]]}} when name != nil ->
-        name
-
-      _ ->
-        # Check attackers
-        attacker_query = """
-        SELECT attacker->>'character_name'
-        FROM killmails_raw,
-             jsonb_array_elements(raw_data->'attackers') as attacker
-        WHERE attacker->>'character_id' = $1
-        LIMIT 1
-        """
-
-        case Repo.query(attacker_query, [to_string(character_id)]) do
-          {:ok, %{rows: [[name]]}} when name != nil -> name
-          _ -> nil
-        end
+    case Repo.query(query, [character_id]) do
+      {:ok, %{rows: [[name]]}} when name != nil -> name
+      _ -> nil
     end
   end
 
@@ -130,46 +129,21 @@ defmodule EveDmv.Platform.Database.CharacterQueries do
   Get corporation and alliance info from killmails.
   """
   def get_character_affiliations(character_id) do
+    # Optimized: Uses participants table instead of JSONB extraction
     query = """
-    WITH recent_data AS (
     SELECT
-        raw_data->'victim' as victim_data,
-    killmail_time
-      FROM killmails_raw
-      WHERE victim_character_id = $1
-      ORDER BY killmail_time DESC
-      LIMIT 1
-    ),
-    attacker_data AS (
-    SELECT
-        attacker as attacker_data,
-    killmail_time
-      FROM killmails_raw,
-           jsonb_array_elements(raw_data->'attackers') as attacker
-      WHERE attacker->>'character_id' = $2
-      ORDER BY killmail_time DESC
-      LIMIT 1
-    )
-    SELECT
-      COALESCE(
-        (SELECT victim_data->>'corporation_name' FROM recent_data),
-        (SELECT attacker_data->>'corporation_name' FROM attacker_data)
-      ) as corp_name,
-      COALESCE(
-        (SELECT victim_data->>'corporation_id' FROM recent_data),
-        (SELECT attacker_data->>'corporation_id' FROM attacker_data)
-      )::integer as corp_id,
-      COALESCE(
-        (SELECT victim_data->>'alliance_name' FROM recent_data),
-        (SELECT attacker_data->>'alliance_name' FROM attacker_data)
-      ) as alliance_name,
-      COALESCE(
-        (SELECT victim_data->>'alliance_id' FROM recent_data),
-        (SELECT attacker_data->>'alliance_id' FROM attacker_data)
-      )::integer as alliance_id
+      p.corporation_name,
+      p.corporation_id,
+      p.alliance_name,
+      p.alliance_id
+    FROM participants p
+    WHERE p.character_id = $1
+      AND p.corporation_id IS NOT NULL
+    ORDER BY p.killmail_time DESC
+    LIMIT 1
     """
 
-    case Repo.query(query, [character_id, to_string(character_id)]) do
+    case Repo.query(query, [character_id]) do
       {:ok, %{rows: [[corp_name, corp_id, alliance_name, alliance_id]]}} ->
         %{
           corporation_name: corp_name,

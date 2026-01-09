@@ -202,10 +202,6 @@ defmodule EveDmv.Eve.StaticDataLoader.SdeVersionManager do
     end
   end
 
-  defp parse_ccp_version(_), do: :error
-
   defp format_version(nil), do: "none"
   defp format_version(%{version_string: str}), do: str
-  defp format_version(version) when is_binary(version), do: version
-  defp format_version(version), do: inspect(version)
 end

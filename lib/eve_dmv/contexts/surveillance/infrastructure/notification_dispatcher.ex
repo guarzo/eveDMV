@@ -406,7 +406,6 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.NotificationDispatcher do
       :timeout -> true
       :email_not_configured -> false
       :webhooks_not_configured -> false
-      _ -> false
     end
   end
 

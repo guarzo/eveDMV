@@ -132,17 +132,14 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ThreatAssessmentEngine do
 
   @impl GenServer
   def handle_call({:update_assessment, entity_id, entity_type, intelligence_data}, _from, state) do
-    case update_threat_assessment(entity_id, entity_type, intelligence_data) do
-      {:ok, updated_assessment} ->
-        # Invalidate cache to force refresh
-        cache_key = {safe_entity_type_atom(entity_type), entity_id}
-        UnifiedCache.delete(:threat, cache_key)
+    # update_threat_assessment/3 always returns {:ok, assessment}
+    {:ok, updated_assessment} =
+      update_threat_assessment(entity_id, entity_type, intelligence_data)
 
-        {:reply, {:ok, updated_assessment}, state}
-
-      error ->
-        {:reply, error, state}
-    end
+    # Invalidate cache to force refresh
+    cache_key = {safe_entity_type_atom(entity_type), entity_id}
+    UnifiedCache.delete(:threat, cache_key)
+    {:reply, {:ok, updated_assessment}, state}
   end
 
   @impl GenServer

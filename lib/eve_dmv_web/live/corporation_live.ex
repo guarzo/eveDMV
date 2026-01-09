@@ -61,7 +61,14 @@ defmodule EveDmvWeb.CorporationLive do
         # Load data asynchronously
         send(self(), :load_corporation_data)
 
-        {:ok, socket}
+        # Use temporary_assigns to clear large list-based data from process memory after render
+        # Members and recent_activity already use streams; this handles other large lists
+        {:ok, socket,
+         temporary_assigns: [
+           recent_battles: [],
+           fleet_doctrines: [],
+           ship_usage: []
+         ]}
 
       _ ->
         socket =
@@ -96,7 +103,6 @@ defmodule EveDmvWeb.CorporationLive do
           |> assign(:battle_stats, data.battle_stats)
           |> assign(:fleet_doctrines, data.fleet_doctrines)
           |> assign(:participation_data, calculate_participation_data(data.members, data.info))
-          # Sprint 15A: Convert large datasets to streams for memory efficiency
           |> stream(:members, data.members || [], at: -1, dom_id: &"member-#{&1.character_id}")
           |> stream(:recent_activity, data.activity || [],
             at: -1,
@@ -118,26 +124,73 @@ defmodule EveDmvWeb.CorporationLive do
   end
 
   # Handle historical fetch status updates via PubSub
-  def handle_info({:historical_fetch_update, :corporation, _entity_id, update}, socket) do
+  def handle_info({:historical_fetch_update, :corporation, entity_id, update}, socket) do
     corporation_id = socket.assigns.corporation_id
 
-    case update do
-      {:progress, _progress} ->
-        status = get_historical_fetch_status(:corporation, corporation_id)
-        {:noreply, assign(socket, :historical_fetch_status, status)}
+    # Only process updates for this corporation
+    if entity_id != corporation_id do
+      {:noreply, socket}
+    else
+      case update do
+        {:progress, _progress} ->
+          # Targeted update: Only update progress status, no database queries
+          status = get_historical_fetch_status(:corporation, corporation_id)
+          {:noreply, assign(socket, :historical_fetch_status, status)}
 
-      {:completed, _result} ->
-        status = get_historical_fetch_status(:corporation, corporation_id)
-        # Reload data to include new historical killmails
-        send(self(), :load_corporation_data)
-        {:noreply, assign(socket, :historical_fetch_status, status)}
+        {:completed, result} ->
+          # Targeted update: Update status and incrementally update stats
+          status = get_historical_fetch_status(:corporation, corporation_id)
 
-      {:failed, _reason} ->
-        status = get_historical_fetch_status(:corporation, corporation_id)
-        {:noreply, assign(socket, :historical_fetch_status, status)}
+          # Calculate incremental stats update without full reload
+          new_killmails_count = Map.get(result, :new_killmails, 0)
 
-      _ ->
-        {:noreply, socket}
+          socket =
+            socket
+            |> assign(:historical_fetch_status, status)
+            |> update(:corp_stats, &increment_corp_stats_kills(&1, new_killmails_count))
+            |> update(
+              :comprehensive_stats,
+              &increment_last_30_days_kills(&1, new_killmails_count)
+            )
+            |> put_flash(
+              :info,
+              "Historical data fetch completed. #{new_killmails_count} new killmails loaded."
+            )
+
+          {:noreply, socket}
+
+        {:failed, reason} ->
+          status = get_historical_fetch_status(:corporation, corporation_id)
+
+          socket =
+            socket
+            |> assign(:historical_fetch_status, status)
+            |> put_flash(:error, "Historical fetch failed: #{inspect(reason)}")
+
+          {:noreply, socket}
+
+        _ ->
+          {:noreply, socket}
+      end
+    end
+  end
+
+  # Helper for incrementing corp_stats kills count
+  defp increment_corp_stats_kills(nil, _count), do: nil
+
+  defp increment_corp_stats_kills(stats, count) do
+    Map.update(stats, :kills, count, &(&1 + count))
+  end
+
+  # Helper for incrementing last 30 days kills count
+  defp increment_last_30_days_kills(nil, _count), do: nil
+
+  defp increment_last_30_days_kills(stats, count) do
+    if is_map(stats[:last_30_days]) do
+      current = get_in(stats, [:last_30_days, :kills]) || 0
+      put_in(stats, [:last_30_days, :kills], current + count)
+    else
+      stats
     end
   end
 
@@ -160,7 +213,6 @@ defmodule EveDmvWeb.CorporationLive do
     {:noreply, socket}
   end
 
-  # Sprint 15A: Pagination handlers for large datasets
   def handle_event("paginate_members_next", %{"cursor" => cursor}, socket) do
     corporation_id = socket.assigns.corporation_id
     page_size = socket.assigns[:members_page_size] || 50
@@ -345,7 +397,6 @@ defmodule EveDmvWeb.CorporationLive do
     end
   end
 
-  # Sprint 15A: Helper function for loading more activity with pagination
   defp load_more_recent_activity(corporation_id, cursor) do
     activities =
       CursorPaginator.paginate_character_activity(

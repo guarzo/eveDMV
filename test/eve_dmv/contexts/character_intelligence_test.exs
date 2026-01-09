@@ -3,6 +3,7 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
 
   alias EveDmv.Contexts.CharacterIntelligence
   alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.Killmails.Participant
 
   describe "analyze_character_threat/1" do
     setup do
@@ -17,7 +18,7 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
       # Create test killmails with recent dates
       recent_time = DateTime.add(DateTime.utc_now(), -10, :day)
 
-      {:ok, _killmail1} =
+      {:ok, killmail1} =
         Ash.create(
           KillmailRaw,
           %{
@@ -47,7 +48,27 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
           domain: EveDmv.Api
         )
 
-      {:ok, _killmail2} =
+      # Create participant for killmail1 - attacker (test character)
+      {:ok, _} =
+        Ash.create(
+          Participant,
+          %{
+            killmail_id: killmail1.killmail_id,
+            killmail_time: killmail1.killmail_time,
+            character_id: character.character_id,
+            character_name: character.character_name,
+            corporation_id: character.corporation_id,
+            ship_type_id: 29_984,
+            ship_name: "Tengu",
+            is_victim: false,
+            final_blow: true,
+            damage_done: 5000,
+            solar_system_id: 30_000_142
+          },
+          domain: EveDmv.Api
+        )
+
+      {:ok, killmail2} =
         Ash.create(
           KillmailRaw,
           %{
@@ -77,14 +98,36 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
           domain: EveDmv.Api
         )
 
+      # Create participant for killmail2 - victim (test character)
+      {:ok, _} =
+        Ash.create(
+          Participant,
+          %{
+            killmail_id: killmail2.killmail_id,
+            killmail_time: killmail2.killmail_time,
+            character_id: character.character_id,
+            character_name: character.character_name,
+            corporation_id: character.corporation_id,
+            ship_type_id: 29_984,
+            ship_name: "Tengu",
+            is_victim: true,
+            final_blow: false,
+            damage_done: 0,
+            solar_system_id: 30_000_142
+          },
+          domain: EveDmv.Api
+        )
+
       # Add more killmails to meet minimum threshold (5 killmails)
       for i <- 3..6 do
-        {:ok, _} =
+        killmail_time = DateTime.add(recent_time, i, :day)
+
+        {:ok, killmail} =
           Ash.create(
             KillmailRaw,
             %{
               killmail_id: 101_000_000 + i,
-              killmail_time: DateTime.add(recent_time, i, :day),
+              killmail_time: killmail_time,
               killmail_hash: "test_hash_10100000#{i}",
               solar_system_id: 30_000_142,
               victim_character_id: 95_999_900 + i,
@@ -103,6 +146,26 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
                 ]
               },
               source: "test"
+            },
+            domain: EveDmv.Api
+          )
+
+        # Create participant for each additional killmail - attacker (test character)
+        {:ok, _} =
+          Ash.create(
+            Participant,
+            %{
+              killmail_id: killmail.killmail_id,
+              killmail_time: killmail.killmail_time,
+              character_id: character.character_id,
+              character_name: character.character_name,
+              corporation_id: character.corporation_id,
+              ship_type_id: 29_984,
+              ship_name: "Tengu",
+              is_victim: false,
+              final_blow: true,
+              damage_done: 5000,
+              solar_system_id: 30_000_142
             },
             domain: EveDmv.Api
           )
@@ -164,12 +227,14 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
       recent_time = DateTime.add(DateTime.utc_now(), -30, :day)
 
       for i <- 1..5 do
-        {:ok, _} =
+        killmail_time = DateTime.add(recent_time, i * 86_400, :second)
+
+        {:ok, killmail} =
           Ash.create(
             KillmailRaw,
             %{
               killmail_id: 102_000_000 + i,
-              killmail_time: DateTime.add(recent_time, i * 86_400, :second),
+              killmail_time: killmail_time,
               killmail_hash: "test_hash_#{102_000_000 + i}",
               solar_system_id: 30_000_142,
               victim_character_id: 95_000_000 + i,
@@ -188,6 +253,26 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
                 ]
               },
               source: "test"
+            },
+            domain: EveDmv.Api
+          )
+
+        # Create participant for each killmail - attacker (test character)
+        {:ok, _} =
+          Ash.create(
+            Participant,
+            %{
+              killmail_id: killmail.killmail_id,
+              killmail_time: killmail.killmail_time,
+              character_id: character.character_id,
+              character_name: character.character_name,
+              corporation_id: character.corporation_id,
+              ship_type_id: 29_984,
+              ship_name: "Tengu",
+              is_victim: false,
+              final_blow: true,
+              damage_done: 5000,
+              solar_system_id: 30_000_142
             },
             domain: EveDmv.Api
           )
@@ -308,14 +393,16 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
             corporation_id: 98_400_000 + i
           }
 
-          # Create different amounts of kills for each character
-          for j <- 1..(i * 2) do
-            {:ok, _} =
+          # Create different amounts of kills for each character (minimum 5 each)
+          for j <- 1..max(i * 2, 5) do
+            killmail_time = DateTime.utc_now() |> DateTime.add(-7 + j, :day)
+
+            {:ok, killmail} =
               Ash.create(
                 KillmailRaw,
                 %{
                   killmail_id: 104_000_000 + i * 100 + j,
-                  killmail_time: DateTime.utc_now() |> DateTime.add(-7, :day),
+                  killmail_time: killmail_time,
                   killmail_hash: "test_hash_#{104_000_000 + i * 100 + j}",
                   solar_system_id: 30_000_142,
                   victim_character_id: 95_500_000 + j,
@@ -334,6 +421,26 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
                     ]
                   },
                   source: "test"
+                },
+                domain: EveDmv.Api
+              )
+
+            # Create participant for each killmail
+            {:ok, _} =
+              Ash.create(
+                Participant,
+                %{
+                  killmail_id: killmail.killmail_id,
+                  killmail_time: killmail.killmail_time,
+                  character_id: char.character_id,
+                  character_name: char.character_name,
+                  corporation_id: char.corporation_id,
+                  ship_type_id: 29_984,
+                  ship_name: "Tengu",
+                  is_victim: false,
+                  final_blow: true,
+                  damage_done: 5000,
+                  solar_system_id: 30_000_142
                 },
                 domain: EveDmv.Api
               )
@@ -374,16 +481,20 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
     test "filters out characters with analysis errors" do
       # Create a character with sufficient killmail data
       valid_id = 95_400_001
+      valid_name = "Valid Test Pilot"
+      valid_corp_id = 98_400_001
       recent_time = DateTime.add(DateTime.utc_now(), -20, :day)
 
       # Create 5 killmails for valid_id to meet minimum threshold
       for i <- 1..5 do
-        {:ok, _} =
+        killmail_time = DateTime.add(recent_time, i, :day)
+
+        {:ok, killmail} =
           Ash.create(
             KillmailRaw,
             %{
               killmail_id: 104_000_000 + i,
-              killmail_time: DateTime.add(recent_time, i, :day),
+              killmail_time: killmail_time,
               killmail_hash: "test_hash_10400000#{i}",
               solar_system_id: 30_000_142,
               victim_character_id: 96_000_000 + i,
@@ -396,12 +507,32 @@ defmodule EveDmv.Contexts.CharacterIntelligenceTest do
                   %{
                     "character_id" => valid_id,
                     "ship_type_id" => 29_984,
-                    "corporation_id" => 98_400_001,
+                    "corporation_id" => valid_corp_id,
                     "final_blow" => true
                   }
                 ]
               },
               source: "test"
+            },
+            domain: EveDmv.Api
+          )
+
+        # Create participant for each killmail
+        {:ok, _} =
+          Ash.create(
+            Participant,
+            %{
+              killmail_id: killmail.killmail_id,
+              killmail_time: killmail.killmail_time,
+              character_id: valid_id,
+              character_name: valid_name,
+              corporation_id: valid_corp_id,
+              ship_type_id: 29_984,
+              ship_name: "Tengu",
+              is_victim: false,
+              final_blow: true,
+              damage_done: 5000,
+              solar_system_id: 30_000_142
             },
             domain: EveDmv.Api
           )

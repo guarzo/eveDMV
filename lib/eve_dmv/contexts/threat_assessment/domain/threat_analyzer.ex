@@ -272,10 +272,9 @@ defmodule EveDmv.Contexts.ThreatAssessment.Domain.ThreatAnalyzer do
     case entity_type do
       :character ->
         # Get recent killmails for character
-        case KillmailRepository.get_by_character(
-               entity_id,
-               DateTimeUtils.add(DateTime.utc_now(), -90 * 24 * 60 * 60, :second)
-             ) do
+        start_date = DateTimeUtils.add(DateTime.utc_now(), -90 * 24 * 60 * 60, :second)
+
+        case KillmailRepository.get_by_character(entity_id, start_date: start_date) do
           {:ok, killmails} -> %{recent_killmails: killmails}
           _ -> %{recent_killmails: []}
         end

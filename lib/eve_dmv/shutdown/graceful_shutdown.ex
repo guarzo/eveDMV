@@ -2,8 +2,9 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
   @moduledoc """
   Graceful shutdown coordinator for EVE DMV application.
 
-  Handles SIGTERM/SIGINT signals and orchestrates orderly shutdown
-  of all application components with proper cleanup.
+  Handles SIGTERM signals via `:os.set_signal/2` and orchestrates orderly
+  shutdown of all application components with proper cleanup. Note that SIGINT
+  is handled by the Erlang VM internally and does not go through this module.
   """
 
   use GenServer
@@ -207,16 +208,6 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
   end
 
   @impl GenServer
-  def handle_info({:signal, :sigint}, state) do
-    if state.shutdown_reason do
-      {:noreply, state}
-    else
-      send(self(), {:initiate_shutdown, :sigint, @total_shutdown_timeout})
-      {:noreply, state}
-    end
-  end
-
-  @impl GenServer
   def terminate(reason, state) do
     if state.shutdown_timer do
       Process.cancel_timer(state.shutdown_timer)
@@ -233,9 +224,11 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
   # Private functions
 
   defp setup_signal_handlers do
-    # Register for SIGTERM and SIGINT signals
+    # Register for SIGTERM signal (SIGINT is not supported by :os.set_signal/2)
     :os.set_signal(:sigterm, :handle)
-    :os.set_signal(:sigint, :handle)
+    # trap_exit converts linked process exits into {:EXIT, pid, reason} messages,
+    # allowing this GenServer to perform cleanup when linked processes terminate during shutdown.
+    # Note: SIGINT (Ctrl+C) is handled by the Erlang VM's break handler, not by trap_exit.
     Process.flag(:trap_exit, true)
   rescue
     _ ->
@@ -321,10 +314,13 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
   end
 
   defp stop_accepting_work(supervisor) do
-    # Implementation depends on supervisor - this is a placeholder
-    # Real implementation would set a flag to reject new work
+    # DynamicSupervisors don't have a built-in mechanism to stop accepting work.
+    # During shutdown, we rely on the supervisor being shut down via the
+    # supervision tree, which naturally stops new work from being accepted.
+    # This function logs the intent and returns :ok.
     if Process.whereis(supervisor) do
-      GenServer.call(supervisor, :stop_accepting_work, 5000)
+      Logger.debug("Signaling #{supervisor} to stop accepting new work")
+      :ok
     else
       :ok
     end
@@ -333,14 +329,48 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
   end
 
   defp drain_supervisor_tasks(supervisor, timeout) do
-    # Wait for all tasks under supervisor to complete
+    # Wait for all current tasks under the DynamicSupervisor to complete.
+    # We poll for active children and wait until they finish or timeout.
     if Process.whereis(supervisor) do
-      GenServer.call(supervisor, :drain_tasks, timeout)
+      drain_start = System.monotonic_time(:millisecond)
+      drain_loop(supervisor, drain_start, timeout)
     else
       :ok
     end
   rescue
     _ -> :ok
+  end
+
+  defp drain_loop(supervisor, drain_start, timeout) do
+    elapsed = System.monotonic_time(:millisecond) - drain_start
+
+    if elapsed >= timeout do
+      # Timeout reached, log remaining tasks and return
+      remaining = length(DynamicSupervisor.which_children(supervisor))
+
+      if remaining > 0 do
+        Logger.warning(
+          "Drain timeout for #{supervisor}: #{remaining} tasks still running after #{elapsed}ms"
+        )
+      end
+
+      :ok
+    else
+      case DynamicSupervisor.which_children(supervisor) do
+        [] ->
+          # All tasks have completed
+          :ok
+
+        children ->
+          # Wait a bit and check again
+          Logger.debug(
+            "Draining #{supervisor}: #{length(children)} tasks remaining, #{timeout - elapsed}ms left"
+          )
+
+          Process.sleep(100)
+          drain_loop(supervisor, drain_start, timeout)
+      end
+    end
   end
 
   defp stop_broadway_pipeline(pipeline, timeout) do
@@ -367,23 +397,72 @@ defmodule EveDmv.Shutdown.GracefulShutdown do
 
   defp cleanup_database_connections(_timeout) do
     # Ensure database connections are properly closed
-    Ecto.Adapters.SQL.Sandbox.checkin(EveDmv.Repo)
+    # Use disconnect_all which is the production-appropriate API for closing all connections
+    Ecto.Adapters.SQL.disconnect_all(EveDmv.Repo, 5_000)
     :ok
   rescue
     _ -> :ok
   end
 
   defp cleanup_cache_operations(_timeout) do
-    # Clean up any ongoing cache operations
-    :ok
-  end
-
-  defp stop_remaining_processes(_timeout) do
-    # Stop any remaining processes that weren't handled in previous phases
-    # This would typically involve supervisor shutdown
+    # Clear all caches to ensure clean shutdown state.
+    # This prevents stale data from persisting if the application restarts.
+    # The caches use ETS tables which are automatically cleaned up when the
+    # owning process terminates, but explicitly clearing them ensures
+    # any pending write operations are flushed.
+    EveDmv.Platform.Cache.Cache.clear_all()
+    Logger.debug("Cleared all cache layers")
     :ok
   rescue
-    _ -> {:error, :failed_to_stop_processes}
+    error ->
+      Logger.warning("Failed to clear caches during shutdown: #{inspect(error)}")
+      :ok
+  end
+
+  defp stop_remaining_processes(timeout) do
+    # Stop any remaining processes that weren't handled in previous phases.
+    # This terminates remaining children in the task supervisors.
+    supervisors = [
+      BackgroundTaskSupervisor,
+      UITaskSupervisor,
+      RealtimeTaskSupervisor
+    ]
+
+    # Terminate remaining children in each supervisor
+    Enum.each(supervisors, &terminate_supervisor_children/1)
+
+    # Give processes a moment to clean up
+    Process.sleep(min(timeout, 500))
+    :ok
+  rescue
+    error ->
+      Logger.warning("Error during stop_remaining_processes: #{inspect(error)}")
+      :ok
+  end
+
+  defp terminate_supervisor_children(supervisor) do
+    case Process.whereis(supervisor) do
+      nil ->
+        :ok
+
+      _pid ->
+        children = DynamicSupervisor.which_children(supervisor)
+        terminate_children(supervisor, children)
+    end
+  end
+
+  defp terminate_children(_supervisor, []), do: :ok
+
+  defp terminate_children(supervisor, children) do
+    Logger.info("Terminating #{length(children)} remaining tasks in #{supervisor}")
+
+    Enum.each(children, fn {_, pid, _, _} ->
+      try do
+        DynamicSupervisor.terminate_child(supervisor, pid)
+      rescue
+        _ -> :ok
+      end
+    end)
   end
 
   defp complete_shutdown(state) do

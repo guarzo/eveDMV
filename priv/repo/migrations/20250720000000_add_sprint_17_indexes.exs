@@ -1,6 +1,6 @@
 defmodule EveDmv.Repo.Migrations.AddSprint17Indexes do
   @moduledoc """
-  Add Sprint 17 performance indexes that tests are expecting.
+  Add performance indexes for killmail and participant queries.
   """
 
   use Ecto.Migration

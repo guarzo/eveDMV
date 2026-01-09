@@ -338,8 +338,7 @@ defmodule EveDmv.Contexts.Combat.Services.CombatLogParser do
 
     # Compute content_hash from uncompressed JSON for deduplication
     content_hash =
-      json_content
-      |> :crypto.hash(:sha256)
+      :crypto.hash(:sha256, json_content)
       |> Base.encode16(case: :lower)
 
     # Compress and base64-encode for storage

@@ -55,6 +55,14 @@ defmodule EveDmv.Application do
       EveDmvWeb.Telemetry,
       # Task supervisor for background tasks (start early)
       {Task.Supervisor, name: EveDmv.TaskSupervisor},
+      # Task supervisor specifically for pipeline async work (intelligence, surveillance).
+      # Uses 15-second shutdown timeout (vs default 5s) to allow long-running tasks
+      # (e.g., historical killmail fetches, surveillance scans, intelligence analysis)
+      # to complete gracefully during shutdown, preventing data loss and partial writes.
+      Supervisor.child_spec(
+        {Task.Supervisor, name: EveDmv.PipelineTaskSupervisor},
+        shutdown: 15_000
+      ),
       # Start rate limiter
       {EveDmvWeb.RateLimit, [clean_period: 60_000]},
       # Auto-recompilation in dev environment (handled by exsync application)
@@ -117,6 +125,10 @@ defmodule EveDmv.Application do
       maybe_start_mock_sse_server(),
       # Start the surveillance matching engine (must start before pipeline)
       maybe_start_surveillance_matching_engine(),
+      # Start the database inserter circuit breaker (must start before pipeline)
+      maybe_start_database_inserter(),
+      # Start the pipeline autoscaler (must start before pipeline)
+      maybe_start_pipeline_autoscaler(),
       # Start the killmail ingestion pipeline
       maybe_start_pipeline(),
       # Start background static data loader
@@ -217,12 +229,9 @@ defmodule EveDmv.Application do
         EveDmv.Platform.Database.CacheWarmer,
         EveDmv.Platform.Database.ConnectionPoolMonitor,
         EveDmv.Platform.Database.PartitionManager,
-        EveDmv.Platform.Database.MaterializedViewOptimizer,
-        EveDmv.Platform.Database.MaterializedViewRefresher,
         EveDmv.Platform.Database.CacheInvalidator,
         EveDmv.Platform.Database.CacheHashManager,
         EveDmv.Platform.Database.QueryPlanAnalyzer,
-        EveDmv.Platform.Database.MaterializedViewManager,
         EveDmv.Platform.Database.ArchiveManager,
         EveDmv.Enrichment.ReEnrichmentWorker,
         EveDmv.Enrichment.RealTimePriceUpdater,
@@ -232,12 +241,9 @@ defmodule EveDmv.Application do
         EveDmv.Workers.ShipRoleAnalysisWorker,
         # Intelligence analysis supervisor for managing analysis tasks
         EveDmv.Intelligence.Core.Supervisor,
-        # Historical import pipeline (Sprint 15A)
         EveDmv.Historical.ImportPipeline,
         EveDmv.Historical.ImportProgressMonitor,
-        # Performance monitoring dashboard (Sprint 15A)
         EveDmv.Platform.Monitoring.PerformanceDashboard,
-        # Historical fetch worker for 2-year killmail data (Phase 2)
         EveDmv.Contexts.KillmailProcessing.Domain.HistoricalFetchWorker
       ]
     else
@@ -296,6 +302,34 @@ defmodule EveDmv.Application do
       # No-op process for tests
       %{
         id: :surveillance_matching_engine_noop,
+        start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}
+      }
+    end
+  end
+
+  # Conditionally start the database inserter circuit breaker
+  defp maybe_start_database_inserter do
+    pipeline_enabled = Application.get_env(:eve_dmv, :pipeline_enabled, true)
+
+    if pipeline_enabled and Application.get_env(:eve_dmv, :environment, :prod) != :test do
+      EveDmv.Killmails.DatabaseInserter
+    else
+      %{
+        id: :noop_database_inserter,
+        start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}
+      }
+    end
+  end
+
+  # Conditionally start the pipeline autoscaler
+  defp maybe_start_pipeline_autoscaler do
+    pipeline_enabled = Application.get_env(:eve_dmv, :pipeline_enabled, true)
+
+    if pipeline_enabled and Application.get_env(:eve_dmv, :environment, :prod) != :test do
+      EveDmv.Killmails.PipelineAutoscaler
+    else
+      %{
+        id: :noop_pipeline_autoscaler,
         start: {Task, :start_link, [fn -> Process.sleep(:infinity) end]}
       }
     end

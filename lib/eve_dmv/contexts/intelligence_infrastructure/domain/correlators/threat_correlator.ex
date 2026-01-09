@@ -305,7 +305,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     start_time = DateTimeUtils.add(DateTime.utc_now(), -24 * 3600, :second)
 
     query =
-      from(k in "killmails_enriched",
+      from(k in "killmails_raw",
         where: k.solar_system_id in ^system_ids and k.killmail_time >= ^start_time,
         select: %{
           killmail_id: k.killmail_id,
@@ -453,7 +453,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     start_time = DateTimeUtils.add(DateTime.utc_now(), -48 * 3600, :second)
 
     query =
-      from(k in "killmails_enriched",
+      from(k in "killmails_raw",
         where: k.solar_system_id in ^system_ids and k.killmail_time >= ^start_time,
         select: %{
           killmail_id: k.killmail_id,
@@ -555,7 +555,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Correlat
     end_time = end_time || DateTime.utc_now()
 
     query =
-      from(k in "killmails_enriched",
+      from(k in "killmails_raw",
         where:
           k.solar_system_id in ^system_ids and
             k.killmail_time >= ^start_time and

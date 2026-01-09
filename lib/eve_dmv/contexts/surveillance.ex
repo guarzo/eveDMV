@@ -38,6 +38,8 @@ defmodule EveDmv.Contexts.Surveillance do
       Domain.MatchingEngine,
       Domain.AlertService,
       Domain.NotificationService,
+      # AlertBatcher batches alerts before broadcasting (performance optimization)
+      Domain.AlertBatcher,
 
       # Event processors (depend on domain services)
       Infrastructure.KillmailEventProcessor

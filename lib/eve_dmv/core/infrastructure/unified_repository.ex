@@ -629,25 +629,23 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
   def get_alliance_activity(alliance_id, days_back) do
     since = DateTimeUtils.add(DateTimeUtils.utc_now(), -days_back * 24 * 60 * 60, :second)
 
-    query =
-      from(k in EveDmv.Killmails.KillmailRaw,
-        where:
-          fragment("?->>'alliance_id' = ?", k.victim, ^to_string(alliance_id)) or
-            fragment(
-              "EXISTS (SELECT 1 FROM jsonb_array_elements(?) AS a WHERE a->>'alliance_id' = ?)",
-              k.attackers,
-              ^to_string(alliance_id)
-            ),
-        where: k.killmail_time > ^since,
-        select: %{
-          killmail_count: count(k.id),
-          total_value: sum(k.zkb_total_value)
-        }
-      )
+    # Optimized: Uses participants table instead of JSONB extraction
+    # Note: k.killmail_time predicate enables partition pruning on killmails_raw
+    query = """
+    SELECT
+      COUNT(DISTINCT p.killmail_id) as killmail_count,
+      COALESCE(SUM(k.total_value), 0) as total_value
+    FROM participants p
+    JOIN killmails_raw k ON k.killmail_id = p.killmail_id
+      AND k.killmail_time = p.killmail_time
+    WHERE p.alliance_id = $1
+      AND p.killmail_time > $2
+      AND k.killmail_time > $2
+    """
 
-    case EveDmv.Repo.one(query) do
-      %{killmail_count: count} = result when not is_nil(count) ->
-        {:ok, Map.put(result, :days_analyzed, days_back)}
+    case EveDmv.Repo.query(query, [alliance_id, since]) do
+      {:ok, %{rows: [[count, total_value]]}} when not is_nil(count) ->
+        {:ok, %{killmail_count: count, total_value: total_value || 0, days_analyzed: days_back}}
 
       _ ->
         {:ok, %{killmail_count: 0, total_value: 0, days_analyzed: days_back}}
@@ -668,20 +666,16 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
     # Build query based on filters
     query = build_surveillance_profile_query(filters)
 
-    # Execute query (simplified for now)
-    case execute_surveillance_query(query, limit) do
-      {:ok, profiles} ->
-        filtered_profiles =
-          profiles
-          |> filter_by_active_status(active_only)
-          |> filter_by_user(user_id)
+    # Execute query and apply filters
+    # Note: execute_surveillance_query always succeeds with {:ok, []} for now
+    {:ok, profiles} = execute_surveillance_query(query, limit)
 
-        {:ok, filtered_profiles}
+    filtered_profiles =
+      profiles
+      |> filter_by_active_status(active_only)
+      |> filter_by_user(user_id)
 
-      _error ->
-        # Return empty list on error since spec doesn't allow error returns
-        {:ok, []}
-    end
+    {:ok, filtered_profiles}
   end
 
   # Helper functions for surveillance profiles

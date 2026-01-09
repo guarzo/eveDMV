@@ -185,7 +185,46 @@ defmodule EveDmv.Killmails.KillmailRaw do
 
     # Custom read actions for common queries
     read :recent_kills do
-      description("Get recent killmails ordered by time")
+      description("Get recent killmails within specified time window")
+
+      argument :hours, :integer do
+        allow_nil?(false)
+        default(24)
+        description("Number of hours to look back")
+      end
+
+      argument :system_id, :integer do
+        allow_nil?(true)
+        description("Optional: filter by solar system ID")
+      end
+
+      filter(expr(killmail_time >= ago(^arg(:hours), :hour)))
+
+      prepare(fn query, _context ->
+        query = Ash.Query.sort(query, killmail_time: :desc)
+        query = Ash.Query.limit(query, 100)
+
+        case Ash.Query.get_argument(query, :system_id) do
+          nil -> query
+          system_id -> Ash.Query.filter(query, solar_system_id == ^system_id)
+        end
+      end)
+    end
+
+    read :by_date_range do
+      description("Get killmails within a date range")
+
+      argument :start_date, :utc_datetime do
+        allow_nil?(false)
+        description("Start of date range (inclusive)")
+      end
+
+      argument :end_date, :utc_datetime do
+        allow_nil?(false)
+        description("End of date range (inclusive)")
+      end
+
+      filter(expr(killmail_time >= ^arg(:start_date) and killmail_time <= ^arg(:end_date)))
 
       prepare(build(sort: [killmail_time: :desc]))
     end
@@ -234,11 +273,11 @@ defmodule EveDmv.Killmails.KillmailRaw do
         description("Maximum number of results")
       end
 
-      prepare(fn query, context ->
+      prepare(fn query, _context ->
         import Ash.Expr
-        char_id = context.arguments.character_id
-        days = context.arguments.since_days || 90
-        result_limit = context.arguments.limit || 100
+        char_id = Ash.Query.get_argument(query, :character_id)
+        days = Ash.Query.get_argument(query, :since_days) || 90
+        result_limit = Ash.Query.get_argument(query, :limit) || 100
         since_date = DateTime.add(DateTime.utc_now(), -days, :day)
 
         query
@@ -279,11 +318,11 @@ defmodule EveDmv.Killmails.KillmailRaw do
         description("Number of days to look back")
       end
 
-      prepare(fn query, context ->
+      prepare(fn query, _context ->
         import Ash.Expr
-        corp_id = context.arguments.corporation_id
-        involvement = context.arguments.involvement_type || :all
-        days = context.arguments.since_days || 90
+        corp_id = Ash.Query.get_argument(query, :corporation_id)
+        involvement = Ash.Query.get_argument(query, :involvement_type) || :all
+        days = Ash.Query.get_argument(query, :since_days) || 90
         since_date = DateTime.add(DateTime.utc_now(), -days, :day)
 
         query
@@ -303,10 +342,30 @@ defmodule EveDmv.Killmails.KillmailRaw do
       description("All participants (attackers and victim) in this killmail")
     end
 
+    has_many :attackers, EveDmv.Killmails.Participant do
+      source_attribute(:killmail_id)
+      destination_attribute(:killmail_id)
+      filter(expr(is_victim == false))
+      description("Only attackers in this killmail")
+    end
+
+    has_one :victim, EveDmv.Killmails.Participant do
+      source_attribute(:killmail_id)
+      destination_attribute(:killmail_id)
+      filter(expr(is_victim == true))
+      description("The victim in this killmail")
+    end
+
     belongs_to :solar_system, EveDmv.Eve.SolarSystem do
       source_attribute(:solar_system_id)
       destination_attribute(:system_id)
       description("Solar system where the kill occurred")
+    end
+
+    belongs_to :victim_ship_type, EveDmv.Eve.ItemType do
+      source_attribute(:victim_ship_type_id)
+      destination_attribute(:type_id)
+      description("Ship type that was destroyed")
     end
   end
 
@@ -344,6 +403,29 @@ defmodule EveDmv.Killmails.KillmailRaw do
       description("Total damage dealt by all attackers")
       filter(expr(is_victim == false))
     end
+
+    sum :total_damage_dealt, :attackers, :damage_done do
+      description("Sum of all damage dealt by attackers")
+    end
+
+    first :final_blow_character_id, :attackers, :character_id do
+      filter(expr(final_blow == true))
+      description("Character who landed the final blow")
+    end
+
+    first :final_blow_character_name, :attackers, :character_name do
+      filter(expr(final_blow == true))
+      description("Name of character who landed the final blow")
+    end
+
+    first :top_damage_dealer_id, :attackers, :character_id do
+      sort([{:damage_done, :desc}])
+      description("Character who dealt the most damage")
+    end
+
+    max :max_single_damage, :attackers, :damage_done do
+      description("Highest damage from a single attacker")
+    end
   end
 
   # Preparations for query safety
@@ -379,6 +461,55 @@ defmodule EveDmv.Killmails.KillmailRaw do
       description: "True if kill value exceeds 1 billion ISK",
       calculation: expr(total_value > 1_000_000_000)
     )
+
+    # Gang Size Classification Rationale (EVE Online PvP Context):
+    #
+    # - solo (1): Single pilot engagements. High-skill ceiling gameplay where one
+    #   player hunts targets alone. Common in faction warfare and wormhole daytripping.
+    #
+    # - small_gang (2-5): The most tactical PvP format. Typically a tight-knit group
+    #   with defined roles (tackle, DPS, logi). Popular in lowsec roams and wormhole PvP.
+    #
+    # - medium_gang (6-15): Organized roaming fleets with basic fleet structure.
+    #   Usually has an FC, dedicated tackle wing, and logistics. Common format for
+    #   small corp/alliance ops and NPSI (Not Purple Shoot It) public fleets.
+    #
+    # - large_gang (16-50): Structured fleet operations requiring coordination tools.
+    #   Multiple wings, anchor pilots, and broadcast discipline. Typical for alliance
+    #   stratops, structure bashes, and regional defense fleets.
+    #
+    # - fleet (>50): Large-scale warfare involving capitals, time dilation (TiDi),
+    #   and strategic objectives. Sovereignty warfare, keepstar fights, and major
+    #   alliance conflicts. Requires extensive logistics and FC hierarchy.
+
+    calculate(:is_small_gang, :boolean,
+      description: "True if this was a small gang kill (2-5 attackers)",
+      calculation: expr(attacker_count >= 2 and attacker_count <= 5)
+    )
+
+    calculate(:is_fleet_kill, :boolean,
+      description:
+        "True if this was a fleet kill (>50 attackers, aligned with gang_size_category)",
+      calculation: expr(attacker_count > 50)
+    )
+
+    calculate(:gang_size_category, :string,
+      description:
+        "Categorical gang size classification: solo, small_gang, medium_gang, large_gang, fleet",
+      calculation:
+        expr(
+          cond do
+            attacker_count == 1 -> "solo"
+            attacker_count <= 5 -> "small_gang"
+            attacker_count <= 15 -> "medium_gang"
+            attacker_count <= 50 -> "large_gang"
+            true -> "fleet"
+          end
+        )
+    )
+
+    # Note: age_in_hours (Elixir-based, above) is the canonical age calculation.
+    # kill_age_hours (SQL-based) was removed as redundant.
 
     calculate :age_in_days, :integer do
       description("Age of the killmail in days")

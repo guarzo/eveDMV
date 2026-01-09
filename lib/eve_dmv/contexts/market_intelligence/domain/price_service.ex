@@ -195,9 +195,6 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
 
       {:error, :not_found} ->
         fetch_and_cache_price(type_id, source)
-
-      _ ->
-        fetch_and_cache_price(type_id, source)
     end
   end
 
@@ -209,7 +206,6 @@ defmodule EveDmv.Contexts.MarketIntelligence.Domain.PriceService do
         case UnifiedCache.get_price(type_id) do
           {:ok, price} -> {:cached, type_id, price}
           {:error, :not_found} -> {:missing, type_id}
-          _ -> {:missing, type_id}
         end
       end)
       |> Enum.split_with(fn

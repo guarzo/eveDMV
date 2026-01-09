@@ -54,6 +54,119 @@ defmodule EveDmv.Platform.Database.QueryPlanAnalyzer do
     GenServer.cast(__MODULE__, :force_analysis)
   end
 
+  @doc """
+  Returns unused indexes that may be candidates for removal.
+
+  Finds indexes that have never been scanned according to pg_stat_user_indexes,
+  excluding primary keys and unique constraints.
+
+  ## Returns
+
+  A list of maps with:
+  - `table` - The fully qualified table name
+  - `index` - The index name
+  - `size` - The human-readable size of the index
+  - `scans` - Number of times the index has been scanned (0)
+
+  ## Example
+
+      iex> QueryPlanAnalyzer.get_unused_indexes()
+      {:ok, [%{table: "public.participants", index: "idx_old_unused", size: "128 MB", scans: 0}]}
+  """
+  @spec get_unused_indexes() :: {:ok, [map()]} | {:error, term()}
+  def get_unused_indexes do
+    query = """
+    SELECT
+      schemaname || '.' || relname AS table,
+      indexrelname AS index,
+      pg_size_pretty(pg_relation_size(indexrelid)) AS size,
+      idx_scan AS scans
+    FROM pg_stat_user_indexes
+    WHERE idx_scan = 0
+      AND indexrelname NOT LIKE '%_pkey'
+      AND indexrelname NOT LIKE '%_unique'
+    ORDER BY pg_relation_size(indexrelid) DESC
+    LIMIT 20
+    """
+
+    case SQL.query(Repo, query, []) do
+      {:ok, result} ->
+        indexes =
+          result.rows
+          |> Enum.map(fn [table, index, size, scans] ->
+            %{table: table, index: index, size: size, scans: scans}
+          end)
+
+        {:ok, indexes}
+
+      {:error, error} ->
+        Logger.warning("Failed to query unused indexes: #{inspect(error)}")
+        {:error, error}
+    end
+  end
+
+  @doc """
+  Returns tables that may be missing indexes based on sequential scan patterns.
+
+  Identifies tables with high sequential scan counts relative to index scans,
+  which may indicate missing indexes for common query patterns.
+
+  ## Returns
+
+  A list of maps with:
+  - `table` - The fully qualified table name
+  - `seq_scans` - Number of sequential scans
+  - `rows_fetched` - Total rows fetched via sequential scans
+  - `idx_scans` - Number of index scans (for comparison)
+  - `avg_rows_per_scan` - Average rows per sequential scan
+
+  ## Example
+
+      iex> QueryPlanAnalyzer.get_missing_index_candidates()
+      {:ok, [%{table: "public.participants", seq_scans: 5000, rows_fetched: 1000000, ...}]}
+  """
+  @spec get_missing_index_candidates() :: {:ok, list()} | {:error, term()}
+  def get_missing_index_candidates do
+    query = """
+    SELECT
+      schemaname || '.' || relname AS table,
+      seq_scan AS sequential_scans,
+      seq_tup_read AS rows_fetched,
+      idx_scan AS index_scans,
+      CASE WHEN seq_scan > 0
+        THEN round(seq_tup_read::numeric / seq_scan, 2)
+        ELSE 0
+      END AS avg_rows_per_scan
+    FROM pg_stat_user_tables
+    WHERE seq_scan > 1000
+      AND seq_tup_read > 100000
+      AND (idx_scan IS NULL OR seq_scan > idx_scan * 10)
+    ORDER BY seq_tup_read DESC
+    LIMIT 10
+    """
+
+    case SQL.query(Repo, query, []) do
+      {:ok, result} ->
+        candidates =
+          result.rows
+          |> Enum.map(fn [table, seq_scans, rows, idx_scans, avg] ->
+            %{
+              table: table,
+              seq_scans: seq_scans,
+              rows_fetched: rows,
+              idx_scans: idx_scans || 0,
+              avg_rows_per_scan: avg
+            }
+          end)
+
+        {:ok, candidates}
+
+      {:error, error} ->
+        Logger.warning("Failed to query missing index candidates: #{inspect(error)}")
+        {:error, error}
+    end
+  end
+
   # Server callbacks
 
   @impl GenServer

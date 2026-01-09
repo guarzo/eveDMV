@@ -243,8 +243,6 @@ defmodule EveDmv.Eve.NameResolver.EsiEntityResolver do
       {:error, :db_error}
   end
 
-  defp fetch_from_database(_type, _id), do: {:error, :not_supported}
-
   # Bulk database lookup for alliances using Ash resources
   defp fetch_alliances_from_database(alliance_ids) when is_list(alliance_ids) do
     if Enum.empty?(alliance_ids) do

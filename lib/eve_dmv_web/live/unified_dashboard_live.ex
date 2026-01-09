@@ -8,9 +8,15 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
 
   use EveDmvWeb, :live_view
 
+  alias EveDmv.Contexts.KillmailProcessing
   alias EveDmv.Contexts.Surveillance
+  alias EveDmv.Contexts.ThreatSurveillance
+  alias EveDmv.Intelligence.Analyzers.CharacterAnalyzer
 
   require Logger
+
+  # Dialyzer has issues inferring return types through multiple layers of bounded context calls
+  @dialyzer {:nowarn_function, load_recent_character_analyses: 1}
 
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
@@ -28,6 +34,15 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
   @seconds_per_day 86_400
   @seconds_per_week 604_800
   @seconds_per_30_days 2_592_000
+
+  # Maximum number of characters to analyze concurrently
+  # Keep low to avoid overwhelming the database and ESI
+  @character_analysis_max_concurrency 3
+  # Maximum number of characters to analyze total
+  # Reduced from 10 to 5 to improve page load times
+  @character_analysis_limit 5
+  # Timeout for each character analysis task (5 seconds)
+  @character_analysis_timeout_ms 5_000
 
   # LiveView lifecycle
 
@@ -102,33 +117,179 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
     {:noreply, socket}
   end
 
-  # PubSub handlers
+  @impl Phoenix.LiveView
+  def handle_info({:surveillance_alert, %{type: :metrics_updated, metrics: metrics}}, socket) do
+    # Targeted update: Only update the metrics that changed
+    if socket.assigns.dashboard_type == :surveillance do
+      {:noreply,
+       assign(socket, :profile_metrics, Map.merge(socket.assigns.profile_metrics, metrics))}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl Phoenix.LiveView
+  def handle_info({:surveillance_alert, %{type: :new_match, match: match}}, socket) do
+    # Targeted update: Prepend new match and increment alert count
+    if socket.assigns.dashboard_type == :surveillance do
+      socket =
+        socket
+        |> update(:profile_metrics, fn metrics ->
+          Map.update(metrics, :active_alerts, 1, &(&1 + 1))
+        end)
+        |> update(:recent_matches, fn matches ->
+          [match | Enum.take(matches || [], 9)]
+        end)
+
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl Phoenix.LiveView
+  def handle_info({:surveillance_alert, %{type: :profile_created, profile: profile}}, socket) do
+    # Targeted update: Add new profile to list and update count
+    if socket.assigns.dashboard_type == :surveillance do
+      socket =
+        socket
+        |> update(:profiles, fn profiles ->
+          # Cap at 100 profiles to match load_surveillance_profiles limit
+          [profile | profiles] |> Enum.take(100)
+        end)
+        |> update(:profile_metrics, fn metrics ->
+          Map.update(metrics, :total_profiles, 1, &(&1 + 1))
+        end)
+
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
 
   @impl Phoenix.LiveView
   def handle_info({:surveillance_alert, alert}, socket) do
-    # Only reload dashboard data for surveillance dashboard and if it's a meaningful alert
-    if socket.assigns.dashboard_type == :surveillance and should_reload_for_alert?(alert) do
-      {:noreply, load_dashboard_data(socket)}
+    # For trackable alerts (high-priority or metrics-affecting), increment the alert count
+    if socket.assigns.dashboard_type == :surveillance and trackable_alert?(alert) do
+      socket =
+        update(socket, :profile_metrics, fn metrics ->
+          Map.update(metrics, :active_alerts, 1, &(&1 + 1))
+        end)
+
+      {:noreply, socket}
     else
       {:noreply, socket}
     end
   end
 
   @impl Phoenix.LiveView
-  def handle_info({:intelligence_update, update}, socket) do
-    # Only reload dashboard data for intelligence dashboard and if it's a meaningful update
-    if socket.assigns.dashboard_type == :intelligence and should_reload_for_update?(update) do
-      {:noreply, load_dashboard_data(socket)}
+  def handle_info({:intelligence_update, %{type: :analysis_completed, report: report}}, socket) do
+    # Targeted update: Add completed analysis to list
+    if socket.assigns.dashboard_type == :intelligence do
+      socket =
+        update(socket, :character_analyses, fn analyses ->
+          [report | Enum.take(analyses || [], 9)]
+        end)
+
+      {:noreply, socket}
     else
       {:noreply, socket}
     end
   end
 
   @impl Phoenix.LiveView
-  def handle_info({:alert_updated, _alert_id}, socket) do
-    # Only reload for surveillance dashboard when alerts are updated
+  def handle_info(
+        {:intelligence_update, %{type: :threat_assessment_updated, assessment: assessment}},
+        socket
+      ) do
+    # Targeted update: Update specific threat assessment
+    if socket.assigns.dashboard_type == :intelligence do
+      socket =
+        update(socket, :threat_assessments, fn assessments ->
+          [assessment | Enum.take(assessments || [], 9)]
+        end)
+
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl Phoenix.LiveView
+  def handle_info({:intelligence_update, _update}, socket) do
+    # Ignore other intelligence updates to prevent unnecessary reloads
+    {:noreply, socket}
+  end
+
+  @impl Phoenix.LiveView
+  def handle_info({:alert_updated, alert_id}, socket) do
+    # Targeted update: Just refresh the specific alert status, not full reload
     if socket.assigns.dashboard_type == :surveillance do
-      {:noreply, load_dashboard_data(socket)}
+      # Only log the update for monitoring; avoid database query
+      Logger.debug("Alert #{alert_id} updated - using cached data")
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl Phoenix.LiveView
+  def handle_info(
+        {:alerts_batch, batch_payload},
+        %{assigns: %{dashboard_type: :surveillance}} = socket
+      ) do
+    # Handle batched alerts for improved performance (Stream 9 optimization)
+    # This is the optimized path during high-activity periods (100+ kills/min)
+    {:noreply, handle_surveillance_alerts_batch(socket, batch_payload)}
+  end
+
+  @impl Phoenix.LiveView
+  def handle_info({:alerts_batch, _batch_payload}, socket), do: {:noreply, socket}
+
+  @impl Phoenix.LiveView
+  def handle_info({:metrics_update, metrics}, socket) do
+    # Handle metrics-only updates from AlertBatcher (Stream 9 optimization)
+    # Light-weight update without full reload
+    if socket.assigns.dashboard_type == :surveillance do
+      socket =
+        update(socket, :profile_metrics, fn current_metrics ->
+          Map.merge(current_metrics, metrics)
+        end)
+
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  # Handle async character analyses loading for intelligence dashboard
+  @impl Phoenix.LiveView
+  def handle_info({:load_character_analyses_async, time_range}, socket) do
+    if socket.assigns.dashboard_type == :intelligence do
+      # Perform the async loading in a task to avoid blocking
+      # Store the parent PID so the task can send results back
+      parent_pid = self()
+
+      Task.start(fn ->
+        analyses = load_recent_character_analyses(time_range)
+        send(parent_pid, {:character_analyses_loaded, analyses})
+      end)
+
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl Phoenix.LiveView
+  def handle_info({:character_analyses_loaded, analyses}, socket) do
+    if socket.assigns.dashboard_type == :intelligence do
+      socket =
+        socket
+        |> assign(:character_analyses, analyses)
+        |> assign(:character_analyses_loading, false)
+
+      {:noreply, socket}
     else
       {:noreply, socket}
     end
@@ -141,6 +302,30 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
   end
 
   # Private functions
+
+  defp handle_surveillance_alerts_batch(socket, batch_payload) do
+    alerts = Map.get(batch_payload, :alerts, [])
+    batch_size = Map.get(batch_payload, :batch_size, length(alerts))
+
+    if batch_size > 0 or alerts != [] do
+      # Ensure profile_metrics is never nil before merging operations
+      socket = update(socket, :profile_metrics, fn metrics -> metrics || %{} end)
+
+      socket
+      |> update(:profile_metrics, fn metrics ->
+        # Use length(alerts) if alerts present, otherwise fall back to batch_size
+        increment = if alerts != [], do: length(alerts), else: batch_size
+        Map.update(metrics, :active_alerts, increment, &(&1 + increment))
+      end)
+      |> update(:recent_matches, fn matches ->
+        # Prepend new alerts and truncate to keep max 10 recent matches
+        (alerts ++ (matches || []))
+        |> Enum.take(10)
+      end)
+    else
+      socket
+    end
+  end
 
   defp get_dashboard_type(socket) do
     # Check the route name first
@@ -176,12 +361,17 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
     |> assign(:system_metrics, %{})
     |> assign(:top_performing_profiles, [])
     |> assign(:performance_recommendations, [])
+    |> assign(:recent_matches, [])
   end
 
   defp assign_dashboard_data(socket, :intelligence) do
+    # Fetch recent threat assessments for initial render
+    threat_assessments = load_recent_threat_assessments()
+
     socket
     |> assign(:character_analyses, [])
-    |> assign(:threat_assessments, [])
+    |> assign(:character_analyses_loading, true)
+    |> assign(:threat_assessments, threat_assessments)
     |> assign(:intelligence_reports, [])
     |> assign(:analysis_queue, [])
   end
@@ -203,12 +393,15 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
 
   defp load_dashboard_data(%{assigns: %{dashboard_type: :surveillance}} = socket) do
     # Load surveillance-specific data
-    profiles = load_surveillance_profiles(socket.assigns.time_range)
-    metrics = calculate_surveillance_metrics(profiles, socket.assigns.time_range)
+    time_range = socket.assigns.time_range
+    profiles = load_surveillance_profiles(time_range)
+    metrics = calculate_surveillance_metrics(profiles, time_range)
+    recent_matches = load_recent_matches(time_range)
 
     socket
     |> assign(:profiles, profiles)
     |> assign(:profile_metrics, metrics)
+    |> assign(:recent_matches, recent_matches)
     |> assign(:alert_trends, [])
     |> assign(:performance_recommendations, [])
     |> assign(:loading, false)
@@ -223,9 +416,34 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
       |> assign(:performance_recommendations, [])
   end
 
-  defp load_dashboard_data(%{assigns: %{dashboard_type: type}} = socket)
-       when type in [:intelligence, :monitoring] do
-    # For now, return empty data for other dashboard types
+  defp load_dashboard_data(%{assigns: %{dashboard_type: :intelligence}} = socket) do
+    # Load threat assessments synchronously (fast query)
+    threat_assessments = load_recent_threat_assessments()
+
+    # Character analyses are loaded asynchronously to avoid blocking page render
+    # Send message to self to trigger async loading
+    send(self(), {:load_character_analyses_async, socket.assigns.time_range})
+
+    socket
+    |> assign(:character_analyses, [])
+    |> assign(:character_analyses_loading, true)
+    |> assign(:threat_assessments, threat_assessments)
+    |> assign(:loading, false)
+    |> assign(:error, nil)
+  rescue
+    error ->
+      Logger.error("Failed to load intelligence dashboard data: #{inspect(error)}")
+
+      socket
+      |> assign(:character_analyses, [])
+      |> assign(:character_analyses_loading, false)
+      |> assign(:threat_assessments, [])
+      |> assign(:loading, false)
+      |> assign(:error, "Failed to load dashboard data")
+  end
+
+  defp load_dashboard_data(%{assigns: %{dashboard_type: :monitoring}} = socket) do
+    # For now, return empty data for monitoring dashboard
     socket
     |> assign(:loading, false)
     |> assign(:error, nil)
@@ -251,6 +469,94 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
   rescue
     error ->
       Logger.error("Exception loading surveillance profiles: #{inspect(error)}")
+      []
+  end
+
+  defp load_recent_matches(time_range) do
+    since = time_range_to_datetime(time_range)
+
+    case Surveillance.get_recent_matches(since: since, limit: 10) do
+      {:ok, matches} -> matches
+      {:error, _} -> []
+    end
+  rescue
+    error ->
+      Logger.error(
+        "Exception loading recent matches: #{inspect(error)}\n#{Exception.format_stacktrace(__STACKTRACE__)}"
+      )
+
+      []
+  end
+
+  defp load_recent_threat_assessments do
+    case ThreatSurveillance.list_recent_threat_assessments(limit: 10) do
+      {:ok, assessments} ->
+        assessments
+
+      {:error, err} ->
+        Logger.warning("Failed to load recent threat assessments: #{inspect(err)}")
+        []
+    end
+  rescue
+    error ->
+      Logger.error("Exception loading recent threat assessments: #{inspect(error)}")
+      []
+  end
+
+  defp load_recent_character_analyses(time_range) do
+    # Get recent killmails and extract unique character IDs for analysis
+    since = time_range_to_datetime(time_range)
+
+    case KillmailProcessing.get_recent_killmails(limit: 50) do
+      {:ok, killmails} ->
+        # Filter killmails by time range and extract unique victim character IDs
+        character_ids =
+          killmails
+          |> Enum.filter(fn km ->
+            case km do
+              %{killmail_time: time} when not is_nil(time) ->
+                DateTime.compare(time, since) != :lt
+
+              _ ->
+                true
+            end
+          end)
+          |> Enum.map(fn km -> Map.get(km, :victim_character_id) end)
+          |> Enum.reject(&is_nil/1)
+          |> Enum.uniq()
+          |> Enum.take(@character_analysis_limit)
+
+        # Analyze characters concurrently with bounded parallelism
+        # Using Task.async_stream to prevent blocking on slow analyses
+        character_ids
+        |> Task.async_stream(
+          fn character_id ->
+            case CharacterAnalyzer.analyze_character(character_id) do
+              {:ok, analysis} ->
+                # Add timestamp for display purposes
+                Map.put(analysis, :analyzed_at, DateTime.utc_now())
+
+              {:error, _} ->
+                nil
+            end
+          end,
+          max_concurrency: @character_analysis_max_concurrency,
+          timeout: @character_analysis_timeout_ms,
+          on_timeout: :kill_task
+        )
+        |> Enum.reduce([], fn
+          {:ok, nil}, acc -> acc
+          {:ok, analysis}, acc -> [analysis | acc]
+          {:exit, _reason}, acc -> acc
+        end)
+        |> Enum.reverse()
+
+      {:error, _} ->
+        []
+    end
+  rescue
+    error ->
+      Logger.warning("Failed to load recent character analyses: #{inspect(error)}")
       []
   end
 
@@ -306,13 +612,14 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
     if Enum.empty?(profiles) do
       0.0
     else
-      since = time_range_to_datetime(time_range)
+      # Convert time_range to format expected by get_match_statistics
+      stats_time_range = normalize_time_range_for_statistics(time_range)
 
       # Get match counts for each profile
       match_counts =
         profiles
         |> Enum.map(fn profile ->
-          case Surveillance.get_match_statistics(profile.id, since) do
+          case Surveillance.get_match_statistics(profile.id, stats_time_range) do
             {:ok, stats} -> Map.get(stats, :total_matches, 0)
             {:error, _} -> 0
           end
@@ -344,6 +651,21 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
   defp time_range_to_datetime(_) do
     DateTime.add(DateTime.utc_now(), -@seconds_per_day, :second)
   end
+
+  # Normalize time_range to format expected by get_match_statistics
+  # which accepts :last_24h, :last_7d, :last_30d or {DateTime.t(), DateTime.t()}
+  defp normalize_time_range_for_statistics(:last_hour) do
+    # Convert to DateTime tuple since :last_hour isn't directly supported
+    now = DateTime.utc_now()
+    {DateTime.add(now, -@seconds_per_hour, :second), now}
+  end
+
+  defp normalize_time_range_for_statistics(time_range)
+       when time_range in [:last_24h, :last_7d, :last_30d] do
+    time_range
+  end
+
+  defp normalize_time_range_for_statistics(_), do: :last_24h
 
   defp format_response_time(nil), do: "N/A"
 
@@ -380,8 +702,9 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
   defp get_base_path(:monitoring, _socket), do: "/monitoring"
   defp get_base_path(_, _socket), do: "/dashboard"
 
-  defp should_reload_for_alert?(alert) do
-    # Only reload for high priority alerts or specific alert types that affect dashboard metrics
+  defp trackable_alert?(alert) do
+    # Check if alert should be tracked (increment active_alerts counter)
+    # Returns true for high-priority alerts or specific alert types that affect dashboard metrics
     case alert do
       # Critical or High priority
       %{priority: priority} when priority in [1, 2] ->
@@ -395,17 +718,10 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
     end
   end
 
-  defp should_reload_for_update?(update) do
-    # Only reload for intelligence updates that affect dashboard data
-    case update do
-      %{type: type}
-      when type in ["analysis_completed", "threat_assessment_updated", "batch_processed"] ->
-        true
-
-      _ ->
-        false
-    end
-  end
+  # Note: should_reload_for_update?/1 removed in Stream 2 optimization.
+  # should_reload_for_alert?/1 was renamed to trackable_alert?/1 since it only increments
+  # :profile_metrics.active_alerts and never reloads. We now use targeted pattern-matched
+  # handlers instead of full reloads.
 
   # Render functions
 

@@ -27,6 +27,7 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
     character_id = String.to_integer(character_id)
 
     # Start with simple loading state
+    # Use streams for large lists to optimize memory and render performance
     socket =
       socket
       |> assign(:character_id, character_id)
@@ -39,11 +40,16 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
       |> assign(:ship_preferences, nil)
       |> assign(:error, nil)
       |> assign(:active_tab, :overview)
+      |> assign(:associates_count, 0)
+      |> assign(:ship_loadouts_count, 0)
+      |> stream(:known_associates, [], id: & &1.character_id, reset: true)
+      |> stream(:ship_loadouts, [], id: & &1.ship_type_id, reset: true)
 
     # Load analysis asynchronously
     send(self(), :load_analysis)
 
-    {:ok, socket}
+    # Use temporary_assigns to clear large list-based data from process memory after render
+    {:ok, socket, temporary_assigns: [recent_battles: []]}
   end
 
   @impl Phoenix.LiveView
@@ -98,6 +104,12 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
 
     case basic_analysis_result do
       {:ok, analysis} ->
+        # Extract associates and ship loadouts for streaming
+        # Limit streamed data to prevent large diffs (show first 8 associates, all ship loadouts for now)
+        all_associates = get_associates_from_analysis(analysis)
+        displayed_associates = Enum.take(all_associates, 8)
+        ship_loadouts = analysis.ship_loadouts || []
+
         socket =
           socket
           |> assign(:loading, false)
@@ -108,6 +120,10 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
           |> assign(:ship_specialization, ship_specialization)
           |> assign(:ship_preferences, ship_preferences)
           |> assign(:error, nil)
+          |> assign(:associates_count, length(all_associates))
+          |> assign(:ship_loadouts_count, length(ship_loadouts))
+          |> stream(:known_associates, displayed_associates, id: & &1.character_id, reset: true)
+          |> stream(:ship_loadouts, ship_loadouts, id: & &1.ship_type_id, reset: true)
 
         {:noreply, socket}
 
@@ -118,6 +134,17 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
           |> assign(:error, error)
 
         {:noreply, socket}
+    end
+  end
+
+  # Extract associates list from analysis data with unique IDs for streaming
+  defp get_associates_from_analysis(analysis) do
+    case analysis.known_associates do
+      %{associates: associates} when is_list(associates) ->
+        associates
+
+      _ ->
+        []
     end
   end
 
@@ -244,89 +271,85 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
           </div>
         <% end %>
 
-        <!-- Ship Loadouts -->
+        <!-- Ship Loadouts (using LiveView streams for memory efficiency) -->
         <div class="bg-gray-800 rounded-lg p-6 mb-6">
           <h3 class="text-white font-semibold mb-4 flex items-center">
             🚀 Ship Loadouts
             <span class="ml-2 text-xs text-gray-500 font-normal">(from killmail data)</span>
           </h3>
-          <%= if Enum.empty?(@analysis.ship_loadouts) do %>
+          <%= if @ship_loadouts_count == 0 do %>
             <p class="text-gray-500 italic">No ship loadout data available</p>
           <% else %>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <%= for ship <- @analysis.ship_loadouts do %>
-                <div class="bg-gray-700 rounded-lg p-4">
-                  <div class="flex items-center gap-3 mb-3">
-                    <img
-                      src={"https://images.evetech.net/types/#{ship.ship_type_id}/icon?size=32"}
-                      alt={ship.ship_name}
-                      class="w-8 h-8 rounded"
-                    />
-                    <div>
-                      <div class="text-white font-medium"><%= ship.ship_name %></div>
-                      <div class="text-xs">
-                        <span class="text-green-400"><%= ship.total_kills %> kills</span>
-                        <span class="text-gray-500 mx-1">/</span>
-                        <span class="text-red-400"><%= ship.total_deaths %> deaths</span>
-                      </div>
+            <div id="ship-loadouts" phx-update="stream" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div :for={{dom_id, ship} <- @streams.ship_loadouts} id={dom_id} class="bg-gray-700 rounded-lg p-4">
+                <div class="flex items-center gap-3 mb-3">
+                  <img
+                    src={"https://images.evetech.net/types/#{ship.ship_type_id}/icon?size=32"}
+                    alt={ship.ship_name}
+                    class="w-8 h-8 rounded"
+                  />
+                  <div>
+                    <div class="text-white font-medium"><%= ship.ship_name %></div>
+                    <div class="text-xs">
+                      <span class="text-green-400"><%= ship.total_kills %> kills</span>
+                      <span class="text-gray-500 mx-1">/</span>
+                      <span class="text-red-400"><%= ship.total_deaths %> deaths</span>
                     </div>
                   </div>
-                  <%= if Enum.empty?(ship.weapons) do %>
-                    <p class="text-gray-500 text-sm italic">No weapon data recorded</p>
-                  <% else %>
-                    <div class="space-y-1">
-                      <%= for weapon <- ship.weapons do %>
-                        <div class="flex justify-between items-center text-sm">
-                          <span class="text-gray-300 truncate" title={weapon.weapon_name}>
-                            <%= weapon.weapon_name %>
-                          </span>
-                          <span class="text-blue-400 ml-2 whitespace-nowrap">
-                            <%= weapon.usage_count %>x
-                          </span>
-                        </div>
-                      <% end %>
-                    </div>
-                  <% end %>
                 </div>
-              <% end %>
+                <%= if Enum.empty?(ship.weapons) do %>
+                  <p class="text-gray-500 text-sm italic">No weapon data recorded</p>
+                <% else %>
+                  <div class="space-y-1">
+                    <%= for weapon <- ship.weapons do %>
+                      <div class="flex justify-between items-center text-sm">
+                        <span class="text-gray-300 truncate" title={weapon.weapon_name}>
+                          <%= weapon.weapon_name %>
+                        </span>
+                        <span class="text-blue-400 ml-2 whitespace-nowrap">
+                          <%= weapon.usage_count %>x
+                        </span>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
             </div>
           <% end %>
         </div>
 
         <!-- Two column layout for Known Associates and Hunting Grounds -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <!-- Known Associates -->
+          <!-- Known Associates (using LiveView streams for memory efficiency) -->
           <div class="bg-gray-800 rounded-lg p-6">
             <h3 class="text-white font-semibold mb-4 flex items-center">
               👥 Known Associates
               <span class="ml-2 text-xs text-gray-500 font-normal">(frequent allies)</span>
             </h3>
-            <%= if @analysis.known_associates && @analysis.known_associates.associates != [] do %>
-              <div class="space-y-2">
-                <%= for associate <- Enum.take(@analysis.known_associates.associates, 8) do %>
-                  <div class="flex items-center justify-between bg-gray-700 rounded px-3 py-2">
-                    <div class="flex items-center gap-2">
-                      <img
-                        src={"https://images.evetech.net/characters/#{associate.character_id}/portrait?size=32"}
-                        alt={associate.character_name}
-                        class="w-6 h-6 rounded-full"
-                      />
-                      <a
-                        href={"/character/#{associate.character_id}"}
-                        class="text-blue-400 hover:text-blue-300 text-sm"
-                      >
-                        <%= associate.character_name || "Unknown" %>
-                      </a>
-                    </div>
-                    <span class="text-gray-400 text-xs">
-                      <%= associate.shared_kills %> times
-                    </span>
+            <%= if @associates_count > 0 do %>
+              <div id="known-associates" phx-update="stream" class="space-y-2">
+                <div :for={{dom_id, associate} <- @streams.known_associates} id={dom_id} class="flex items-center justify-between bg-gray-700 rounded px-3 py-2">
+                  <div class="flex items-center gap-2">
+                    <img
+                      src={"https://images.evetech.net/characters/#{associate.character_id}/portrait?size=32"}
+                      alt={associate.character_name}
+                      class="w-6 h-6 rounded-full"
+                    />
+                    <a
+                      href={"/character/#{associate.character_id}"}
+                      class="text-blue-400 hover:text-blue-300 text-sm"
+                    >
+                      <%= associate.character_name || "Unknown" %>
+                    </a>
                   </div>
-                <% end %>
+                  <span class="text-gray-400 text-xs">
+                    <%= associate.shared_kills %> times
+                  </span>
+                </div>
               </div>
-              <%= if @analysis.known_associates.total_associates > 8 do %>
+              <%= if @associates_count > 8 do %>
                 <p class="text-gray-500 text-xs mt-2 italic">
-                  + <%= @analysis.known_associates.total_associates - 8 %> more associates
+                  + <%= @associates_count - 8 %> more associates
                 </p>
               <% end %>
             <% else %>

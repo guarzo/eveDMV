@@ -223,38 +223,39 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.Services.DetectionService do
   def get_corporation_battle_stats(corporation_id) do
     thirty_days_ago = thirty_days_ago()
 
+    # Optimized: Uses participants table with indexed lookups instead of JSONB extraction
+    # Uses idx_participants_corporation on (corporation_id)
     query = """
-    WITH corp_battles AS (
-    SELECT
+    WITH corp_killmail_involvement AS (
+      -- Find killmails where corp participated as attacker
+      SELECT DISTINCT
+        p.killmail_id,
+        p.killmail_time,
+        COUNT(*) OVER (PARTITION BY p.killmail_id, p.killmail_time) as corp_members_involved
+      FROM participants p
+      WHERE p.corporation_id = $1
+        AND p.killmail_time >= $2
+        AND p.is_victim = false
+    ),
+    corp_battles AS (
+      SELECT
         k.killmail_id,
         k.killmail_time,
         k.total_value,
         k.solar_system_id,
         k.attacker_count as fleet_size,
-    CASE
+        CASE
           WHEN k.victim_corporation_id = $1 THEN 'loss'
-          WHEN EXISTS (
-            SELECT 1 FROM jsonb_array_elements(k.raw_data->'attackers') a
-            WHERE (a->>'corporation_id')::bigint = $1
-          ) THEN 'kill'
+          WHEN ci.killmail_id IS NOT NULL THEN 'kill'
           ELSE 'unknown'
         END as participation_type,
-        -- Count corp members involved in this killmail
-        (
-          SELECT COUNT(*)
-          FROM jsonb_array_elements(k.raw_data->'attackers') a
-          WHERE (a->>'corporation_id')::bigint = $1
-        ) as corp_members_involved
+        COALESCE(ci.corp_members_involved, 0) as corp_members_involved
       FROM killmails_raw k
+      LEFT JOIN corp_killmail_involvement ci
+        ON k.killmail_id = ci.killmail_id AND k.killmail_time = ci.killmail_time
       WHERE k.killmail_time >= $2
-        AND (
-          k.victim_corporation_id = $1
-          OR EXISTS (
-            SELECT 1 FROM jsonb_array_elements(k.raw_data->'attackers') a
-            WHERE (a->>'corporation_id')::bigint = $1
-          )
-        )
         AND k.attacker_count >= 5
+        AND (k.victim_corporation_id = $1 OR ci.killmail_id IS NOT NULL)
     )
     SELECT
       COUNT(*) as total_battles,
@@ -397,33 +398,36 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.Services.DetectionService do
   def get_system_battle_stats(system_id) do
     thirty_days_ago = thirty_days_ago()
 
+    # Optimized: Uses participants table with indexed lookups instead of JSONB extraction
     query = """
-    WITH system_battles AS (
-    SELECT
+    WITH system_killmails AS (
+      SELECT
         k.killmail_id,
         k.killmail_time,
-        COALESCE(k.total_value, (k.raw_data->'zkb'->>'totalValue')::numeric, 0) as total_value,
-        k.attacker_count as fleet_size,
-        -- Count distinct corporations from attackers JSONB
-        (
-          SELECT COUNT(DISTINCT a->>'corporation_id')
-          FROM jsonb_array_elements(k.raw_data->'attackers') a
-          WHERE a->>'corporation_id' IS NOT NULL
-        ) as corp_count,
-        -- Count distinct alliances from attackers JSONB
-        (
-          SELECT COUNT(DISTINCT a->>'alliance_id')
-          FROM jsonb_array_elements(k.raw_data->'attackers') a
-          WHERE a->>'alliance_id' IS NOT NULL
-        ) as alliance_count,
-        -- Battle intensity based on time clustering
-        COUNT(*) OVER (
-          PARTITION BY date_trunc('hour', k.killmail_time)
-        ) as hour_activity
+        COALESCE(k.total_value, 0) as total_value,
+        k.attacker_count as fleet_size
       FROM killmails_raw k
       WHERE k.solar_system_id = $1
         AND k.killmail_time >= $2
         AND k.attacker_count >= 5
+    ),
+    killmail_participation AS (
+      -- Count distinct corps and alliances per killmail from participants
+      SELECT
+        sk.killmail_id,
+        sk.killmail_time,
+        sk.total_value,
+        sk.fleet_size,
+        COUNT(DISTINCT p.corporation_id) as corp_count,
+        COUNT(DISTINCT p.alliance_id) FILTER (WHERE p.alliance_id IS NOT NULL) as alliance_count,
+        COUNT(*) OVER (
+          PARTITION BY date_trunc('hour', sk.killmail_time)
+        ) as hour_activity
+      FROM system_killmails sk
+      JOIN participants p ON p.killmail_id = sk.killmail_id
+        AND p.killmail_time = sk.killmail_time
+        AND p.is_victim = false
+      GROUP BY sk.killmail_id, sk.killmail_time, sk.total_value, sk.fleet_size
     )
     SELECT
       COUNT(*) as total_battles,
@@ -436,7 +440,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.Services.DetectionService do
       SUM(total_value) as total_isk_destroyed,
       COUNT(*) FILTER (WHERE hour_activity >= 10) as major_battle_count,
       COUNT(*) FILTER (WHERE hour_activity >= 5 AND hour_activity < 10) as medium_battle_count
-    FROM system_battles
+    FROM killmail_participation
     """
 
     case Repo.query(query, [system_id, thirty_days_ago]) do
@@ -501,21 +505,31 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.Services.DetectionService do
   def get_corporation_fleet_doctrines(corporation_id) do
     thirty_days_ago = thirty_days_ago()
 
+    # Optimized: Uses participants table with indexed lookups instead of JSONB extraction
+    # Uses idx_participants_corporation on (corporation_id)
     query = """
+    WITH corp_killmails AS (
+      -- Find killmails where corp participated as attacker using indexed participants table
+      SELECT DISTINCT p.killmail_id, p.killmail_time
+      FROM participants p
+      WHERE p.corporation_id = $1
+        AND p.killmail_time >= $2
+        AND p.is_victim = false
+    )
     SELECT
-      k.raw_data->'victim'->>'ship_type_name' as ship_type,
+      COALESCE(v.ship_name, 'Unknown') as ship_type,
       COUNT(*) as usage_count,
       AVG(k.attacker_count) as avg_fleet_size,
       SUM(k.total_value) as total_isk_involved
     FROM killmails_raw k
-    WHERE k.killmail_time >= $2
-      AND EXISTS (
-        SELECT 1 FROM jsonb_array_elements(k.raw_data->'attackers') a
-        WHERE (a->>'corporation_id')::bigint = $1
-      )
-      AND k.attacker_count >= 5
-      AND k.raw_data->'victim'->>'ship_type_name' IS NOT NULL
-    GROUP BY k.raw_data->'victim'->>'ship_type_name'
+    JOIN corp_killmails ck ON k.killmail_id = ck.killmail_id
+      AND k.killmail_time = ck.killmail_time
+    LEFT JOIN participants v ON v.killmail_id = k.killmail_id
+      AND v.killmail_time = k.killmail_time
+      AND v.is_victim = true
+    WHERE k.attacker_count >= 5
+      AND v.ship_name IS NOT NULL
+    GROUP BY v.ship_name
     HAVING COUNT(*) >= 2  -- At least 2 occurrences
     ORDER BY usage_count DESC
     LIMIT 10

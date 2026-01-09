@@ -11,6 +11,7 @@ defmodule EveDmv.Shared.Strategic.DataCollector do
   alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.Telemetry.OtelSpans
 
   require Logger
 
@@ -68,35 +69,139 @@ defmodule EveDmv.Shared.Strategic.DataCollector do
   # Private functions
 
   defp collect_multi_system_data(system_ids, since) do
-    killmail_data =
-      Enum.map(system_ids, fn system_id ->
-        killmails =
-          Ash.read!(KillmailRaw,
-            filter: [
-              solar_system_id: system_id,
-              timestamp: [greater_than: since]
-            ],
-            limit: 500,
-            domain: Api
-          )
+    if Enum.empty?(system_ids) do
+      {:ok,
+       %{
+         scope: :multi_system,
+         systems: [],
+         killmail_data: [],
+         metrics: %{
+           total_killmails: 0,
+           systems_with_activity: 0,
+           average_kills_per_system: 0.0,
+           most_active_system: nil,
+           temporal_distribution: %{},
+           entity_participation: %{
+             unique_attackers: 0,
+             unique_victims: 0,
+             corporation_participation: 0,
+             alliance_participation: 0
+           }
+         },
+         time_range: %{since: since, until: DateTime.utc_now()}
+       }}
+    else
+      # Per-system queries using Task.async_stream to ensure fair representation.
+      # Each system gets its own query with a 500 killmail limit, preventing
+      # high-activity systems from consuming disproportionate share of results.
+      # Concurrency is limited to 4 to avoid overwhelming the database.
+      system_count = length(system_ids)
 
-        %{
+      # Start OpenTelemetry span for the collection operation
+      span =
+        OtelSpans.start_task_span("battle_analysis.collect_killmails", %{
+          system_count: system_count
+        })
+
+      collection_start = System.monotonic_time(:microsecond)
+
+      # Track per-system query durations for aggregation
+      query_durations = :ets.new(:query_durations, [:set, :public])
+
+      killmail_data =
+        system_ids
+        |> Task.async_stream(
+          fn system_id ->
+            query_start = System.monotonic_time(:microsecond)
+
+            killmails =
+              Ash.read!(KillmailRaw,
+                filter: [
+                  solar_system_id: system_id,
+                  killmail_time: [greater_than: since]
+                ],
+                limit: 500,
+                domain: Api
+              )
+
+            query_duration = System.monotonic_time(:microsecond) - query_start
+            kill_count = length(killmails)
+
+            # Store per-system query duration for later aggregation
+            :ets.insert(query_durations, {system_id, query_duration, kill_count})
+
+            %{
+              system_id: system_id,
+              killmails: killmails,
+              kill_count: kill_count
+            }
+          end,
+          max_concurrency: 4,
+          timeout: 30_000,
+          on_timeout: :kill_task
+        )
+        |> Enum.reduce([], fn
+          {:ok, data}, acc -> [data | acc]
+          {:exit, _reason}, acc -> acc
+        end)
+        |> Enum.reverse()
+
+      # Calculate final metrics
+      total_duration = System.monotonic_time(:microsecond) - collection_start
+      total_killmails = Enum.sum(Enum.map(killmail_data, & &1.kill_count))
+      successful_systems = length(killmail_data)
+      failed_systems = system_count - successful_systems
+
+      # Record per-system query durations as span events
+      :ets.tab2list(query_durations)
+      |> Enum.each(fn {system_id, query_duration_us, kill_count} ->
+        OtelSpans.add_span_event(span, "system_query_completed", %{
           system_id: system_id,
-          killmails: killmails,
-          kill_count: length(killmails)
-        }
+          query_duration_us: query_duration_us,
+          kill_count: kill_count
+        })
       end)
 
-    metrics = calculate_multi_system_metrics(killmail_data)
+      :ets.delete(query_durations)
 
-    {:ok,
-     %{
-       scope: :multi_system,
-       systems: system_ids,
-       killmail_data: killmail_data,
-       metrics: metrics,
-       time_range: %{since: since, until: DateTime.utc_now()}
-     }}
+      # Emit final telemetry metrics
+      :telemetry.execute(
+        [:eve_dmv, :battle_analysis, :collect_killmails],
+        %{
+          duration_us: total_duration,
+          total_killmails: total_killmails,
+          successful_systems: successful_systems,
+          failed_systems: failed_systems
+        },
+        %{
+          system_count: system_count,
+          avg_killmails_per_system:
+            if(successful_systems > 0,
+              do: Float.round(total_killmails / successful_systems, 2),
+              else: 0.0
+            )
+        }
+      )
+
+      # End the span with final measurements
+      OtelSpans.end_task_span(span, %{
+        duration_us: total_duration,
+        total_killmails: total_killmails,
+        successful_systems: successful_systems,
+        failed_systems: failed_systems
+      })
+
+      metrics = calculate_multi_system_metrics(killmail_data)
+
+      {:ok,
+       %{
+         scope: :multi_system,
+         systems: system_ids,
+         killmail_data: killmail_data,
+         metrics: metrics,
+         time_range: %{since: since, until: DateTime.utc_now()}
+       }}
+    end
   catch
     error ->
       Logger.error("Failed to collect multi-system data: #{inspect(error)}")
@@ -108,7 +213,7 @@ defmodule EveDmv.Shared.Strategic.DataCollector do
       Ash.read!(KillmailRaw,
         filter: [
           solar_system_id: system_id,
-          timestamp: [greater_than: since]
+          killmail_time: [greater_than: since]
         ],
         limit: 1000,
         domain: Api
@@ -189,7 +294,7 @@ defmodule EveDmv.Shared.Strategic.DataCollector do
   defp calculate_temporal_distribution(killmails) do
     killmails
     |> Enum.group_by(fn km ->
-      km.timestamp
+      km.killmail_time
       |> DateTime.to_date()
     end)
     |> Enum.map(fn {date, kms} ->
@@ -325,7 +430,7 @@ defmodule EveDmv.Shared.Strategic.DataCollector do
     killmails = get_all_killmails(strategic_data)
 
     killmails
-    |> Enum.group_by(fn km -> km.timestamp.hour end)
+    |> Enum.group_by(fn km -> km.killmail_time.hour end)
     |> Enum.map(fn {hour, kms} -> {hour, length(kms)} end)
     |> Map.new()
   end

@@ -50,7 +50,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
   ## Data Sources
 
   This module operates on multiple data sources:
-  - Real killmail data from `killmails_enriched` table
+  - Real killmail data from `killmails_raw` table
   - EVE static data for system and region relationships
   - Structure and sovereignty data (when available)
   - Economic activity data (when available)
@@ -715,7 +715,7 @@ defmodule EveDmv.Contexts.IntelligenceInfrastructure.Domain.CrossSystem.Analyzer
 
   defp fetch_multi_system_killmails(system_ids, start_time) do
     query =
-      from(k in "killmails_enriched",
+      from(k in "killmails_raw",
         where: k.solar_system_id in ^system_ids and k.killmail_time >= ^start_time,
         select: %{
           killmail_id: k.killmail_id,

@@ -10,6 +10,8 @@ defmodule EveDmvWeb.AllianceLive do
 
   use EveDmvWeb, :live_view
 
+  require Logger
+
   import EveDmvWeb.Components.PageHeaderComponent
   import EveDmvWeb.Components.StatsGridComponent
   import EveDmvWeb.Components.ErrorStateComponent
@@ -45,7 +47,19 @@ defmodule EveDmvWeb.AllianceLive do
         recent_activity = load_recent_activity(alliance_id)
         alliance_stats = calculate_alliance_stats(corporations, alliance_id)
         top_pilots = load_top_pilots(alliance_id, 10)
-        activity_trends = calculate_activity_trends(alliance_id)
+
+        {activity_trends, activity_trends_error} =
+          case calculate_activity_trends(alliance_id) do
+            {:ok, trends} ->
+              {trends, nil}
+
+            {:error, reason} ->
+              Logger.error(
+                "Failed to load weekly activity trends for alliance #{alliance_id}: #{inspect(reason)}"
+              )
+
+              {nil, :failed}
+          end
 
         socket =
           socket
@@ -56,6 +70,7 @@ defmodule EveDmvWeb.AllianceLive do
           |> assign(:alliance_stats, alliance_stats)
           |> assign(:top_pilots, top_pilots)
           |> assign(:activity_trends, activity_trends)
+          |> assign(:activity_trends_error, activity_trends_error)
           |> assign(:loading, false)
           |> assign(:error, nil)
           |> assign(:historical_fetch_status, historical_status)
@@ -68,6 +83,7 @@ defmodule EveDmvWeb.AllianceLive do
           |> assign(:error, "Invalid alliance ID")
           |> assign(:loading, false)
           |> assign(:historical_fetch_status, nil)
+          |> assign(:activity_trends_error, nil)
 
         {:ok, socket}
     end
@@ -82,7 +98,19 @@ defmodule EveDmvWeb.AllianceLive do
     recent_activity = load_recent_activity(alliance_id)
     alliance_stats = calculate_alliance_stats(corporations, alliance_id)
     top_pilots = load_top_pilots(alliance_id, 10)
-    activity_trends = calculate_activity_trends(alliance_id)
+
+    {activity_trends, activity_trends_error} =
+      case calculate_activity_trends(alliance_id) do
+        {:ok, trends} ->
+          {trends, nil}
+
+        {:error, reason} ->
+          Logger.error(
+            "Failed to load weekly activity trends for alliance #{alliance_id}: #{inspect(reason)}"
+          )
+
+          {nil, :failed}
+      end
 
     socket =
       socket
@@ -92,6 +120,7 @@ defmodule EveDmvWeb.AllianceLive do
       |> assign(:alliance_stats, alliance_stats)
       |> assign(:top_pilots, top_pilots)
       |> assign(:activity_trends, activity_trends)
+      |> assign(:activity_trends_error, activity_trends_error)
       |> put_flash(:info, "Alliance data refreshed")
 
     {:noreply, socket}
@@ -327,41 +356,69 @@ defmodule EveDmvWeb.AllianceLive do
   end
 
   defp calculate_activity_trends(alliance_id) do
-    # Calculate weekly activity trends for the past 4 weeks
+    # Calculate weekly activity trends for the past 4 weeks using a single query
     end_date = DateTime.utc_now()
-    weeks = for week <- 0..3, do: calculate_week_activity(alliance_id, week, end_date)
+    start_date = DateTimeUtils.add(end_date, -28 * 24 * 60 * 60, :second)
 
-    %{
-      weekly_data: weeks,
-      trend_direction: calculate_trend_direction(weeks)
-    }
+    query = """
+    SELECT
+      DATE_TRUNC('week', killmail_time) as week_start,
+      SUM(CASE WHEN is_victim THEN 0 ELSE 1 END) as kills,
+      SUM(CASE WHEN is_victim THEN 1 ELSE 0 END) as losses
+    FROM participants
+    WHERE alliance_id = $1
+      AND killmail_time >= $2
+      AND killmail_time <= $3
+    GROUP BY DATE_TRUNC('week', killmail_time)
+    ORDER BY week_start DESC
+    LIMIT 4
+    """
+
+    case EveDmv.Repo.query(query, [alliance_id, start_date, end_date]) do
+      {:ok, %{rows: rows}} ->
+        # Convert rows and calculate week labels
+        raw_weeks =
+          rows
+          |> Enum.with_index()
+          |> Enum.map(fn {[_week_start, kills, losses], idx} ->
+            %{
+              week_label: "Week -#{idx}",
+              kills: kills || 0,
+              losses: losses || 0,
+              total: (kills || 0) + (losses || 0)
+            }
+          end)
+
+        # Ensure we always have 4 weeks of data (pad with zeros if needed)
+        weeks = pad_weeks_data(raw_weeks)
+
+        {:ok,
+         %{
+           weekly_data: weeks,
+           trend_direction: calculate_trend_direction(weeks),
+           error: nil
+         }}
+
+      {:error, %Postgrex.Error{} = error} ->
+        {:error, Postgrex.Error.message(error)}
+
+      {:error, reason} ->
+        {:error, inspect(reason)}
+    end
   end
 
-  defp calculate_week_activity(alliance_id, weeks_ago, end_date) do
-    week_end = DateTimeUtils.add(end_date, -weeks_ago * 7 * 24 * 60 * 60, :second)
-    week_start = DateTimeUtils.add(week_end, -7 * 24 * 60 * 60, :second)
+  # Pad weeks data to ensure we always have 4 weeks
+  defp pad_weeks_data([_, _, _, _ | _] = weeks), do: Enum.take(weeks, 4)
 
-    case Ash.read(Participant,
-           filter: %{
-             alliance_id: alliance_id,
-             inserted_at: [gt: week_start, lte: week_end]
-           },
-           domain: Api
-         ) do
-      {:ok, participants} ->
-        kills = Enum.count(participants, &(not &1.is_victim))
-        losses = Enum.count(participants, & &1.is_victim)
+  defp pad_weeks_data(weeks) do
+    existing_count = length(weeks)
 
-        %{
-          week_label: "Week -#{weeks_ago}",
-          kills: kills,
-          losses: losses,
-          total: kills + losses
-        }
+    padding =
+      for week <- existing_count..3 do
+        %{week_label: "Week -#{week}", kills: 0, losses: 0, total: 0}
+      end
 
-      {:error, _} ->
-        %{week_label: "Week -#{weeks_ago}", kills: 0, losses: 0, total: 0}
-    end
+    weeks ++ padding
   end
 
   defp calculate_trend_direction(weeks) do

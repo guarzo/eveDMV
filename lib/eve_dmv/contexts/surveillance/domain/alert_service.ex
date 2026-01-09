@@ -559,7 +559,9 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertService do
 
     %{
       time_range: time_range,
-      total_alerts: length(recent_alerts),
+      # Named :alert_count to follow AlertBatcher counter naming convention ("_count" suffix)
+      # This ensures consistent summing behavior during metrics batching
+      alert_count: length(recent_alerts),
       priority_distribution: priority_distribution,
       state_distribution: state_distribution,
       type_distribution: type_distribution,

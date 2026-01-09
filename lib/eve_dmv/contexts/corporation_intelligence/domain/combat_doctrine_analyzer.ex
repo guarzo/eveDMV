@@ -1517,7 +1517,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
   defp maybe_analyze_members(_combat_data, false), do: {:ok, nil}
 
   defp maybe_analyze_members(combat_data, true) do
-    active_members = combat_data.active_members || []
+    active_members = combat_data.active_members
 
     # Calculate participation from killmail data, not from member IDs
     top_contributors = identify_top_contributors(combat_data)
@@ -1535,7 +1535,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
   defp identify_top_contributors(combat_data) do
     # Analyze actual killmail data to identify top contributors
     corporation_id = combat_data.corporation_id
-    killmails = combat_data.killmails || []
+    killmails = combat_data.killmails
 
     # Count participation and damage for each member
     member_stats =
@@ -1565,7 +1565,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
   defp identify_role_specialists(combat_data) do
     # Analyze actual ship usage by corporation members
     corporation_id = combat_data.corporation_id
-    killmails = combat_data.killmails || []
+    killmails = combat_data.killmails
 
     # Track ship roles used by each member
     member_roles =
@@ -2317,7 +2317,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.CombatDoctrineAnalyzer 
       kill_death_ratio: kd_ratio,
       isk_efficiency: isk_efficiency,
       trend: trend,
-      total_engagements: length(time_grouped)
+      total_engagements: map_size(time_grouped)
     }
   end
 

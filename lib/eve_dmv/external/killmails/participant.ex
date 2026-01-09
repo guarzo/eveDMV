@@ -12,6 +12,8 @@ defmodule EveDmv.Killmails.Participant do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
+  require Logger
+
   postgres do
     table("participants")
     repo(EveDmv.Repo)
@@ -34,6 +36,7 @@ defmodule EveDmv.Killmails.Participant do
       index([:is_victim], name: "participants_victim_idx")
       index([:final_blow], name: "participants_final_blow_idx")
       index([:killmail_time], name: "participants_time_idx")
+      index([:solar_system_id], name: "participants_solar_system_idx")
     end
   end
 
@@ -50,6 +53,7 @@ defmodule EveDmv.Killmails.Participant do
     define(:character_activity_summary, args: [:character_id])
     define(:search_characters_by_name, args: [:query])
     define(:search_corporations_by_name, args: [:query])
+    define(:character_ship_usage, args: [:character_id, :since_date])
   end
 
   # Attributes
@@ -382,14 +386,16 @@ defmodule EveDmv.Killmails.Participant do
 
       filter(expr(not is_nil(character_id) and not is_nil(character_name)))
 
-      prepare(fn query, context ->
-        search_pattern = "%#{context.arguments.query}%"
+      prepare(fn query, _context ->
+        search_query = Ash.Query.get_argument(query, :query)
+        limit = Ash.Query.get_argument(query, :limit)
+        search_pattern = "%#{search_query}%"
 
         query
         |> Ash.Query.filter_input(%{character_name: %{ilike: search_pattern}})
         |> Ash.Query.sort(killmail_time: :desc)
         |> Ash.Query.distinct([:character_id])
-        |> Ash.Query.limit(context.arguments.limit)
+        |> Ash.Query.limit(limit)
         |> Ash.Query.select([
           :character_id,
           :character_name,
@@ -418,14 +424,16 @@ defmodule EveDmv.Killmails.Participant do
 
       filter(expr(not is_nil(corporation_id) and not is_nil(corporation_name)))
 
-      prepare(fn query, context ->
-        search_pattern = "%#{context.arguments.query}%"
+      prepare(fn query, _context ->
+        search_query = Ash.Query.get_argument(query, :query)
+        limit = Ash.Query.get_argument(query, :limit)
+        search_pattern = "%#{search_query}%"
 
         query
         |> Ash.Query.filter_input(%{corporation_name: %{ilike: search_pattern}})
         |> Ash.Query.sort(killmail_time: :desc)
         |> Ash.Query.distinct([:corporation_id])
-        |> Ash.Query.limit(context.arguments.limit)
+        |> Ash.Query.limit(limit)
         |> Ash.Query.select([
           :corporation_id,
           :corporation_name,
@@ -460,6 +468,218 @@ defmodule EveDmv.Killmails.Participant do
       filter(expr(killmail_time >= ago(^arg(:since_days), :day)))
 
       prepare(build(sort: [killmail_time: :desc], load: [:ship_type, :participation_type]))
+    end
+
+    read :character_kill_stats do
+      description("Get aggregated kill statistics for a character")
+
+      argument :character_id, :integer do
+        allow_nil?(false)
+        description("Character ID to get stats for")
+      end
+
+      argument :since_days, :integer do
+        allow_nil?(false)
+        default(90)
+        description("Number of days to look back")
+      end
+
+      filter(expr(character_id == ^arg(:character_id)))
+      filter(expr(killmail_time >= ago(^arg(:since_days), :day)))
+      filter(expr(is_victim == false))
+
+      prepare(fn query, _context ->
+        query
+        |> Ash.Query.aggregate(:total_kills, :count)
+        |> Ash.Query.aggregate(:total_damage, :sum, :damage_done)
+        |> Ash.Query.aggregate(:final_blows, :count, filter: expr(final_blow == true))
+      end)
+    end
+
+    read :character_loss_stats do
+      description("Get aggregated loss statistics for a character")
+
+      argument :character_id, :integer do
+        allow_nil?(false)
+        description("Character ID to get stats for")
+      end
+
+      argument :since_days, :integer do
+        allow_nil?(false)
+        default(90)
+        description("Number of days to look back")
+      end
+
+      filter(expr(character_id == ^arg(:character_id)))
+      filter(expr(killmail_time >= ago(^arg(:since_days), :day)))
+      filter(expr(is_victim == true))
+
+      prepare(fn query, _context ->
+        query
+        |> Ash.Query.aggregate(:total_losses, :count)
+      end)
+    end
+
+    # Bulk read actions for efficient multi-record fetching
+
+    read :by_killmail_ids do
+      description("Get participants for multiple killmails efficiently")
+
+      argument :killmail_ids, {:array, :integer} do
+        allow_nil?(false)
+        constraints(max_length: 100)
+        description("List of killmail IDs to fetch participants for")
+      end
+
+      filter(expr(killmail_id in ^arg(:killmail_ids)))
+
+      prepare(build(sort: [:killmail_id, :is_victim, {:damage_done, :desc}]))
+    end
+
+    read :by_character_ids do
+      description("Get recent activity for multiple characters")
+
+      argument :character_ids, {:array, :integer} do
+        allow_nil?(false)
+        constraints(max_length: 100)
+        description("List of character IDs to fetch activity for")
+      end
+
+      argument :since_days, :integer do
+        allow_nil?(false)
+        default(90)
+        description("Number of days to look back")
+      end
+
+      filter(expr(character_id in ^arg(:character_ids)))
+      filter(expr(killmail_time >= ago(^arg(:since_days), :day)))
+
+      prepare(build(sort: [killmail_time: :desc]))
+    end
+
+    read :corporation_activity do
+      description("Get corporation member activity with aggregation")
+
+      argument :corporation_id, :integer do
+        allow_nil?(false)
+        description("Corporation ID to get activity for")
+      end
+
+      argument :since_days, :integer do
+        allow_nil?(false)
+        default(30)
+        description("Number of days to look back")
+      end
+
+      filter(expr(corporation_id == ^arg(:corporation_id)))
+      filter(expr(killmail_time >= ago(^arg(:since_days), :day)))
+      # Exclude NPCs - only count actual corporation members
+      filter(expr(is_npc == false))
+
+      prepare(fn query, _context ->
+        query
+        |> Ash.Query.aggregate(:total_activity, :count)
+        |> Ash.Query.aggregate(:total_kills, :count, filter: expr(is_victim == false))
+        |> Ash.Query.aggregate(:total_losses, :count, filter: expr(is_victim == true))
+        |> Ash.Query.aggregate(:unique_members, :count, field: :character_id, uniq?: true)
+      end)
+    end
+
+    read :system_activity_summary do
+      description("Get activity summary for a solar system (player activity only)")
+
+      argument :system_id, :integer do
+        allow_nil?(false)
+        description("Solar system ID to get activity for")
+      end
+
+      argument :since_hours, :integer do
+        allow_nil?(false)
+        default(24)
+        description("Number of hours to look back")
+      end
+
+      filter(expr(solar_system_id == ^arg(:system_id)))
+      filter(expr(killmail_time >= ago(^arg(:since_hours), :hour)))
+      # Exclude NPCs - system activity measures player presence
+      filter(expr(is_npc == false))
+
+      prepare(fn query, _context ->
+        query
+        |> Ash.Query.aggregate(:total_participants, :count)
+        |> Ash.Query.aggregate(:unique_characters, :count, field: :character_id, uniq?: true)
+        |> Ash.Query.aggregate(:unique_corporations, :count, field: :corporation_id, uniq?: true)
+        |> Ash.Query.aggregate(:total_kills, :count, filter: expr(is_victim == false))
+      end)
+    end
+
+    # Generic action for ship usage aggregation with GROUP BY
+    # Ash's query tools are "resource-centric" and don't support GROUP BY natively.
+    # This action uses Ash.Query.data_layer_query/1 to build the filtered query,
+    # then falls back to Ecto for the GROUP BY aggregation as recommended by Ash docs.
+    # See: https://elixirforum.com/t/group-by-query-in-read-calculation-aggregate-or-custom-action/70898
+    action :character_ship_usage, {:array, :map} do
+      description("""
+      Get ship usage breakdown for a character with proper grouping.
+
+      Returns a list of maps with :ship_type_id, :ship_name, and :usage_count,
+      ordered by usage_count descending.
+      """)
+
+      argument :character_id, :integer do
+        allow_nil?(false)
+        description("The EVE character ID")
+      end
+
+      argument :since_date, :utc_datetime do
+        allow_nil?(false)
+        description("Start date for the usage period")
+      end
+
+      argument :limit, :integer do
+        allow_nil?(false)
+        default(10)
+        description("Maximum number of ships to return")
+      end
+
+      run(fn input, _context ->
+        import Ecto.Query, only: [from: 2]
+        import Ash.Expr
+
+        character_id = input.arguments.character_id
+        since_date = input.arguments.since_date
+        limit = input.arguments.limit
+
+        # Build the filtered Ash query using Ash.Expr for proper expression handling
+        ash_query =
+          __MODULE__
+          |> Ash.Query.filter(expr(character_id == ^character_id))
+          |> Ash.Query.filter(expr(killmail_time >= ^since_date))
+          |> Ash.Query.filter(expr(is_victim == false))
+
+        # Convert to Ecto data layer query for GROUP BY support
+        case Ash.Query.data_layer_query(ash_query) do
+          {:ok, ecto_query} ->
+            # Apply GROUP BY, aggregation, ordering, and limit using Ecto
+            grouped_query =
+              from(p in ecto_query,
+                group_by: [p.ship_type_id, p.ship_name],
+                select: %{
+                  ship_type_id: p.ship_type_id,
+                  ship_name: p.ship_name,
+                  usage_count: count(p.id)
+                },
+                order_by: [desc: count(p.id)],
+                limit: ^limit
+              )
+
+            results = EveDmv.Repo.all(grouped_query)
+            {:ok, results}
+
+          {:error, error} ->
+            {:error, error}
+        end
+      end)
     end
   end
 
@@ -550,5 +770,39 @@ defmodule EveDmv.Killmails.Participant do
     policy action_type([:create, :update, :destroy]) do
       authorize_if(actor_present())
     end
+  end
+
+  @doc """
+  Get ship usage breakdown for a character with proper grouping.
+
+  This function wraps the :character_ship_usage Ash action for backward compatibility
+  with existing code that calls this function directly.
+
+  Returns a list of maps with :ship_type_id, :ship_name, and :usage_count,
+  ordered by usage_count descending.
+
+  ## Parameters
+    - character_id: The EVE character ID
+    - since_days: Number of days to look back (default: 90)
+    - limit: Maximum number of ships to return (default: 10)
+
+  ## Examples
+
+      iex> EveDmv.Killmails.Participant.get_character_ship_usage(12345)
+      {:ok, [%{ship_type_id: 587, ship_name: "Rifter", usage_count: 42}, ...]}
+
+  """
+  @spec get_character_ship_usage(integer(), integer(), integer()) ::
+          {:ok, [map()]} | {:error, term()}
+  def get_character_ship_usage(character_id, since_days \\ 90, limit \\ 10) do
+    since_date = DateTime.utc_now() |> DateTime.add(-since_days, :day)
+
+    __MODULE__
+    |> Ash.ActionInput.for_action(:character_ship_usage, %{
+      character_id: character_id,
+      since_date: since_date,
+      limit: limit
+    })
+    |> Ash.run_action()
   end
 end

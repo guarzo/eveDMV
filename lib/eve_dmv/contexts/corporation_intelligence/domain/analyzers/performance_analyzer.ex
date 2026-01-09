@@ -99,12 +99,14 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.PerformanceAn
   defp get_performance_data(corporation_id, days) do
     cutoff_date = DateTimeUtils.add(DateTime.utc_now(), -days * 86_400, :second)
 
+    # Use participants table for efficient indexed lookup instead of JSONB search
     query =
-      from(k in "killmails_raw",
+      from(p in "participants",
         where:
-          k.victim_corporation_id == ^corporation_id or
-            fragment("? @> ?::jsonb", k.data, ^%{attackers: [%{corporation_id: corporation_id}]}),
-        where: k.killmail_time > ^cutoff_date,
+          p.corporation_id == ^corporation_id and
+            p.killmail_time > ^cutoff_date,
+        join: k in "killmails_raw",
+        on: k.killmail_id == p.killmail_id and k.killmail_time == p.killmail_time,
         select: %{
           killmail_id: k.killmail_id,
           killmail_time: k.killmail_time,
@@ -113,8 +115,10 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.PerformanceAn
           victim_corporation_id: k.victim_corporation_id,
           attacker_count: k.attacker_count,
           total_value: k.total_value,
-          data: k.data
+          raw_data: k.raw_data,
+          is_victim: p.is_victim
         },
+        distinct: true,
         order_by: [asc: k.killmail_time]
       )
 
@@ -186,7 +190,7 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.PerformanceAn
       if losses != [] do
         Float.round(length(kills) / length(losses), 2)
       else
-        if kills != [], do: Float.round(length(kills), 2), else: 0.0
+        if kills != [], do: length(kills) * 1.0, else: 0.0
       end
 
     # Calculate average engagement size
@@ -392,21 +396,28 @@ defmodule EveDmv.Contexts.CorporationIntelligence.Domain.Analyzers.PerformanceAn
   end
 
   defp classify_utilization(utilization) do
-    @utilization_thresholds
-    |> Enum.find(fn {threshold, _rating} -> utilization > threshold end)
-    |> elem(1)
+    case Enum.find(@utilization_thresholds, fn {threshold, _rating} -> utilization > threshold end) do
+      nil -> :critical
+      {_, rating} -> rating
+    end
   end
 
   defp classify_diversity(diversity_score) do
-    @diversity_thresholds
-    |> Enum.find(fn {threshold, _rating} -> diversity_score > threshold end)
-    |> elem(1)
+    case Enum.find(@diversity_thresholds, fn {threshold, _rating} ->
+           diversity_score > threshold
+         end) do
+      nil -> :monotonous
+      {_, rating} -> rating
+    end
   end
 
   defp classify_competitive_position(score) do
-    @competitive_position_thresholds
-    |> Enum.find(fn {threshold, _position} -> score > threshold end)
-    |> elem(1)
+    case Enum.find(@competitive_position_thresholds, fn {threshold, _position} ->
+           score > threshold
+         end) do
+      nil -> :emerging
+      {_, position} -> position
+    end
   end
 
   defp analyze_performance_trends(killmails, _days) do

@@ -216,13 +216,13 @@ defmodule EveDmv.Telemetry.OtelSpans do
         end_time = System.monotonic_time(:microsecond)
         duration = end_time - span_data.start_time
 
-        final_data = %{
-          span_data
-          | end_time: end_time,
+        final_data =
+          Map.merge(span_data, %{
+            end_time: end_time,
             duration: duration,
             status: status,
             measurements: measurements
-        }
+          })
 
         # Emit telemetry event for observability tools
         :telemetry.execute(

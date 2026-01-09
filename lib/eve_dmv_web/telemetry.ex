@@ -184,6 +184,21 @@ defmodule EveDmvWeb.Telemetry do
         tags: [:type],
         unit: {:native, :millisecond},
         description: "Time taken for re-enrichment batches"
+      ),
+
+      # Database Connection Pool Metrics
+      counter("eve_dmv.database.pool.alert.count",
+        tags: [:type, :severity],
+        description: "Database pool alerts by type and severity"
+      ),
+      last_value("eve_dmv.database.pool.utilization",
+        description: "Database pool utilization percentage"
+      ),
+      last_value("eve_dmv.database.pool.queue_length",
+        description: "Number of processes waiting for database connections"
+      ),
+      last_value("eve_dmv.database.pool.available",
+        description: "Available database connections"
       )
     ]
   end
@@ -193,7 +208,8 @@ defmodule EveDmvWeb.Telemetry do
       # EVE DMV specific measurements
       {__MODULE__, :measure_surveillance_profiles, []},
       {__MODULE__, :measure_cache_stats, []},
-      {__MODULE__, :measure_pipeline_stats, []}
+      {__MODULE__, :measure_pipeline_stats, []},
+      {__MODULE__, :measure_database_pool, []}
     ]
   end
 
@@ -259,5 +275,186 @@ defmodule EveDmvWeb.Telemetry do
     })
   rescue
     _ -> :ok
+  end
+
+  @doc """
+  Measure database connection pool statistics.
+
+  **Important**: These metrics are heuristic estimates, not exact pool state.
+
+  DBConnection pools do not expose their internal busy/idle connection counts directly.
+  Instead, this function estimates pool utilization by measuring the time it takes to
+  check out a connection and execute a trivial query. Fast checkouts indicate a healthy
+  pool with available connections, while slow checkouts suggest contention.
+
+  The returned metrics (`utilization`, `available`, `queue_length`) should be treated
+  as approximate indicators of pool health rather than precise measurements. For exact
+  pool state, consider using DBConnection telemetry events or implementing a custom
+  pool wrapper that tracks connection state transitions.
+
+  See `get_pool_stats/0` for details on the estimation methodology.
+  """
+  def measure_database_pool do
+    case get_pool_stats() do
+      {:ok, %{busy: busy, idle: idle, queue_length: queue_length, pool_size: _pool_size}} ->
+        available = idle
+        total = busy + idle
+        utilization = if total > 0, do: busy / total * 100, else: 0.0
+
+        :telemetry.execute(
+          [:eve_dmv, :database, :pool, :utilization],
+          %{value: utilization},
+          %{}
+        )
+
+        :telemetry.execute(
+          [:eve_dmv, :database, :pool, :queue_length],
+          %{value: queue_length},
+          %{}
+        )
+
+        :telemetry.execute(
+          [:eve_dmv, :database, :pool, :available],
+          %{value: available},
+          %{}
+        )
+
+      {:error, _reason, pool_size} ->
+        # Pool not available, emit zeros
+        :telemetry.execute(
+          [:eve_dmv, :database, :pool, :utilization],
+          %{value: 0.0},
+          %{}
+        )
+
+        :telemetry.execute(
+          [:eve_dmv, :database, :pool, :queue_length],
+          %{value: 0},
+          %{}
+        )
+
+        :telemetry.execute(
+          [:eve_dmv, :database, :pool, :available],
+          %{value: pool_size},
+          %{}
+        )
+    end
+  rescue
+    _ -> :ok
+  end
+
+  # Estimates pool statistics using checkout timing as a proxy for pool saturation.
+  #
+  # **Why estimation is necessary**: DBConnection pools (used by Ecto) do not expose
+  # their internal state (busy/idle connection counts, queue length) through a public
+  # API. The pool manages connections internally and only provides checkout/checkin
+  # operations.
+  #
+  # **Methodology**: This function performs a trivial `SELECT 1` query and measures
+  # the checkout time. The checkout time reflects how long the caller waited for a
+  # connection to become available:
+  #
+  #   - Fast checkout (<1ms): Pool has idle connections readily available
+  #   - Slow checkout (>10ms): Pool is saturated, requests are likely queuing
+  #
+  # **Limitations**:
+  #   - The busy/idle counts are rough estimates, not actual values
+  #   - The queue_length is a binary indicator (0 or 1), not an actual count
+  #   - A single measurement may not reflect sustained pool pressure
+  #   - Network latency to the database affects timing
+  #
+  # **Alternatives for precise metrics**:
+  #   - Subscribe to DBConnection telemetry events (`:db_connection` events)
+  #   - Use a custom pool implementation that tracks state
+  #   - Monitor PostgreSQL's `pg_stat_activity` for connection state
+  defp get_pool_stats do
+    repo_config = EveDmv.Repo.config()
+    pool_size = Keyword.get(repo_config, :pool_size, 10)
+
+    # Get the pool from the repo and query its state
+    # DBConnection pools track busy/idle connections internally
+    repo_pid = Process.whereis(EveDmv.Repo)
+
+    if repo_pid && Process.alive?(repo_pid) do
+      # Use Ecto's internal pool query mechanism
+      # The pool is typically a DBConnection.ConnectionPool
+      try do
+        # Get pool status via checkout timing - a quick checkout indicates healthy pool
+        checkout_start = System.monotonic_time(:microsecond)
+
+        result =
+          Ecto.Adapters.SQL.query(
+            EveDmv.Repo,
+            "SELECT 1",
+            [],
+            timeout: 100,
+            queue_target: 50
+          )
+
+        checkout_time = System.monotonic_time(:microsecond) - checkout_start
+
+        case result do
+          {:ok, _} ->
+            # Estimate pool health based on checkout time
+            # Fast checkout (<1ms) = healthy pool, slow checkout = pressure
+
+            # Estimate busy connections based on checkout latency.
+            # Since DBConnection pools don't expose busy/idle counts directly,
+            # we use checkout timing as a proxy for pool saturation.
+            #
+            # Threshold rationale (all values in microseconds):
+            #   < 1,000 us (1ms): Pool is healthy with ample idle connections.
+            #                     Immediate checkout indicates no contention.
+            #                     Estimated busy = 0 (all connections readily available).
+            #
+            #   < 5,000 us (5ms): Minor contention, ~25% pool utilization.
+            #                     Slight delay suggests some connections are busy
+            #                     but the pool is not under significant pressure.
+            #                     Estimated busy = pool_size / 4.
+            #
+            #   < 10,000 us (10ms): Moderate contention, ~50% pool utilization.
+            #                       Noticeable checkout delay indicates half the
+            #                       connections are likely in use.
+            #                       Estimated busy = pool_size / 2.
+            #
+            #   >= 10,000 us: High contention, pool nearly saturated.
+            #                 Long checkout times indicate most connections are
+            #                 busy and requests may be queuing.
+            #                 Estimated busy = pool_size - 1.
+            estimated_busy =
+              cond do
+                checkout_time < 1_000 -> 0
+                checkout_time < 5_000 -> div(pool_size, 4)
+                checkout_time < 10_000 -> div(pool_size, 2)
+                true -> pool_size - 1
+              end
+
+            # queue_length is a coarse binary estimate (0 or 1) based on checkout time.
+            # This is NOT the actual number of processes waiting for connections.
+            # It serves as a simple indicator: 1 means the pool is likely saturated
+            # and requests are probably queuing; 0 means the pool appears healthy.
+            # For precise queue metrics, consider using DBConnection telemetry events
+            # or implementing a custom pool wrapper.
+            {:ok,
+             %{
+               busy: estimated_busy,
+               idle: pool_size - estimated_busy,
+               queue_length: if(checkout_time > 10_000, do: 1, else: 0),
+               pool_size: pool_size
+             }}
+
+          {:error, _} ->
+            {:error, :query_failed, pool_size}
+        end
+      rescue
+        DBConnection.ConnectionError ->
+          {:error, :connection_error, pool_size}
+
+        _ ->
+          {:error, :unknown, pool_size}
+      end
+    else
+      {:error, :repo_not_started, pool_size}
+    end
   end
 end

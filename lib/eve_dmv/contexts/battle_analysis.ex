@@ -569,8 +569,6 @@ defmodule EveDmv.Contexts.BattleAnalysis do
     end
   end
 
-  defp extract_key_timeline_events(_), do: []
-
   defp calculate_battle_significance(battle, intelligence) do
     base_score = length(battle.killmails) * 0.1
 

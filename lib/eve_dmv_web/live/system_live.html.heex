@@ -679,15 +679,15 @@
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="flex items-center">
                         <%= if corp.corporation_id do %>
-                          <EveDmvWeb.EveImageComponents.corporation_logo 
-                            corporation_id={corp.corporation_id} 
-                            size={32} 
+                          <EveDmvWeb.EveImageComponents.corporation_logo
+                            corporation_id={corp.corporation_id}
+                            size={32}
                             class="mr-3" />
                         <% end %>
                         <div>
                           <div class="text-sm font-medium text-gray-200">
                             <%= if corp.corporation_id do %>
-                              <.link navigate={~p"/corporation/#{corp.corporation_id}"} 
+                              <.link navigate={~p"/corporation/#{corp.corporation_id}"}
                                     class="text-blue-400 hover:text-blue-300">
                                 <%= corp.corporation_name %>
                               </.link>
@@ -701,9 +701,9 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                       <%= if corp.alliance_name && corp.alliance_id do %>
                         <div class="flex items-center">
-                          <EveDmvWeb.EveImageComponents.alliance_logo 
-                            alliance_id={corp.alliance_id} 
-                            size={24} 
+                          <EveDmvWeb.EveImageComponents.alliance_logo
+                            alliance_id={corp.alliance_id}
+                            size={24}
                             class="mr-2" />
                           <%= corp.alliance_name %>
                         </div>
@@ -725,6 +725,26 @@
               </tbody>
             </table>
           </div>
+          <!-- Load More Button (Stream 8 pagination) -->
+          <%= if @has_more_corps do %>
+            <div class="mt-4 flex justify-center">
+              <button
+                phx-click="load_more_corps"
+                disabled={@loading_more_corps}
+                class="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:cursor-not-allowed text-gray-200 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+              >
+                <%= if @loading_more_corps do %>
+                  <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Loading...
+                <% else %>
+                  Load More Corporations
+                <% end %>
+              </button>
+            </div>
+          <% end %>
         <% else %>
           <div class="text-center py-6">
             <div class="text-gray-400">No recent activity from corporations</div>

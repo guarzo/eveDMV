@@ -4,6 +4,28 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
 
   Displays comprehensive threat scoring, behavioral patterns, and tactical recommendations
   for EVE Online characters based on their combat history.
+
+  ## Async Data Loading
+
+  This module uses `assign_async/3` for non-blocking data loading. The `assign_async`
+  creates an `Phoenix.LiveView.AsyncResult` struct accessible in templates via the
+  following fields:
+
+    * `@intelligence_data.loading` - `true` while data is loading
+    * `@intelligence_data.ok?` - `true` when data loaded successfully
+    * `@intelligence_data.failed?` - `true` when an error occurred
+    * `@intelligence_data.result` - contains `%{intelligence_data: report}` on success
+
+  ### Template Usage Example
+
+      <%= if @intelligence_data.loading do %>
+        Loading...
+      <% else %>
+        <%= if @intelligence_data.ok? do %>
+          <% report = @intelligence_data.result.intelligence_data %>
+          ... render report ...
+        <% end %>
+      <% end %>
   """
 
   use EveDmvWeb, :live_view
@@ -11,7 +33,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
   on_mount({EveDmvWeb.AuthLive, :load_from_session_optional})
 
   import EveDmvWeb.Components.ThreatLevelComponent
-  import EveDmvWeb.LiveHelpers.ApiErrorHelper
+  # Note: ApiErrorHelper import removed - using assign_async instead of safe_api_call
   import EveDmvWeb.IntelligenceComponents
 
   alias EveDmv.Contexts.CharacterIntelligence
@@ -20,6 +42,8 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
   def mount(%{"character_id" => character_id_str}, _session, socket) do
     character_id = String.to_integer(character_id_str)
 
+    # Use assign_async for non-blocking data loading
+    # This allows the page to render immediately while data loads in background
     socket =
       socket
       |> assign(:page_title, "Character Intelligence")
@@ -31,7 +55,9 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
       |> assign(:show_comparison, false)
       |> assign(:search_query, "")
       |> assign(:search_results, [])
-      |> load_character_intelligence(character_id)
+      |> assign_async(:intelligence_data, fn ->
+        fetch_intelligence_data(character_id)
+      end)
 
     {:ok, socket}
   end
@@ -41,11 +67,17 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
     character_id = String.to_integer(character_id_str)
 
     if character_id != socket.assigns.character_id do
-      {:noreply,
-       socket
-       |> assign(:character_id, character_id)
-       |> assign(:loading, true)
-       |> load_character_intelligence(character_id)}
+      # Use assign_async for non-blocking reload when character changes
+      socket =
+        socket
+        |> assign(:character_id, character_id)
+        |> assign(:loading, true)
+        |> assign(:intelligence_report, nil)
+        |> assign_async(:intelligence_data, fn ->
+          fetch_intelligence_data(character_id)
+        end)
+
+      {:noreply, socket}
     else
       {:noreply, socket}
     end
@@ -53,12 +85,19 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
 
   @impl Phoenix.LiveView
   def handle_event("refresh", _params, socket) do
-    updated_socket =
+    character_id = socket.assigns.character_id
+
+    # Use assign_async for non-blocking refresh
+    socket =
       socket
       |> assign(:loading, true)
-      |> load_character_intelligence(socket.assigns.character_id)
+      |> assign_async(
+        :intelligence_data,
+        fn -> fetch_intelligence_data(character_id) end,
+        reset: true
+      )
 
-    {:noreply, updated_socket}
+    {:noreply, socket}
   end
 
   @impl Phoenix.LiveView
@@ -115,34 +154,6 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
       Enum.reject(socket.assigns.comparison_characters, &(&1.character_id == character_id))
 
     {:noreply, assign(socket, :comparison_characters, comparison_characters)}
-  end
-
-  # Private functions
-
-  defp load_character_intelligence(socket, character_id) do
-    case safe_api_call(
-           socket,
-           fn ->
-             CharacterIntelligence.get_character_intelligence_report(character_id)
-           end,
-           "Loading character intelligence"
-         ) do
-      {:ok, report} ->
-        socket
-        |> assign(:intelligence_report, report)
-        |> assign(:loading, false)
-        |> assign(:error_message, nil)
-        |> update_page_title(report.character.name)
-
-      {:error, error_socket} ->
-        error_socket
-        |> assign(:loading, false)
-        |> assign(:intelligence_report, nil)
-    end
-  end
-
-  defp update_page_title(socket, character_name) do
-    assign(socket, :page_title, "Intelligence: #{character_name}")
   end
 
   # View helpers
@@ -264,5 +275,13 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
       end
 
     base_recommendations ++ pattern_specific
+  end
+
+  # Private helpers for async data loading
+
+  @spec fetch_intelligence_data(integer()) :: {:ok, map()}
+  defp fetch_intelligence_data(character_id) do
+    {:ok, report} = CharacterIntelligence.get_character_intelligence_report(character_id)
+    {:ok, %{intelligence_data: report}}
   end
 end

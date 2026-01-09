@@ -58,6 +58,88 @@ defmodule EveDmv.Platform.Database.CacheHashManager do
     GenServer.call(__MODULE__, :get_stats)
   end
 
+  @doc """
+  Check if content has changed for a given cache key.
+
+  Computes a hash of the new data and compares it with the stored hash.
+  Returns true if the content has changed (or no hash exists), false otherwise.
+
+  This is used for selective invalidation - only invalidate if actual data changed.
+  """
+  @spec content_changed?(String.t(), term()) :: boolean()
+  def content_changed?(cache_key, new_data) do
+    new_hash = compute_content_hash(new_data)
+
+    case :ets.lookup(@hash_table, cache_key) do
+      [{^cache_key, stored_hash, expiry}] ->
+        now = System.system_time(:second)
+
+        if now < expiry do
+          # Hash exists and not expired - compare
+          new_hash != stored_hash
+        else
+          # Hash expired - consider changed
+          :ets.delete(@hash_table, cache_key)
+          true
+        end
+
+      [] ->
+        # No hash found - consider changed
+        true
+    end
+  rescue
+    err ->
+      Logger.warning(
+        "CacheHashManager: content_changed? failed: #{inspect(err)}; #{inspect(__STACKTRACE__)}"
+      )
+
+      true
+  end
+
+  @doc """
+  Store a hash for the given cache key and data.
+
+  This should be called after invalidation to store the new hash
+  for future comparisons.
+  """
+  @spec store_hash(String.t(), term()) :: :ok
+  def store_hash(cache_key, data) do
+    hash = compute_content_hash(data)
+    expiry = System.system_time(:second) + div(@hash_ttl, 1000)
+    :ets.insert(@hash_table, {cache_key, hash, expiry})
+    :ok
+  rescue
+    err ->
+      Logger.warning(
+        "CacheHashManager: store_hash failed for key #{inspect(cache_key)}: #{inspect(err)}; #{inspect(__STACKTRACE__)}"
+      )
+
+      :ok
+  end
+
+  # Compute a deterministic hash from data
+  defp compute_content_hash(data) do
+    data
+    |> normalize_for_hashing()
+    |> :erlang.term_to_binary()
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16()
+  end
+
+  # Recursively normalize data structures for deterministic hashing
+  defp normalize_for_hashing(%{} = map) do
+    map
+    |> Map.to_list()
+    |> Enum.map(fn {k, v} -> {k, normalize_for_hashing(v)} end)
+    |> Enum.sort()
+  end
+
+  defp normalize_for_hashing(list) when is_list(list) do
+    Enum.map(list, &normalize_for_hashing/1)
+  end
+
+  defp normalize_for_hashing(other), do: other
+
   # Server callbacks
 
   @impl GenServer

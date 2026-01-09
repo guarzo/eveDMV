@@ -4,9 +4,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnal
   All calculations based on real killmail data - NO PLACEHOLDERS.
   """
 
-  import Ash.Query
-
-  alias EveDmv.Killmails.KillmailRaw
   alias EveDmv.Types
 
   require Logger
@@ -55,37 +52,51 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.GangSynergyAnal
 
   @spec get_shared_killmails([Types.character_id()]) :: [map()]
   defp get_shared_killmails(character_ids) do
+    # Optimized: Uses participants table via direct SQL instead of JSONB extraction
     cutoff_date = DateTime.add(DateTime.utc_now(), -90 * 86_400, :second)
 
-    # Build a query to find killmails where at least 2 of the characters are attackers
-    character_id_strings = Enum.map(character_ids, &to_string/1)
-
-    KillmailRaw
-    |> filter(killmail_time > ^cutoff_date)
-    |> filter(
-      fragment(
-        """
-        EXISTS (
-          SELECT 1
-          FROM jsonb_array_elements(raw_data->'attackers') AS attacker
-          WHERE attacker->>'character_id' = ANY(?)
-          GROUP BY killmail_id
-          HAVING COUNT(DISTINCT attacker->>'character_id') >= 2
-        )
-        """,
-        type(^character_id_strings, {:array, :string})
-      )
+    # Find killmails where at least 2 of the specified characters participated as attackers
+    query = """
+    WITH shared_killmails AS (
+      SELECT p.killmail_id, p.killmail_time
+      FROM participants p
+      WHERE p.character_id = ANY($1)
+        AND p.is_victim = false
+        AND p.killmail_time > $2
+      GROUP BY p.killmail_id, p.killmail_time
+      HAVING COUNT(DISTINCT p.character_id) >= 2
     )
-    |> select([
-      :killmail_id,
-      :killmail_time,
-      :solar_system_id,
-      :raw_data,
-      :total_value,
-      :victim_ship_type_id
-    ])
-    |> limit(1000)
-    |> Ash.read!(domain: EveDmv.Api)
+    SELECT k.killmail_id, k.killmail_time, k.solar_system_id, k.raw_data, k.total_value, k.victim_ship_type_id
+    FROM killmails_raw k
+    JOIN shared_killmails sk ON k.killmail_id = sk.killmail_id
+      AND k.killmail_time = sk.killmail_time
+    ORDER BY k.killmail_time DESC
+    LIMIT 1000
+    """
+
+    case EveDmv.Repo.query(query, [character_ids, cutoff_date]) do
+      {:ok, %{rows: rows}} ->
+        Enum.map(rows, fn [
+                            killmail_id,
+                            killmail_time,
+                            solar_system_id,
+                            raw_data,
+                            total_value,
+                            victim_ship_type_id
+                          ] ->
+          %{
+            killmail_id: killmail_id,
+            killmail_time: killmail_time,
+            solar_system_id: solar_system_id,
+            raw_data: raw_data,
+            total_value: total_value,
+            victim_ship_type_id: victim_ship_type_id
+          }
+        end)
+
+      _ ->
+        []
+    end
   rescue
     error ->
       Logger.error("Failed to get shared killmails: #{inspect(error)}")

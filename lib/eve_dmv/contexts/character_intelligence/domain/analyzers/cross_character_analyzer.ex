@@ -4,10 +4,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.CrossCharacterA
   All analysis based on real killmail data - NO PLACEHOLDERS.
   """
 
-  import Ash.Query
-
-  alias EveDmv.Killmails.KillmailRaw
-
   require Logger
 
   @doc """
@@ -47,14 +43,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.CrossCharacterA
     shared_operations = get_shared_operations(character_ids)
 
     if Enum.empty?(shared_operations) do
-      {:ok,
-       %{
-         operation_types: %{},
-         temporal_patterns: %{},
-         geographic_patterns: %{},
-         target_preferences: [],
-         coordination_level: 0.0
-       }}
+      {:error, :no_shared_operations}
     else
       {:ok,
        %{
@@ -94,36 +83,28 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.CrossCharacterA
   # Private functions
 
   defp calculate_relationship_strength(char1_id, char2_id) do
-    # Query shared killmails in last 90 days
+    # Optimized: Uses participants table via direct SQL instead of JSONB extraction
     cutoff = DateTime.add(DateTime.utc_now(), -90 * 86_400, :second)
 
-    char1_str = to_string(char1_id)
-    char2_str = to_string(char2_id)
+    # Find killmails where both characters participated as attackers
+    query = """
+    SELECT COUNT(DISTINCT p1.killmail_id)
+    FROM participants p1
+    JOIN participants p2 ON p1.killmail_id = p2.killmail_id
+      AND p1.killmail_time = p2.killmail_time
+    WHERE p1.character_id = $1
+      AND p2.character_id = $2
+      AND p1.is_victim = false
+      AND p2.is_victim = false
+      AND p1.killmail_time > $3
+    """
 
-    shared_kills =
-      KillmailRaw
-      |> filter(killmail_time > ^cutoff)
-      |> filter(
-        fragment(
-          """
-          EXISTS (
-            SELECT 1 FROM jsonb_array_elements(raw_data->'attackers') a1
-            WHERE a1->>'character_id' = ?
-          ) AND EXISTS (
-            SELECT 1 FROM jsonb_array_elements(raw_data->'attackers') a2
-            WHERE a2->>'character_id' = ?
-          )
-          """,
-          ^char1_str,
-          ^char2_str
-        )
-      )
-      |> Ash.count(domain: EveDmv.Api)
+    case EveDmv.Repo.query(query, [char1_id, char2_id, cutoff]) do
+      {:ok, %{rows: [[count]]}} when is_integer(count) ->
+        calculate_strength_score(count)
 
-    # Calculate strength based on frequency
-    case shared_kills do
-      {:ok, count} -> calculate_strength_score(count)
-      _ -> 0.0
+      _ ->
+        0.0
     end
   rescue
     error ->
@@ -247,32 +228,45 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.CrossCharacterA
   end
 
   defp get_shared_operations(character_ids) do
+    # Optimized: Uses participants table via direct SQL instead of JSONB extraction
     cutoff = DateTime.add(DateTime.utc_now(), -30 * 86_400, :second)
-    character_id_strings = Enum.map(character_ids, &to_string/1)
 
-    KillmailRaw
-    |> filter(killmail_time > ^cutoff)
-    |> filter(
-      fragment(
-        """
-        EXISTS (
-          SELECT 1
-          FROM jsonb_array_elements(raw_data->'attackers') AS attacker
-          WHERE attacker->>'character_id' = ANY(?)
-        )
-        """,
-        type(^character_id_strings, {:array, :string})
-      )
+    query = """
+    SELECT DISTINCT k.killmail_id, k.killmail_time, k.solar_system_id, k.raw_data, k.victim_ship_type_id
+    FROM killmails_raw k
+    WHERE EXISTS (
+      SELECT 1 FROM participants p
+      WHERE p.killmail_id = k.killmail_id
+        AND p.killmail_time = k.killmail_time
+        AND p.character_id = ANY($1)
+        AND p.is_victim = false
     )
-    |> select([
-      :killmail_id,
-      :killmail_time,
-      :solar_system_id,
-      :raw_data,
-      :victim_ship_type_id
-    ])
-    |> limit(500)
-    |> Ash.read!(domain: EveDmv.Api)
+    AND k.killmail_time > $2
+    ORDER BY k.killmail_time DESC
+    LIMIT 500
+    """
+
+    case EveDmv.Repo.query(query, [character_ids, cutoff]) do
+      {:ok, %{rows: rows}} ->
+        Enum.map(rows, fn [
+                            killmail_id,
+                            killmail_time,
+                            solar_system_id,
+                            raw_data,
+                            victim_ship_type_id
+                          ] ->
+          %{
+            killmail_id: killmail_id,
+            killmail_time: killmail_time,
+            solar_system_id: solar_system_id,
+            raw_data: raw_data,
+            victim_ship_type_id: victim_ship_type_id
+          }
+        end)
+
+      _ ->
+        []
+    end
   rescue
     error ->
       Logger.error("Failed to get shared operations: #{inspect(error)}")
@@ -508,27 +502,50 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.CrossCharacterA
   end
 
   defp get_group_history(character_ids, days: days) do
+    # Optimized: Uses participants table via direct SQL instead of JSONB extraction
     cutoff = DateTime.add(DateTime.utc_now(), -days * 86_400, :second)
-    character_id_strings = Enum.map(character_ids, &to_string/1)
 
-    KillmailRaw
-    |> filter(killmail_time > ^cutoff)
-    |> filter(
-      fragment(
-        """
-        EXISTS (
-          SELECT 1
-          FROM jsonb_array_elements(raw_data->'attackers') AS attacker
-          WHERE attacker->>'character_id' = ANY(?)
-          GROUP BY killmail_id
-          HAVING COUNT(DISTINCT attacker->>'character_id') >= 2
-        )
-        """,
-        type(^character_id_strings, {:array, :string})
-      )
+    # Find killmails where at least 2 of the specified characters participated as attackers
+    query = """
+    WITH group_killmails AS (
+      SELECT p.killmail_id, p.killmail_time
+      FROM participants p
+      WHERE p.character_id = ANY($1)
+        AND p.is_victim = false
+        AND p.killmail_time > $2
+      GROUP BY p.killmail_id, p.killmail_time
+      HAVING COUNT(DISTINCT p.character_id) >= 2
+      LIMIT 1000
     )
-    |> select([:killmail_id, :killmail_time, :solar_system_id, :raw_data, :victim_ship_type_id])
-    |> Ash.read!(domain: EveDmv.Api)
+    SELECT k.killmail_id, k.killmail_time, k.solar_system_id, k.raw_data, k.victim_ship_type_id
+    FROM killmails_raw k
+    JOIN group_killmails gk ON k.killmail_id = gk.killmail_id
+      AND k.killmail_time = gk.killmail_time
+    ORDER BY k.killmail_time DESC
+    LIMIT 500
+    """
+
+    case EveDmv.Repo.query(query, [character_ids, cutoff]) do
+      {:ok, %{rows: rows}} ->
+        Enum.map(rows, fn [
+                            killmail_id,
+                            killmail_time,
+                            solar_system_id,
+                            raw_data,
+                            victim_ship_type_id
+                          ] ->
+          %{
+            killmail_id: killmail_id,
+            killmail_time: killmail_time,
+            solar_system_id: solar_system_id,
+            raw_data: raw_data,
+            victim_ship_type_id: victim_ship_type_id
+          }
+        end)
+
+      _ ->
+        []
+    end
   rescue
     error ->
       Logger.error("Failed to get group history: #{inspect(error)}")

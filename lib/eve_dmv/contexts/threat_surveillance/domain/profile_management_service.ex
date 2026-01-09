@@ -276,10 +276,8 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.ProfileManagementService do
     |> then(fn processed ->
       # Optimize criteria if being updated
       if Map.has_key?(updates, :criteria) do
-        case optimize_criteria(updates[:criteria]) do
-          {:ok, optimized} -> Map.put(processed, :criteria, optimized)
-          _ -> processed
-        end
+        {:ok, optimized} = optimize_criteria(updates[:criteria])
+        Map.put(processed, :criteria, optimized)
       else
         processed
       end

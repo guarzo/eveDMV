@@ -171,7 +171,8 @@ defmodule EveDmv.Contexts.Surveillance.Infrastructure.KillmailEventProcessor do
       uptime_seconds: uptime_seconds,
       total_processed: state.processing_count,
       total_matches: state.match_count,
-      total_alerts: state.alert_count,
+      # Named :alert_count to follow AlertBatcher counter naming convention ("_count" suffix)
+      alert_count: state.alert_count,
       total_errors: state.error_count,
       processing_rate: calculate_processing_rate(state.processing_count, uptime_seconds),
       match_rate: calculate_match_rate(state.match_count, state.processing_count),

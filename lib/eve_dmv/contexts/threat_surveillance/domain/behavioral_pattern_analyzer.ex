@@ -473,8 +473,6 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.BehavioralPatternAnalyzer do
 
   defp calculate_average([]), do: 0.0
 
-  defp calculate_average(_), do: 0.0
-
   defp identify_activity_bursts(sorted_killmails) do
     # Find periods of intense activity (multiple kills within 1 hour)
     sorted_killmails

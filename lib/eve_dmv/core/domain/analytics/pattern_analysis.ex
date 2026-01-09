@@ -566,9 +566,6 @@ defmodule EveDmv.Core.Domain.Analytics.PatternAnalysis do
           end)
 
         length(long_engagements) / length(killmails) > 0.3
-
-      _ ->
-        false
     end
   end
 

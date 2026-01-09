@@ -124,13 +124,21 @@ unless config_env() == :test do
     default_chain_id: System.get_env("DEFAULT_CHAIN_ID")
 
   # Performance configuration
+  # Stream 3: Broadway batcher concurrency tuning for improved throughput
+  # - pipeline_concurrency: 16 processors (up from 12) for parallel message processing
+  # - batcher_concurrency: 8 batchers (up from 4) to prevent bottleneck
+  # - batch_size: 200 in prod for bulk efficiency, 100 in dev for faster feedback
   config :eve_dmv,
-    batch_size: ConfigHelper.safe_string_to_integer(System.get_env("BATCH_SIZE"), 100),
-    batch_timeout: ConfigHelper.safe_string_to_integer(System.get_env("BATCH_TIMEOUT"), 30000),
+    batch_size:
+      ConfigHelper.safe_string_to_integer(
+        System.get_env("BATCH_SIZE"),
+        if(config_env() == :prod, do: 200, else: 100)
+      ),
+    batch_timeout: ConfigHelper.safe_string_to_integer(System.get_env("BATCH_TIMEOUT"), 30_000),
     pipeline_concurrency:
-      ConfigHelper.safe_string_to_integer(System.get_env("PIPELINE_CONCURRENCY"), 12),
+      ConfigHelper.safe_string_to_integer(System.get_env("PIPELINE_CONCURRENCY"), 16),
     batcher_concurrency:
-      ConfigHelper.safe_string_to_integer(System.get_env("BATCHER_CONCURRENCY"), 4),
+      ConfigHelper.safe_string_to_integer(System.get_env("BATCHER_CONCURRENCY"), 8),
     price_cache_ttl_hours:
       ConfigHelper.safe_string_to_integer(System.get_env("PRICE_CACHE_TTL_HOURS"), 24)
 
@@ -209,7 +217,8 @@ if config_env() == :prod do
     queue_target: String.to_integer(System.get_env("DB_QUEUE_TARGET") || "50"),
     queue_interval: String.to_integer(System.get_env("DB_QUEUE_INTERVAL") || "1000"),
     # Connection timeout settings
-    timeout: String.to_integer(System.get_env("DB_TIMEOUT") || "15000"),
+    # Increased from 15s to 30s to handle complex analytical queries
+    timeout: String.to_integer(System.get_env("DB_TIMEOUT") || "30000"),
     connect_timeout: String.to_integer(System.get_env("DB_CONNECT_TIMEOUT") || "5000"),
     # Prepared statement caching for better performance
     prepare: :unnamed,
@@ -217,8 +226,9 @@ if config_env() == :prod do
     ssl: System.get_env("DATABASE_SSL", "false") == "true",
     socket_options: [],
     # Statement timeout to prevent long-running queries
+    # Increased from 30s to 60s to handle battle analysis and intelligence queries
     parameters: [
-      statement_timeout: System.get_env("DB_STATEMENT_TIMEOUT", "30000")
+      statement_timeout: System.get_env("DB_STATEMENT_TIMEOUT", "60000")
     ]
 
   # The secret key base is used to sign/encrypt cookies and other secrets.

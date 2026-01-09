@@ -295,7 +295,8 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngineTe
     end
 
     test "returns matches for a specific profile" do
-      profile_id = "profile_#{System.unique_integer([:positive])}"
+      # Use a valid UUID format for profile_id
+      profile_id = Ecto.UUID.generate()
 
       assert {:ok, matches} = SurveillanceMatchingEngine.get_profile_matches(profile_id, [])
 
@@ -303,7 +304,8 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngineTe
     end
 
     test "respects limit option" do
-      profile_id = "profile_#{System.unique_integer([:positive])}"
+      # Use a valid UUID format for profile_id
+      profile_id = Ecto.UUID.generate()
 
       assert {:ok, matches} =
                SurveillanceMatchingEngine.get_profile_matches(profile_id, limit: 10)
@@ -313,7 +315,8 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngineTe
     end
 
     test "respects since option" do
-      profile_id = "profile_#{System.unique_integer([:positive])}"
+      # Use a valid UUID format for profile_id
+      profile_id = Ecto.UUID.generate()
       since = DateTime.add(DateTime.utc_now(), -7 * 86_400, :second)
 
       assert {:ok, matches} =

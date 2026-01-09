@@ -349,6 +349,7 @@ defmodule EveDmv.Shared.Monitoring.Facade do
       activity_thresholds: baseline.activity_baseline.anomaly_thresholds,
       threat_thresholds: baseline.threat_baseline.alert_thresholds,
       adaptation_rate: 0.1,
+      adaptation_factor: 1.0,
       last_adaptation: DateTime.utc_now()
     }
   end

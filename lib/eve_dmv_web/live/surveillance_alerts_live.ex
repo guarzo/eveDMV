@@ -14,6 +14,7 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
   on_mount({EveDmvWeb.AuthLive, :load_from_session_optional})
 
   alias EveDmv.Contexts.Surveillance.Domain.AlertService
+  alias EveDmv.Contexts.Surveillance.Domain.MetricsUtils
   alias EveDmv.Contexts.Surveillance.Domain.NotificationService
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmvWeb.Helpers.TimeFormatter
@@ -179,8 +180,46 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
   # PubSub handlers
 
   @impl Phoenix.LiveView
+  def handle_info({:alerts_batch, batch_payload}, socket) do
+    # Handle batched alerts for improved performance
+    # This reduces individual handle_info calls during high-activity periods
+    alerts = Map.get(batch_payload, :alerts, [])
+    batch_size = Map.get(batch_payload, :batch_size, length(alerts))
+    metrics = Map.get(batch_payload, :metrics, %{})
+
+    if batch_size > 0 do
+      Logger.info("Received batched surveillance alerts: #{batch_size} alerts")
+
+      # Trigger notification for the highest priority alert only
+      # This prevents notification spam during high-activity periods
+      highest_priority_alert =
+        alerts
+        |> Enum.min_by(fn alert -> Map.get(alert, :priority, 4) end, fn -> nil end)
+
+      socket = trigger_alert_notification(socket, highest_priority_alert)
+
+      # Prepend new alerts to existing list instead of full reload
+      # This avoids database queries during high-activity periods
+      current_alerts = socket.assigns.alerts
+      updated_alerts = Enum.take(alerts ++ current_alerts, @alerts_per_page)
+
+      # Update new alert count once for entire batch and refresh metrics
+      # Use metrics from batch_payload via apply_metrics_update to avoid unnecessary DB query
+      socket =
+        socket
+        |> update(:new_alert_count, &(&1 + batch_size))
+        |> assign(:alerts, updated_alerts)
+        |> apply_metrics_update(metrics)
+
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl Phoenix.LiveView
   def handle_info({:surveillance_alert, alert_data}, socket) do
-    # New real-time alert received
+    # Handle individual alert (backwards compatibility with direct broadcasts)
     Logger.info("Received real-time surveillance alert: #{alert_data.alert_id}")
 
     # Trigger visual and audio notifications and update state
@@ -191,6 +230,13 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
       |> load_alerts()
 
     {:noreply, socket}
+  end
+
+  @impl Phoenix.LiveView
+  def handle_info({:metrics_update, metrics}, socket) do
+    # Handle metrics-only updates from AlertBatcher
+    # Use incoming metrics directly when valid, avoiding unnecessary DB calls
+    {:noreply, apply_metrics_update(socket, metrics)}
   end
 
   @impl Phoenix.LiveView
@@ -261,6 +307,86 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
     end
   end
 
+  defp apply_metrics_update(socket, metrics) when is_map(metrics) and map_size(metrics) > 0 do
+    # Check if incoming metrics are complete (from AlertBatcher full update)
+    # Complete metrics have the core structure from AlertService.get_alert_metrics/1
+    if complete_metrics?(metrics) do
+      # Use incoming metrics directly - no DB call needed
+      assign(socket, :alert_metrics, normalize_metrics(metrics))
+    else
+      # Partial/incremental update - merge with existing metrics
+      existing = socket.assigns.alert_metrics
+
+      if map_size(existing) > 0 do
+        # Merge incremental updates with existing metrics
+        merged = merge_incremental_metrics(existing, metrics)
+        assign(socket, :alert_metrics, merged)
+      else
+        # No existing metrics - need to load full metrics from DB
+        load_alert_metrics(socket)
+      end
+    end
+  end
+
+  defp apply_metrics_update(socket, _metrics) do
+    # Nil or empty metrics - fall back to DB load
+    load_alert_metrics(socket)
+  end
+
+  defp complete_metrics?(metrics) do
+    # Check for presence of core keys that indicate a complete metrics update
+    # These keys are always present in AlertService.get_alert_metrics/1 output
+    Map.has_key?(metrics, :time_range) and
+      Map.has_key?(metrics, :alert_count) and
+      Map.has_key?(metrics, :current_counters)
+  end
+
+  defp normalize_metrics(metrics) do
+    # Ensure all expected keys are present with sensible defaults
+    %{
+      time_range: Map.get(metrics, :time_range, :last_24h),
+      alert_count: Map.get(metrics, :alert_count, 0),
+      priority_distribution: Map.get(metrics, :priority_distribution, %{}),
+      state_distribution: Map.get(metrics, :state_distribution, %{}),
+      type_distribution: Map.get(metrics, :type_distribution, %{}),
+      average_confidence: Map.get(metrics, :average_confidence, 0),
+      current_counters: Map.get(metrics, :current_counters, %{})
+    }
+  end
+
+  defp merge_incremental_metrics(existing, updates) do
+    # Merge incremental updates into existing metrics
+    # For counters (following AlertBatcher naming convention), add increments;
+    # for distributions, merge counts; for gauges, take latest value.
+    #
+    # Note: :alert_count follows the "_count" suffix convention so AlertBatcher
+    # will also sum it correctly when batching metrics updates.
+    Enum.reduce(updates, existing, fn {key, value}, acc ->
+      case key do
+        :current_counters when is_map(value) ->
+          # Merge counter updates
+          existing_counters = Map.get(acc, :current_counters, %{})
+          merged_counters = MetricsUtils.merge_counters(existing_counters, value)
+          Map.put(acc, :current_counters, merged_counters)
+
+        :alert_count when is_number(value) ->
+          # Increment alert count (follows AlertBatcher counter naming convention)
+          current = Map.get(acc, :alert_count, 0)
+          Map.put(acc, :alert_count, current + value)
+
+        _ when is_map(value) ->
+          # Merge distribution maps (priority, state, type)
+          existing_dist = Map.get(acc, key, %{})
+          merged_dist = MetricsUtils.merge_counters(existing_dist, value)
+          Map.put(acc, key, merged_dist)
+
+        _ ->
+          # For other values, take the latest
+          Map.put(acc, key, value)
+      end
+    end)
+  end
+
   defp show_alert_details(socket, alert_id) do
     case safe_call(fn -> AlertService.get_alert(alert_id) end) do
       {:ok, alert} ->
@@ -317,8 +443,11 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
     end)
   end
 
+  defp trigger_alert_notification(socket, nil), do: socket
+
   defp trigger_alert_notification(socket, alert_data) do
     # Send client-side notification for visual/audio feedback
+    # No-op when sound is disabled
     if socket.assigns.sound_enabled do
       # Push event to client to play notification sound
       push_event(socket, "play_alert_sound", %{

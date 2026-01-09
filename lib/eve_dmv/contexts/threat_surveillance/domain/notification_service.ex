@@ -528,14 +528,12 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.NotificationService do
   defp map_notification_type(:surveillance_match), do: :profile_match
   defp map_notification_type(:threat_alert), do: :system_alert
   defp map_notification_type(:custom), do: :system_alert
-  defp map_notification_type(_), do: :system_alert
 
   # Map internal priority levels to Ash resource priority levels
   defp map_priority(:critical), do: :urgent
   defp map_priority(:high), do: :high
   defp map_priority(:normal), do: :normal
   defp map_priority(:low), do: :low
-  defp map_priority(_), do: :normal
 
   @spec get_user_webhook_url(integer()) :: {:ok, String.t()} | {:error, :not_configured}
   defp get_user_webhook_url(_user_id), do: {:error, :not_configured}

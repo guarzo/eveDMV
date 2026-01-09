@@ -678,8 +678,6 @@ defmodule EveDmv.Contexts.Intelligence.Core.NetworkAnalysisEngine do
     end
   end
 
-  defp calculate_average_fleet_size_from_fleets(_), do: 0.0
-
   defp identify_common_compositions(fleets) do
     # Group fleets by composition patterns
     fleets

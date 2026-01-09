@@ -28,6 +28,23 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
   # 10 minutes
   @cache_ttl 600
 
+  # Known column mappings for killmails_raw table to avoid atom table exhaustion
+  # Only columns actually used by this module are mapped
+  @killmail_columns %{
+    "id" => :id,
+    "killmail_id" => :killmail_id,
+    "killmail_time" => :killmail_time,
+    "solar_system_id" => :solar_system_id,
+    "victim" => :victim,
+    "victim_character_id" => :victim_character_id,
+    "attackers" => :attackers,
+    "zkb_total_value" => :zkb_total_value,
+    "zkb_points" => :zkb_points,
+    "raw_data" => :raw_data,
+    "inserted_at" => :inserted_at,
+    "updated_at" => :updated_at
+  }
+
   @doc """
   Compare multiple characters across various metrics.
 
@@ -77,9 +94,13 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
   def head_to_head_comparison(char1_id, char2_id, options \\ []) do
     Logger.info("Head-to-head comparison: #{char1_id} vs #{char2_id}")
 
+    timeframe = Keyword.get(options, :timeframe, 90)
+    end_time = DateTime.utc_now()
+    start_time = DateTimeUtils.add(end_time, -timeframe * 24 * 60 * 60, :second)
+
     with {:ok, char1_data} <- fetch_detailed_character_data(char1_id, options),
          {:ok, char2_data} <- fetch_detailed_character_data(char2_id, options),
-         {:ok, encounters} <- fetch_mutual_encounters(char1_id, char2_id) do
+         {:ok, encounters} <- fetch_mutual_encounters(char1_id, char2_id, start_time, end_time) do
       analysis = %{
         character_1: summarize_character(char1_data),
         character_2: summarize_character(char2_data),
@@ -636,31 +657,80 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
     end
   end
 
-  defp fetch_mutual_encounters(char1_id, char2_id) do
+  defp fetch_mutual_encounters(char1_id, char2_id, start_time, end_time) do
+    # Optimized: Uses participants table instead of JSONB extraction
     # Find killmails where these characters fought each other
-    query =
-      from(k in KillmailRaw,
-        where:
-          (fragment("?->>'character_id' = ?", k.victim, ^to_string(char1_id)) and
-             fragment(
-               "EXISTS (SELECT 1 FROM jsonb_array_elements(?) AS a WHERE a->>'character_id' = ?)",
-               k.attackers,
-               ^to_string(char2_id)
-             )) or
-            (fragment("?->>'character_id' = ?", k.victim, ^to_string(char2_id)) and
-               fragment(
-                 "EXISTS (SELECT 1 FROM jsonb_array_elements(?) AS a WHERE a->>'character_id' = ?)",
-                 k.attackers,
-                 ^to_string(char1_id)
-               )),
-        order_by: [desc: k.killmail_time],
-        limit: 50
+    # (char1 killed char2 OR char2 killed char1)
+    # Time filter on killmail_time enables partition pruning on both killmails_raw and participants
+    query = """
+    SELECT k.*
+    FROM killmails_raw k
+    WHERE k.killmail_time BETWEEN $3 AND $4
+      AND (
+        (
+          -- Char1 was victim, Char2 was attacker
+          k.victim_character_id = $1
+          AND EXISTS (
+            SELECT 1 FROM participants p
+            WHERE p.killmail_id = k.killmail_id
+              AND p.killmail_time = k.killmail_time
+              AND p.killmail_time BETWEEN $3 AND $4
+              AND p.character_id = $2
+              AND p.is_victim = false
+          )
+        ) OR (
+          -- Char2 was victim, Char1 was attacker
+          k.victim_character_id = $2
+          AND EXISTS (
+            SELECT 1 FROM participants p
+            WHERE p.killmail_id = k.killmail_id
+              AND p.killmail_time = k.killmail_time
+              AND p.killmail_time BETWEEN $3 AND $4
+              AND p.character_id = $1
+              AND p.is_victim = false
+          )
+        )
       )
+    ORDER BY k.killmail_time DESC
+    LIMIT 50
+    """
 
-    case EveDmv.Repo.all(query) do
-      encounters when is_list(encounters) -> {:ok, encounters}
-      _ -> {:ok, []}
+    case EveDmv.Repo.query(query, [char1_id, char2_id, start_time, end_time]) do
+      {:ok, %{rows: rows, columns: columns}} ->
+        encounters =
+          Enum.map(rows, fn row ->
+            Enum.zip(columns, row) |> Map.new() |> atomize_keys()
+          end)
+
+        {:ok, encounters}
+
+      {:error, reason} = error ->
+        Logger.error(
+          "Failed to fetch mutual encounters for #{char1_id} vs #{char2_id}: #{inspect(reason)}"
+        )
+
+        error
     end
+  end
+
+  defp atomize_keys(map) do
+    # Log any unknown columns for debugging (schema drift detection)
+    unknown_columns =
+      map
+      |> Map.keys()
+      |> Enum.reject(&Map.has_key?(@killmail_columns, &1))
+
+    if unknown_columns != [] do
+      Logger.warning(
+        "atomize_keys encountered unknown column(s): #{inspect(unknown_columns)}. " <>
+          "Add these to @killmail_columns if they should be included."
+      )
+    end
+
+    # Only include known columns to prevent atom table exhaustion
+    map
+    |> Enum.filter(fn {k, _v} -> Map.has_key?(@killmail_columns, k) end)
+    |> Map.new(fn {k, v} -> {Map.fetch!(@killmail_columns, k), v} end)
   end
 
   defp summarize_character(char_data) do
