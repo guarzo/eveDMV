@@ -10,6 +10,8 @@ defmodule EveDmvWeb.AllianceLive do
 
   use EveDmvWeb, :live_view
 
+  require Logger
+
   import EveDmvWeb.Components.PageHeaderComponent
   import EveDmvWeb.Components.StatsGridComponent
   import EveDmvWeb.Components.ErrorStateComponent
@@ -48,8 +50,15 @@ defmodule EveDmvWeb.AllianceLive do
 
         {activity_trends, activity_trends_error} =
           case calculate_activity_trends(alliance_id) do
-            {:ok, trends} -> {trends, nil}
-            {:error, reason} -> {nil, reason}
+            {:ok, trends} ->
+              {trends, nil}
+
+            {:error, reason} ->
+              Logger.error(
+                "Failed to load weekly activity trends for alliance #{alliance_id}: #{inspect(reason)}"
+              )
+
+              {nil, :failed}
           end
 
         socket =
@@ -92,8 +101,15 @@ defmodule EveDmvWeb.AllianceLive do
 
     {activity_trends, activity_trends_error} =
       case calculate_activity_trends(alliance_id) do
-        {:ok, trends} -> {trends, nil}
-        {:error, reason} -> {nil, reason}
+        {:ok, trends} ->
+          {trends, nil}
+
+        {:error, reason} ->
+          Logger.error(
+            "Failed to load weekly activity trends for alliance #{alliance_id}: #{inspect(reason)}"
+          )
+
+          {nil, :failed}
       end
 
     socket =

@@ -37,7 +37,7 @@ defmodule EveDmv.Surveillance.ProfileMatch do
     define(:read, action: :read)
     define(:create, action: :create)
     define(:recent_matches, args: [:hours])
-    define(:profile_matches, args: [:profile_id])
+    define(:profile_matches, args: [:profile_id, {:optional, :since}])
   end
 
   # Attributes
@@ -163,7 +163,15 @@ defmodule EveDmv.Surveillance.ProfileMatch do
         description("Profile ID to filter by")
       end
 
+      argument :since, :utc_datetime do
+        allow_nil?(true)
+        description("Only return matches after this timestamp")
+      end
+
       filter(expr(profile_id == ^arg(:profile_id)))
+
+      filter(expr(is_nil(^arg(:since)) or matched_at >= ^arg(:since)))
+
       prepare(build(sort: [matched_at: :desc]))
       # Limit to last 100 matches
       prepare(build(limit: 100))

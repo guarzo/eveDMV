@@ -125,7 +125,7 @@ defmodule EveDmv.Platform.Database.QueryPlanAnalyzer do
       iex> QueryPlanAnalyzer.get_missing_index_candidates()
       {:ok, [%{table: "public.participants", seq_scans: 5000, rows_fetched: 1000000, ...}]}
   """
-  @spec get_missing_index_candidates() :: {:ok, [map()]} | {:error, any()}
+  @spec get_missing_index_candidates() :: {:ok, list()} | {:error, term()}
   def get_missing_index_candidates do
     query = """
     SELECT

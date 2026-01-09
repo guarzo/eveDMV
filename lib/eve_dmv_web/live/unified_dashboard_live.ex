@@ -15,6 +15,9 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
 
   require Logger
 
+  # Dialyzer has issues inferring return types through multiple layers of bounded context calls
+  @dialyzer {:nowarn_function, load_recent_character_analyses: 1}
+
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
@@ -31,6 +34,15 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
   @seconds_per_day 86_400
   @seconds_per_week 604_800
   @seconds_per_30_days 2_592_000
+
+  # Maximum number of characters to analyze concurrently
+  # Keep low to avoid overwhelming the database and ESI
+  @character_analysis_max_concurrency 3
+  # Maximum number of characters to analyze total
+  # Reduced from 10 to 5 to improve page load times
+  @character_analysis_limit 5
+  # Timeout for each character analysis task (5 seconds)
+  @character_analysis_timeout_ms 5_000
 
   # LiveView lifecycle
 
@@ -263,10 +275,11 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
     batch_size = Map.get(batch_payload, :batch_size, length(alerts))
 
     if batch_size > 0 or alerts != [] do
+      # Ensure profile_metrics is never nil before merging operations
+      socket = update(socket, :profile_metrics, fn metrics -> metrics || %{} end)
+
       socket
       |> update(:profile_metrics, fn metrics ->
-        # Handle nil metrics defensively
-        metrics = metrics || %{}
         # Use length(alerts) if alerts present, otherwise fall back to batch_size
         increment = if alerts != [], do: length(alerts), else: batch_size
         Map.update(metrics, :active_alerts, increment, &(&1 + increment))
@@ -319,9 +332,12 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
   end
 
   defp assign_dashboard_data(socket, :intelligence) do
+    # Fetch recent threat assessments for initial render
+    threat_assessments = load_recent_threat_assessments()
+
     socket
     |> assign(:character_analyses, [])
-    |> assign(:threat_assessments, [])
+    |> assign(:threat_assessments, threat_assessments)
     |> assign(:intelligence_reports, [])
     |> assign(:analysis_queue, [])
   end
@@ -381,6 +397,8 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
       Logger.error("Failed to load intelligence dashboard data: #{inspect(error)}")
 
       socket
+      |> assign(:character_analyses, [])
+      |> assign(:threat_assessments, [])
       |> assign(:loading, false)
       |> assign(:error, "Failed to load dashboard data")
   end
@@ -423,26 +441,28 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
       {:error, _} -> []
     end
   rescue
-    _ -> []
+    error ->
+      Logger.error(
+        "Exception loading recent matches: #{inspect(error)}\n#{Exception.format_stacktrace(__STACKTRACE__)}"
+      )
+
+      []
   end
 
   defp load_recent_threat_assessments do
     case ThreatSurveillance.list_recent_threat_assessments(limit: 10) do
-      {:ok, assessments} -> assessments
-      {:error, _} -> []
+      {:ok, assessments} ->
+        assessments
+
+      {:error, err} ->
+        Logger.warning("Failed to load recent threat assessments: #{inspect(err)}")
+        []
     end
   rescue
-    _ -> []
+    error ->
+      Logger.error("Exception loading recent threat assessments: #{inspect(error)}")
+      []
   end
-
-  # Maximum number of characters to analyze concurrently
-  # Keep low to avoid overwhelming the database and ESI
-  @character_analysis_max_concurrency 3
-  # Maximum number of characters to analyze total
-  # Reduced from 10 to 5 to improve page load times
-  @character_analysis_limit 5
-  # Timeout for each character analysis task (5 seconds)
-  @character_analysis_timeout_ms 5_000
 
   defp load_recent_character_analyses(time_range) do
     # Get recent killmails and extract unique character IDs for analysis
@@ -659,8 +679,10 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
     end
   end
 
-  # Note: should_reload_for_update?/1 and should_reload_for_alert?/1 removed in Stream 2 optimization
-  # We now use targeted pattern-matched handlers instead of full reloads
+  # Note: should_reload_for_update?/1 removed in Stream 2 optimization.
+  # should_reload_for_alert?/1 was renamed to trackable_alert?/1 since it only increments
+  # :profile_metrics.active_alerts and never reloads. We now use targeted pattern-matched
+  # handlers instead of full reloads.
 
   # Render functions
 

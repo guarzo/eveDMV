@@ -57,6 +57,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertBatcher do
 
   use GenServer
 
+  alias EveDmv.Contexts.Surveillance.Domain.MetricsUtils
   alias EveDmv.Telemetry.OtelSpans
 
   require Logger
@@ -173,7 +174,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertBatcher do
     :telemetry.execute(
       [:eve_dmv, :alert_batcher, :init],
       %{system_time: System.system_time()},
-      %{batch_interval: batch_interval}
+      %{batch_interval: batch_interval, queue_depth: 0}
     )
 
     Logger.info("AlertBatcher started with #{batch_interval}ms batch interval")
@@ -198,7 +199,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertBatcher do
       state
       |> Map.update!(:alerts, fn alerts -> [alert | alerts] end)
       |> Map.update!(:metrics_updates, fn updates ->
-        merge_metrics_update(updates, metrics_update)
+        MetricsUtils.merge_metrics_update(updates, metrics_update)
       end)
       |> Map.update!(:stats, fn stats ->
         %{stats | total_queued: stats.total_queued + 1}
@@ -212,7 +213,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertBatcher do
     new_state =
       state
       |> Map.update!(:metrics_updates, fn updates ->
-        merge_metrics_update(updates, metrics_update)
+        MetricsUtils.merge_metrics_update(updates, metrics_update)
       end)
 
     {:noreply, new_state}
@@ -269,7 +270,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertBatcher do
     batch_timestamp = DateTime.utc_now()
 
     span =
-      OtelSpans.start_task_span("alert_batcher.flush", %{
+      OtelSpans.start_task_span("AlertBatcher.flush", %{
         batch_size: 0,
         batch_timestamp: DateTime.to_iso8601(batch_timestamp),
         metrics_only: map_size(state.metrics_updates) > 0
@@ -308,7 +309,12 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertBatcher do
 
     :telemetry.execute(
       [:eve_dmv, :alert_batcher, :flush],
-      %{duration: duration, alert_count: 0, metrics_only: map_size(state.metrics_updates) > 0},
+      %{
+        duration: duration,
+        batch_size: 0,
+        alert_count: 0,
+        metrics_only: map_size(state.metrics_updates) > 0
+      },
       %{batch_interval: state.batch_interval}
     )
 
@@ -322,7 +328,7 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertBatcher do
     batch_timestamp = DateTime.utc_now()
 
     span =
-      OtelSpans.start_task_span("alert_batcher.flush", %{
+      OtelSpans.start_task_span("AlertBatcher.flush", %{
         batch_size: alert_count,
         batch_timestamp: DateTime.to_iso8601(batch_timestamp),
         metrics_only: false
@@ -410,7 +416,12 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertBatcher do
 
     :telemetry.execute(
       [:eve_dmv, :alert_batcher, :flush],
-      %{duration: duration, alert_count: alert_count, metrics_only: false},
+      %{
+        duration: duration,
+        batch_size: alert_count,
+        alert_count: alert_count,
+        metrics_only: false
+      },
       %{batch_interval: state.batch_interval}
     )
 
@@ -469,37 +480,6 @@ defmodule EveDmv.Contexts.Surveillance.Domain.AlertBatcher do
     timer = Process.send_after(self(), :flush, state.batch_interval)
     %{state | flush_timer: timer}
   end
-
-  # Merges metrics updates, applying different strategies based on metric type:
-  # - Counter metrics (named with "count_" prefix or "_count" suffix) are summed
-  # - Gauge metrics (all others) use the latest value
-  #
-  # See "Metrics Naming Convention" in module docs for naming requirements.
-  defp merge_metrics_update(existing, new_update) do
-    Map.merge(existing, new_update, fn key, v1, v2 ->
-      # Counter metrics (prefixed with count_ or _count suffix) should sum
-      if is_number(v1) and is_number(v2) and counter_metric?(key) do
-        v1 + v2
-      else
-        # All other values (gauges) take the latest
-        v2
-      end
-    end)
-  end
-
-  # Determines if a metric key represents a counter based on naming convention.
-  #
-  # Counter metrics MUST be named with either:
-  # - Prefix: "count_" (e.g., :count_kills, :count_matches)
-  # - Suffix: "_count" (e.g., :alert_count, :kill_count)
-  #
-  # All other metric names are treated as gauges (latest value wins).
-  defp counter_metric?(key) when is_atom(key) do
-    key_str = Atom.to_string(key)
-    String.starts_with?(key_str, "count_") or String.ends_with?(key_str, "_count")
-  end
-
-  defp counter_metric?(_), do: false
 
   defp update_stats(stats, batch_size) do
     total_batches = stats.total_batches + 1

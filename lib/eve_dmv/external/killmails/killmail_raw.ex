@@ -199,9 +199,16 @@ defmodule EveDmv.Killmails.KillmailRaw do
       end
 
       filter(expr(killmail_time >= ago(^arg(:hours), :hour)))
-      filter(expr(is_nil(^arg(:system_id)) or solar_system_id == ^arg(:system_id)))
 
-      prepare(build(sort: [killmail_time: :desc], limit: 100))
+      prepare(fn query, _context ->
+        query = Ash.Query.sort(query, killmail_time: :desc)
+        query = Ash.Query.limit(query, 100)
+
+        case Ash.Query.get_argument(query, :system_id) do
+          nil -> query
+          system_id -> Ash.Query.filter(query, solar_system_id == ^system_id)
+        end
+      end)
     end
 
     read :by_date_range do
@@ -266,11 +273,11 @@ defmodule EveDmv.Killmails.KillmailRaw do
         description("Maximum number of results")
       end
 
-      prepare(fn query, context ->
+      prepare(fn query, _context ->
         import Ash.Expr
-        char_id = context.arguments.character_id
-        days = context.arguments.since_days || 90
-        result_limit = context.arguments.limit || 100
+        char_id = Ash.Query.get_argument(query, :character_id)
+        days = Ash.Query.get_argument(query, :since_days) || 90
+        result_limit = Ash.Query.get_argument(query, :limit) || 100
         since_date = DateTime.add(DateTime.utc_now(), -days, :day)
 
         query
@@ -311,11 +318,11 @@ defmodule EveDmv.Killmails.KillmailRaw do
         description("Number of days to look back")
       end
 
-      prepare(fn query, context ->
+      prepare(fn query, _context ->
         import Ash.Expr
-        corp_id = context.arguments.corporation_id
-        involvement = context.arguments.involvement_type || :all
-        days = context.arguments.since_days || 90
+        corp_id = Ash.Query.get_argument(query, :corporation_id)
+        involvement = Ash.Query.get_argument(query, :involvement_type) || :all
+        days = Ash.Query.get_argument(query, :since_days) || 90
         since_date = DateTime.add(DateTime.utc_now(), -days, :day)
 
         query

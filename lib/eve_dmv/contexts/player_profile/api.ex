@@ -54,7 +54,15 @@ defmodule EveDmv.Contexts.PlayerProfile.Api do
   engagement patterns, and performance metrics.
   """
   @spec get_combat_stats(Types.character_id(), map() | keyword()) :: Result.t(map())
-  defdelegate get_combat_stats(character_id, opts \\ []), to: CombatStatsAnalyzer, as: :analyze
+  def get_combat_stats(character_id, opts \\ %{})
+
+  def get_combat_stats(character_id, opts) when is_list(opts) do
+    get_combat_stats(character_id, Enum.into(opts, %{}))
+  end
+
+  def get_combat_stats(character_id, opts) when is_map(opts) do
+    CombatStatsAnalyzer.analyze(character_id, opts)
+  end
 
   # Ship Preferences
 

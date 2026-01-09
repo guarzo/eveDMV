@@ -630,6 +630,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
     since = DateTimeUtils.add(DateTimeUtils.utc_now(), -days_back * 24 * 60 * 60, :second)
 
     # Optimized: Uses participants table instead of JSONB extraction
+    # Note: k.killmail_time predicate enables partition pruning on killmails_raw
     query = """
     SELECT
       COUNT(DISTINCT p.killmail_id) as killmail_count,
@@ -639,6 +640,7 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
       AND k.killmail_time = p.killmail_time
     WHERE p.alliance_id = $1
       AND p.killmail_time > $2
+      AND k.killmail_time > $2
     """
 
     case EveDmv.Repo.query(query, [alliance_id, since]) do
@@ -665,18 +667,15 @@ defmodule EveDmv.Shared.Infrastructure.UnifiedRepository do
     query = build_surveillance_profile_query(filters)
 
     # Execute query and apply filters
-    case execute_surveillance_query(query, limit) do
-      {:ok, profiles} ->
-        filtered_profiles =
-          profiles
-          |> filter_by_active_status(active_only)
-          |> filter_by_user(user_id)
+    # Note: execute_surveillance_query always succeeds with {:ok, []} for now
+    {:ok, profiles} = execute_surveillance_query(query, limit)
 
-        {:ok, filtered_profiles}
+    filtered_profiles =
+      profiles
+      |> filter_by_active_status(active_only)
+      |> filter_by_user(user_id)
 
-      {:error, reason} ->
-        {:error, reason}
-    end
+    {:ok, filtered_profiles}
   end
 
   # Helper functions for surveillance profiles

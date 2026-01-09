@@ -11,6 +11,7 @@ defmodule EveDmv.Shared.Strategic.DataCollector do
   alias EveDmv.Api
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Killmails.KillmailRaw
+  alias EveDmv.Telemetry.OtelSpans
 
   require Logger
 
@@ -94,10 +95,25 @@ defmodule EveDmv.Shared.Strategic.DataCollector do
       # Each system gets its own query with a 500 killmail limit, preventing
       # high-activity systems from consuming disproportionate share of results.
       # Concurrency is limited to 4 to avoid overwhelming the database.
+      system_count = length(system_ids)
+
+      # Start OpenTelemetry span for the collection operation
+      span =
+        OtelSpans.start_task_span("battle_analysis.collect_killmails", %{
+          system_count: system_count
+        })
+
+      collection_start = System.monotonic_time(:microsecond)
+
+      # Track per-system query durations for aggregation
+      query_durations = :ets.new(:query_durations, [:set, :public])
+
       killmail_data =
         system_ids
         |> Task.async_stream(
           fn system_id ->
+            query_start = System.monotonic_time(:microsecond)
+
             killmails =
               Ash.read!(KillmailRaw,
                 filter: [
@@ -108,10 +124,16 @@ defmodule EveDmv.Shared.Strategic.DataCollector do
                 domain: Api
               )
 
+            query_duration = System.monotonic_time(:microsecond) - query_start
+            kill_count = length(killmails)
+
+            # Store per-system query duration for later aggregation
+            :ets.insert(query_durations, {system_id, query_duration, kill_count})
+
             %{
               system_id: system_id,
               killmails: killmails,
-              kill_count: length(killmails)
+              kill_count: kill_count
             }
           end,
           max_concurrency: 4,
@@ -123,6 +145,51 @@ defmodule EveDmv.Shared.Strategic.DataCollector do
           {:exit, _reason}, acc -> acc
         end)
         |> Enum.reverse()
+
+      # Calculate final metrics
+      total_duration = System.monotonic_time(:microsecond) - collection_start
+      total_killmails = Enum.sum(Enum.map(killmail_data, & &1.kill_count))
+      successful_systems = length(killmail_data)
+      failed_systems = system_count - successful_systems
+
+      # Record per-system query durations as span events
+      :ets.tab2list(query_durations)
+      |> Enum.each(fn {system_id, query_duration_us, kill_count} ->
+        OtelSpans.add_span_event(span, "system_query_completed", %{
+          system_id: system_id,
+          query_duration_us: query_duration_us,
+          kill_count: kill_count
+        })
+      end)
+
+      :ets.delete(query_durations)
+
+      # Emit final telemetry metrics
+      :telemetry.execute(
+        [:eve_dmv, :battle_analysis, :collect_killmails],
+        %{
+          duration_us: total_duration,
+          total_killmails: total_killmails,
+          successful_systems: successful_systems,
+          failed_systems: failed_systems
+        },
+        %{
+          system_count: system_count,
+          avg_killmails_per_system:
+            if(successful_systems > 0,
+              do: Float.round(total_killmails / successful_systems, 2),
+              else: 0.0
+            )
+        }
+      )
+
+      # End the span with final measurements
+      OtelSpans.end_task_span(span, %{
+        duration_us: total_duration,
+        total_killmails: total_killmails,
+        successful_systems: successful_systems,
+        failed_systems: failed_systems
+      })
 
       metrics = calculate_multi_system_metrics(killmail_data)
 

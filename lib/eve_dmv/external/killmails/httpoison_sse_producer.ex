@@ -15,8 +15,8 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
   @default_retry_delay 1000
   @max_retry_delay 30_000
   @max_buffer_size 1_048_576
-  # Half of @max_buffer_size (524KB vs 1MB) to limit memory growth and provide
-  # headroom when trimming - ensures we don't immediately overflow again after trim
+  # 524_288 bytes = half of @max_buffer_size (1_048_576). Limits memory growth and
+  # provides headroom when trimming - ensures we don't immediately overflow again after trim.
   @trim_keep_size 524_288
   # Deduplication: Track last N killmail IDs to prevent duplicate processing
   # 1000 IDs should cover ~15-20 minutes of typical EVE activity
@@ -140,9 +140,7 @@ defmodule EveDmv.Killmails.HTTPoisonSSEProducer do
               :nomatch ->
                 # No complete events in buffer, reset to prevent corruption
                 Logger.warning(
-                  "No event boundary found in trimmed buffer, resetting. " <>
-                    "Discarding #{byte_size(initial_combined_data)} bytes total " <>
-                    "(#{byte_size(trimmed)} bytes searched for boundary)"
+                  "No event boundary found in trimmed buffer, resetting (bytes_discarded=#{byte_size(initial_combined_data)}, bytes_searched=#{byte_size(trimmed)})"
                 )
 
                 ""

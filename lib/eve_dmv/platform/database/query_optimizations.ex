@@ -165,6 +165,7 @@ defmodule EveDmv.Platform.Database.QueryOptimizations do
       FROM killmails_raw
       WHERE victim_character_id = ANY($1)
         AND victim_corporation_id IS NOT NULL
+        AND killmail_time >= NOW() - INTERVAL '90 days'
     )
     SELECT
       character_id,

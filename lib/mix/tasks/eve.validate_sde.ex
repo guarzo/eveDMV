@@ -59,6 +59,10 @@ defmodule Mix.Tasks.Eve.ValidateSde do
 
   use Mix.Task
 
+  # Dialyzer can't infer that compare_with_jsonl_files can return {:ok, _}
+  # because file existence is a runtime check. This is a dev tool, so suppress.
+  @dialyzer {:nowarn_function, run_comparison: 2}
+
   alias EveDmv.Eve.StaticDataLoader.SdeValidator
 
   @switches [

@@ -2,10 +2,12 @@ defmodule EveDmv.Repo.Migrations.FixKillmailsRawIndexesConcurrently do
   @moduledoc """
   Recreates killmails_raw indexes.
 
-  Note: CONCURRENTLY cannot be used for indexes on partitioned tables (PostgreSQL limitation).
+  Note: Despite the module name, CONCURRENTLY is NOT used in this migration.
+  PostgreSQL does not support CREATE INDEX CONCURRENTLY on partitioned tables.
+  The module name is historical and does not reflect actual behavior.
+
   This migration uses @disable_ddl_transaction true to allow running outside a transaction,
-  which is required for certain DDL operations and provides flexibility for long-running
-  index operations.
+  which provides flexibility for long-running index operations.
 
   The original migration (20250806234708_add_performance_indexes.exs) created these
   indexes. This migration drops and recreates them with consistent naming.

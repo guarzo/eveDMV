@@ -93,6 +93,9 @@ defmodule EveDmv.Killmails.DisplayService do
 
   # Build display from optimized payload with pre-computed fields
   defp build_from_optimized_payload(payload) do
+    start_time = System.monotonic_time(:microsecond)
+    killmail_id = payload[:killmail_id]
+
     victim = payload[:victim] || %{}
     system_id = payload[:solar_system_id]
     display = payload[:display] || %{}
@@ -105,6 +108,8 @@ defmodule EveDmv.Killmails.DisplayService do
     system_security = NameResolver.system_security(system_id)
 
     # Ship name from payload, with fallback to resolver if missing
+    used_name_resolver = victim[:ship_name] in [nil, "Unknown Ship"]
+
     victim_ship_name =
       case victim[:ship_name] do
         nil -> NameResolver.ship_name(victim[:ship_type_id])
@@ -116,9 +121,9 @@ defmodule EveDmv.Killmails.DisplayService do
     killmail_time = payload[:killmail_time]
     age_minutes = calculate_age_minutes(killmail_time)
 
-    %{
+    result = %{
       id: generate_killmail_id(payload, killmail_time),
-      killmail_id: payload[:killmail_id],
+      killmail_id: killmail_id,
       killmail_time: killmail_time,
       victim_character_id: victim[:character_id],
       victim_character_name: victim[:character_name] || "Unknown Pilot",
@@ -138,6 +143,21 @@ defmodule EveDmv.Killmails.DisplayService do
       age_minutes: age_minutes,
       is_expensive: display[:is_high_value] || false
     }
+
+    # Emit telemetry for optimized path performance monitoring
+    duration = System.monotonic_time(:microsecond) - start_time
+
+    :telemetry.execute(
+      [:eve_dmv, :killmail, :display, :optimized_path],
+      %{duration: duration},
+      %{
+        killmail_id: killmail_id,
+        attacker_count: payload[:attacker_count] || 0,
+        used_name_resolver: used_name_resolver
+      }
+    )
+
+    result
   end
 
   # Helper to get final blow field with atom/string key support
@@ -387,6 +407,29 @@ defmodule EveDmv.Killmails.DisplayService do
     # Use killmail_time for stable ID generation
     # Handle both atom keys (optimized payload) and string keys (raw data)
     killmail_id = killmail_data[:killmail_id] || killmail_data["killmail_id"]
+    generate_killmail_id_from_time(killmail_id, killmail_time)
+  end
+
+  @doc """
+  Generates a stable killmail ID from a killmail_id and killmail_time.
+
+  Handles both DateTime structs and ISO8601 strings for the time parameter.
+  Returns a string in the format "killmail_id-unix_timestamp".
+
+  ## Examples
+
+      iex> generate_killmail_id_from_time(12345, ~U[2024-01-15 10:30:00Z])
+      "12345-1705314600"
+
+      iex> generate_killmail_id_from_time(12345, "2024-01-15T10:30:00Z")
+      "12345-1705314600"
+
+      iex> generate_killmail_id_from_time(12345, nil)
+      "12345-0"
+  """
+  @spec generate_killmail_id_from_time(integer() | String.t(), DateTime.t() | String.t() | nil) ::
+          String.t()
+  def generate_killmail_id_from_time(killmail_id, killmail_time) do
     timestamp = killmail_time_to_unix(killmail_time)
     "#{killmail_id}-#{timestamp}"
   end

@@ -14,6 +14,7 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
   on_mount({EveDmvWeb.AuthLive, :load_from_session_optional})
 
   alias EveDmv.Contexts.Surveillance.Domain.AlertService
+  alias EveDmv.Contexts.Surveillance.Domain.MetricsUtils
   alias EveDmv.Contexts.Surveillance.Domain.NotificationService
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmvWeb.Helpers.TimeFormatter
@@ -184,6 +185,7 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
     # This reduces individual handle_info calls during high-activity periods
     alerts = Map.get(batch_payload, :alerts, [])
     batch_size = Map.get(batch_payload, :batch_size, length(alerts))
+    metrics = Map.get(batch_payload, :metrics, %{})
 
     if batch_size > 0 do
       Logger.info("Received batched surveillance alerts: #{batch_size} alerts")
@@ -202,11 +204,12 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
       updated_alerts = Enum.take(alerts ++ current_alerts, @alerts_per_page)
 
       # Update new alert count once for entire batch and refresh metrics
+      # Use metrics from batch_payload via apply_metrics_update to avoid unnecessary DB query
       socket =
         socket
         |> update(:new_alert_count, &(&1 + batch_size))
         |> assign(:alerts, updated_alerts)
-        |> load_alert_metrics()
+        |> apply_metrics_update(metrics)
 
       {:noreply, socket}
     else
@@ -334,7 +337,7 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
     # Check for presence of core keys that indicate a complete metrics update
     # These keys are always present in AlertService.get_alert_metrics/1 output
     Map.has_key?(metrics, :time_range) and
-      Map.has_key?(metrics, :total_alerts) and
+      Map.has_key?(metrics, :alert_count) and
       Map.has_key?(metrics, :current_counters)
   end
 
@@ -342,7 +345,7 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
     # Ensure all expected keys are present with sensible defaults
     %{
       time_range: Map.get(metrics, :time_range, :last_24h),
-      total_alerts: Map.get(metrics, :total_alerts, 0),
+      alert_count: Map.get(metrics, :alert_count, 0),
       priority_distribution: Map.get(metrics, :priority_distribution, %{}),
       state_distribution: Map.get(metrics, :state_distribution, %{}),
       type_distribution: Map.get(metrics, :type_distribution, %{}),
@@ -353,24 +356,28 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
 
   defp merge_incremental_metrics(existing, updates) do
     # Merge incremental updates into existing metrics
-    # For counters, add increments; for distributions, update counts
+    # For counters (following AlertBatcher naming convention), add increments;
+    # for distributions, merge counts; for gauges, take latest value.
+    #
+    # Note: :alert_count follows the "_count" suffix convention so AlertBatcher
+    # will also sum it correctly when batching metrics updates.
     Enum.reduce(updates, existing, fn {key, value}, acc ->
       case key do
         :current_counters when is_map(value) ->
           # Merge counter updates
           existing_counters = Map.get(acc, :current_counters, %{})
-          merged_counters = merge_counters(existing_counters, value)
+          merged_counters = MetricsUtils.merge_counters(existing_counters, value)
           Map.put(acc, :current_counters, merged_counters)
 
-        :total_alerts when is_number(value) ->
-          # Increment total alerts
-          current = Map.get(acc, :total_alerts, 0)
-          Map.put(acc, :total_alerts, current + value)
+        :alert_count when is_number(value) ->
+          # Increment alert count (follows AlertBatcher counter naming convention)
+          current = Map.get(acc, :alert_count, 0)
+          Map.put(acc, :alert_count, current + value)
 
         _ when is_map(value) ->
           # Merge distribution maps (priority, state, type)
           existing_dist = Map.get(acc, key, %{})
-          merged_dist = merge_counters(existing_dist, value)
+          merged_dist = MetricsUtils.merge_counters(existing_dist, value)
           Map.put(acc, key, merged_dist)
 
         _ ->
@@ -379,14 +386,6 @@ defmodule EveDmvWeb.SurveillanceAlertsLive do
       end
     end)
   end
-
-  defp merge_counters(existing, updates) when is_map(existing) and is_map(updates) do
-    Map.merge(existing, updates, fn _key, v1, v2 ->
-      if is_number(v1) and is_number(v2), do: v1 + v2, else: v2
-    end)
-  end
-
-  defp merge_counters(_existing, updates), do: updates
 
   defp show_alert_details(socket, alert_id) do
     case safe_call(fn -> AlertService.get_alert(alert_id) end) do

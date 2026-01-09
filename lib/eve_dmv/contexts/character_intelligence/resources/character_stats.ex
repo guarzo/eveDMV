@@ -253,7 +253,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Resources.CharacterStats do
   @spec ensure_decimal(Decimal.t() | number() | String.t()) ::
           {:ok, Decimal.t()} | {:error, String.t()}
   defp ensure_decimal(%Decimal{} = value), do: {:ok, value}
-  defp ensure_decimal(value) when is_number(value), do: {:ok, Decimal.new(value)}
+  defp ensure_decimal(value) when is_float(value), do: {:ok, Decimal.from_float(value)}
+  defp ensure_decimal(value) when is_integer(value), do: {:ok, Decimal.new(value)}
 
   defp ensure_decimal(value) when is_binary(value) do
     case Decimal.parse(value) do

@@ -421,6 +421,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
         # Query to calculate ISK efficiency from killmails
         # Optimized: Uses participants table with indexed lookups instead of JSONB extraction
         # Uses idx_participants_character_activity index on (character_id, killmail_time)
+        # Time filter on k.killmail_time enables partition pruning on killmails_raw
         efficiency_query = """
         WITH character_activity AS (
           SELECT
@@ -432,6 +433,7 @@ defmodule EveDmv.Contexts.PlayerProfile.Infrastructure.PlayerRepository do
             AND k.killmail_time = p.killmail_time
           WHERE p.character_id = $1
             AND p.killmail_time >= $2
+            AND k.killmail_time >= $2
         )
         SELECT
           COALESCE(SUM(isk_destroyed), 0) as total_destroyed,

@@ -661,7 +661,7 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
     # Optimized: Uses participants table instead of JSONB extraction
     # Find killmails where these characters fought each other
     # (char1 killed char2 OR char2 killed char1)
-    # Time filter on killmail_time enables partition pruning on killmails_raw
+    # Time filter on killmail_time enables partition pruning on both killmails_raw and participants
     query = """
     SELECT k.*
     FROM killmails_raw k
@@ -674,6 +674,7 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
             SELECT 1 FROM participants p
             WHERE p.killmail_id = k.killmail_id
               AND p.killmail_time = k.killmail_time
+              AND p.killmail_time BETWEEN $3 AND $4
               AND p.character_id = $2
               AND p.is_victim = false
           )
@@ -684,6 +685,7 @@ defmodule EveDmv.Analytics.CharacterComparisonService do
             SELECT 1 FROM participants p
             WHERE p.killmail_id = k.killmail_id
               AND p.killmail_time = k.killmail_time
+              AND p.killmail_time BETWEEN $3 AND $4
               AND p.character_id = $1
               AND p.is_victim = false
           )

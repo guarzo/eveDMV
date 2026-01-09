@@ -50,7 +50,7 @@
       <div class="bg-white p-4 rounded-lg shadow-sm border">
         <div class="text-sm text-gray-600">Total Alerts (24h)</div>
         <div class="text-2xl font-bold text-gray-900">
-          <%= Map.get(@alert_metrics, :total_alerts, 0) %>
+          <%= Map.get(@alert_metrics, :alert_count, 0) %>
         </div>
       </div>
       

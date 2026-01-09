@@ -111,6 +111,8 @@ defmodule EveDmvWeb.HealthController do
   the aggregated health status in its response code (200 for healthy/warning/degraded,
   503 for critical).
   """
+  # Always returns HTTP 200 for debugging/inspection so operators can view
+  # full health details regardless of overall service state.
   def detailed(conn, _params) do
     health = get_health_safely()
 
@@ -139,6 +141,13 @@ defmodule EveDmvWeb.HealthController do
     e in [ErlangError, SystemLimitError] ->
       Logger.error(
         "HealthAggregator.get_health_snapshot/0 raised system exception #{inspect(e.__struct__)}: #{Exception.format(:error, e, __STACKTRACE__)}"
+      )
+
+      fallback_health_snapshot()
+
+    e ->
+      Logger.error(
+        "HealthAggregator.get_health_snapshot/0 raised unexpected exception #{inspect(e.__struct__)}: #{Exception.format(:error, e, __STACKTRACE__)}"
       )
 
       fallback_health_snapshot()

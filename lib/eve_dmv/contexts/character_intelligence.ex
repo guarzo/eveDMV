@@ -224,7 +224,25 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   def get_character_intelligence_report(character_id) do
     case analyze_character_threat(character_id) do
       {:ok, threat_data} ->
-        character_info = fetch_character_info(character_id)
+        character_info =
+          case fetch_character_info(character_id) do
+            {:ok, info} ->
+              info
+
+            {:error, reason} ->
+              Logger.warning(
+                "Failed to fetch character info for report: character_id=#{character_id}, reason=#{inspect(reason)}"
+              )
+
+              %{
+                name: "Unknown Pilot",
+                corporation_id: nil,
+                corporation_name: "Unknown Corporation",
+                alliance_id: nil,
+                alliance_name: nil
+              }
+          end
+
         # Build the complete report structure expected by the template
         report = build_intelligence_report(character_id, threat_data, character_info)
         {:ok, report}
@@ -232,24 +250,47 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
       {:error, :insufficient_data} ->
         # Return a minimal report for characters with no killmail data
         {:ok, build_minimal_report(character_id)}
+
+      {:error, reason} ->
+        # Catch-all for any other error from analyze_character_threat/1
+        Logger.warning(
+          "Failed to analyze character threat for intelligence report: character_id=#{character_id}, reason=#{inspect(reason)}"
+        )
+
+        {:ok, build_minimal_report(character_id)}
     end
   end
 
   defp fetch_character_info(character_id) do
     case EsiCharacterClient.get_character(character_id) do
       {:ok, character} when is_map(character) ->
-        extract_character_info(character)
+        {:ok, extract_character_info(character)}
+
+      {:ok, character, _type} when is_map(character) ->
+        # Handle tuple with additional type indicator (e.g., from bulk operations)
+        {:ok, extract_character_info(character)}
+
+      {:ok, nil} ->
+        Logger.warning("ESI returned nil character data for #{character_id}")
+        {:error, :character_not_found}
+
+      {:ok, unexpected} ->
+        Logger.warning(
+          "ESI returned unexpected character data type for #{character_id}: #{inspect(unexpected)}"
+        )
+
+        {:error, :invalid_character_data}
 
       {:error, reason} ->
         Logger.warning("Failed to fetch character info for #{character_id}: #{inspect(reason)}")
-        # Return a minimal character info structure
-        %{
-          name: "Unknown Pilot",
-          corporation_id: nil,
-          corporation_name: "Unknown Corporation",
-          alliance_id: nil,
-          alliance_name: nil
-        }
+        {:error, reason}
+
+      other ->
+        Logger.warning(
+          "Unexpected response from ESI for character #{character_id}: #{inspect(other)}"
+        )
+
+        {:error, :unexpected_response}
     end
   end
 
@@ -519,7 +560,24 @@ defmodule EveDmv.Contexts.CharacterIntelligence do
   end
 
   defp build_minimal_report(character_id) do
-    character_info = fetch_character_info(character_id)
+    character_info =
+      case fetch_character_info(character_id) do
+        {:ok, info} ->
+          info
+
+        {:error, reason} ->
+          Logger.warning(
+            "Failed to fetch character info for minimal report: character_id=#{character_id}, reason=#{inspect(reason)}"
+          )
+
+          %{
+            name: "Unknown Pilot",
+            corporation_id: nil,
+            corporation_name: "Unknown Corporation",
+            alliance_id: nil,
+            alliance_name: nil
+          }
+      end
 
     %{
       character_id: character_id,

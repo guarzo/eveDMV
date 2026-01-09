@@ -58,7 +58,7 @@
         <div class="ml-4">
           <p class="text-sm font-medium text-gray-600">Total Alerts</p>
           <p class="text-2xl font-bold text-gray-900">
-            <%= Map.get(@system_metrics, :total_alerts, 0) %>
+            <%= Map.get(@system_metrics, :alert_count, 0) %>
           </p>
           <p class="text-xs text-gray-500">
             <%= Map.get(@system_metrics, :alerts_per_hour, 0) %> per hour

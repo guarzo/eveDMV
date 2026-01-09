@@ -2,12 +2,38 @@ defmodule EveDmv.Repo.Migrations.FixKillmailsRawGinIndexConcurrently do
   @moduledoc """
   Recreates the killmails_raw participants GIN index.
 
-  Note: PostgreSQL CONCURRENTLY cannot be used on partitioned tables, so this
-  index creation will block writes during the operation. The migration disables
-  DDL transaction and migration lock to allow other operations to proceed, and
-  sets statement_timeout to 0 to prevent timeouts on large tables.
+  ## PostgreSQL CONCURRENTLY Limitation on Partitioned Tables
 
-  Affected index:
+  PostgreSQL does not support CREATE INDEX CONCURRENTLY on partitioned tables.
+  When you attempt to use CONCURRENTLY on a partitioned table, PostgreSQL raises
+  an error: "cannot create index on partitioned table concurrently". This is a
+  fundamental PostgreSQL limitation because CONCURRENTLY requires building the
+  index in a single transaction across all partitions, which conflicts with the
+  non-blocking nature of concurrent index creation.
+
+  As a result, this index creation will acquire an exclusive lock and block
+  writes to the table during the operation.
+
+  ## @disable_ddl_transaction true Mechanism
+
+  Setting `@disable_ddl_transaction true` prevents Ecto from wrapping the
+  migration in a database transaction. This is required here for two reasons:
+
+  1. **Statement timeout control**: We need to SET statement_timeout = 0 to
+     prevent the index creation from timing out on large tables. This setting
+     must persist across multiple statements, which requires being outside a
+     transaction that might be rolled back.
+
+  2. **Migration lock independence**: Combined with `@disable_migration_lock true`,
+     this allows other migrations or database operations to proceed without
+     waiting for the advisory lock that Ecto normally holds during migrations.
+
+  Note: While @disable_ddl_transaction is often used WITH CONCURRENTLY (since
+  concurrent operations cannot run inside transactions), here we use it purely
+  for timeout control since CONCURRENTLY is not available for partitioned tables.
+
+  ## Affected Index
+
   - killmails_raw_participants_gin_idx
   """
 

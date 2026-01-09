@@ -88,6 +88,35 @@ defmodule EveDmv.Killmails.PipelineAutoscalerConfig do
   @check_interval_ms 30_000
 
   # =============================================================================
+  # Batch Size Optimization
+  # =============================================================================
+
+  # High utilization threshold for batch sizing (70%). When average utilization
+  # exceeds this, smaller batches are recommended to reduce processing latency
+  # and improve responsiveness during high load. This is lower than the scale_up
+  # threshold (80%) to proactively optimize before capacity is reached.
+  @high_utilization_batch_threshold 0.7
+
+  # Low utilization threshold for batch sizing (30%). When average utilization
+  # drops below this, larger batches are recommended to improve efficiency by
+  # reducing per-batch overhead. This matches the scale_down threshold.
+  @low_utilization_batch_threshold 0.3
+
+  # Small batch size (100 killmails) for high utilization scenarios.
+  # Smaller batches reduce processing latency and allow faster feedback loops,
+  # helping maintain responsiveness when the pipeline is under stress.
+  @batch_size_small 100
+
+  # Standard batch size (200 killmails) for normal utilization scenarios.
+  # Balances processing efficiency with latency for typical killmail rates.
+  @batch_size_standard 200
+
+  # Large batch size (300 killmails) for low utilization scenarios.
+  # Larger batches improve efficiency by amortizing per-batch overhead when
+  # there's excess capacity. Reduces database round-trips and context switches.
+  @batch_size_large 300
+
+  # =============================================================================
   # Public API - Scaling Thresholds
   # =============================================================================
 
@@ -165,4 +194,52 @@ defmodule EveDmv.Killmails.PipelineAutoscalerConfig do
   """
   @spec check_interval_ms() :: pos_integer()
   def check_interval_ms, do: @check_interval_ms
+
+  # =============================================================================
+  # Public API - Batch Size Optimization
+  # =============================================================================
+
+  @doc """
+  Returns the high utilization threshold for batch sizing (70%).
+
+  When average utilization exceeds this threshold, smaller batches are
+  recommended to reduce processing latency during high load.
+  """
+  @spec high_utilization_batch_threshold() :: float()
+  def high_utilization_batch_threshold, do: @high_utilization_batch_threshold
+
+  @doc """
+  Returns the low utilization threshold for batch sizing (30%).
+
+  When average utilization drops below this threshold, larger batches are
+  recommended to improve efficiency.
+  """
+  @spec low_utilization_batch_threshold() :: float()
+  def low_utilization_batch_threshold, do: @low_utilization_batch_threshold
+
+  @doc """
+  Returns the small batch size (100 killmails).
+
+  Used when utilization is high to reduce processing latency and improve
+  responsiveness.
+  """
+  @spec batch_size_small() :: pos_integer()
+  def batch_size_small, do: @batch_size_small
+
+  @doc """
+  Returns the standard batch size (200 killmails).
+
+  Used for normal utilization levels, balancing efficiency with latency.
+  """
+  @spec batch_size_standard() :: pos_integer()
+  def batch_size_standard, do: @batch_size_standard
+
+  @doc """
+  Returns the large batch size (300 killmails).
+
+  Used when utilization is low to improve efficiency by reducing per-batch
+  overhead.
+  """
+  @spec batch_size_large() :: pos_integer()
+  def batch_size_large, do: @batch_size_large
 end

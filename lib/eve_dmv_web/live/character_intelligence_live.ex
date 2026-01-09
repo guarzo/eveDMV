@@ -56,8 +56,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
       |> assign(:search_query, "")
       |> assign(:search_results, [])
       |> assign_async(:intelligence_data, fn ->
-        {:ok, report} = CharacterIntelligence.get_character_intelligence_report(character_id)
-        {:ok, %{intelligence_data: report}}
+        fetch_intelligence_data(character_id)
       end)
 
     {:ok, socket}
@@ -75,8 +74,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
         |> assign(:loading, true)
         |> assign(:intelligence_report, nil)
         |> assign_async(:intelligence_data, fn ->
-          {:ok, report} = CharacterIntelligence.get_character_intelligence_report(character_id)
-          {:ok, %{intelligence_data: report}}
+          fetch_intelligence_data(character_id)
         end)
 
       {:noreply, socket}
@@ -95,10 +93,7 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
       |> assign(:loading, true)
       |> assign_async(
         :intelligence_data,
-        fn ->
-          {:ok, report} = CharacterIntelligence.get_character_intelligence_report(character_id)
-          {:ok, %{intelligence_data: report}}
-        end,
+        fn -> fetch_intelligence_data(character_id) end,
         reset: true
       )
 
@@ -280,5 +275,13 @@ defmodule EveDmvWeb.CharacterIntelligenceLive do
       end
 
     base_recommendations ++ pattern_specific
+  end
+
+  # Private helpers for async data loading
+
+  @spec fetch_intelligence_data(integer()) :: {:ok, map()}
+  defp fetch_intelligence_data(character_id) do
+    {:ok, report} = CharacterIntelligence.get_character_intelligence_report(character_id)
+    {:ok, %{intelligence_data: report}}
   end
 end

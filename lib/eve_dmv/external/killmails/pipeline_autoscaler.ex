@@ -217,9 +217,9 @@ defmodule EveDmv.Killmails.PipelineAutoscaler do
     utilization_entry = %{
       timestamp: now,
       utilization: utilization,
-      messages_processed: metrics.messages.processed,
-      batches_processed: metrics.batches.processed,
-      avg_processing_time_ms: metrics.performance.avg_processing_time_ms
+      messages_processed: get_messages_processed(metrics),
+      batches_processed: get_batches_processed(metrics),
+      avg_processing_time_ms: get_avg_batch_time_ms(metrics)
     }
 
     utilization_history =
@@ -314,6 +314,36 @@ defmodule EveDmv.Killmails.PipelineAutoscaler do
 
   defp get_success_rate(_), do: 100
 
+  # Safely extract messages.processed from nested metrics structure
+  # Returns 0 if metrics is nil, messages is nil/missing, or value is nil/non-positive
+  defp get_messages_processed(nil), do: 0
+
+  defp get_messages_processed(%{messages: nil}), do: 0
+
+  defp get_messages_processed(%{messages: messages}) when is_map(messages) do
+    case Map.get(messages, :processed) do
+      count when is_integer(count) and count >= 0 -> count
+      _ -> 0
+    end
+  end
+
+  defp get_messages_processed(_), do: 0
+
+  # Safely extract batches.processed from nested metrics structure
+  # Returns 0 if metrics is nil, batches is nil/missing, or value is nil/non-positive
+  defp get_batches_processed(nil), do: 0
+
+  defp get_batches_processed(%{batches: nil}), do: 0
+
+  defp get_batches_processed(%{batches: batches}) when is_map(batches) do
+    case Map.get(batches, :processed) do
+      count when is_integer(count) and count >= 0 -> count
+      _ -> 0
+    end
+  end
+
+  defp get_batches_processed(_), do: 0
+
   defp calculate_optimal_batch_size(state) do
     # Based on utilization trends, recommend batch size
     recent_utilization =
@@ -330,11 +360,16 @@ defmodule EveDmv.Killmails.PipelineAutoscaler do
 
     cond do
       # High utilization - smaller batches for faster processing
-      avg_utilization > 0.7 -> 100
+      avg_utilization > Config.high_utilization_batch_threshold() ->
+        Config.batch_size_small()
+
       # Low utilization - larger batches for efficiency
-      avg_utilization < 0.3 -> 300
+      avg_utilization < Config.low_utilization_batch_threshold() ->
+        Config.batch_size_large()
+
       # Normal - standard batch size
-      true -> 200
+      true ->
+        Config.batch_size_standard()
     end
   end
 

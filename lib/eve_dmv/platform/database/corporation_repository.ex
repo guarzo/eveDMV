@@ -82,6 +82,7 @@ defmodule EveDmv.Platform.Database.CorporationRepository do
   """
   def get_corporation_info(corporation_id) when is_integer(corporation_id) do
     # Optimized: Uses participants table instead of JSONB extraction
+    # Time range filter on killmail_time enables partition pruning on the participants table
     query = """
     SELECT
       p.corporation_id,
@@ -91,7 +92,7 @@ defmodule EveDmv.Platform.Database.CorporationRepository do
     FROM participants p
     WHERE p.corporation_id = $1
       AND p.corporation_name IS NOT NULL
-      AND p.killmail_time >= NOW() - INTERVAL '90 days'
+      AND p.killmail_time BETWEEN NOW() - INTERVAL '90 days' AND NOW()
     ORDER BY p.killmail_time DESC
     LIMIT 1
     """

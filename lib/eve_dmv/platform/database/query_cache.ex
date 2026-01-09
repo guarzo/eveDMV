@@ -412,6 +412,11 @@ defmodule EveDmv.Platform.Database.QueryCache do
   end
 
   defp add_to_prefix_index(cache_key) do
+    # NOTE: This read-modify-write sequence is non-atomic and has a benign race condition.
+    # Concurrent writers may overwrite each other's updates, causing a key to be missing
+    # from the index. This is safe because get_keys_by_prefix/1 uses key_exists_in_cache?/1
+    # to validate results, and falls back to get_keys_by_prefix_scan/1 for missing entries.
+    # See the "CONCURRENCY NOTE" comment above for full details.
     prefixes = extract_prefixes(cache_key)
 
     Enum.each(prefixes, fn prefix ->
@@ -437,6 +442,12 @@ defmodule EveDmv.Platform.Database.QueryCache do
   end
 
   defp remove_from_prefix_index(cache_key) do
+    # NOTE: This read-modify-write sequence is non-atomic and has a benign race condition.
+    # Concurrent writers may cause stale entries to remain in the index (if a remove races
+    # with an add) or entries to be prematurely removed. This is safe because:
+    # - Stale entries are filtered out by key_exists_in_cache?/1 in get_keys_by_prefix/1
+    # - Missing entries trigger a fallback to get_keys_by_prefix_scan/1
+    # See the "CONCURRENCY NOTE" comment above for full details.
     prefixes = extract_prefixes(cache_key)
 
     Enum.each(prefixes, fn prefix ->

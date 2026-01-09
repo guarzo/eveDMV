@@ -109,10 +109,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   @spec get_character_intelligence(Types.character_id()) ::
           {:ok, intelligence_result()} | {:error, term()}
   def get_character_intelligence(character_id) do
-    with {:ok, analysis_result} <- CharacterAnalyzer.get_intelligence(character_id) do
-      {:ok, IntelligenceTransformer.transform_character_analysis(analysis_result)}
-    else
-      {:error, reason} -> {:error, reason}
+    case CharacterAnalyzer.get_intelligence(character_id) do
+      {:ok, analysis_result} ->
+        {:ok, IntelligenceTransformer.transform_character_analysis(analysis_result)}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -178,10 +180,12 @@ defmodule EveDmv.Contexts.CombatIntelligence.Api do
   @spec get_corporation_intelligence(integer()) ::
           {:ok, corporation_intelligence_result()} | {:error, intelligence_api_error() | term()}
   def get_corporation_intelligence(corporation_id) do
-    with {:ok, analysis_result} <- CorporationAnalyzer.get_intelligence(corporation_id) do
-      {:ok, IntelligenceTransformer.transform_corporation_analysis(analysis_result)}
-    else
-      {:error, reason} -> {:error, reason}
+    case CorporationAnalyzer.get_intelligence(corporation_id) do
+      {:ok, analysis_result} ->
+        {:ok, IntelligenceTransformer.transform_corporation_analysis(analysis_result)}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 

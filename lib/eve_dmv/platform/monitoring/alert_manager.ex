@@ -102,7 +102,8 @@ defmodule EveDmv.Shared.Monitoring.AlertManager do
 
     summary = %{
       time_window_hours: time_window_hours,
-      total_alerts: length(recent_alerts),
+      # Named :alert_count to follow AlertBatcher counter naming convention ("_count" suffix)
+      alert_count: length(recent_alerts),
       by_severity: group_alerts_by_severity(recent_alerts),
       by_type: group_alerts_by_type(recent_alerts),
       critical_count: count_critical_alerts(recent_alerts)

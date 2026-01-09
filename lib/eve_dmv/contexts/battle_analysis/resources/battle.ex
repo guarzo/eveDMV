@@ -152,6 +152,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Resources.Battle do
       description("True if battle ended within the last 24 hours")
 
       calculation(fn records, _context ->
+        # Compute cutoff once before mapping to avoid redundant DateTime calculations per record
         cutoff = DateTime.add(DateTime.utc_now(), -24, :hour)
 
         Enum.map(records, fn battle ->

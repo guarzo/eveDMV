@@ -6,13 +6,13 @@ defmodule EveDmv.Killmails.Participant do
   in a killmail, including their ship, weapon used, damage dealt, and final blow status.
   """
 
-  require Logger
-
   use Ash.Resource,
     otp_app: :eve_dmv,
     domain: EveDmv.Api,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
+
+  require Logger
 
   postgres do
     table("participants")
@@ -36,6 +36,7 @@ defmodule EveDmv.Killmails.Participant do
       index([:is_victim], name: "participants_victim_idx")
       index([:final_blow], name: "participants_final_blow_idx")
       index([:killmail_time], name: "participants_time_idx")
+      index([:solar_system_id], name: "participants_solar_system_idx")
     end
   end
 
@@ -384,14 +385,16 @@ defmodule EveDmv.Killmails.Participant do
 
       filter(expr(not is_nil(character_id) and not is_nil(character_name)))
 
-      prepare(fn query, context ->
-        search_pattern = "%#{context.arguments.query}%"
+      prepare(fn query, _context ->
+        search_query = Ash.Query.get_argument(query, :query)
+        limit = Ash.Query.get_argument(query, :limit)
+        search_pattern = "%#{search_query}%"
 
         query
         |> Ash.Query.filter_input(%{character_name: %{ilike: search_pattern}})
         |> Ash.Query.sort(killmail_time: :desc)
         |> Ash.Query.distinct([:character_id])
-        |> Ash.Query.limit(context.arguments.limit)
+        |> Ash.Query.limit(limit)
         |> Ash.Query.select([
           :character_id,
           :character_name,
@@ -420,14 +423,16 @@ defmodule EveDmv.Killmails.Participant do
 
       filter(expr(not is_nil(corporation_id) and not is_nil(corporation_name)))
 
-      prepare(fn query, context ->
-        search_pattern = "%#{context.arguments.query}%"
+      prepare(fn query, _context ->
+        search_query = Ash.Query.get_argument(query, :query)
+        limit = Ash.Query.get_argument(query, :limit)
+        search_pattern = "%#{search_query}%"
 
         query
         |> Ash.Query.filter_input(%{corporation_name: %{ilike: search_pattern}})
         |> Ash.Query.sort(killmail_time: :desc)
         |> Ash.Query.distinct([:corporation_id])
-        |> Ash.Query.limit(context.arguments.limit)
+        |> Ash.Query.limit(limit)
         |> Ash.Query.select([
           :corporation_id,
           :corporation_name,
@@ -514,57 +519,6 @@ defmodule EveDmv.Killmails.Participant do
       end)
     end
 
-    # NOTE: This read action is deprecated due to incorrect aggregation behavior.
-    # The aggregate+distinct pattern does not properly group counts per ship.
-    # Use EveDmv.Killmails.Participant.get_character_ship_usage/3 instead,
-    # which performs a proper GROUP BY query with correct per-ship counts.
-    read :character_ship_usage do
-      description(
-        "DEPRECATED: Use get_character_ship_usage/3 function instead. " <>
-          "This action has incorrect aggregation behavior."
-      )
-
-      argument :character_id, :integer do
-        allow_nil?(false)
-        description("Character ID to get ship usage for")
-      end
-
-      argument :since_days, :integer do
-        allow_nil?(false)
-        default(90)
-        description("Number of days to look back")
-      end
-
-      argument :limit, :integer do
-        allow_nil?(false)
-        default(10)
-        description("Maximum number of ships to return")
-      end
-
-      filter(expr(character_id == ^arg(:character_id)))
-      filter(expr(killmail_time >= ago(^arg(:since_days), :day)))
-      filter(expr(is_victim == false))
-
-      # This prepare block has incorrect behavior - the aggregate counts all
-      # matching records rather than per-group. Kept for backwards compatibility
-      # but callers should migrate to get_character_ship_usage/3.
-      prepare(fn query, context ->
-        Logger.warning(
-          "DEPRECATION WARNING: The :character_ship_usage read action is deprecated " <>
-            "due to incorrect aggregation behavior. Please migrate to " <>
-            "EveDmv.Killmails.Participant.get_character_ship_usage/3 which performs " <>
-            "proper GROUP BY queries with correct per-ship counts."
-        )
-
-        query
-        |> Ash.Query.aggregate(:usage_count, :count)
-        |> Ash.Query.distinct([:ship_type_id, :ship_name])
-        |> Ash.Query.sort(usage_count: :desc)
-        |> Ash.Query.limit(context.arguments.limit)
-        |> Ash.Query.select([:ship_type_id, :ship_name])
-      end)
-    end
-
     # Bulk read actions for efficient multi-record fetching
 
     read :by_killmail_ids do
@@ -572,6 +526,7 @@ defmodule EveDmv.Killmails.Participant do
 
       argument :killmail_ids, {:array, :integer} do
         allow_nil?(false)
+        constraints(max_length: 100)
         description("List of killmail IDs to fetch participants for")
       end
 
@@ -585,6 +540,7 @@ defmodule EveDmv.Killmails.Participant do
 
       argument :character_ids, {:array, :integer} do
         allow_nil?(false)
+        constraints(max_length: 100)
         description("List of character IDs to fetch activity for")
       end
 

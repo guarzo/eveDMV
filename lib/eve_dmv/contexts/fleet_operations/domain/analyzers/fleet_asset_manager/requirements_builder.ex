@@ -191,12 +191,9 @@ defmodule EveDmv.Intelligence.Analyzers.FleetAssetManager.RequirementsBuilder do
         role = EveDmv.StaticData.get_ship_role(type_id)
         role = if role == :unknown, do: defaults.role, else: Atom.to_string(role)
 
+        # get_ship_category/1 always returns :capital, :subcapital, or :supercapital
         category = EveDmv.StaticData.get_ship_category(type_id)
-        # get_ship_category/1 may return nil for unknown ships, so use a fallback
-        category_str =
-          if is_atom(category) and not is_nil(category),
-            do: Atom.to_string(category),
-            else: defaults.category
+        category_str = Atom.to_string(category)
 
         # Estimate cost based on ship category and role, with fallback to default
         estimated_cost =

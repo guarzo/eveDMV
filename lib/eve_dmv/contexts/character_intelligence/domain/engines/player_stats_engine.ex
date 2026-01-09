@@ -7,7 +7,6 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
   alias EveDmv.Api
   alias EveDmv.Constants.Isk
   alias EveDmv.Core.Utils.DateTimeUtils
-  alias EveDmv.Killmails.Participant
 
   require Logger
 
@@ -33,7 +32,7 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
 
     _ = Logger.info("Starting player statistics for last #{days} days")
 
-    case participants_ids(:character_id, min_activity) do
+    case participants_ids(:character_id, min_activity, start_date) do
       {:error, reason} ->
         Logger.error("Failed to calculate player stats: #{inspect(reason)}")
         {:error, reason}
@@ -46,16 +45,19 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
   end
 
   # Fetch up to `limit` unique non-nil character IDs from recent participants
-  defp participants_ids(field, limit) do
-    case Ash.read(Participant, domain: Api) do
-      {:ok, parts} ->
-        ids =
-          parts
-          |> Enum.map(&Map.get(&1, field))
-          |> Enum.filter(& &1)
-          |> Enum.uniq()
-          |> Enum.take(limit)
+  # Uses time range filter on killmail_time for efficient index usage
+  defp participants_ids(field, limit, start_date) do
+    query = """
+    SELECT DISTINCT #{field}
+    FROM participants
+    WHERE #{field} IS NOT NULL
+      AND killmail_time >= $1
+    LIMIT $2
+    """
 
+    case EveDmv.Repo.query(query, [start_date, limit]) do
+      {:ok, %{rows: rows}} ->
+        ids = Enum.map(rows, fn [id] -> id end)
         {:ok, ids}
 
       {:error, reason} ->
@@ -116,24 +118,44 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
   end
 
   # Calculate character metrics from participant data
-  defp calculate_character_metrics(character_id, _start_date, _end_date) do
-    case Ash.read(Participant,
-           filter: %{character_id: character_id},
-           limit: 1_000,
-           domain: Api
-         ) do
-      {:ok, [_ | _] = parts} ->
-        # Enrich participants with gang_size information
+  # Uses time range filter on killmail_time for efficient index usage
+  defp calculate_character_metrics(character_id, start_date, end_date) do
+    query = """
+    SELECT
+      id, killmail_id, killmail_time, character_id, character_name,
+      corporation_id, corporation_name, alliance_id, alliance_name,
+      ship_type_id, ship_name, weapon_type_id, weapon_name,
+      damage_done, is_victim, final_blow, is_npc, solar_system_id
+    FROM participants
+    WHERE character_id = $1
+      AND killmail_time >= $2
+      AND killmail_time <= $3
+    ORDER BY killmail_time DESC
+    LIMIT 1000
+    """
+
+    case EveDmv.Repo.query(query, [character_id, start_date, end_date]) do
+      {:ok, %{rows: rows, columns: columns}} when rows != [] ->
+        parts = Enum.map(rows, fn row -> row_to_participant_map(columns, row) end)
         enriched_parts = enrich_participants_with_gang_size(parts)
         {:ok, build_character_metrics(enriched_parts)}
 
-      {:ok, []} ->
+      {:ok, %{rows: []}} ->
         {:error, "No participants found for character #{character_id}"}
 
       {:error, reason} ->
         Logger.error("Failed to fetch character metrics: #{inspect(reason)}")
         {:error, reason}
     end
+  end
+
+  # Convert a database row to a participant map
+  # Column names are known at compile time, so String.to_existing_atom is safe
+  defp row_to_participant_map(columns, row) do
+    columns
+    |> Enum.zip(row)
+    |> Enum.map(fn {col, val} -> {String.to_existing_atom(col), val} end)
+    |> Map.new()
   end
 
   # Enrich participants with gang_size information from killmail data
@@ -153,42 +175,74 @@ defmodule EveDmv.Analytics.PlayerStatsEngine do
 
   # Get attacker counts for a list of killmails (excluding victims)
   # Uses a single bulk query instead of N queries to avoid N+1 performance issues
+  defp get_attacker_counts_for_killmails([]), do: %{}
+
   defp get_attacker_counts_for_killmails(killmail_keys) do
-    if Enum.empty?(killmail_keys) do
-      %{}
+    # Extract killmail_ids and time range for partition pruning
+    # Filter out nil times to avoid Enum.min/max failures
+    killmail_ids = Enum.map(killmail_keys, fn {id, _time} -> id end)
+
+    killmail_times =
+      killmail_keys
+      |> Enum.map(fn {_id, time} -> time end)
+      |> Enum.reject(&is_nil/1)
+
+    if Enum.empty?(killmail_times) do
+      log_missing_killmail_times(killmail_keys)
     else
-      # Extract killmail_ids and time range for partition pruning
-      killmail_ids = Enum.map(killmail_keys, fn {id, _time} -> id end)
-      killmail_times = Enum.map(killmail_keys, fn {_id, time} -> time end)
-      min_time = Enum.min(killmail_times)
-      max_time = Enum.max(killmail_times)
-
-      query = """
-      SELECT killmail_id, killmail_time, COUNT(*) as attacker_count
-      FROM participants
-      WHERE killmail_id = ANY($1::bigint[])
-        AND killmail_time >= $2
-        AND killmail_time <= $3
-        AND is_victim = false
-      GROUP BY killmail_id, killmail_time
-      """
-
-      case EveDmv.Repo.query(query, [killmail_ids, min_time, max_time]) do
-        {:ok, %{rows: rows}} ->
-          rows
-          |> Enum.map(fn [killmail_id, killmail_time, count] ->
-            {{killmail_id, killmail_time}, count}
-          end)
-          |> Map.new()
-
-        {:error, err} ->
-          Logger.error("Failed to fetch attacker counts for killmails: #{inspect(err)}")
-          # Fallback: return 1 for all killmails
-          killmail_keys
-          |> Enum.map(fn key -> {key, 1} end)
-          |> Map.new()
-      end
+      fetch_attacker_counts(killmail_keys, killmail_ids, killmail_times)
     end
+  end
+
+  defp log_missing_killmail_times(killmail_keys) do
+    Logger.warning(
+      "No valid killmail_times found for #{length(killmail_keys)} killmail keys, " <>
+        "falling back to default gang_size of 1"
+    )
+
+    default_gang_sizes(killmail_keys)
+  end
+
+  defp fetch_attacker_counts(killmail_keys, killmail_ids, killmail_times) do
+    min_time = Enum.min(killmail_times, DateTime)
+    max_time = Enum.max(killmail_times, DateTime)
+
+    query = """
+    SELECT killmail_id, killmail_time, COUNT(*) as attacker_count
+    FROM participants
+    WHERE killmail_id = ANY($1::bigint[])
+      AND killmail_time >= $2
+      AND killmail_time <= $3
+      AND is_victim = false
+    GROUP BY killmail_id, killmail_time
+    """
+
+    case EveDmv.Repo.query(query, [killmail_ids, min_time, max_time]) do
+      {:ok, %{rows: rows}} ->
+        parse_attacker_count_rows(rows)
+
+      {:error, err} ->
+        Logger.error(
+          "Failed to fetch attacker counts for #{length(killmail_ids)} killmails " <>
+            "(time range: #{inspect(min_time)} to #{inspect(max_time)}): #{inspect(err)}"
+        )
+
+        default_gang_sizes(killmail_keys)
+    end
+  end
+
+  defp parse_attacker_count_rows(rows) do
+    rows
+    |> Enum.map(fn [killmail_id, killmail_time, count] ->
+      {{killmail_id, killmail_time}, count}
+    end)
+    |> Map.new()
+  end
+
+  defp default_gang_sizes(killmail_keys) do
+    killmail_keys
+    |> Enum.map(fn key -> {key, 1} end)
+    |> Map.new()
   end
 
   # Build character-level metrics map

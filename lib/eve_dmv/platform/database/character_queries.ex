@@ -9,12 +9,27 @@ defmodule EveDmv.Platform.Database.CharacterQueries do
   alias EveDmv.Repo
   require Logger
 
+  # Default time range for partition pruning (90 days matches other queries in the codebase)
+  @default_days_back 90
+
   @doc """
   Get character's recent activity without expensive JSONB operations.
   Supports pagination.
+
+  Options:
+    * `:days_back` - Number of days to look back (default: #{@default_days_back}).
+      This enables partition pruning on killmails_raw.
   """
   def get_recent_activity(character_id, opts \\ []) do
+    # Extract days_back from opts, defaulting to 90 days for partition pruning
+    days_back =
+      case opts do
+        limit when is_integer(limit) -> @default_days_back
+        opts when is_list(opts) -> Keyword.get(opts, :days_back, @default_days_back)
+      end
+
     # Optimized: Uses participants table instead of JSONB extraction
+    # Time-range filter on killmails_raw enables partition pruning
     base_query = """
     SELECT
       p.killmail_id,
@@ -27,6 +42,8 @@ defmodule EveDmv.Platform.Database.CharacterQueries do
     JOIN killmails_raw k ON k.killmail_id = p.killmail_id
       AND k.killmail_time = p.killmail_time
     WHERE p.character_id = $1
+      AND p.killmail_time >= NOW() - INTERVAL '#{days_back} days'
+      AND k.killmail_time >= NOW() - INTERVAL '#{days_back} days'
     ORDER BY p.killmail_time DESC
     """
 

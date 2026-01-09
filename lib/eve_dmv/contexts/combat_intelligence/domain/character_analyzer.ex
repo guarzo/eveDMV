@@ -44,6 +44,42 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
           completed_at: DateTime.t()
         }
 
+  @type search_result :: %{
+          character_id: integer(),
+          threat_score: float(),
+          threat_level: atom(),
+          last_seen: DateTime.t(),
+          combat_effectiveness: float(),
+          matches_criteria: boolean()
+        }
+
+  @type activity_patterns :: %{
+          character_id: integer(),
+          analysis_period: %{
+            start_date: DateTime.t(),
+            end_date: DateTime.t(),
+            days_analyzed: non_neg_integer()
+          },
+          activity_summary: map(),
+          temporal_patterns: map(),
+          engagement_patterns: map(),
+          ship_usage_patterns: map(),
+          system_preferences: map(),
+          threat_level_trends: map()
+        }
+
+  @type comparison_results :: %{
+          characters: [integer()],
+          comparison_date: DateTime.t(),
+          threat_score_comparison: map(),
+          activity_level_comparison: map(),
+          combat_effectiveness_comparison: map(),
+          engagement_style_comparison: map(),
+          risk_assessment_comparison: map(),
+          relative_rankings: map(),
+          tactical_recommendations: map()
+        }
+
   @doc """
   Analyze a character's combat intelligence.
   """
@@ -74,8 +110,11 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
 
   @doc """
   Bulk analyze multiple characters.
+
+  Returns a map of character_id => analysis result tuples.
   """
-  @spec bulk_analyze([integer()], map()) :: {:ok, bulk_analysis_results()}
+  @spec bulk_analyze([integer()], map()) ::
+          {:ok, %{optional(integer()) => {:ok, character_intelligence()} | {:error, term()}}}
   def bulk_analyze(character_ids, context) do
     results =
       Enum.map(character_ids, fn id ->
@@ -87,24 +126,43 @@ defmodule EveDmv.Contexts.CombatIntelligence.Domain.CharacterAnalyzer do
 
   @doc """
   Search characters by criteria.
+
+  Searches for characters matching the given criteria map which may include:
+  - `:threat_level_min` - Minimum threat level (default: 0.0)
+  - `:threat_level_max` - Maximum threat level (default: 10.0)
+  - `:activity_days` - Number of days to look back (default: 30)
+  - `:limit` - Maximum number of results (default: 100)
   """
-  @spec search_by_criteria(map()) :: {:error, :search_error}
+  @spec search_by_criteria(map()) :: {:ok, [search_result()]} | {:error, :search_error}
   def search_by_criteria(criteria) do
     search_characters_by_criteria(criteria)
   end
 
   @doc """
   Get activity patterns for a character.
+
+  Options:
+  - `:days_back` - Number of days to analyze (default: 90)
+  - `:include_losses` - Include loss data (default: true)
+  - `:include_kills` - Include kill data (default: true)
   """
-  @spec get_activity_patterns(integer(), keyword()) :: {:error, :analysis_failed}
+  @spec get_activity_patterns(integer(), keyword()) ::
+          {:ok, activity_patterns()} | {:error, :analysis_failed}
   def get_activity_patterns(character_id, opts \\ []) do
     analyze_character_activity_patterns(character_id, opts)
   end
 
   @doc """
   Compare multiple characters.
+
+  Requires at least 2 character IDs to compare.
+  Returns a comprehensive comparison including threat scores, activity levels,
+  combat effectiveness, engagement styles, and tactical recommendations.
   """
-  @spec compare_characters([integer()]) :: {:ok, map()} | {:error, term()}
+  @spec compare_characters([integer()]) ::
+          {:ok, comparison_results()}
+          | {:error, :insufficient_characters}
+          | {:error, :comparison_failed}
   def compare_characters(character_ids) do
     compare_characters_implementation(character_ids)
   end

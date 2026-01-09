@@ -9,6 +9,7 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
   alias EveDmv.Platform.Cache.QueryCache
   alias EveDmv.Platform.Monitoring.HealthConfig
   alias EveDmv.Repo
+  alias EveDmv.Telemetry.OtelSpans
   alias EveDmv.Telemetry.QueryMonitor
 
   require Logger
@@ -27,6 +28,17 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
   - `[:eve_dmv, :health, :snapshot, :stop]` - When snapshot collection completes
   - `[:eve_dmv, :health, :snapshot, :exception]` - If an exception occurs
 
+  Per-subsystem telemetry events:
+  - `[:eve_dmv, :health, :subsystem]` - Emitted for each subsystem check
+
+  Per-subsystem measurements:
+  - `:latency_us` - Time taken to collect the subsystem health in microseconds
+
+  Per-subsystem metadata:
+  - `:subsystem` - Name of the subsystem (:database, :pipeline, :cache, :memory, :liveview, :queries, :errors, :uptime)
+  - `:status` - Health status of the subsystem (:healthy, :warning, :critical, :unknown)
+  - `:error` - Error message if the subsystem check failed (optional)
+
   Measurements (stop event):
   - `:duration` - Time taken in native units
 
@@ -34,34 +46,40 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
   - `:overall_status` - The computed overall system status (:healthy, :warning, :critical, :degraded)
   - `:uptime_seconds` - System uptime in seconds
   - `:subsystem_count` - Number of subsystems checked
+
+  OpenTelemetry:
+  - Wrapped with OpenTelemetry span `health.snapshot` for distributed tracing
+  - Child spans created for each subsystem check
   """
   def get_health_snapshot do
-    :telemetry.span(
-      [:eve_dmv, :health, :snapshot],
-      %{},
-      fn ->
-        snapshot = collect_health_snapshot()
+    OtelSpans.with_span("health.snapshot", %{}, fn ->
+      :telemetry.span(
+        [:eve_dmv, :health, :snapshot],
+        %{},
+        fn ->
+          snapshot = collect_health_snapshot()
 
-        telemetry_metadata = %{
-          overall_status: snapshot.overall_status,
-          uptime_seconds: snapshot.uptime.total_seconds,
-          subsystem_count: 7
-        }
+          telemetry_metadata = %{
+            overall_status: snapshot.overall_status,
+            uptime_seconds: snapshot.uptime.total_seconds,
+            subsystem_count: 8
+          }
 
-        {snapshot, telemetry_metadata}
-      end
-    )
+          {snapshot, telemetry_metadata}
+        end
+      )
+    end)
   end
 
   defp collect_health_snapshot do
-    database = get_database_health()
-    pipeline = get_pipeline_health()
-    cache = get_cache_health()
-    memory = get_memory_health()
-    liveview = get_liveview_health()
-    queries = get_query_health()
-    errors = get_recent_errors()
-    uptime = get_uptime()
+    database = collect_subsystem_health(:database, &get_database_health/0)
+    pipeline = collect_subsystem_health(:pipeline, &get_pipeline_health/0)
+    cache = collect_subsystem_health(:cache, &get_cache_health/0)
+    memory = collect_subsystem_health(:memory, &get_memory_health/0)
+    liveview = collect_subsystem_health(:liveview, &get_liveview_health/0)
+    queries = collect_subsystem_health(:queries, &get_query_health/0)
+    errors = collect_subsystem_health(:errors, &get_recent_errors/0)
+    uptime = collect_subsystem_health(:uptime, &get_uptime/0)
 
     %{
       timestamp: DateTime.utc_now(),
@@ -76,6 +94,57 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
       uptime: uptime
     }
   end
+
+  # Wraps a subsystem health check with telemetry and OpenTelemetry instrumentation.
+  # Measures latency, captures status and any errors, and emits per-subsystem events.
+  defp collect_subsystem_health(subsystem_name, health_fn) do
+    span_name = "health.subsystem.#{subsystem_name}"
+
+    OtelSpans.with_span(span_name, %{subsystem: subsystem_name}, fn ->
+      start_time = System.monotonic_time(:microsecond)
+
+      try do
+        result = health_fn.()
+        latency_us = System.monotonic_time(:microsecond) - start_time
+
+        # Extract status from result - different subsystems have different structures
+        status = extract_status(result)
+
+        :telemetry.execute(
+          [:eve_dmv, :health, :subsystem],
+          %{latency_us: latency_us},
+          %{subsystem: subsystem_name, status: status}
+        )
+
+        result
+      rescue
+        e ->
+          latency_us = System.monotonic_time(:microsecond) - start_time
+          error_message = Exception.message(e)
+
+          :telemetry.execute(
+            [:eve_dmv, :health, :subsystem],
+            %{latency_us: latency_us},
+            %{subsystem: subsystem_name, status: :error, error: error_message}
+          )
+
+          Logger.error(
+            "Subsystem health check failed for #{subsystem_name}: #{error_message}\n#{Exception.format_stacktrace(__STACKTRACE__)}"
+          )
+
+          # Return a fallback result indicating error
+          %{status: :unknown, error: error_message}
+      end
+    end)
+  end
+
+  # Extracts the status from a subsystem health result.
+  # Different subsystems return different structures.
+  defp extract_status(%{status: status}), do: status
+  # Uptime and errors don't have a status field - they're always considered healthy
+  defp extract_status(%{total_seconds: _}), do: :healthy
+  defp extract_status(%{count: _}), do: :healthy
+  defp extract_status(_), do: :unknown
 
   @doc """
   Returns database connection pool and query statistics.
@@ -101,34 +170,33 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
   defp get_pool_stats do
     pool_size = Application.get_env(:eve_dmv, Repo)[:pool_size] || 20
 
-    try do
-      {:ok, result} =
-        Repo.query("""
-        SELECT
-          count(*) FILTER (WHERE state = 'active') as active,
-          count(*) FILTER (WHERE state = 'idle') as idle,
-          count(*) FILTER (WHERE wait_event_type = 'Client') as waiting,
-          count(*) as total
-        FROM pg_stat_activity
-        WHERE datname = current_database()
-          AND pid != pg_backend_pid()
-          AND usename = current_user
-        """)
+    query = """
+    SELECT
+      count(*) FILTER (WHERE state = 'active') as active,
+      count(*) FILTER (WHERE state = 'idle') as idle,
+      count(*) FILTER (WHERE wait_event_type = 'Client') as waiting,
+      count(*) as total
+    FROM pg_stat_activity
+    WHERE datname = current_database()
+      AND pid != pg_backend_pid()
+      AND usename = current_user
+    """
 
-      [[active, idle, waiting, _total]] = result.rows
-      active = active || 0
-      idle = idle || 0
+    case Repo.query(query) do
+      {:ok, %{rows: [[active, idle, waiting, _total]]}} ->
+        active = active || 0
+        idle = idle || 0
 
-      %{
-        pool_size: pool_size,
-        checked_out: active,
-        available: idle,
-        queue_length: waiting || 0,
-        utilization: Float.round(active / max(pool_size, 1) * 100, 1)
-      }
-    rescue
-      e ->
-        Logger.error("get_pool_stats/0 failed: #{Exception.message(e)}")
+        %{
+          pool_size: pool_size,
+          checked_out: active,
+          available: idle,
+          queue_length: waiting || 0,
+          utilization: Float.round(active / max(pool_size, 1) * 100, 1)
+        }
+
+      {:ok, _result} ->
+        Logger.warning("get_pool_stats/0 returned unexpected result format")
 
         %{
           pool_size: pool_size,
@@ -136,6 +204,18 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
           available: pool_size,
           queue_length: 0,
           utilization: 0.0
+        }
+
+      {:error, reason} ->
+        Logger.error("get_pool_stats/0 failed: #{inspect(reason)}")
+
+        %{
+          pool_size: pool_size,
+          checked_out: 0,
+          available: pool_size,
+          queue_length: 0,
+          utilization: 0.0,
+          error: inspect(reason)
         }
     end
   end
@@ -183,31 +263,30 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
   end
 
   defp get_slow_queries(limit) do
-    {:ok, result} =
-      Repo.query(
-        """
-        SELECT
-          left(query, 100) as query_preview,
-          calls,
-          round(mean_exec_time::numeric, 2) as avg_ms,
-          round(max_exec_time::numeric, 2) as max_ms,
-          round(total_exec_time::numeric, 2) as total_ms
-        FROM pg_stat_statements
-        WHERE dbid = (SELECT oid FROM pg_database WHERE datname = current_database())
-          AND mean_exec_time > 100
-        ORDER BY mean_exec_time DESC
-        LIMIT $1
-        """,
-        [limit]
-      )
+    query = """
+    SELECT
+      left(query, 100) as query_preview,
+      calls,
+      round(mean_exec_time::numeric, 2) as avg_ms,
+      round(max_exec_time::numeric, 2) as max_ms,
+      round(total_exec_time::numeric, 2) as total_ms
+    FROM pg_stat_statements
+    WHERE dbid = (SELECT oid FROM pg_database WHERE datname = current_database())
+      AND mean_exec_time > 100
+    ORDER BY mean_exec_time DESC
+    LIMIT $1
+    """
 
-    Enum.map(result.rows, fn [query, calls, avg, max, total] ->
-      %{query: query, calls: calls, avg_ms: avg, max_ms: max, total_ms: total}
-    end)
-  rescue
-    e ->
-      Logger.error("get_slow_queries/1 failed: #{Exception.message(e)}")
-      []
+    case Repo.query(query, [limit]) do
+      {:ok, %{rows: rows}} ->
+        Enum.map(rows, fn [query_text, calls, avg, max, total] ->
+          %{query: query_text, calls: calls, avg_ms: avg, max_ms: max, total_ms: total}
+        end)
+
+      {:error, reason} ->
+        Logger.error("get_slow_queries/1 failed: #{inspect(reason)}")
+        []
+    end
   end
 
   defp database_status(pool_stats) do
@@ -245,7 +324,11 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
     }
   rescue
     e ->
-      Logger.error("get_pipeline_health/0 failed: #{Exception.message(e)}")
+      stacktrace = __STACKTRACE__
+
+      Logger.error(
+        "get_pipeline_health/0 failed: #{Exception.message(e)}\n#{Exception.format_stacktrace(stacktrace)}"
+      )
 
       %{
         status: :unknown,
@@ -254,7 +337,8 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
         batches_processed: 0,
         success_rate: 100.0,
         throughput: 0,
-        note: "Pipeline metrics unavailable"
+        note: "Pipeline metrics unavailable",
+        error: Exception.message(e)
       }
   end
 
@@ -294,13 +378,18 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
     }
   rescue
     e ->
-      Logger.error("get_cache_health/0 failed: #{Exception.message(e)}")
+      stacktrace = __STACKTRACE__
+
+      Logger.error(
+        "get_cache_health/0 failed: #{Exception.message(e)}\n#{Exception.format_stacktrace(stacktrace)}"
+      )
 
       %{
         status: :unknown,
         query_cache: %{hits: 0, misses: 0, hit_rate: 0, size: 0, memory_mb: 0},
         ets_tables: [],
-        note: "Cache stats unavailable"
+        note: "Cache stats unavailable",
+        error: Exception.message(e)
       }
   end
 
@@ -317,8 +406,10 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
         }
       rescue
         e ->
+          stacktrace = __STACKTRACE__
+
           Logger.error(
-            "get_ets_table_stats/0 failed for table #{inspect(table)}: #{Exception.message(e)}"
+            "get_ets_table_stats/0 failed for table #{inspect(table)}: #{Exception.message(e)}\n#{Exception.format_stacktrace(stacktrace)}"
           )
 
           nil
@@ -365,8 +456,10 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
         end
       rescue
         e ->
+          stacktrace = __STACKTRACE__
+
           Logger.error(
-            "get_top_memory_processes/1 failed for pid #{inspect(pid)}: #{Exception.message(e)}"
+            "get_top_memory_processes/1 failed for pid #{inspect(pid)}: #{Exception.message(e)}\n#{Exception.format_stacktrace(stacktrace)}"
           )
 
           nil
@@ -412,8 +505,10 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
           end
         rescue
           e ->
+            stacktrace = __STACKTRACE__
+
             Logger.error(
-              "get_liveview_health/0 failed for pid #{inspect(pid)}: #{Exception.message(e)}"
+              "get_liveview_health/0 failed for pid #{inspect(pid)}: #{Exception.message(e)}\n#{Exception.format_stacktrace(stacktrace)}"
             )
 
             false
@@ -446,14 +541,19 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
     }
   rescue
     e ->
-      Logger.error("get_query_health/0 failed: #{Exception.message(e)}")
+      stacktrace = __STACKTRACE__
+
+      Logger.error(
+        "get_query_health/0 failed: #{Exception.message(e)}\n#{Exception.format_stacktrace(stacktrace)}"
+      )
 
       %{
         status: :unknown,
         slow_query_count: 0,
         n_plus_one_count: 0,
         slow_queries: [],
-        n_plus_one_alerts: []
+        n_plus_one_alerts: [],
+        error: Exception.message(e)
       }
   end
 
@@ -483,8 +583,13 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
     }
   rescue
     e ->
-      Logger.error("get_recent_errors/0 failed: #{Exception.message(e)}")
-      %{count: 0, errors: []}
+      stacktrace = __STACKTRACE__
+
+      Logger.error(
+        "get_recent_errors/0 failed: #{Exception.message(e)}\n#{Exception.format_stacktrace(stacktrace)}"
+      )
+
+      %{count: 0, errors: [], error: Exception.message(e)}
   end
 
   defp get_error_message(error) do

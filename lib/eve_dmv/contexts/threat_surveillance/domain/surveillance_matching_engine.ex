@@ -16,6 +16,7 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngine d
   alias EveDmv.Shared.Infrastructure.UnifiedCache
   alias EveDmv.Shared.Infrastructure.UnifiedRepository
   alias EveDmv.Surveillance.ProfileMatch
+  alias EveDmv.Telemetry.OtelSpans
 
   require Logger
 
@@ -408,7 +409,16 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngine d
           ProfileMatch
           |> Ash.Query.for_read(:recent_matches, %{hours: hours})
 
-        case Ash.read(query, domain: SurveillanceApi) do
+        result =
+          OtelSpans.with_span(
+            "surveillance.recent_matches.query",
+            %{hours: hours, cache_key: inspect(cache_key), limit: limit},
+            fn ->
+              Ash.read(query, domain: SurveillanceApi)
+            end
+          )
+
+        case result do
           {:ok, matches} ->
             # Cache results for 3 minutes
             UnifiedCache.put(:surveillance, cache_key, matches, 180)
@@ -432,24 +442,19 @@ defmodule EveDmv.Contexts.ThreatSurveillance.Domain.SurveillanceMatchingEngine d
         {:ok, Enum.take(matches, limit)}
 
       {:error, :not_found} ->
-        # Query database for profile matches using Ash action
+        # Query database for profile matches using Ash action with since parameter
         query =
           ProfileMatch
-          |> Ash.Query.for_read(:profile_matches, %{profile_id: profile_id})
+          |> Ash.Query.for_read(:profile_matches, %{profile_id: profile_id, since: since})
 
         case Ash.read(query, domain: SurveillanceApi) do
           {:ok, matches} ->
-            # Filter by since date and apply limit
-            filtered_matches =
-              matches
-              |> Enum.filter(fn match ->
-                DateTime.compare(match.matched_at, since) != :lt
-              end)
-              |> Enum.take(limit)
+            # Apply limit (filtering is done in DB via Ash action)
+            limited_matches = Enum.take(matches, limit)
 
             # Cache results for 5 minutes
-            UnifiedCache.put(:surveillance, cache_key, filtered_matches, 300)
-            {:ok, filtered_matches}
+            UnifiedCache.put(:surveillance, cache_key, limited_matches, 300)
+            {:ok, limited_matches}
 
           {:error, error} ->
             Logger.warning("Failed to query profile matches for #{profile_id}: #{inspect(error)}")

@@ -22,6 +22,8 @@ defmodule EveDmvWeb.SystemLive do
   alias EveDmv.Platform.Cache.AnalysisCache
   alias EveDmv.Repo
 
+  require Logger
+
   # Structure group names from EVE SDE for identifying citadels and upwell structures.
   # These are authoritative group_name values from the eve_item_types table.
   # Used in parameterized SQL queries (passed as query parameters, not interpolated).
@@ -113,8 +115,6 @@ defmodule EveDmvWeb.SystemLive do
     if String.contains?(cache_key, "system_#{socket.assigns.system_id}") do
       # Instead of full reload, just mark that data may be stale
       # The user can manually refresh if needed
-      require Logger
-
       Logger.debug(
         "Cache updated for system #{socket.assigns.system_id} - data available on refresh"
       )
@@ -126,27 +126,44 @@ defmodule EveDmvWeb.SystemLive do
   end
 
   # Handle system activity updates (new kills in this system)
-  def handle_info({:system_activity_update, %{system_id: id, new_kills: kills}}, socket) do
-    if id == socket.assigns.system_id && socket.assigns.system_data != nil do
-      # Targeted update: Prepend new kills without full reload
-      socket =
-        update(socket, :system_data, fn system_data ->
-          updated_kills =
-            (kills ++ (system_data.recent_kills || []))
-            |> Enum.take(20)
+  # Early return: ignore updates for other systems
+  def handle_info(
+        {:system_activity_update, %{system_id: system_id, new_kills: _kills}},
+        %{assigns: %{system_id: assigned_system_id}} = socket
+      )
+      when system_id != assigned_system_id do
+    {:noreply, socket}
+  end
 
-          updated_activity_stats =
-            Map.update(system_data.activity_stats, :total_kills, length(kills), fn count ->
-              (count || 0) + length(kills)
-            end)
+  # Early return: ignore updates when system_data is nil
+  def handle_info(
+        {:system_activity_update, %{system_id: _system_id, new_kills: _kills}},
+        %{assigns: %{system_data: nil}} = socket
+      ) do
+    {:noreply, socket}
+  end
 
-          %{system_data | recent_kills: updated_kills, activity_stats: updated_activity_stats}
-        end)
+  # Main handler: process updates for matching system with valid data
+  def handle_info(
+        {:system_activity_update, %{system_id: _system_id, new_kills: kills}},
+        socket
+      ) do
+    # Targeted update: Prepend new kills without full reload
+    socket =
+      update(socket, :system_data, fn system_data ->
+        updated_kills =
+          (kills ++ (system_data.recent_kills || []))
+          |> Enum.take(20)
 
-      {:noreply, socket}
-    else
-      {:noreply, socket}
-    end
+        updated_activity_stats =
+          Map.update(system_data.activity_stats, :total_kills, length(kills), fn count ->
+            (count || 0) + length(kills)
+          end)
+
+        %{system_data | recent_kills: updated_kills, activity_stats: updated_activity_stats}
+      end)
+
+    {:noreply, socket}
   end
 
   # Handle historical fetch status updates via PubSub
@@ -157,6 +174,32 @@ defmodule EveDmvWeb.SystemLive do
     else
       handle_historical_fetch_update(update, socket)
     end
+  end
+
+  # Handle async load more corporations result
+  def handle_info({:load_more_corps_result, {:ok, more_corps}}, socket) do
+    # Append new corporations to existing list
+    current_corps = socket.assigns.system_data.corp_presence
+    updated_corps = current_corps ++ more_corps
+
+    # Check if there might be more to load
+    has_more = length(more_corps) >= @corp_presence_per_page
+
+    # Update system_data with extended corporation list
+    updated_system_data = %{socket.assigns.system_data | corp_presence: updated_corps}
+
+    {:noreply,
+     socket
+     |> assign(:system_data, updated_system_data)
+     |> assign(:has_more_corps, has_more)
+     |> assign(:loading_more_corps, false)}
+  end
+
+  def handle_info({:load_more_corps_result, {:error, _reason}}, socket) do
+    {:noreply,
+     socket
+     |> assign(:loading_more_corps, false)
+     |> put_flash(:error, "Failed to load more corporations")}
   end
 
   defp handle_historical_fetch_update({:progress, _progress}, socket) do
@@ -215,35 +258,26 @@ defmodule EveDmvWeb.SystemLive do
   end
 
   def handle_event("load_more_corps", _params, socket) do
-    next_page = socket.assigns.corp_presence_page + 1
-    offset = socket.assigns.corp_presence_page * socket.assigns.corp_presence_per_page
+    # Early return if already loading
+    if socket.assigns.loading_more_corps do
+      {:noreply, socket}
+    else
+      next_page = socket.assigns.corp_presence_page + 1
+      offset = socket.assigns.corp_presence_page * socket.assigns.corp_presence_per_page
+      system_id = socket.assigns.system_id
+      per_page = @corp_presence_per_page
+      lv_pid = self()
 
-    socket = assign(socket, :loading_more_corps, true)
+      # Set loading state immediately
+      socket = assign(socket, :loading_more_corps, true)
 
-    case load_more_corporation_presence(socket.assigns.system_id, offset, @corp_presence_per_page) do
-      {:ok, more_corps} ->
-        # Append new corporations to existing list
-        current_corps = socket.assigns.system_data.corp_presence
-        updated_corps = current_corps ++ more_corps
+      # Spawn async task to load more corporations
+      Task.start(fn ->
+        result = load_more_corporation_presence(system_id, offset, per_page)
+        send(lv_pid, {:load_more_corps_result, result})
+      end)
 
-        # Check if there might be more to load
-        has_more = length(more_corps) >= @corp_presence_per_page
-
-        # Update system_data with extended corporation list
-        updated_system_data = %{socket.assigns.system_data | corp_presence: updated_corps}
-
-        {:noreply,
-         socket
-         |> assign(:system_data, updated_system_data)
-         |> assign(:corp_presence_page, next_page)
-         |> assign(:has_more_corps, has_more)
-         |> assign(:loading_more_corps, false)}
-
-      {:error, _reason} ->
-        {:noreply,
-         socket
-         |> assign(:loading_more_corps, false)
-         |> put_flash(:error, "Failed to load more corporations")}
+      {:noreply, assign(socket, :corp_presence_page, next_page)}
     end
   end
 

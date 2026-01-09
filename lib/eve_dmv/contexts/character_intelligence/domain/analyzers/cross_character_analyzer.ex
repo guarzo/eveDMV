@@ -515,6 +515,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.Analyzers.CrossCharacterA
         AND p.killmail_time > $2
       GROUP BY p.killmail_id, p.killmail_time
       HAVING COUNT(DISTINCT p.character_id) >= 2
+      LIMIT 1000
     )
     SELECT k.killmail_id, k.killmail_time, k.solar_system_id, k.raw_data, k.victim_ship_type_id
     FROM killmails_raw k

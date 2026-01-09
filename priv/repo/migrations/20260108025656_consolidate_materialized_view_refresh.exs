@@ -198,53 +198,66 @@ defmodule EveDmv.Repo.Migrations.ConsolidateMaterializedViewRefresh do
       unschedule_existing_jobs()
 
       # Restore original more frequent schedules
-      execute """
-      SELECT cron.schedule(
-        'refresh_ship_type_usage',
-        '15 */4 * * *',
-        $$SELECT safe_refresh_materialized_view('ship_type_usage')$$
-      );
-      """
+      # Only schedule if the materialized view exists
+      if view_exists?("ship_type_usage") do
+        execute """
+        SELECT cron.schedule(
+          'refresh_ship_type_usage',
+          '15 */4 * * *',
+          $$SELECT safe_refresh_materialized_view('ship_type_usage')$$
+        );
+        """
+      end
 
-      execute """
-      SELECT cron.schedule(
-        'refresh_fleet_composition_summary',
-        '30 */2 * * *',
-        $$SELECT safe_refresh_materialized_view('fleet_composition_summary')$$
-      );
-      """
+      if view_exists?("fleet_composition_summary") do
+        execute """
+        SELECT cron.schedule(
+          'refresh_fleet_composition_summary',
+          '30 */2 * * *',
+          $$SELECT safe_refresh_materialized_view('fleet_composition_summary')$$
+        );
+        """
+      end
 
-      execute """
-      SELECT cron.schedule(
-        'refresh_high_value_targets',
-        '45 */6 * * *',
-        $$SELECT safe_refresh_materialized_view('high_value_targets')$$
-      );
-      """
+      if view_exists?("high_value_targets") do
+        execute """
+        SELECT cron.schedule(
+          'refresh_high_value_targets',
+          '45 */6 * * *',
+          $$SELECT safe_refresh_materialized_view('high_value_targets')$$
+        );
+        """
+      end
 
-      execute """
-      SELECT cron.schedule(
-        'refresh_timezone_activity_patterns',
-        '0 */4 * * *',
-        $$SELECT safe_refresh_materialized_view('timezone_activity_patterns')$$
-      );
-      """
+      if view_exists?("timezone_activity_patterns") do
+        execute """
+        SELECT cron.schedule(
+          'refresh_timezone_activity_patterns',
+          '0 */4 * * *',
+          $$SELECT safe_refresh_materialized_view('timezone_activity_patterns')$$
+        );
+        """
+      end
 
-      execute """
-      SELECT cron.schedule(
-        'refresh_character_activity_summary',
-        '10 */2 * * *',
-        $$SELECT safe_refresh_materialized_view('character_activity_summary')$$
-      );
-      """
+      if view_exists?("character_activity_summary") do
+        execute """
+        SELECT cron.schedule(
+          'refresh_character_activity_summary',
+          '10 */2 * * *',
+          $$SELECT safe_refresh_materialized_view('character_activity_summary')$$
+        );
+        """
+      end
 
-      execute """
-      SELECT cron.schedule(
-        'refresh_system_activity_heatmap',
-        '20 */2 * * *',
-        $$SELECT safe_refresh_materialized_view('system_activity_heatmap')$$
-      );
-      """
+      if view_exists?("system_activity_heatmap") do
+        execute """
+        SELECT cron.schedule(
+          'refresh_system_activity_heatmap',
+          '20 */2 * * *',
+          $$SELECT safe_refresh_materialized_view('system_activity_heatmap')$$
+        );
+        """
+      end
 
       # Restore original function without advisory locks
       execute """
