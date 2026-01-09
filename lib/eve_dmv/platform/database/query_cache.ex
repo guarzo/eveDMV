@@ -34,6 +34,8 @@ defmodule EveDmv.Platform.Database.QueryCache do
 
   alias EveDmv.Core.Utils.Cache
 
+  require Logger
+
   @cache_name :query_cache
   @prefix_index_name :query_cache_prefix_index
   # 5 minutes
@@ -104,23 +106,27 @@ defmodule EveDmv.Platform.Database.QueryCache do
   Manually put a value in the cache.
 
   Also updates the prefix index for efficient pattern lookups.
+  The cache write always proceeds even if the prefix index update fails,
+  as the prefix index is purely an optimization.
   """
   def put(cache_key, value, ttl \\ @default_ttl) do
-    # Update prefix index BEFORE caching to maintain consistency
-    # If prefix index update fails, we don't cache the value
+    # Always cache the value - prefix index is an optimization, not a requirement
+    result = Cache.put(@cache_name, cache_key, value, ttl_ms: ttl)
+
+    # Attempt to update prefix index, but don't fail the cache operation
     case add_to_prefix_index(cache_key) do
       :ok ->
-        Cache.put(@cache_name, cache_key, value, ttl_ms: ttl)
+        :ok
 
       {:error, reason} ->
-        require Logger
-
         Logger.warning(
-          "QueryCache: Failed to update prefix index for key #{inspect(cache_key)}: #{inspect(reason)}, skipping cache put"
+          "QueryCache: Failed to update prefix index for key #{inspect(cache_key)}: #{inspect(reason)}"
         )
 
-        {:error, :prefix_index_failed}
+        :ok
     end
+
+    result
   end
 
   @doc """
@@ -153,9 +159,20 @@ defmodule EveDmv.Platform.Database.QueryCache do
 
   @doc """
   Invalidate cache entries matching a pattern.
+
+  Also cleans up the prefix index for each invalidated key.
   """
   def invalidate_pattern(pattern) do
-    Cache.invalidate_pattern(@cache_name, pattern)
+    # First get all keys matching the pattern so we can clean up the prefix index
+    matching_keys = get_keys_by_pattern(pattern)
+
+    # Invalidate from cache and clean up prefix index
+    count = Cache.invalidate_pattern(@cache_name, pattern)
+
+    # Remove each invalidated key from the prefix index
+    Enum.each(matching_keys, &remove_from_prefix_index/1)
+
+    count
   end
 
   @doc """
@@ -290,16 +307,9 @@ defmodule EveDmv.Platform.Database.QueryCache do
   end
 
   # Get all keys from the cache (O(n) scan)
+  # Uses Cache.keys/1 to abstract away ETS internals
   defp get_all_keys do
-    table_name = @cache_name
-
-    :ets.foldl(
-      fn {key, _value, _expires_at}, acc -> [key | acc] end,
-      [],
-      table_name
-    )
-  rescue
-    ArgumentError -> []
+    Cache.keys(@cache_name)
   end
 
   # O(m) lookup using prefix index where m = number of matching keys
@@ -322,66 +332,45 @@ defmodule EveDmv.Platform.Database.QueryCache do
   end
 
   # O(n) scan for prefix patterns when prefix isn't indexed
+  # Uses Cache.fold_keys/3 to abstract away ETS internals
   defp get_keys_by_prefix_scan(prefix) do
-    table_name = @cache_name
+    Cache.fold_keys(@cache_name, [], fn key, acc ->
+      key_str = to_string(key)
 
-    :ets.foldl(
-      fn {key, _value, _expires_at}, acc ->
-        key_str = to_string(key)
-
-        if String.starts_with?(key_str, prefix) do
-          [key | acc]
-        else
-          acc
-        end
-      end,
-      [],
-      table_name
-    )
-  rescue
-    ArgumentError -> []
+      if String.starts_with?(key_str, prefix) do
+        [key | acc]
+      else
+        acc
+      end
+    end)
   end
 
   # O(n) scan for suffix patterns
+  # Uses Cache.fold_keys/3 to abstract away ETS internals
   defp get_keys_by_suffix_scan(suffix) do
-    table_name = @cache_name
+    Cache.fold_keys(@cache_name, [], fn key, acc ->
+      key_str = to_string(key)
 
-    :ets.foldl(
-      fn {key, _value, _expires_at}, acc ->
-        key_str = to_string(key)
-
-        if String.ends_with?(key_str, suffix) do
-          [key | acc]
-        else
-          acc
-        end
-      end,
-      [],
-      table_name
-    )
-  rescue
-    ArgumentError -> []
+      if String.ends_with?(key_str, suffix) do
+        [key | acc]
+      else
+        acc
+      end
+    end)
   end
 
   # O(n) full scan for complex patterns
+  # Uses Cache.fold_keys/3 to abstract away ETS internals
   defp get_keys_by_full_scan(regex) do
-    table_name = @cache_name
+    Cache.fold_keys(@cache_name, [], fn key, acc ->
+      key_str = to_string(key)
 
-    :ets.foldl(
-      fn {key, _value, _expires_at}, acc ->
-        key_str = to_string(key)
-
-        if Regex.match?(regex, key_str) do
-          [key | acc]
-        else
-          acc
-        end
-      end,
-      [],
-      table_name
-    )
-  rescue
-    ArgumentError -> []
+      if Regex.match?(regex, key_str) do
+        [key | acc]
+      else
+        acc
+      end
+    end)
   end
 
   defp key_exists_in_cache?(key) do

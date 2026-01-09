@@ -15,9 +15,6 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
 
   require Logger
 
-  # Dialyzer has issues inferring return types through multiple layers of bounded context calls
-  @dialyzer {:nowarn_function, load_recent_character_analyses: 1}
-
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
@@ -263,19 +260,22 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
   end
 
   # Handle async character analyses loading for intelligence dashboard
+  # Using Task.async with demonitor pattern ensures task is linked to LiveView
+  # and cleaned up properly if the LiveView terminates
   @impl Phoenix.LiveView
   def handle_info({:load_character_analyses_async, time_range}, socket) do
     if socket.assigns.dashboard_type == :intelligence do
-      # Perform the async loading in a task to avoid blocking
-      # Store the parent PID so the task can send results back
-      parent_pid = self()
+      # Spawn linked async task to load character analyses
+      # Task.async links the task to this LiveView process
+      lv_pid = self()
 
-      Task.start(fn ->
-        analyses = load_recent_character_analyses(time_range)
-        send(parent_pid, {:character_analyses_loaded, analyses})
-      end)
+      task =
+        Task.async(fn ->
+          analyses = load_recent_character_analyses(time_range)
+          send(lv_pid, {:character_analyses_loaded, analyses})
+        end)
 
-      {:noreply, socket}
+      {:noreply, assign(socket, :character_analyses_task, task)}
     else
       {:noreply, socket}
     end
@@ -293,6 +293,15 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
     else
       {:noreply, socket}
     end
+  end
+
+  # Handle Task.async completion message (the task sends its result via the ref)
+  # We ignore the return value since we handle it via the manual send in the task
+  @impl Phoenix.LiveView
+  def handle_info({ref, _result}, socket) when is_reference(ref) do
+    # Flush the :DOWN message from the task
+    Process.demonitor(ref, [:flush])
+    {:noreply, socket}
   end
 
   @impl Phoenix.LiveView
@@ -371,6 +380,7 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
     socket
     |> assign(:character_analyses, [])
     |> assign(:character_analyses_loading, true)
+    |> assign(:character_analyses_task, nil)
     |> assign(:threat_assessments, threat_assessments)
     |> assign(:intelligence_reports, [])
     |> assign(:analysis_queue, [])
@@ -503,6 +513,7 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
       []
   end
 
+  @spec load_recent_character_analyses(atom()) :: [map()]
   defp load_recent_character_analyses(time_range) do
     # Get recent killmails and extract unique character IDs for analysis
     since = time_range_to_datetime(time_range)

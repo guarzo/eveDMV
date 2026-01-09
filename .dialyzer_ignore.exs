@@ -164,18 +164,41 @@
   # ===========================================
   # Return type includes values that are never actually returned.
   # These are intentionally broad for API stability.
+  # Patterns target specific functions known to have extra_range issues.
 
-  ~r/combat_intelligence.*api\.ex.*extra_range/,
-  ~r/character_analyzer\.ex.*extra_range/,
-  ~r/surveillance.*api\.ex.*extra_range/,
-  ~r/security_classification\.ex.*extra_range/,
-  ~r/circuit_breaker\.ex.*extra_range/,
-  ~r/static_data_loader\.ex.*extra_range/,
-  ~r/item_type_processor\.ex.*extra_range/,
-  ~r/jsonl_parser\.ex.*extra_range/,
-  ~r/sde_validator\.ex.*extra_range/,
-  ~r/solar_system_processor\.ex.*extra_range/,
-  ~r/account_manager\.ex.*extra_range/,
+  # CombatIntelligence API - functions with broad return types for API stability
+  ~r/combat_intelligence.*api\.ex:\d+:extra_range.*analyze_character/,
+  ~r/combat_intelligence.*api\.ex:\d+:extra_range.*analyze_corporation/,
+  ~r/combat_intelligence.*api\.ex:\d+:extra_range.*get_character_intelligence/,
+  ~r/combat_intelligence.*api\.ex:\d+:extra_range.*get_corporation_intelligence/,
+
+  # CharacterAnalyzer - analyze/2 and get_intelligence/1 have broad specs
+  ~r/character_analyzer\.ex:\d+:extra_range.*analyze/,
+  ~r/character_analyzer\.ex:\d+:extra_range.*get_intelligence/,
+
+  # Surveillance API - list_profiles, get_profile functions
+  ~r/surveillance.*api\.ex:\d+:extra_range.*list_profiles/,
+  ~r/surveillance.*api\.ex:\d+:extra_range.*get_profile/,
+  ~r/surveillance.*api\.ex:\d+:extra_range.*get_recent_matches/,
+
+  # Security classification functions
+  ~r/security_classification\.ex:\d+:extra_range.*classify/,
+  ~r/security_classification\.ex:\d+:extra_range.*get_classification/,
+
+  # CircuitBreaker - call/3 returns broad result types
+  ~r/circuit_breaker\.ex:\d+:extra_range.*call/,
+
+  # Static data loader functions
+  ~r/static_data_loader\.ex:\d+:extra_range.*load/,
+  ~r/static_data_loader\.ex:\d+:extra_range.*get/,
+  ~r/item_type_processor\.ex:\d+:extra_range.*process/,
+  ~r/jsonl_parser\.ex:\d+:extra_range.*parse/,
+  ~r/sde_validator\.ex:\d+:extra_range.*validate/,
+  ~r/solar_system_processor\.ex:\d+:extra_range.*process/,
+
+  # Account manager functions
+  ~r/account_manager\.ex:\d+:extra_range.*get_account/,
+  ~r/account_manager\.ex:\d+:extra_range.*create_account/,
 
   # ===========================================
   # INVALID CONTRACT WARNINGS
