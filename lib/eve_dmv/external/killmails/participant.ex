@@ -53,6 +53,7 @@ defmodule EveDmv.Killmails.Participant do
     define(:character_activity_summary, args: [:character_id])
     define(:search_characters_by_name, args: [:query])
     define(:search_corporations_by_name, args: [:query])
+    define(:character_ship_usage, args: [:character_id, :since_date])
   end
 
   # Attributes
@@ -611,6 +612,75 @@ defmodule EveDmv.Killmails.Participant do
         |> Ash.Query.aggregate(:total_kills, :count, filter: expr(is_victim == false))
       end)
     end
+
+    # Generic action for ship usage aggregation with GROUP BY
+    # Ash's query tools are "resource-centric" and don't support GROUP BY natively.
+    # This action uses Ash.Query.data_layer_query/1 to build the filtered query,
+    # then falls back to Ecto for the GROUP BY aggregation as recommended by Ash docs.
+    # See: https://elixirforum.com/t/group-by-query-in-read-calculation-aggregate-or-custom-action/70898
+    action :character_ship_usage, {:array, :map} do
+      description("""
+      Get ship usage breakdown for a character with proper grouping.
+
+      Returns a list of maps with :ship_type_id, :ship_name, and :usage_count,
+      ordered by usage_count descending.
+      """)
+
+      argument :character_id, :integer do
+        allow_nil?(false)
+        description("The EVE character ID")
+      end
+
+      argument :since_date, :utc_datetime do
+        allow_nil?(false)
+        description("Start date for the usage period")
+      end
+
+      argument :limit, :integer do
+        allow_nil?(false)
+        default(10)
+        description("Maximum number of ships to return")
+      end
+
+      run(fn input, _context ->
+        import Ecto.Query, only: [from: 2]
+        import Ash.Expr
+
+        character_id = input.arguments.character_id
+        since_date = input.arguments.since_date
+        limit = input.arguments.limit
+
+        # Build the filtered Ash query using Ash.Expr for proper expression handling
+        ash_query =
+          __MODULE__
+          |> Ash.Query.filter(expr(character_id == ^character_id))
+          |> Ash.Query.filter(expr(killmail_time >= ^since_date))
+          |> Ash.Query.filter(expr(is_victim == false))
+
+        # Convert to Ecto data layer query for GROUP BY support
+        case Ash.Query.data_layer_query(ash_query) do
+          {:ok, ecto_query} ->
+            # Apply GROUP BY, aggregation, ordering, and limit using Ecto
+            grouped_query =
+              from(p in ecto_query,
+                group_by: [p.ship_type_id, p.ship_name],
+                select: %{
+                  ship_type_id: p.ship_type_id,
+                  ship_name: p.ship_name,
+                  usage_count: count(p.id)
+                },
+                order_by: [desc: count(p.id)],
+                limit: ^limit
+              )
+
+            results = EveDmv.Repo.all(grouped_query)
+            {:ok, results}
+
+          {:error, error} ->
+            {:error, error}
+        end
+      end)
+    end
   end
 
   # Aggregates
@@ -705,6 +775,9 @@ defmodule EveDmv.Killmails.Participant do
   @doc """
   Get ship usage breakdown for a character with proper grouping.
 
+  This function wraps the :character_ship_usage Ash action for backward compatibility
+  with existing code that calls this function directly.
+
   Returns a list of maps with :ship_type_id, :ship_name, and :usage_count,
   ordered by usage_count descending.
 
@@ -724,35 +797,12 @@ defmodule EveDmv.Killmails.Participant do
   def get_character_ship_usage(character_id, since_days \\ 90, limit \\ 10) do
     since_date = DateTime.utc_now() |> DateTime.add(-since_days, :day)
 
-    query = """
-    SELECT
-      ship_type_id,
-      ship_name,
-      COUNT(*) as usage_count
-    FROM participants
-    WHERE character_id = $1
-      AND killmail_time >= $2
-      AND is_victim = false
-    GROUP BY ship_type_id, ship_name
-    ORDER BY usage_count DESC
-    LIMIT $3
-    """
-
-    case Ecto.Adapters.SQL.query(EveDmv.Repo, query, [character_id, since_date, limit]) do
-      {:ok, %{rows: rows}} ->
-        results =
-          Enum.map(rows, fn [ship_type_id, ship_name, usage_count] ->
-            %{
-              ship_type_id: ship_type_id,
-              ship_name: ship_name,
-              usage_count: usage_count
-            }
-          end)
-
-        {:ok, results}
-
-      {:error, error} ->
-        {:error, error}
-    end
+    __MODULE__
+    |> Ash.ActionInput.for_action(:character_ship_usage, %{
+      character_id: character_id,
+      since_date: since_date,
+      limit: limit
+    })
+    |> Ash.run_action()
   end
 end

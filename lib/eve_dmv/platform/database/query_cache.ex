@@ -13,6 +13,23 @@ defmodule EveDmv.Platform.Database.QueryCache do
     for complex patterns containing wildcards in the middle
   - The cache is bounded by `@max_cache_size` (1000 entries)
   - TTL-based expiration with periodic cleanup
+
+  ## Pattern Matching Performance
+
+  The `get_keys_by_pattern/1` function has different performance characteristics
+  depending on the pattern type:
+
+  | Pattern Type | Example | Complexity | Method |
+  |-------------|---------|------------|--------|
+  | Exact | `"user_123"` | O(1) | Direct cache lookup |
+  | Prefix | `"user_*"` | O(m) | Prefix index lookup |
+  | Suffix | `"*_stats"` | O(n) | Full ETS scan with `String.ends_with?/2` |
+  | Complex | `"user_*_stats"` | O(n) | Full ETS scan with `Regex.match?/2` via `pattern_to_regex/1` |
+
+  Where n = up to `@max_cache_size` (1000) entries and m = matching keys.
+
+  For production workloads requiring frequent pattern lookups, prefer simple
+  prefix patterns to leverage the O(1) prefix index.
   """
 
   alias EveDmv.Core.Utils.Cache
@@ -178,18 +195,24 @@ defmodule EveDmv.Platform.Database.QueryCache do
 
   ## Performance Characteristics
 
+  - **Exact patterns** (e.g., `"user_123"`): O(1) direct cache lookup. Patterns with
+    no wildcard characters are detected and looked up directly.
   - **Simple prefix patterns** (e.g., `"user_*"`): O(m) where m is the number of keys
     with that prefix. Uses the prefix index for fast lookups.
   - **Simple suffix patterns** (e.g., `"*_stats"`): O(n) full ETS scan. Each key is
     converted to string and checked with `String.ends_with?/2`.
   - **Complex patterns** (e.g., `"user_*_stats"`): O(n) full ETS scan. Each key is
-    converted to string and matched against a compiled regex via `Regex.match?/2`.
+    converted to string and matched against a compiled regex via `pattern_to_regex/1`
+    and `Regex.match?/2`.
 
   The cache is bounded by `@max_cache_size` (#{@max_cache_size} entries), so even
   full scans are limited. For production workloads, prefer simple prefix patterns
   like `"entity_type:entity_id:*"` for best performance.
 
   ## Examples
+
+      # O(1) - direct cache lookup (no wildcards)
+      get_keys_by_pattern("character_123_stats")
 
       # Fast - uses prefix index (O(m) where m = matching keys)
       get_keys_by_pattern("character_123_*")
@@ -199,12 +222,20 @@ defmodule EveDmv.Platform.Database.QueryCache do
       get_keys_by_pattern("*_stats")
       get_keys_by_pattern("character_*_stats")
 
+  ## See Also
+
+  - `pattern_to_regex/1` - Private function that compiles wildcard patterns to regex
+  - `@max_cache_size` - Module attribute limiting cache to 1000 entries
+
   """
   @spec get_keys_by_pattern(String.t()) :: [term()]
   def get_keys_by_pattern(pattern) when is_binary(pattern) do
     case analyze_pattern(pattern) do
       {:match_all, _} ->
         get_all_keys()
+
+      {:exact, key} ->
+        get_key_if_exists(key)
 
       {:prefix, prefix} ->
         get_keys_by_prefix(prefix)
@@ -229,6 +260,10 @@ defmodule EveDmv.Platform.Database.QueryCache do
       pattern == "*" ->
         {:match_all, nil}
 
+      # Exact pattern: no wildcards at all - use O(1) direct lookup
+      not String.contains?(pattern, "*") ->
+        {:exact, pattern}
+
       # Simple prefix pattern: "prefix*" (no other wildcards)
       String.ends_with?(pattern, "*") and
           not String.contains?(String.trim_trailing(pattern, "*"), "*") ->
@@ -242,6 +277,15 @@ defmodule EveDmv.Platform.Database.QueryCache do
       # Complex pattern with wildcards in the middle
       true ->
         {:complex, pattern_to_regex(pattern)}
+    end
+  end
+
+  # O(1) lookup for exact key patterns (no wildcards)
+  # Returns [key] if the key exists in cache, otherwise []
+  defp get_key_if_exists(key) do
+    case Cache.get(@cache_name, key) do
+      {:ok, _value} -> [key]
+      :miss -> []
     end
   end
 
@@ -347,6 +391,24 @@ defmodule EveDmv.Platform.Database.QueryCache do
     end
   end
 
+  # Converts a wildcard pattern to a compiled regex for matching cache keys.
+  #
+  # This function is called by get_keys_by_pattern/1 for complex patterns
+  # (patterns with wildcards in the middle, like user_*_stats). The compiled
+  # regex is then used in get_keys_by_full_scan/1 where Regex.match?/2 is
+  # called for each of the up to @max_cache_size (1000) keys in the cache.
+  #
+  # ## Pattern Conversion
+  #
+  # - Escapes all regex special characters
+  # - Converts * wildcards to .* regex wildcards
+  # - Adds ^ and $ anchors for exact-match semantics
+  #
+  # ## Performance Note
+  #
+  # The compiled regex is used in an O(n) full table scan where n can be up to
+  # @max_cache_size (1000) entries. For better performance prefer prefix patterns.
+  @spec pattern_to_regex(String.t()) :: Regex.t()
   defp pattern_to_regex(pattern) do
     escaped =
       pattern

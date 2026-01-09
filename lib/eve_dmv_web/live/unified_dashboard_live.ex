@@ -262,6 +262,39 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
     end
   end
 
+  # Handle async character analyses loading for intelligence dashboard
+  @impl Phoenix.LiveView
+  def handle_info({:load_character_analyses_async, time_range}, socket) do
+    if socket.assigns.dashboard_type == :intelligence do
+      # Perform the async loading in a task to avoid blocking
+      # Store the parent PID so the task can send results back
+      parent_pid = self()
+
+      Task.start(fn ->
+        analyses = load_recent_character_analyses(time_range)
+        send(parent_pid, {:character_analyses_loaded, analyses})
+      end)
+
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl Phoenix.LiveView
+  def handle_info({:character_analyses_loaded, analyses}, socket) do
+    if socket.assigns.dashboard_type == :intelligence do
+      socket =
+        socket
+        |> assign(:character_analyses, analyses)
+        |> assign(:character_analyses_loading, false)
+
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
   @impl Phoenix.LiveView
   def handle_info(_msg, socket) do
     # Ignore other PubSub messages to prevent unnecessary reloads
@@ -337,6 +370,7 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
 
     socket
     |> assign(:character_analyses, [])
+    |> assign(:character_analyses_loading, true)
     |> assign(:threat_assessments, threat_assessments)
     |> assign(:intelligence_reports, [])
     |> assign(:analysis_queue, [])
@@ -383,12 +417,16 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
   end
 
   defp load_dashboard_data(%{assigns: %{dashboard_type: :intelligence}} = socket) do
-    # Load intelligence-specific data including recent character analyses
-    character_analyses = load_recent_character_analyses(socket.assigns.time_range)
+    # Load threat assessments synchronously (fast query)
     threat_assessments = load_recent_threat_assessments()
 
+    # Character analyses are loaded asynchronously to avoid blocking page render
+    # Send message to self to trigger async loading
+    send(self(), {:load_character_analyses_async, socket.assigns.time_range})
+
     socket
-    |> assign(:character_analyses, character_analyses)
+    |> assign(:character_analyses, [])
+    |> assign(:character_analyses_loading, true)
     |> assign(:threat_assessments, threat_assessments)
     |> assign(:loading, false)
     |> assign(:error, nil)
@@ -398,6 +436,7 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
 
       socket
       |> assign(:character_analyses, [])
+      |> assign(:character_analyses_loading, false)
       |> assign(:threat_assessments, [])
       |> assign(:loading, false)
       |> assign(:error, "Failed to load dashboard data")

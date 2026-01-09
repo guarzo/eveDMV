@@ -277,13 +277,21 @@ defmodule EveDmv.Platform.Database.QueryCacheTest do
       assert "key1" in keys
     end
 
-    test "handles pattern with no wildcards (exact match attempt)" do
+    test "handles pattern with no wildcards (O(1) exact lookup)" do
       QueryCache.put("exact_key", "value")
 
-      # Pattern without wildcard - should treat as complex pattern
-      # and use regex matching
+      # Pattern without wildcard - uses O(1) direct cache lookup
+      # instead of falling back to O(n) regex scan
       keys = QueryCache.get_keys_by_pattern("exact_key")
-      assert "exact_key" in keys
+      assert keys == ["exact_key"]
+    end
+
+    test "exact pattern returns empty list for non-existent key" do
+      QueryCache.put("existing_key", "value")
+
+      # Non-existent key with no wildcards returns empty list
+      keys = QueryCache.get_keys_by_pattern("nonexistent_key")
+      assert keys == []
     end
 
     test "handles special regex characters in pattern" do
@@ -302,6 +310,90 @@ defmodule EveDmv.Platform.Database.QueryCacheTest do
 
       keys = QueryCache.get_keys_by_pattern("user:123_*")
       assert length(keys) == 2
+    end
+  end
+
+  describe "performance regression tests for O(n) patterns" do
+    @tag :performance
+    test "suffix patterns perform full scan (O(n) behavior)" do
+      # This test verifies the O(n) behavior warning in the docstring
+      # by checking that suffix patterns correctly scan all entries
+      num_keys = 100
+
+      for i <- 1..num_keys do
+        QueryCache.put("prefix_" <> Integer.to_string(i) <> "_suffix", "value")
+      end
+
+      # Add keys with different suffix
+      for i <- 1..10 do
+        QueryCache.put("prefix_" <> Integer.to_string(i) <> "_other", "value")
+      end
+
+      # Suffix pattern requires full scan
+      keys = QueryCache.get_keys_by_pattern("*_suffix")
+      assert length(keys) == num_keys
+
+      # Verify all expected keys are found
+      for i <- 1..num_keys do
+        assert ("prefix_" <> Integer.to_string(i) <> "_suffix") in keys
+      end
+    end
+
+    @tag :performance
+    test "complex patterns with middle wildcards perform full scan" do
+      # This verifies pattern_to_regex is used correctly
+      for i <- 1..50 do
+        QueryCache.put("user_" <> Integer.to_string(i) <> "_profile", "data")
+        QueryCache.put("user_" <> Integer.to_string(i) <> "_settings", "data")
+      end
+
+      # Middle wildcard pattern: user_*_profile
+      profile_keys = QueryCache.get_keys_by_pattern("user_*_profile")
+      assert length(profile_keys) == 50
+
+      settings_keys = QueryCache.get_keys_by_pattern("user_*_settings")
+      assert length(settings_keys) == 50
+    end
+
+    @tag :performance
+    test "prefix patterns use index for O(m) lookup" do
+      # Create many keys with different prefixes
+      for i <- 1..100 do
+        QueryCache.put("alpha_" <> Integer.to_string(i), "value")
+        QueryCache.put("beta_" <> Integer.to_string(i), "value")
+        QueryCache.put("gamma_" <> Integer.to_string(i), "value")
+      end
+
+      # Prefix lookup should only return keys with that prefix
+      alpha_keys = QueryCache.get_keys_by_pattern("alpha_*")
+      assert length(alpha_keys) == 100
+
+      beta_keys = QueryCache.get_keys_by_pattern("beta_*")
+      assert length(beta_keys) == 100
+
+      # Verify no cross-contamination
+      Enum.each(alpha_keys, fn key ->
+        assert String.starts_with?(key, "alpha_")
+      end)
+    end
+
+    @tag :performance
+    test "pattern_to_regex correctly escapes special characters" do
+      # Test that regex special characters are properly escaped
+      QueryCache.put("key.with.dots", "value1")
+      QueryCache.put("key+with+plus", "value2")
+      QueryCache.put("key[with]brackets", "value3")
+      QueryCache.put("keywithplain", "value4")
+
+      # The . in the pattern should match literal dots, not any character
+      keys = QueryCache.get_keys_by_pattern("key.with.*")
+      assert length(keys) == 1
+      assert "key.with.dots" in keys
+
+      # Verify + is escaped
+      plus_keys = QueryCache.get_keys_by_pattern("key+with+*")
+      assert length(plus_keys) == 1
+      assert "key+with+plus" in plus_keys
     end
   end
 end

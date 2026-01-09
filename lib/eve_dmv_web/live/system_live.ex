@@ -202,6 +202,14 @@ defmodule EveDmvWeb.SystemLive do
      |> put_flash(:error, "Failed to load more corporations")}
   end
 
+  # Handle Task.async completion message (the task sends its result via the ref)
+  # We ignore the return value since we handle it via the manual send in the task
+  def handle_info({ref, _result}, socket) when is_reference(ref) do
+    # Flush the :DOWN message from the task
+    Process.demonitor(ref, [:flush])
+    {:noreply, socket}
+  end
+
   defp handle_historical_fetch_update({:progress, _progress}, socket) do
     # Targeted update: Only update status, no database queries
     status = get_historical_fetch_status(:system, socket.assigns.system_id)
@@ -271,13 +279,19 @@ defmodule EveDmvWeb.SystemLive do
       # Set loading state immediately
       socket = assign(socket, :loading_more_corps, true)
 
-      # Spawn async task to load more corporations
-      Task.start(fn ->
-        result = load_more_corporation_presence(system_id, offset, per_page)
-        send(lv_pid, {:load_more_corps_result, result})
-      end)
+      # Spawn linked async task to load more corporations
+      # Using Task.async links the task to this LiveView process,
+      # ensuring it won't be orphaned if the LiveView terminates
+      task =
+        Task.async(fn ->
+          result = load_more_corporation_presence(system_id, offset, per_page)
+          send(lv_pid, {:load_more_corps_result, result})
+        end)
 
-      {:noreply, assign(socket, :corp_presence_page, next_page)}
+      {:noreply,
+       socket
+       |> assign(:corp_presence_page, next_page)
+       |> assign(:load_more_corps_task, task)}
     end
   end
 
