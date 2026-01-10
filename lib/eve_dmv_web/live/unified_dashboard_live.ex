@@ -260,17 +260,21 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
   end
 
   # Handle async character analyses loading for intelligence dashboard
-  # Using Task.start (unlinked) so task crashes don't bring down the LiveView
+  # Using Task.start (unlinked) for fire-and-forget pattern:
+  # - Task crashes are isolated from the LiveView process
+  # - We send a manual message when complete, no Task.await needed
+  # - If the task fails, the loading indicator just stays (acceptable behavior)
   @impl Phoenix.LiveView
   def handle_info({:load_character_analyses_async, time_range}, socket) do
     if socket.assigns.dashboard_type == :intelligence do
       lv_pid = self()
 
-      # Spawn unlinked fire-and-forget task - crashes are isolated from LiveView
-      Task.start(fn ->
-        analyses = load_recent_character_analyses(time_range)
-        send(lv_pid, {:character_analyses_loaded, analyses})
-      end)
+      # Fire-and-forget: spawn unlinked task that sends result via message
+      {:ok, _pid} =
+        Task.start(fn ->
+          analyses = load_recent_character_analyses(time_range)
+          send(lv_pid, {:character_analyses_loaded, analyses})
+        end)
 
       {:noreply, socket}
     else

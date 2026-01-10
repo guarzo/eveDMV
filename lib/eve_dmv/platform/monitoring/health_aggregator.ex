@@ -22,6 +22,12 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
 
   # Background workers to monitor for health status
   # Each tuple is {module, human_readable_name}
+  #
+  # MAINTENANCE NOTE: This list must be updated manually when background workers
+  # are added, renamed, or removed. Consider migrating to dynamic discovery via:
+  #   - Supervisor.which_children/1 to introspect the supervision tree
+  #   - Registry-based discovery where workers register themselves on startup
+  #   - A behaviour/protocol that workers implement to declare themselves monitorable
   @background_workers [
     {EveDmv.Killmails.CorporationNameBackfill, "Corporation Name Backfill"},
     {EveDmv.Platform.Database.CacheWarmer, "Cache Warmer"},
@@ -690,19 +696,13 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
           }
 
           # Count workers by status for telemetry
-          worker_statuses =
-            Enum.reduce(background_workers, %{alive: 0, not_running: 0}, fn worker, acc ->
-              if worker.alive do
-                Map.update(acc, :alive, 1, &(&1 + 1))
-              else
-                Map.update(acc, :not_running, 1, &(&1 + 1))
-              end
-            end)
+          workers_alive = Enum.count(background_workers, & &1.alive)
+          workers_not_running = length(background_workers) - workers_alive
 
           telemetry_metadata = %{
             timestamp: timestamp,
-            workers_alive: worker_statuses.alive,
-            workers_not_running: worker_statuses.not_running,
+            workers_alive: workers_alive,
+            workers_not_running: workers_not_running,
             active_query_count: length(active_queries),
             pool_utilization: connection_pool.utilization_percent,
             pool_pressure: connection_pool.pressure,
@@ -785,7 +785,8 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
 
       {:error, reason} ->
         Logger.error("get_active_queries/0 failed: #{inspect(reason)}")
-        %{error: inspect(reason), queries: []}
+        # Return empty list to ensure callers can safely use length() and list operations
+        []
     end
   end
 

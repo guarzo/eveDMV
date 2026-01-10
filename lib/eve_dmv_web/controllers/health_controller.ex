@@ -9,6 +9,7 @@ defmodule EveDmvWeb.HealthController do
 
   alias EveDmv.Platform.Database.HealthCheck
   alias EveDmv.Platform.Monitoring.HealthAggregator
+  alias EveDmv.Telemetry.OtelSpans
 
   require Logger
 
@@ -185,17 +186,25 @@ defmodule EveDmvWeb.HealthController do
   end
 
   defp get_diagnostics_safely do
-    HealthAggregator.get_performance_diagnostics()
-  rescue
-    e ->
-      Logger.error(
-        "HealthAggregator.get_performance_diagnostics/0 raised #{inspect(e.__struct__)}: #{Exception.format(:error, e, __STACKTRACE__)}"
-      )
+    OtelSpans.with_span(
+      "health.diagnostics",
+      %{module: __MODULE__, function: :get_diagnostics_safely},
+      fn ->
+        try do
+          HealthAggregator.get_performance_diagnostics()
+        rescue
+          e ->
+            Logger.error(
+              "HealthAggregator.get_performance_diagnostics/0 raised #{inspect(e.__struct__)}: #{Exception.format(:error, e, __STACKTRACE__)}"
+            )
 
-      %{
-        timestamp: DateTime.utc_now(),
-        error: "Failed to collect diagnostics",
-        message: Exception.message(e)
-      }
+            %{
+              timestamp: DateTime.utc_now(),
+              error: "Failed to collect diagnostics",
+              message: Exception.message(e)
+            }
+        end
+      end
+    )
   end
 end

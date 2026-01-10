@@ -66,6 +66,12 @@ echo "Mix version: $(mix --version)"
 run_check "Compilation" "mix compile --warnings-as-errors"
 
 # ===========================================
+# DIALYZER IGNORE FILE VALIDATION
+# ===========================================
+
+run_check "Dialyzer Ignore Stale Entries" "./scripts/check_dialyzer_ignore.sh"
+
+# ===========================================
 # FORMATTING CHECKS
 # ===========================================
 

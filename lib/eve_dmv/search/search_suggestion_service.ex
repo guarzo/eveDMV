@@ -58,12 +58,12 @@ defmodule EveDmv.Search.SearchSuggestionService do
         FROM participants
         WHERE corporation_name IS NOT NULL
           AND corporation_name != ''
-          AND LOWER(corporation_name) LIKE $1
+          AND LOWER(corporation_name) LIKE $1 ESCAPE '\\'
         ORDER BY corporation_id, killmail_time DESC
         LIMIT $2
         """
 
-        search_pattern = "%#{String.downcase(query)}%"
+        search_pattern = "%#{escape_like_pattern(String.downcase(query))}%"
 
         case Ecto.Adapters.SQL.query(EveDmv.Repo, search_query, [search_pattern, limit]) do
           {:ok, %{rows: rows}} ->
@@ -112,12 +112,12 @@ defmodule EveDmv.Search.SearchSuggestionService do
         WHERE alliance_id IS NOT NULL
           AND alliance_name IS NOT NULL
           AND alliance_name != ''
-          AND LOWER(alliance_name) LIKE $1
+          AND LOWER(alliance_name) LIKE $1 ESCAPE '\\'
         ORDER BY alliance_id, killmail_time DESC
         LIMIT $2
         """
 
-        search_pattern = "%#{String.downcase(query)}%"
+        search_pattern = "%#{escape_like_pattern(String.downcase(query))}%"
 
         case Ecto.Adapters.SQL.query(EveDmv.Repo, search_query, [search_pattern, limit]) do
           {:ok, %{rows: rows}} ->
@@ -167,12 +167,12 @@ defmodule EveDmv.Search.SearchSuggestionService do
           security_class
         FROM eve_solar_systems
         WHERE system_name IS NOT NULL
-          AND LOWER(system_name) LIKE $1
+          AND LOWER(system_name) LIKE $1 ESCAPE '\\'
         ORDER BY system_name
         LIMIT $2
         """
 
-        search_pattern = "%#{String.downcase(query)}%"
+        search_pattern = "%#{escape_like_pattern(String.downcase(query))}%"
 
         case Ecto.Adapters.SQL.query(EveDmv.Repo, search_query, [search_pattern, limit]) do
           {:ok, %{rows: rows}} ->
@@ -231,12 +231,12 @@ defmodule EveDmv.Search.SearchSuggestionService do
         WHERE is_ship = true
           AND published = true
           AND type_name IS NOT NULL
-          AND LOWER(type_name) LIKE $1
+          AND LOWER(type_name) LIKE $1 ESCAPE '\\'
         ORDER BY type_name
         LIMIT $2
         """
 
-        search_pattern = "%#{String.downcase(query)}%"
+        search_pattern = "%#{escape_like_pattern(String.downcase(query))}%"
 
         case Ecto.Adapters.SQL.query(EveDmv.Repo, search_query, [search_pattern, limit]) do
           {:ok, %{rows: rows}} ->
@@ -300,6 +300,15 @@ defmodule EveDmv.Search.SearchSuggestionService do
 
   # Private helper functions
 
+  # Escapes special LIKE pattern characters (%, _, \) so they are treated as literals.
+  # Backslashes are escaped first to avoid double-escaping.
+  defp escape_like_pattern(query) do
+    query
+    |> String.replace("\\", "\\\\")
+    |> String.replace("%", "\\%")
+    |> String.replace("_", "\\_")
+  end
+
   defp get_character_suggestions_from_stats(query, limit) do
     # Try direct SQL query on player_stats table if it exists and has data
     search_query = """
@@ -311,12 +320,12 @@ defmodule EveDmv.Search.SearchSuggestionService do
     total_losses
     FROM player_stats
     WHERE character_name IS NOT NULL
-      AND LOWER(character_name) LIKE $1
+      AND LOWER(character_name) LIKE $1 ESCAPE '\\'
     ORDER BY total_kills DESC, total_losses ASC
     LIMIT $2
     """
 
-    search_pattern = "%#{String.downcase(query)}%"
+    search_pattern = "%#{escape_like_pattern(String.downcase(query))}%"
 
     case Ecto.Adapters.SQL.query(EveDmv.Repo, search_query, [search_pattern, limit]) do
       {:ok, %{rows: [_ | _] = rows}} ->
@@ -381,14 +390,14 @@ defmodule EveDmv.Search.SearchSuggestionService do
       MAX(p.killmail_time) as last_seen
     FROM participants p
     WHERE p.character_name IS NOT NULL
-      AND LOWER(p.character_name) LIKE $1
+      AND LOWER(p.character_name) LIKE $1 ESCAPE '\\'
       AND p.character_id IS NOT NULL
     GROUP BY p.character_id
     ORDER BY total_killmails DESC, last_seen DESC
     LIMIT $2
     """
 
-    search_pattern = "%#{String.downcase(query)}%"
+    search_pattern = "%#{escape_like_pattern(String.downcase(query))}%"
 
     case Ecto.Adapters.SQL.query(EveDmv.Repo, search_query, [search_pattern, limit]) do
       {:ok, %{rows: rows}} ->
