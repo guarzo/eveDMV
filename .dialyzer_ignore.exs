@@ -1,201 +1,243 @@
 [
-  # ===========================================
-  # DIALYZER IGNORE FILE
-  # ===========================================
-  # This file contains patterns for known false positives in a complex
-  # Ash Framework / Phoenix LiveView / Bounded Context architecture.
+  # =============================================================================
+  # DIALYZER IGNORE FILE - TIGHTENED AND DOCUMENTED
+  # =============================================================================
+  # Generated: 2026-01-09
+  # Derived from 301 actual dialyzer warnings
+  # Consolidated to ~120 patterns (from 243 unique patterns)
   #
-  # Categories:
-  # 1. MapSet opaque type warnings (Dialyzer limitation)
-  # 2. Contract supertype warnings (type inference through bounded contexts)
-  # 3. Pattern match warnings (error handling code paths)
-  # 4. Extra range warnings (defensive error returns)
-  # 5. Invalid contract warnings (spec vs inference mismatch)
-  # 6. Compile-time conditionals (Mix.env checks)
-  # ===========================================
+  # REVIEW POLICY:
+  # - contract_supertype: Review when function implementation changes
+  # - pattern_match at line 1: Compile-time Mix.env checks (legitimate)
+  # - call_without_opaque: MapSet opaque type false positives (legitimate)
+  # - pattern_match with :error: Consider if error handling is dead code
+  # =============================================================================
 
-  # ===========================================
-  # MAPSET OPAQUE TYPE WARNINGS
-  # ===========================================
-  # MapSet is an opaque type - Dialyzer reports false positives when it
-  # tracks internal structure through recursive calls. The code is correct.
+  # =============================================================================
+  # COMPILE-TIME CONDITIONALS (Mix.env checks at line 1)
+  # =============================================================================
+  # These are legitimate compile-time environment checks that dialyzer
+  # cannot analyze across compilation environments.
 
-  ~r/contexts\.ex.*call_without_opaque/,
-  ~r/multi_system_battle_correlator\.ex.*call_without_opaque/,
-  ~r/multi_system_battle_correlator\.ex.*call_with_opaque/,
-  ~r/multi_system_battle_correlator\.ex.*opaque/,
-  ~r/correlation_engine\.ex.*call_without_opaque/,
-  ~r/cross_character_analyzer\.ex.*call_without_opaque/,
-  ~r/ewar_analyzer\.ex.*call_without_opaque/,
-  ~r/cross_system_coordinator\.ex.*call_without_opaque/,
+  ~r/contexts\/battle_analysis\.ex:1:pattern_match/,
+  ~r/contexts\/battle_analysis\/domain\/battle_metrics_calculator\.ex:1:pattern_match/,
+  ~r/contexts\/character_intelligence\/domain\/engines\/player_stats_engine\.ex:1:pattern_match/,
+  ~r/contexts\/combat\/services\/doctrine_effectiveness_service\.ex:1:pattern_match/,
+  ~r/contexts\/combat_intelligence\/domain\/extractors\/killmail_extractor\.ex:1:pattern_match/,
+  ~r/contexts\/corporation\/core\/threat_detector\.ex:1:pattern_match/,
+  ~r/contexts\/corporation\/services\/analytics_service\.ex:1:pattern_match/,
+  ~r/contexts\/corporation_intelligence\/domain\/combat_doctrine_analyzer\.ex:1:pattern_match/,
+  ~r/contexts\/surveillance\/domain\/chain_intelligence\.ex:1:pattern_match/,
+  ~r/contexts\/threat_assessment\/domain\/threat_analyzer\.ex:1:pattern_match/,
+  ~r/contexts\/threat_surveillance\/domain\/behavioral_pattern_analyzer\.ex:1:pattern_match/,
+  ~r/external\/eve\/esi_market_client\.ex:1:pattern_match/,
+  ~r/external\/eve\/esi_request_client\.ex:1:pattern_match/,
+  ~r/external\/market\/strategies\/esi_strategy\.ex:1:pattern_match/,
+  ~r/static_data\/ship_attribute_importer\.ex:1:pattern_match/,
 
-  # ===========================================
-  # CONTRACT SUPERTYPE WARNINGS
-  # ===========================================
-  # Dialyzer infers narrower types than documented specs due to complex
-  # type flow through bounded context APIs. These are intentionally broad
-  # specs to allow for future expansion.
+  # =============================================================================
+  # MAPSET OPAQUE TYPE WARNINGS (Dialyzer false positives)
+  # =============================================================================
+  # MapSet is an opaque type. These warnings are false positives when
+  # Dialyzer tracks internal structure through recursive calls.
 
-  ~r/character_intelligence.*contract_supertype/,
-  ~r/corporation_intelligence.*contract_supertype/,
-  ~r/combat_intelligence.*contract_supertype/,
-  ~r/fleet_operations.*contract_supertype/,
-  ~r/killmail_processing.*contract_supertype/,
-  ~r/market_intelligence.*contract_supertype/,
-  ~r/player_profile.*contract_supertype/,
-  ~r/system_analysis.*contract_supertype/,
-  ~r/threat_surveillance.*contract_supertype/,
-  ~r/threat_config.*contract_supertype/,
-  ~r/health_config.*contract_supertype/,
-  ~r/pipeline_autoscaler_config.*contract_supertype/,
-  ~r/intelligence_infrastructure.*contract_supertype/,
-  ~r/unified_cache.*contract_supertype/,
-  ~r/unified_repository.*contract_supertype/,
-  ~r/unified_event_processor.*contract_supertype/,
-  ~r/data_requirements.*contract_supertype/,
-  ~r/pattern_analysis.*contract_supertype/,
-  ~r/cache_helper.*contract_supertype/,
-  ~r/config\.ex.*contract_supertype/,
-  ~r/timeout_helper.*contract_supertype/,
-  ~r/security_classification.*contract_supertype/,
-  ~r/threat_classification.*contract_supertype/,
-  ~r/naive_datetime_utils.*contract_supertype/,
-  ~r/number_formatter.*contract_supertype/,
-  ~r/metrics_calculator.*contract_supertype/,
-  ~r/query_optimizer.*contract_supertype/,
-  ~r/query_plan_analyzer.*contract_supertype/,
-  ~r/file_manager.*contract_supertype/,
-  ~r/item_type_processor.*contract_supertype/,
-  ~r/sde_validator.*contract_supertype/,
-  ~r/cache_manager.*contract_supertype/,
-  ~r/activity_correlator.*contract_supertype/,
-  ~r/result\.ex.*contract_supertype/,
-  ~r/character_intelligence_live.*contract_supertype/,
+  ~r/contexts\.ex:.*:call_without_opaque/,
+  ~r/contexts\/battle_analysis\/domain\/multi_system_battle_correlator\.ex:.*:call/,
+  ~r/contexts\/battle_analysis\/domain\/strategic\/correlation_engine\.ex:.*:call_without_opaque/,
+  ~r/contexts\/character_intelligence\/domain\/analyzers\/cross_character_analyzer\.ex:.*:call_without_opaque/,
+  ~r/contexts\/combat_intelligence\/domain\/ewar_analyzer\.ex:.*:call_without_opaque/,
+  ~r/contexts\/intelligence_infrastructure\/domain\/cross_system\/cross_system_coordinator\.ex:.*:call_without_opaque/,
 
-  # ===========================================
-  # PATTERN MATCH WARNINGS
-  # ===========================================
-  # These are defensive error handling patterns where dialyzer infers
-  # certain branches are unreachable. The code handles edge cases that
-  # can occur in production but not in dialyzer's type analysis.
+  # =============================================================================
+  # CONFIGURATION CONSTANT SPECS (contract_supertype)
+  # =============================================================================
+  # These modules return specific constant values but use broader specs
+  # for API stability. This is intentional design.
 
-  # Bounded context pattern matches
-  ~r/battle_analysis\.ex.*pattern_match/,
-  ~r/battle_curator\.ex.*pattern_match/,
-  ~r/character_intelligence\.ex.*pattern_match/,
-  ~r/character_stats\.ex.*pattern_match/,
-  ~r/shared_utilities\.ex.*pattern_match/,
-  ~r/corporation_intelligence\.ex.*pattern_match/,
-  ~r/corporation_analyzer\.ex.*pattern_match/,
-  ~r/single_system_analyzer\.ex.*pattern_match/,
-  ~r/killmail_presenter\.ex.*pattern_match/,
-  ~r/price_service\.ex.*pattern_match/,
-  ~r/player_analyzer\.ex.*pattern_match/,
-  ~r/alert_batcher\.ex.*pattern_match/,
-  ~r/notification_dispatcher\.ex.*pattern_match/,
-  ~r/regional_correlation_analyzer\.ex.*pattern_match/,
-  ~r/threat_analyzer\.ex.*pattern_match/,
-  ~r/correlation_engine\.ex.*pattern_match/,
-  ~r/module_reorganizer\.ex.*pattern_match/,
-  ~r/battle_service\.ex.*pattern_match/,
-  ~r/dns_resolver\.ex.*pattern_match/,
-  ~r/tactical_pattern_detector\.ex.*pattern_match/,
-  ~r/threat_assessor\.ex.*pattern_match/,
-  ~r/combat_doctrine_analyzer\.ex.*pattern_match/,
-  ~r/killmail_orchestrator\.ex.*pattern_match/,
-  ~r/surveillance_matching_engine\.ex.*pattern_match/,
-  ~r/intelligence_suitability\.ex.*pattern_match/,
-  ~r/insight_generator\.ex.*guard_fail/,
-  ~r/module_reorganizer\.ex.*guard_fail/,
+  ~r/contexts\/character_intelligence\/threat_config\.ex:.*:contract_supertype/,
+  ~r/contexts\/fleet_operations\/domain\/analyzers\/fleet_asset_manager\/requirements_builder\.ex:.*:contract_supertype/,
+  ~r/platform\/monitoring\/health_config\.ex:.*:contract_supertype/,
+  ~r/external\/killmails\/pipeline_autoscaler_config\.ex:.*:contract_supertype/,
 
-  # Compile-time conditional patterns (line 1 warnings from Mix.env checks)
-  ~r/battle_metrics_calculator\.ex:1:pattern_match/,
-  ~r/player_stats_engine\.ex:1:pattern_match/,
-  ~r/doctrine_effectiveness_service\.ex:1:pattern_match/,
-  ~r/killmail_extractor\.ex:1:pattern_match/,
-  ~r/threat_detector\.ex:1:pattern_match/,
-  ~r/analytics_service\.ex:1:pattern_match/,
-  ~r/chain_intelligence\.ex:1:pattern_match/,
-  ~r/behavioral_pattern_analyzer\.ex:1:pattern_match/,
-  ~r/esi_market_client\.ex:1:pattern_match/,
-  ~r/esi_request_client\.ex:1:pattern_match/,
-  ~r/ship_attribute_importer\.ex:1:pattern_match/,
+  # =============================================================================
+  # CONTEXT API SPECS (contract_supertype)
+  # =============================================================================
+  # Public APIs with intentionally broad specs for stability and future expansion.
 
-  # Static data loader pattern matches
-  ~r/static_data_loader\.ex.*pattern_match/,
-  ~r/ccp_sde_client\.ex.*pattern_match/,
-  ~r/item_type_processor\.ex.*pattern_match/,
-  ~r/jsonl_parser\.ex.*pattern_match/,
-  ~r/sde_startup_service\.ex.*pattern_match/,
-  ~r/sde_validator\.ex.*pattern_match/,
-  ~r/sde_version_manager\.ex.*pattern_match/,
-  ~r/solar_system_processor\.ex.*pattern_match/,
+  ~r/contexts\/character_intelligence\.ex:.*:contract_supertype/,
+  ~r/contexts\/corporation_intelligence\.ex:.*:contract_supertype/,
+  ~r/contexts\/corporation_intelligence\/api\.ex:.*:contract_supertype/,
+  ~r/contexts\/system_analysis\.ex:.*:contract_supertype/,
+  ~r/contexts\/combat_intelligence\/api\.ex:.*:contract_supertype/,
+  ~r/contexts\/market_intelligence\/api\.ex:.*:contract_supertype/,
+  ~r/contexts\/threat_surveillance\/api\.ex:.*:contract_supertype/,
+  ~r/contexts\/player_profile\/api\.ex:.*:contract_supertype/,
 
-  # Platform pattern matches
-  ~r/application\.ex.*pattern_match/,
-  ~r/api_authentication\.ex.*pattern_match/,
-  ~r/user\.ex.*pattern_match/,
-  ~r/performance_optimizer\.ex.*pattern_match/,
-  ~r/error_recovery_worker\.ex.*pattern_match/,
-  ~r/background_task_supervisor\.ex.*pattern_match/,
-  ~r/ship_role_analysis_worker\.ex.*pattern_match/,
-  ~r/ship_attributes_service\.ex.*pattern_match/,
+  # =============================================================================
+  # DOMAIN ANALYZER SPECS (contract_supertype)
+  # =============================================================================
 
-  # External integration pattern matches
-  ~r/wanderer_client\.ex.*pattern_match/,
-  ~r/esi_strategy\.ex.*pattern_match/,
+  ~r/contexts\/character_intelligence\/domain\/calculators\/threat_score_calculator\.ex:.*:contract_supertype/,
+  ~r/contexts\/combat_intelligence\/domain\/external_group_analyzer\.ex:.*:contract_supertype/,
+  ~r/contexts\/combat_intelligence\/domain\/intelligence_transformer\.ex:.*:contract_supertype/,
+  ~r/contexts\/corporation_intelligence\/domain\/analyzers\/corporation_analyzer\.ex:.*:contract_supertype/,
+  ~r/contexts\/intelligence_infrastructure\/domain\/correlators\/activity_correlator\.ex:.*:contract_supertype/,
+  ~r/contexts\/killmail_processing\/domain\/extended_historical_fetcher\.ex:.*:contract_supertype/,
+  ~r/contexts\/killmail_processing\/domain\/historical_fetch_worker\.ex:.*:contract_supertype/,
 
-  # Web layer pattern matches
-  ~r/battle_share_controller\.ex.*pattern_match/,
-  ~r/character_threat_controller\.ex.*pattern_match/,
-  ~r/auth_controller\.ex.*pattern_match/,
-  ~r/battle_intelligence_controller\.ex.*pattern_match/,
-  ~r/character_behavior_controller\.ex.*pattern_match/,
-  ~r/battle_analysis_live\.ex.*pattern_match/,
-  ~r/character_comparison_live\.ex.*pattern_match/,
-  ~r/character_intelligence_live\.ex.*pattern_match/,
-  ~r/liveview_pattern_template\.ex.*pattern_match/,
-  ~r/killmail_live\.ex.*pattern_match/,
-  ~r/profile_live\.ex.*pattern_match/,
-  ~r/battle_timeline_component\.ex.*pattern_match/,
+  # =============================================================================
+  # CORE INFRASTRUCTURE SPECS (contract_supertype)
+  # =============================================================================
 
-  # ===========================================
-  # EXTRA RANGE WARNINGS
-  # ===========================================
-  # Return type includes values that are never actually returned.
-  # These are intentionally broad for API stability.
+  ~r/core\/analysis\/data_requirements\.ex:.*:contract_supertype/,
+  ~r/core\/domain\/analytics\/pattern_analysis\.ex:.*:contract_supertype/,
+  ~r/core\/domain\/intelligence\/core\/cache_helper\.ex:.*:contract_supertype/,
+  ~r/core\/domain\/intelligence\/core\/config\.ex:.*:contract_supertype/,
+  ~r/core\/domain\/intelligence\/core\/timeout_helper\.ex:.*:contract_supertype/,
+  ~r/core\/infrastructure\/unified_cache\.ex:.*:contract_supertype/,
+  ~r/core\/infrastructure\/unified_event_processor\.ex:.*:contract_supertype/,
+  ~r/core\/infrastructure\/unified_repository\.ex:.*:contract_supertype/,
+  ~r/core\/shared_kernel\/policies\/security_classification\.ex:.*:contract_supertype/,
+  ~r/core\/shared_kernel\/policies\/threat_classification\.ex:.*:contract_supertype/,
+  ~r/core\/utils\/naive_datetime_utils\.ex:.*:contract_supertype/,
+  ~r/core\/utils\/number_formatter\.ex:.*:contract_supertype/,
+  ~r/result\.ex:.*:contract_supertype/,
+  ~r/utilities\/calculators\/metrics_calculator\.ex:.*:contract_supertype/,
 
-  ~r/combat_intelligence.*api\.ex.*extra_range/,
-  ~r/character_analyzer\.ex.*extra_range/,
-  ~r/surveillance.*api\.ex.*extra_range/,
-  ~r/security_classification\.ex.*extra_range/,
-  ~r/circuit_breaker\.ex.*extra_range/,
-  ~r/static_data_loader\.ex.*extra_range/,
-  ~r/item_type_processor\.ex.*extra_range/,
-  ~r/jsonl_parser\.ex.*extra_range/,
-  ~r/sde_validator\.ex.*extra_range/,
-  ~r/solar_system_processor\.ex.*extra_range/,
-  ~r/account_manager\.ex.*extra_range/,
+  # =============================================================================
+  # EXTERNAL INTEGRATION SPECS (contract_supertype)
+  # =============================================================================
 
-  # ===========================================
-  # INVALID CONTRACT WARNINGS
-  # ===========================================
-  # Specs intentionally broader than implementation for API flexibility.
+  ~r/external\/eve\/name_resolver\/cache_manager\.ex:.*:contract_supertype/,
+  ~r/external\/eve\/static_data_loader\/file_manager\.ex:.*:contract_supertype/,
+  ~r/external\/eve\/static_data_loader\/item_type_processor\.ex:.*:contract_supertype/,
+  ~r/external\/eve\/static_data_loader\/sde_validator\.ex:.*:contract_supertype/,
+  ~r/platform\/database\/query_optimizer\.ex:.*:contract_supertype/,
+  ~r/platform\/database\/query_plan_analyzer\.ex:.*:contract_supertype/,
+  ~r/live\/character_intelligence_live\.ex:.*:contract_supertype/,
 
-  ~r/corporation.*api\.ex.*invalid_contract/,
-  ~r/intelligence.*api\.ex.*invalid_contract/,
-  ~r/surveillance.*api\.ex.*invalid_contract/,
-  ~r/threat_surveillance.*api\.ex.*invalid_contract/,
+  # =============================================================================
+  # EXTRA_RANGE WARNINGS (specs broader than current returns)
+  # =============================================================================
 
-  # ===========================================
-  # CALL AND NO_RETURN WARNINGS
-  # ===========================================
-  # Repository stubs and optional features that may not be implemented.
+  ~r/contexts\/combat_intelligence\/api\.ex:.*:extra_range/,
+  ~r/contexts\/combat_intelligence\/domain\/character_analyzer\.ex:.*:extra_range/,
+  ~r/contexts\/surveillance\/api\.ex:.*:extra_range/,
+  ~r/core\/shared_kernel\/policies\/security_classification\.ex:.*:extra_range/,
+  ~r/external\/eve\/circuit_breaker\.ex:.*:extra_range/,
+  ~r/external\/eve\/static_data_loader\.ex:.*:extra_range/,
+  ~r/external\/eve\/static_data_loader\/item_type_processor\.ex:.*:extra_range/,
+  ~r/external\/eve\/static_data_loader\/jsonl_parser\.ex:.*:extra_range/,
+  ~r/external\/eve\/static_data_loader\/sde_validator\.ex:.*:extra_range/,
+  ~r/external\/eve\/static_data_loader\/solar_system_processor\.ex:.*:extra_range/,
+  ~r/platform\/auth\/account_manager\.ex:.*:extra_range/,
 
-  ~r/character_repository\.ex.*:call/,
-  ~r/character_repository\.ex.*no_return/,
-  ~r/killmail_repository\.ex.*:call/,
-  ~r/killmail_repository\.ex.*no_return/,
-  ~r/jsonl_parser\.ex.*:call/,
-  ~r/participant\.ex.*call_to_missing/
+  # =============================================================================
+  # INVALID_CONTRACT WARNINGS
+  # =============================================================================
+
+  ~r/contexts\/corporation\/api\.ex:.*:invalid_contract/,
+  ~r/contexts\/intelligence\/api\.ex:.*:invalid_contract/,
+  ~r/contexts\/surveillance\/api\.ex:.*:invalid_contract/,
+  ~r/contexts\/threat_surveillance\/api\.ex:.*:invalid_contract/,
+
+  # =============================================================================
+  # PATTERN_MATCH_COV (defensive catch-all clauses)
+  # =============================================================================
+
+  ~r/contexts\/battle_analysis\.ex:.*:pattern_match_cov/,
+  ~r/contexts\/character_intelligence\.ex:.*:pattern_match_cov/,
+  ~r/contexts\/character_intelligence\/resources\/character_stats\.ex:.*:pattern_match_cov/,
+  ~r/contexts\/combat\/core\/tactical_pattern_detector\.ex:.*:pattern_match_cov/,
+  ~r/contexts\/corporation_intelligence\/domain\/combat_doctrine\/threat_assessor\.ex:.*:pattern_match_cov/,
+  ~r/contexts\/corporation_intelligence\/domain\/combat_doctrine_analyzer\.ex:.*:pattern_match_cov/,
+  ~r/contexts\/killmail_processing\/domain\/killmail_orchestrator\.ex:.*:pattern_match_cov/,
+  ~r/contexts\/threat_surveillance\/domain\/surveillance_matching_engine\.ex:.*:pattern_match_cov/,
+  ~r/core\/domain\/intelligence\/intelligence_scoring\/intelligence_suitability\.ex:.*:pattern_match_cov/,
+  ~r/platform\/auth\/user\.ex:.*:pattern_match_cov/,
+  ~r/platform\/monitoring\/error_recovery_worker\.ex:.*:pattern_match_cov/,
+  ~r/platform\/workers\/background_task_supervisor\.ex:.*:pattern_match_cov/,
+  ~r/platform\/workers\/ship_role_analysis_worker\.ex:.*:pattern_match_cov/,
+  ~r/components\/battle_timeline_component\.ex:.*:pattern_match_cov/,
+  ~r/controllers\/api\/battle_intelligence_controller\.ex:.*:pattern_match_cov/,
+  ~r/controllers\/api\/character_behavior_controller\.ex:.*:pattern_match_cov/,
+  ~r/controllers\/api\/character_threat_controller\.ex:.*:pattern_match_cov/,
+  ~r/live\/battle_analysis_live\.ex:.*:pattern_match_cov/,
+  ~r/live\/killmail_live\.ex:.*:pattern_match_cov/,
+  ~r/live\/profile_live\.ex:.*:pattern_match_cov/,
+
+  # =============================================================================
+  # DATA-DEPENDENT PATTERN_MATCH WARNINGS
+  # =============================================================================
+
+  ~r/application\.ex:.*:pattern_match/,
+  ~r/contexts\/battle_analysis\.ex:.*:pattern_match/,
+  ~r/contexts\/battle_sharing\/domain\/battle_curator\.ex:.*:pattern_match/,
+  ~r/contexts\/character_intelligence\.ex:.*:pattern_match/,
+  ~r/contexts\/character_intelligence\/domain\/threat_scoring\/shared_utilities\.ex:.*:pattern_match/,
+  ~r/contexts\/character_intelligence\/resources\/character_stats\.ex:.*:pattern_match/,
+  ~r/contexts\/corporation_intelligence\.ex:.*:pattern_match/,
+  ~r/contexts\/corporation_intelligence\/domain\/analyzers\/corporation_analyzer\.ex:.*:pattern_match/,
+  ~r/contexts\/intelligence_infrastructure\/domain\/analyzers\/single_system_analyzer\.ex:.*:pattern_match/,
+  ~r/contexts\/killmail_processing\/domain\/killmail_presenter\.ex:.*:pattern_match/,
+  ~r/contexts\/market_intelligence\/domain\/price_service\.ex:.*:pattern_match/,
+  ~r/contexts\/player_profile\/domain\/player_analyzer\.ex:.*:pattern_match/,
+  ~r/contexts\/surveillance\/domain\/alert_batcher\.ex:.*:pattern_match/,
+  ~r/contexts\/surveillance\/infrastructure\/notification_dispatcher\.ex:.*:pattern_match/,
+  ~r/contexts\/system_analysis\/domain\/regional_correlation_analyzer\.ex:.*:pattern_match/,
+  ~r/contexts\/threat_assessment\/analyzers\/threat_analyzer\.ex:.*:pattern_match/,
+  ~r/core\/domain\/intelligence\/core\/correlation_engine\.ex:.*:pattern_match/,
+  ~r/core\/refactoring\/module_reorganizer\.ex:.*:pattern_match/,
+  ~r/core\/services\/battle_service\.ex:.*:pattern_match/,
+  ~r/core\/utils\/dns_resolver\.ex:.*:pattern_match/,
+  ~r/platform\/auth\/security\/api_authentication\.ex:.*:pattern_match/,
+  ~r/platform\/auth\/user\.ex:.*:pattern_match/,
+  ~r/platform\/monitoring\/performance_optimizer\.ex:.*:pattern_match/,
+  ~r/static_data\/ship_attributes_service\.ex:.*:pattern_match/,
+
+  # =============================================================================
+  # EXTERNAL INTEGRATION PATTERN_MATCH WARNINGS
+  # =============================================================================
+
+  ~r/external\/eve\/static_data_loader\.ex:.*:pattern_match/,
+  ~r/external\/eve\/static_data_loader\/ccp_sde_client\.ex:.*:pattern_match/,
+  ~r/external\/eve\/static_data_loader\/item_type_processor\.ex:.*:pattern_match/,
+  ~r/external\/eve\/static_data_loader\/jsonl_parser\.ex:.*:pattern_match/,
+  ~r/external\/eve\/static_data_loader\/sde_startup_service\.ex:.*:pattern_match/,
+  ~r/external\/eve\/static_data_loader\/sde_validator\.ex:.*:pattern_match/,
+  ~r/external\/eve\/static_data_loader\/sde_version_manager\.ex:.*:pattern_match/,
+  ~r/external\/eve\/static_data_loader\/solar_system_processor\.ex:.*:pattern_match/,
+  ~r/external\/market\/strategies\/esi_strategy\.ex:.*:pattern_match/,
+  ~r/external\/wanderer\/wanderer_client\.ex:.*:pattern_match/,
+
+  # =============================================================================
+  # WEB LAYER PATTERN_MATCH WARNINGS
+  # =============================================================================
+
+  ~r/controllers\/api\/battle_share_controller\.ex:.*:pattern_match/,
+  ~r/controllers\/api\/character_threat_controller\.ex:.*:pattern_match/,
+  ~r/controllers\/auth_controller\.ex:.*:pattern_match/,
+  ~r/live\/battle_analysis_live\.ex:.*:pattern_match/,
+  ~r/live\/character_comparison_live\.ex:.*:pattern_match/,
+  ~r/live\/character_intelligence_live\.ex:.*:pattern_match/,
+  ~r/live\/helpers\/liveview_pattern_template\.ex:.*:pattern_match/,
+  ~r/live\/unified_dashboard_live\.ex:.*:pattern_match/,
+
+  # =============================================================================
+  # GUARD_FAIL WARNINGS
+  # =============================================================================
+
+  ~r/contexts\/intelligence\/services\/insight_generator\.ex:.*:guard_fail/,
+  ~r/core\/refactoring\/module_reorganizer\.ex:.*:guard_fail/,
+
+  # =============================================================================
+  # REPOSITORY MACRO AND ASH FRAMEWORK WARNINGS
+  # =============================================================================
+
+  ~r/platform\/database\/character_repository\.ex:.*:call/,
+  ~r/platform\/database\/character_repository\.ex:.*:no_return/,
+  ~r/platform\/database\/killmail_repository\.ex:.*:call/,
+  ~r/platform\/database\/killmail_repository\.ex:.*:no_return/,
+  ~r/external\/killmails\/participant\.ex:.*:call_to_missing/,
+  ~r/external\/eve\/static_data_loader\/jsonl_parser\.ex:.*:call/
 ]

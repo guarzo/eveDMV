@@ -6,11 +6,6 @@ defmodule EveDmv.Search.SearchSuggestionService do
   and systems based on database queries with optimized performance.
   """
 
-  alias EveDmv.Killmails.Participant
-  alias EveDmv.Static.EveItemType
-  alias EveDmv.Static.EveSolarSystem
-
-  require Ash.Query
   require Logger
 
   @doc """
@@ -45,6 +40,7 @@ defmodule EveDmv.Search.SearchSuggestionService do
 
   @doc """
   Get corporation search suggestions based on partial name match.
+  Uses database-level filtering for performance.
   """
   def get_corporation_suggestions(query, opts \\ []) do
     limit = Keyword.get(opts, :limit, 10)
@@ -54,31 +50,28 @@ defmodule EveDmv.Search.SearchSuggestionService do
       {:ok, []}
     else
       try do
-        # Query unique corporations from participants
+        # Use direct SQL with ILIKE for efficient database-level filtering
+        search_query = """
+        SELECT DISTINCT ON (corporation_id)
+          corporation_id,
+          corporation_name
+        FROM participants
+        WHERE corporation_name IS NOT NULL
+          AND corporation_name != ''
+          AND LOWER(corporation_name) LIKE $1 ESCAPE '\\'
+        ORDER BY corporation_id, killmail_time DESC
+        LIMIT $2
+        """
 
-        corporation_query =
-          Participant
-          |> Ash.Query.new()
-          |> Ash.Query.select([:corporation_id, :corporation_name])
-          |> Ash.Query.distinct([:corporation_id])
-          |> Ash.Query.limit(100)
+        search_pattern = "%#{escape_like_pattern(String.downcase(query))}%"
 
-        case Ash.read(corporation_query, domain: EveDmv.Api) do
-          {:ok, corporations} ->
-            # Filter in Elixir
-            filtered_corps =
-              corporations
-              |> Enum.filter(fn corp ->
-                corp.corporation_name &&
-                  String.contains?(String.downcase(corp.corporation_name), String.downcase(query))
-              end)
-              |> Enum.take(limit)
-
+        case Ecto.Adapters.SQL.query(EveDmv.Repo, search_query, [search_pattern, limit]) do
+          {:ok, %{rows: rows}} ->
             suggestions =
-              Enum.map(filtered_corps, fn corp ->
+              Enum.map(rows, fn [corp_id, corp_name] ->
                 %{
-                  id: corp.corporation_id,
-                  name: corp.corporation_name,
+                  id: corp_id,
+                  name: corp_name,
                   type: :corporation,
                   subtitle: "Corporation"
                 }
@@ -100,6 +93,7 @@ defmodule EveDmv.Search.SearchSuggestionService do
 
   @doc """
   Get alliance search suggestions based on partial name match.
+  Uses database-level filtering for performance.
   """
   def get_alliance_suggestions(query, opts \\ []) do
     limit = Keyword.get(opts, :limit, 10)
@@ -109,32 +103,29 @@ defmodule EveDmv.Search.SearchSuggestionService do
       {:ok, []}
     else
       try do
-        alliance_query =
-          Participant
-          |> Ash.Query.new()
-          |> Ash.Query.select([:alliance_id, :alliance_name])
-          |> Ash.Query.distinct([:alliance_id])
-          |> Ash.Query.limit(100)
+        # Use direct SQL with ILIKE for efficient database-level filtering
+        search_query = """
+        SELECT DISTINCT ON (alliance_id)
+          alliance_id,
+          alliance_name
+        FROM participants
+        WHERE alliance_id IS NOT NULL
+          AND alliance_name IS NOT NULL
+          AND alliance_name != ''
+          AND LOWER(alliance_name) LIKE $1 ESCAPE '\\'
+        ORDER BY alliance_id, killmail_time DESC
+        LIMIT $2
+        """
 
-        case Ash.read(alliance_query, domain: EveDmv.Api) do
-          {:ok, alliances} ->
-            # Filter in Elixir
-            filtered_alliances =
-              alliances
-              |> Enum.filter(fn alliance ->
-                alliance.alliance_name &&
-                  String.contains?(
-                    String.downcase(alliance.alliance_name),
-                    String.downcase(query)
-                  )
-              end)
-              |> Enum.take(limit)
+        search_pattern = "%#{escape_like_pattern(String.downcase(query))}%"
 
+        case Ecto.Adapters.SQL.query(EveDmv.Repo, search_query, [search_pattern, limit]) do
+          {:ok, %{rows: rows}} ->
             suggestions =
-              Enum.map(filtered_alliances, fn alliance ->
+              Enum.map(rows, fn [alliance_id, alliance_name] ->
                 %{
-                  id: alliance.alliance_id,
-                  name: alliance.alliance_name,
+                  id: alliance_id,
+                  name: alliance_name,
                   type: :alliance,
                   subtitle: "Alliance"
                 }
@@ -156,6 +147,7 @@ defmodule EveDmv.Search.SearchSuggestionService do
 
   @doc """
   Get system search suggestions based on partial name match.
+  Uses database-level filtering for performance.
   """
   def get_system_suggestions(query, opts \\ []) do
     limit = Keyword.get(opts, :limit, 10)
@@ -165,38 +157,40 @@ defmodule EveDmv.Search.SearchSuggestionService do
       {:ok, []}
     else
       try do
-        system_query =
-          EveSolarSystem
-          |> Ash.Query.new()
-          |> Ash.Query.select([
-            :system_id,
-            :system_name,
-            :region_name,
-            :security_status,
-            :security_class
-          ])
-          |> Ash.Query.limit(500)
+        # Use direct SQL with ILIKE for efficient database-level filtering
+        search_query = """
+        SELECT
+          system_id,
+          system_name,
+          region_name,
+          security_status,
+          security_class
+        FROM eve_solar_systems
+        WHERE system_name IS NOT NULL
+          AND LOWER(system_name) LIKE $1 ESCAPE '\\'
+        ORDER BY system_name
+        LIMIT $2
+        """
 
-        case Ash.read(system_query, domain: EveDmv.Api) do
-          {:ok, systems} ->
-            # Filter in Elixir
-            filtered_systems =
-              systems
-              |> Enum.filter(fn system ->
-                String.contains?(String.downcase(system.system_name), String.downcase(query))
-              end)
-              |> Enum.take(limit)
+        search_pattern = "%#{escape_like_pattern(String.downcase(query))}%"
 
+        case Ecto.Adapters.SQL.query(EveDmv.Repo, search_query, [search_pattern, limit]) do
+          {:ok, %{rows: rows}} ->
             suggestions =
-              Enum.map(filtered_systems, fn system ->
-                sec_display =
-                  format_security_status(system.security_class, system.security_status)
+              Enum.map(rows, fn [
+                                  system_id,
+                                  system_name,
+                                  region_name,
+                                  security_status,
+                                  security_class
+                                ] ->
+                sec_display = format_security_status(security_class, security_status)
 
                 %{
-                  id: system.system_id,
-                  name: system.system_name,
+                  id: system_id,
+                  name: system_name,
                   type: :system,
-                  subtitle: "#{system.region_name} (#{sec_display})"
+                  subtitle: "#{region_name || "Unknown"} (#{sec_display})"
                 }
               end)
 
@@ -216,6 +210,7 @@ defmodule EveDmv.Search.SearchSuggestionService do
 
   @doc """
   Get ship type search suggestions based on partial name match.
+  Uses database-level filtering for performance.
   """
   def get_ship_suggestions(query, opts \\ []) do
     limit = Keyword.get(opts, :limit, 10)
@@ -225,31 +220,33 @@ defmodule EveDmv.Search.SearchSuggestionService do
       {:ok, []}
     else
       try do
-        ship_query =
-          EveItemType
-          |> Ash.Query.new()
-          |> Ash.Query.filter(is_ship: true)
-          |> Ash.Query.filter(published: true)
-          |> Ash.Query.select([:type_id, :type_name, :group_name, :category_name])
-          |> Ash.Query.limit(500)
+        # Use direct SQL with ILIKE for efficient database-level filtering
+        search_query = """
+        SELECT
+          type_id,
+          type_name,
+          group_name,
+          category_name
+        FROM eve_item_types
+        WHERE is_ship = true
+          AND published = true
+          AND type_name IS NOT NULL
+          AND LOWER(type_name) LIKE $1 ESCAPE '\\'
+        ORDER BY type_name
+        LIMIT $2
+        """
 
-        case Ash.read(ship_query, domain: EveDmv.Api) do
-          {:ok, ships} ->
-            # Filter in Elixir
-            filtered_ships =
-              ships
-              |> Enum.filter(fn ship ->
-                String.contains?(String.downcase(ship.type_name), String.downcase(query))
-              end)
-              |> Enum.take(limit)
+        search_pattern = "%#{escape_like_pattern(String.downcase(query))}%"
 
+        case Ecto.Adapters.SQL.query(EveDmv.Repo, search_query, [search_pattern, limit]) do
+          {:ok, %{rows: rows}} ->
             suggestions =
-              Enum.map(filtered_ships, fn ship ->
+              Enum.map(rows, fn [type_id, type_name, group_name, category_name] ->
                 %{
-                  id: ship.type_id,
-                  name: ship.type_name,
+                  id: type_id,
+                  name: type_name,
                   type: :ship,
-                  subtitle: "#{ship.group_name} (#{ship.category_name})"
+                  subtitle: "#{group_name || "Ship"} (#{category_name || "Ship"})"
                 }
               end)
 
@@ -303,6 +300,15 @@ defmodule EveDmv.Search.SearchSuggestionService do
 
   # Private helper functions
 
+  # Escapes special LIKE pattern characters (%, _, \) so they are treated as literals.
+  # Backslashes are escaped first to avoid double-escaping.
+  defp escape_like_pattern(query) do
+    query
+    |> String.replace("\\", "\\\\")
+    |> String.replace("%", "\\%")
+    |> String.replace("_", "\\_")
+  end
+
   defp get_character_suggestions_from_stats(query, limit) do
     # Try direct SQL query on player_stats table if it exists and has data
     search_query = """
@@ -314,12 +320,12 @@ defmodule EveDmv.Search.SearchSuggestionService do
     total_losses
     FROM player_stats
     WHERE character_name IS NOT NULL
-      AND LOWER(character_name) LIKE $1
+      AND LOWER(character_name) LIKE $1 ESCAPE '\\'
     ORDER BY total_kills DESC, total_losses ASC
     LIMIT $2
     """
 
-    search_pattern = "%#{String.downcase(query)}%"
+    search_pattern = "%#{escape_like_pattern(String.downcase(query))}%"
 
     case Ecto.Adapters.SQL.query(EveDmv.Repo, search_query, [search_pattern, limit]) do
       {:ok, %{rows: [_ | _] = rows}} ->
@@ -384,14 +390,14 @@ defmodule EveDmv.Search.SearchSuggestionService do
       MAX(p.killmail_time) as last_seen
     FROM participants p
     WHERE p.character_name IS NOT NULL
-      AND LOWER(p.character_name) LIKE $1
+      AND LOWER(p.character_name) LIKE $1 ESCAPE '\\'
       AND p.character_id IS NOT NULL
     GROUP BY p.character_id
     ORDER BY total_killmails DESC, last_seen DESC
     LIMIT $2
     """
 
-    search_pattern = "%#{String.downcase(query)}%"
+    search_pattern = "%#{escape_like_pattern(String.downcase(query))}%"
 
     case Ecto.Adapters.SQL.query(EveDmv.Repo, search_query, [search_pattern, limit]) do
       {:ok, %{rows: rows}} ->

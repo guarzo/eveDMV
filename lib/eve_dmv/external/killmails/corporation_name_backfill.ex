@@ -254,8 +254,8 @@ defmodule EveDmv.Killmails.CorporationNameBackfill do
     # Update victim corporation_name in raw_data JSONB
     # First find killmails where this corp was the victim via indexed participants lookup
     # Uses statement timeout to prevent connection exhaustion from slow queries
+    # NOTE: SET LOCAL must be run as separate statement in transaction (PostgreSQL limitation)
     update_victim_query = """
-    SET LOCAL statement_timeout = '#{@statement_timeout_ms}';
     UPDATE killmails_raw k
     SET raw_data = jsonb_set(raw_data, '{victim,corporation_name}', $1::jsonb)
     FROM (
@@ -272,13 +272,26 @@ defmodule EveDmv.Killmails.CorporationNameBackfill do
            OR k.raw_data->'victim'->>'corporation_name' = '')
     """
 
-    case SQL.query(Repo, update_victim_query, [Jason.encode!(corp_name), corp_id]) do
-      {:ok, %{num_rows: num_rows}} when num_rows > 0 ->
+    result =
+      Repo.transaction(fn ->
+        SQL.query!(Repo, "SET LOCAL statement_timeout = '#{@statement_timeout_ms}'")
+        SQL.query(Repo, update_victim_query, [Jason.encode!(corp_name), corp_id])
+      end)
+
+    case result do
+      {:ok, {:ok, %{num_rows: num_rows}}} when num_rows > 0 ->
         Logger.debug("🏢 Updated #{num_rows} killmail victims for #{corp_name}")
         %{acc | victim_updates: acc.victim_updates + num_rows}
 
-      {:ok, _} ->
+      {:ok, {:ok, _}} ->
         acc
+
+      {:ok, {:error, error}} ->
+        Logger.warning(
+          "🏢 Failed to update victim raw_data for corp #{corp_id}: #{inspect(error)}"
+        )
+
+        %{acc | victim_errors: acc.victim_errors + 1}
 
       {:error, error} ->
         Logger.warning(
@@ -294,8 +307,8 @@ defmodule EveDmv.Killmails.CorporationNameBackfill do
     # First find killmails where this corp was an attacker via indexed participants lookup
     # Uses statement timeout and LIMIT to prevent connection exhaustion
     # The jsonb_agg operation is expensive, so we process in smaller batches
+    # NOTE: SET LOCAL must be run as separate statement in transaction (PostgreSQL limitation)
     update_attackers_query = """
-    SET LOCAL statement_timeout = '#{@statement_timeout_ms}';
     UPDATE killmails_raw k
     SET raw_data = jsonb_set(
       raw_data,
@@ -325,13 +338,26 @@ defmodule EveDmv.Killmails.CorporationNameBackfill do
       AND k.raw_data->'attackers' IS NOT NULL
     """
 
-    case SQL.query(Repo, update_attackers_query, [Jason.encode!(corp_name), corp_id]) do
-      {:ok, %{num_rows: num_rows}} when num_rows > 0 ->
+    result =
+      Repo.transaction(fn ->
+        SQL.query!(Repo, "SET LOCAL statement_timeout = '#{@statement_timeout_ms}'")
+        SQL.query(Repo, update_attackers_query, [Jason.encode!(corp_name), corp_id])
+      end)
+
+    case result do
+      {:ok, {:ok, %{num_rows: num_rows}}} when num_rows > 0 ->
         Logger.debug("🏢 Updated #{num_rows} killmail attackers for #{corp_name}")
         %{acc | attacker_updates: acc.attacker_updates + num_rows}
 
-      {:ok, _} ->
+      {:ok, {:ok, _}} ->
         acc
+
+      {:ok, {:error, error}} ->
+        Logger.warning(
+          "🏢 Failed to update attacker raw_data for corp #{corp_id}: #{inspect(error)}"
+        )
+
+        %{acc | attacker_errors: acc.attacker_errors + 1}
 
       {:error, error} ->
         Logger.warning(

@@ -20,6 +20,25 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
   # Process dictionary key for cached process list
   @process_list_cache_key :health_aggregator_process_list_cache
 
+  # Background workers to monitor for health status
+  # Each tuple is {module, human_readable_name}
+  #
+  # MAINTENANCE NOTE: This list must be updated manually when background workers
+  # are added, renamed, or removed. Consider migrating to dynamic discovery via:
+  #   - Supervisor.which_children/1 to introspect the supervision tree
+  #   - Registry-based discovery where workers register themselves on startup
+  #   - A behaviour/protocol that workers implement to declare themselves monitorable
+  @background_workers [
+    {EveDmv.Killmails.CorporationNameBackfill, "Corporation Name Backfill"},
+    {EveDmv.Platform.Database.CacheWarmer, "Cache Warmer"},
+    {EveDmv.Platform.Database.ConnectionPoolMonitor, "Connection Pool Monitor"},
+    {EveDmv.Platform.Database.PartitionManager, "Partition Manager"},
+    {EveDmv.Enrichment.ReEnrichmentWorker, "Re-Enrichment Worker"},
+    {EveDmv.Enrichment.RealTimePriceUpdater, "Price Updater"},
+    {EveDmv.Workers.ShipRoleAnalysisWorker, "Ship Role Analysis"},
+    {EveDmv.Contexts.KillmailProcessing.Domain.HistoricalFetchWorker, "Historical Fetch"}
+  ]
+
   @doc """
   Returns comprehensive system health snapshot.
 
@@ -641,6 +660,265 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
       :warning in statuses -> :warning
       :unknown in statuses -> :degraded
       true -> :healthy
+    end
+  end
+
+  @doc """
+  Returns detailed performance diagnostics for troubleshooting sluggishness.
+  Includes background worker status, active queries, and startup task state.
+
+  Emits telemetry events:
+  - `[:eve_dmv, :health, :performance_diagnostics, :start]` - When diagnostics collection begins
+  - `[:eve_dmv, :health, :performance_diagnostics, :stop]` - When diagnostics collection completes
+  - `[:eve_dmv, :health, :performance_diagnostics, :exception]` - If an exception occurs
+
+  OpenTelemetry:
+  - Wrapped with OpenTelemetry span `health.performance_diagnostics` for distributed tracing
+  """
+  def get_performance_diagnostics do
+    OtelSpans.with_span("health.performance_diagnostics", %{}, fn ->
+      :telemetry.span(
+        [:eve_dmv, :health, :performance_diagnostics],
+        %{},
+        fn ->
+          timestamp = DateTime.utc_now()
+          background_workers = get_background_worker_status()
+          active_queries = get_active_queries()
+          connection_pool = get_detailed_pool_status()
+          startup_status = get_startup_status()
+
+          diagnostics = %{
+            timestamp: timestamp,
+            background_workers: background_workers,
+            active_queries: active_queries,
+            connection_pool: connection_pool,
+            startup_status: startup_status
+          }
+
+          # Count workers by status for telemetry
+          workers_alive = Enum.count(background_workers, & &1.alive)
+          workers_not_running = length(background_workers) - workers_alive
+
+          telemetry_metadata = %{
+            timestamp: timestamp,
+            workers_alive: workers_alive,
+            workers_not_running: workers_not_running,
+            active_query_count: length(active_queries),
+            pool_utilization: connection_pool.utilization_percent,
+            pool_pressure: connection_pool.pressure,
+            in_startup_window: startup_status.in_startup_window
+          }
+
+          {diagnostics, telemetry_metadata}
+        end
+      )
+    end)
+  end
+
+  @doc """
+  Returns status of key background workers.
+  """
+  def get_background_worker_status do
+    Enum.map(@background_workers, fn {module, name} ->
+      pid = Process.whereis(module)
+      status = get_worker_status(module, pid)
+
+      %{
+        name: name,
+        module: inspect(module),
+        alive: pid != nil,
+        status: status,
+        pid: if(pid, do: inspect(pid), else: nil)
+      }
+    end)
+  end
+
+  defp get_worker_status(_module, nil), do: :not_running
+
+  defp get_worker_status(_module, pid) do
+    # Try to get state from GenServer if it exposes it
+    case :sys.get_state(pid, 100) do
+      %{status: status} -> status
+      state when is_map(state) -> Map.get(state, :status, :running)
+      _ -> :running
+    end
+  rescue
+    _ -> :running
+  catch
+    :exit, _ -> :timeout
+  end
+
+  @doc """
+  Returns currently active queries from pg_stat_activity.
+  """
+  def get_active_queries do
+    query = """
+    SELECT
+      pid,
+      state,
+      EXTRACT(EPOCH FROM (now() - query_start))::numeric(10,2) as duration_sec,
+      wait_event_type,
+      wait_event,
+      left(query, 200) as query_preview
+    FROM pg_stat_activity
+    WHERE datname = current_database()
+      AND pid != pg_backend_pid()
+      AND state != 'idle'
+      AND query NOT LIKE '%pg_stat_activity%'
+    ORDER BY query_start ASC
+    LIMIT 20
+    """
+
+    case Repo.query(query) do
+      {:ok, %{rows: rows}} ->
+        Enum.map(rows, fn [pid, state, duration, wait_type, wait_event, query_preview] ->
+          %{
+            pid: pid,
+            state: state,
+            duration_seconds: duration,
+            wait_type: wait_type,
+            wait_event: wait_event,
+            query: query_preview,
+            slow: Decimal.compare(duration || Decimal.new(0), Decimal.new(1)) == :gt
+          }
+        end)
+
+      {:error, reason} ->
+        Logger.error("get_active_queries/0 failed: #{inspect(reason)}")
+        # Return empty list to ensure callers can safely use length() and list operations
+        []
+    end
+  end
+
+  @doc """
+  Returns detailed connection pool status including waiting connections.
+  """
+  def get_detailed_pool_status do
+    pool_size = Application.get_env(:eve_dmv, Repo)[:pool_size] || 20
+    queue_target = Application.get_env(:eve_dmv, Repo)[:queue_target] || 50
+
+    query = """
+    SELECT
+      state,
+      wait_event_type,
+      wait_event,
+      count(*) as count,
+      max(EXTRACT(EPOCH FROM (now() - query_start)))::numeric(10,2) as max_duration_sec
+    FROM pg_stat_activity
+    WHERE datname = current_database()
+      AND pid != pg_backend_pid()
+      AND usename = current_user
+    GROUP BY state, wait_event_type, wait_event
+    ORDER BY count DESC
+    """
+
+    breakdown =
+      case Repo.query(query) do
+        {:ok, %{rows: rows}} ->
+          Enum.map(rows, fn [state, wait_type, wait_event, count, max_dur] ->
+            %{
+              state: state || "unknown",
+              wait_type: wait_type,
+              wait_event: wait_event,
+              count: count,
+              max_duration_sec: max_dur
+            }
+          end)
+
+        {:error, _} ->
+          []
+      end
+
+    total_active =
+      breakdown
+      |> Enum.filter(&(&1.state == "active"))
+      |> Enum.reduce(0, &(&1.count + &2))
+
+    total_idle =
+      breakdown
+      |> Enum.filter(&(&1.state == "idle"))
+      |> Enum.reduce(0, &(&1.count + &2))
+
+    total_waiting =
+      breakdown
+      |> Enum.filter(&(&1.wait_type == "Client"))
+      |> Enum.reduce(0, &(&1.count + &2))
+
+    %{
+      pool_size: pool_size,
+      queue_target: queue_target,
+      active: total_active,
+      idle: total_idle,
+      waiting: total_waiting,
+      utilization_percent: Float.round(total_active / max(pool_size, 1) * 100, 1),
+      pressure: if(total_active >= pool_size * 0.8, do: :high, else: :normal),
+      breakdown: breakdown
+    }
+  end
+
+  @doc """
+  Returns startup task status - whether initial tasks have completed.
+  """
+  def get_startup_status do
+    {uptime_ms, _} = :erlang.statistics(:wall_clock)
+    uptime_seconds = div(uptime_ms, 1000)
+
+    # Check if we're still in the startup window (first 5 minutes)
+    in_startup_window = uptime_seconds < 300
+
+    # Get backfill worker state if available
+    backfill_status = get_backfill_status()
+
+    # Check cache warmer state
+    cache_warmer_status = get_cache_warmer_status()
+
+    %{
+      uptime_seconds: uptime_seconds,
+      in_startup_window: in_startup_window,
+      backfill: backfill_status,
+      cache_warmer: cache_warmer_status,
+      estimated_warmup_complete: !in_startup_window and backfill_status != :running
+    }
+  end
+
+  defp get_backfill_status do
+    case Process.whereis(EveDmv.Killmails.CorporationNameBackfill) do
+      nil ->
+        :not_started
+
+      pid ->
+        try do
+          case :sys.get_state(pid, 100) do
+            %{status: status} -> status
+            _ -> :unknown
+          end
+        rescue
+          _ -> :unknown
+        catch
+          :exit, _ -> :timeout
+        end
+    end
+  end
+
+  defp get_cache_warmer_status do
+    case Process.whereis(EveDmv.Platform.Database.CacheWarmer) do
+      nil ->
+        :not_started
+
+      pid ->
+        try do
+          case :sys.get_state(pid, 100) do
+            %{warming: true} -> :warming
+            %{warming: false} -> :idle
+            %{last_warm: nil} -> :pending
+            %{last_warm: _} -> :idle
+            _ -> :unknown
+          end
+        rescue
+          _ -> :unknown
+        catch
+          :exit, _ -> :timeout
+        end
     end
   end
 end

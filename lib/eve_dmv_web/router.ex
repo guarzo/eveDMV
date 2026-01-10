@@ -188,6 +188,7 @@ defmodule EveDmvWeb.Router do
 
     get("/status", HealthController, :index)
     get("/detailed", HealthController, :detailed)
+    get("/diagnostics", HealthController, :diagnostics)
   end
 
   # Authenticated API endpoints (non-cacheable - user-specific or mutations)

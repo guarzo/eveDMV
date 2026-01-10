@@ -19,41 +19,23 @@ defmodule EveDmv.Platform.Database.QueryCacheTest do
   setup do
     # Ensure the cache ETS tables exist
     # The cache may already be started by the application, but we handle both cases
+    # We catch errors since the ETS table may already exist
     try do
       QueryCache.start_link([])
+    rescue
+      # ETS table already exists (from application startup or previous test)
+      ArgumentError -> :ok
     catch
-      :error, :badarg -> :ok
-      :exit, {:noproc, _} -> start_cache_tables_manually()
+      # Handle other potential issues
+      :exit, _ -> :ok
     end
 
-    # Clear any existing data
-    try do
-      QueryCache.clear_all()
-    catch
-      _, _ -> :ok
-    end
+    # Clear any existing data - safe even if tables don't exist
+    QueryCache.clear_all()
 
     on_exit(fn ->
-      try do
-        QueryCache.clear_all()
-      catch
-        _, _ -> :ok
-      end
-    end)
-
-    :ok
-  end
-
-  # Manually create ETS tables if needed (fallback for testing)
-  defp start_cache_tables_manually do
-    tables = [:query_cache, :query_cache_prefix_index]
-
-    Enum.each(tables, fn table ->
-      try do
-        :ets.new(table, [:set, :public, :named_table, read_concurrency: true])
-      catch
-        :error, :badarg -> :ok
-      end
+      # Clean up after tests
+      QueryCache.clear_all()
     end)
 
     :ok
@@ -263,8 +245,11 @@ defmodule EveDmv.Platform.Database.QueryCacheTest do
       # Soft timing assertion: prefix lookup should not be dramatically slower than full scan
       # We use a generous 10x multiplier to account for test environment variance
       # In practice, prefix lookup (O(1) index lookup) should be faster than full scan (O(n))
-      assert prefix_time <= scan_time * 10,
-             "Prefix lookup (#{prefix_time}us) was unexpectedly slow compared to full scan (#{scan_time}us)"
+      # Guard against zero scan_time to avoid flaky assertion
+      effective_scan_time = max(scan_time, 1)
+
+      assert prefix_time <= effective_scan_time * 10,
+             "Prefix lookup (#{prefix_time}us) was unexpectedly slow compared to full scan (#{effective_scan_time}us)"
     end
   end
 

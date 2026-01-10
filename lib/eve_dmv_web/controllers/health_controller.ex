@@ -9,6 +9,7 @@ defmodule EveDmvWeb.HealthController do
 
   alias EveDmv.Platform.Database.HealthCheck
   alias EveDmv.Platform.Monitoring.HealthAggregator
+  alias EveDmv.Telemetry.OtelSpans
 
   require Logger
 
@@ -163,5 +164,47 @@ defmodule EveDmvWeb.HealthController do
       cache: %{status: :unknown},
       memory: %{status: :unknown}
     }
+  end
+
+  @doc """
+  Performance diagnostics endpoint for troubleshooting sluggishness.
+
+  Returns detailed information about:
+  - Background worker status (which workers are running, their state)
+  - Active queries (currently executing, duration, whether slow)
+  - Connection pool pressure (utilization, waiting connections)
+  - Startup status (whether warmup tasks have completed)
+
+  Always returns HTTP 200 for debugging purposes.
+  """
+  def diagnostics(conn, _params) do
+    diagnostics = get_diagnostics_safely()
+
+    conn
+    |> put_status(200)
+    |> json(diagnostics)
+  end
+
+  defp get_diagnostics_safely do
+    OtelSpans.with_span(
+      "health.diagnostics",
+      %{module: __MODULE__, function: :get_diagnostics_safely},
+      fn ->
+        try do
+          HealthAggregator.get_performance_diagnostics()
+        rescue
+          e ->
+            Logger.error(
+              "HealthAggregator.get_performance_diagnostics/0 raised #{inspect(e.__struct__)}: #{Exception.format(:error, e, __STACKTRACE__)}"
+            )
+
+            %{
+              timestamp: DateTime.utc_now(),
+              error: "Failed to collect diagnostics",
+              message: Exception.message(e)
+            }
+        end
+      end
+    )
   end
 end

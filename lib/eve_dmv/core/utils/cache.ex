@@ -293,6 +293,69 @@ defmodule EveDmv.Core.Utils.Cache do
   end
 
   @doc """
+  Get all keys from the cache.
+
+  Returns a list of all non-expired keys currently in the cache.
+  This abstracts the internal ETS structure from consumers.
+  """
+  @spec keys(atom()) :: [term()]
+  def keys(cache_name) do
+    table_name = cache_table_name(cache_name)
+    now = timestamp_ms()
+
+    :ets.foldl(
+      fn {key, _value, expires_at}, acc ->
+        if expires_at > now do
+          [key | acc]
+        else
+          acc
+        end
+      end,
+      [],
+      table_name
+    )
+  rescue
+    ArgumentError -> []
+  end
+
+  @doc """
+  Fold over all keys in the cache with a custom function.
+
+  The function receives each key and the accumulator.
+  Only non-expired keys are included in the fold.
+  This abstracts the internal ETS structure from consumers.
+
+  ## Examples
+
+      Cache.fold_keys(:my_cache, [], fn key, acc ->
+        if String.starts_with?(to_string(key), "user_") do
+          [key | acc]
+        else
+          acc
+        end
+      end)
+  """
+  @spec fold_keys(atom(), term(), (term(), term() -> term())) :: term()
+  def fold_keys(cache_name, initial_acc, fun) when is_function(fun, 2) do
+    table_name = cache_table_name(cache_name)
+    now = timestamp_ms()
+
+    :ets.foldl(
+      fn {key, _value, expires_at}, acc ->
+        if expires_at > now do
+          fun.(key, acc)
+        else
+          acc
+        end
+      end,
+      initial_acc,
+      table_name
+    )
+  rescue
+    ArgumentError -> initial_acc
+  end
+
+  @doc """
   Get cache statistics.
   """
   def stats(cache_name) do

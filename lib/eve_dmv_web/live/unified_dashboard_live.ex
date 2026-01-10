@@ -15,9 +15,6 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
 
   require Logger
 
-  # Dialyzer has issues inferring return types through multiple layers of bounded context calls
-  @dialyzer {:nowarn_function, load_recent_character_analyses: 1}
-
   # Load current user from session on mount
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
@@ -263,17 +260,21 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
   end
 
   # Handle async character analyses loading for intelligence dashboard
+  # Using Task.start (unlinked) for fire-and-forget pattern:
+  # - Task crashes are isolated from the LiveView process
+  # - We send a manual message when complete, no Task.await needed
+  # - If the task fails, the loading indicator just stays (acceptable behavior)
   @impl Phoenix.LiveView
   def handle_info({:load_character_analyses_async, time_range}, socket) do
     if socket.assigns.dashboard_type == :intelligence do
-      # Perform the async loading in a task to avoid blocking
-      # Store the parent PID so the task can send results back
-      parent_pid = self()
+      lv_pid = self()
 
-      Task.start(fn ->
-        analyses = load_recent_character_analyses(time_range)
-        send(parent_pid, {:character_analyses_loaded, analyses})
-      end)
+      # Fire-and-forget: spawn unlinked task that sends result via message
+      {:ok, _pid} =
+        Task.start(fn ->
+          analyses = load_recent_character_analyses(time_range)
+          send(lv_pid, {:character_analyses_loaded, analyses})
+        end)
 
       {:noreply, socket}
     else
@@ -281,8 +282,10 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
     end
   end
 
+  # Handle character analyses completion from background task
   @impl Phoenix.LiveView
   def handle_info({:character_analyses_loaded, analyses}, socket) do
+    # Only update assigns when on the intelligence dashboard
     if socket.assigns.dashboard_type == :intelligence do
       socket =
         socket
@@ -503,6 +506,7 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
       []
   end
 
+  @spec load_recent_character_analyses(atom()) :: [map()]
   defp load_recent_character_analyses(time_range) do
     # Get recent killmails and extract unique character IDs for analysis
     since = time_range_to_datetime(time_range)
