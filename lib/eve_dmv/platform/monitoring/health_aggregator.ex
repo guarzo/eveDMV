@@ -690,18 +690,16 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
   defp get_worker_status(_module, nil), do: :not_running
 
   defp get_worker_status(_module, pid) do
-    try do
-      # Try to get state from GenServer if it exposes it
-      case :sys.get_state(pid, 100) do
-        %{status: status} -> status
-        state when is_map(state) -> Map.get(state, :status, :running)
-        _ -> :running
-      end
-    rescue
+    # Try to get state from GenServer if it exposes it
+    case :sys.get_state(pid, 100) do
+      %{status: status} -> status
+      state when is_map(state) -> Map.get(state, :status, :running)
       _ -> :running
-    catch
-      :exit, _ -> :timeout
     end
+  rescue
+    _ -> :running
+  catch
+    :exit, _ -> :timeout
   end
 
   @doc """
