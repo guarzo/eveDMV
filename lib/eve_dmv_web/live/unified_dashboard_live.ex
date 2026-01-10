@@ -260,19 +260,15 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
   end
 
   # Handle async character analyses loading for intelligence dashboard
-  # Using Task.async with demonitor pattern ensures task is linked to LiveView
-  # and cleaned up properly if the LiveView terminates
+  # Using Task.async with the {ref, result} pattern for proper message handling
   @impl Phoenix.LiveView
   def handle_info({:load_character_analyses_async, time_range}, socket) do
     if socket.assigns.dashboard_type == :intelligence do
-      # Spawn linked async task to load character analyses
-      # Task.async links the task to this LiveView process
-      lv_pid = self()
-
+      # Spawn async task to load character analyses
+      # Task.async automatically sends {ref, result} when complete
       task =
         Task.async(fn ->
-          analyses = load_recent_character_analyses(time_range)
-          send(lv_pid, {:character_analyses_loaded, analyses})
+          load_recent_character_analyses(time_range)
         end)
 
       {:noreply, assign(socket, :character_analyses_task, task)}
@@ -281,27 +277,26 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
     end
   end
 
+  # Handle Task.async completion - receive results directly via {ref, result} message
   @impl Phoenix.LiveView
-  def handle_info({:character_analyses_loaded, analyses}, socket) do
-    if socket.assigns.dashboard_type == :intelligence do
+  def handle_info({ref, result}, socket) when is_reference(ref) do
+    # Flush the :DOWN message from the task
+    Process.demonitor(ref, [:flush])
+
+    # Check if this is our character analyses task
+    task = socket.assigns[:character_analyses_task]
+
+    if task && task.ref == ref do
       socket =
         socket
-        |> assign(:character_analyses, analyses)
+        |> assign(:character_analyses, result)
         |> assign(:character_analyses_loading, false)
+        |> assign(:character_analyses_task, nil)
 
       {:noreply, socket}
     else
       {:noreply, socket}
     end
-  end
-
-  # Handle Task.async completion message (the task sends its result via the ref)
-  # We ignore the return value since we handle it via the manual send in the task
-  @impl Phoenix.LiveView
-  def handle_info({ref, _result}, socket) when is_reference(ref) do
-    # Flush the :DOWN message from the task
-    Process.demonitor(ref, [:flush])
-    {:noreply, socket}
   end
 
   @impl Phoenix.LiveView
