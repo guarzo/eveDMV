@@ -281,12 +281,17 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
   # Handle character analyses completion from background task
   @impl Phoenix.LiveView
   def handle_info({:character_analyses_loaded, analyses}, socket) do
-    socket =
-      socket
-      |> assign(:character_analyses, analyses)
-      |> assign(:character_analyses_loading, false)
+    # Only update assigns when on the intelligence dashboard
+    if socket.assigns.dashboard_type == :intelligence do
+      socket =
+        socket
+        |> assign(:character_analyses, analyses)
+        |> assign(:character_analyses_loading, false)
 
-    {:noreply, socket}
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
   end
 
   @impl Phoenix.LiveView

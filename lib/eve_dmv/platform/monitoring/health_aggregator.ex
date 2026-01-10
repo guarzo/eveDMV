@@ -20,6 +20,19 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
   # Process dictionary key for cached process list
   @process_list_cache_key :health_aggregator_process_list_cache
 
+  # Background workers to monitor for health status
+  # Each tuple is {module, human_readable_name}
+  @background_workers [
+    {EveDmv.Killmails.CorporationNameBackfill, "Corporation Name Backfill"},
+    {EveDmv.Platform.Database.CacheWarmer, "Cache Warmer"},
+    {EveDmv.Platform.Database.ConnectionPoolMonitor, "Connection Pool Monitor"},
+    {EveDmv.Platform.Database.PartitionManager, "Partition Manager"},
+    {EveDmv.Enrichment.ReEnrichmentWorker, "Re-Enrichment Worker"},
+    {EveDmv.Enrichment.RealTimePriceUpdater, "Price Updater"},
+    {EveDmv.Workers.ShipRoleAnalysisWorker, "Ship Role Analysis"},
+    {EveDmv.Contexts.KillmailProcessing.Domain.HistoricalFetchWorker, "Historical Fetch"}
+  ]
+
   @doc """
   Returns comprehensive system health snapshot.
 
@@ -647,33 +660,66 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
   @doc """
   Returns detailed performance diagnostics for troubleshooting sluggishness.
   Includes background worker status, active queries, and startup task state.
+
+  Emits telemetry events:
+  - `[:eve_dmv, :health, :performance_diagnostics, :start]` - When diagnostics collection begins
+  - `[:eve_dmv, :health, :performance_diagnostics, :stop]` - When diagnostics collection completes
+  - `[:eve_dmv, :health, :performance_diagnostics, :exception]` - If an exception occurs
+
+  OpenTelemetry:
+  - Wrapped with OpenTelemetry span `health.performance_diagnostics` for distributed tracing
   """
   def get_performance_diagnostics do
-    %{
-      timestamp: DateTime.utc_now(),
-      background_workers: get_background_worker_status(),
-      active_queries: get_active_queries(),
-      connection_pool: get_detailed_pool_status(),
-      startup_status: get_startup_status()
-    }
+    OtelSpans.with_span("health.performance_diagnostics", %{}, fn ->
+      :telemetry.span(
+        [:eve_dmv, :health, :performance_diagnostics],
+        %{},
+        fn ->
+          timestamp = DateTime.utc_now()
+          background_workers = get_background_worker_status()
+          active_queries = get_active_queries()
+          connection_pool = get_detailed_pool_status()
+          startup_status = get_startup_status()
+
+          diagnostics = %{
+            timestamp: timestamp,
+            background_workers: background_workers,
+            active_queries: active_queries,
+            connection_pool: connection_pool,
+            startup_status: startup_status
+          }
+
+          # Count workers by status for telemetry
+          worker_statuses =
+            Enum.reduce(background_workers, %{alive: 0, not_running: 0}, fn worker, acc ->
+              if worker.alive do
+                Map.update(acc, :alive, 1, &(&1 + 1))
+              else
+                Map.update(acc, :not_running, 1, &(&1 + 1))
+              end
+            end)
+
+          telemetry_metadata = %{
+            timestamp: timestamp,
+            workers_alive: worker_statuses.alive,
+            workers_not_running: worker_statuses.not_running,
+            active_query_count: length(active_queries),
+            pool_utilization: connection_pool.utilization_percent,
+            pool_pressure: connection_pool.pressure,
+            in_startup_window: startup_status.in_startup_window
+          }
+
+          {diagnostics, telemetry_metadata}
+        end
+      )
+    end)
   end
 
   @doc """
   Returns status of key background workers.
   """
   def get_background_worker_status do
-    workers = [
-      {EveDmv.Killmails.CorporationNameBackfill, "Corporation Name Backfill"},
-      {EveDmv.Platform.Database.CacheWarmer, "Cache Warmer"},
-      {EveDmv.Platform.Database.ConnectionPoolMonitor, "Connection Pool Monitor"},
-      {EveDmv.Platform.Database.PartitionManager, "Partition Manager"},
-      {EveDmv.Enrichment.ReEnrichmentWorker, "Re-Enrichment Worker"},
-      {EveDmv.Enrichment.RealTimePriceUpdater, "Price Updater"},
-      {EveDmv.Workers.ShipRoleAnalysisWorker, "Ship Role Analysis"},
-      {EveDmv.Contexts.KillmailProcessing.Domain.HistoricalFetchWorker, "Historical Fetch"}
-    ]
-
-    Enum.map(workers, fn {module, name} ->
+    Enum.map(@background_workers, fn {module, name} ->
       pid = Process.whereis(module)
       status = get_worker_status(module, pid)
 
@@ -739,7 +785,7 @@ defmodule EveDmv.Platform.Monitoring.HealthAggregator do
 
       {:error, reason} ->
         Logger.error("get_active_queries/0 failed: #{inspect(reason)}")
-        []
+        %{error: inspect(reason), queries: []}
     end
   end
 
