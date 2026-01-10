@@ -260,43 +260,34 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
   end
 
   # Handle async character analyses loading for intelligence dashboard
-  # Using Task.async with the {ref, result} pattern for proper message handling
+  # Using Task.start_link for fire-and-forget with manual message handling
   @impl Phoenix.LiveView
   def handle_info({:load_character_analyses_async, time_range}, socket) do
     if socket.assigns.dashboard_type == :intelligence do
-      # Spawn async task to load character analyses
-      # Task.async automatically sends {ref, result} when complete
-      task =
-        Task.async(fn ->
-          load_recent_character_analyses(time_range)
+      lv_pid = self()
+
+      # Spawn fire-and-forget task that sends result via message when complete
+      {:ok, _pid} =
+        Task.start_link(fn ->
+          analyses = load_recent_character_analyses(time_range)
+          send(lv_pid, {:character_analyses_loaded, analyses})
         end)
 
-      {:noreply, assign(socket, :character_analyses_task, task)}
+      {:noreply, socket}
     else
       {:noreply, socket}
     end
   end
 
-  # Handle Task.async completion - receive results directly via {ref, result} message
+  # Handle character analyses completion from Task.start_link
   @impl Phoenix.LiveView
-  def handle_info({ref, result}, socket) when is_reference(ref) do
-    # Flush the :DOWN message from the task
-    Process.demonitor(ref, [:flush])
+  def handle_info({:character_analyses_loaded, analyses}, socket) do
+    socket =
+      socket
+      |> assign(:character_analyses, analyses)
+      |> assign(:character_analyses_loading, false)
 
-    # Check if this is our character analyses task
-    task = socket.assigns[:character_analyses_task]
-
-    if task && task.ref == ref do
-      socket =
-        socket
-        |> assign(:character_analyses, result)
-        |> assign(:character_analyses_loading, false)
-        |> assign(:character_analyses_task, nil)
-
-      {:noreply, socket}
-    else
-      {:noreply, socket}
-    end
+    {:noreply, socket}
   end
 
   @impl Phoenix.LiveView
@@ -375,7 +366,6 @@ defmodule EveDmvWeb.UnifiedDashboardLive do
     socket
     |> assign(:character_analyses, [])
     |> assign(:character_analyses_loading, true)
-    |> assign(:character_analyses_task, nil)
     |> assign(:threat_assessments, threat_assessments)
     |> assign(:intelligence_reports, [])
     |> assign(:analysis_queue, [])
