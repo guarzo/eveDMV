@@ -24,8 +24,8 @@ defmodule EveDmvWeb.SearchHelpers do
   def format_character_subtitle(corp_name, alliance_name) do
     parts =
       []
-      |> then(&if(corp_name, do: [corp_name | &1], else: &1))
       |> then(&if(alliance_name, do: [alliance_name | &1], else: &1))
+      |> then(&if(corp_name, do: [corp_name | &1], else: &1))
 
     case parts do
       [] -> "Independent"

@@ -339,11 +339,12 @@ defmodule EveDmvWeb.SearchComponent do
 
   defp search_characters(query) do
     # Search in participants table for character names using ILIKE on character_name
+    # Uses DISTINCT ON to get unique characters directly from the DB
     # Consider adding a trigram index for better ILIKE performance:
     #   CREATE INDEX participants_character_name_trgm_idx ON participants
     #   USING gin (character_name gin_trgm_ops);
     character_query = """
-    SELECT
+    SELECT DISTINCT ON (character_id)
       character_id,
       character_name,
       corporation_name,
@@ -351,7 +352,7 @@ defmodule EveDmvWeb.SearchComponent do
     FROM participants
     WHERE character_name ILIKE $1
       AND character_id IS NOT NULL
-    ORDER BY killmail_time DESC
+    ORDER BY character_id, killmail_time DESC
     LIMIT 3
     """
 
@@ -359,9 +360,7 @@ defmodule EveDmvWeb.SearchComponent do
 
     case SQL.query(EveDmv.Repo, character_query, [search_pattern], timeout: 3_000) do
       {:ok, %{rows: rows}} ->
-        rows
-        |> Enum.uniq_by(fn [char_id | _] -> char_id end)
-        |> Enum.map(fn [char_id, char_name, corp_name, alliance_name] ->
+        Enum.map(rows, fn [char_id, char_name, corp_name, alliance_name] ->
           %{
             id: char_id,
             name: char_name || "Unknown Character",
