@@ -128,8 +128,10 @@ config :eve_dmv, EveDmv.Repo,
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   # Connection pool configuration
+  # queue_target is doubled by DBConnection for the actual checkout timeout
+  # Set to 200ms (400ms effective) to handle analytical queries
   pool_size: 20,
-  queue_target: 50,
+  queue_target: 200,
   queue_interval: 1000,
   timeout: 15_000,
   ownership_timeout: 20_000,

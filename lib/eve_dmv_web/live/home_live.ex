@@ -187,25 +187,67 @@ defmodule EveDmvWeb.HomeLive do
   end
 
   defp search_characters(query) do
-    # Quick character search
-    search_pattern = "%#{query}%"
+    # Use trigram similarity for queries >= 3 chars, prefix search otherwise
+    if String.length(query) >= 3 do
+      search_characters_trigram(query)
+    else
+      search_characters_prefix(query)
+    end
+  end
 
+  defp search_characters_trigram(query) do
+    # Trigram similarity search - uses GIN index efficiently
     character_query = """
-    SELECT DISTINCT
-      p.character_id,
-      p.character_name,
-      p.corporation_name,
-      COUNT(*) as activity_count
-    FROM participants p
-    WHERE p.character_name ILIKE $1
-    GROUP BY p.character_id, p.character_name, p.corporation_name
-    ORDER BY activity_count DESC
-    LIMIT 3
+    SELECT character_id, character_name, corporation_name
+    FROM (
+      SELECT DISTINCT ON (character_id)
+        p.character_id,
+        p.character_name,
+        p.corporation_name,
+        similarity(p.character_name, $1) as sim
+      FROM participants p
+      WHERE p.character_name % $1
+        AND p.character_id IS NOT NULL
+      ORDER BY p.character_id, similarity(p.character_name, $1) DESC
+    ) sub
+    ORDER BY sim DESC, character_name
+    LIMIT 5
     """
 
-    case SQL.query(EveDmv.Repo, character_query, [search_pattern]) do
+    case SQL.query(EveDmv.Repo, character_query, [query], timeout: 3_000) do
       {:ok, %{rows: rows}} ->
-        Enum.map(rows, fn [id, name, corp, _] ->
+        Enum.map(rows, fn [id, name, corp] ->
+          %{
+            id: id,
+            name: name || "Unknown",
+            subtitle: corp || "Unknown Corp"
+          }
+        end)
+
+      {:error, _} ->
+        []
+    end
+  end
+
+  defp search_characters_prefix(query) do
+    # Prefix search for short queries
+    character_query = """
+    SELECT DISTINCT ON (character_id)
+      p.character_id,
+      p.character_name,
+      p.corporation_name
+    FROM participants p
+    WHERE p.character_name ILIKE $1
+      AND p.character_id IS NOT NULL
+    ORDER BY p.character_id
+    LIMIT 5
+    """
+
+    search_pattern = "#{query}%"
+
+    case SQL.query(EveDmv.Repo, character_query, [search_pattern], timeout: 3_000) do
+      {:ok, %{rows: rows}} ->
+        Enum.map(rows, fn [id, name, corp] ->
           %{
             id: id,
             name: name || "Unknown",
@@ -219,29 +261,71 @@ defmodule EveDmvWeb.HomeLive do
   end
 
   defp search_corporations(query) do
-    # Quick corporation search
-    search_pattern = "%#{query}%"
+    # Use trigram similarity for queries >= 3 chars, prefix search otherwise
+    if String.length(query) >= 3 do
+      search_corporations_trigram(query)
+    else
+      search_corporations_prefix(query)
+    end
+  end
 
+  defp search_corporations_trigram(query) do
+    # Trigram similarity search - uses GIN index efficiently
     corp_query = """
-    SELECT DISTINCT
-      p.corporation_id,
-      p.corporation_name,
-      COUNT(DISTINCT p.character_id) as member_count
-    FROM participants p
-    WHERE p.corporation_name ILIKE $1
-      AND p.corporation_id IS NOT NULL
-    GROUP BY p.corporation_id, p.corporation_name
-    ORDER BY member_count DESC
-    LIMIT 3
+    SELECT corporation_id, corporation_name, alliance_name
+    FROM (
+      SELECT DISTINCT ON (corporation_id)
+        p.corporation_id,
+        p.corporation_name,
+        p.alliance_name,
+        similarity(p.corporation_name, $1) as sim
+      FROM participants p
+      WHERE p.corporation_name % $1
+        AND p.corporation_id IS NOT NULL
+      ORDER BY p.corporation_id, similarity(p.corporation_name, $1) DESC
+    ) sub
+    ORDER BY sim DESC, corporation_name
+    LIMIT 5
     """
 
-    case SQL.query(EveDmv.Repo, corp_query, [search_pattern]) do
+    case SQL.query(EveDmv.Repo, corp_query, [query], timeout: 3_000) do
       {:ok, %{rows: rows}} ->
-        Enum.map(rows, fn [id, name, members] ->
+        Enum.map(rows, fn [id, name, alliance] ->
           %{
             id: id,
             name: name || "Unknown",
-            subtitle: "#{members} active members"
+            subtitle: alliance || "No Alliance"
+          }
+        end)
+
+      {:error, _} ->
+        []
+    end
+  end
+
+  defp search_corporations_prefix(query) do
+    # Prefix search for short queries
+    corp_query = """
+    SELECT DISTINCT ON (corporation_id)
+      p.corporation_id,
+      p.corporation_name,
+      p.alliance_name
+    FROM participants p
+    WHERE p.corporation_name ILIKE $1
+      AND p.corporation_id IS NOT NULL
+    ORDER BY p.corporation_id
+    LIMIT 5
+    """
+
+    search_pattern = "#{query}%"
+
+    case SQL.query(EveDmv.Repo, corp_query, [search_pattern], timeout: 3_000) do
+      {:ok, %{rows: rows}} ->
+        Enum.map(rows, fn [id, name, alliance] ->
+          %{
+            id: id,
+            name: name || "Unknown",
+            subtitle: alliance || "No Alliance"
           }
         end)
 
