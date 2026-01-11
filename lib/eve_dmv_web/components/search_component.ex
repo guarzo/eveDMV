@@ -341,9 +341,8 @@ defmodule EveDmvWeb.SearchComponent do
     # Search in participants table for character names
     # Uses participants_character_idx index on character_id
     # Removed JOIN with killmails_raw - unnecessary and causes slow queries
-    # Uses statement timeout to prevent connection pool exhaustion
+    # Uses transaction timeout to prevent connection pool exhaustion
     character_query = """
-    SET LOCAL statement_timeout = '3000';
     SELECT
       character_id,
       character_name,
@@ -358,9 +357,12 @@ defmodule EveDmvWeb.SearchComponent do
 
     search_pattern = "%#{query}%"
 
-    case EveDmv.Repo.transaction(fn ->
-           SQL.query(EveDmv.Repo, character_query, [search_pattern])
-         end) do
+    case EveDmv.Repo.transaction(
+           fn ->
+             SQL.query(EveDmv.Repo, character_query, [search_pattern])
+           end,
+           timeout: 3_000
+         ) do
       {:ok, {:ok, %{rows: rows}}} ->
         rows
         |> Enum.uniq_by(fn [char_id | _] -> char_id end)
@@ -382,9 +384,8 @@ defmodule EveDmvWeb.SearchComponent do
     # Search in participants table for corporation names
     # Uses participants_corporation_idx index on corporation_id
     # Removed JOIN with killmails_raw - unnecessary and causes slow queries
-    # Uses statement timeout to prevent connection pool exhaustion
+    # Uses transaction timeout to prevent connection pool exhaustion
     corp_query = """
-    SET LOCAL statement_timeout = '3000';
     SELECT
       corporation_id,
       corporation_name,
@@ -398,9 +399,12 @@ defmodule EveDmvWeb.SearchComponent do
 
     search_pattern = "%#{query}%"
 
-    case EveDmv.Repo.transaction(fn ->
-           SQL.query(EveDmv.Repo, corp_query, [search_pattern])
-         end) do
+    case EveDmv.Repo.transaction(
+           fn ->
+             SQL.query(EveDmv.Repo, corp_query, [search_pattern])
+           end,
+           timeout: 3_000
+         ) do
       {:ok, {:ok, %{rows: rows}}} ->
         rows
         |> Enum.uniq_by(fn [corp_id | _] -> corp_id end)
