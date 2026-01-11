@@ -66,7 +66,10 @@ defmodule EveDmvWeb.SearchHelpers do
   def format_corporation_subtitle(alliance_name, member_count)
       when is_integer(member_count) and member_count >= 0 do
     alliance_part = if alliance_name, do: alliance_name, else: "Independent"
-    member_text = if member_count == 1, do: "1 active member", else: "#{member_count} active members"
+
+    member_text =
+      if member_count == 1, do: "1 active member", else: "#{member_count} active members"
+
     "#{alliance_part} • #{member_text}"
   end
 
