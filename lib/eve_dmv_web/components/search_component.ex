@@ -110,7 +110,7 @@ defmodule EveDmvWeb.SearchComponent do
             phx-focus="focus"
             phx-blur="blur"
             phx-target={@myself}
-            phx-debounce="300"
+            phx-debounce="500"
             placeholder={placeholder_text(@search_type)}
             autocomplete="off"
             class={[
@@ -365,74 +365,51 @@ defmodule EveDmvWeb.SearchComponent do
           %{
             id: char_id,
             name: char_name || "Unknown Character",
-            subtitle: format_character_subtitle(corp_name, alliance_name),
+            subtitle: EveDmvWeb.SearchHelpers.format_character_subtitle(corp_name, alliance_name),
             type_label: "Character"
           }
         end)
 
-      {:error, _} ->
+      {:error, reason} ->
+        Logger.error("search_characters failed: #{inspect(reason)}")
         []
     end
   end
 
   defp search_corporations(query) do
     # Search in participants table for corporation names using ILIKE on corporation_name
+    # Uses DISTINCT ON to get unique corporations directly from the DB
     # Consider adding a trigram index for better ILIKE performance:
     #   CREATE INDEX participants_corporation_name_trgm_idx ON participants
     #   USING gin (corporation_name gin_trgm_ops);
     corp_query = """
-    SELECT
+    SELECT DISTINCT ON (corporation_id)
       corporation_id,
       corporation_name,
       alliance_name
     FROM participants
     WHERE corporation_name ILIKE $1
       AND corporation_id IS NOT NULL
-    ORDER BY killmail_time DESC
-    LIMIT 10
+    ORDER BY corporation_id, killmail_time DESC
+    LIMIT 3
     """
 
     search_pattern = "%#{query}%"
 
     case SQL.query(EveDmv.Repo, corp_query, [search_pattern], timeout: 3_000) do
       {:ok, %{rows: rows}} ->
-        rows
-        |> Enum.uniq_by(fn [corp_id | _] -> corp_id end)
-        |> Enum.take(3)
-        |> Enum.map(fn [corp_id, corp_name, alliance_name] ->
+        Enum.map(rows, fn [corp_id, corp_name, alliance_name] ->
           %{
             id: corp_id,
             name: corp_name || "Unknown Corporation",
-            subtitle: format_corporation_subtitle(alliance_name, nil),
+            subtitle: EveDmvWeb.SearchHelpers.format_corporation_subtitle(alliance_name, nil),
             type_label: "Corporation"
           }
         end)
 
-      {:error, _} ->
+      {:error, reason} ->
+        Logger.error("search_corporations failed: #{inspect(reason)}")
         []
     end
-  end
-
-  defp format_character_subtitle(corp_name, alliance_name) do
-    parts =
-      []
-      |> then(&if(corp_name, do: [corp_name | &1], else: &1))
-      |> then(&if(alliance_name, do: [alliance_name | &1], else: &1))
-
-    case parts do
-      [] -> "Independent"
-      [corp] -> corp
-      [corp, alliance] -> "#{corp} • #{alliance}"
-      _ -> Enum.join(parts, " • ")
-    end
-  end
-
-  defp format_corporation_subtitle(alliance_name, nil) do
-    if alliance_name, do: alliance_name, else: "Independent"
-  end
-
-  defp format_corporation_subtitle(alliance_name, member_count) do
-    alliance_part = if alliance_name, do: alliance_name, else: "Independent"
-    "#{alliance_part} • #{member_count} active members"
   end
 end
