@@ -110,6 +110,7 @@ defmodule EveDmvWeb.SearchComponent do
             phx-focus="focus"
             phx-blur="blur"
             phx-target={@myself}
+            phx-debounce="500"
             placeholder={placeholder_text(@search_type)}
             autocomplete="off"
             class={[
@@ -337,91 +338,85 @@ defmodule EveDmvWeb.SearchComponent do
   end
 
   defp search_characters(query) do
-    # Search in participants table for character names
+    # Search in participants table for character names using ILIKE on character_name
+    # Uses DISTINCT ON to get unique characters directly from the DB
+    # Consider adding a trigram index for better ILIKE performance:
+    #   CREATE INDEX participants_character_name_trgm_idx ON participants
+    #   USING gin (character_name gin_trgm_ops);
     character_query = """
-    SELECT DISTINCT
-      p.character_id,
-      p.character_name,
-      p.corporation_name,
-      p.alliance_name,
-      COUNT(*) as activity_count
-    FROM participants p
-    JOIN killmails_raw k ON p.killmail_id = k.killmail_id
-    WHERE p.character_name ILIKE $1
-    GROUP BY p.character_id, p.character_name, p.corporation_name, p.alliance_name
-    ORDER BY activity_count DESC
+    SELECT DISTINCT ON (character_id)
+      character_id,
+      character_name,
+      corporation_name,
+      alliance_name
+    FROM participants
+    WHERE character_name ILIKE $1
+      AND character_id IS NOT NULL
+    ORDER BY character_id, killmail_time DESC
     LIMIT 3
     """
 
     search_pattern = "%#{query}%"
 
-    case SQL.query(EveDmv.Repo, character_query, [search_pattern]) do
+    case SQL.query(EveDmv.Repo, character_query, [search_pattern], timeout: 3_000) do
       {:ok, %{rows: rows}} ->
-        Enum.map(rows, fn [char_id, char_name, corp_name, alliance_name, _activity] ->
+        Enum.map(rows, fn [char_id, char_name, corp_name, alliance_name] ->
           %{
             id: char_id,
             name: char_name || "Unknown Character",
-            subtitle: format_character_subtitle(corp_name, alliance_name),
+            subtitle: EveDmvWeb.SearchHelpers.format_character_subtitle(corp_name, alliance_name),
             type_label: "Character"
           }
         end)
 
-      {:error, _reason} ->
+      {:error, reason} ->
+        Logger.error("search_characters failed: #{inspect(reason)}")
         []
     end
   end
 
   defp search_corporations(query) do
-    # Search in participants table for corporation names
+    # Search in participants table for corporation names using ILIKE on corporation_name
+    # Uses "dedupe inner / relevance outer" pattern: inner subquery picks one row per
+    # corporation (most recent killmail), outer query applies relevance ordering and limit.
+    # Consider adding a trigram index for better ILIKE performance:
+    #   CREATE INDEX participants_corporation_name_trgm_idx ON participants
+    #   USING gin (corporation_name gin_trgm_ops);
     corp_query = """
-    SELECT DISTINCT
-      p.corporation_id,
-      p.corporation_name,
-      p.alliance_name,
-      COUNT(DISTINCT p.character_id) as member_count
-    FROM participants p
-    JOIN killmails_raw k ON p.killmail_id = k.killmail_id
-    WHERE p.corporation_name ILIKE $1
-      AND p.corporation_id IS NOT NULL
-    GROUP BY p.corporation_id, p.corporation_name, p.alliance_name
-    ORDER BY member_count DESC
+    SELECT corporation_id, corporation_name, alliance_name
+    FROM (
+      SELECT DISTINCT ON (corporation_id)
+        corporation_id,
+        corporation_name,
+        alliance_name
+      FROM participants
+      WHERE corporation_name ILIKE $1
+        AND corporation_id IS NOT NULL
+      ORDER BY corporation_id, killmail_time DESC
+    ) AS deduped
+    ORDER BY
+      CASE WHEN corporation_name ILIKE $1 THEN position(lower($2) in lower(corporation_name)) ELSE 9999 END,
+      length(corporation_name),
+      corporation_name
     LIMIT 3
     """
 
     search_pattern = "%#{query}%"
 
-    case SQL.query(EveDmv.Repo, corp_query, [search_pattern]) do
+    case SQL.query(EveDmv.Repo, corp_query, [search_pattern, query], timeout: 3_000) do
       {:ok, %{rows: rows}} ->
-        Enum.map(rows, fn [corp_id, corp_name, alliance_name, members] ->
+        Enum.map(rows, fn [corp_id, corp_name, alliance_name] ->
           %{
             id: corp_id,
             name: corp_name || "Unknown Corporation",
-            subtitle: format_corporation_subtitle(alliance_name, members),
+            subtitle: EveDmvWeb.SearchHelpers.format_corporation_subtitle(alliance_name, nil),
             type_label: "Corporation"
           }
         end)
 
-      {:error, _reason} ->
+      {:error, reason} ->
+        Logger.error("search_corporations failed: #{inspect(reason)}")
         []
     end
-  end
-
-  defp format_character_subtitle(corp_name, alliance_name) do
-    parts =
-      []
-      |> then(&if(corp_name, do: [corp_name | &1], else: &1))
-      |> then(&if(alliance_name, do: [alliance_name | &1], else: &1))
-
-    case parts do
-      [] -> "Independent"
-      [corp] -> corp
-      [corp, alliance] -> "#{corp} • #{alliance}"
-      _ -> Enum.join(parts, " • ")
-    end
-  end
-
-  defp format_corporation_subtitle(alliance_name, member_count) do
-    alliance_part = if alliance_name, do: alliance_name, else: "Independent"
-    "#{alliance_part} • #{member_count} active members"
   end
 end

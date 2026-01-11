@@ -89,7 +89,7 @@ defmodule EveDmv.Killmails.CorporationNameBackfill do
     # Run backfill after a longer delay to let the app fully warm up
     # This prevents competing with initial killmail processing on startup
     Process.send_after(self(), :run_backfill, @startup_delay_ms)
-    {:ok, %{status: :pending, task_ref: nil}}
+    {:ok, %{status: :pending, task_ref: nil, error: nil}}
   end
 
   @impl GenServer
