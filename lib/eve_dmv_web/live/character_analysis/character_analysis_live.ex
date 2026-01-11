@@ -42,8 +42,10 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
       |> assign(:active_tab, :overview)
       |> assign(:associates_count, 0)
       |> assign(:ship_loadouts_count, 0)
-      |> stream(:known_associates, [], id: & &1.character_id, reset: true)
-      |> stream(:ship_loadouts, [], id: & &1.ship_type_id, reset: true)
+      |> stream_configure(:known_associates, dom_id: &"associates-#{&1.character_id}")
+      |> stream_configure(:ship_loadouts, dom_id: &"loadout-#{&1.ship_type_id}")
+      |> stream(:known_associates, [])
+      |> stream(:ship_loadouts, [])
 
     # Load analysis asynchronously
     send(self(), :load_analysis)
@@ -122,8 +124,8 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
           |> assign(:error, nil)
           |> assign(:associates_count, length(all_associates))
           |> assign(:ship_loadouts_count, length(ship_loadouts))
-          |> stream(:known_associates, displayed_associates, id: & &1.character_id, reset: true)
-          |> stream(:ship_loadouts, ship_loadouts, id: & &1.ship_type_id, reset: true)
+          |> stream(:known_associates, displayed_associates, reset: true)
+          |> stream(:ship_loadouts, ship_loadouts, reset: true)
 
         {:noreply, socket}
 
