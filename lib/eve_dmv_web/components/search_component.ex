@@ -377,25 +377,33 @@ defmodule EveDmvWeb.SearchComponent do
 
   defp search_corporations(query) do
     # Search in participants table for corporation names using ILIKE on corporation_name
-    # Uses DISTINCT ON to get unique corporations directly from the DB
+    # Uses "dedupe inner / relevance outer" pattern: inner subquery picks one row per
+    # corporation (most recent killmail), outer query applies relevance ordering and limit.
     # Consider adding a trigram index for better ILIKE performance:
     #   CREATE INDEX participants_corporation_name_trgm_idx ON participants
     #   USING gin (corporation_name gin_trgm_ops);
     corp_query = """
-    SELECT DISTINCT ON (corporation_id)
-      corporation_id,
-      corporation_name,
-      alliance_name
-    FROM participants
-    WHERE corporation_name ILIKE $1
-      AND corporation_id IS NOT NULL
-    ORDER BY corporation_id, killmail_time DESC
+    SELECT corporation_id, corporation_name, alliance_name
+    FROM (
+      SELECT DISTINCT ON (corporation_id)
+        corporation_id,
+        corporation_name,
+        alliance_name
+      FROM participants
+      WHERE corporation_name ILIKE $1
+        AND corporation_id IS NOT NULL
+      ORDER BY corporation_id, killmail_time DESC
+    ) AS deduped
+    ORDER BY
+      CASE WHEN corporation_name ILIKE $1 THEN position(lower($2) in lower(corporation_name)) ELSE 9999 END,
+      length(corporation_name),
+      corporation_name
     LIMIT 3
     """
 
     search_pattern = "%#{query}%"
 
-    case SQL.query(EveDmv.Repo, corp_query, [search_pattern], timeout: 3_000) do
+    case SQL.query(EveDmv.Repo, corp_query, [search_pattern, query], timeout: 3_000) do
       {:ok, %{rows: rows}} ->
         Enum.map(rows, fn [corp_id, corp_name, alliance_name] ->
           %{
