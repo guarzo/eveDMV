@@ -191,7 +191,11 @@ defmodule EveDmvWeb.UniversalSearchLive do
           %{
             id: p.character_id,
             name: p.character_name || "Unknown Character",
-            subtitle: format_character_subtitle(p.corporation_name, p.alliance_name),
+            subtitle:
+              EveDmvWeb.SearchHelpers.format_character_subtitle(
+                p.corporation_name,
+                p.alliance_name
+              ),
             meta: %{
               activity_count: nil,
               last_seen: p.killmail_time
@@ -213,7 +217,7 @@ defmodule EveDmvWeb.UniversalSearchLive do
           %{
             id: p.corporation_id,
             name: p.corporation_name || "Unknown Corporation",
-            subtitle: format_corporation_subtitle(p.alliance_name, nil),
+            subtitle: EveDmvWeb.SearchHelpers.format_corporation_subtitle(p.alliance_name, nil),
             meta: %{
               member_count: nil,
               activity_count: nil,
@@ -225,26 +229,6 @@ defmodule EveDmvWeb.UniversalSearchLive do
       {:error, _reason} ->
         []
     end
-  end
-
-  defp format_character_subtitle(corp_name, alliance_name) do
-    parts = []
-    parts_with_corp = if corp_name, do: [corp_name | parts], else: parts
-
-    parts_with_alliance =
-      if alliance_name, do: [alliance_name | parts_with_corp], else: parts_with_corp
-
-    case parts_with_alliance do
-      [] -> "Independent"
-      [corp] -> corp
-      [corp, alliance] -> "#{corp} • #{alliance}"
-      _ -> Enum.join(parts_with_alliance, " • ")
-    end
-  end
-
-  defp format_corporation_subtitle(alliance_name, member_count) do
-    alliance_part = if alliance_name, do: alliance_name, else: "Independent"
-    "#{alliance_part} • #{member_count} active members"
   end
 
   defp flatten_results(results) do

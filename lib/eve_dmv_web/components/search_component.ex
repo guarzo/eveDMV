@@ -110,6 +110,7 @@ defmodule EveDmvWeb.SearchComponent do
             phx-focus="focus"
             phx-blur="blur"
             phx-target={@myself}
+            phx-debounce="500"
             placeholder={placeholder_text(@search_type)}
             autocomplete="off"
             class={[
@@ -337,91 +338,218 @@ defmodule EveDmvWeb.SearchComponent do
   end
 
   defp search_characters(query) do
-    # Search in participants table for character names
+    # Search in participants table for character names using trigram similarity
+    # Uses the % operator which efficiently uses GIN trigram indexes
+    # Falls back to ILIKE for short queries (< 3 chars) where trigrams don't work well
+    if String.length(query) >= 3 do
+      search_characters_trigram(query)
+    else
+      search_characters_ilike(query)
+    end
+  end
+
+  defp search_characters_trigram(query) do
+    # Trigram similarity search - uses GIN index efficiently
+    # Groups by character to deduplicate, orders by similarity score
+    # NOTE: Must include "character_name IS NOT NULL" to use partial index
     character_query = """
-    SELECT DISTINCT
-      p.character_id,
-      p.character_name,
-      p.corporation_name,
-      p.alliance_name,
-      COUNT(*) as activity_count
-    FROM participants p
-    JOIN killmails_raw k ON p.killmail_id = k.killmail_id
-    WHERE p.character_name ILIKE $1
-    GROUP BY p.character_id, p.character_name, p.corporation_name, p.alliance_name
-    ORDER BY activity_count DESC
-    LIMIT 3
+    SELECT character_id, character_name, corporation_name, alliance_name
+    FROM (
+      SELECT DISTINCT ON (character_id)
+        character_id,
+        character_name,
+        corporation_name,
+        alliance_name,
+        similarity(character_name, $1) as sim
+      FROM participants
+      WHERE character_name IS NOT NULL
+        AND character_name % $1
+        AND character_id IS NOT NULL
+      ORDER BY character_id, similarity(character_name, $1) DESC
+    ) sub
+    ORDER BY sim DESC, character_name
+    LIMIT 5
     """
 
-    search_pattern = "%#{query}%"
+    case SQL.query(EveDmv.Repo, character_query, [query], timeout: 3_000) do
+      {:ok, %{rows: []}} ->
+        # Trigram returned nothing - fall back to ILIKE for exact/prefix matches
+        Logger.debug("Trigram search returned no results for '#{query}', trying ILIKE fallback")
+        search_characters_ilike_fallback(query)
 
-    case SQL.query(EveDmv.Repo, character_query, [search_pattern]) do
       {:ok, %{rows: rows}} ->
-        Enum.map(rows, fn [char_id, char_name, corp_name, alliance_name, _activity] ->
+        Enum.map(rows, fn [char_id, char_name, corp_name, alliance_name] ->
           %{
             id: char_id,
             name: char_name || "Unknown Character",
-            subtitle: format_character_subtitle(corp_name, alliance_name),
+            subtitle: EveDmvWeb.SearchHelpers.format_character_subtitle(corp_name, alliance_name),
             type_label: "Character"
           }
         end)
 
-      {:error, _reason} ->
+      {:error, reason} ->
+        Logger.error("search_characters_trigram failed: #{inspect(reason)}")
+        # Fall back to ILIKE on error
+        search_characters_ilike_fallback(query)
+    end
+  end
+
+  defp search_characters_ilike_fallback(query) do
+    # Fallback using ILIKE with LIMIT to prevent full scan
+    character_query = """
+    SELECT character_id, character_name, corporation_name, alliance_name
+    FROM (
+      SELECT DISTINCT ON (character_id)
+        character_id,
+        character_name,
+        corporation_name,
+        alliance_name
+      FROM participants
+      WHERE character_name ILIKE $1
+        AND character_id IS NOT NULL
+      ORDER BY character_id
+      LIMIT 100
+    ) sub
+    ORDER BY
+      CASE WHEN character_name ILIKE $2 THEN 0 ELSE 1 END,
+      length(character_name)
+    LIMIT 5
+    """
+
+    search_pattern = "%#{query}%"
+    prefix_pattern = "#{query}%"
+
+    case SQL.query(EveDmv.Repo, character_query, [search_pattern, prefix_pattern], timeout: 5_000) do
+      {:ok, %{rows: rows}} ->
+        Enum.map(rows, fn [char_id, char_name, corp_name, alliance_name] ->
+          %{
+            id: char_id,
+            name: char_name || "Unknown Character",
+            subtitle: EveDmvWeb.SearchHelpers.format_character_subtitle(corp_name, alliance_name),
+            type_label: "Character"
+          }
+        end)
+
+      {:error, reason} ->
+        Logger.error("search_characters_ilike_fallback failed: #{inspect(reason)}")
+        []
+    end
+  end
+
+  defp search_characters_ilike(query) do
+    # Prefix search for short queries - still reasonably fast with btree index
+    character_query = """
+    SELECT DISTINCT ON (character_id)
+      character_id,
+      character_name,
+      corporation_name,
+      alliance_name
+    FROM participants
+    WHERE character_name ILIKE $1
+      AND character_id IS NOT NULL
+    ORDER BY character_id
+    LIMIT 5
+    """
+
+    search_pattern = "#{query}%"
+
+    case SQL.query(EveDmv.Repo, character_query, [search_pattern], timeout: 3_000) do
+      {:ok, %{rows: rows}} ->
+        Enum.map(rows, fn [char_id, char_name, corp_name, alliance_name] ->
+          %{
+            id: char_id,
+            name: char_name || "Unknown Character",
+            subtitle: EveDmvWeb.SearchHelpers.format_character_subtitle(corp_name, alliance_name),
+            type_label: "Character"
+          }
+        end)
+
+      {:error, reason} ->
+        Logger.error("search_characters_ilike failed: #{inspect(reason)}")
         []
     end
   end
 
   defp search_corporations(query) do
-    # Search in participants table for corporation names
+    # Search in participants table for corporation names using trigram similarity
+    # Uses the % operator which efficiently uses GIN trigram indexes
+    # Falls back to ILIKE for short queries (< 3 chars) where trigrams don't work well
+    if String.length(query) >= 3 do
+      search_corporations_trigram(query)
+    else
+      search_corporations_ilike(query)
+    end
+  end
+
+  defp search_corporations_trigram(query) do
+    # Trigram similarity search - uses GIN index efficiently
+    # Orders by similarity score for best matches first
+    # NOTE: Must include "corporation_name IS NOT NULL" to use partial index
     corp_query = """
-    SELECT DISTINCT
-      p.corporation_id,
-      p.corporation_name,
-      p.alliance_name,
-      COUNT(DISTINCT p.character_id) as member_count
-    FROM participants p
-    JOIN killmails_raw k ON p.killmail_id = k.killmail_id
-    WHERE p.corporation_name ILIKE $1
-      AND p.corporation_id IS NOT NULL
-    GROUP BY p.corporation_id, p.corporation_name, p.alliance_name
-    ORDER BY member_count DESC
-    LIMIT 3
+    SELECT corporation_id, corporation_name, alliance_name
+    FROM (
+      SELECT DISTINCT ON (corporation_id)
+        corporation_id,
+        corporation_name,
+        alliance_name,
+        similarity(corporation_name, $1) as sim
+      FROM participants
+      WHERE corporation_name IS NOT NULL
+        AND corporation_name % $1
+        AND corporation_id IS NOT NULL
+      ORDER BY corporation_id, similarity(corporation_name, $1) DESC
+    ) sub
+    ORDER BY sim DESC, corporation_name
+    LIMIT 5
     """
 
-    search_pattern = "%#{query}%"
-
-    case SQL.query(EveDmv.Repo, corp_query, [search_pattern]) do
+    case SQL.query(EveDmv.Repo, corp_query, [query], timeout: 3_000) do
       {:ok, %{rows: rows}} ->
-        Enum.map(rows, fn [corp_id, corp_name, alliance_name, members] ->
+        Enum.map(rows, fn [corp_id, corp_name, alliance_name] ->
           %{
             id: corp_id,
             name: corp_name || "Unknown Corporation",
-            subtitle: format_corporation_subtitle(alliance_name, members),
+            subtitle: EveDmvWeb.SearchHelpers.format_corporation_subtitle(alliance_name, nil),
             type_label: "Corporation"
           }
         end)
 
-      {:error, _reason} ->
+      {:error, reason} ->
+        Logger.error("search_corporations_trigram failed: #{inspect(reason)}")
         []
     end
   end
 
-  defp format_character_subtitle(corp_name, alliance_name) do
-    parts =
-      []
-      |> then(&if(corp_name, do: [corp_name | &1], else: &1))
-      |> then(&if(alliance_name, do: [alliance_name | &1], else: &1))
+  defp search_corporations_ilike(query) do
+    # Prefix search for short queries
+    corp_query = """
+    SELECT DISTINCT ON (corporation_id)
+      corporation_id,
+      corporation_name,
+      alliance_name
+    FROM participants
+    WHERE corporation_name ILIKE $1
+      AND corporation_id IS NOT NULL
+    ORDER BY corporation_id
+    LIMIT 5
+    """
 
-    case parts do
-      [] -> "Independent"
-      [corp] -> corp
-      [corp, alliance] -> "#{corp} • #{alliance}"
-      _ -> Enum.join(parts, " • ")
+    search_pattern = "#{query}%"
+
+    case SQL.query(EveDmv.Repo, corp_query, [search_pattern], timeout: 3_000) do
+      {:ok, %{rows: rows}} ->
+        Enum.map(rows, fn [corp_id, corp_name, alliance_name] ->
+          %{
+            id: corp_id,
+            name: corp_name || "Unknown Corporation",
+            subtitle: EveDmvWeb.SearchHelpers.format_corporation_subtitle(alliance_name, nil),
+            type_label: "Corporation"
+          }
+        end)
+
+      {:error, reason} ->
+        Logger.error("search_corporations_ilike failed: #{inspect(reason)}")
+        []
     end
-  end
-
-  defp format_corporation_subtitle(alliance_name, member_count) do
-    alliance_part = if alliance_name, do: alliance_name, else: "Independent"
-    "#{alliance_part} • #{member_count} active members"
   end
 end

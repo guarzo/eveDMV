@@ -10,6 +10,21 @@ defmodule EveDmv.Repo do
   use AshPostgres.Repo,
     otp_app: :eve_dmv
 
+  @doc """
+  Callback to ensure runtime configuration is applied.
+  This ensures environment variables are read at startup, not compile time.
+  """
+  def init(type, config) do
+    # Force queue_target to 200 to prevent connection pool timeouts
+    # The default 50ms (100ms effective timeout) is too aggressive for batch inserts
+    config =
+      config
+      |> Keyword.put(:queue_target, 200)
+      |> Keyword.put(:queue_interval, 1000)
+
+    super(type, config)
+  end
+
   # Tell AshPostgres where your domains are
   def installed_extensions do
     ["uuid-ossp", "citext", "pg_trgm", "ash-functions"]
