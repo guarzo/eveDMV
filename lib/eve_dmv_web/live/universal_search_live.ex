@@ -242,6 +242,10 @@ defmodule EveDmvWeb.UniversalSearchLive do
     end
   end
 
+  defp format_corporation_subtitle(alliance_name, nil) do
+    if alliance_name, do: alliance_name, else: "Independent"
+  end
+
   defp format_corporation_subtitle(alliance_name, member_count) do
     alliance_part = if alliance_name, do: alliance_name, else: "Independent"
     "#{alliance_part} • #{member_count} active members"

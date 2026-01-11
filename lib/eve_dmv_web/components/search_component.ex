@@ -338,10 +338,10 @@ defmodule EveDmvWeb.SearchComponent do
   end
 
   defp search_characters(query) do
-    # Search in participants table for character names
-    # Uses participants_character_idx index on character_id
-    # Removed JOIN with killmails_raw - unnecessary and causes slow queries
-    # Uses transaction timeout to prevent connection pool exhaustion
+    # Search in participants table for character names using ILIKE on character_name
+    # Consider adding a trigram index for better ILIKE performance:
+    #   CREATE INDEX participants_character_name_trgm_idx ON participants
+    #   USING gin (character_name gin_trgm_ops);
     character_query = """
     SELECT
       character_id,
@@ -357,13 +357,8 @@ defmodule EveDmvWeb.SearchComponent do
 
     search_pattern = "%#{query}%"
 
-    case EveDmv.Repo.transaction(
-           fn ->
-             SQL.query(EveDmv.Repo, character_query, [search_pattern])
-           end,
-           timeout: 3_000
-         ) do
-      {:ok, {:ok, %{rows: rows}}} ->
+    case SQL.query(EveDmv.Repo, character_query, [search_pattern], timeout: 3_000) do
+      {:ok, %{rows: rows}} ->
         rows
         |> Enum.uniq_by(fn [char_id | _] -> char_id end)
         |> Enum.map(fn [char_id, char_name, corp_name, alliance_name] ->
@@ -375,16 +370,16 @@ defmodule EveDmvWeb.SearchComponent do
           }
         end)
 
-      _ ->
+      {:error, _} ->
         []
     end
   end
 
   defp search_corporations(query) do
-    # Search in participants table for corporation names
-    # Uses participants_corporation_idx index on corporation_id
-    # Removed JOIN with killmails_raw - unnecessary and causes slow queries
-    # Uses transaction timeout to prevent connection pool exhaustion
+    # Search in participants table for corporation names using ILIKE on corporation_name
+    # Consider adding a trigram index for better ILIKE performance:
+    #   CREATE INDEX participants_corporation_name_trgm_idx ON participants
+    #   USING gin (corporation_name gin_trgm_ops);
     corp_query = """
     SELECT
       corporation_id,
@@ -399,13 +394,8 @@ defmodule EveDmvWeb.SearchComponent do
 
     search_pattern = "%#{query}%"
 
-    case EveDmv.Repo.transaction(
-           fn ->
-             SQL.query(EveDmv.Repo, corp_query, [search_pattern])
-           end,
-           timeout: 3_000
-         ) do
-      {:ok, {:ok, %{rows: rows}}} ->
+    case SQL.query(EveDmv.Repo, corp_query, [search_pattern], timeout: 3_000) do
+      {:ok, %{rows: rows}} ->
         rows
         |> Enum.uniq_by(fn [corp_id | _] -> corp_id end)
         |> Enum.take(3)
@@ -418,7 +408,7 @@ defmodule EveDmvWeb.SearchComponent do
           }
         end)
 
-      _ ->
+      {:error, _} ->
         []
     end
   end
@@ -435,6 +425,10 @@ defmodule EveDmvWeb.SearchComponent do
       [corp, alliance] -> "#{corp} • #{alliance}"
       _ -> Enum.join(parts, " • ")
     end
+  end
+
+  defp format_corporation_subtitle(alliance_name, nil) do
+    if alliance_name, do: alliance_name, else: "Independent"
   end
 
   defp format_corporation_subtitle(alliance_name, member_count) do
