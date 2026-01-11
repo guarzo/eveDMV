@@ -184,7 +184,8 @@ defmodule EveDmvWeb.UniversalSearchLive do
 
   defp search_characters(query) do
     # Search in participants table for character names using Ash resource
-    case Participant.search_characters_by_name(query, limit: 5) do
+    # Use timeout to prevent connection pool exhaustion on slow queries
+    case Participant.search_characters_by_name(query, limit: 5, timeout: 5_000) do
       {:ok, participants} ->
         participants
         |> Enum.map(fn p ->
@@ -206,7 +207,8 @@ defmodule EveDmvWeb.UniversalSearchLive do
 
   defp search_corporations(query) do
     # Search in participants table for corporation names using Ash resource
-    case Participant.search_corporations_by_name(query, limit: 5) do
+    # Use timeout to prevent connection pool exhaustion on slow queries
+    case Participant.search_corporations_by_name(query, limit: 5, timeout: 5_000) do
       {:ok, participants} ->
         participants
         |> Enum.map(fn p ->

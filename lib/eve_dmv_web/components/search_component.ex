@@ -110,6 +110,7 @@ defmodule EveDmvWeb.SearchComponent do
             phx-focus="focus"
             phx-blur="blur"
             phx-target={@myself}
+            phx-debounce="300"
             placeholder={placeholder_text(@search_type)}
             autocomplete="off"
             class={[
@@ -338,26 +339,32 @@ defmodule EveDmvWeb.SearchComponent do
 
   defp search_characters(query) do
     # Search in participants table for character names
+    # Uses participants_character_idx index on character_id
+    # Removed JOIN with killmails_raw - unnecessary and causes slow queries
+    # Uses statement timeout to prevent connection pool exhaustion
     character_query = """
-    SELECT DISTINCT
-      p.character_id,
-      p.character_name,
-      p.corporation_name,
-      p.alliance_name,
-      COUNT(*) as activity_count
-    FROM participants p
-    JOIN killmails_raw k ON p.killmail_id = k.killmail_id
-    WHERE p.character_name ILIKE $1
-    GROUP BY p.character_id, p.character_name, p.corporation_name, p.alliance_name
-    ORDER BY activity_count DESC
+    SET LOCAL statement_timeout = '3000';
+    SELECT
+      character_id,
+      character_name,
+      corporation_name,
+      alliance_name
+    FROM participants
+    WHERE character_name ILIKE $1
+      AND character_id IS NOT NULL
+    ORDER BY killmail_time DESC
     LIMIT 3
     """
 
     search_pattern = "%#{query}%"
 
-    case SQL.query(EveDmv.Repo, character_query, [search_pattern]) do
-      {:ok, %{rows: rows}} ->
-        Enum.map(rows, fn [char_id, char_name, corp_name, alliance_name, _activity] ->
+    case EveDmv.Repo.transaction(fn ->
+           SQL.query(EveDmv.Repo, character_query, [search_pattern])
+         end) do
+      {:ok, {:ok, %{rows: rows}}} ->
+        rows
+        |> Enum.uniq_by(fn [char_id | _] -> char_id end)
+        |> Enum.map(fn [char_id, char_name, corp_name, alliance_name] ->
           %{
             id: char_id,
             name: char_name || "Unknown Character",
@@ -366,42 +373,48 @@ defmodule EveDmvWeb.SearchComponent do
           }
         end)
 
-      {:error, _reason} ->
+      _ ->
         []
     end
   end
 
   defp search_corporations(query) do
     # Search in participants table for corporation names
+    # Uses participants_corporation_idx index on corporation_id
+    # Removed JOIN with killmails_raw - unnecessary and causes slow queries
+    # Uses statement timeout to prevent connection pool exhaustion
     corp_query = """
-    SELECT DISTINCT
-      p.corporation_id,
-      p.corporation_name,
-      p.alliance_name,
-      COUNT(DISTINCT p.character_id) as member_count
-    FROM participants p
-    JOIN killmails_raw k ON p.killmail_id = k.killmail_id
-    WHERE p.corporation_name ILIKE $1
-      AND p.corporation_id IS NOT NULL
-    GROUP BY p.corporation_id, p.corporation_name, p.alliance_name
-    ORDER BY member_count DESC
-    LIMIT 3
+    SET LOCAL statement_timeout = '3000';
+    SELECT
+      corporation_id,
+      corporation_name,
+      alliance_name
+    FROM participants
+    WHERE corporation_name ILIKE $1
+      AND corporation_id IS NOT NULL
+    ORDER BY killmail_time DESC
+    LIMIT 10
     """
 
     search_pattern = "%#{query}%"
 
-    case SQL.query(EveDmv.Repo, corp_query, [search_pattern]) do
-      {:ok, %{rows: rows}} ->
-        Enum.map(rows, fn [corp_id, corp_name, alliance_name, members] ->
+    case EveDmv.Repo.transaction(fn ->
+           SQL.query(EveDmv.Repo, corp_query, [search_pattern])
+         end) do
+      {:ok, {:ok, %{rows: rows}}} ->
+        rows
+        |> Enum.uniq_by(fn [corp_id | _] -> corp_id end)
+        |> Enum.take(3)
+        |> Enum.map(fn [corp_id, corp_name, alliance_name] ->
           %{
             id: corp_id,
             name: corp_name || "Unknown Corporation",
-            subtitle: format_corporation_subtitle(alliance_name, members),
+            subtitle: format_corporation_subtitle(alliance_name, nil),
             type_label: "Corporation"
           }
         end)
 
-      {:error, _reason} ->
+      _ ->
         []
     end
   end
