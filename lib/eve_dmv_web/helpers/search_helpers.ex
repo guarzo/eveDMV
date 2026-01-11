@@ -30,7 +30,6 @@ defmodule EveDmvWeb.SearchHelpers do
       [] -> "Independent"
       [single] -> single
       [corp, alliance] -> "#{corp} • #{alliance}"
-      _ -> Enum.join(parts, " • ")
     end
   end
 
@@ -60,12 +59,12 @@ defmodule EveDmvWeb.SearchHelpers do
   """
   @spec format_corporation_subtitle(String.t() | nil, integer() | nil) :: String.t()
   def format_corporation_subtitle(alliance_name, nil) do
-    if alliance_name, do: alliance_name, else: "Independent"
+    if non_blank?(alliance_name), do: alliance_name, else: "Independent"
   end
 
   def format_corporation_subtitle(alliance_name, member_count)
       when is_integer(member_count) and member_count >= 0 do
-    alliance_part = if alliance_name, do: alliance_name, else: "Independent"
+    alliance_part = if non_blank?(alliance_name), do: alliance_name, else: "Independent"
 
     member_text =
       if member_count == 1, do: "1 active member", else: "#{member_count} active members"
