@@ -260,14 +260,58 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
           </div>
         </div>
 
-        <!-- Bait Warning Banner (if applicable) -->
-        <%= if @analysis.bait_indicators && @analysis.bait_indicators.is_likely_bait do %>
-          <div class="bg-yellow-900 border border-yellow-600 rounded-lg p-4 mb-6">
-            <div class="flex items-center gap-3">
-              <span class="text-2xl">⚠️</span>
-              <div>
-                <h3 class="text-yellow-300 font-semibold">Potential Bait Pilot</h3>
-                <p class="text-yellow-400 text-sm"><%= @analysis.bait_indicators.bait_assessment %></p>
+        <!-- Bait Analysis Section (shows when score > 0 or is_likely_bait) -->
+        <%= if @analysis.bait_indicators && (@analysis.bait_indicators.is_likely_bait || (@analysis.bait_indicators[:bait_score] || 0) >= 30) do %>
+          <div class={bait_banner_class(@analysis.bait_indicators[:bait_score] || 0)}>
+            <div class="flex items-start gap-4">
+              <span class="text-2xl mt-1"><%= bait_icon(@analysis.bait_indicators[:bait_score] || 0) %></span>
+              <div class="flex-1">
+                <div class="flex justify-between items-center mb-2">
+                  <h3 class={bait_title_class(@analysis.bait_indicators[:bait_score] || 0)}>
+                    <%= @analysis.bait_indicators.bait_assessment %>
+                  </h3>
+                  <span class="text-white font-bold">
+                    Score: <%= @analysis.bait_indicators[:bait_score] || 0 %>/100
+                  </span>
+                </div>
+                <!-- Score progress bar -->
+                <div class="w-full bg-gray-700 rounded-full h-2 mb-3">
+                  <div
+                    class={bait_progress_class(@analysis.bait_indicators[:bait_score] || 0)}
+                    style={"width: #{min(@analysis.bait_indicators[:bait_score] || 0, 100)}%"}
+                  ></div>
+                </div>
+                <!-- Contributing Factors -->
+                <%= if @analysis.bait_indicators[:bait_factors] && length(@analysis.bait_indicators.bait_factors) > 0 do %>
+                  <div class="text-sm text-gray-300 mb-2">Contributing Factors:</div>
+                  <div class="space-y-1">
+                    <%= for factor <- @analysis.bait_indicators.bait_factors do %>
+                      <div class="flex justify-between items-center text-sm bg-black/20 rounded px-2 py-1">
+                        <span class="text-gray-300"><%= factor.description %></span>
+                        <span class="text-yellow-400">+<%= factor.contribution %></span>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+                <!-- Key Stats -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3 text-xs">
+                  <div class="bg-black/20 rounded px-2 py-1">
+                    <span class="text-gray-400">Cheap Deaths:</span>
+                    <span class="text-white ml-1"><%= @analysis.bait_indicators[:cheap_death_percentage] || 0 %>%</span>
+                  </div>
+                  <div class="bg-black/20 rounded px-2 py-1">
+                    <span class="text-gray-400">Final Blows:</span>
+                    <span class="text-white ml-1"><%= @analysis.bait_indicators[:final_blow_rate] || 0 %>%</span>
+                  </div>
+                  <div class="bg-black/20 rounded px-2 py-1">
+                    <span class="text-gray-400">Trade Ratio:</span>
+                    <span class="text-white ml-1"><%= @analysis.bait_indicators[:trade_ratio] || 0 %>:1</span>
+                  </div>
+                  <div class="bg-black/20 rounded px-2 py-1">
+                    <span class="text-gray-400">Corp Kills:</span>
+                    <span class="text-white ml-1"><%= @analysis.bait_indicators[:corp_kill_correlation] || 0 %>%</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -393,24 +437,57 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
 
         <!-- Two column layout for Target Selection and Fleet Size -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <!-- Target Selection Patterns -->
+          <!-- Target Selection Patterns (Enhanced) -->
           <div class="bg-gray-800 rounded-lg p-6">
             <h3 class="text-white font-semibold mb-4 flex items-center">
-              🎯 Target Selection
+              🎯 Target Selection Patterns
             </h3>
-            <%= if @analysis.target_selection && @analysis.target_selection.top_targets != [] do %>
-              <div class="mb-4">
-                <div class="flex justify-between items-center mb-2">
+            <%= if @analysis.target_selection && @analysis.target_selection.total_kills > 0 do %>
+              <!-- Primary Assessment -->
+              <div class="mb-4 p-3 bg-gray-700 rounded-lg">
+                <div class="flex justify-between items-center">
+                  <span class="text-gray-400 text-sm">Primary Pattern:</span>
+                  <span class={"font-semibold #{target_assessment_color(@analysis.target_selection.target_assessment)}"}>
+                    <%= humanize_target_assessment(@analysis.target_selection.target_assessment) %>
+                  </span>
+                </div>
+                <div class="flex justify-between items-center mt-1">
                   <span class="text-gray-400 text-sm">Avg Victim Value:</span>
                   <span class="text-yellow-400"><%= format_isk(@analysis.target_selection.avg_victim_value) %></span>
                 </div>
-                <div class="flex justify-between items-center">
-                  <span class="text-gray-400 text-sm">Target Assessment:</span>
-                  <span class={target_assessment_color(@analysis.target_selection.target_assessment)}>
-                    <%= @analysis.target_selection.target_assessment %>
-                  </span>
+              </div>
+
+              <!-- Security Space Breakdown -->
+              <%= if @analysis.target_selection[:security_breakdown] do %>
+                <div class="mb-4">
+                  <div class="text-sm text-gray-400 mb-2">Hunting Ground:</div>
+                  <div class="space-y-1">
+                    <%= for {sec_type, data} <- security_breakdown_sorted(@analysis.target_selection.security_breakdown), data.percentage > 0 do %>
+                      <div class="flex items-center gap-2">
+                        <span class={"w-16 text-xs #{security_class_color(sec_type)}"}><%= humanize_sec_type(sec_type) %></span>
+                        <div class="flex-1 bg-gray-700 rounded-full h-2">
+                          <div class={"h-2 rounded-full #{security_bar_color(sec_type)}"} style={"width: #{data.percentage}%"}></div>
+                        </div>
+                        <span class="text-xs text-gray-400 w-12 text-right"><%= data.percentage %>%</span>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+
+              <!-- Kill Style Stats -->
+              <div class="grid grid-cols-2 gap-2 mb-4 text-xs">
+                <div class="bg-gray-700 rounded px-2 py-1">
+                  <span class="text-gray-400">Solo Kills:</span>
+                  <span class="text-green-400 ml-1"><%= @analysis.target_selection[:solo_percentage] || 0 %>%</span>
+                </div>
+                <div class="bg-gray-700 rounded px-2 py-1">
+                  <span class="text-gray-400">Final Blows:</span>
+                  <span class="text-blue-400 ml-1"><%= @analysis.target_selection[:final_blow_percentage] || 0 %>%</span>
                 </div>
               </div>
+
+              <!-- Top Targets -->
               <div class="text-sm text-gray-400 mb-2">Preferred Targets:</div>
               <div class="space-y-1">
                 <%= for target <- Enum.take(@analysis.target_selection.top_targets, 5) do %>
@@ -601,16 +678,123 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
 
   defp target_assessment_color(assessment) do
     case assessment do
+      # New multi-dimensional assessments
+      "capital_hunter" -> "text-purple-400"
+      "wormhole_hunter" -> "text-cyan-400"
+      "industrial_hunter" -> "text-yellow-400"
+      "highsec_ganker" -> "text-orange-400"
+      "pod_hunter" -> "text-red-400"
+      "solo_hunter" -> "text-green-400"
+      "fleet_pvper" -> "text-blue-400"
+      "elite_hunter" -> "text-red-400"
+      "standard_combatant" -> "text-blue-400"
+      "casual_pvper" -> "text-gray-300"
+      "opportunist" -> "text-gray-400"
+      "insufficient_data" -> "text-gray-500"
+      # Legacy values
       "high_value_hunter" -> "text-red-400"
       "standard_pvp" -> "text-blue-400"
-      "opportunist" -> "text-yellow-400"
       "ganker" -> "text-orange-400"
-      # Legacy values
       "opportunistic" -> "text-yellow-400"
       "selective" -> "text-blue-400"
       "predatory" -> "text-red-400"
       "defensive" -> "text-green-400"
       _ -> "text-gray-400"
+    end
+  end
+
+  defp humanize_target_assessment(assessment) do
+    case assessment do
+      "capital_hunter" -> "Capital Hunter"
+      "wormhole_hunter" -> "Wormhole Hunter"
+      "industrial_hunter" -> "Industrial Hunter"
+      "highsec_ganker" -> "Highsec Ganker"
+      "pod_hunter" -> "Pod Hunter"
+      "solo_hunter" -> "Solo Hunter"
+      "fleet_pvper" -> "Fleet PvPer"
+      "elite_hunter" -> "Elite Hunter"
+      "standard_combatant" -> "Standard Combatant"
+      "casual_pvper" -> "Casual PvPer"
+      "opportunist" -> "Opportunist"
+      "insufficient_data" -> "Insufficient Data"
+      # Legacy values
+      "high_value_hunter" -> "High Value Hunter"
+      "standard_pvp" -> "Standard PvP"
+      "ganker" -> "Ganker"
+      _ -> String.capitalize(String.replace(assessment || "unknown", "_", " "))
+    end
+  end
+
+  # Bait detection UI helpers
+  defp bait_banner_class(score) do
+    cond do
+      score >= 70 -> "bg-red-900 border border-red-600 rounded-lg p-4 mb-6"
+      score >= 50 -> "bg-orange-900 border border-orange-600 rounded-lg p-4 mb-6"
+      score >= 30 -> "bg-yellow-900 border border-yellow-600 rounded-lg p-4 mb-6"
+      true -> "bg-gray-800 border border-gray-600 rounded-lg p-4 mb-6"
+    end
+  end
+
+  defp bait_title_class(score) do
+    cond do
+      score >= 70 -> "text-red-300 font-semibold"
+      score >= 50 -> "text-orange-300 font-semibold"
+      score >= 30 -> "text-yellow-300 font-semibold"
+      true -> "text-gray-300 font-semibold"
+    end
+  end
+
+  defp bait_progress_class(score) do
+    cond do
+      score >= 70 -> "h-2 rounded-full bg-red-500"
+      score >= 50 -> "h-2 rounded-full bg-orange-500"
+      score >= 30 -> "h-2 rounded-full bg-yellow-500"
+      true -> "h-2 rounded-full bg-gray-500"
+    end
+  end
+
+  defp bait_icon(score) do
+    cond do
+      score >= 70 -> "🚨"
+      score >= 50 -> "⚠️"
+      score >= 30 -> "⚡"
+      true -> "ℹ️"
+    end
+  end
+
+  # Security breakdown helpers for target selection
+  defp security_breakdown_sorted(breakdown) do
+    breakdown
+    |> Enum.sort_by(fn {_k, v} -> -v.percentage end)
+  end
+
+  defp humanize_sec_type(sec_type) do
+    case sec_type do
+      :highsec -> "Highsec"
+      :lowsec -> "Lowsec"
+      :nullsec -> "Nullsec"
+      :wormhole -> "W-Space"
+      _ -> "Unknown"
+    end
+  end
+
+  defp security_class_color(sec_type) do
+    case sec_type do
+      :highsec -> "text-green-400"
+      :lowsec -> "text-yellow-400"
+      :nullsec -> "text-red-400"
+      :wormhole -> "text-purple-400"
+      _ -> "text-gray-400"
+    end
+  end
+
+  defp security_bar_color(sec_type) do
+    case sec_type do
+      :highsec -> "bg-green-500"
+      :lowsec -> "bg-yellow-500"
+      :nullsec -> "bg-red-500"
+      :wormhole -> "bg-purple-500"
+      _ -> "bg-gray-500"
     end
   end
 

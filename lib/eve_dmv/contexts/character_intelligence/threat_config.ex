@@ -35,6 +35,29 @@ defmodule EveDmv.Contexts.CharacterIntelligence.ThreatConfig do
   - `active_systems_max` (20): Activity in 20+ systems indicates geographic variance
   - `escalation_risk_threshold` (0.5): Risk above 50% indicates high escalation potential
 
+  ## Bait Detection Thresholds
+
+  - `bait_cheap_ship_threshold` (100M): Ships under this value are considered cheap/expendable
+  - `bait_min_deaths` (3): Minimum deaths required before bait analysis applies
+  - `bait_cheap_death_threshold` (60%): % of cheap ship deaths indicating bait pattern
+  - `bait_low_damage_threshold` (5%): Low damage contribution when dying suggests tackle role
+  - `bait_corp_kill_correlation` (40%): Deaths with corpmate kills nearby indicates bait
+  - `bait_low_final_blow_rate` (10%): Low final blow rate suggests support role
+  - `bait_positive_trade_ratio` (3.0): Corpmate kills value vs personal loss value
+  - `bait_outgunned_threshold` (5): Average attackers at death indicating overextension
+  - `bait_score_confirmed` (70): Score threshold for "Confirmed bait pilot"
+  - `bait_score_likely` (50): Score threshold for "Likely bait pilot"
+  - `bait_score_possible` (30): Score threshold for "Possible bait pilot"
+
+  ## Target Assessment Thresholds
+
+  - `target_capital_threshold` (30%): Capital kills % for "Capital hunter" classification
+  - `target_highsec_threshold` (60%): Highsec kills % for "Highsec ganker" classification
+  - `target_industrial_threshold` (40%): Industrial kills % for "Industrial hunter"
+  - `target_wormhole_threshold` (60%): Wormhole kills % for "Wormhole hunter"
+  - `target_solo_threshold` (70%): Solo kills % for "Solo hunter" classification
+  - `target_pod_threshold` (20%): Pod kills % for "Pod hunter" classification
+
   ## Ship Group IDs (from EVE SDE)
 
   - Frigate: Group 25
@@ -120,6 +143,84 @@ defmodule EveDmv.Contexts.CharacterIntelligence.ThreatConfig do
   # alerting users. This threshold is used in cross-system intelligence analysis
   # to identify situations where threat levels are likely to increase.
   @escalation_risk_threshold 0.5
+
+  # =============================================================================
+  # Bait Detection Thresholds
+  # =============================================================================
+  # Bait detection identifies pilots who sacrifice cheap ships to enable corpmates
+  # to secure kills. A multi-factor scoring system weights various bait indicators.
+
+  # ISK threshold for "cheap" ships that may be used as bait.
+  # Ships < 100M ISK are considered expendable/cheap for bait purposes.
+  # This covers most T1 cruisers and below, while excluding expensive fits.
+  @bait_cheap_ship_threshold 100_000_000
+
+  # Minimum deaths required before bait analysis is meaningful.
+  # At least 3 deaths needed to establish a pattern.
+  @bait_min_deaths 3
+
+  # Percentage of cheap ship deaths that indicates bait pattern (0-100).
+  # 60%+ of deaths in cheap ships is a strong bait indicator.
+  @bait_cheap_death_threshold 60
+
+  # Damage contribution threshold for bait detection.
+  # Bait pilots typically do < 5% damage when dying (holding tackle, not DPS).
+  @bait_low_damage_threshold 0.05
+
+  # Corpmate kill correlation threshold.
+  # 40%+ of deaths having corpmate kills nearby strongly indicates bait.
+  @bait_corp_kill_correlation 40
+
+  # Final blow rate threshold for bait detection.
+  # < 10% final blows suggests tackle/support role rather than damage dealer.
+  @bait_low_final_blow_rate 0.10
+
+  # Trade ratio threshold (corpmate kill value / personal loss value).
+  # A ratio > 3.0 means corpmates killed 3x more ISK than the bait pilot lost.
+  @bait_positive_trade_ratio 3.0
+
+  # Average attacker count threshold for "outgunned" detection.
+  # Dying to 5+ attackers on average suggests intentional overextension (bait).
+  @bait_outgunned_threshold 5
+
+  # Bait score classification thresholds (out of 100)
+  @bait_score_confirmed 70
+  @bait_score_likely 50
+  @bait_score_possible 30
+
+  # =============================================================================
+  # Target Assessment Thresholds
+  # =============================================================================
+  # Target assessment classifies pilots based on their hunting patterns, including
+  # victim types, security space, and kill style.
+
+  # Capital hunter threshold: 30%+ kills on capital ships
+  @target_capital_threshold 30
+
+  # Highsec ganker threshold: 60%+ kills in highsec
+  @target_highsec_threshold 60
+
+  # Industrial hunter threshold: 40%+ kills on industrials/miners
+  @target_industrial_threshold 40
+
+  # Wormhole hunter threshold: 60%+ kills in wormhole space
+  @target_wormhole_threshold 60
+
+  # Solo hunter threshold: 70%+ solo kills
+  @target_solo_threshold 70
+
+  # Pod hunter threshold: 20%+ pod kills
+  @target_pod_threshold 20
+
+  # Mining ship group IDs: 463 = Mining Barge, 543 = Exhumer, 28 = Industrial
+  @mining_group_ids [463, 543, 28]
+
+  # Industrial ship group IDs: 28 = Industrial, 380 = Deep Space Transport,
+  # 902 = Freighter, 513 = Transport Ship, 941 = Mining Barge, 1022 = ORE Industrial
+  @industrial_group_ids [28, 380, 902, 513, 941, 1022]
+
+  # Capsule type ID
+  @capsule_type_id 670
 
   # =============================================================================
   # Fallback Score Constants
@@ -416,4 +517,127 @@ defmodule EveDmv.Contexts.CharacterIntelligence.ThreatConfig do
   end
 
   def capital_group?(_), do: false
+
+  # =============================================================================
+  # Public API - Bait Detection Thresholds
+  # =============================================================================
+
+  @doc "Returns the ISK threshold for cheap/expendable ships (100M)."
+  @spec bait_cheap_ship_threshold() :: integer()
+  def bait_cheap_ship_threshold, do: @bait_cheap_ship_threshold
+
+  @doc "Returns the minimum deaths required for bait analysis (3)."
+  @spec bait_min_deaths() :: integer()
+  def bait_min_deaths, do: @bait_min_deaths
+
+  @doc "Returns the cheap death percentage threshold (60%)."
+  @spec bait_cheap_death_threshold() :: integer()
+  def bait_cheap_death_threshold, do: @bait_cheap_death_threshold
+
+  @doc "Returns the low damage contribution threshold (5%)."
+  @spec bait_low_damage_threshold() :: float()
+  def bait_low_damage_threshold, do: @bait_low_damage_threshold
+
+  @doc "Returns the corpmate kill correlation threshold (40%)."
+  @spec bait_corp_kill_correlation() :: integer()
+  def bait_corp_kill_correlation, do: @bait_corp_kill_correlation
+
+  @doc "Returns the low final blow rate threshold (10%)."
+  @spec bait_low_final_blow_rate() :: float()
+  def bait_low_final_blow_rate, do: @bait_low_final_blow_rate
+
+  @doc "Returns the positive trade ratio threshold (3.0x)."
+  @spec bait_positive_trade_ratio() :: float()
+  def bait_positive_trade_ratio, do: @bait_positive_trade_ratio
+
+  @doc "Returns the outgunned attacker count threshold (5)."
+  @spec bait_outgunned_threshold() :: integer()
+  def bait_outgunned_threshold, do: @bait_outgunned_threshold
+
+  @doc "Returns the bait score threshold for 'Confirmed bait pilot' (70)."
+  @spec bait_score_confirmed() :: integer()
+  def bait_score_confirmed, do: @bait_score_confirmed
+
+  @doc "Returns the bait score threshold for 'Likely bait pilot' (50)."
+  @spec bait_score_likely() :: integer()
+  def bait_score_likely, do: @bait_score_likely
+
+  @doc "Returns the bait score threshold for 'Possible bait pilot' (30)."
+  @spec bait_score_possible() :: integer()
+  def bait_score_possible, do: @bait_score_possible
+
+  @doc """
+  Classifies a bait score into a label.
+  """
+  @spec classify_bait_score(number()) :: String.t()
+  def classify_bait_score(score) when is_number(score) do
+    cond do
+      score >= @bait_score_confirmed -> "Confirmed bait pilot"
+      score >= @bait_score_likely -> "Likely bait pilot"
+      score >= @bait_score_possible -> "Possible bait pilot"
+      true -> "No bait indicators"
+    end
+  end
+
+  def classify_bait_score(_), do: "No bait indicators"
+
+  # =============================================================================
+  # Public API - Target Assessment Thresholds
+  # =============================================================================
+
+  @doc "Returns the capital hunter threshold (30%)."
+  @spec target_capital_threshold() :: integer()
+  def target_capital_threshold, do: @target_capital_threshold
+
+  @doc "Returns the highsec ganker threshold (60%)."
+  @spec target_highsec_threshold() :: integer()
+  def target_highsec_threshold, do: @target_highsec_threshold
+
+  @doc "Returns the industrial hunter threshold (40%)."
+  @spec target_industrial_threshold() :: integer()
+  def target_industrial_threshold, do: @target_industrial_threshold
+
+  @doc "Returns the wormhole hunter threshold (60%)."
+  @spec target_wormhole_threshold() :: integer()
+  def target_wormhole_threshold, do: @target_wormhole_threshold
+
+  @doc "Returns the solo hunter threshold (70%)."
+  @spec target_solo_threshold() :: integer()
+  def target_solo_threshold, do: @target_solo_threshold
+
+  @doc "Returns the pod hunter threshold (20%)."
+  @spec target_pod_threshold() :: integer()
+  def target_pod_threshold, do: @target_pod_threshold
+
+  @doc "Returns the mining ship group IDs."
+  @spec mining_group_ids() :: [integer()]
+  def mining_group_ids, do: @mining_group_ids
+
+  @doc "Returns the industrial ship group IDs."
+  @spec industrial_group_ids() :: [integer()]
+  def industrial_group_ids, do: @industrial_group_ids
+
+  @doc "Returns the capsule type ID (670)."
+  @spec capsule_type_id() :: integer()
+  def capsule_type_id, do: @capsule_type_id
+
+  @doc """
+  Checks if a group ID represents a mining ship.
+  """
+  @spec mining_group?(integer()) :: boolean()
+  def mining_group?(group_id) when is_integer(group_id) do
+    group_id in @mining_group_ids
+  end
+
+  def mining_group?(_), do: false
+
+  @doc """
+  Checks if a group ID represents an industrial ship.
+  """
+  @spec industrial_group?(integer()) :: boolean()
+  def industrial_group?(group_id) when is_integer(group_id) do
+    group_id in @industrial_group_ids
+  end
+
+  def industrial_group?(_), do: false
 end

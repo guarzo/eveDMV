@@ -215,10 +215,10 @@ if config_env() == :prod do
     pool_size: String.to_integer(System.get_env("POOL_SIZE") || "20"),
     # Queue configuration for connection management
     # queue_target is doubled by DBConnection for the actual checkout timeout
-    # Set to 200ms (400ms effective) to handle analytical queries that may take 100-200ms
-    # The previous 50ms (100ms effective) was too aggressive and caused connection pool exhaustion
-    queue_target: String.to_integer(System.get_env("DB_QUEUE_TARGET") || "200"),
-    queue_interval: String.to_integer(System.get_env("DB_QUEUE_INTERVAL") || "1000"),
+    # Set to 500ms (1000ms effective) to handle bulk inserts and analytical queries
+    # Lower values cause connection pool exhaustion under load
+    queue_target: String.to_integer(System.get_env("DB_QUEUE_TARGET") || "500"),
+    queue_interval: String.to_integer(System.get_env("DB_QUEUE_INTERVAL") || "2000"),
     # Connection timeout settings
     # Increased from 15s to 30s to handle complex analytical queries
     timeout: String.to_integer(System.get_env("DB_TIMEOUT") || "30000"),

@@ -389,9 +389,12 @@ defmodule EveDmv.Killmails.Participant do
         limit = Ash.Query.get_argument(query, :limit)
         search_pattern = "%#{search_query}%"
 
+        # For DISTINCT ON to work correctly in PostgreSQL, ORDER BY must include
+        # the distinct columns first, then the tiebreaker (killmail_time DESC)
+        # This ensures we get the most recent corp/alliance info for each character
         query
         |> Ash.Query.filter_input(%{character_name: %{ilike: search_pattern}})
-        |> Ash.Query.sort(killmail_time: :desc)
+        |> Ash.Query.sort(character_id: :asc, killmail_time: :desc)
         |> Ash.Query.distinct([:character_id])
         |> Ash.Query.limit(limit)
         |> Ash.Query.select([
@@ -427,9 +430,12 @@ defmodule EveDmv.Killmails.Participant do
         limit = Ash.Query.get_argument(query, :limit)
         search_pattern = "%#{search_query}%"
 
+        # For DISTINCT ON to work correctly in PostgreSQL, ORDER BY must include
+        # the distinct columns first, then the tiebreaker (killmail_time DESC)
+        # This ensures we get the most recent alliance info for each corporation
         query
         |> Ash.Query.filter_input(%{corporation_name: %{ilike: search_pattern}})
-        |> Ash.Query.sort(killmail_time: :desc)
+        |> Ash.Query.sort(corporation_id: :asc, killmail_time: :desc)
         |> Ash.Query.distinct([:corporation_id])
         |> Ash.Query.limit(limit)
         |> Ash.Query.select([
