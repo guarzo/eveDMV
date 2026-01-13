@@ -196,7 +196,7 @@ defmodule EveDmvWeb.UniversalSearchLive do
         p.killmail_time
       FROM participants p
       WHERE p.character_name IS NOT NULL
-        AND p.character_name ILIKE $1
+        AND p.character_name ILIKE $1 ESCAPE '\\'
         AND p.character_id IS NOT NULL
       ORDER BY p.character_id, p.killmail_time DESC
     ) sub
@@ -204,7 +204,7 @@ defmodule EveDmvWeb.UniversalSearchLive do
     LIMIT 5
     """
 
-    search_pattern = "%#{query}%"
+    search_pattern = "%#{escape_like_pattern(query)}%"
 
     case SQL.query(EveDmv.Repo, character_query, [search_pattern], timeout: 3_000) do
       {:ok, %{rows: rows}} ->
@@ -238,7 +238,7 @@ defmodule EveDmvWeb.UniversalSearchLive do
         p.killmail_time
       FROM participants p
       WHERE p.corporation_name IS NOT NULL
-        AND p.corporation_name ILIKE $1
+        AND p.corporation_name ILIKE $1 ESCAPE '\\'
         AND p.corporation_id IS NOT NULL
       ORDER BY p.corporation_id, p.killmail_time DESC
     ) sub
@@ -246,7 +246,7 @@ defmodule EveDmvWeb.UniversalSearchLive do
     LIMIT 5
     """
 
-    search_pattern = "%#{query}%"
+    search_pattern = "%#{escape_like_pattern(query)}%"
 
     case SQL.query(EveDmv.Repo, corp_query, [search_pattern], timeout: 3_000) do
       {:ok, %{rows: rows}} ->
@@ -411,4 +411,12 @@ defmodule EveDmvWeb.UniversalSearchLive do
   end
 
   def time_ago(_), do: "unknown"
+
+  # Escapes LIKE metacharacters (%, _, \) so they are treated as literals
+  defp escape_like_pattern(query) do
+    query
+    |> String.replace("\\", "\\\\")
+    |> String.replace("%", "\\%")
+    |> String.replace("_", "\\_")
+  end
 end
