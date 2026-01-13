@@ -1111,9 +1111,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
             eit.type_name as ship_name,
             eit.group_id,
             eit.group_name,
-            -- Classify victim type
+            -- Classify victim type using group_id from SDE join for consistency
+            -- Group IDs from ThreatConfig: 29=Capsule, capitals, industrials
             CASE
-              WHEN k.victim_ship_type_id = 670 THEN 'capsule'
+              WHEN eit.group_id = 29 THEN 'capsule'
               WHEN eit.group_id IN (485, 547, 659, 30, 1538, 883) THEN 'capital'
               WHEN eit.group_id IN (28, 380, 902, 513, 941, 1022, 463, 543) THEN 'industrial'
               ELSE 'combat'
@@ -1137,6 +1138,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
           GROUP BY victim_ship_type_id, ship_name, group_id, group_name
         ),
         ship_class_summary AS (
+          -- Ship class summary using EVE SDE group IDs
+          -- All group IDs sourced from ThreatConfig for consistency
           SELECT
             CASE
               WHEN group_id IN (25, 420, 831, 324, 830, 893, 541, 543, 1305) THEN 'frigates_destroyers'
@@ -1144,7 +1147,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
               WHEN group_id IN (27, 898, 900) THEN 'battleships'
               WHEN group_id IN (547, 485, 1538, 659, 30, 883) THEN 'capitals'
               WHEN group_id IN (463, 543, 513, 902, 28, 380, 941, 1022) THEN 'industrial'
-              WHEN group_id = 670 THEN 'capsules'
+              WHEN group_id = 29 THEN 'capsules'
               ELSE 'other'
             END as ship_class,
             SUM(kill_count) as total_kills,
@@ -1392,14 +1395,14 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
         solo_pct < 30 ->
           "fleet_pvper"
 
-        # Fallback to ISK-based classification
-        avg_value > 500_000_000 ->
+        # Fallback to ISK-based classification using ThreatConfig thresholds
+        avg_value > ThreatConfig.elite_hunter_isk() ->
           "elite_hunter"
 
-        avg_value > 100_000_000 ->
+        avg_value > ThreatConfig.standard_combatant_isk() ->
           "standard_combatant"
 
-        avg_value > 20_000_000 ->
+        avg_value > ThreatConfig.casual_pvper_isk() ->
           "casual_pvper"
 
         true ->

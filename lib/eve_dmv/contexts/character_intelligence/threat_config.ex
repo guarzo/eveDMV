@@ -58,6 +58,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence.ThreatConfig do
   - `target_solo_threshold` (70%): Solo kills % for "Solo hunter" classification
   - `target_pod_threshold` (20%): Pod kills % for "Pod hunter" classification
 
+  ## ISK-Based Classification Thresholds
+
+  - `elite_hunter_isk` (500M): Average victim ISK for "Elite hunter" classification
+  - `standard_combatant_isk` (100M): Average victim ISK for "Standard combatant" classification
+  - `casual_pvper_isk` (20M): Average victim ISK for "Casual PvPer" classification (below = "Opportunist")
+
   ## Ship Group IDs (from EVE SDE)
 
   - Frigate: Group 25
@@ -212,6 +218,22 @@ defmodule EveDmv.Contexts.CharacterIntelligence.ThreatConfig do
   # Pod hunter threshold: 20%+ pod kills
   @target_pod_threshold 20
 
+  # ISK-based target classification thresholds
+  # These thresholds determine pilot classification based on average victim value
+  # when no specific hunting pattern (capital, wormhole, industrial, etc.) is detected.
+  #
+  # Elite hunter: 500M+ ISK average victim value indicates selective high-value targeting.
+  # This represents pilots who specifically hunt expensive ships, faction fits, or capitals.
+  @elite_hunter_isk 500_000_000
+
+  # Standard combatant: 100M-500M ISK average victim value indicates general PvP activity.
+  # This represents the bulk of active PvPers killing typical combat ships.
+  @standard_combatant_isk 100_000_000
+
+  # Casual PvPer: 20M-100M ISK average victim value indicates opportunistic or low-end PvP.
+  # Below this threshold, the pilot is classified as an "opportunist" (catching whatever is available).
+  @casual_pvper_isk 20_000_000
+
   # Mining ship group IDs: 463 = Mining Barge, 543 = Exhumer, 28 = Industrial
   @mining_group_ids [463, 543, 28]
 
@@ -219,8 +241,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence.ThreatConfig do
   # 902 = Freighter, 513 = Transport Ship, 941 = Mining Barge, 1022 = ORE Industrial
   @industrial_group_ids [28, 380, 902, 513, 941, 1022]
 
-  # Capsule type ID
+  # Capsule type ID (the specific item type)
   @capsule_type_id 670
+
+  # Capsule group ID (group 29 = Capsule in EVE SDE)
+  # Used for consistent group-based classification in SQL queries
+  @capsule_group_id 29
 
   # =============================================================================
   # Fallback Score Constants
@@ -609,6 +635,18 @@ defmodule EveDmv.Contexts.CharacterIntelligence.ThreatConfig do
   @spec target_pod_threshold() :: integer()
   def target_pod_threshold, do: @target_pod_threshold
 
+  @doc "Returns the elite hunter ISK threshold (500M). Pilots with average victim value above this are elite hunters."
+  @spec elite_hunter_isk() :: integer()
+  def elite_hunter_isk, do: @elite_hunter_isk
+
+  @doc "Returns the standard combatant ISK threshold (100M). Pilots with average victim value above this are standard combatants."
+  @spec standard_combatant_isk() :: integer()
+  def standard_combatant_isk, do: @standard_combatant_isk
+
+  @doc "Returns the casual PvPer ISK threshold (20M). Pilots with average victim value above this are casual PvPers, below are opportunists."
+  @spec casual_pvper_isk() :: integer()
+  def casual_pvper_isk, do: @casual_pvper_isk
+
   @doc "Returns the mining ship group IDs."
   @spec mining_group_ids() :: [integer()]
   def mining_group_ids, do: @mining_group_ids
@@ -620,6 +658,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.ThreatConfig do
   @doc "Returns the capsule type ID (670)."
   @spec capsule_type_id() :: integer()
   def capsule_type_id, do: @capsule_type_id
+
+  @doc "Returns the capsule group ID (29)."
+  @spec capsule_group_id() :: integer()
+  def capsule_group_id, do: @capsule_group_id
 
   @doc """
   Checks if a group ID represents a mining ship.

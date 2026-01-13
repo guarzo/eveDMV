@@ -214,9 +214,12 @@ if config_env() == :prod do
     # Increased pool size for production workloads
     pool_size: String.to_integer(System.get_env("POOL_SIZE") || "20"),
     # Queue configuration for connection management
-    # queue_target is doubled by DBConnection for the actual checkout timeout
-    # Set to 500ms (1000ms effective) to handle bulk inserts and analytical queries
-    # Lower values cause connection pool exhaustion under load
+    # queue_target: Initial desired maximum wait time for connection checkout (500ms default).
+    # queue_interval: Time window for monitoring checkout performance (2000ms default).
+    # DBConnection uses reactive scaling: if EVERY checkout during a full queue_interval
+    # exceeds the queue_target, it reactively increases the effective timeout. This is
+    # not an automatic doubling but a load-responsive adjustment. Monitor actual checkout
+    # times under load rather than assuming a fixed "effective" timeout.
     queue_target: String.to_integer(System.get_env("DB_QUEUE_TARGET") || "500"),
     queue_interval: String.to_integer(System.get_env("DB_QUEUE_INTERVAL") || "2000"),
     # Connection timeout settings
