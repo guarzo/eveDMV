@@ -57,6 +57,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.ThreatConfig do
   - `target_wormhole_threshold` (60%): Wormhole kills % for "Wormhole hunter"
   - `target_solo_threshold` (70%): Solo kills % for "Solo hunter" classification
   - `target_pod_threshold` (20%): Pod kills % for "Pod hunter" classification
+  - `target_min_kills` (5): Minimum kills required for meaningful classification
+  - `target_highsec_solo_threshold` (50%): Solo kills % threshold for highsec ganker (gang activity)
+  - `target_fleet_solo_threshold` (30%): Solo kills % threshold for fleet PvPer classification
 
   ## ISK-Based Classification Thresholds
 
@@ -217,6 +220,18 @@ defmodule EveDmv.Contexts.CharacterIntelligence.ThreatConfig do
 
   # Pod hunter threshold: 20%+ pod kills
   @target_pod_threshold 20
+
+  # Minimum kills required for meaningful target classification
+  # Below this threshold, "insufficient_data" is returned
+  @target_min_kills 5
+
+  # Solo percentage threshold for highsec ganker classification
+  # Highsec gankers are typically organized gangs (< 50% solo)
+  @target_highsec_solo_threshold 50
+
+  # Solo percentage threshold for fleet PvPer classification
+  # Fleet PvPers primarily fly with others (< 30% solo)
+  @target_fleet_solo_threshold 30
 
   # ISK-based target classification thresholds
   # These thresholds determine pilot classification based on average victim value
@@ -634,6 +649,18 @@ defmodule EveDmv.Contexts.CharacterIntelligence.ThreatConfig do
   @doc "Returns the pod hunter threshold (20%)."
   @spec target_pod_threshold() :: integer()
   def target_pod_threshold, do: @target_pod_threshold
+
+  @doc "Returns the minimum kills required for meaningful target classification (5)."
+  @spec target_min_kills() :: integer()
+  def target_min_kills, do: @target_min_kills
+
+  @doc "Returns the solo percentage threshold for highsec ganker classification (50%)."
+  @spec target_highsec_solo_threshold() :: integer()
+  def target_highsec_solo_threshold, do: @target_highsec_solo_threshold
+
+  @doc "Returns the solo percentage threshold for fleet PvPer classification (30%)."
+  @spec target_fleet_solo_threshold() :: integer()
+  def target_fleet_solo_threshold, do: @target_fleet_solo_threshold
 
   @doc "Returns the elite hunter ISK threshold (500M). Pilots with average victim value above this are elite hunters."
   @spec elite_hunter_isk() :: integer()

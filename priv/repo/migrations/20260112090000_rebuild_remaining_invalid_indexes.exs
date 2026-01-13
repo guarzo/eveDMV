@@ -64,12 +64,20 @@ defmodule EveDmv.Repo.Migrations.RebuildRemainingInvalidIndexes do
 
       Logger.error("Migration failed to rebuild index '#{index_name}': #{error_message}")
 
-      # Log via SQL NOTICE for visibility in database logs
-      execute(
-        "DO $$ BEGIN RAISE NOTICE 'Migration error rebuilding index %: %', '#{index_name}', '#{String.replace(error_message, "'", "''")}'; END $$;"
-      )
+      # Log via SQL NOTICE for visibility in database logs.
+      # Wrap in try/rescue so NOTICE emission failure doesn't mask the original error.
+      try do
+        execute(
+          "DO $$ BEGIN RAISE NOTICE 'Migration error rebuilding index %: %', '#{index_name}', '#{String.replace(error_message, "'", "''")}'; END $$;"
+        )
+      rescue
+        inner_err ->
+          Logger.error(
+            "Failed emitting NOTICE for index '#{index_name}': #{Exception.message(inner_err)}"
+          )
+      end
 
-      # Re-raise to fail fast and prevent partial state
+      # Re-raise the original exception to fail fast and prevent partial state
       reraise e, __STACKTRACE__
   end
 
@@ -82,9 +90,13 @@ defmodule EveDmv.Repo.Migrations.RebuildRemainingInvalidIndexes do
         # Index exists - use REINDEX CONCURRENTLY for minimal locking
         execute("REINDEX INDEX CONCURRENTLY #{index_name}")
 
-      _ ->
+      {:ok, %{num_rows: 0}} ->
         # Index doesn't exist - create it
         execute(create_sql)
+
+      {:error, reason} ->
+        # Database error checking index existence - surface the error clearly
+        raise "Failed to check existence of index '#{index_name}': #{inspect(reason)}"
     end
   end
 

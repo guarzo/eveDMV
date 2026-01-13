@@ -1087,34 +1087,34 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
       cache_key,
       fn ->
         # Build group ID strings from ThreatConfig for SQL interpolation
+        # Using safe_ids_for_sql to ensure empty lists don't produce invalid SQL
         capsule_id = ThreatConfig.capsule_group_id()
 
         capital_ids =
           ThreatConfig.capital_group_ids()
-          |> Enum.join(", ")
+          |> safe_ids_for_sql()
 
         industrial_and_mining_ids =
           (ThreatConfig.industrial_group_ids() ++ ThreatConfig.mining_group_ids())
-          |> Enum.uniq()
-          |> Enum.join(", ")
+          |> safe_ids_for_sql()
 
         # Ship class group IDs from ThreatConfig
         frigate_destroyer_ids =
           (ThreatConfig.frigate_group_ids() ++
              ThreatConfig.destroyer_group_ids() ++
              ThreatConfig.tackle_group_ids())
-          |> Enum.join(", ")
+          |> safe_ids_for_sql()
 
         cruiser_bc_ids =
           (ThreatConfig.cruiser_group_ids() ++
              ThreatConfig.battlecruiser_group_ids() ++
              ThreatConfig.logistics_group_ids() ++
              ThreatConfig.ewar_group_ids())
-          |> Enum.join(", ")
+          |> safe_ids_for_sql()
 
         battleship_command_ids =
           (ThreatConfig.battleship_group_ids() ++ ThreatConfig.command_group_ids())
-          |> Enum.join(", ")
+          |> safe_ids_for_sql()
 
         # Multi-dimensional target analysis query
         targets_query = """
@@ -1385,7 +1385,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
          total_kills
        ) do
     # Need minimum kills for meaningful classification
-    if total_kills < 5 do
+    if total_kills < ThreatConfig.target_min_kills() do
       "insufficient_data"
     else
       capital_pct = victim_breakdown.capital.percentage
@@ -1409,7 +1409,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
           "industrial_hunter"
 
         # Highsec ganker: 60%+ kills in highsec (usually gang kills)
-        highsec_pct >= ThreatConfig.target_highsec_threshold() and solo_pct < 50 ->
+        highsec_pct >= ThreatConfig.target_highsec_threshold() and
+            solo_pct < ThreatConfig.target_highsec_solo_threshold() ->
           "highsec_ganker"
 
         # Pod hunter: 20%+ pod kills
@@ -1420,8 +1421,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
         solo_pct >= ThreatConfig.target_solo_threshold() ->
           "solo_hunter"
 
-        # Fleet PvPer: Primarily gang kills (< 30% solo)
-        solo_pct < 30 ->
+        # Fleet PvPer: Primarily gang kills (below fleet solo threshold)
+        solo_pct < ThreatConfig.target_fleet_solo_threshold() ->
           "fleet_pvper"
 
         # Fallback to ISK-based classification using ThreatConfig thresholds
@@ -2003,6 +2004,18 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
         cheap_score + damage_score + corp_score + fb_score + trade_score + outgunned_score
 
       {round(total_score), Enum.reverse(factors)}
+    end
+  end
+
+  # Helper to safely build SQL IN clause from a list of IDs.
+  # Returns "-1" (a sentinel that matches nothing) if the list is empty,
+  # ensuring the resulting IN (...) is always syntactically valid.
+  defp safe_ids_for_sql(ids) when is_list(ids) do
+    ids
+    |> Enum.uniq()
+    |> case do
+      [] -> "-1"
+      list -> Enum.join(list, ", ")
     end
   end
 
