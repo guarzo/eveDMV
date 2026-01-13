@@ -212,8 +212,7 @@ defmodule EveDmvWeb.UniversalSearchLive do
           %{
             id: char_id,
             name: char_name,
-            subtitle:
-              EveDmvWeb.SearchHelpers.format_character_subtitle(corp_name, alliance_name),
+            subtitle: EveDmvWeb.SearchHelpers.format_character_subtitle(corp_name, alliance_name),
             meta: %{
               activity_count: nil,
               last_seen: killmail_time
