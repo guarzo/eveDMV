@@ -5,9 +5,14 @@ defmodule EveDmv.Repo.Migrations.RebuildRemainingInvalidIndexes do
   Invalid indexes:
   - idx_participants_corp_name_missing (corporation backfill)
   - idx_participants_killmail_corp_backfill (corporation backfill join)
+
+  Error handling: Each index rebuild is wrapped in its own try/rescue block.
+  Failures are logged and re-raised to ensure the migration fails fast,
+  preventing partial state from being committed.
   """
 
   use Ecto.Migration
+  require Logger
 
   @disable_ddl_transaction true
   @disable_migration_lock true
@@ -22,7 +27,7 @@ defmodule EveDmv.Repo.Migrations.RebuildRemainingInvalidIndexes do
       #
       #    Note: REINDEX/CREATE INDEX CONCURRENTLY cannot run inside PL/pgSQL blocks,
       #    so we check index existence via Ecto first.
-      rebuild_index_concurrently(
+      rebuild_index_with_error_handling(
         "idx_participants_corp_name_missing",
         """
         CREATE INDEX CONCURRENTLY idx_participants_corp_name_missing
@@ -33,7 +38,7 @@ defmodule EveDmv.Repo.Migrations.RebuildRemainingInvalidIndexes do
       )
 
       # 2. Rebuild killmail_corp_backfill index using same pattern
-      rebuild_index_concurrently(
+      rebuild_index_with_error_handling(
         "idx_participants_killmail_corp_backfill",
         """
         CREATE INDEX CONCURRENTLY idx_participants_killmail_corp_backfill
@@ -47,6 +52,25 @@ defmodule EveDmv.Repo.Migrations.RebuildRemainingInvalidIndexes do
     after
       execute("RESET statement_timeout")
     end
+  end
+
+  # Wrapper that handles errors for each index operation individually.
+  # Logs the failure with details and re-raises to fail fast.
+  defp rebuild_index_with_error_handling(index_name, create_sql) do
+    rebuild_index_concurrently(index_name, create_sql)
+  rescue
+    e ->
+      error_message = Exception.message(e)
+
+      Logger.error("Migration failed to rebuild index '#{index_name}': #{error_message}")
+
+      # Log via SQL NOTICE for visibility in database logs
+      execute(
+        "DO $$ BEGIN RAISE NOTICE 'Migration error rebuilding index %: %', '#{index_name}', '#{String.replace(error_message, "'", "''")}'; END $$;"
+      )
+
+      # Re-raise to fail fast and prevent partial state
+      reraise e, __STACKTRACE__
   end
 
   # Helper to conditionally REINDEX or CREATE an index.

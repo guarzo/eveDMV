@@ -1646,12 +1646,20 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
             AND p.is_victim = true
         ),
         char_kills AS (
-          -- Get kills by this character for final blow analysis
+          -- Get kills by this character with damage contribution percentage
           SELECT
             p.killmail_id,
             p.final_blow,
-            p.damage_done
+            p.damage_done,
+            COALESCE(k.total_damage_taken, 0) as total_damage_taken,
+            CASE
+              WHEN COALESCE(k.total_damage_taken, 0) > 0
+              THEN (p.damage_done * 100.0 / k.total_damage_taken)
+              ELSE 0
+            END as damage_contribution_pct
           FROM participants p
+          JOIN killmails_raw k ON k.killmail_id = p.killmail_id
+            AND k.killmail_time = p.killmail_time
           WHERE p.character_id = $1
             AND p.killmail_time >= $2
             AND p.is_victim = false
@@ -1670,15 +1678,15 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
           SELECT
             COUNT(*) FILTER (WHERE loss_value < $3) as cheap_deaths,
             COUNT(*) as total_deaths,
-            AVG(damage_done) as avg_damage_on_death,
             AVG(attacker_count) as avg_attacker_count
           FROM char_deaths
         ),
         final_blow_stats AS (
-          -- Final blow rate on kills
+          -- Final blow rate on kills and average damage contribution percentage
           SELECT
             COUNT(*) as total_kills,
-            COUNT(*) FILTER (WHERE final_blow = true) as final_blows
+            COUNT(*) FILTER (WHERE final_blow = true) as final_blows,
+            AVG(damage_contribution_pct) as avg_damage_contribution_pct
           FROM char_kills
         ),
         related_kills AS (
@@ -1717,11 +1725,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
           -- Cheap death stats
           cds.cheap_deaths,
           cds.total_deaths,
-          cds.avg_damage_on_death,
           cds.avg_attacker_count,
           -- Final blow stats
           fbs.total_kills,
           fbs.final_blows,
+          fbs.avg_damage_contribution_pct,
           -- Corp kill correlation stats
           cks.deaths_with_related_kills,
           cks.avg_related_kills,
@@ -1743,10 +1751,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
                [
                  cheap_deaths,
                  total_deaths,
-                 avg_damage_on_death,
                  avg_attacker_count,
                  total_kills,
                  final_blows,
+                 avg_damage_contribution_pct,
                  deaths_with_related_kills,
                  avg_related_kills,
                  total_related_value,
@@ -1760,7 +1768,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
             total_kills_count = total_kills || 0
             final_blows_count = final_blows || 0
             deaths_with_kills_count = deaths_with_related_kills || 0
-            avg_damage = NumericUtils.to_float(avg_damage_on_death) || 0.0
+            # avg_damage_pct is already a percentage (0-100) from the query
+            avg_damage_pct = NumericUtils.to_float(avg_damage_contribution_pct) || 0.0
             avg_attackers = NumericUtils.to_float(avg_attacker_count) || 1.0
             total_losses = NumericUtils.to_float(total_bait_losses) || 0.0
             total_corp_kills = NumericUtils.to_float(total_related_value) || 0.0
@@ -1791,7 +1800,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
             {bait_score, factors} =
               calculate_bait_score(%{
                 cheap_death_pct: cheap_death_pct,
-                avg_damage: avg_damage,
+                avg_damage_pct: avg_damage_pct,
                 corp_kill_correlation: corp_kill_correlation,
                 final_blow_rate: final_blow_rate,
                 trade_ratio: trade_ratio,
@@ -1815,7 +1824,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
                corp_kill_correlation: Float.round(corp_kill_correlation, 1),
                final_blow_rate: Float.round(final_blow_rate * 100, 1),
                # Other metrics
-               avg_damage_on_death: Float.round(avg_damage, 1),
+               avg_damage_contribution_pct: Float.round(avg_damage_pct, 1),
                avg_attacker_count_at_death: Float.round(avg_attackers, 1),
                trade_ratio: Float.round(trade_ratio, 2),
                total_bait_losses: total_losses,
@@ -1841,7 +1850,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
   defp calculate_bait_score(metrics) do
     %{
       cheap_death_pct: cheap_death_pct,
-      avg_damage: avg_damage,
+      avg_damage_pct: avg_damage_pct,
       corp_kill_correlation: corp_kill_correlation,
       final_blow_rate: final_blow_rate,
       trade_ratio: trade_ratio,
@@ -1874,20 +1883,24 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
           factors
         end
 
-      # Factor 2: Low damage contribution when dying (weight 20)
-      # Score scales inversely - lower damage = higher score
-      # Threshold is 5% damage contribution
+      # Factor 2: Low damage contribution on kills (weight 20)
+      # Score scales inversely - lower damage percentage = higher score
+      # Threshold is 5% damage contribution (ThreatConfig returns 0.05, multiply by 100 for percentage)
       damage_threshold = ThreatConfig.bait_low_damage_threshold() * 100
 
+      # avg_damage_pct is already a percentage (0-100) from the query
+      # Lower damage contribution indicates bait behavior
       damage_score =
-        if avg_damage < damage_threshold, do: 20 * (1 - avg_damage / damage_threshold), else: 0
+        if avg_damage_pct < damage_threshold,
+          do: 20 * (1 - avg_damage_pct / damage_threshold),
+          else: 0
 
       factors =
         if damage_score > 5 do
           [
             %{
               factor: "low_damage",
-              description: "Low damage contribution (avg #{Float.round(avg_damage, 1)}%)",
+              description: "Low damage contribution (avg #{Float.round(avg_damage_pct, 1)}%)",
               contribution: Float.round(damage_score, 1)
             }
             | factors
