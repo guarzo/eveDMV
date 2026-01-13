@@ -41,21 +41,23 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
   @impl Phoenix.LiveView
   def handle_params(%{"character_id" => character_id_str}, _uri, socket) do
     character_id = String.to_integer(character_id_str)
+    maybe_reload_character(character_id, socket)
+  end
 
-    # Only reload if the character_id actually changed
-    if character_id != socket.assigns.character_id do
-      socket =
-        socket
-        |> assign(:character_id, character_id)
-        |> init_socket_state()
+  # Same character - no reload needed
+  defp maybe_reload_character(character_id, %{assigns: %{character_id: character_id}} = socket) do
+    {:noreply, socket}
+  end
 
-      # Trigger new data load
-      send(self(), :load_analysis)
+  # Different character - reset state and reload
+  defp maybe_reload_character(character_id, socket) do
+    socket =
+      socket
+      |> assign(:character_id, character_id)
+      |> init_socket_state()
 
-      {:noreply, socket}
-    else
-      {:noreply, socket}
-    end
+    send(self(), :load_analysis)
+    {:noreply, socket}
   end
 
   # Initialize socket state - shared between mount and handle_params
