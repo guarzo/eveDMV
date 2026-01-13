@@ -26,32 +26,56 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
   def mount(%{"character_id" => character_id}, _session, socket) do
     character_id = String.to_integer(character_id)
 
-    # Start with simple loading state
-    # Use streams for large lists to optimize memory and render performance
     socket =
       socket
       |> assign(:character_id, character_id)
-      |> assign(:loading, true)
-      |> assign(:analysis, nil)
-      |> assign(:intelligence, nil)
-      |> assign(:recent_battles, [])
-      |> assign(:battle_stats, nil)
-      |> assign(:ship_specialization, nil)
-      |> assign(:ship_preferences, nil)
-      |> assign(:error, nil)
-      |> assign(:active_tab, :overview)
-      |> assign(:associates_count, 0)
-      |> assign(:ship_loadouts_count, 0)
-      |> stream_configure(:known_associates, dom_id: &"associates-#{&1.character_id}")
-      |> stream_configure(:ship_loadouts, dom_id: &"loadout-#{&1.ship_type_id}")
-      |> stream(:known_associates, [])
-      |> stream(:ship_loadouts, [])
+      |> init_socket_state()
 
     # Load analysis asynchronously
     send(self(), :load_analysis)
 
     # Use temporary_assigns to clear large list-based data from process memory after render
     {:ok, socket, temporary_assigns: [recent_battles: []]}
+  end
+
+  @impl Phoenix.LiveView
+  def handle_params(%{"character_id" => character_id_str}, _uri, socket) do
+    character_id = String.to_integer(character_id_str)
+
+    # Only reload if the character_id actually changed
+    if character_id != socket.assigns.character_id do
+      socket =
+        socket
+        |> assign(:character_id, character_id)
+        |> init_socket_state()
+
+      # Trigger new data load
+      send(self(), :load_analysis)
+
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  # Initialize socket state - shared between mount and handle_params
+  defp init_socket_state(socket) do
+    socket
+    |> assign(:loading, true)
+    |> assign(:analysis, nil)
+    |> assign(:intelligence, nil)
+    |> assign(:recent_battles, [])
+    |> assign(:battle_stats, nil)
+    |> assign(:ship_specialization, nil)
+    |> assign(:ship_preferences, nil)
+    |> assign(:error, nil)
+    |> assign(:active_tab, :overview)
+    |> assign(:associates_count, 0)
+    |> assign(:ship_loadouts_count, 0)
+    |> stream_configure(:known_associates, dom_id: &"associates-#{&1.character_id}")
+    |> stream_configure(:ship_loadouts, dom_id: &"loadout-#{&1.ship_type_id}")
+    |> stream(:known_associates, [], reset: true)
+    |> stream(:ship_loadouts, [], reset: true)
   end
 
   @impl Phoenix.LiveView
