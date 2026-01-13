@@ -30,12 +30,9 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
       socket
       |> assign(:character_id, character_id)
       |> init_socket_state()
+      |> start_async_loads(character_id)
 
-    # Load analysis asynchronously
-    send(self(), :load_analysis)
-
-    # Use temporary_assigns to clear large list-based data from process memory after render
-    {:ok, socket, temporary_assigns: [recent_battles: []]}
+    {:ok, socket}
   end
 
   @impl Phoenix.LiveView
@@ -55,117 +52,81 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
       socket
       |> assign(:character_id, character_id)
       |> init_socket_state()
+      |> start_async_loads(character_id)
 
-    send(self(), :load_analysis)
     {:noreply, socket}
   end
 
   # Initialize socket state - shared between mount and handle_params
   defp init_socket_state(socket) do
     socket
-    |> assign(:loading, true)
-    |> assign(:analysis, nil)
-    |> assign(:intelligence, nil)
-    |> assign(:recent_battles, [])
-    |> assign(:battle_stats, nil)
-    |> assign(:ship_specialization, nil)
-    |> assign(:ship_preferences, nil)
-    |> assign(:error, nil)
     |> assign(:active_tab, :overview)
-    |> assign(:associates_count, 0)
-    |> assign(:ship_loadouts_count, 0)
-    |> stream_configure(:known_associates, dom_id: &"associates-#{&1.character_id}")
-    |> stream_configure(:ship_loadouts, dom_id: &"loadout-#{&1.ship_type_id}")
-    |> stream(:known_associates, [], reset: true)
-    |> stream(:ship_loadouts, [], reset: true)
   end
 
-  @impl Phoenix.LiveView
-  def handle_info(:load_analysis, socket) do
-    character_id = socket.assigns.character_id
+  # Start all async data loads for a character
+  defp start_async_loads(socket, character_id) do
+    socket
+    |> assign_async(:analysis_data, fn -> fetch_analysis(character_id) end)
+    |> assign_async(:intelligence_data, fn -> fetch_intelligence(character_id) end)
+    |> assign_async(:battle_data, fn -> fetch_battle_data(character_id) end)
+    |> assign_async(:ship_data, fn -> fetch_ship_data(character_id) end)
+  end
 
-    # Load both basic analysis and intelligence data
-    basic_analysis_task =
-      Task.async(fn ->
-        AnalysisCache.get_or_compute(
-          AnalysisCache.char_analysis_key(character_id),
-          fn -> CharacterDataLoader.analyze_character(character_id) end,
-          :timer.minutes(10)
-        )
-      end)
+  # Fetch functions for async loading
 
-    intelligence_task =
-      Task.async(fn ->
-        EveDmv.Contexts.CharacterIntelligence.get_character_intelligence_report(character_id)
-      end)
+  defp fetch_analysis(character_id) do
+    result =
+      AnalysisCache.get_or_compute(
+        AnalysisCache.char_analysis_key(character_id),
+        fn -> CharacterDataLoader.analyze_character(character_id) end,
+        :timer.minutes(10)
+      )
 
-    battle_data_task =
-      Task.async(fn ->
-        {
-          BattleDetector.detect_character_battles(character_id, 10),
-          BattleDetector.get_character_battle_stats(character_id)
-        }
-      end)
+    case result do
+      {:ok, analysis} ->
+        associates = get_associates_from_analysis(analysis)
+        ship_loadouts = analysis.ship_loadouts || []
 
-    ship_intelligence_task =
-      Task.async(fn ->
-        {
-          ShipIntelligenceBridge.calculate_ship_specialization(character_id),
-          ShipIntelligenceBridge.get_character_ship_preferences(character_id)
-        }
-      end)
+        {:ok,
+         %{
+           analysis: analysis,
+           associates: Enum.take(associates, 8),
+           associates_count: length(associates),
+           ship_loadouts: ship_loadouts,
+           ship_loadouts_count: length(ship_loadouts)
+         }}
 
-    # Await all tasks
-    basic_analysis_result = Task.await(basic_analysis_task, 30_000)
-    intelligence_result = Task.await(intelligence_task, 30_000)
-    {battles, battle_stats} = Task.await(battle_data_task, 30_000)
-    {ship_specialization, ship_preferences} = Task.await(ship_intelligence_task, 30_000)
+      {:error, error} ->
+        {:error, error}
+    end
+  end
 
-    # Unwrap intelligence result - it returns {:ok, data} or {:error, reason}
+  defp fetch_intelligence(character_id) do
+    result = EveDmv.Contexts.CharacterIntelligence.get_character_intelligence_report(character_id)
+
     intelligence =
-      case intelligence_result do
+      case result do
         {:ok, data} -> data
-        {:error, _} -> nil
         data when is_map(data) -> data
         _ -> nil
       end
 
-    case basic_analysis_result do
-      {:ok, analysis} ->
-        # Extract associates and ship loadouts for streaming
-        # Limit streamed data to prevent large diffs (show first 8 associates, all ship loadouts for now)
-        all_associates = get_associates_from_analysis(analysis)
-        displayed_associates = Enum.take(all_associates, 8)
-        ship_loadouts = analysis.ship_loadouts || []
-
-        socket =
-          socket
-          |> assign(:loading, false)
-          |> assign(:analysis, analysis)
-          |> assign(:intelligence, intelligence)
-          |> assign(:recent_battles, battles)
-          |> assign(:battle_stats, battle_stats)
-          |> assign(:ship_specialization, ship_specialization)
-          |> assign(:ship_preferences, ship_preferences)
-          |> assign(:error, nil)
-          |> assign(:associates_count, length(all_associates))
-          |> assign(:ship_loadouts_count, length(ship_loadouts))
-          |> stream(:known_associates, displayed_associates, reset: true)
-          |> stream(:ship_loadouts, ship_loadouts, reset: true)
-
-        {:noreply, socket}
-
-      {:error, error} ->
-        socket =
-          socket
-          |> assign(:loading, false)
-          |> assign(:error, error)
-
-        {:noreply, socket}
-    end
+    {:ok, %{intelligence: intelligence}}
   end
 
-  # Extract associates list from analysis data with unique IDs for streaming
+  defp fetch_battle_data(character_id) do
+    battles = BattleDetector.detect_character_battles(character_id, 10)
+    battle_stats = BattleDetector.get_character_battle_stats(character_id)
+    {:ok, %{battles: battles, battle_stats: battle_stats}}
+  end
+
+  defp fetch_ship_data(character_id) do
+    ship_specialization = ShipIntelligenceBridge.calculate_ship_specialization(character_id)
+    ship_preferences = ShipIntelligenceBridge.get_character_ship_preferences(character_id)
+    {:ok, %{ship_specialization: ship_specialization, ship_preferences: ship_preferences}}
+  end
+
+  # Extract associates list from analysis data
   defp get_associates_from_analysis(analysis) do
     case analysis.known_associates do
       %{associates: associates} when is_list(associates) ->
@@ -173,6 +134,70 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
 
       _ ->
         []
+    end
+  end
+
+  # Helper to check if primary data is loading
+  defp loading?(assigns) do
+    case assigns.analysis_data do
+      %{loading: true} -> true
+      _ -> false
+    end
+  end
+
+  # Helper to get analysis from async result
+  defp get_analysis(assigns) do
+    case assigns.analysis_data do
+      %{ok?: true, result: %{analysis: analysis}} -> analysis
+      _ -> nil
+    end
+  end
+
+  # Helper to get error from async result
+  defp get_error(assigns) do
+    case assigns.analysis_data do
+      %{failed: error} -> error
+      _ -> nil
+    end
+  end
+
+  # Helper to get intelligence from async result
+  defp get_intelligence(assigns) do
+    case assigns.intelligence_data do
+      %{ok?: true, result: %{intelligence: intel}} -> intel
+      _ -> nil
+    end
+  end
+
+  # Helper to get associates from async result
+  defp get_associates(assigns) do
+    case assigns.analysis_data do
+      %{ok?: true, result: %{associates: associates}} -> associates
+      _ -> []
+    end
+  end
+
+  # Helper to get associates count from async result
+  defp get_associates_count(assigns) do
+    case assigns.analysis_data do
+      %{ok?: true, result: %{associates_count: count}} -> count
+      _ -> 0
+    end
+  end
+
+  # Helper to get ship loadouts from async result
+  defp get_ship_loadouts(assigns) do
+    case assigns.analysis_data do
+      %{ok?: true, result: %{ship_loadouts: loadouts}} -> loadouts
+      _ -> []
+    end
+  end
+
+  # Helper to get ship loadouts count from async result
+  defp get_ship_loadouts_count(assigns) do
+    case assigns.analysis_data do
+      %{ok?: true, result: %{ship_loadouts_count: count}} -> count
+      _ -> 0
     end
   end
 
@@ -197,17 +222,24 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
     # Clear cache and reload
     AnalysisCache.delete(AnalysisCache.char_analysis_key(character_id))
 
-    socket =
-      socket
-      |> assign(:loading, true)
-      |> assign(:error, nil)
-
-    send(self(), :load_analysis)
+    socket = start_async_loads(socket, character_id)
     {:noreply, socket}
   end
 
   @impl Phoenix.LiveView
   def render(assigns) do
+    # Pre-compute values from async results for cleaner template access
+    assigns =
+      assigns
+      |> assign(:loading, loading?(assigns))
+      |> assign(:error, get_error(assigns))
+      |> assign(:analysis, get_analysis(assigns))
+      |> assign(:intelligence, get_intelligence(assigns))
+      |> assign(:associates, get_associates(assigns))
+      |> assign(:associates_count, get_associates_count(assigns))
+      |> assign(:ship_loadouts, get_ship_loadouts(assigns))
+      |> assign(:ship_loadouts_count, get_ship_loadouts_count(assigns))
+
     ~H"""
     <div class="container mx-auto px-4 py-8">
       <div class="mb-6 flex justify-between items-center">
@@ -343,7 +375,7 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
           </div>
         <% end %>
 
-        <!-- Ship Loadouts (using LiveView streams for memory efficiency) -->
+        <!-- Ship Loadouts -->
         <div class="bg-gray-800 rounded-lg p-6 mb-6">
           <h3 class="text-white font-semibold mb-4 flex items-center">
             🚀 Ship Loadouts
@@ -352,8 +384,8 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
           <%= if @ship_loadouts_count == 0 do %>
             <p class="text-gray-500 italic">No ship loadout data available</p>
           <% else %>
-            <div id="ship-loadouts" phx-update="stream" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div :for={{dom_id, ship} <- @streams.ship_loadouts} id={dom_id} class="bg-gray-700 rounded-lg p-4">
+            <div id="ship-loadouts" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div :for={ship <- @ship_loadouts} id={"loadout-#{ship.ship_type_id}"} class="bg-gray-700 rounded-lg p-4">
                 <div class="flex items-center gap-3 mb-3">
                   <img
                     src={"https://images.evetech.net/types/#{ship.ship_type_id}/icon?size=32"}
@@ -392,15 +424,15 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
 
         <!-- Two column layout for Known Associates and Hunting Grounds -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <!-- Known Associates (using LiveView streams for memory efficiency) -->
+          <!-- Known Associates -->
           <div class="bg-gray-800 rounded-lg p-6">
             <h3 class="text-white font-semibold mb-4 flex items-center">
               👥 Known Associates
               <span class="ml-2 text-xs text-gray-500 font-normal">(frequent allies)</span>
             </h3>
             <%= if @associates_count > 0 do %>
-              <div id="known-associates" phx-update="stream" class="space-y-2">
-                <div :for={{dom_id, associate} <- @streams.known_associates} id={dom_id} class="flex items-center justify-between bg-gray-700 rounded px-3 py-2">
+              <div id="known-associates" class="space-y-2">
+                <div :for={associate <- @associates} id={"associates-#{associate.character_id}"} class="flex items-center justify-between bg-gray-700 rounded px-3 py-2">
                   <div class="flex items-center gap-2">
                     <img
                       src={"https://images.evetech.net/characters/#{associate.character_id}/portrait?size=32"}
