@@ -10,8 +10,6 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
 
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
-  alias EveDmv.Contexts.BattleAnalysis.Domain.Services.DetectionService, as: BattleDetector
-  alias EveDmv.Integrations.ShipIntelligenceBridge
   alias EveDmv.Platform.Cache.AnalysisCache
   alias EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader
   alias EveDmvWeb.CharacterAnalysis.Helpers.DisplayFormatters
@@ -25,6 +23,11 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
   @impl Phoenix.LiveView
   def mount(%{"character_id" => character_id}, _session, socket) do
     character_id = String.to_integer(character_id)
+
+    # Subscribe to real-time updates when connected
+    if connected?(socket) do
+      subscribe_to_updates(character_id)
+    end
 
     socket =
       socket
@@ -46,8 +49,16 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
     {:noreply, socket}
   end
 
-  # Different character - reset state and reload
+  # Different character - unsubscribe from old, subscribe to new, and reload
   defp maybe_reload_character(character_id, socket) do
+    old_character_id = socket.assigns.character_id
+
+    # Update subscriptions for the new character
+    if connected?(socket) do
+      unsubscribe_from_updates(old_character_id)
+      subscribe_to_updates(character_id)
+    end
+
     socket =
       socket
       |> assign(:character_id, character_id)
@@ -57,10 +68,30 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
     {:noreply, socket}
   end
 
+  # Subscribe to PubSub topics for real-time updates
+  defp subscribe_to_updates(character_id) do
+    Phoenix.PubSub.subscribe(EveDmv.PubSub, "intelligence:updates")
+    Phoenix.PubSub.subscribe(EveDmv.PubSub, "character:#{character_id}")
+  end
+
+  # Unsubscribe from PubSub topics when changing characters
+  defp unsubscribe_from_updates(character_id) do
+    Phoenix.PubSub.unsubscribe(EveDmv.PubSub, "character:#{character_id}")
+    # Keep intelligence:updates subscription as it's shared
+  end
+
   # Initialize socket state - shared between mount and handle_params
   defp init_socket_state(socket) do
     socket
     |> assign(:active_tab, :overview)
+    |> assign(:loading, true)
+    |> assign(:error, nil)
+    |> assign(:analysis, nil)
+    |> assign(:intelligence, nil)
+    |> assign(:associates, [])
+    |> assign(:associates_count, 0)
+    |> assign(:ship_loadouts, [])
+    |> assign(:ship_loadouts_count, 0)
   end
 
   # Start all async data loads for a character
@@ -68,8 +99,6 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
     socket
     |> assign_async(:analysis_data, fn -> fetch_analysis(character_id) end)
     |> assign_async(:intelligence_data, fn -> fetch_intelligence(character_id) end)
-    |> assign_async(:battle_data, fn -> fetch_battle_data(character_id) end)
-    |> assign_async(:ship_data, fn -> fetch_ship_data(character_id) end)
   end
 
   # Fetch functions for async loading
@@ -102,28 +131,11 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
   end
 
   defp fetch_intelligence(character_id) do
-    result = EveDmv.Contexts.CharacterIntelligence.get_character_intelligence_report(character_id)
-
-    intelligence =
-      case result do
-        {:ok, data} -> data
-        data when is_map(data) -> data
-        _ -> nil
-      end
-
-    {:ok, %{intelligence: intelligence}}
-  end
-
-  defp fetch_battle_data(character_id) do
-    battles = BattleDetector.detect_character_battles(character_id, 10)
-    battle_stats = BattleDetector.get_character_battle_stats(character_id)
-    {:ok, %{battles: battles, battle_stats: battle_stats}}
-  end
-
-  defp fetch_ship_data(character_id) do
-    ship_specialization = ShipIntelligenceBridge.calculate_ship_specialization(character_id)
-    ship_preferences = ShipIntelligenceBridge.get_character_ship_preferences(character_id)
-    {:ok, %{ship_specialization: ship_specialization, ship_preferences: ship_preferences}}
+    case EveDmv.Contexts.CharacterIntelligence.get_character_intelligence_report(character_id) do
+      {:ok, data} -> {:ok, %{intelligence: data}}
+      data when is_map(data) -> {:ok, %{intelligence: data}}
+      _ -> {:ok, %{intelligence: nil}}
+    end
   end
 
   # Extract associates list from analysis data
@@ -134,70 +146,6 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
 
       _ ->
         []
-    end
-  end
-
-  # Helper to check if primary data is loading
-  defp loading?(assigns) do
-    case assigns.analysis_data do
-      %{loading: true} -> true
-      _ -> false
-    end
-  end
-
-  # Helper to get analysis from async result
-  defp get_analysis(assigns) do
-    case assigns.analysis_data do
-      %{ok?: true, result: %{analysis: analysis}} -> analysis
-      _ -> nil
-    end
-  end
-
-  # Helper to get error from async result
-  defp get_error(assigns) do
-    case assigns.analysis_data do
-      %{failed: error} -> error
-      _ -> nil
-    end
-  end
-
-  # Helper to get intelligence from async result
-  defp get_intelligence(assigns) do
-    case assigns.intelligence_data do
-      %{ok?: true, result: %{intelligence: intel}} -> intel
-      _ -> nil
-    end
-  end
-
-  # Helper to get associates from async result
-  defp get_associates(assigns) do
-    case assigns.analysis_data do
-      %{ok?: true, result: %{associates: associates}} -> associates
-      _ -> []
-    end
-  end
-
-  # Helper to get associates count from async result
-  defp get_associates_count(assigns) do
-    case assigns.analysis_data do
-      %{ok?: true, result: %{associates_count: count}} -> count
-      _ -> 0
-    end
-  end
-
-  # Helper to get ship loadouts from async result
-  defp get_ship_loadouts(assigns) do
-    case assigns.analysis_data do
-      %{ok?: true, result: %{ship_loadouts: loadouts}} -> loadouts
-      _ -> []
-    end
-  end
-
-  # Helper to get ship loadouts count from async result
-  defp get_ship_loadouts_count(assigns) do
-    case assigns.analysis_data do
-      %{ok?: true, result: %{ship_loadouts_count: count}} -> count
-      _ -> 0
     end
   end
 
@@ -222,24 +170,95 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
     # Clear cache and reload
     AnalysisCache.delete(AnalysisCache.char_analysis_key(character_id))
 
-    socket = start_async_loads(socket, character_id)
+    socket =
+      socket
+      |> init_socket_state()
+      |> start_async_loads(character_id)
+
+    {:noreply, socket}
+  end
+
+  # Handle async completion for analysis data
+  @impl Phoenix.LiveView
+  def handle_async(:analysis_data, {:ok, result}, socket) do
+    socket =
+      socket
+      |> assign(:loading, false)
+      |> assign(:error, nil)
+      |> assign(:analysis, result.analysis)
+      |> assign(:associates, result.associates)
+      |> assign(:associates_count, result.associates_count)
+      |> assign(:ship_loadouts, result.ship_loadouts)
+      |> assign(:ship_loadouts_count, result.ship_loadouts_count)
+
+    {:noreply, socket}
+  end
+
+  def handle_async(:analysis_data, {:exit, reason}, socket) do
+    socket =
+      socket
+      |> assign(:loading, false)
+      |> assign(:error, reason)
+
+    {:noreply, socket}
+  end
+
+  # Handle async completion for intelligence data
+  @impl Phoenix.LiveView
+  def handle_async(:intelligence_data, {:ok, result}, socket) do
+    socket = assign(socket, :intelligence, result.intelligence)
+    {:noreply, socket}
+  end
+
+  def handle_async(:intelligence_data, {:exit, _reason}, socket) do
+    # Intelligence failure is non-critical, just leave it nil
+    {:noreply, socket}
+  end
+
+  # Handle real-time intelligence updates via PubSub
+  @impl Phoenix.LiveView
+  def handle_info({:intelligence_update, %{type: :character_updated, character_id: char_id}}, socket) do
+    # Only refresh if this update is for the character we're viewing
+    if char_id == socket.assigns.character_id do
+      socket = start_async_loads(socket, char_id)
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_info({:intelligence_update, %{type: :analysis_completed, character_id: char_id}}, socket) do
+    # Refresh when analysis completes for this character
+    if char_id == socket.assigns.character_id do
+      socket = start_async_loads(socket, char_id)
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_info({:intelligence_update, _update}, socket) do
+    # Ignore other intelligence updates
+    {:noreply, socket}
+  end
+
+  def handle_info({:character_update, %{character_id: char_id}}, socket) do
+    # Handle character-specific updates
+    if char_id == socket.assigns.character_id do
+      socket = start_async_loads(socket, char_id)
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_info(_msg, socket) do
+    # Catch-all for unhandled messages
     {:noreply, socket}
   end
 
   @impl Phoenix.LiveView
   def render(assigns) do
-    # Pre-compute values from async results for cleaner template access
-    assigns =
-      assigns
-      |> assign(:loading, loading?(assigns))
-      |> assign(:error, get_error(assigns))
-      |> assign(:analysis, get_analysis(assigns))
-      |> assign(:intelligence, get_intelligence(assigns))
-      |> assign(:associates, get_associates(assigns))
-      |> assign(:associates_count, get_associates_count(assigns))
-      |> assign(:ship_loadouts, get_ship_loadouts(assigns))
-      |> assign(:ship_loadouts_count, get_ship_loadouts_count(assigns))
-
     ~H"""
     <div class="container mx-auto px-4 py-8">
       <div class="mb-6 flex justify-between items-center">
