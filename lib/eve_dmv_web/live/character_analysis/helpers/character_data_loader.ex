@@ -174,14 +174,33 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
         primary_security: "unknown"
       })
 
-    # Get target selection patterns
+    # Get target selection patterns (enhanced with multi-dimensional analysis)
     target_selection =
       CharacterIntelligence.get_target_selection(character_id, ninety_days_ago)
       |> unwrap_or_default(%{
         top_targets: [],
         class_breakdown: [],
         avg_victim_value: 0,
-        target_assessment: "unknown"
+        total_kills: 0,
+        target_assessment: "unknown",
+        # Multi-dimensional breakdown
+        security_breakdown: %{
+          highsec: %{count: 0, percentage: 0.0},
+          lowsec: %{count: 0, percentage: 0.0},
+          nullsec: %{count: 0, percentage: 0.0},
+          wormhole: %{count: 0, percentage: 0.0}
+        },
+        victim_breakdown: %{
+          capital: %{count: 0, percentage: 0.0},
+          industrial: %{count: 0, percentage: 0.0},
+          capsule: %{count: 0, percentage: 0.0},
+          combat: %{count: 0, percentage: 0.0}
+        },
+        # Kill style
+        solo_kills: 0,
+        solo_percentage: 0.0,
+        final_blows: 0,
+        final_blow_percentage: 0.0
       })
 
     # Get activity timeline (last 30 days)
@@ -202,10 +221,31 @@ defmodule EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader do
       CharacterIntelligence.get_corp_context(character_id, ninety_days_ago)
       |> unwrap_or_default(%{active_pilots: 0, corp_kills: 0, corp_size_assessment: "unknown"})
 
-    # Get bait indicators
+    # Get bait indicators (enhanced with multi-factor scoring)
     bait_indicators =
       CharacterIntelligence.get_bait_indicators(character_id, ninety_days_ago)
-      |> unwrap_or_default(%{is_likely_bait: false, bait_assessment: "No data"})
+      |> unwrap_or_default(%{
+        # Core metrics
+        total_deaths: 0,
+        total_kills: 0,
+        deaths_with_related_kills: 0,
+        # Percentages
+        cheap_death_percentage: 0.0,
+        corp_kill_correlation: 0.0,
+        final_blow_rate: 0.0,
+        # Other metrics
+        avg_damage_on_death: 0.0,
+        avg_attacker_count_at_death: 0.0,
+        trade_ratio: 0.0,
+        total_bait_losses: 0.0,
+        total_related_value: 0.0,
+        avg_related_kills: 0.0,
+        # Scoring
+        bait_score: 0,
+        bait_factors: [],
+        is_likely_bait: false,
+        bait_assessment: "No data"
+      })
 
     # Calculate activity metrics for the last 30 days
     thirty_days_ago = DateTime.utc_now() |> DateTimeUtils.add(-30 * 24 * 60 * 60, :second)

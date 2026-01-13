@@ -352,6 +352,7 @@ defmodule EveDmvWeb.SearchComponent do
     # Trigram similarity search - uses GIN index efficiently
     # Groups by character to deduplicate, orders by similarity score
     # NOTE: Must include "character_name IS NOT NULL" to use partial index
+    # Orders by killmail_time DESC within each character to get most recent corp/alliance info
     character_query = """
     SELECT character_id, character_name, corporation_name, alliance_name
     FROM (
@@ -360,12 +361,13 @@ defmodule EveDmvWeb.SearchComponent do
         character_name,
         corporation_name,
         alliance_name,
-        similarity(character_name, $1) as sim
+        similarity(character_name, $1) as sim,
+        killmail_time
       FROM participants
       WHERE character_name IS NOT NULL
         AND character_name % $1
         AND character_id IS NOT NULL
-      ORDER BY character_id, similarity(character_name, $1) DESC
+      ORDER BY character_id, killmail_time DESC
     ) sub
     ORDER BY sim DESC, character_name
     LIMIT 5
@@ -396,6 +398,7 @@ defmodule EveDmvWeb.SearchComponent do
 
   defp search_characters_ilike_fallback(query) do
     # Fallback using ILIKE with LIMIT to prevent full scan
+    # Orders by killmail_time DESC within each character to get most recent corp/alliance info
     character_query = """
     SELECT character_id, character_name, corporation_name, alliance_name
     FROM (
@@ -407,7 +410,7 @@ defmodule EveDmvWeb.SearchComponent do
       FROM participants
       WHERE character_name ILIKE $1
         AND character_id IS NOT NULL
-      ORDER BY character_id
+      ORDER BY character_id, killmail_time DESC
       LIMIT 100
     ) sub
     ORDER BY
@@ -438,6 +441,7 @@ defmodule EveDmvWeb.SearchComponent do
 
   defp search_characters_ilike(query) do
     # Prefix search for short queries - still reasonably fast with btree index
+    # Orders by killmail_time DESC within each character to get most recent corp/alliance info
     character_query = """
     SELECT DISTINCT ON (character_id)
       character_id,
@@ -447,7 +451,7 @@ defmodule EveDmvWeb.SearchComponent do
     FROM participants
     WHERE character_name ILIKE $1
       AND character_id IS NOT NULL
-    ORDER BY character_id
+    ORDER BY character_id, killmail_time DESC
     LIMIT 5
     """
 
@@ -485,6 +489,7 @@ defmodule EveDmvWeb.SearchComponent do
     # Trigram similarity search - uses GIN index efficiently
     # Orders by similarity score for best matches first
     # NOTE: Must include "corporation_name IS NOT NULL" to use partial index
+    # Orders by killmail_time DESC within each corporation to get most recent alliance info
     corp_query = """
     SELECT corporation_id, corporation_name, alliance_name
     FROM (
@@ -492,12 +497,13 @@ defmodule EveDmvWeb.SearchComponent do
         corporation_id,
         corporation_name,
         alliance_name,
-        similarity(corporation_name, $1) as sim
+        similarity(corporation_name, $1) as sim,
+        killmail_time
       FROM participants
       WHERE corporation_name IS NOT NULL
         AND corporation_name % $1
         AND corporation_id IS NOT NULL
-      ORDER BY corporation_id, similarity(corporation_name, $1) DESC
+      ORDER BY corporation_id, killmail_time DESC
     ) sub
     ORDER BY sim DESC, corporation_name
     LIMIT 5
@@ -522,6 +528,7 @@ defmodule EveDmvWeb.SearchComponent do
 
   defp search_corporations_ilike(query) do
     # Prefix search for short queries
+    # Orders by killmail_time DESC within each corporation to get most recent alliance info
     corp_query = """
     SELECT DISTINCT ON (corporation_id)
       corporation_id,
@@ -530,7 +537,7 @@ defmodule EveDmvWeb.SearchComponent do
     FROM participants
     WHERE corporation_name ILIKE $1
       AND corporation_id IS NOT NULL
-    ORDER BY corporation_id
+    ORDER BY corporation_id, killmail_time DESC
     LIMIT 5
     """
 

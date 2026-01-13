@@ -12,8 +12,8 @@ defmodule EveDmvWeb.UniversalSearchLive do
 
   on_mount({EveDmvWeb.AuthLive, :load_from_session_optional})
 
+  alias Ecto.Adapters.SQL
   alias EveDmv.Eve.SolarSystem
-  alias EveDmv.Killmails.Participant
   alias EveDmv.Platform.Cache.AnalysisCache
 
   @impl Phoenix.LiveView
@@ -183,22 +183,39 @@ defmodule EveDmvWeb.UniversalSearchLive do
   end
 
   defp search_characters(query) do
-    # Search in participants table for character names using Ash resource
-    case Participant.search_characters_by_name(query, limit: 5) do
-      {:ok, participants} ->
-        participants
-        |> Enum.map(fn p ->
+    # Use raw SQL with DISTINCT ON to ensure proper deduplication
+    # Orders by killmail_time DESC to get the most recent corporation info
+    character_query = """
+    SELECT character_id, character_name, corporation_name, alliance_name, killmail_time
+    FROM (
+      SELECT DISTINCT ON (character_id)
+        p.character_id,
+        p.character_name,
+        p.corporation_name,
+        p.alliance_name,
+        p.killmail_time
+      FROM participants p
+      WHERE p.character_name IS NOT NULL
+        AND p.character_name ILIKE $1 ESCAPE '\\'
+        AND p.character_id IS NOT NULL
+      ORDER BY p.character_id, p.killmail_time DESC
+    ) sub
+    ORDER BY character_name
+    LIMIT 5
+    """
+
+    search_pattern = "%#{escape_like_pattern(query)}%"
+
+    case SQL.query(EveDmv.Repo, character_query, [search_pattern], timeout: 3_000) do
+      {:ok, %{rows: rows}} ->
+        Enum.map(rows, fn [char_id, char_name, corp_name, alliance_name, killmail_time] ->
           %{
-            id: p.character_id,
-            name: p.character_name || "Unknown Character",
-            subtitle:
-              EveDmvWeb.SearchHelpers.format_character_subtitle(
-                p.corporation_name,
-                p.alliance_name
-              ),
+            id: char_id,
+            name: char_name,
+            subtitle: EveDmvWeb.SearchHelpers.format_character_subtitle(corp_name, alliance_name),
             meta: %{
               activity_count: nil,
-              last_seen: p.killmail_time
+              last_seen: killmail_time
             }
           }
         end)
@@ -209,19 +226,39 @@ defmodule EveDmvWeb.UniversalSearchLive do
   end
 
   defp search_corporations(query) do
-    # Search in participants table for corporation names using Ash resource
-    case Participant.search_corporations_by_name(query, limit: 5) do
-      {:ok, participants} ->
-        participants
-        |> Enum.map(fn p ->
+    # Use raw SQL with DISTINCT ON to ensure proper deduplication
+    # Orders by killmail_time DESC to get the most recent alliance info
+    corp_query = """
+    SELECT corporation_id, corporation_name, alliance_name, killmail_time
+    FROM (
+      SELECT DISTINCT ON (corporation_id)
+        p.corporation_id,
+        p.corporation_name,
+        p.alliance_name,
+        p.killmail_time
+      FROM participants p
+      WHERE p.corporation_name IS NOT NULL
+        AND p.corporation_name ILIKE $1 ESCAPE '\\'
+        AND p.corporation_id IS NOT NULL
+      ORDER BY p.corporation_id, p.killmail_time DESC
+    ) sub
+    ORDER BY corporation_name
+    LIMIT 5
+    """
+
+    search_pattern = "%#{escape_like_pattern(query)}%"
+
+    case SQL.query(EveDmv.Repo, corp_query, [search_pattern], timeout: 3_000) do
+      {:ok, %{rows: rows}} ->
+        Enum.map(rows, fn [corp_id, corp_name, alliance_name, killmail_time] ->
           %{
-            id: p.corporation_id,
-            name: p.corporation_name || "Unknown Corporation",
-            subtitle: EveDmvWeb.SearchHelpers.format_corporation_subtitle(p.alliance_name, nil),
+            id: corp_id,
+            name: corp_name,
+            subtitle: EveDmvWeb.SearchHelpers.format_corporation_subtitle(alliance_name, nil),
             meta: %{
               member_count: nil,
               activity_count: nil,
-              last_seen: p.killmail_time
+              last_seen: killmail_time
             }
           }
         end)
@@ -374,4 +411,12 @@ defmodule EveDmvWeb.UniversalSearchLive do
   end
 
   def time_ago(_), do: "unknown"
+
+  # Escapes LIKE metacharacters (%, _, \) so they are treated as literals
+  defp escape_like_pattern(query) do
+    query
+    |> String.replace("\\", "\\\\")
+    |> String.replace("%", "\\%")
+    |> String.replace("_", "\\_")
+  end
 end

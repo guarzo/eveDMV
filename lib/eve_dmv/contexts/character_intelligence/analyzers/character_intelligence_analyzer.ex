@@ -15,6 +15,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
   intelligence data about character combat patterns and behaviors.
   """
 
+  alias EveDmv.Contexts.CharacterIntelligence.ThreatConfig
   alias EveDmv.Core.Utils.DateTimeUtils
   alias EveDmv.Core.Utils.NumericUtils
   alias EveDmv.Platform.Cache.QueryCache
@@ -29,12 +30,6 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
   @activity_stats_ttl :timer.hours(4)
   @isk_efficiency_ttl :timer.hours(1)
   @intelligence_summary_ttl :timer.minutes(30)
-
-  # Bait detection thresholds - these may be tuned based on game meta changes
-  # Percentage of deaths that result in related kills to classify as potential bait pilot
-  @bait_percentage_threshold 40
-  # Minimum number of total deaths required before bait classification applies
-  @bait_min_total 3
 
   @doc """
   Analyze ship loadouts - weapons grouped by ship from actual killmail data.
@@ -1076,47 +1071,112 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
   end
 
   @doc """
-  Analyze target selection - what types of ships/targets does this character hunt.
+  Analyze target selection using multi-dimensional analysis.
+
+  Returns hunting patterns based on:
+  - Victim ship types (capitals, industrials/miners, pods, combat)
+  - Security space breakdown (highsec, lowsec, nullsec, wormhole)
+  - Kill style (solo vs gang, final blow rate)
+  - Average victim value
   """
   def analyze_target_selection(character_id, since_date) do
     cache_key =
-      "target_selection:#{character_id}:#{Date.to_iso8601(DateTime.to_date(since_date))}"
+      "target_selection_v2:#{character_id}:#{Date.to_iso8601(DateTime.to_date(since_date))}"
 
     QueryCache.get_or_compute(
       cache_key,
       fn ->
+        # Build group ID strings from ThreatConfig for SQL interpolation
+        # Using safe_ids_for_sql to ensure empty lists don't produce invalid SQL
+        capsule_id = ThreatConfig.capsule_group_id()
+
+        capital_ids =
+          ThreatConfig.capital_group_ids()
+          |> safe_ids_for_sql()
+
+        industrial_and_mining_ids =
+          (ThreatConfig.industrial_group_ids() ++ ThreatConfig.mining_group_ids())
+          |> safe_ids_for_sql()
+
+        # Ship class group IDs from ThreatConfig
+        frigate_destroyer_ids =
+          (ThreatConfig.frigate_group_ids() ++
+             ThreatConfig.destroyer_group_ids() ++
+             ThreatConfig.tackle_group_ids())
+          |> safe_ids_for_sql()
+
+        cruiser_bc_ids =
+          (ThreatConfig.cruiser_group_ids() ++
+             ThreatConfig.battlecruiser_group_ids() ++
+             ThreatConfig.logistics_group_ids() ++
+             ThreatConfig.ewar_group_ids())
+          |> safe_ids_for_sql()
+
+        battleship_command_ids =
+          (ThreatConfig.battleship_group_ids() ++ ThreatConfig.command_group_ids())
+          |> safe_ids_for_sql()
+
+        # Multi-dimensional target analysis query
         targets_query = """
         WITH character_kills AS (
-          SELECT DISTINCT p.killmail_id, p.killmail_time
+          -- Get all kills by character with participation details
+          SELECT
+            p.killmail_id,
+            p.killmail_time,
+            p.final_blow
           FROM participants p
           WHERE p.character_id = $1
             AND p.killmail_time >= $2
             AND p.is_victim = false
         ),
-        victim_ships AS (
+        victim_details AS (
+          -- Get victim details with security space and classification
           SELECT
+            ck.killmail_id,
+            ck.final_blow,
             k.victim_ship_type_id,
+            k.attacker_count,
+            COALESCE(k.total_value, 0) as kill_value,
+            COALESCE(s.security_class, 'unknown') as sec_class,
             eit.type_name as ship_name,
             eit.group_id,
             eit.group_name,
-            SUM(COALESCE((k.raw_data->'zkb'->>'totalValue')::numeric, k.total_value, 0)) as kill_value,
-            COUNT(*) as kill_count
+            -- Classify victim type using group_id from SDE join for consistency
+            -- Group IDs sourced from ThreatConfig
+            CASE
+              WHEN eit.group_id = #{capsule_id} THEN 'capsule'
+              WHEN eit.group_id IN (#{capital_ids}) THEN 'capital'
+              WHEN eit.group_id IN (#{industrial_and_mining_ids}) THEN 'industrial'
+              ELSE 'combat'
+            END as victim_type
           FROM character_kills ck
           JOIN killmails_raw k ON k.killmail_id = ck.killmail_id
             AND k.killmail_time = ck.killmail_time
           LEFT JOIN eve_item_types eit ON k.victim_ship_type_id = eit.type_id
-          GROUP BY k.victim_ship_type_id, eit.type_name, eit.group_id, eit.group_name
+          LEFT JOIN eve_solar_systems s ON k.solar_system_id = s.system_id
+        ),
+        victim_ships AS (
+          -- Aggregate by victim ship type
+          SELECT
+            victim_ship_type_id,
+            ship_name,
+            group_id,
+            group_name,
+            SUM(kill_value) as kill_value,
+            COUNT(*) as kill_count
+          FROM victim_details
+          GROUP BY victim_ship_type_id, ship_name, group_id, group_name
         ),
         ship_class_summary AS (
+          -- Ship class summary using EVE SDE group IDs from ThreatConfig
           SELECT
             CASE
-              WHEN group_id IN (25, 420, 831, 324, 830, 893, 541, 543, 1305) THEN 'frigates_destroyers'
-              WHEN group_id IN (26, 419, 358, 894, 906, 833, 832, 963, 1201) THEN 'cruisers_bc'
-              WHEN group_id IN (27, 898, 900) THEN 'battleships'
-              WHEN group_id IN (547, 485, 1538, 659, 30, 883) THEN 'capitals'
-              WHEN group_id IN (463, 543, 513, 902) THEN 'industrial'
-              WHEN group_id IN (28, 941, 463) THEN 'mining'
-              WHEN group_id = 670 THEN 'capsules'
+              WHEN group_id IN (#{frigate_destroyer_ids}) THEN 'frigates_destroyers'
+              WHEN group_id IN (#{cruiser_bc_ids}) THEN 'cruisers_bc'
+              WHEN group_id IN (#{battleship_command_ids}) THEN 'battleships'
+              WHEN group_id IN (#{capital_ids}) THEN 'capitals'
+              WHEN group_id IN (#{industrial_and_mining_ids}) THEN 'industrial'
+              WHEN group_id = #{capsule_id} THEN 'capsules'
               ELSE 'other'
             END as ship_class,
             SUM(kill_count) as total_kills,
@@ -1124,8 +1184,28 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
           FROM victim_ships
           WHERE group_id IS NOT NULL
           GROUP BY ship_class
+        ),
+        aggregated_stats AS (
+          SELECT
+            COUNT(*) as total_kills,
+            AVG(kill_value) as avg_victim_value,
+            -- Security space breakdown
+            COUNT(*) FILTER (WHERE sec_class = 'highsec') as highsec_kills,
+            COUNT(*) FILTER (WHERE sec_class = 'lowsec') as lowsec_kills,
+            COUNT(*) FILTER (WHERE sec_class = 'nullsec') as nullsec_kills,
+            COUNT(*) FILTER (WHERE sec_class = 'wormhole') as wormhole_kills,
+            -- Victim type breakdown
+            COUNT(*) FILTER (WHERE victim_type = 'capital') as capital_kills,
+            COUNT(*) FILTER (WHERE victim_type = 'industrial') as industrial_kills,
+            COUNT(*) FILTER (WHERE victim_type = 'capsule') as pod_kills,
+            COUNT(*) FILTER (WHERE victim_type = 'combat') as combat_kills,
+            -- Kill style
+            COUNT(*) FILTER (WHERE attacker_count = 1) as solo_kills,
+            COUNT(*) FILTER (WHERE final_blow = true) as final_blows
+          FROM victim_details
         )
         SELECT
+          -- Top targets JSON
           (SELECT json_agg(json_build_object(
             'ship_type_id', victim_ship_type_id,
             'ship_name', ship_name,
@@ -1133,20 +1213,55 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
             'kill_count', kill_count,
             'total_value', kill_value
           )) FROM (SELECT * FROM victim_ships ORDER BY kill_count DESC LIMIT 10) limited) as top_targets,
+          -- Class breakdown JSON
           (SELECT json_agg(json_build_object(
             'ship_class', ship_class,
             'total_kills', total_kills,
             'total_value', total_value
           )) FROM (SELECT * FROM ship_class_summary ORDER BY total_kills DESC) ordered) as class_breakdown,
-          (SELECT AVG(kill_value) FROM victim_ships) as avg_victim_value,
-          (SELECT COUNT(*) FROM character_kills) as total_kills
+          -- Aggregated stats
+          agg.total_kills,
+          agg.avg_victim_value,
+          agg.highsec_kills,
+          agg.lowsec_kills,
+          agg.nullsec_kills,
+          agg.wormhole_kills,
+          agg.capital_kills,
+          agg.industrial_kills,
+          agg.pod_kills,
+          agg.combat_kills,
+          agg.solo_kills,
+          agg.final_blows
+        FROM aggregated_stats agg
         """
 
         case Ecto.Adapters.SQL.query(EveDmv.Repo, targets_query, [character_id, since_date]) do
-          {:ok, %{rows: [[top_targets_json, class_json, avg_value, total_kills]]}} ->
+          {:ok,
+           %{
+             rows: [
+               [
+                 top_targets_json,
+                 class_json,
+                 total_kills,
+                 avg_value,
+                 highsec_kills,
+                 lowsec_kills,
+                 nullsec_kills,
+                 wormhole_kills,
+                 capital_kills,
+                 industrial_kills,
+                 pod_kills,
+                 combat_kills,
+                 solo_kills,
+                 final_blows
+               ]
+             ]
+           }} ->
             top_targets = top_targets_json || []
             class_breakdown = class_json || []
+            total_kills_count = total_kills || 0
 
+            # Calculate percentages
             total = Enum.sum(Enum.map(class_breakdown, &(&1["total_kills"] || 0)))
 
             class_summary =
@@ -1179,21 +1294,76 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
 
             avg_val = NumericUtils.to_float(avg_value) || 0.0
 
-            # Determine if they punch up or down
+            # Security space breakdown
+            security_breakdown = %{
+              highsec: %{
+                count: highsec_kills || 0,
+                percentage: safe_percentage(highsec_kills, total_kills_count)
+              },
+              lowsec: %{
+                count: lowsec_kills || 0,
+                percentage: safe_percentage(lowsec_kills, total_kills_count)
+              },
+              nullsec: %{
+                count: nullsec_kills || 0,
+                percentage: safe_percentage(nullsec_kills, total_kills_count)
+              },
+              wormhole: %{
+                count: wormhole_kills || 0,
+                percentage: safe_percentage(wormhole_kills, total_kills_count)
+              }
+            }
+
+            # Victim type breakdown
+            victim_breakdown = %{
+              capital: %{
+                count: capital_kills || 0,
+                percentage: safe_percentage(capital_kills, total_kills_count)
+              },
+              industrial: %{
+                count: industrial_kills || 0,
+                percentage: safe_percentage(industrial_kills, total_kills_count)
+              },
+              capsule: %{
+                count: pod_kills || 0,
+                percentage: safe_percentage(pod_kills, total_kills_count)
+              },
+              combat: %{
+                count: combat_kills || 0,
+                percentage: safe_percentage(combat_kills, total_kills_count)
+              }
+            }
+
+            # Kill style stats
+            solo_pct = safe_percentage(solo_kills, total_kills_count)
+            final_blow_pct = safe_percentage(final_blows, total_kills_count)
+
+            # Determine target assessment using multi-dimensional analysis
             target_assessment =
-              cond do
-                avg_val > 500_000_000 -> "high_value_hunter"
-                avg_val > 100_000_000 -> "standard_pvp"
-                avg_val > 20_000_000 -> "opportunist"
-                true -> "ganker"
-              end
+              determine_target_assessment(
+                security_breakdown,
+                victim_breakdown,
+                solo_pct,
+                avg_val,
+                total_kills_count
+              )
 
             {:ok,
              %{
+               # Core data
                top_targets: formatted_targets,
                class_breakdown: class_summary,
                avg_victim_value: avg_val,
-               total_kills: total_kills || 0,
+               total_kills: total_kills_count,
+               # Multi-dimensional breakdown
+               security_breakdown: security_breakdown,
+               victim_breakdown: victim_breakdown,
+               # Kill style
+               solo_kills: solo_kills || 0,
+               solo_percentage: solo_pct,
+               final_blows: final_blows || 0,
+               final_blow_percentage: final_blow_pct,
+               # Assessment
                target_assessment: target_assessment
              }}
 
@@ -1204,6 +1374,71 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
       end,
       ttl: @ship_preferences_ttl
     )
+  end
+
+  # Determine target assessment based on multi-dimensional analysis
+  defp determine_target_assessment(
+         security_breakdown,
+         victim_breakdown,
+         solo_pct,
+         avg_value,
+         total_kills
+       ) do
+    # Need minimum kills for meaningful classification
+    if total_kills < ThreatConfig.target_min_kills() do
+      "insufficient_data"
+    else
+      capital_pct = victim_breakdown.capital.percentage
+      industrial_pct = victim_breakdown.industrial.percentage
+      pod_pct = victim_breakdown.capsule.percentage
+      highsec_pct = security_breakdown.highsec.percentage
+      wormhole_pct = security_breakdown.wormhole.percentage
+
+      # Check patterns in priority order (most specific first)
+      cond do
+        # Capital hunter: 30%+ kills on capitals
+        capital_pct >= ThreatConfig.target_capital_threshold() ->
+          "capital_hunter"
+
+        # Wormhole hunter: 60%+ kills in wormhole space
+        wormhole_pct >= ThreatConfig.target_wormhole_threshold() ->
+          "wormhole_hunter"
+
+        # Industrial hunter: 40%+ kills on industrials/miners
+        industrial_pct >= ThreatConfig.target_industrial_threshold() ->
+          "industrial_hunter"
+
+        # Highsec ganker: 60%+ kills in highsec (usually gang kills)
+        highsec_pct >= ThreatConfig.target_highsec_threshold() and
+            solo_pct < ThreatConfig.target_highsec_solo_threshold() ->
+          "highsec_ganker"
+
+        # Pod hunter: 20%+ pod kills
+        pod_pct >= ThreatConfig.target_pod_threshold() ->
+          "pod_hunter"
+
+        # Solo hunter: 70%+ solo kills
+        solo_pct >= ThreatConfig.target_solo_threshold() ->
+          "solo_hunter"
+
+        # Fleet PvPer: Primarily gang kills (below fleet solo threshold)
+        solo_pct < ThreatConfig.target_fleet_solo_threshold() ->
+          "fleet_pvper"
+
+        # Fallback to ISK-based classification using ThreatConfig thresholds
+        avg_value > ThreatConfig.elite_hunter_isk() ->
+          "elite_hunter"
+
+        avg_value > ThreatConfig.standard_combatant_isk() ->
+          "standard_combatant"
+
+        avg_value > ThreatConfig.casual_pvper_isk() ->
+          "casual_pvper"
+
+        true ->
+          "opportunist"
+      end
+    end
   end
 
   @doc """
@@ -1375,32 +1610,60 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
   end
 
   @doc """
-  Analyze bait indicators - does this pilot appear to be bait?
-  Looks for patterns where they die in cheap ships while corpmates get kills.
+  Analyze bait indicators using multi-factor scoring.
+
+  Returns a bait score (0-100) based on weighted analysis of:
+  - Cheap ship deaths (< 100M ISK) - weight 20
+  - Low damage contribution when dying - weight 20
+  - High corpmate kill correlation - weight 20
+  - Low final blow rate - weight 15
+  - Positive trade ratio (corpmate kills vs losses) - weight 15
+  - Outgunned pattern (high attacker count at death) - weight 10
   """
   def analyze_bait_indicators(character_id, since_date) do
     cache_key =
-      "bait_indicators:#{character_id}:#{Date.to_iso8601(DateTime.to_date(since_date))}"
+      "bait_indicators_v2:#{character_id}:#{Date.to_iso8601(DateTime.to_date(since_date))}"
 
     QueryCache.get_or_compute(
       cache_key,
       fn ->
-        # Optimized: Uses participants table instead of JSONB extraction
+        # Multi-factor bait analysis query
         bait_query = """
         WITH char_deaths AS (
-          -- Get deaths of this character using participants table
+          -- Get deaths of this character with ship value
           SELECT
             p.killmail_id,
             p.killmail_time,
             p.solar_system_id,
             p.ship_type_id as victim_ship_type_id,
-            COALESCE(k.total_value, 0) as loss_value
+            COALESCE(p.damage_done, 0) as damage_done,
+            COALESCE(k.total_value, 0) as loss_value,
+            COALESCE(k.attacker_count, 1) as attacker_count
           FROM participants p
           JOIN killmails_raw k ON k.killmail_id = p.killmail_id
             AND k.killmail_time = p.killmail_time
           WHERE p.character_id = $1
             AND p.killmail_time >= $2
             AND p.is_victim = true
+        ),
+        char_kills AS (
+          -- Get kills by this character with damage contribution percentage
+          SELECT
+            p.killmail_id,
+            p.final_blow,
+            p.damage_done,
+            COALESCE(k.total_damage_taken, 0) as total_damage_taken,
+            CASE
+              WHEN COALESCE(k.total_damage_taken, 0) > 0
+              THEN (p.damage_done * 100.0 / k.total_damage_taken)
+              ELSE 0
+            END as damage_contribution_pct
+          FROM participants p
+          JOIN killmails_raw k ON k.killmail_id = p.killmail_id
+            AND k.killmail_time = p.killmail_time
+          WHERE p.character_id = $1
+            AND p.killmail_time >= $2
+            AND p.is_victim = false
         ),
         char_corp AS (
           -- Get character's most recent corporation from participants table
@@ -1410,6 +1673,22 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
              ORDER BY killmail_time DESC LIMIT 1),
             0
           ) as corp_id
+        ),
+        cheap_death_stats AS (
+          -- Count cheap ship deaths (< 100M ISK threshold)
+          SELECT
+            COUNT(*) FILTER (WHERE loss_value < $3) as cheap_deaths,
+            COUNT(*) as total_deaths,
+            AVG(attacker_count) as avg_attacker_count
+          FROM char_deaths
+        ),
+        final_blow_stats AS (
+          -- Final blow rate on kills and average damage contribution percentage
+          SELECT
+            COUNT(*) as total_kills,
+            COUNT(*) FILTER (WHERE final_blow = true) as final_blows,
+            AVG(damage_contribution_pct) as avg_damage_contribution_pct
+          FROM char_kills
         ),
         related_kills AS (
           -- Find kills by corpmates within 5 minutes and same system of character's death
@@ -1433,43 +1712,130 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
               AND p_att.is_victim = false
           )
           GROUP BY cd.killmail_id, cd.loss_value
+        ),
+        corp_kill_stats AS (
+          -- Aggregate corpmate kill correlation stats
+          SELECT
+            COUNT(*) as deaths_with_related_kills,
+            COALESCE(AVG(related_corp_kills), 0) as avg_related_kills,
+            COALESCE(SUM(related_kill_value), 0) as total_related_value,
+            COALESCE(SUM(loss_value), 0) as total_bait_losses
+          FROM related_kills
         )
         SELECT
-          COUNT(*) as deaths_with_related_kills,
-          (SELECT COUNT(*) FROM char_deaths) as total_deaths,
-          AVG(related_corp_kills) as avg_related_kills,
-          SUM(related_kill_value) as total_related_value,
-          SUM(loss_value) as total_bait_losses
-        FROM related_kills
+          -- Cheap death stats
+          cds.cheap_deaths,
+          cds.total_deaths,
+          cds.avg_attacker_count,
+          -- Final blow stats
+          fbs.total_kills,
+          fbs.final_blows,
+          fbs.avg_damage_contribution_pct,
+          -- Corp kill correlation stats
+          cks.deaths_with_related_kills,
+          cks.avg_related_kills,
+          cks.total_related_value,
+          cks.total_bait_losses
+        FROM cheap_death_stats cds, final_blow_stats fbs, corp_kill_stats cks
         """
 
-        case Ecto.Adapters.SQL.query(EveDmv.Repo, bait_query, [character_id, since_date]) do
+        cheap_threshold = ThreatConfig.bait_cheap_ship_threshold()
+
+        case Ecto.Adapters.SQL.query(EveDmv.Repo, bait_query, [
+               character_id,
+               since_date,
+               cheap_threshold
+             ]) do
           {:ok,
            %{
              rows: [
-               [deaths_with_kills, total_deaths, avg_related, total_related_val, bait_losses]
+               [
+                 cheap_deaths,
+                 total_deaths,
+                 avg_attacker_count,
+                 total_kills,
+                 final_blows,
+                 avg_damage_contribution_pct,
+                 deaths_with_related_kills,
+                 avg_related_kills,
+                 total_related_value,
+                 total_bait_losses
+               ]
              ]
            }} ->
-            total = total_deaths || 0
-            with_kills = deaths_with_kills || 0
+            # Normalize values
+            total_deaths_count = total_deaths || 0
+            cheap_deaths_count = cheap_deaths || 0
+            total_kills_count = total_kills || 0
+            final_blows_count = final_blows || 0
+            deaths_with_kills_count = deaths_with_related_kills || 0
+            # avg_damage_pct is already a percentage (0-100) from the query
+            avg_damage_pct = NumericUtils.to_float(avg_damage_contribution_pct) || 0.0
+            avg_attackers = NumericUtils.to_float(avg_attacker_count) || 1.0
+            total_losses = NumericUtils.to_float(total_bait_losses) || 0.0
+            total_corp_kills = NumericUtils.to_float(total_related_value) || 0.0
 
-            bait_percentage =
-              if total > 0, do: Float.round(with_kills / total * 100, 1), else: 0.0
+            # Calculate percentages
+            cheap_death_pct =
+              if total_deaths_count > 0,
+                do: cheap_deaths_count / total_deaths_count * 100,
+                else: 0.0
 
+            corp_kill_correlation =
+              if total_deaths_count > 0,
+                do: deaths_with_kills_count / total_deaths_count * 100,
+                else: 0.0
+
+            final_blow_rate =
+              if total_kills_count > 0,
+                do: final_blows_count / total_kills_count,
+                else: 0.0
+
+            # Calculate trade ratio (corpmate kills value / personal losses)
+            trade_ratio =
+              if total_losses > 0,
+                do: total_corp_kills / total_losses,
+                else: 0.0
+
+            # Calculate bait score with weighted factors
+            {bait_score, factors} =
+              calculate_bait_score(%{
+                cheap_death_pct: cheap_death_pct,
+                avg_damage_pct: avg_damage_pct,
+                corp_kill_correlation: corp_kill_correlation,
+                final_blow_rate: final_blow_rate,
+                trade_ratio: trade_ratio,
+                avg_attackers: avg_attackers,
+                total_deaths: total_deaths_count
+              })
+
+            # Determine if likely bait based on score and minimum deaths
             is_likely_bait =
-              bait_percentage >= @bait_percentage_threshold and total >= @bait_min_total
+              bait_score >= ThreatConfig.bait_score_possible() and
+                total_deaths_count >= ThreatConfig.bait_min_deaths()
 
             {:ok,
              %{
-               total_deaths: total,
-               deaths_with_related_kills: with_kills,
-               bait_percentage: bait_percentage,
-               avg_related_kills: NumericUtils.to_float(avg_related) || 0.0,
-               total_related_value: NumericUtils.to_float(total_related_val) || 0.0,
-               total_bait_losses: NumericUtils.to_float(bait_losses) || 0.0,
+               # Core metrics
+               total_deaths: total_deaths_count,
+               total_kills: total_kills_count,
+               deaths_with_related_kills: deaths_with_kills_count,
+               # Percentages
+               cheap_death_percentage: Float.round(cheap_death_pct, 1),
+               corp_kill_correlation: Float.round(corp_kill_correlation, 1),
+               final_blow_rate: Float.round(final_blow_rate * 100, 1),
+               # Other metrics
+               avg_damage_contribution_pct: Float.round(avg_damage_pct, 1),
+               avg_attacker_count_at_death: Float.round(avg_attackers, 1),
+               trade_ratio: Float.round(trade_ratio, 2),
+               total_bait_losses: total_losses,
+               total_related_value: total_corp_kills,
+               avg_related_kills: NumericUtils.to_float(avg_related_kills) || 0.0,
+               # Scoring
+               bait_score: bait_score,
+               bait_factors: factors,
                is_likely_bait: is_likely_bait,
-               bait_assessment:
-                 if(is_likely_bait, do: "Potential bait pilot", else: "No bait indicators")
+               bait_assessment: ThreatConfig.classify_bait_score(bait_score)
              }}
 
           {:error, error} ->
@@ -1479,6 +1845,178 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
       end,
       ttl: @gang_patterns_ttl
     )
+  end
+
+  # Calculate bait score using weighted factors
+  defp calculate_bait_score(metrics) do
+    %{
+      cheap_death_pct: cheap_death_pct,
+      avg_damage_pct: avg_damage_pct,
+      corp_kill_correlation: corp_kill_correlation,
+      final_blow_rate: final_blow_rate,
+      trade_ratio: trade_ratio,
+      avg_attackers: avg_attackers,
+      total_deaths: total_deaths
+    } = metrics
+
+    # Skip scoring if insufficient data
+    if total_deaths < ThreatConfig.bait_min_deaths() do
+      {0, []}
+    else
+      factors = []
+
+      # Factor 1: Cheap ship deaths (weight 20)
+      # Score scales from 0 at 0% to 20 at 60%+ cheap deaths
+      cheap_threshold = ThreatConfig.bait_cheap_death_threshold()
+      cheap_score = min(cheap_death_pct / cheap_threshold * 20, 20)
+
+      factors =
+        if cheap_score > 5 do
+          [
+            %{
+              factor: "cheap_deaths",
+              description: "#{Float.round(cheap_death_pct, 0)}% deaths in cheap ships (< 100M)",
+              contribution: Float.round(cheap_score, 1)
+            }
+            | factors
+          ]
+        else
+          factors
+        end
+
+      # Factor 2: Low damage contribution on kills (weight 20)
+      # Score scales inversely - lower damage percentage = higher score
+      # Threshold is 5% damage contribution (ThreatConfig returns 0.05, multiply by 100 for percentage)
+      damage_threshold = ThreatConfig.bait_low_damage_threshold() * 100
+
+      # avg_damage_pct is already a percentage (0-100) from the query
+      # Lower damage contribution indicates bait behavior
+      damage_score =
+        if avg_damage_pct < damage_threshold,
+          do: 20 * (1 - avg_damage_pct / damage_threshold),
+          else: 0
+
+      factors =
+        if damage_score > 5 do
+          [
+            %{
+              factor: "low_damage",
+              description: "Low damage contribution (avg #{Float.round(avg_damage_pct, 1)}%)",
+              contribution: Float.round(damage_score, 1)
+            }
+            | factors
+          ]
+        else
+          factors
+        end
+
+      # Factor 3: High corpmate kill correlation (weight 20)
+      # Score scales from 0 at 0% to 20 at 40%+ correlation
+      corp_threshold = ThreatConfig.bait_corp_kill_correlation()
+      corp_score = min(corp_kill_correlation / corp_threshold * 20, 20)
+
+      factors =
+        if corp_score > 5 do
+          [
+            %{
+              factor: "corp_kills",
+              description:
+                "#{Float.round(corp_kill_correlation, 0)}% deaths had corpmate kills nearby",
+              contribution: Float.round(corp_score, 1)
+            }
+            | factors
+          ]
+        else
+          factors
+        end
+
+      # Factor 4: Low final blow rate (weight 15)
+      # Score scales inversely - lower final blow rate = higher score
+      # Threshold is 10% final blow rate
+      fb_threshold = ThreatConfig.bait_low_final_blow_rate()
+
+      fb_score =
+        if final_blow_rate < fb_threshold, do: 15 * (1 - final_blow_rate / fb_threshold), else: 0
+
+      factors =
+        if fb_score > 3 do
+          [
+            %{
+              factor: "low_final_blows",
+              description: "Low final blow rate (#{Float.round(final_blow_rate * 100, 0)}%)",
+              contribution: Float.round(fb_score, 1)
+            }
+            | factors
+          ]
+        else
+          factors
+        end
+
+      # Factor 5: Positive trade ratio (weight 15)
+      # Score scales from 0 at 1:1 to 15 at 3:1+ trade ratio
+      trade_threshold = ThreatConfig.bait_positive_trade_ratio()
+
+      trade_score =
+        if trade_ratio > 1.0,
+          do: min((trade_ratio - 1.0) / (trade_threshold - 1.0) * 15, 15),
+          else: 0
+
+      factors =
+        if trade_score > 3 do
+          [
+            %{
+              factor: "positive_trade",
+              description: "Positive trade ratio (#{Float.round(trade_ratio, 1)}:1)",
+              contribution: Float.round(trade_score, 1)
+            }
+            | factors
+          ]
+        else
+          factors
+        end
+
+      # Factor 6: Outgunned pattern (weight 10)
+      # Score scales from 0 at 1 attacker to 10 at 5+ attackers
+      outgunned_threshold = ThreatConfig.bait_outgunned_threshold()
+
+      outgunned_score =
+        if avg_attackers > 1,
+          do: min((avg_attackers - 1) / (outgunned_threshold - 1) * 10, 10),
+          else: 0
+
+      factors =
+        if outgunned_score > 2 do
+          [
+            %{
+              factor: "outgunned",
+              description:
+                "Often outgunned (avg #{Float.round(avg_attackers, 1)} attackers at death)",
+              contribution: Float.round(outgunned_score, 1)
+            }
+            | factors
+          ]
+        else
+          factors
+        end
+
+      # Sum all scores
+      total_score =
+        cheap_score + damage_score + corp_score + fb_score + trade_score + outgunned_score
+
+      {round(total_score), Enum.reverse(factors)}
+    end
+  end
+
+  # Helper to safely build SQL IN clause from a list of IDs.
+  # Returns "-1" (a sentinel that matches nothing) if the list is empty,
+  # ensuring the resulting IN (...) is always syntactically valid.
+  defp safe_ids_for_sql(ids) when is_list(ids) do
+    ids
+    |> Enum.uniq()
+    |> case do
+      [] -> "-1"
+      list -> Enum.join(list, ", ")
+    end
   end
 
   # Helper for target selection
@@ -1864,4 +2402,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
       indicators
     end
   end
+
+  # Helper function to calculate percentage safely, avoiding division by zero
+  defp safe_percentage(count, total) when is_integer(total) and total > 0 do
+    Float.round((count || 0) / total * 100, 1)
+  end
+
+  defp safe_percentage(_count, _total), do: 0.0
 end

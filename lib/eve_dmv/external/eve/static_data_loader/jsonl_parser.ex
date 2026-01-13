@@ -251,51 +251,69 @@ defmodule EveDmv.Eve.StaticDataLoader.JsonlParser do
   end
 
   defp transform_solar_system(data) do
+    # CCP JSONL format uses nested position object and securityStatus field
+    position = Map.get(data, "position", %{})
+
     %{
       system_id: get_id(data),
       name: get_localized_name(data),
       constellation_id: Map.get(data, "constellationID"),
       region_id: Map.get(data, "regionID"),
-      security: to_float(Map.get(data, "security")),
+      # CCP uses "securityStatus" not "security"
+      security: to_float(Map.get(data, "securityStatus")),
       security_class: Map.get(data, "securityClass"),
-      x: to_float(Map.get(data, "x")),
-      y: to_float(Map.get(data, "y")),
-      z: to_float(Map.get(data, "z")),
-      sun_type_id: Map.get(data, "sunTypeID"),
+      # Coordinates are nested in "position" object
+      x: to_float(Map.get(position, "x")),
+      y: to_float(Map.get(position, "y")),
+      z: to_float(Map.get(position, "z")),
+      # CCP uses "starID" not "sunTypeID"
+      sun_type_id: Map.get(data, "starID"),
       is_border: Map.get(data, "border", false),
       is_corridor: Map.get(data, "corridor", false),
       is_fringe: Map.get(data, "fringe", false),
       is_hub: Map.get(data, "hub", false),
       is_international: Map.get(data, "international", false),
       is_regional: Map.get(data, "regional", false),
-      stargate_ids: Map.get(data, "stargates", [])
+      # CCP uses "stargateIDs" not "stargates"
+      stargate_ids: Map.get(data, "stargateIDs", [])
     }
   end
 
   defp transform_region(data) do
+    # CCP JSONL format uses nested position object
+    position = Map.get(data, "position", %{})
+
     %{
       region_id: get_id(data),
       name: get_localized_name(data),
       description: get_localized_description(data),
-      x: to_float(Map.get(data, "x")),
-      y: to_float(Map.get(data, "y")),
-      z: to_float(Map.get(data, "z")),
+      # Coordinates are nested in "position" object
+      x: to_float(Map.get(position, "x")),
+      y: to_float(Map.get(position, "y")),
+      z: to_float(Map.get(position, "z")),
       faction_id: Map.get(data, "factionID"),
-      nebula: Map.get(data, "nebula"),
+      # CCP uses "nebulaID" not "nebula"
+      nebula: Map.get(data, "nebulaID"),
       wormhole_class_id: Map.get(data, "wormholeClassID")
     }
   end
 
   defp transform_constellation(data) do
+    # CCP JSONL format uses nested position object
+    position = Map.get(data, "position", %{})
+
     %{
       constellation_id: get_id(data),
       name: get_localized_name(data),
       region_id: Map.get(data, "regionID"),
-      x: to_float(Map.get(data, "x")),
-      y: to_float(Map.get(data, "y")),
-      z: to_float(Map.get(data, "z")),
+      # Coordinates are nested in "position" object
+      x: to_float(Map.get(position, "x")),
+      y: to_float(Map.get(position, "y")),
+      z: to_float(Map.get(position, "z")),
       faction_id: Map.get(data, "factionID"),
-      radius: to_float(Map.get(data, "radius"))
+      radius: to_float(Map.get(data, "radius")),
+      # Constellation can also have wormholeClassID (for wormhole constellations)
+      wormhole_class_id: Map.get(data, "wormholeClassID")
     }
   end
 

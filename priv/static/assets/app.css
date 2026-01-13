@@ -1923,6 +1923,11 @@ select {
   border-color: rgb(113 63 18 / var(--tw-border-opacity));
 }
 
+.border-orange-600 {
+  --tw-border-opacity: 1;
+  border-color: rgb(234 88 12 / var(--tw-border-opacity));
+}
+
 .border-t-blue-500 {
   --tw-border-opacity: 1;
   border-top-color: rgb(59 130 246 / var(--tw-border-opacity));
@@ -2365,6 +2370,10 @@ select {
 
 .bg-yellow-950\/30 {
   background-color: rgb(66 32 6 / 0.3);
+}
+
+.bg-black\/20 {
+  background-color: rgb(0 0 0 / 0.2);
 }
 
 .bg-opacity-50 {

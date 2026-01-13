@@ -149,8 +149,15 @@ defmodule EveDmv.Eve.StaticDataLoader.SolarSystemProcessor do
   # Private JSONL processing functions
 
   defp load_regions_jsonl(regions_path) do
-    case JsonlParser.parse_to_map(regions_path, :region_id) do
-      {:ok, regions} ->
+    # Use parse_regions to get properly transformed data with snake_case keys
+    case JsonlParser.parse_regions(regions_path) do
+      {:ok, stream} ->
+        regions =
+          stream
+          |> Enum.reduce(%{}, fn region, acc ->
+            if region.region_id, do: Map.put(acc, region.region_id, region), else: acc
+          end)
+
         Logger.debug("Loaded #{map_size(regions)} regions from JSONL")
         {:ok, regions}
 
@@ -160,8 +167,17 @@ defmodule EveDmv.Eve.StaticDataLoader.SolarSystemProcessor do
   end
 
   defp load_constellations_jsonl(constellations_path) do
-    case JsonlParser.parse_to_map(constellations_path, :constellation_id) do
-      {:ok, constellations} ->
+    # Use parse_constellations to get properly transformed data with snake_case keys
+    case JsonlParser.parse_constellations(constellations_path) do
+      {:ok, stream} ->
+        constellations =
+          stream
+          |> Enum.reduce(%{}, fn constellation, acc ->
+            if constellation.constellation_id,
+              do: Map.put(acc, constellation.constellation_id, constellation),
+              else: acc
+          end)
+
         Logger.debug("Loaded #{map_size(constellations)} constellations from JSONL")
         {:ok, constellations}
 
@@ -183,13 +199,26 @@ defmodule EveDmv.Eve.StaticDataLoader.SolarSystemProcessor do
 
     security_class = classify_security(system.security)
 
-    # Determine if this is a wormhole system - set security_class to "wormhole" if so
-    # The is_wormhole calculation in the resource depends on security_class == "wormhole"
+    # Determine if this is a wormhole system using region_id range
+    # Wormhole regions are in the 11000000-12000000 range
+    # Note: CCP assigns wormholeClassID to ALL regions (7=highsec static, 9=nullsec static, etc.)
+    # so we can't use wormholeClassID alone to detect wormholes
+    is_wormhole_region = region_id != nil and region_id >= 11_000_000 and region_id < 12_000_000
+
     final_security_class =
-      if region[:wormhole_class_id] != nil do
+      if is_wormhole_region do
         "wormhole"
       else
         security_class
+      end
+
+    # Only store wormhole_class_id for actual wormhole systems
+    # For k-space, the wormholeClassID indicates static connection type, not wormhole class
+    wh_class_id =
+      if is_wormhole_region do
+        region[:wormhole_class_id]
+      else
+        nil
       end
 
     base_map = %{
@@ -204,7 +233,7 @@ defmodule EveDmv.Eve.StaticDataLoader.SolarSystemProcessor do
       x: system.x || 0.0,
       y: system.y || 0.0,
       z: system.z || 0.0,
-      wormhole_class_id: region[:wormhole_class_id],
+      wormhole_class_id: wh_class_id,
       sde_version: sde_version
     }
 
