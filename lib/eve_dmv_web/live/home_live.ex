@@ -198,8 +198,10 @@ defmodule EveDmvWeb.HomeLive do
   defp search_characters_trigram(query) do
     # Trigram similarity search - uses GIN index efficiently
     # NOTE: Must include "character_name IS NOT NULL" to use partial index
+    # DISTINCT ON picks the row with the highest killmail_time for each character
+    # to get the most recent corporation information
     character_query = """
-    SELECT character_id, character_name, corporation_name
+    SELECT character_id, character_name, corporation_name, sim
     FROM (
       SELECT DISTINCT ON (character_id)
         p.character_id,
@@ -210,7 +212,7 @@ defmodule EveDmvWeb.HomeLive do
       WHERE p.character_name IS NOT NULL
         AND p.character_name % $1
         AND p.character_id IS NOT NULL
-      ORDER BY p.character_id, similarity(p.character_name, $1) DESC
+      ORDER BY p.character_id, p.killmail_time DESC
     ) sub
     ORDER BY sim DESC, character_name
     LIMIT 5
@@ -218,11 +220,11 @@ defmodule EveDmvWeb.HomeLive do
 
     case SQL.query(EveDmv.Repo, character_query, [query], timeout: 3_000) do
       {:ok, %{rows: rows}} ->
-        Enum.map(rows, fn [id, name, corp] ->
+        Enum.map(rows, fn [id, name, corp, _sim] ->
           %{
             id: id,
-            name: name || "Unknown",
-            subtitle: corp || "Unknown Corp"
+            name: name,
+            subtitle: corp
           }
         end)
 
@@ -233,15 +235,21 @@ defmodule EveDmvWeb.HomeLive do
 
   defp search_characters_prefix(query) do
     # Prefix search for short queries
+    # DISTINCT ON picks the row with the highest killmail_time for each character
+    # to get the most recent corporation information
     character_query = """
-    SELECT DISTINCT ON (character_id)
-      p.character_id,
-      p.character_name,
-      p.corporation_name
-    FROM participants p
-    WHERE p.character_name ILIKE $1
-      AND p.character_id IS NOT NULL
-    ORDER BY p.character_id
+    SELECT character_id, character_name, corporation_name
+    FROM (
+      SELECT DISTINCT ON (character_id)
+        p.character_id,
+        p.character_name,
+        p.corporation_name
+      FROM participants p
+      WHERE p.character_name ILIKE $1
+        AND p.character_id IS NOT NULL
+      ORDER BY p.character_id, p.killmail_time DESC
+    ) sub
+    ORDER BY character_name
     LIMIT 5
     """
 
@@ -252,8 +260,8 @@ defmodule EveDmvWeb.HomeLive do
         Enum.map(rows, fn [id, name, corp] ->
           %{
             id: id,
-            name: name || "Unknown",
-            subtitle: corp || "Unknown Corp"
+            name: name,
+            subtitle: corp
           }
         end)
 
@@ -274,8 +282,10 @@ defmodule EveDmvWeb.HomeLive do
   defp search_corporations_trigram(query) do
     # Trigram similarity search - uses GIN index efficiently
     # NOTE: Must include "corporation_name IS NOT NULL" to use partial index
+    # DISTINCT ON picks the row with the highest killmail_time for each corporation
+    # to get the most recent alliance information
     corp_query = """
-    SELECT corporation_id, corporation_name, alliance_name
+    SELECT corporation_id, corporation_name, alliance_name, sim
     FROM (
       SELECT DISTINCT ON (corporation_id)
         p.corporation_id,
@@ -286,7 +296,7 @@ defmodule EveDmvWeb.HomeLive do
       WHERE p.corporation_name IS NOT NULL
         AND p.corporation_name % $1
         AND p.corporation_id IS NOT NULL
-      ORDER BY p.corporation_id, similarity(p.corporation_name, $1) DESC
+      ORDER BY p.corporation_id, p.killmail_time DESC
     ) sub
     ORDER BY sim DESC, corporation_name
     LIMIT 5
@@ -294,11 +304,11 @@ defmodule EveDmvWeb.HomeLive do
 
     case SQL.query(EveDmv.Repo, corp_query, [query], timeout: 3_000) do
       {:ok, %{rows: rows}} ->
-        Enum.map(rows, fn [id, name, alliance] ->
+        Enum.map(rows, fn [id, name, alliance, _sim] ->
           %{
             id: id,
-            name: name || "Unknown",
-            subtitle: alliance || "No Alliance"
+            name: name,
+            subtitle: alliance
           }
         end)
 
@@ -309,15 +319,21 @@ defmodule EveDmvWeb.HomeLive do
 
   defp search_corporations_prefix(query) do
     # Prefix search for short queries
+    # DISTINCT ON picks the row with the highest killmail_time for each corporation
+    # to get the most recent alliance information
     corp_query = """
-    SELECT DISTINCT ON (corporation_id)
-      p.corporation_id,
-      p.corporation_name,
-      p.alliance_name
-    FROM participants p
-    WHERE p.corporation_name ILIKE $1
-      AND p.corporation_id IS NOT NULL
-    ORDER BY p.corporation_id
+    SELECT corporation_id, corporation_name, alliance_name
+    FROM (
+      SELECT DISTINCT ON (corporation_id)
+        p.corporation_id,
+        p.corporation_name,
+        p.alliance_name
+      FROM participants p
+      WHERE p.corporation_name ILIKE $1
+        AND p.corporation_id IS NOT NULL
+      ORDER BY p.corporation_id, p.killmail_time DESC
+    ) sub
+    ORDER BY corporation_name
     LIMIT 5
     """
 
@@ -328,8 +344,8 @@ defmodule EveDmvWeb.HomeLive do
         Enum.map(rows, fn [id, name, alliance] ->
           %{
             id: id,
-            name: name || "Unknown",
-            subtitle: alliance || "No Alliance"
+            name: name,
+            subtitle: alliance
           }
         end)
 

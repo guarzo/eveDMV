@@ -84,14 +84,17 @@ defmodule EveDmv.Repo.Migrations.RebuildRemainingInvalidIndexes do
   # Helper to conditionally REINDEX or CREATE an index.
   # Uses REINDEX CONCURRENTLY when the index exists (minimizes locking),
   # falls back to CREATE INDEX CONCURRENTLY when the index is absent.
+  # Scoped to 'public' schema to avoid collisions with same-named indexes in other schemas.
   defp rebuild_index_concurrently(index_name, create_sql) do
-    case repo().query("SELECT 1 FROM pg_indexes WHERE indexname = $1", [index_name]) do
+    query = "SELECT 1 FROM pg_indexes WHERE indexname = $1 AND schemaname = $2"
+
+    case repo().query(query, [index_name, "public"]) do
       {:ok, %{num_rows: n}} when n > 0 ->
-        # Index exists - use REINDEX CONCURRENTLY for minimal locking
+        # Index exists in public schema - use REINDEX CONCURRENTLY for minimal locking
         execute("REINDEX INDEX CONCURRENTLY #{index_name}")
 
       {:ok, %{num_rows: 0}} ->
-        # Index doesn't exist - create it
+        # Index doesn't exist in public schema - create it
         execute(create_sql)
 
       {:error, reason} ->

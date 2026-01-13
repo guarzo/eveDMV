@@ -252,9 +252,14 @@ defmodule EveDmv.Contexts.CharacterIntelligence.ThreatConfig do
   # Mining ship group IDs: 463 = Mining Barge, 543 = Exhumer
   @mining_group_ids [463, 543]
 
-  # Industrial ship group IDs: 28 = Industrial, 380 = Deep Space Transport,
-  # 902 = Freighter, 513 = Transport Ship, 941 = Industrial Command Ship (Orca), 1022 = ORE Industrial
-  @industrial_group_ids [28, 380, 902, 513, 941, 1022]
+  # Industrial ship group IDs (from EVE SDE):
+  # 28 = Hauler (T1 industrials: Bestower, Iteron, Mammoth, Noctis, etc.)
+  # 380 = Deep Space Transport (T2 industrials: Occator, Impel, etc.)
+  # 513 = Freighter (standard freighters: Charon, Providence, Bowhead)
+  # 902 = Jump Freighter (capital jump freighters: Rhea, Ark, etc.)
+  # 941 = Industrial Command Ship (Orca, Porpoise)
+  # Note: Rorqual (group 883) is in @capital_group_ids for threat classification
+  @industrial_group_ids [28, 380, 513, 902, 941]
 
   # Capsule type ID (the specific item type)
   @capsule_type_id 670
