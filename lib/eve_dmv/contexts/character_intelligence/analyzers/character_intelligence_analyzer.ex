@@ -1086,6 +1086,36 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
     QueryCache.get_or_compute(
       cache_key,
       fn ->
+        # Build group ID strings from ThreatConfig for SQL interpolation
+        capsule_id = ThreatConfig.capsule_group_id()
+
+        capital_ids =
+          ThreatConfig.capital_group_ids()
+          |> Enum.join(", ")
+
+        industrial_and_mining_ids =
+          (ThreatConfig.industrial_group_ids() ++ ThreatConfig.mining_group_ids())
+          |> Enum.uniq()
+          |> Enum.join(", ")
+
+        # Ship class group IDs from ThreatConfig
+        frigate_destroyer_ids =
+          (ThreatConfig.frigate_group_ids() ++
+             ThreatConfig.destroyer_group_ids() ++
+             ThreatConfig.tackle_group_ids())
+          |> Enum.join(", ")
+
+        cruiser_bc_ids =
+          (ThreatConfig.cruiser_group_ids() ++
+             ThreatConfig.battlecruiser_group_ids() ++
+             ThreatConfig.logistics_group_ids() ++
+             ThreatConfig.ewar_group_ids())
+          |> Enum.join(", ")
+
+        battleship_command_ids =
+          (ThreatConfig.battleship_group_ids() ++ ThreatConfig.command_group_ids())
+          |> Enum.join(", ")
+
         # Multi-dimensional target analysis query
         targets_query = """
         WITH character_kills AS (
@@ -1112,11 +1142,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
             eit.group_id,
             eit.group_name,
             -- Classify victim type using group_id from SDE join for consistency
-            -- Group IDs from ThreatConfig: 29=Capsule, capitals, industrials
+            -- Group IDs sourced from ThreatConfig
             CASE
-              WHEN eit.group_id = 29 THEN 'capsule'
-              WHEN eit.group_id IN (485, 547, 659, 30, 1538, 883) THEN 'capital'
-              WHEN eit.group_id IN (28, 380, 902, 513, 941, 1022, 463, 543) THEN 'industrial'
+              WHEN eit.group_id = #{capsule_id} THEN 'capsule'
+              WHEN eit.group_id IN (#{capital_ids}) THEN 'capital'
+              WHEN eit.group_id IN (#{industrial_and_mining_ids}) THEN 'industrial'
               ELSE 'combat'
             END as victim_type
           FROM character_kills ck
@@ -1138,16 +1168,15 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
           GROUP BY victim_ship_type_id, ship_name, group_id, group_name
         ),
         ship_class_summary AS (
-          -- Ship class summary using EVE SDE group IDs
-          -- All group IDs sourced from ThreatConfig for consistency
+          -- Ship class summary using EVE SDE group IDs from ThreatConfig
           SELECT
             CASE
-              WHEN group_id IN (25, 420, 831, 324, 830, 893, 541, 543, 1305) THEN 'frigates_destroyers'
-              WHEN group_id IN (26, 419, 358, 894, 906, 833, 832, 963, 1201) THEN 'cruisers_bc'
-              WHEN group_id IN (27, 898, 900) THEN 'battleships'
-              WHEN group_id IN (547, 485, 1538, 659, 30, 883) THEN 'capitals'
-              WHEN group_id IN (463, 543, 513, 902, 28, 380, 941, 1022) THEN 'industrial'
-              WHEN group_id = 29 THEN 'capsules'
+              WHEN group_id IN (#{frigate_destroyer_ids}) THEN 'frigates_destroyers'
+              WHEN group_id IN (#{cruiser_bc_ids}) THEN 'cruisers_bc'
+              WHEN group_id IN (#{battleship_command_ids}) THEN 'battleships'
+              WHEN group_id IN (#{capital_ids}) THEN 'capitals'
+              WHEN group_id IN (#{industrial_and_mining_ids}) THEN 'industrial'
+              WHEN group_id = #{capsule_id} THEN 'capsules'
               ELSE 'other'
             END as ship_class,
             SUM(kill_count) as total_kills,

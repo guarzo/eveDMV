@@ -15,35 +15,38 @@ defmodule EveDmv.Repo.Migrations.RebuildRemainingInvalidIndexes do
   def up do
     execute("SET statement_timeout = 0")
 
-    # 1. Rebuild corp_name_missing index using REINDEX CONCURRENTLY if it exists,
-    #    otherwise CREATE INDEX CONCURRENTLY. REINDEX minimizes locking compared
-    #    to DROP+CREATE by not removing the index during rebuild.
-    #
-    #    Note: REINDEX/CREATE INDEX CONCURRENTLY cannot run inside PL/pgSQL blocks,
-    #    so we check index existence via Ecto first.
-    rebuild_index_concurrently(
-      "idx_participants_corp_name_missing",
-      """
-      CREATE INDEX CONCURRENTLY idx_participants_corp_name_missing
-      ON participants (corporation_id, is_victim)
-      WHERE corporation_id IS NOT NULL
-        AND (corporation_name IS NULL OR corporation_name = '')
-      """
-    )
+    try do
+      # 1. Rebuild corp_name_missing index using REINDEX CONCURRENTLY if it exists,
+      #    otherwise CREATE INDEX CONCURRENTLY. REINDEX minimizes locking compared
+      #    to DROP+CREATE by not removing the index during rebuild.
+      #
+      #    Note: REINDEX/CREATE INDEX CONCURRENTLY cannot run inside PL/pgSQL blocks,
+      #    so we check index existence via Ecto first.
+      rebuild_index_concurrently(
+        "idx_participants_corp_name_missing",
+        """
+        CREATE INDEX CONCURRENTLY idx_participants_corp_name_missing
+        ON participants (corporation_id, is_victim)
+        WHERE corporation_id IS NOT NULL
+          AND (corporation_name IS NULL OR corporation_name = '')
+        """
+      )
 
-    # 2. Rebuild killmail_corp_backfill index using same pattern
-    rebuild_index_concurrently(
-      "idx_participants_killmail_corp_backfill",
-      """
-      CREATE INDEX CONCURRENTLY idx_participants_killmail_corp_backfill
-      ON participants (killmail_id, killmail_time, corporation_id)
-      WHERE corporation_id IS NOT NULL
-        AND (corporation_name IS NULL OR corporation_name = '')
-      """
-    )
+      # 2. Rebuild killmail_corp_backfill index using same pattern
+      rebuild_index_concurrently(
+        "idx_participants_killmail_corp_backfill",
+        """
+        CREATE INDEX CONCURRENTLY idx_participants_killmail_corp_backfill
+        ON participants (killmail_id, killmail_time, corporation_id)
+        WHERE corporation_id IS NOT NULL
+          AND (corporation_name IS NULL OR corporation_name = '')
+        """
+      )
 
-    execute("ANALYZE participants")
-    execute("RESET statement_timeout")
+      execute("ANALYZE participants")
+    after
+      execute("RESET statement_timeout")
+    end
   end
 
   # Helper to conditionally REINDEX or CREATE an index.

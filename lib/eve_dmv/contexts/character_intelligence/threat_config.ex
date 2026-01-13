@@ -234,11 +234,11 @@ defmodule EveDmv.Contexts.CharacterIntelligence.ThreatConfig do
   # Below this threshold, the pilot is classified as an "opportunist" (catching whatever is available).
   @casual_pvper_isk 20_000_000
 
-  # Mining ship group IDs: 463 = Mining Barge, 543 = Exhumer, 28 = Industrial
-  @mining_group_ids [463, 543, 28]
+  # Mining ship group IDs: 463 = Mining Barge, 543 = Exhumer
+  @mining_group_ids [463, 543]
 
   # Industrial ship group IDs: 28 = Industrial, 380 = Deep Space Transport,
-  # 902 = Freighter, 513 = Transport Ship, 941 = Mining Barge, 1022 = ORE Industrial
+  # 902 = Freighter, 513 = Transport Ship, 941 = Industrial Command Ship (Orca), 1022 = ORE Industrial
   @industrial_group_ids [28, 380, 902, 513, 941, 1022]
 
   # Capsule type ID (the specific item type)
