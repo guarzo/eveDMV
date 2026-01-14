@@ -24,6 +24,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.ThreatConfig do
   - `ship_variety_max` (15): Using 15+ different ship types indicates exceptional variance
   - `kd_ratio_max` (5.0): A 5:1 K/D ratio represents elite combat performance
   - `isk_efficiency_max` (3.0): A 3:1 ISK efficiency represents strong economic performance
+  - `kill_bonus_log_base` (50): Logarithmic base for zero-death kill bonus; at 50 kills, max bonus is reached
+  - `kill_bonus_max_contribution` (0.1): Maximum bonus for kill count with zero deaths
   - `damage_contribution_excellent` (0.15): 15% average damage indicates primary DPS role
   - `high_value_target_isk` (100M): Targets worth 100M+ ISK are considered "valuable"
   - `opportunist_target_isk` (500M): Characters killing 500M+ targets are opportunists
@@ -107,6 +109,16 @@ defmodule EveDmv.Contexts.CharacterIntelligence.ThreatConfig do
 
   # An ISK efficiency ratio of 3:1 represents strong economic combat performance.
   @isk_efficiency_max 3.0
+
+  # Logarithmic base for kill count bonus calculation when deaths = 0.
+  # At 50 kills with 0 deaths, the pilot reaches the maximum kill bonus.
+  # This provides diminishing returns: early kills contribute more than later ones.
+  @kill_bonus_log_base 50
+
+  # Maximum bonus added for kill count when deaths = 0.
+  # Combined with base score of 0.9, this allows scores up to 1.0 for
+  # zero-death performance before any outlier bonuses are applied.
+  @kill_bonus_max_contribution 0.1
 
   # A 15% average damage contribution indicates a primary damage dealer.
   @damage_contribution_excellent 0.15
@@ -405,6 +417,14 @@ defmodule EveDmv.Contexts.CharacterIntelligence.ThreatConfig do
   @spec opportunist_target_isk() :: integer()
   def opportunist_target_isk, do: @opportunist_target_isk
 
+  @doc "Returns the logarithmic base for kill bonus calculation (50)."
+  @spec kill_bonus_log_base() :: integer()
+  def kill_bonus_log_base, do: @kill_bonus_log_base
+
+  @doc "Returns the maximum kill bonus contribution (0.1)."
+  @spec kill_bonus_max_contribution() :: float()
+  def kill_bonus_max_contribution, do: @kill_bonus_max_contribution
+
   # =============================================================================
   # Public API - Fleet Normalization
   # =============================================================================
@@ -458,7 +478,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.ThreatConfig do
   @doc """
   Returns the score assigned when insufficient recent data is available.
 
-  A low score of 0.3 indicates the character is likely inactive. This is
+  A low score of 0.15 indicates the character is likely inactive. This is
   intentionally conservative to avoid overestimating dormant characters.
   """
   @spec insufficient_data_score() :: float()
@@ -823,7 +843,10 @@ defmodule EveDmv.Contexts.CharacterIntelligence.ThreatConfig do
         # Base score of 0.9 for having 0 deaths
         # Add logarithmic bonus based on kill count
         base_score = 0.9
-        kill_bonus = :math.log(kills + 1) / :math.log(50) * 0.1
+
+        kill_bonus =
+          :math.log(kills + 1) / :math.log(@kill_bonus_log_base) * @kill_bonus_max_contribution
+
         min(@max_extended_score, base_score + kill_bonus)
 
       # Normal K/D calculation with sigmoid

@@ -131,10 +131,10 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
   end
 
   defp fetch_intelligence(character_id) do
-    {:ok, report} =
-      EveDmv.Contexts.CharacterIntelligence.get_character_intelligence_report(character_id)
-
-    {:ok, %{intelligence: report}}
+    case EveDmv.Contexts.CharacterIntelligence.get_character_intelligence_report(character_id) do
+      {:ok, report} -> {:ok, %{intelligence: report}}
+      {:error, _reason} -> {:ok, %{intelligence: nil}}
+    end
   end
 
   # Extract associates list from analysis data
@@ -249,14 +249,15 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
   end
 
   # Only refresh if this update is for the character we're viewing
-  defp maybe_refresh_for_character(char_id, socket) do
-    if char_id == socket.assigns.character_id do
-      socket = start_async_loads(socket, char_id)
-      {:noreply, socket}
-    else
-      {:noreply, socket}
-    end
+  defp maybe_refresh_for_character(
+         char_id,
+         %Phoenix.LiveView.Socket{assigns: %{character_id: char_id}} = socket
+       ) do
+    socket = start_async_loads(socket, char_id)
+    {:noreply, socket}
   end
+
+  defp maybe_refresh_for_character(_char_id, socket), do: {:noreply, socket}
 
   @impl Phoenix.LiveView
   def render(assigns) do

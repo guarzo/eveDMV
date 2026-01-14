@@ -119,9 +119,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtili
   Normalizes a score to a 0-10 scale with extended range support.
 
   For scores in the standard 0.0-1.0 range, this performs linear scaling to 0-10.
-  For extended scores (1.0-1.5 from outlier bonuses), this uses logarithmic
-  compression to map them to the 10-15 range, allowing differentiation of
-  exceptional performers while keeping the scale reasonable.
+  For extended scores (1.0-1.5 from outlier bonuses), this uses linear scaling
+  with the formula `10.0 + (score - 1.0) * 5.0`, mapping 1.0-1.5 to 10.0-12.5.
+  This allows differentiation of exceptional performers while capping at 12.5.
 
   ## Examples
 
@@ -130,7 +130,7 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtili
       iex> normalize_to_10_scale(1.0)
       10.0
       iex> normalize_to_10_scale(1.5)
-      # Returns ~12.5 (compressed outlier range)
+      12.5
   """
   def normalize_to_10_scale(score) when is_number(score) do
     cond do
