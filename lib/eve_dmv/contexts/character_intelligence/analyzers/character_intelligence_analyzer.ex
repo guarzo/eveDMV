@@ -1136,7 +1136,13 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Analyzers.CharacterIntelligenceA
             ck.final_blow,
             k.victim_ship_type_id,
             k.attacker_count,
-            COALESCE(k.total_value, 0) as kill_value,
+            COALESCE(
+              k.total_value,
+              (k.raw_data->'zkb'->>'totalValue')::numeric,
+              (k.raw_data->>'total_value')::numeric,
+              (k.raw_data->>'value')::numeric,
+              0
+            ) as kill_value,
             COALESCE(s.security_class, 'unknown') as sec_class,
             eit.type_name as ship_name,
             eit.group_id,

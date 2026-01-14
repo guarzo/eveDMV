@@ -26,6 +26,7 @@ defmodule EveDmv.Killmails.KillmailDataTransformer do
       victim_ship_type_id:
         get_in(enriched, ["ship", "type_id"]) || get_victim_ship_type_id(enriched),
       attacker_count: count_attackers(enriched),
+      total_value: get_total_value(enriched),
       raw_data: enriched,
       source: "wanderer-kills"
     }
@@ -79,6 +80,34 @@ defmodule EveDmv.Killmails.KillmailDataTransformer do
     case enriched["attackers"] do
       attackers when is_list(attackers) -> length(attackers)
       _ -> 1
+    end
+  end
+
+  defp get_total_value(enriched) do
+    # Try multiple locations where the value might be stored:
+    # 1. zkb.totalValue (from zKillboard/wanderer-kills)
+    # 2. total_value (direct field)
+    # 3. value (alternative field name)
+    value =
+      get_in(enriched, ["zkb", "totalValue"]) ||
+        enriched["total_value"] ||
+        enriched["value"]
+
+    case value do
+      nil -> nil
+      v when is_integer(v) -> Decimal.new(v)
+      v when is_float(v) -> Decimal.from_float(v)
+      v when is_binary(v) -> parse_decimal_string(v)
+      %Decimal{} = d -> d
+      _ -> nil
+    end
+  end
+
+  defp parse_decimal_string(str) do
+    case Decimal.parse(str) do
+      {decimal, ""} -> decimal
+      {decimal, _remainder} -> decimal
+      :error -> nil
     end
   end
 end
