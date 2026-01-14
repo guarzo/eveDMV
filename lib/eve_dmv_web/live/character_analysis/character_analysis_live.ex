@@ -105,37 +105,32 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
   # Fetch functions for async loading
 
   defp fetch_analysis(character_id) do
-    result =
+    # Return the map directly - Phoenix's start_async wraps it in {:ok, result}
+    {:ok, analysis} =
       AnalysisCache.get_or_compute(
         AnalysisCache.char_analysis_key(character_id),
         fn -> CharacterDataLoader.analyze_character(character_id) end,
         :timer.minutes(10)
       )
 
-    case result do
-      {:ok, analysis} ->
-        associates = get_associates_from_analysis(analysis)
-        ship_loadouts = analysis.ship_loadouts || []
+    associates = get_associates_from_analysis(analysis)
+    ship_loadouts = analysis.ship_loadouts || []
 
-        {:ok,
-         %{
-           analysis: analysis,
-           associates: Enum.take(associates, 8),
-           associates_count: length(associates),
-           ship_loadouts: ship_loadouts,
-           ship_loadouts_count: length(ship_loadouts)
-         }}
-
-      {:error, error} ->
-        {:error, error}
-    end
+    %{
+      analysis: analysis,
+      associates: Enum.take(associates, 8),
+      associates_count: length(associates),
+      ship_loadouts: ship_loadouts,
+      ship_loadouts_count: length(ship_loadouts)
+    }
   end
 
   defp fetch_intelligence(character_id) do
+    # Return the map directly - Phoenix's start_async wraps it in {:ok, result}
     {:ok, report} =
       EveDmv.Contexts.CharacterIntelligence.get_character_intelligence_report(character_id)
 
-    {:ok, %{intelligence: report}}
+    %{intelligence: report}
   end
 
   # Extract associates list from analysis data
