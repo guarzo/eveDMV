@@ -8,6 +8,8 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
 
   use EveDmvWeb, :live_view
 
+  require Logger
+
   on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
   alias EveDmv.Platform.Cache.AnalysisCache
@@ -131,10 +133,10 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
   end
 
   defp fetch_intelligence(character_id) do
-    case EveDmv.Contexts.CharacterIntelligence.get_character_intelligence_report(character_id) do
-      {:ok, report} -> {:ok, %{intelligence: report}}
-      {:error, _reason} -> {:ok, %{intelligence: nil}}
-    end
+    {:ok, report} =
+      EveDmv.Contexts.CharacterIntelligence.get_character_intelligence_report(character_id)
+
+    {:ok, %{intelligence: report}}
   end
 
   # Extract associates list from analysis data
