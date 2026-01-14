@@ -8,17 +8,16 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
 
   use EveDmvWeb, :live_view
 
-  require Logger
-
-  on_mount({EveDmvWeb.AuthLive, :load_from_session})
-
   alias EveDmv.Platform.Cache.AnalysisCache
-  alias EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader
-  alias EveDmvWeb.CharacterAnalysis.Helpers.DisplayFormatters
-
   alias EveDmvWeb.CharacterAnalysis.Components.CharacterHeaderComponent
   alias EveDmvWeb.CharacterAnalysis.Components.IntelligenceSummaryComponent
   alias EveDmvWeb.CharacterAnalysis.Components.StatisticsPanelComponent
+  alias EveDmvWeb.CharacterAnalysis.Helpers.CharacterDataLoader
+  alias EveDmvWeb.CharacterAnalysis.Helpers.DisplayFormatters
+
+  require Logger
+
+  on_mount({EveDmvWeb.AuthLive, :load_from_session})
 
   @valid_tabs ~w(overview battles ships weapons activity)a
 
