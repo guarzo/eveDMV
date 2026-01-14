@@ -116,11 +116,43 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoring.SharedUtili
   end
 
   @doc """
-  Normalizes a score to a 0-10 scale.
+  Normalizes a score to a 0-10 scale with extended range support.
+
+  For scores in the standard 0.0-1.0 range, this performs linear scaling to 0-10.
+  For extended scores (1.0-1.5 from outlier bonuses), this uses linear scaling
+  with the formula `10.0 + (score - 1.0) * 5.0`, mapping 1.0-1.5 to 10.0-12.5.
+  This allows differentiation of exceptional performers while capping at 12.5.
+
+  ## Examples
+
+      iex> normalize_to_10_scale(0.5)
+      5.0
+      iex> normalize_to_10_scale(1.0)
+      10.0
+      iex> normalize_to_10_scale(1.5)
+      12.5
   """
-  def normalize_to_10_scale(score) do
-    min(10.0, max(0.0, score * 10))
+  def normalize_to_10_scale(score) when is_number(score) do
+    cond do
+      score <= 0.0 ->
+        0.0
+
+      score <= 1.0 ->
+        # Standard linear scaling for normal range
+        score * 10.0
+
+      score <= 1.5 ->
+        # Extended range: compress 1.0-1.5 into 10.0-12.5
+        # This allows outliers to score higher without excessive inflation
+        10.0 + (score - 1.0) * 5.0
+
+      true ->
+        # Hard cap at 12.5 for extreme outliers
+        12.5
+    end
   end
+
+  def normalize_to_10_scale(_), do: 0.0
 
   @doc """
   Calculates survival rate based on combat data.
