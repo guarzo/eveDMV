@@ -97,8 +97,8 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
   # Start all async data loads for a character
   defp start_async_loads(socket, character_id) do
     socket
-    |> assign_async(:analysis_data, fn -> fetch_analysis(character_id) end)
-    |> assign_async(:intelligence_data, fn -> fetch_intelligence(character_id) end)
+    |> start_async(:analysis_data, fn -> fetch_analysis(character_id) end)
+    |> start_async(:intelligence_data, fn -> fetch_intelligence(character_id) end)
   end
 
   # Fetch functions for async loading
@@ -131,11 +131,10 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
   end
 
   defp fetch_intelligence(character_id) do
-    case EveDmv.Contexts.CharacterIntelligence.get_character_intelligence_report(character_id) do
-      {:ok, data} -> {:ok, %{intelligence: data}}
-      data when is_map(data) -> {:ok, %{intelligence: data}}
-      _ -> {:ok, %{intelligence: nil}}
-    end
+    {:ok, report} =
+      EveDmv.Contexts.CharacterIntelligence.get_character_intelligence_report(character_id)
+
+    {:ok, %{intelligence: report}}
   end
 
   # Extract associates list from analysis data
@@ -195,10 +194,12 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
   end
 
   def handle_async(:analysis_data, {:exit, reason}, socket) do
+    error_message = format_async_error(reason)
+
     socket =
       socket
       |> assign(:loading, false)
-      |> assign(:error, reason)
+      |> assign(:error, error_message)
 
     {:noreply, socket}
   end
@@ -215,46 +216,46 @@ defmodule EveDmvWeb.CharacterAnalysisLive do
     {:noreply, socket}
   end
 
-  # Handle real-time intelligence updates via PubSub
+  defp format_async_error(reason) do
+    case reason do
+      {exception, _stacktrace} when is_exception(exception) ->
+        Exception.message(exception)
+
+      reason when is_binary(reason) ->
+        reason
+
+      reason ->
+        try do
+          Exception.format_exit(reason)
+        rescue
+          _ -> inspect(reason)
+        end
+    end
+  end
+
+  # Handle real-time updates via PubSub - consolidated handler for character-specific updates
   @impl Phoenix.LiveView
-  def handle_info({:intelligence_update, %{type: :character_updated, character_id: char_id}}, socket) do
-    # Only refresh if this update is for the character we're viewing
-    if char_id == socket.assigns.character_id do
-      socket = start_async_loads(socket, char_id)
-      {:noreply, socket}
-    else
-      {:noreply, socket}
-    end
-  end
-
-  def handle_info({:intelligence_update, %{type: :analysis_completed, character_id: char_id}}, socket) do
-    # Refresh when analysis completes for this character
-    if char_id == socket.assigns.character_id do
-      socket = start_async_loads(socket, char_id)
-      {:noreply, socket}
-    else
-      {:noreply, socket}
-    end
-  end
-
-  def handle_info({:intelligence_update, _update}, socket) do
-    # Ignore other intelligence updates
-    {:noreply, socket}
+  def handle_info({:intelligence_update, %{character_id: char_id}}, socket) do
+    maybe_refresh_for_character(char_id, socket)
   end
 
   def handle_info({:character_update, %{character_id: char_id}}, socket) do
-    # Handle character-specific updates
+    maybe_refresh_for_character(char_id, socket)
+  end
+
+  def handle_info(_msg, socket) do
+    # Catch-all for unhandled messages (including intelligence updates without character_id)
+    {:noreply, socket}
+  end
+
+  # Only refresh if this update is for the character we're viewing
+  defp maybe_refresh_for_character(char_id, socket) do
     if char_id == socket.assigns.character_id do
       socket = start_async_loads(socket, char_id)
       {:noreply, socket}
     else
       {:noreply, socket}
     end
-  end
-
-  def handle_info(_msg, socket) do
-    # Catch-all for unhandled messages
-    {:noreply, socket}
   end
 
   @impl Phoenix.LiveView

@@ -269,14 +269,49 @@ defmodule EveDmv.Contexts.CharacterIntelligence.ThreatConfig do
   @capsule_group_id 29
 
   # =============================================================================
+  # Continuous Scoring Parameters
+  # =============================================================================
+  # These parameters control sigmoid and logarithmic scaling functions that
+  # replace discrete bucket-based scoring for better differentiation.
+
+  # Sigmoid midpoint for K/D ratio scoring.
+  # A K/D of 2.0 produces a score of 0.5 (midpoint).
+  # Below this is below-average, above is above-average.
+  @kd_sigmoid_midpoint 2.0
+
+  # Sigmoid steepness for K/D ratio scoring.
+  # Higher values create sharper transitions around the midpoint.
+  # Value of 1.0 gives a smooth S-curve across the reasonable K/D range.
+  @kd_sigmoid_steepness 1.0
+
+  # Sigmoid midpoint for ISK efficiency scoring (percentage).
+  # An efficiency of 65% produces a score of 0.5 (midpoint).
+  @isk_efficiency_sigmoid_midpoint 65.0
+
+  # Sigmoid steepness for ISK efficiency scoring.
+  @isk_efficiency_sigmoid_steepness 0.08
+
+  # Logarithmic scaling base for outlier extension.
+  # Used to extend scores beyond 1.0 for exceptional performers.
+  # Score = 1.0 + log_base(ratio) where ratio > threshold
+  @outlier_log_base 2.0
+
+  # Threshold for applying outlier extension.
+  # K/D ratios above this get logarithmic bonus on top of base sigmoid score.
+  @kd_outlier_threshold 10.0
+
+  # Maximum extended score before normalization.
+  # Caps the raw score to prevent extreme outliers from dominating.
+  @max_extended_score 1.5
+
+  # =============================================================================
   # Fallback Score Constants
   # =============================================================================
 
   # Score assigned when there is insufficient recent data (< 3 killmails in 30 days).
-  # A low score of 0.3 indicates the character is likely inactive or has minimal
-  # recent activity. This is intentionally conservative to avoid overestimating
-  # threats from dormant characters.
-  @insufficient_data_score 0.3
+  # A low score of 0.15 indicates the character is likely inactive or has minimal
+  # recent activity. Reduced from 0.3 to better differentiate inactive players.
+  @insufficient_data_score 0.15
 
   # Score assigned when recent activity weighting is disabled via options.
   # A neutral score of 0.5 means the recent activity dimension contributes
@@ -714,4 +749,170 @@ defmodule EveDmv.Contexts.CharacterIntelligence.ThreatConfig do
   end
 
   def industrial_group?(_), do: false
+
+  # =============================================================================
+  # Public API - Continuous Scoring Parameters
+  # =============================================================================
+
+  @doc "Returns the sigmoid midpoint for K/D ratio scoring (2.0)."
+  @spec kd_sigmoid_midpoint() :: float()
+  def kd_sigmoid_midpoint, do: @kd_sigmoid_midpoint
+
+  @doc "Returns the sigmoid steepness for K/D ratio scoring (1.0)."
+  @spec kd_sigmoid_steepness() :: float()
+  def kd_sigmoid_steepness, do: @kd_sigmoid_steepness
+
+  @doc "Returns the sigmoid midpoint for ISK efficiency scoring (65%)."
+  @spec isk_efficiency_sigmoid_midpoint() :: float()
+  def isk_efficiency_sigmoid_midpoint, do: @isk_efficiency_sigmoid_midpoint
+
+  @doc "Returns the sigmoid steepness for ISK efficiency scoring."
+  @spec isk_efficiency_sigmoid_steepness() :: float()
+  def isk_efficiency_sigmoid_steepness, do: @isk_efficiency_sigmoid_steepness
+
+  @doc "Returns the logarithmic base for outlier extension (2.0)."
+  @spec outlier_log_base() :: float()
+  def outlier_log_base, do: @outlier_log_base
+
+  @doc "Returns the K/D threshold for applying outlier extension (10.0)."
+  @spec kd_outlier_threshold() :: float()
+  def kd_outlier_threshold, do: @kd_outlier_threshold
+
+  @doc "Returns the maximum extended score before normalization (1.5)."
+  @spec max_extended_score() :: float()
+  def max_extended_score, do: @max_extended_score
+
+  # =============================================================================
+  # Public API - Continuous Scoring Functions
+  # =============================================================================
+
+  @doc """
+  Calculates K/D score using continuous sigmoid function with outlier extension.
+
+  This replaces the discrete bucket approach for better differentiation.
+  The sigmoid provides smooth transitions, and logarithmic extension
+  rewards exceptional performers without capping them artificially.
+
+  ## Examples
+
+      iex> ThreatConfig.calculate_kd_score_continuous(0, 10)
+      0.0
+      iex> ThreatConfig.calculate_kd_score_continuous(10, 0)
+      # Returns ~1.0+ with outlier bonus
+      iex> ThreatConfig.calculate_kd_score_continuous(20, 10)
+      # Returns sigmoid score for 2.0 K/D (~0.5)
+
+  ## Parameters
+  - kills: Number of kills
+  - deaths: Number of deaths
+
+  ## Returns
+  Score between 0.0 and max_extended_score (1.5)
+  """
+  @spec calculate_kd_score_continuous(non_neg_integer(), non_neg_integer()) :: float()
+  def calculate_kd_score_continuous(kills, deaths)
+      when is_integer(kills) and is_integer(deaths) do
+    cond do
+      # No kills = no threat
+      kills == 0 ->
+        0.0
+
+      # Zero deaths - use kill count with logarithmic scaling
+      # More kills without deaths = more dangerous
+      deaths == 0 ->
+        # Base score of 0.9 for having 0 deaths
+        # Add logarithmic bonus based on kill count
+        base_score = 0.9
+        kill_bonus = :math.log(kills + 1) / :math.log(50) * 0.1
+        min(@max_extended_score, base_score + kill_bonus)
+
+      # Normal K/D calculation with sigmoid
+      true ->
+        kd_ratio = kills / deaths
+        calculate_kd_sigmoid_score(kd_ratio)
+    end
+  end
+
+  def calculate_kd_score_continuous(_, _), do: 0.0
+
+  @doc """
+  Calculates ISK efficiency score using continuous sigmoid function.
+
+  Replaces discrete buckets for smoother differentiation.
+
+  ## Parameters
+  - isk_destroyed: Total ISK value destroyed
+  - isk_lost: Total ISK value lost
+
+  ## Returns
+  Score between 0.0 and max_extended_score (1.5)
+  """
+  @spec calculate_isk_efficiency_continuous(number(), number()) :: float()
+  def calculate_isk_efficiency_continuous(isk_destroyed, isk_lost)
+      when is_number(isk_destroyed) and is_number(isk_lost) do
+    # No activity
+    if isk_destroyed == 0 and isk_lost == 0 do
+      0.0
+    else
+      # Calculate efficiency percentage
+      total_isk = isk_destroyed + isk_lost
+      efficiency_pct = if total_isk > 0, do: isk_destroyed / total_isk * 100, else: 0
+
+      # Apply sigmoid function
+      sigmoid_score =
+        sigmoid(
+          efficiency_pct,
+          @isk_efficiency_sigmoid_midpoint,
+          @isk_efficiency_sigmoid_steepness
+        )
+
+      # Bonus for exceptional efficiency (95%+)
+      if efficiency_pct >= 95.0 do
+        bonus = (efficiency_pct - 95.0) / 5.0 * 0.15
+        min(@max_extended_score, sigmoid_score + bonus)
+      else
+        sigmoid_score
+      end
+    end
+  end
+
+  def calculate_isk_efficiency_continuous(_, _), do: 0.0
+
+  # Private helper for K/D sigmoid calculation with outlier extension
+  defp calculate_kd_sigmoid_score(kd_ratio) do
+    # Apply sigmoid transformation
+    # Using log of K/D ratio for better distribution across wide range
+    log_kd = :math.log(max(0.1, kd_ratio))
+    log_midpoint = :math.log(@kd_sigmoid_midpoint)
+
+    sigmoid_score = sigmoid(log_kd, log_midpoint, @kd_sigmoid_steepness)
+
+    # Apply outlier extension for exceptional K/D ratios
+    if kd_ratio >= @kd_outlier_threshold do
+      # Logarithmic bonus for outliers
+      outlier_bonus =
+        :math.log(kd_ratio / @kd_outlier_threshold) / :math.log(@outlier_log_base) * 0.1
+
+      min(@max_extended_score, sigmoid_score + outlier_bonus)
+    else
+      sigmoid_score
+    end
+  end
+
+  @doc """
+  Standard sigmoid function for continuous scoring.
+
+  Returns value between 0.0 and 1.0.
+
+  ## Parameters
+  - x: Input value
+  - midpoint: Value at which output is 0.5
+  - steepness: Controls the transition sharpness (higher = sharper)
+  """
+  @spec sigmoid(number(), number(), number()) :: float()
+  def sigmoid(x, midpoint, steepness) when is_number(x) do
+    1.0 / (1.0 + :math.exp(-steepness * (x - midpoint)))
+  end
+
+  def sigmoid(_, _, _), do: 0.5
 end

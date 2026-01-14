@@ -333,61 +333,18 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     }
   end
 
-  # Enhanced K/D scoring that properly rewards exceptional pilots
-  # Returns score from 0.0 to 1.0
+  # Continuous K/D scoring using sigmoid function with outlier extension
+  # Returns score from 0.0 to ~1.5 (extended range for differentiation)
+  # Delegates to ThreatConfig for consistent scoring across the codebase
   defp calculate_kd_score(kills, deaths) do
-    cond do
-      # No kills = no threat
-      kills == 0 ->
-        0.0
-
-      # Zero deaths is a massive threat indicator
-      # Scale by number of kills to distinguish between 1:0 and 50:0
-      deaths == 0 ->
-        # Base score of 0.8 for having 0 deaths, bonus up to 1.0 based on kill count
-        min(1.0, 0.8 + min(kills, 20) * 0.01)
-
-      # Normal K/D calculation with better scaling
-      true ->
-        kd_ratio = kills / deaths
-
-        cond do
-          kd_ratio >= 10.0 -> 0.95
-          kd_ratio >= 5.0 -> 0.85
-          kd_ratio >= 3.0 -> 0.70
-          kd_ratio >= 2.0 -> 0.55
-          kd_ratio >= 1.5 -> 0.45
-          kd_ratio >= 1.0 -> 0.35
-          kd_ratio >= 0.5 -> 0.20
-          true -> 0.10
-        end
-    end
+    ThreatConfig.calculate_kd_score_continuous(kills, deaths)
   end
 
-  # Enhanced ISK efficiency scoring
-  # Returns score from 0.0 to 1.0
+  # Continuous ISK efficiency scoring using sigmoid function
+  # Returns score from 0.0 to ~1.5 (extended range for differentiation)
+  # Delegates to ThreatConfig for consistent scoring across the codebase
   defp calculate_isk_efficiency_score(isk_destroyed, isk_lost) do
-    # No activity
-    if isk_destroyed == 0 and isk_lost == 0 do
-      0.0
-    else
-      # Calculate efficiency percentage
-      total_isk = isk_destroyed + isk_lost
-      efficiency_pct = if total_isk > 0, do: isk_destroyed / total_isk * 100, else: 0
-
-      cond do
-        # 100% efficiency (no losses) - exceptional
-        efficiency_pct >= 99.9 -> 1.0
-        efficiency_pct >= 95.0 -> 0.90
-        efficiency_pct >= 90.0 -> 0.80
-        efficiency_pct >= 80.0 -> 0.65
-        efficiency_pct >= 70.0 -> 0.50
-        efficiency_pct >= 60.0 -> 0.40
-        efficiency_pct >= 50.0 -> 0.30
-        efficiency_pct >= 40.0 -> 0.20
-        true -> 0.10
-      end
-    end
+    ThreatConfig.calculate_isk_efficiency_continuous(isk_destroyed, isk_lost)
   end
 
   # Calculate solo/small gang capability
@@ -670,8 +627,9 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
 
   defp analyze_target_selection_quality(attacker_killmails) do
     if Enum.empty?(attacker_killmails) do
-      # Return 0.0 for insufficient data instead of fake "neutral" 0.5
-      0.0
+      # No kills means no demonstrated target selection capability
+      # Return very low score to properly differentiate from active pilots
+      0.05
     else
       # Analyze value and tactical importance of targets
       valuable_targets =
@@ -688,10 +646,12 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
       total_kills = length(attacker_killmails)
 
       # Weight valuable and tactical targets
+      # Allow extended scores for exceptional target selection
       quality_score =
         (valuable_targets * 1.5 + tactical_targets * 1.2 + total_kills) / (total_kills * 2.5)
 
-      min(1.0, quality_score)
+      # Allow up to 1.3 for exceptional target selectors
+      min(1.3, quality_score)
     end
   end
 
@@ -854,8 +814,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
     if total_kills > 0 do
       fleet_kills / total_kills
     else
-      # No data - return 0.0 instead of fake neutral
-      0.0
+      # No killmail data - return low score to differentiate from active fleet players
+      0.1
     end
   end
 
@@ -925,8 +885,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   defp assess_fleet_coordination(killmails) do
     # Analyze coordination indicators from killmail timing and participation
     if length(killmails) < @minimum_killmails_for_scoring do
-      # Insufficient data - return 0.0 instead of fake neutral
-      0.0
+      # Insufficient data - return low score to differentiate
+      0.1
     else
       # Look for coordinated strikes (multiple kills in short timeframes)
       coordinated_strikes =
@@ -940,16 +900,16 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
         end)
 
       coordination_rate = coordinated_strikes / max(1, length(killmails) - 1)
-      # Normalize
-      min(1.0, coordination_rate * 2)
+      # Normalize with extended range for exceptional coordinators
+      min(1.2, coordination_rate * 2)
     end
   end
 
   defp analyze_leadership_patterns(attacker_killmails) do
     # Analyze final blow patterns as leadership indicator
     if Enum.empty?(attacker_killmails) do
-      # Insufficient data - return 0.0 instead of fake neutral
-      0.0
+      # No kills means no demonstrated leadership - return very low score
+      0.05
     else
       final_blows =
         Enum.count(attacker_killmails, fn km ->
@@ -965,8 +925,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
       final_blow_rate = final_blows / length(attacker_killmails)
 
       # High final blow rate suggests taking charge/finishing targets
-      # Normalize (33% final blow rate = 1.0)
-      min(1.0, final_blow_rate * 3)
+      # Normalize (33% final blow rate = 1.0), allow extended for exceptional leaders
+      min(1.3, final_blow_rate * 3)
     end
   end
 
@@ -1053,8 +1013,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   defp analyze_engagement_time_variety(killmails) do
     # Analyze variety in engagement timing (time of day patterns)
     if length(killmails) < @minimum_killmails_for_scoring do
-      # Insufficient data
-      0.0
+      # Insufficient data - low but non-zero score
+      0.15
     else
       hours =
         killmails
@@ -1104,8 +1064,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   defp analyze_engagement_timing_patterns(killmails) do
     # Analyze unpredictability in when character engages
     if length(killmails) < 10 do
-      # Insufficient data for timing pattern analysis
-      0.0
+      # Insufficient data for timing pattern analysis - return low score
+      0.15
     else
       # Group by day of week and hour
       timing_patterns =
@@ -1138,8 +1098,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
 
   defp calculate_target_selection_variance(attacker_killmails) do
     if length(attacker_killmails) < @minimum_killmails_for_scoring do
-      # Insufficient data
-      0.0
+      # Insufficient data - low score indicates predictable (limited data)
+      0.1
     else
       # Analyze variety in target types
       target_ship_types =
@@ -1185,8 +1145,8 @@ defmodule EveDmv.Contexts.CharacterIntelligence.Domain.ThreatScoringEngine do
   defp calculate_performance_variance(combat_data) do
     # Analyze variance in combat performance over time
     if length(combat_data.killmails) < 10 do
-      # Insufficient data for variance analysis
-      0.0
+      # Insufficient data for variance analysis - low but non-zero
+      0.1
     else
       # Group killmails by time periods and analyze performance variance
       time_periods =
