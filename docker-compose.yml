@@ -1,0 +1,82 @@
+# Development Docker Compose for EVE DMV devcontainer.
+# Referenced by .devcontainer/devcontainer.json (dockerComposeFile).
+# For production, see docker-compose.production.yml.
+
+services:
+  db:
+    build:
+      # Context scoped to .devcontainer so Dockerfile.postgres can COPY postgres-init.sql
+      context: ./.devcontainer
+      dockerfile: Dockerfile.postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-eve_dmv_dev}
+    ports:
+      # Host 5433 -> container 5432 (matches devcontainer.json forwardPorts)
+      - "5433:5432"
+    volumes:
+      # PostgreSQL 18 expects the parent dir mounted, matching docker-compose.production.yml
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      # Host 6380 -> container 6379 (matches devcontainer.json forwardPorts)
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    # Keep the container alive; VS Code attaches its own shells.
+    command: sleep infinity
+    volumes:
+      # Bind-mount the workspace; matches devcontainer.json workspaceFolder=/workspace
+      - .:/workspace:cached
+      # Keep deps/_build inside named volumes (faster than going through the
+      # bind mount, especially on WSL2 / macOS) and persist hex/mix caches
+      # across rebuilds.
+      - elixir-deps:/workspace/deps
+      - elixir-build:/workspace/_build
+      - hex-cache:/home/vscode/.hex
+      - mix-cache:/home/vscode/.mix
+    env_file:
+      - .env
+    environment:
+      MIX_ENV: dev
+      DATABASE_URL: ${DATABASE_URL:-ecto://postgres:postgres@db/eve_dmv_dev}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Lets the app reach services on the WSL/Docker host (e.g. wanderer-kills on :4004).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "4010:4010"
+
+volumes:
+  postgres_data:
+  redis_data:
+  elixir-deps:
+  elixir-build:
+  hex-cache:
+  mix-cache:
