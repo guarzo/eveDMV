@@ -302,10 +302,14 @@ defmodule EveDmv.Killmails.KillmailRawTest do
       recent_killmail = Ash.create!(KillmailRaw, recent_attrs, domain: EveDmv.Api)
       old_killmail = Ash.create!(KillmailRaw, old_attrs, domain: EveDmv.Api)
 
-      # Load with calculation
+      # Load with calculation - filter to just our two records since the table
+      # may contain many killmails and the default safety limit caps reads.
+      ids = [recent_killmail.killmail_id, old_killmail.killmail_id]
+
       killmails =
         KillmailRaw
         |> Ash.Query.new()
+        |> Ash.Query.filter(expr(killmail_id in ^ids))
         |> Ash.Query.load([:is_recent])
         |> Ash.read!(domain: EveDmv.Api)
 

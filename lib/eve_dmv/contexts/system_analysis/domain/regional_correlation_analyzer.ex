@@ -174,8 +174,12 @@ defmodule EveDmv.Contexts.SystemAnalysis.Domain.RegionalCorrelationAnalyzer do
     clusters =
       systems
       |> Enum.reduce([], fn system, acc ->
+        # The correlation matrix only contains entries for systems with
+        # killmail activity in the timeframe; treat missing systems as
+        # having no correlations.
         correlated_systems =
-          correlation_matrix[system.system_id]
+          correlation_matrix
+          |> Map.get(system.system_id, %{})
           |> Enum.filter(fn {_sys_id, corr} -> corr > threshold end)
           |> Enum.map(fn {sys_id, _corr} -> sys_id end)
 
