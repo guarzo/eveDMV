@@ -73,6 +73,12 @@ defmodule EveDmv.Contexts.Corporation.Services.StatsLoader do
     """
 
     case Repo.query(stats_query, [corporation_id, since_date]) do
+      {:ok, %{rows: [[nil, nil, _, _, _]]}} ->
+        # Matview has no rows for this corp (it filters out members with <5
+        # killmails and refreshes on a schedule, so recently-inserted data
+        # also won't appear). Fall back to the direct query.
+        compute_stats_direct(corporation_id, since_date)
+
       {:ok, %{rows: [[kills, losses, isk_destroyed, isk_lost, active_members]]}} ->
         format_stats(kills, losses, isk_destroyed, isk_lost, active_members)
 
