@@ -1,10 +1,17 @@
 {
   "name": "EVE DMV Dev Container",
-  "dockerComposeFile": ["../docker-compose.yml"],
+  "dockerComposeFile": [
+    "../docker-compose.yml",
+    "../docker-compose.override.yml"
+  ],
   "service": "app",
   "workspaceFolder": "/workspace",
   "shutdownAction": "stopCompose",
   "remoteUser": "vscode",
+
+  // Auto-create an empty docker-compose.override.yml on the host if it's
+  // missing, so cloning the repo fresh doesn't break the build.
+  "initializeCommand": "test -f docker-compose.override.yml || echo 'services: {}' > docker-compose.override.yml",
 
   "forwardPorts": [4010, 5433, 6380],
   "portsAttributes": {
@@ -20,14 +27,19 @@
     }
   },
 
-
   "features": {
     "ghcr.io/devcontainers/features/common-utils:2": {
-      "installZsh": "true",
-      "configureZshAsDefaultShell": "true",
-      "installOhMyZsh": "true",
-      "networkArgs": ["--add-host=host.docker.internal:host-gateway"]
-    }
+      "installZsh": true,
+      "configureZshAsDefaultShell": true,
+      "installOhMyZsh": true,
+      "upgradePackages": true
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  "containerEnv": {
+    "ERL_AFLAGS": "-kernel shell_history enabled",
+    "ELIXIR_ERL_OPTIONS": "+fnu"
   },
 
   "customizations": {
@@ -38,10 +50,15 @@
         "esbenp.prettier-vscode",
         "bradlc.vscode-tailwindcss",
         "ms-vscode.vscode-json",
-        "redhat.vscode-yaml"
+        "redhat.vscode-yaml",
+        "ms-azuretools.vscode-docker",
+        "eamodio.gitlens",
+        "EditorConfig.EditorConfig",
+        "mikestead.dotenv",
+        "Anthropic.claude-code"
       ],
       "settings": {
-        "terminal.integrated.shell.linux": "/bin/bash",
+        "terminal.integrated.defaultProfile.linux": "zsh",
         "editor.formatOnSave": true,
         "elixir.projectPath": "/workspace",
         "elixir.suggestSpecs": false,
@@ -49,6 +66,13 @@
         "elixirLS.fetchDeps": false,
         "elixirLS.suggestSpecs": false,
         "elixirLS.enableTestLenses": true,
+        "[elixir]": {
+          "editor.defaultFormatter": "jakebecker.elixir-ls",
+          "editor.formatOnSave": true
+        },
+        "[heex]": {
+          "editor.defaultFormatter": "phoenixframework.phoenix"
+        },
         "files.associations": {
           "*.ex": "elixir",
           "*.exs": "elixir",
@@ -64,5 +88,6 @@
     }
   },
 
-  "postCreateCommand": "echo 'Waiting for services...' && sleep 5 && (mix deps.get || (echo 'Retrying deps.get...' && sleep 5 && mix deps.get)) && mix ecto.create --quiet && mix ecto.migrate && mix assets.setup && git config --global core.editor vim && echo \"alias vi='vim'\" >> ~/.bashrc && echo 'Dev container setup complete!'"
+  "postCreateCommand": "echo 'Waiting for services...' && sleep 5 && (mix deps.get || (echo 'Retrying deps.get...' && sleep 5 && mix deps.get)) && mix ecto.create --quiet && mix ecto.migrate && mix assets.setup && git config --global core.editor vim && echo \"alias vi='vim'\" >> ~/.bashrc && echo 'Dev container setup complete!'",
+  "postStartCommand": "bash .devcontainer/post-start.sh"
 }

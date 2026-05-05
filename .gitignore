@@ -1,3 +1,4 @@
+.worktrees
 # The directory Mix will write compiled artifacts to.
 /_build/
 
@@ -58,3 +59,6 @@ node_modules
 
 # Backup files
 *.bak
+
+# Devcontainer local override (host-specific mounts; auto-created if missing)
+docker-compose.override.yml
