@@ -163,10 +163,8 @@ defmodule EveDmv.StaticData.ShipAttributeImporterTest do
           # Verify the ship was classified - may be "frigate" or "unknown" depending on SDE
           case EveDmv.StaticData.ShipAttributes.get_by_type_id(11_371) do
             {:ok, attrs} ->
-              # Size class should be a valid string
-              assert is_binary(attrs.size_class)
-              # If SDE is fully loaded, it should be frigate; otherwise unknown is acceptable
-              assert attrs.size_class in ["frigate", "unknown"]
+              # The Wolf is an Assault Frigate; require it to be classified as "frigate".
+              assert attrs.size_class == "frigate"
 
             {:error, :not_found} ->
               # Ship not found after import, acceptable in test environment
