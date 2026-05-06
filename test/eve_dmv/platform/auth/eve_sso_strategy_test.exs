@@ -18,6 +18,11 @@ defmodule EveDmv.Auth.EveSsoStrategyTest do
 
   alias EveDmv.Auth.EveSsoStrategy
 
+  @character_id 91_234_567
+  @character_name "Test Pilot"
+  @owner_hash "abcdefg1234567890"
+  @kid "test-kid-1"
+
   defmodule JwksStub do
     @moduledoc false
     # Test-only JWKS module. The keys (and a refreshed key list, if any)
@@ -47,11 +52,6 @@ defmodule EveDmv.Auth.EveSsoStrategyTest do
       {:ok, keys}
     end
   end
-
-  @character_id 91_234_567
-  @character_name "Test Pilot"
-  @owner_hash "abcdefg1234567890"
-  @kid "test-kid-1"
 
   setup do
     {private_jwk, public_jwk} = generate_jwk(@kid)
