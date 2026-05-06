@@ -10,7 +10,7 @@ defmodule EveDmv.Users.User do
     otp_app: :eve_dmv,
     domain: EveDmv.Api,
     data_layer: AshPostgres.DataLayer,
-    extensions: [AshAuthentication],
+    extensions: [AshAuthentication, EveDmv.Auth.EveSsoStrategyExtension],
     authorizers: [Ash.Policy.Authorizer]
 
   alias Ash.Changeset
@@ -23,12 +23,24 @@ defmodule EveDmv.Users.User do
     # EVE SSO OAuth2 authentication strategy
     strategies do
       oauth2 :eve_sso do
+        # EVE SSO v2 embeds character info in the access-token JWT.
+        # CCP retired the legacy `https://esi.evetech.net/verify/`
+        # endpoint, so the `EveDmv.Auth.EveSsoStrategyExtension` swaps
+        # this strategy's Assent module to `EveDmv.Auth.EveSsoStrategy`,
+        # which decodes the JWT against CCP's published JWKS instead of
+        # calling `user_url`.
+        #
+        # `user_url` is still required by the AshAuthentication DSL
+        # schema but is never fetched. We point it at a deliberately
+        # invalid placeholder so any future regression that drops the
+        # extension surfaces immediately as a DNS failure rather than
+        # silently fetching whatever happens to be at a real URL.
         client_id(&get_eve_sso_config/2)
         client_secret(&get_eve_sso_config/2)
         base_url("https://login.eveonline.com")
         authorize_url("/v2/oauth/authorize")
         token_url("/v2/oauth/token")
-        user_url("https://esi.evetech.net/verify/")
+        user_url("https://invalid.eve-sso.placeholder.eve-dmv.local/")
         redirect_uri(&get_eve_sso_config/2)
         authorization_params(scope: "publicData")
         auth_method(:client_secret_basic)
