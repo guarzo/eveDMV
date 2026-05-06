@@ -83,7 +83,13 @@ defmodule EveDmv.Auth.EveSsoJwksTest do
     {:ok, agent} = Agent.start_link(fn -> {0, raw_responses} end)
 
     fun = fn ->
-      Agent.get_and_update(agent, fn {n, [head | rest]} -> {head, {n + 1, rest}} end)
+      Agent.get_and_update(agent, fn
+        {n, [head | rest]} ->
+          {head, {n + 1, rest}}
+
+        {n, []} ->
+          raise "EveSsoJwksTest stub exhausted after #{n} call(s); add more responses"
+      end)
     end
 
     calls = fn -> Agent.get(agent, fn {n, _} -> n end) end
