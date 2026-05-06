@@ -83,11 +83,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
              {:ok, final_analysis} <-
                maybe_generate_recommendations(comparative_analysis, include_recommendations) do
           # Filter by focus ship if specified
-          filtered_analysis =
-            case focus_ship do
-              nil -> final_analysis
-              ship_type_id -> filter_by_ship_type(final_analysis, ship_type_id)
-            end
+          filtered_analysis = maybe_filter_by_ship_type(final_analysis, focus_ship)
 
           end_time = System.monotonic_time(:millisecond)
           duration_ms = end_time - start_time
@@ -1888,6 +1884,11 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ShipPerformanceAnalyzer do
       true -> :low
     end
   end
+
+  defp maybe_filter_by_ship_type(analysis, nil), do: analysis
+
+  defp maybe_filter_by_ship_type(analysis, ship_type_id),
+    do: filter_by_ship_type(analysis, ship_type_id)
 
   defp filter_by_ship_type(analysis, ship_type_id) do
     filtered_performances =

@@ -94,7 +94,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
       analysis = ParticipantRoleAnalyzer.analyze_participant_roles(battle)
 
       # Should identify potential commanders
-      assert length(analysis.commanders) >= 0
+      assert is_list(analysis.commanders)
 
       # If commanders identified, should have command indicators
       if analysis.commanders != [] do
@@ -161,7 +161,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.ParticipantRoleAnalyzerTest do
       analysis = ParticipantRoleAnalyzer.analyze_participant_role(participant, killmails)
 
       # Should identify some characteristics based on the activity
-      assert length(analysis.characteristics) >= 0
+      assert is_list(analysis.characteristics)
     end
 
     test "handles participants with no activity" do
