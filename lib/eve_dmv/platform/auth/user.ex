@@ -31,15 +31,16 @@ defmodule EveDmv.Users.User do
         # calling `user_url`.
         #
         # `user_url` is still required by the AshAuthentication DSL
-        # schema but is never fetched. We point it at the JWKS URL as
-        # a non-404 placeholder; if the override is ever removed the
-        # error surface will be obvious.
+        # schema but is never fetched. We point it at a deliberately
+        # invalid placeholder so any future regression that drops the
+        # extension surfaces immediately as a DNS failure rather than
+        # silently fetching whatever happens to be at a real URL.
         client_id(&get_eve_sso_config/2)
         client_secret(&get_eve_sso_config/2)
         base_url("https://login.eveonline.com")
         authorize_url("/v2/oauth/authorize")
         token_url("/v2/oauth/token")
-        user_url("https://login.eveonline.com/oauth/jwks")
+        user_url("https://invalid.eve-sso.placeholder.eve-dmv.local/")
         redirect_uri(&get_eve_sso_config/2)
         authorization_params(scope: "publicData")
         auth_method(:client_secret_basic)

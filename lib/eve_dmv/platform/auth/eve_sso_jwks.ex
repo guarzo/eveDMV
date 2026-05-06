@@ -22,26 +22,56 @@ defmodule EveDmv.Auth.EveSsoJwks do
 
   @doc """
   Returns the current JWKS key list, fetching and caching it if needed.
+
+  On a refresh path (`refresh?: true` or expired cache), if the upstream
+  fetch fails but a previously cached keyset exists, the stale keys are
+  returned rather than propagating the error. Cold-start failures still
+  surface as `{:error, _}` so misconfiguration is loud.
+
+  ## Options
+
+    * `:refresh?` (boolean) - bypass the TTL check
+    * `:http_request_fun` (test-only) - 0-arity fun returning the
+      result of `Assent.Strategy.http_request/5`
   """
   @spec get_keys(keyword()) :: {:ok, [map()]} | {:error, term()}
   def get_keys(opts \\ []) do
     refresh? = Keyword.get(opts, :refresh?, false)
 
     case :persistent_term.get(@cache_key, :miss) do
-      {expires_at, keys} when not refresh? ->
-        if System.monotonic_time(:millisecond) < expires_at do
-          {:ok, keys}
-        else
-          fetch_and_cache()
+      {expires_at, keys} ->
+        cond do
+          refresh? -> fetch_or_fallback(keys, opts)
+          System.monotonic_time(:millisecond) < expires_at -> {:ok, keys}
+          true -> fetch_or_fallback(keys, opts)
         end
 
-      _ ->
-        fetch_and_cache()
+      :miss ->
+        fetch_and_cache(opts)
     end
   end
 
-  defp fetch_and_cache do
-    case Assent.Strategy.http_request(:get, @jwks_url, nil, [], []) do
+  defp fetch_or_fallback(stale_keys, opts) do
+    case fetch_and_cache(opts) do
+      {:ok, _} = ok ->
+        ok
+
+      {:error, reason} ->
+        Logger.warning(
+          "EVE SSO JWKS refresh failed; falling back to previously cached keys: #{inspect(reason)}"
+        )
+
+        {:ok, stale_keys}
+    end
+  end
+
+  defp fetch_and_cache(opts) do
+    request_fun =
+      Keyword.get(opts, :http_request_fun, fn ->
+        Assent.Strategy.http_request(:get, @jwks_url, nil, [], [])
+      end)
+
+    case request_fun.() do
       {:ok, %HTTPResponse{status: 200, body: %{"keys" => keys}}} when is_list(keys) ->
         expires_at = System.monotonic_time(:millisecond) + @cache_ttl_ms
         :persistent_term.put(@cache_key, {expires_at, keys})
