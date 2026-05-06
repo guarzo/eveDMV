@@ -239,7 +239,7 @@ defmodule EveDmv.Contexts.BattleAnalysis.Domain.TacticalPatternDetectorTest do
       analysis = TacticalPatternDetector.analyze_coordination(killmails)
 
       # Should identify breakdown periods
-      assert length(analysis.coordination_breakdown) >= 0
+      assert is_list(analysis.coordination_breakdown)
     end
   end
 
